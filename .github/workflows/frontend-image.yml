@@ -1,0 +1,74 @@
+name: Frontend Docker Image (ECR)
+
+# Pull requests build the image to check it. Merges to main build it and push it to
+# ECR, tagged with the commit SHA.
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "terminalpro/**"
+      - ".github/workflows/frontend-image.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "terminalpro/**"
+      - ".github/workflows/frontend-image.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-image-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    env:
+      ECR_REPOSITORY: openbb-frontend
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        if: github.event_name == 'push'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_PROD_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_PROD_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        if: github.event_name == 'push'
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Tags in this repository are immutable, so a rerun for the same commit keeps the
+      # image that is already there.
+      - name: Check for an existing image
+        if: github.event_name == 'push'
+        id: existing
+        run: |
+          if output=$(aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag="$IMAGE_TAG" 2>&1); then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif grep -q ImageNotFoundException <<< "$output"; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "$output" >&2
+            exit 1
+          fi
+
+      - name: Build image
+        if: steps.existing.outputs.exists != 'true'
+        run: docker build -t "$ECR_REPOSITORY:$IMAGE_TAG" terminalpro
+
+      - name: Push image
+        if: github.event_name == 'push' && steps.existing.outputs.exists != 'true'
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker tag "$ECR_REPOSITORY:$IMAGE_TAG" "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
