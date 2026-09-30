@@ -1,6 +1,9 @@
 name: Production Deployment OpenBB Pro (AWS)
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       confirm:
@@ -26,7 +29,7 @@ jobs:
     steps:
       - name: Confirm Deployment/Branch
         run: |
-          if [ "${{ github.event.inputs.confirm }}" != "deploy" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.confirm }}" != "deploy" ]; then
             echo "Confirmation required to deploy to production"
             exit 1
           fi
