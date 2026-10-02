@@ -18,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: frontend-image-${{ github.event.pull_request.number || github.sha }}
@@ -33,12 +34,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # OIDC: GitHub vouches for this run and AWS hands back credentials for an hour.
+      # The role only trusts main of this repository and can only push images.
       - name: Configure AWS credentials
         if: github.event_name == 'push'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_PROD_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_PROD_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
           aws-region: us-east-1
 
       - name: Login to Amazon ECR
