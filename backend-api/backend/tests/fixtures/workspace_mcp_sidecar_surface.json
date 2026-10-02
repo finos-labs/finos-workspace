@@ -426,7 +426,7 @@
               "description": "Array of objects shaped like {id, description, assigned_holder_url, assigned_agent_id}.",
               "items": {
                 "additionalProperties": false,
-                "description": "One task delegated to an external Workspace agent.\n\nField names match the frontend Zod schema in\n``terminalpro/src/components/AI/.../ai.ts`` (``taskRequestsSchema``).",
+                "description": "One task delegated to an external Workspace agent.\n\nField names match the frontend Zod schema in\n``frontend/src/components/AI/.../ai.ts`` (``taskRequestsSchema``).",
                 "properties": {
                   "assigned_agent_id": {
                     "type": "string"

@@ -50,7 +50,7 @@ BACKEND_SRC="clone"
 WORKSPACE_SRC="clone"
 # Defaults for local mode so you can omit the env vars.
 BACKEND_DIR="${BACKEND_DIR:-../backend-api}"
-WORKSPACE_DIR="${WORKSPACE_DIR:-../terminalpro}"
+WORKSPACE_DIR="${WORKSPACE_DIR:-../frontend}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 cd "$SCRIPT_DIR"

@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "terminalpro/**"
+      - "frontend/**"
 
 concurrency:
   group: pr-build-check-${{ github.event.pull_request.number }}
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: terminalpro
+        working-directory: frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

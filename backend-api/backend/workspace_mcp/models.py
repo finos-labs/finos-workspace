@@ -362,7 +362,7 @@ class TaskRequest(Model):
     """One task delegated to an external Workspace agent.
 
     Field names match the frontend Zod schema in
-    ``terminalpro/src/components/AI/.../ai.ts`` (``taskRequestsSchema``).
+    ``frontend/src/components/AI/.../ai.ts`` (``taskRequestsSchema``).
     """
 
     id: str

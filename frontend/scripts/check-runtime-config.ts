@@ -1,5 +1,5 @@
 // Checks render-frontend-config.sh against RuntimeConfigSchema, so the two cannot
-// drift apart. The image build runs it from terminalpro/:
+// drift apart. The image build runs it from frontend/:
 //   bun scripts/check-runtime-config.ts
 // It fails when a schema field is missing from the script's FIELDS table (or the
 // table names a field the schema does not have), when the config.js the script
