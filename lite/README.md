@@ -141,7 +141,7 @@ docker run -d -p 3000:3000 \
 
 ### Changing what Lite locks
 
-The lock policy is a **strict profile** that lives in the sibling `terminalpro/` directory:
+The lock policy is a **strict profile** that lives in the sibling `frontend/` directory:
 `config-profiles/lite.locked.json`. Every field in terminalpro's
 `RuntimeConfigSchema` must be triaged there — either **locked** (given a
 value) or listed in **`_unlocked`** (operator-configurable). A terminalpro
@@ -211,7 +211,7 @@ way CI does and runs a single-arch `docker build --load`:
 ./build-local.sh --variant full --platform linux/amd64 --backend-branch develop --workspace-branch develop
 
 # Or build from checkouts you already have on disk (picks up local edits):
-./build-local.sh --local   # defaults to the sibling ../backend-api and ../terminalpro directories
+./build-local.sh --local   # defaults to the sibling ../backend-api and ../frontend directories
 ```
 
 Prefer to do it by hand? Clone the two repos beside the Dockerfile and build:

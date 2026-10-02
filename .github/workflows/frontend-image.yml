@@ -7,7 +7,7 @@ on:
     branches:
       - main
     paths:
-      - "terminalpro/**"
+      - "frontend/**"
       - ".github/workflows/frontend-image.yml"
   push:
     tags:
@@ -81,7 +81,7 @@ jobs:
 
       - name: Build image
         if: steps.existing.outputs.exists != 'true'
-        run: docker build -t "$ECR_REPOSITORY:$IMAGE_TAG" terminalpro
+        run: docker build -t "$ECR_REPOSITORY:$IMAGE_TAG" frontend
 
       - name: Push image
         if: github.ref_type == 'tag' && steps.existing.outputs.exists != 'true'

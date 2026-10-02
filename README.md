@@ -6,7 +6,7 @@ Source code for OpenBB Workspace and the components that build and run it.
 
 | Directory | What it is |
 |---|---|
-| `terminalpro/` | The Workspace frontend (React 18 + TypeScript + Vite) |
+| `frontend/` | The Workspace frontend (React 18 + TypeScript + Vite) |
 | `backend-api/` | Backend API (FastAPI + SQLAlchemy), admin CLI, and admin dashboard |
 | `lite/` | Docker packaging that assembles OpenBB Lite from the backend and frontend |
 | `excel-add-in/` | The OpenBB Add-in for Excel (Office.js, TypeScript/React) |
