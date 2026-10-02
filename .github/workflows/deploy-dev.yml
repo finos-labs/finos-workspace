@@ -1,0 +1,129 @@
+name: Deploy to dev
+
+# A push to develop builds the changed app, pushes the image to ECR as
+# dev-<commit>, and rolls it out to the finos-dev cluster. Nothing else to edit:
+# this is the quick loop for development. Releases (version tags) are pinned
+# in workspace-infra and don't come through here.
+#
+# The next release that is deployed from workspace-infra puts the pinned tag
+# back, so a dev build never outlives the next release.
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - "backend-api/backend/**"
+      - "frontend/**"
+      - ".github/workflows/deploy-dev.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  CLUSTER_NAME: finos-dev
+  NAMESPACE: workspace
+  ECR_REGISTRY: 149911392452.dkr.ecr.us-east-1.amazonaws.com
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - "backend-api/backend/**"
+              - ".github/workflows/deploy-dev.yml"
+            frontend:
+              - "frontend/**"
+              - ".github/workflows/deploy-dev.yml"
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-dev-backend
+      cancel-in-progress: false
+    env:
+      IMAGE_TAG: dev-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to AWS to push images
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push the API and worker images
+        run: |
+          docker build -f backend-api/backend/fastapi.Dockerfile -t "$ECR_REGISTRY/finos/backend:$IMAGE_TAG" backend-api/backend
+          docker build -f backend-api/backend/rqworker.Dockerfile -t "$ECR_REGISTRY/finos/backend-worker:$IMAGE_TAG" backend-api/backend
+          docker push "$ECR_REGISTRY/finos/backend:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/finos/backend-worker:$IMAGE_TAG"
+
+      - name: Log in to AWS to deploy
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEV_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          unset-current-credentials: true
+
+      - name: Roll out
+        run: |
+          aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
+          kubectl -n "$NAMESPACE" set image deployment/backend backend="$ECR_REGISTRY/finos/backend:$IMAGE_TAG"
+          kubectl -n "$NAMESPACE" set image deployment/backend-worker worker="$ECR_REGISTRY/finos/backend-worker:$IMAGE_TAG"
+          # Undo the roll-out if the new pods don't become ready.
+          for d in backend backend-worker; do
+            kubectl -n "$NAMESPACE" rollout status "deployment/$d" --timeout=10m || { kubectl -n "$NAMESPACE" rollout undo "deployment/$d"; exit 1; }
+          done
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-dev-frontend
+      cancel-in-progress: false
+    env:
+      IMAGE_TAG: dev-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to AWS to push images
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push the frontend image
+        run: |
+          docker build -t "$ECR_REGISTRY/finos/frontend:$IMAGE_TAG" frontend
+          docker push "$ECR_REGISTRY/finos/frontend:$IMAGE_TAG"
+
+      - name: Log in to AWS to deploy
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEV_DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          unset-current-credentials: true
+
+      - name: Roll out
+        run: |
+          aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
+          kubectl -n "$NAMESPACE" set image deployment/frontend frontend="$ECR_REGISTRY/finos/frontend:$IMAGE_TAG"
+          kubectl -n "$NAMESPACE" rollout status deployment/frontend --timeout=10m || { kubectl -n "$NAMESPACE" rollout undo deployment/frontend; exit 1; }
