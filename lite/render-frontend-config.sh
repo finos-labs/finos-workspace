@@ -2,13 +2,13 @@
 # Renders /usr/share/nginx/html/config.js from environment variables.
 #
 # The SPA reads window.__APP_CONFIG__ from /config.js BEFORE the bundle loads
-# (see terminalpro/public/config.js for the schema).
+# (see frontend/public/config.js for the schema).
 #
 # Exposure model:
 #   - OVERRIDABLE: declared with a `:=` default below and interpolated into the
 #     heredoc as ${VAR}. An operator can change these with `docker run -e`.
 #     Mirrors the "_unlocked" list in the Lite lock profile
-#     (terminalpro/config-profiles/lite.locked.json).
+#     (frontend/config-profiles/lite.locked.json).
 #   - LOCKED: every other config field. Baked into the JS bundle at build time
 #     by the strict Lite profile and forcibly overriding config.js at runtime,
 #     so they can't be flipped even by editing this file or the generated

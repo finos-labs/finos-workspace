@@ -2,31 +2,34 @@
 #
 # OpenBB Lite image.
 #
-# Bundles the FastAPI backend (Cython-compiled lite build), the terminalpro
+# Bundles the FastAPI backend (Cython-compiled lite build), the frontend
 # SPA (Vite runtime build), Redis, nginx, and supervisord into a single image.
 # Defaults to SQLite at /data/openbb.db so a `docker run -d -p 3000:3000` works
 # without any -e flags. Override via standard backend env vars (DATABASE_TYPE,
 # DB_HOST, ...).
 #
-# Build context: this repo's root, with backend/ (from openbb-hub) and
-# terminalpro/ assembled alongside the Dockerfile. See README.md / build-local.sh.
+# Build context: this directory, with backend/ (from backend-api/backend) and
+# frontend/ assembled alongside the Dockerfile. See README.md / build-local.sh.
 #   docker build -f Dockerfile -t openbb/lite:latest .
 #
 ###############################################
-# Frontend — build terminalpro SPA in runtime mode
+# Frontend — build the SPA in runtime mode
 ###############################################
 FROM node:22 AS frontend-build
 
 ARG OPENBB_IMAGE_VARIANT=lite
 
+ARG BUN_VERSION=1.4.2
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 
-WORKDIR /app
-COPY terminalpro/package.json terminalpro/package-lock.json ./
-RUN npm ci
+RUN npm install -g bun@${BUN_VERSION}
 
-COPY terminalpro/ ./
-# Keep terminalpro's release version (bumped there on every release) — the
+WORKDIR /app
+COPY frontend/package.json frontend/bun.lock ./
+RUN bun install --frozen-lockfile
+
+COPY frontend/ ./
+# Keep the frontend's release version (bumped there on every release) — the
 # variant env COPY below replaces .env, so carry the value across instead of
 # hand-maintaining a drifting copy in this repo.
 RUN grep '^VITE_RELEASE_VERSION=' .env > /tmp/release-version.env
@@ -37,9 +40,9 @@ RUN case "$OPENBB_IMAGE_VARIANT" in \
       *) echo "Unknown OPENBB_IMAGE_VARIANT=$OPENBB_IMAGE_VARIANT" >&2; exit 1 ;; \
     esac
 RUN cat /tmp/release-version.env >> .env
-# The Lite env selects terminalpro's strict in-repo lock profile; the Full env
+# The Lite env selects the frontend's strict in-repo lock profile; the Full env
 # deliberately leaves frontend runtime configuration unlocked.
-RUN npm run build:runtime
+RUN bun run build:runtime
 
 
 ###############################################

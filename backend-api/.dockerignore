@@ -42,9 +42,9 @@ backend/envs/.env.*
 **/dist
 **/.next
 **/.turbo
-terminalpro/playwright-report
-terminalpro/test-results
-terminalpro/src-tauri/target
+frontend/playwright-report
+frontend/test-results
+frontend/src-tauri/target
 
 # Editor cruft
 **/.DS_Store

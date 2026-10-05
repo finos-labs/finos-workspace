@@ -1,8 +1,8 @@
 # Source trees assembled at build time (CI uses actions/checkout; build-local.sh
 # clones or copies them here). They must never be committed into this repo.
 /backend/
-/terminalpro/
-/_hub/
+/frontend/
+/_src/
 
 # Local build / run artifacts.
 *.log

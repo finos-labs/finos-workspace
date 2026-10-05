@@ -101,7 +101,7 @@ class SpecGenerator:
     def fetch_widgets(cls, github_pat):
         """Fetch widgets.json"""
         branch = "develop"
-        base_url = f"https://raw.githubusercontent.com/OpenBB-finance/terminalpro/{branch}/src/lib/widgets.json"
+        base_url = f"https://raw.githubusercontent.com/openbq-org/workspace/{branch}/frontend/src/lib/widgets.json"
         try:
             widgets = get(
                 headers={"Authorization": f"token {github_pat}"},

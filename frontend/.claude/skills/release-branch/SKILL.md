@@ -1,7 +1,7 @@
 ---
 name: release-branch
 description: >
-  Cut a terminalpro release branch from main with develop's tree (the
+  Cut a frontend release branch from main with develop's tree (the
   main→release overlay process). Use when asked to make a release, cut a
   release branch, release/X.Y.Z, ship to main, or /release-branch.
   FE-only release flow for this repo. Works on macOS, Linux, and Windows
