@@ -1,12 +1,12 @@
-# Terminal Pro Packaging
+# Frontend Packaging
 
-This readme explains how to package pro terminals on various operating systems.
+This readme explains how to package the desktop app on various operating systems.
 
 ## MacOS
 Mac installer heavily influenced by [this](https://github.com/KosalaHerath/macos-installer-builder).
 
 To use with OpenBB Workspace run the following (ON MAC):
-1. Change directories to the terminal-pro: `pwd` should end with `terminalpro-poc`
+1. Change directories to the frontend: `pwd` should end with `frontend`
 1. Create the build: `cargo tauri build`
 1. Create the package: `bash packaging/macOS/build-macos.sh openbbpro 0.0.1`
 

@@ -18,7 +18,7 @@ export default function JSONConfiguration() {
       allowComments: false,
       schemas: [
         {
-          uri: "http://terminalpro.io/schemas/widget-schema.json", // Unique URI for the schema
+          uri: "http://openbq.org/schemas/widget-schema.json", // Unique URI for the schema
           fileMatch: ["*"], // Apply to all JSON files in this editor
           schema: widgetSchema,
         },
