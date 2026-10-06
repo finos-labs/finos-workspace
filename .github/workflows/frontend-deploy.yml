@@ -1,4 +1,4 @@
-name: Frontend Deployment BrightQuery Workspace
+name: Frontend Deployment BrightQuery Workspace 
 
 on:
   push:
