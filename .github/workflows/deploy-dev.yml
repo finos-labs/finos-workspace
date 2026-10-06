@@ -72,12 +72,21 @@ jobs:
 
       - uses: aws-actions/amazon-ecr-login@v2
 
+      # Tags are immutable, so a rerun keeps the images the first attempt pushed.
       - name: Build and push the API and worker images
         run: |
-          docker build -f backend-api/backend/fastapi.Dockerfile -t "$ECR_REGISTRY/finos/backend:$IMAGE_TAG" backend-api/backend
-          docker build -f backend-api/backend/rqworker.Dockerfile -t "$ECR_REGISTRY/finos/backend-worker:$IMAGE_TAG" backend-api/backend
-          docker push "$ECR_REGISTRY/finos/backend:$IMAGE_TAG"
-          docker push "$ECR_REGISTRY/finos/backend-worker:$IMAGE_TAG"
+          for image in backend:fastapi.Dockerfile backend-worker:rqworker.Dockerfile; do
+            repository="finos/${image%%:*}" dockerfile="${image#*:}"
+            if output=$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="$IMAGE_TAG" 2>&1); then
+              echo "$repository:$IMAGE_TAG is already in ECR."
+            elif grep -q ImageNotFoundException <<< "$output"; then
+              docker build -f "backend-api/backend/$dockerfile" -t "$ECR_REGISTRY/$repository:$IMAGE_TAG" backend-api/backend
+              docker push "$ECR_REGISTRY/$repository:$IMAGE_TAG"
+            else
+              echo "$output" >&2
+              exit 1
+            fi
+          done
 
       - name: Get a token for workspace-infra
         id: infra-token
@@ -121,10 +130,18 @@ jobs:
 
       - uses: aws-actions/amazon-ecr-login@v2
 
+      # Tags are immutable, so a rerun keeps the image the first attempt pushed.
       - name: Build and push the frontend image
         run: |
-          docker build -t "$ECR_REGISTRY/finos/frontend:$IMAGE_TAG" frontend
-          docker push "$ECR_REGISTRY/finos/frontend:$IMAGE_TAG"
+          if output=$(aws ecr describe-images --repository-name finos/frontend --image-ids imageTag="$IMAGE_TAG" 2>&1); then
+            echo "finos/frontend:$IMAGE_TAG is already in ECR."
+          elif grep -q ImageNotFoundException <<< "$output"; then
+            docker build -t "$ECR_REGISTRY/finos/frontend:$IMAGE_TAG" frontend
+            docker push "$ECR_REGISTRY/finos/frontend:$IMAGE_TAG"
+          else
+            echo "$output" >&2
+            exit 1
+          fi
 
       - name: Get a token for workspace-infra
         id: infra-token
