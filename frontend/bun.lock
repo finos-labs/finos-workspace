@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "openbb-terminal-pro",
+      "name": "openbq-frontend",
       "dependencies": {
         "@azure/msal-browser": "^4.3.0",
         "@azure/msal-react": "^3.0.5",

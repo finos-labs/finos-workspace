@@ -3,8 +3,8 @@
 #
 # For most publishing, prefer the GitHub Actions workflow (.github/workflows/
 # build.yml). This script is the local equivalent: it assembles the build
-# context (backend from openbb-hub, frontend from terminalpro) and pushes a
-# multi-arch image.
+# context (backend-api/backend and frontend/ from openbq-org/workspace) and
+# pushes a multi-arch image.
 #
 # Usage:
 #   ./publish.sh                # uses ./VERSION, both sources @ develop
@@ -17,7 +17,8 @@
 # Override target / sources via env:
 #   REGISTRY=ghcr.io  ORG=openbb-finance  IMAGE=lite
 #   PLATFORMS=linux/amd64,linux/arm64
-#   HUB_REF=develop   TP_REF=develop      (branch, tag, SHA, or refs/pull/<N>/head)
+#   BACKEND_REF=develop   FRONTEND_REF=develop   (branch, tag, SHA, or refs/pull/<N>/head)
+#   SOURCE_REPO=https://github.com/openbq-org/workspace.git
 #
 # Re-running is safe — buildx caches layers and QEMU binfmt registration is
 # idempotent.
@@ -28,10 +29,9 @@ ORG="${ORG:-openbb-finance}"
 IMAGE="${IMAGE:-lite}"
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
 BUILDER="${BUILDER:-openbb-builder}"
-HUB_REF="${HUB_REF:-develop}"
-TP_REF="${TP_REF:-develop}"
-HUB_REPO="${HUB_REPO:-https://github.com/OpenBB-finance/openbb-hub.git}"
-TP_REPO="${TP_REPO:-https://github.com/OpenBB-finance/terminalpro.git}"
+BACKEND_REF="${BACKEND_REF:-develop}"
+FRONTEND_REF="${FRONTEND_REF:-develop}"
+SOURCE_REPO="${SOURCE_REPO:-https://github.com/openbq-org/workspace.git}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
@@ -97,12 +97,14 @@ fetch_ref() { # <repo-url> <ref> <dest>
   git -C "$3" checkout -q FETCH_HEAD
 }
 
-echo "[publish] Assembling context — backend@$HUB_REF, frontend@$TP_REF..."
-rm -rf backend terminalpro _hub
-fetch_ref "$TP_REPO" "$TP_REF" terminalpro
-fetch_ref "$HUB_REPO" "$HUB_REF" _hub
-mv _hub/backend ./backend
-rm -rf _hub
+echo "[publish] Assembling context — backend@$BACKEND_REF, frontend@$FRONTEND_REF..."
+rm -rf backend frontend _src
+fetch_ref "$SOURCE_REPO" "$FRONTEND_REF" _src
+mv _src/frontend ./frontend
+rm -rf _src
+fetch_ref "$SOURCE_REPO" "$BACKEND_REF" _src
+mv _src/backend-api/backend ./backend
+rm -rf _src
 
 # --- build + push ------------------------------------------------------------
 echo "[publish] Building and pushing $IMAGE_BASE:{$VERSION,latest}..."

@@ -186,7 +186,7 @@ function buildProduct() {
     --resources "${TARGET_DIRECTORY}/darwin/Resources" \
     --package-path "${TARGET_DIRECTORY}/package" \
     --sign "${APPLE_DEVELOPER_CERTIFICATE_ID}" \
-    "${TARGET_DIRECTORY}/pkg/terminalpro.pkg"
+    "${TARGET_DIRECTORY}/pkg/frontend.pkg"
 }
 
 function createInstaller() {

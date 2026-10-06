@@ -44,7 +44,7 @@ jobs:
       - name: Cleanup Build Artifacts
         run: |
           echo "Cleaning up build artifacts..."
-          cd /home/ubuntu/actions-runner/_work/terminalpro
+          cd /home/ubuntu/actions-runner/_work/workspace
 
           # Remove build artifacts and caches
           find . -name "dist" -type d -prune -exec rm -rf {} \;
@@ -142,7 +142,7 @@ jobs:
       - name: Cleanup Build Artifacts
         run: |
           echo "Cleaning up build artifacts..."
-          cd /home/tehcoderer/actions-runner/_work/terminalpro
+          cd /home/tehcoderer/actions-runner/_work/workspace
 
           # Remove build artifacts and caches
           find . -name "dist" -type d -prune -exec rm -rf {} \;
