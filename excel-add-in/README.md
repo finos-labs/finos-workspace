@@ -54,7 +54,7 @@ The functions code and tests generation is done in 2 steps:
 
 1. `spec_generator.py`: generate `spec.json` file from `openapi.json` and `widgets.json`
   1.1. `openapi.json` contains the REST API specification
-  1.2. `widgets.json` is a TerminalPro asset that is fetched from [Terminal Pro](https://github.com/OpenBB-finance/terminalpro). It contains the functions that will be exposed in Excel and the providers (source) to be included in each function. Since that is a private repository you need to setup `GITHUB_PAT` in .env - get one [on the settings/tokens page](https://github.com/settings/tokens).
+  1.2. `widgets.json` is a frontend asset that is fetched from [`frontend/src/lib/widgets.json`](../frontend/src/lib/widgets.json) in [openbq-org/workspace](https://github.com/openbq-org/workspace). It contains the functions that will be exposed in Excel and the providers (source) to be included in each function. Since that is not a public repository you need to setup `GITHUB_PAT` in .env - get one [on the settings/tokens page](https://github.com/settings/tokens).
 2. `ts_generator.py`: generate `functions.ts` and `functions.full.test.ts` from the `spec.json`
 
 > Note 1: Only endpoints referenced in widgets.json will be translated to spec.json, thus exposed in Excel UI.

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { buildLockedConfig } from "~/lib/runtimeConfigSchema";
 
 /**
- * Tripwire for config drift between terminalpro and the Lite image.
+ * Tripwire for config drift between the frontend and the Lite image.
  *
  * Every profile in config-profiles/ is strict: each field in
  * RuntimeConfigSchema must be locked (given a value) or listed in

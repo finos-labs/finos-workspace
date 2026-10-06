@@ -1,6 +1,6 @@
 # OpenBB Lite — Docker image
 
-A single Docker image that bundles the FastAPI backend, the `terminalpro` SPA,
+A single Docker image that bundles the FastAPI backend, the `frontend` SPA,
 Redis, nginx, and supervisord. It defaults to SQLite, generates its own secrets
 on first start, and creates an admin user automatically — so the
 Metabase-style quick start is genuinely one command.
@@ -123,7 +123,7 @@ on every start from the env vars below (see
 These are the only frontend fields an operator can change. Everything else
 (branding, registration, ToS, telemetry, ...) is **locked**: its values are
 baked into the JS bundle at build time by the strict Lite profile
-(`terminalpro/config-profiles/lite.locked.json`) and forcibly override
+(`frontend/config-profiles/lite.locked.json`) and forcibly override
 `config.js` at runtime, so editing or replacing `config.js` cannot flip them.
 If a variable you pass seems to have no effect, start the container with
 `-e DEBUG=1` and check the logs — provided values for locked fields are
@@ -142,13 +142,13 @@ docker run -d -p 3000:3000 \
 ### Changing what Lite locks
 
 The lock policy is a **strict profile** that lives in the sibling `frontend/` directory:
-`config-profiles/lite.locked.json`. Every field in terminalpro's
+`config-profiles/lite.locked.json`. Every field in the frontend's
 `RuntimeConfigSchema` must be triaged there — either **locked** (given a
-value) or listed in **`_unlocked`** (operator-configurable). A terminalpro
+value) or listed in **`_unlocked`** (operator-configurable). A frontend
 test fails any PR that adds a config field without making that call, and its
 error message points at this section.
 
-**To lock a field off (or on) in Lite** — one change, in terminalpro:
+**To lock a field off (or on) in Lite** — one change, in frontend/:
 
 1. Add the field with its forced value to `config-profiles/lite.locked.json`
    (and remove it from `_unlocked` if it was there). The value is baked into
@@ -157,43 +157,43 @@ error message points at this section.
 **To make a field operator-configurable** — the profile change plus the
 runtime plumbing in this repo:
 
-1. terminalpro: add the field's path (e.g. `"ui.showChangelog"`) to
+1. frontend/: add the field's path (e.g. `"ui.showChangelog"`) to
    `_unlocked` in `config-profiles/lite.locked.json`. `group.*` wildcards
    mark a fully overridable group.
-2. this repo: expose the knob in
+2. lite/: expose the knob in
    [`render-frontend-config.sh`](./render-frontend-config.sh) — a `:=`
    default at the top and a `${VAR}` interpolation in the heredoc. Without
    this the field is neither locked nor reachable; the SPA just uses its
    schema default.
-3. this repo: optionally add a `VITE_*` build-time fallback to
+3. lite/: optionally add a `VITE_*` build-time fallback to
    [`frontend.env`](./frontend.env), and document the new variable in the
    table above (and in the Workspace docs).
 
-Changes to the profile ship with the next image build: terminalpro merges
-first, then rebuild the image (CI or `./build-local.sh`). The build log's
+Changes to the profile ship with the next image build: merge the frontend
+change first, then rebuild the image (CI or `./build-local.sh`). The build log's
 `[locked-config] locking N field(s): ...` line confirms what got baked in.
 
 ## Building the image
 
-This is a standalone repo: it holds the Dockerfile and container config, but the
-backend comes from `backend-api/` in this monorepo (standalone mirror: [`OpenBB-finance/openbb-hub`](https://github.com/OpenBB-finance/openbb-hub))
-(its `backend/` directory) and the frontend from
-[`OpenBB-finance/terminalpro`](https://github.com/OpenBB-finance/terminalpro).
-The build assembles both source trees next to the Dockerfile, then builds.
+This directory holds the Dockerfile and container config. The backend comes
+from `backend-api/backend/` and the frontend from `frontend/`, both in this
+repository ([`openbq-org/workspace`](https://github.com/openbq-org/workspace)).
+The build assembles both source trees next to the Dockerfile as `backend/` and
+`frontend/`, then builds.
 
 ### In CI (GitHub Actions)
 
-The [`Build & publish`](./.github/workflows/build.yml) workflow checks out both
-source repos at a configurable ref and builds + pushes a multi-arch image to
-GHCR. Run it from the **Actions** tab (`workflow_dispatch`):
+The [`Build & publish`](./.github/workflows/build.yml) workflow checks out the
+frontend and backend from this repository at configurable refs and builds +
+pushes a multi-arch image to GHCR. GitHub only runs workflows from the root
+`.github/workflows/`, so it is inactive until it is moved there. Once moved, run
+it from the **Actions** tab (`workflow_dispatch`):
 
-- `hub_ref` / `terminalpro_ref` — default `develop`. Set either to a branch,
+- `backend_ref` / `frontend_ref` — default `develop`. Set either to a branch,
   tag, commit SHA, or **a PR** via `refs/pull/<N>/head`.
 - `push_image` — uncheck to build without pushing.
 
-It authenticates to the (private) source repos with a fine-grained PAT stored
-as the `SOURCE_REPOS_PAT` secret (Contents: Read on both repos). The image push
-uses the built-in `GITHUB_TOKEN`.
+The image push uses the built-in `GITHUB_TOKEN`.
 
 ### Locally
 
@@ -201,7 +201,7 @@ Use [`build-local.sh`](./build-local.sh), which assembles the context the same
 way CI does and runs a single-arch `docker build --load`:
 
 ```bash
-# Both repos at develop (clones them into ./backend and ./terminalpro):
+# Both sources at develop (clones openbq-org/workspace into ./backend and ./frontend):
 ./build-local.sh
 
 # Point either source at a PR / branch / SHA:
@@ -214,16 +214,16 @@ way CI does and runs a single-arch `docker build --load`:
 ./build-local.sh --local   # defaults to the sibling ../backend-api and ../frontend directories
 ```
 
-Prefer to do it by hand? Clone the two repos beside the Dockerfile and build:
+Prefer to do it by hand? Clone the repo beside the Dockerfile, move the two
+source trees into place and build:
 
 ```bash
-git clone -b develop --depth 1 https://github.com/OpenBB-finance/terminalpro.git terminalpro
-git clone -b develop --depth 1 https://github.com/OpenBB-finance/openbb-hub.git _hub
-mv _hub/backend ./backend && rm -rf _hub
+git clone -b develop --depth 1 https://github.com/openbq-org/workspace.git _src
+mv _src/frontend ./frontend && mv _src/backend-api/backend ./backend && rm -rf _src
 DOCKER_BUILDKIT=1 docker build -f Dockerfile -t openbb/lite:latest .
 ```
 
-The assembled `backend/`, `terminalpro/`, and `_hub/` directories are
+The assembled `backend/`, `frontend/`, and `_src/` directories are
 git-ignored, so they won't pollute this repo.
 
 ## What's inside the container
