@@ -1,12 +1,15 @@
 name: Deploy to dev
 
-# A push to develop builds the changed app, pushes the image to ECR as
-# dev-<commit>, and rolls it out to the finos-dev cluster. Nothing else to edit:
-# this is the quick loop for development. Releases (version tags) are pinned
-# in workspace-infra and don't come through here.
+# A push to develop builds the changed app and pushes the image to ECR as
+# dev-<commit>. Then .github/scripts/pin-dev-tags.sh sets that tag in
+# FINOS/dev/apps/values.yaml in workspace-infra and pushes it to main, where the
+# Apps workflow deploys it to finos-dev. The job waits for that deploy. If it
+# fails, helm has already put the previous release back, and the script sets
+# the tag in values.yaml back too, so the file always matches the cluster.
 #
-# The next release that is deployed from workspace-infra puts the pinned tag
-# back, so a dev build never outlives the next release.
+# Pushing to workspace-infra uses a GitHub App installed on that repository
+# with contents write and actions read: INFRA_APP_ID (variable) and
+# INFRA_APP_PRIVATE_KEY (secret).
 on:
   push:
     branches:
@@ -15,6 +18,7 @@ on:
       - "backend-api/backend/**"
       - "frontend/**"
       - ".github/workflows/deploy-dev.yml"
+      - ".github/scripts/pin-dev-tags.sh"
 
 permissions:
   contents: read
@@ -22,9 +26,9 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  CLUSTER_NAME: finos-dev
-  NAMESPACE: workspace
   ECR_REGISTRY: 149911392452.dkr.ecr.us-east-1.amazonaws.com
+  INFRA_REPO: openbq-org/workspace-infra
+  VALUES_FILE: FINOS/dev/apps/values.yaml
 
 jobs:
   changes:
@@ -42,9 +46,11 @@ jobs:
             backend:
               - "backend-api/backend/**"
               - ".github/workflows/deploy-dev.yml"
+              - ".github/scripts/pin-dev-tags.sh"
             frontend:
               - "frontend/**"
               - ".github/workflows/deploy-dev.yml"
+              - ".github/scripts/pin-dev-tags.sh"
 
   backend:
     needs: changes
@@ -73,22 +79,27 @@ jobs:
           docker push "$ECR_REGISTRY/finos/backend:$IMAGE_TAG"
           docker push "$ECR_REGISTRY/finos/backend-worker:$IMAGE_TAG"
 
-      - name: Log in to AWS to deploy
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Get a token for workspace-infra
+        id: infra-token
+        uses: actions/create-github-app-token@v2
         with:
-          role-to-assume: ${{ vars.AWS_DEV_DEPLOYER_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-          unset-current-credentials: true
+          app-id: ${{ vars.INFRA_APP_ID }}
+          private-key: ${{ secrets.INFRA_APP_PRIVATE_KEY }}
+          owner: openbq-org
+          repositories: workspace-infra
+          permission-contents: write
+          permission-actions: read
 
-      - name: Roll out
-        run: |
-          aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
-          kubectl -n "$NAMESPACE" set image deployment/backend backend="$ECR_REGISTRY/finos/backend:$IMAGE_TAG"
-          kubectl -n "$NAMESPACE" set image deployment/backend-worker worker="$ECR_REGISTRY/finos/backend-worker:$IMAGE_TAG"
-          # Undo the roll-out if the new pods don't become ready.
-          for d in backend backend-worker; do
-            kubectl -n "$NAMESPACE" rollout status "deployment/$d" --timeout=10m || { kubectl -n "$NAMESPACE" rollout undo "deployment/$d"; exit 1; }
-          done
+      - name: Pin the tag in workspace-infra and wait for the deploy
+        env:
+          GH_TOKEN: ${{ steps.infra-token.outputs.token }}
+        run: >-
+          .github/scripts/pin-dev-tags.sh
+          --repo "$INFRA_REPO"
+          --values "$VALUES_FILE"
+          --keys backend,backendWorker
+          --tag "$IMAGE_TAG"
+          --source "$GITHUB_REPOSITORY@$GITHUB_SHA"
 
   frontend:
     needs: changes
@@ -115,15 +126,24 @@ jobs:
           docker build -t "$ECR_REGISTRY/finos/frontend:$IMAGE_TAG" frontend
           docker push "$ECR_REGISTRY/finos/frontend:$IMAGE_TAG"
 
-      - name: Log in to AWS to deploy
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Get a token for workspace-infra
+        id: infra-token
+        uses: actions/create-github-app-token@v2
         with:
-          role-to-assume: ${{ vars.AWS_DEV_DEPLOYER_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-          unset-current-credentials: true
+          app-id: ${{ vars.INFRA_APP_ID }}
+          private-key: ${{ secrets.INFRA_APP_PRIVATE_KEY }}
+          owner: openbq-org
+          repositories: workspace-infra
+          permission-contents: write
+          permission-actions: read
 
-      - name: Roll out
-        run: |
-          aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
-          kubectl -n "$NAMESPACE" set image deployment/frontend frontend="$ECR_REGISTRY/finos/frontend:$IMAGE_TAG"
-          kubectl -n "$NAMESPACE" rollout status deployment/frontend --timeout=10m || { kubectl -n "$NAMESPACE" rollout undo deployment/frontend; exit 1; }
+      - name: Pin the tag in workspace-infra and wait for the deploy
+        env:
+          GH_TOKEN: ${{ steps.infra-token.outputs.token }}
+        run: >-
+          .github/scripts/pin-dev-tags.sh
+          --repo "$INFRA_REPO"
+          --values "$VALUES_FILE"
+          --keys frontend
+          --tag "$IMAGE_TAG"
+          --source "$GITHUB_REPOSITORY@$GITHUB_SHA"
