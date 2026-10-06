@@ -10,8 +10,11 @@ Source code for OpenBB Workspace and the components that build and run it.
 | `backend-api/` | Backend API (FastAPI + SQLAlchemy), admin CLI, and admin dashboard |
 | `lite/` | Docker packaging that assembles OpenBB Lite from the backend and frontend |
 | `excel-add-in/` | The OpenBB Add-in for Excel (Office.js, TypeScript/React) |
+| `local/` | Runs the whole app on your machine with Docker Compose: `cd local && make up` |
 
 Each component keeps its own README with setup and development instructions.
+Each component keeps its own README with setup and development instructions. To run the frontend, backend, database and Redis together, see [local/LOCAL_SETUP.md](local/LOCAL_SETUP.md).
+
 
 ## Notes
 
