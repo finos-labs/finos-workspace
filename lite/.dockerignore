@@ -1,5 +1,5 @@
-# The build context is assembled from this repo + the backend/ (openbb-hub) and
-# terminalpro/ source trees. Keep heavy / irrelevant directories out so the
+# The build context is assembled from this directory + the backend/ and
+# frontend/ source trees. Keep heavy / irrelevant directories out so the
 # context stays small and Docker layer caching stays effective.
 
 # Dependency / build artifacts pulled in when copying local checkouts.
@@ -19,7 +19,7 @@
 **/.git
 **/.gitignore
 **/.gitmodules
-_hub
+_src
 
 # Local env / editor noise.
 **/.env.local

@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Build the OpenBB image locally.
 #
-# The Dockerfile expects backend/ (from ../backend-api) and terminalpro/ assembled
+# The Dockerfile expects backend/ (from ../backend-api) and frontend/ assembled
 # next to it. This script does that assembly the same way CI does, then runs a
 # single-arch `docker build --load` so the image lands in your local daemon.
 #
-# Each repo is sourced independently: either cloned at a git ref (default,
-# mirrors CI) or copied from a checkout on disk (picks up uncommitted changes).
+# Each source is picked independently: either cloned from the repo at a git ref
+# (default) or copied from a checkout on disk (picks up uncommitted changes).
 # Mix and match freely.
 #
-#   # Default: clone both repos at their git refs.
+#   # Default: clone the repo at both git refs.
 #   ./build-local.sh
 #   ./build-local.sh --backend-branch refs/pull/42/head --workspace-branch my-feature-branch
 #   ./build-local.sh --variant full
@@ -28,7 +28,7 @@
 #
 # Env overrides:
 #   IMAGE   image tag to build           (default openbb/<variant>:dev)
-#   BACKEND_REPO / WORKSPACE_REPO       git URLs (default the OpenBB-finance repos)
+#   BACKEND_REPO / WORKSPACE_REPO       git URLs (default openbq-org/workspace)
 #   BACKEND_BRANCH / WORKSPACE_BRANCH   branches, tags, SHAs, or pull request refs
 #   BACKEND_DIR / WORKSPACE_DIR         local source dirs for the --*-local flags
 # Flags:
@@ -41,8 +41,8 @@ set -euo pipefail
 IMAGE="${IMAGE:-}"
 IMAGE_VARIANT="lite"
 PLATFORM=""
-BACKEND_REPO="${BACKEND_REPO:-https://github.com/OpenBB-finance/openbb-hub.git}"
-WORKSPACE_REPO="${WORKSPACE_REPO:-https://github.com/OpenBB-finance/terminalpro.git}"
+BACKEND_REPO="${BACKEND_REPO:-https://github.com/openbq-org/workspace.git}"
+WORKSPACE_REPO="${WORKSPACE_REPO:-https://github.com/openbq-org/workspace.git}"
 BACKEND_BRANCH="${BACKEND_BRANCH:-develop}"
 WORKSPACE_BRANCH="${WORKSPACE_BRANCH:-develop}"
 # Per-repo source: "clone" (fetch the ref) or "local" (copy from disk).
@@ -78,11 +78,11 @@ if [[ -z "$IMAGE" ]]; then
   IMAGE="openbb/${IMAGE_VARIANT}:dev"
 fi
 
-cleanup() { rm -rf "$SCRIPT_DIR/_hub"; }
+cleanup() { rm -rf "$SCRIPT_DIR/_src"; }
 trap cleanup EXIT
 
 echo "[build-local] Assembling build context (variant: $IMAGE_VARIANT, backend: $BACKEND_SRC, workspace: $WORKSPACE_SRC)..."
-rm -rf backend terminalpro _hub
+rm -rf backend frontend _src
 
 # Copy a checkout without the heavy/irrelevant dirs (build reinstalls deps anyway).
 copy_src() { # <src> <dest>
@@ -101,14 +101,16 @@ fetch_ref() { # <repo-url> <ref> <dest>
   git -C "$3" checkout -q FETCH_HEAD
 }
 
-# --- terminalpro (frontend) ---
+# --- frontend ---
 if [[ "$WORKSPACE_SRC" == "local" ]]; then
   [[ -d "$WORKSPACE_DIR" ]] || { echo "WORKSPACE_DIR not found: $WORKSPACE_DIR" >&2; exit 1; }
   echo "[build-local] Copying frontend from $WORKSPACE_DIR"
-  copy_src "$WORKSPACE_DIR" ./terminalpro
+  copy_src "$WORKSPACE_DIR" ./frontend
 else
-  echo "[build-local] Fetching terminalpro @ $WORKSPACE_BRANCH"
-  fetch_ref "$WORKSPACE_REPO" "$WORKSPACE_BRANCH" terminalpro
+  echo "[build-local] Fetching frontend @ $WORKSPACE_BRANCH"
+  fetch_ref "$WORKSPACE_REPO" "$WORKSPACE_BRANCH" _src
+  mv _src/frontend ./frontend
+  rm -rf _src
 fi
 
 # --- backend-api (backend only) ---
@@ -118,9 +120,9 @@ if [[ "$BACKEND_SRC" == "local" ]]; then
   copy_src "$BACKEND_DIR/backend" ./backend
 else
   echo "[build-local] Fetching backend @ $BACKEND_BRANCH (backend only)"
-  fetch_ref "$BACKEND_REPO" "$BACKEND_BRANCH" _hub
-  mv _hub/backend ./backend
-  rm -rf _hub
+  fetch_ref "$BACKEND_REPO" "$BACKEND_BRANCH" _src
+  mv _src/backend-api/backend ./backend
+  rm -rf _src
 fi
 
 echo "[build-local] Building $IMAGE ..."
@@ -129,7 +131,7 @@ if [[ -n "$PLATFORM" ]]; then
   PLATFORM_ARGS=(--platform "$PLATFORM")
 fi
 DOCKER_BUILDKIT=1 docker build --load \
-  "${PLATFORM_ARGS[@]}" \
+  ${PLATFORM_ARGS[@]+"${PLATFORM_ARGS[@]}"} \
   --build-arg "OPENBB_IMAGE_VARIANT=$IMAGE_VARIANT" \
   -f Dockerfile \
   -t "$IMAGE" \
