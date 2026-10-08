@@ -71,6 +71,10 @@ services:
       args:
         PLATFORM: ${PLATFORM:-linux/amd64}
     image: workspace-api:local
+    # Runs as root because the files mounted below belong to whoever checked the repository out
+    # (uid 1001 on a GitHub runner), and the image's own user, uid 1000, can neither write
+    # user_create.json nor read the seed config.toml (mode 600).
+    user: root
     command:
       - sh
       - -c

@@ -17,7 +17,7 @@ const allIcons = [
 
 type IconId = (typeof allIcons)[number];
 
-const Icon = forwardRef<SVGElement, { id: IconId } & SVGProps<SVGSVGElement>>(
+const IconBase = forwardRef<SVGElement, { id: IconId } & SVGProps<SVGSVGElement>>(
   (props) => {
     const { id } = props;
     const defaultClass = "w-4 h-4";
@@ -32,6 +32,8 @@ const Icon = forwardRef<SVGElement, { id: IconId } & SVGProps<SVGSVGElement>>(
   },
 );
 
-Icon.displayName = "Icon";
+IconBase.displayName = "Icon";
 
-export default memo(Icon);
+const Icon = memo(IconBase);
+
+export default Icon;

@@ -19,7 +19,7 @@ type TooltipProps = {
   style?: React.CSSProperties;
 };
 
-const Tooltip = forwardRef<HTMLButtonElement, TooltipProps>(
+const TooltipBase = forwardRef<HTMLButtonElement, TooltipProps>(
   (props: TooltipProps, ref) => {
     const {
       id,
@@ -108,6 +108,8 @@ const Tooltip = forwardRef<HTMLButtonElement, TooltipProps>(
   },
 );
 
-Tooltip.displayName = "Tooltip";
+TooltipBase.displayName = "Tooltip";
 
-export default memo(Tooltip);
+const Tooltip = memo(TooltipBase);
+
+export default Tooltip;
