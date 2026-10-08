@@ -1,4 +1,4 @@
-import { useGoogleLogin } from "@react-oauth/google";
+import { type CredentialResponse, useGoogleLogin } from "@react-oauth/google";
 import Icon from "~/components/Icon";
 import type { StateDispatch } from "~/hooks/useStateReducer";
 import type { LoginState } from "~/routes/login";
@@ -6,7 +6,7 @@ import { Button } from "../ds/atoms/Button";
 
 interface GoogleLoginProps {
   dispatch: StateDispatch<LoginState>;
-  handleGoogleSuccess: any;
+  handleGoogleSuccess: (response: CredentialResponse) => Promise<unknown>;
   state: LoginState;
 }
 
@@ -36,7 +36,10 @@ export const GoogleLogin = ({
       dispatch({ oauthLoading: false, error });
     },
     onNonOAuthError: (error) => {
-      const updatedState = { oauthLoading: false, error: null };
+      const updatedState: { oauthLoading: boolean; error: string | null } = {
+        oauthLoading: false,
+        error: null,
+      };
       if (error.type === "popup_failed_to_open") {
         updatedState.error = "Failed to open Google sign-in popup";
       }

@@ -50,7 +50,7 @@ export function assert(condition: unknown, message: string): asserts condition {
   }
 }
 
-const MCP_PROXY_URL = `${getConfig().urls.backend}/pro/mcp-proxy`;
+const MCP_PROXY_URL = `${getConfig().urls.backend}/app/mcp-proxy`;
 
 const DEFAULT_RECONNECT_DELAY = 3000;
 const DEFAULT_RETRY_DELAY = 5000;
@@ -102,7 +102,7 @@ function getOptions(options: UseMcpOptionsT) {
 }
 
 export async function fetchMcpProxyCb(url: string | URL, init?: RequestInit) {
-  const headers = {};
+  const headers: Record<string, string> = {};
   if (init?.headers instanceof Headers) {
     for (const [key, value] of init.headers.entries()) {
       headers[key] = value;
@@ -134,7 +134,7 @@ export async function fetchMcpProxyCb(url: string | URL, init?: RequestInit) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     },
-    init?.signal,
+    init?.signal ?? undefined,
   ).then(async (r) => {
     const noContent = r.status === 204;
     // Some servers may return 204 No Content on ping requests,
@@ -164,7 +164,7 @@ export async function fetchMcpProxyCb(url: string | URL, init?: RequestInit) {
   });
 }
 
-function isAuthError(error: Error, errorMessage?: string): boolean {
+function isAuthError(error: unknown, errorMessage?: string): boolean {
   if (!errorMessage)
     errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -187,7 +187,7 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
     clientUri,
     callbackUrl,
     storageKeyPrefix,
-    clientConfig,
+    clientConfig = {},
     customHeaders,
     debug,
     autoRetry,
@@ -226,6 +226,8 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
 
   // --- Refs for values used in callbacks ---
   const stateRef = useRef(data.state);
+  // The state changes while a call is in flight, which reading it through a function keeps in view
+  const isAuthenticating = () => stateRef.current === "authenticating";
   const autoReconnectRef = useRef(autoReconnect);
   // Ref to store the type of transport that successfully connected
   const successfulTransportRef = useRef<TransportType | null>(null);
@@ -459,8 +461,6 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
       transportInstance.onmessage = (message: JSONRPCMessage) => {
         // Use stable addLog
         addLog("debug", `[Transport] Received: ${JSON.stringify(message)}`);
-        // @ts-expect-error
-        clientRef.current?.handleMessage?.(message); // Forward to current client
       };
       transportInstance.onerror = (err: Error) => {
         // Transport errors usually mean connection is lost/failed definitively for this transport
@@ -517,7 +517,9 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
           `Transport instance type: ${transportInstance.constructor.name}`,
         );
 
-        await clientRef.current!.connect(transportInstance);
+        const client = clientRef.current;
+        assert(client, "Client must be initialized");
+        await client.connect(transportInstance);
 
         // --- Success Path ---
         addLog(
@@ -532,7 +534,7 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
           resourceTemplates?: ResourceTemplate[];
         } = { resources: [], resourceTemplates: [] };
         try {
-          resourcesResponse = (await clientRef.current!.request(
+          resourcesResponse = (await client.request(
             { method: "resources/list" },
             ListResourcesResultSchema,
           )) as { resources: Resource[]; resourceTemplates?: ResourceTemplate[] }; // Ensure type safety
@@ -542,7 +544,7 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
         }
 
         dispatch({ state: "loading" });
-        const toolsResponse = await clientRef.current!.request(
+        const toolsResponse = await client.request(
           { method: "tools/list" },
           ListToolsResultSchema,
         );
@@ -550,7 +552,7 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
         // Load prompts after resources (optional - not all servers support prompts)
         let promptsResponse: { prompts: Prompt[] } = { prompts: [] };
         try {
-          promptsResponse = (await clientRef.current!.request(
+          promptsResponse = (await client.request(
             { method: "prompts/list" },
             ListPromptsResultSchema,
           )) as { prompts: Prompt[] }; // Ensure type safety
@@ -904,8 +906,7 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
           }
         }
         // Re-throw original error unless handled by re-auth redirect
-        // @ts-expect-error
-        if (stateRef.current !== "authenticating") {
+        if (!isAuthenticating()) {
           // Only re-throw if not waiting for redirect
           throw err;
         }

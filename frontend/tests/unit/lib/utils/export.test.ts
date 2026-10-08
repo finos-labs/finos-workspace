@@ -1,4 +1,4 @@
-import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
 // Mock html-to-image
 vi.mock("html-to-image", () => ({
@@ -32,24 +32,16 @@ vi.mock("jszip", () => {
   return { default: mock };
 });
 
-// Mock app store for tabHasSlowWidget
-vi.mock("~/lib/state/app", () => ({
-  useAppStore: {
-    getState: () => ({
-      items: {},
-    }),
-  },
-}));
-
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import JSZip from "jszip";
 import {
   type DashboardInfo,
-  type TabInfo,
   generateFolderReport,
   generateMultiTabReport,
+  type TabInfo,
 } from "~/lib/utils/utils";
+import { required } from "../../mocks";
 
 const checkIfLoadingData = () => false; // Stub - not testing loading state here
 
@@ -239,9 +231,9 @@ describe("generateMultiTabReport", () => {
       await promise;
 
       expect(jsPDF).toHaveBeenCalled();
-      expect(mockPdfInstance!.addPage).toHaveBeenCalledTimes(2); // First page is created with constructor
-      expect(mockPdfInstance!.addImage).toHaveBeenCalledTimes(3);
-      expect(mockPdfInstance!.save).toHaveBeenCalledWith("test.pdf");
+      expect(required(mockPdfInstance).addPage).toHaveBeenCalledTimes(2); // First page is created with constructor
+      expect(required(mockPdfInstance).addImage).toHaveBeenCalledTimes(3);
+      expect(required(mockPdfInstance).save).toHaveBeenCalledWith("test.pdf");
     });
   });
 
@@ -264,8 +256,10 @@ describe("generateMultiTabReport", () => {
       await promise;
 
       expect(JSZip).toHaveBeenCalled();
-      expect(mockZipInstance!.file).toHaveBeenCalledTimes(2);
-      expect(mockZipInstance!.generateAsync).toHaveBeenCalledWith({ type: "blob" });
+      expect(required(mockZipInstance).file).toHaveBeenCalledTimes(2);
+      expect(required(mockZipInstance).generateAsync).toHaveBeenCalledWith({
+        type: "blob",
+      });
     });
   });
 
@@ -675,11 +669,13 @@ describe("generateFolderReport", () => {
       await vi.advanceTimersByTimeAsync(60000);
       await promise;
 
-      expect(mockZipInstance!.file).toHaveBeenCalledWith(
+      expect(required(mockZipInstance).file).toHaveBeenCalledWith(
         "dashboard-1.pdf",
         expect.any(Blob),
       );
-      expect(mockZipInstance!.generateAsync).toHaveBeenCalledWith({ type: "blob" });
+      expect(required(mockZipInstance).generateAsync).toHaveBeenCalledWith({
+        type: "blob",
+      });
     });
 
     it("creates ZIP with folder structure for PNG all-tabs export", async () => {
@@ -706,7 +702,7 @@ describe("generateFolderReport", () => {
       await vi.advanceTimersByTimeAsync(60000);
       await promise;
 
-      expect(mockZipInstance!.folder).toHaveBeenCalledWith("dashboard-1");
+      expect(required(mockZipInstance).folder).toHaveBeenCalledWith("dashboard-1");
     });
   });
 

@@ -192,7 +192,7 @@ describe("CreateWidgetMetadataDialog", () => {
       expect(screen.getByText("Edit widget metadata")).toBeInTheDocument();
       expect(
         screen.getByText(
-          "By editing the metadata, you will help OpenBB Copilot better understand your widget.",
+          "By editing the metadata, you will help Copilot better understand your widget.",
         ),
       ).toBeInTheDocument();
     });

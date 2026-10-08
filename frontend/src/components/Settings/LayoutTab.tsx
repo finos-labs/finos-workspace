@@ -24,7 +24,7 @@ export default function LayoutTab() {
           <div className="mt-2.5 pl-2.5">
             <div className="flex items-center gap-3">
               <div className="relative flex h-10 w-20 items-center gap-3 rounded border border-light-300 dark:border-light-600">
-                {["nw", "ne", "sw", "se"].map((corner: "nw" | "ne" | "sw" | "se") => (
+                {(["nw", "ne", "sw", "se"] as const).map((corner) => (
                   <button
                     key={corner}
                     style={{

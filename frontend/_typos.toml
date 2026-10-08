@@ -19,4 +19,4 @@ consts = "consts"
 BSE = "BSE"
 
 [files]
-extend-exclude = ["src/lib/charting_library", "/src/lib/state/main.json"]
+extend-exclude = []

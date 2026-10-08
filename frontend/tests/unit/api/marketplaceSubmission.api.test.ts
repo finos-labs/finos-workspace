@@ -237,8 +237,20 @@ describe("listSubmissions", () => {
   it("maps backend apps and derives pending / approved / rejected", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({
       data: [
-        { id: "a", appName: "A", vendorName: "V", status: "development", rejectionReason: null },
-        { id: "b", appName: "B", vendorName: "V", status: "published", rejectionReason: null },
+        {
+          id: "a",
+          appName: "A",
+          vendorName: "V",
+          status: "development",
+          rejectionReason: null,
+        },
+        {
+          id: "b",
+          appName: "B",
+          vendorName: "V",
+          status: "published",
+          rejectionReason: null,
+        },
         {
           id: "c",
           appName: "C",

@@ -12,12 +12,10 @@ export interface WidgetStoreProps {
 }
 
 export interface WidgetState extends WidgetStoreProps {
-  storageParams: WidgetT["storage"]["params"];
+  storageParams: NonNullable<WidgetT["storage"]>["params"];
   storage: WidgetT["storage"];
-  columnsDefs: WidgetT["data"]["table"]["columnsDefs"];
   needsUpdate: boolean;
   endpointParams: Record<string, string>;
-  stateKey: string;
   getParamName: (groupById: string) => string;
   updateWidget: (newWidget: NewWidgetT, forceStoreUpdate?: boolean) => void;
 }
@@ -140,24 +138,34 @@ export interface WidgetState extends WidgetStoreProps {
 //   );
 // }
 
-export const WidgetContext = createContext<WidgetContextType>({
-  widget: undefined,
-  widgetRef: { current: null },
+/** Outside of a WidgetProvider there is no widget; see `useWidgetContext(true)`. */
+export const WidgetContext = createContext<Partial<WidgetContextType>>({
   widgetFromJSON: null,
   activeDashboardId: "",
   isShared: false,
   isPreview: false,
   uuid: "",
   updateWidget: (_prev) => {},
-  getWidget: () => null,
 });
 
 WidgetContext.displayName = "WidgetContext";
 
-export const useWidgetContext = (
+/**
+ * The widget a component is rendered in. Components that can also render outside of a
+ * widget (a dialog, a preview) ask for it with `nullable`, and get every field optional.
+ */
+export function useWidgetContext(
+  nullable: true,
+  contextOverride?: Partial<WidgetContextType>,
+): Partial<WidgetContextType>;
+export function useWidgetContext(
+  nullable?: false,
+  contextOverride?: Partial<WidgetContextType>,
+): WidgetContextType;
+export function useWidgetContext(
   nullable = false,
-  contextOverride?: WidgetContextType,
-) => {
+  contextOverride?: Partial<WidgetContextType>,
+) {
   const context = useContext(WidgetContext);
   if (!(context || nullable)) {
     throw new Error("useWidgetContext must be used within a WidgetProvider");
@@ -166,7 +174,7 @@ export const useWidgetContext = (
     return { ...context, ...contextOverride };
   }
   return context;
-};
+}
 
 export function WidgetProvider(props: PropsWithChildren<WidgetProps>) {
   const { children, ...rest } = props;
@@ -185,10 +193,10 @@ export function WidgetProvider(props: PropsWithChildren<WidgetProps>) {
         widget,
         widgetRef,
         widgetFromJSON,
-        activeDashboardId,
-        isShared,
-        isPreview,
-        uuid,
+        activeDashboardId: activeDashboardId ?? "",
+        isShared: isShared ?? false,
+        isPreview: isPreview ?? false,
+        uuid: uuid ?? "",
         updateWidget,
         getWidget,
       }}

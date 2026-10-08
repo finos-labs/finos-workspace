@@ -29,9 +29,9 @@ async def test_migrations_applied(db_session):
 async def test_unauthenticated_access(client):
     """
     Verify 401/403 on protected endpoints without auth.
-    Using /pro/user as it is in the CSV under Authentication.
+    Using /app/user as it is in the CSV under Authentication.
     """
-    response = await client.get("/pro/user")
+    response = await client.get("/app/user")
     # Depending on how the app handles no auth, usually 401 or 403
     assert response.status_code in {401, 403}
 
@@ -42,10 +42,10 @@ async def test_authenticated_access(auth_client):
     Verify 200 on protected endpoints with auth.
     """
     # This endpoint gets the current user
-    response = await auth_client.get("/pro/user")
+    response = await auth_client.get("/app/user")
     assert response.status_code == 200
     data = response.json()
-    assert data["email"] == "testrunner@openbb.co"
+    assert data["email"] == "testrunner@example.com"
 
 
 # =============================================================================
@@ -94,7 +94,7 @@ async def test_missing_auth_header(client):
     # Ensure no auth header
     if "Authorization" in client.headers:
         del client.headers["Authorization"]
-    response = await client.get("/pro/user")
+    response = await client.get("/app/user")
     assert response.status_code in {401, 403}
     # Validate error response structure
     data = response.json()
@@ -115,7 +115,7 @@ async def test_missing_auth_header(client):
 async def test_invalid_bearer_token(client):
     """Invalid bearer token should be rejected."""
     client.headers["Authorization"] = "Bearer invalid_token_here"
-    response = await client.get("/pro/user")
+    response = await client.get("/app/user")
     assert response.status_code in {401, 403}
     # Validate error response structure
     data = response.json()
@@ -130,7 +130,7 @@ async def test_invalid_bearer_token(client):
 async def test_malformed_auth_header(client):
     """Malformed auth header should be rejected."""
     client.headers["Authorization"] = "not-bearer-format"
-    response = await client.get("/pro/user")
+    response = await client.get("/app/user")
     assert response.status_code in {401, 403}
     # Validate error response structure
     data = response.json()
@@ -142,7 +142,7 @@ async def test_malformed_auth_header(client):
 async def test_empty_bearer_token(client):
     """Empty bearer token should be rejected."""
     client.headers["Authorization"] = "Bearer "
-    response = await client.get("/pro/user")
+    response = await client.get("/app/user")
     assert response.status_code in {401, 403}
     # Validate error response structure
     data = response.json()
@@ -155,7 +155,7 @@ async def test_basic_auth_not_accepted(client):
     """Basic auth should not work on bearer-only endpoints."""
     credentials = base64.b64encode(b"user:pass").decode()
     client.headers["Authorization"] = f"Basic {credentials}"
-    response = await client.get("/pro/user")
+    response = await client.get("/app/user")
     assert response.status_code in {401, 403}
     # Validate error response structure
     data = response.json()
@@ -175,7 +175,7 @@ async def test_basic_auth_not_accepted(client):
 @pytest.mark.asyncio
 async def test_json_content_type(auth_client):
     """API should return JSON content type."""
-    response = await auth_client.get("/pro/user")
+    response = await auth_client.get("/app/user")
     assert response.status_code == 200
     content_type = response.headers.get("content-type", "")
     assert "application/json" in content_type
@@ -184,7 +184,7 @@ async def test_json_content_type(auth_client):
 @pytest.mark.asyncio
 async def test_user_response_has_uuid(auth_client):
     """User response should include uuid."""
-    response = await auth_client.get("/pro/user")
+    response = await auth_client.get("/app/user")
     assert response.status_code == 200
     data = response.json()
     assert "uuid" in data
@@ -193,7 +193,7 @@ async def test_user_response_has_uuid(auth_client):
 @pytest.mark.asyncio
 async def test_user_response_no_password_hash(auth_client):
     """User response should never expose password hash."""
-    response = await auth_client.get("/pro/user")
+    response = await auth_client.get("/app/user")
     assert response.status_code == 200
     data_str = str(response.json())
     assert "password_hash" not in data_str
@@ -244,7 +244,7 @@ async def test_404_for_nonexistent_endpoint(client):
 async def test_405_for_wrong_method(auth_client):
     """Wrong HTTP method should return 405."""
     # Try DELETE on a GET-only endpoint
-    response = await auth_client.delete("/pro/user")
+    response = await auth_client.delete("/app/user")
     # 405 Method Not Allowed, or 400/422 if handled differently
     assert response.status_code in {200, 400, 404, 405, 422}
 
@@ -254,7 +254,7 @@ async def test_422_for_invalid_json(auth_client):
     """Invalid JSON body should return 422."""
     # Send invalid JSON to a POST endpoint
     response = await auth_client.post(
-        "/pro/display-settings",
+        "/app/display-settings",
         content="not valid json",
         headers={"Content-Type": "application/json"},
     )

@@ -1,4 +1,3 @@
-export type RWN = "Read" | "Write" | "None";
 export type strBool = "true" | "false";
 type RequestInfo = Record<string, string | Record<string, string>>;
 
@@ -16,13 +15,6 @@ export interface EntityType {
   permission_hierarchy: number;
 }
 
-interface ApiKeys {
-  benzinga: string | null;
-  intrinio: string | null;
-  trading_economics: string | null;
-  fmp: string | null;
-}
-
 export interface Entity {
   uuid: string;
   name: string;
@@ -34,8 +26,6 @@ export interface Entity {
   entity_type: EntityType;
   seats: number | null;
   expiration_date: string | null;
-  stripe_id: string | null;
-  api_keys: ApiKeys;
 }
 
 export interface EntityRelationship {
@@ -45,20 +35,9 @@ export interface EntityRelationship {
   supreme: Entity;
 }
 
-export interface Entitlements {
-  benzinga: RWN;
-  polygon: RWN;
-  intrinio: RWN;
-  fmp: RWN;
-  datarade: RWN;
-  veraset: RWN;
-  alphavantage: RWN;
-}
-
 export interface PermissionMap {
   uuid: string;
   entity: Entity;
-  entitlements: null | Entitlements;
   name: string;
 }
 
@@ -66,7 +45,6 @@ export interface FullUser {
   uuid: string;
   email: string;
   permissions: PermissionMap | null;
-  pro_trial_end: Date | null;
 }
 
 export interface Paginated<T> {
@@ -86,7 +64,7 @@ export interface AddResponseData<T> extends AddResponse {
   data?: T;
 }
 
-interface ListResponse<T> {
+export interface ListResponse<T> {
   data?: Paginated<T>;
   message?: string;
 }
@@ -101,8 +79,6 @@ export interface BaseEntity {
   country: string;
   seats: number;
   expiration_date: string;
-  stripe_id: string | undefined;
-  api_keys: ApiKeys;
 }
 
 export interface PostEntity extends BaseEntity {
@@ -110,8 +86,9 @@ export interface PostEntity extends BaseEntity {
 }
 
 export interface EntitlementBase {
-  tier: "pro" | "terminal" | undefined;
+  tier: "full" | "basic" | undefined;
   number_copilot_calls_day: number | undefined;
+  number_copilot_tokens_day: number | null | undefined;
   total_file_upload_size_gb: number | undefined;
   share_widgets: "public" | "private" | undefined;
   bring_your_own_data: boolean | undefined;
@@ -120,7 +97,7 @@ export interface EntitlementBase {
   support: boolean | undefined;
   excel_add_in: boolean | undefined;
   data_add_ons_redistribution: boolean | undefined;
-  bundle_name: "Default" | "Equity Research" | "Pro Trial" | undefined | null;
+  bundle_name: "Default" | "Equity Research" | undefined | null;
 }
 
 const baseHeaders = {
@@ -142,7 +119,33 @@ function getRequestInfo(accessToken: string): RequestInfo {
   };
 }
 
-function postRequestInfo(accessToken: string, body: Record<string, any>): RequestInfo {
+/** The parsed body of a response, as the type the backend documents for it. */
+async function readJson<T>(res: Response): Promise<T> {
+  return res.json();
+}
+
+/** The `detail` message of an error response body, if it has one. */
+function errorDetail(body: unknown): string | undefined {
+  if (typeof body !== "object" || body === null) return undefined;
+  const detail = Reflect.get(body, "detail");
+  return typeof detail === "string" && detail !== "" ? detail : undefined;
+}
+
+interface LoginBody {
+  access_token: string;
+  uuid: string;
+}
+
+function isLoginBody(body: unknown): body is LoginBody {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    typeof Reflect.get(body, "access_token") === "string" &&
+    typeof Reflect.get(body, "uuid") === "string"
+  );
+}
+
+function postRequestInfo(accessToken: string, body: object): RequestInfo {
   return {
     headers: fullHeaders(accessToken),
     method: "POST",
@@ -168,10 +171,10 @@ async function prettyStatusCodes(res: Response): Promise<AddResponse> {
   }
 
   try {
-    const jsonRes = await res.json();
+    const detail = errorDetail(await res.json());
     return {
       success: false,
-      message: jsonRes.detail ? `${message}: ${jsonRes.detail}` : message
+      message: detail ? `${message}: ${detail}` : message
     };
   } catch {
     return { success: false, message };
@@ -180,7 +183,7 @@ async function prettyStatusCodes(res: Response): Promise<AddResponse> {
 
 async function extractData<T>(res: Response): Promise<ListResponse<T>> {
   if (res.status === 200) {
-    const data = await res.json();
+    const data = await readJson<Paginated<T>>(res);
     if (data instanceof Object) {
       return { data };
     }
@@ -213,8 +216,8 @@ export async function apiLogin(
     }),
   });
   if ([200, 206].includes(res.status)) {
-    const data = await res.json();
-    if ("access_token" in data) {
+    const data: unknown = await res.json();
+    if (isLoginBody(data)) {
       return {
         success: true,
         data: {
@@ -248,27 +251,6 @@ export async function apiLogin(
   };
 }
 
-export async function addInstaller(
-  objectName: string,
-  version: string,
-  system: string,
-  notes: string,
-  itemType: string,
-  signature: string,
-  accessToken: string,
-): Promise<AddResponse> {
-  const body = {
-    object_name: objectName,
-    version,
-    system,
-    notes,
-    item_type: itemType,
-    signature,
-  };
-  const res = await fetch(`${baseUrl}/add-build`, postRequestInfo(accessToken, body));
-  return prettyStatusCodes(res);
-}
-
 export async function addEntityType(
   entityType: string,
   code: string,
@@ -297,15 +279,15 @@ export async function addEntity(
     postRequestInfo(accessToken, data),
   );
   if (res.status === 200) {
-    const data = await res.json();
+    const data = await readJson<{ entity_uuid: string; permission_map_uuid: string }>(res);
     return { success: true, data };
   }
-  const jsonRes = await res.json()
+  const detail = errorDetail(await res.json());
 
   const statusResponse = await prettyStatusCodes(res);
   return {
     success: statusResponse.success,
-    message: jsonRes.detail && statusResponse.message ? `${statusResponse.message}: ${jsonRes.detail}` : statusResponse.message || jsonRes.detail || ""
+    message: detail && statusResponse.message ? `${statusResponse.message}: ${detail}` : statusResponse.message || detail || ""
   };
 }
 
@@ -328,10 +310,9 @@ export async function addEntityRelationship(
 export async function addPermissionMap(
   entityUUID: string,
   name: string,
-  entitlements: Entitlements,
   accessToken: string,
 ): Promise<AddResponse> {
-  const body = { entity_uuid: entityUUID, entitlements, name };
+  const body = { entity_uuid: entityUUID, name };
   const res = await fetch(
     `${baseUrl}/entity/entity-map`,
     postRequestInfo(accessToken, body),
@@ -432,7 +413,7 @@ export async function editEntityRelationship(
   childUUID: string,
   accessToken: string,
 ): Promise<AddResponse> {
-  const res = await fetch(`${baseUrl}"/entity/entity-relationship/${uuid}`, {
+  const res = await fetch(`${baseUrl}/entity/entity-relationship/${uuid}`, {
     headers: fullHeaders(accessToken),
     method: "PUT",
     body: JSON.stringify({
@@ -467,13 +448,12 @@ export async function editPermissionMap(
   uuid: string,
   entityUUID: string,
   name: string,
-  entitlements: Entitlements,
   accessToken: string,
 ): Promise<AddResponse> {
   const res = await fetch(`${baseUrl}/entity/entity-map/${uuid}`, {
     headers: fullHeaders(accessToken),
     method: "PUT",
-    body: JSON.stringify({ entity_uuid: entityUUID, entitlements, name }),
+    body: JSON.stringify({ entity_uuid: entityUUID, name }),
   });
   return prettyStatusCodes(res);
 }
@@ -481,7 +461,6 @@ export async function editPermissionMap(
 export async function editUser(
   uuid: string,
   permissionsUUID: string,
-  pro_trial_end: Date | undefined,
   accessToken: string,
 ): Promise<AddResponse> {
   const res = await fetch(`${baseUrl}/entity/user/${uuid}`, {
@@ -489,7 +468,6 @@ export async function editUser(
     method: "PUT",
     body: JSON.stringify({
       permissions_uuid: permissionsUUID,
-      pro_trial_end: pro_trial_end,
     }),
   });
   return prettyStatusCodes(res);
@@ -503,7 +481,7 @@ export async function getEntityEntitlement(
     `${baseUrl}/entity/entitlement/${uuid}`,
     getRequestInfo(accessToken),
   );
-  return res.json();
+  return readJson<EntitlementBase>(res);
 }
 
 export async function patchEntityEntitlement(
@@ -530,7 +508,7 @@ export async function getAdminUserEntitlement(
     `${baseUrl}/admin/entitlement/${uuid}`,
     getRequestInfo(accessToken),
   );
-  return res.json();
+  return readJson<EntitlementBase>(res);
 }
 
 export async function patchAdminUserEntitlement(

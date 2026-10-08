@@ -3,13 +3,14 @@ import { AxiosError } from "axios";
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { deleteUser } from "~/api/admin.api";
+import { getErrorResponse } from "~/api/errors";
 import AdminDialogFooter from "~/components/AdminUsers/common/AdminDialogFooter";
 import { NotificationId, showNotification } from "~/lib/utils/toast";
 import type { User } from "~/types/user.type";
-import { BaseDialog, type BaseDialogProps } from "../ds/dialogs/BaseDialog";
+import { BaseDialog, type ClosableDialogProps } from "../ds/dialogs/BaseDialog";
 
-interface Props extends BaseDialogProps {
-  user: Partial<User>;
+interface Props extends ClosableDialogProps {
+  user: Pick<User, "uuid" | "email"> & { source?: User["source"] };
   onConfirm: () => void;
 }
 
@@ -35,7 +36,7 @@ export default function AdminDeleteUserDialog(props: Props) {
         toastType: "success",
       });
     } catch (error) {
-      console.error(error.response?.data);
+      console.error(getErrorResponse(error).data);
       if (error instanceof AxiosError) {
         toast.error("Error removing account", {
           description: error.response?.data?.detail || error.message,
@@ -54,7 +55,7 @@ export default function AdminDeleteUserDialog(props: Props) {
       <span className="body-sm-bold">Delete account</span>
       <div data-testid="delete-user-dialog" className="pr-5 body-xs-medium">
         <p>Are you sure you want to delete this account {user.email}?</p>
-        <p>Access to OpenBB Workspace and all API keys will be revoked.</p>
+        <p>Access to Workspace and all API keys will be revoked.</p>
       </div>
       <AdminDialogFooter
         primaryButtonName="Yes, delete account"

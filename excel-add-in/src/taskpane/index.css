@@ -1,10 +1,22 @@
-@import "@openbb/ui/style.css";
-
-/* @tailwind base; */
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body {
+    @apply bg-dark-900 text-grey-100;
+  }
+}
+
 @layer components {
+  .subtitle-md-bold {
+    @apply text-base font-bold leading-6;
+  }
+
+  .body-sm-regular {
+    @apply text-sm font-normal leading-5;
+  }
+
   .link {
     @apply text-success-600 underline hover:text-success-500 active:text-success-300;
   }

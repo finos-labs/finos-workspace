@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useImageUrlStatuses } from "~/components/Apps/useImageUrlStatuses";
+import { required } from "../../mocks";
 
 /** Minimal stand-in for the browser `Image` — jsdom's never fires load/error. */
 class MockImage {
@@ -82,7 +83,7 @@ describe("useImageUrlStatuses", () => {
   it("ensureSettled probes immediately and resolves once each URL settles", async () => {
     const { result } = renderHook(() => useImageUrlStatuses([]));
 
-    let settled: Promise<Record<string, "loaded" | "error">>;
+    let settled: Promise<Record<string, "loaded" | "error">> | undefined;
     act(() => {
       settled = result.current.ensureSettled(["https://x.com/a.png"]);
     });
@@ -90,7 +91,9 @@ describe("useImageUrlStatuses", () => {
       imageFor("https://x.com/a.png").onerror?.();
     });
 
-    await expect(settled!).resolves.toEqual({ "https://x.com/a.png": "error" });
+    await expect(required(settled)).resolves.toEqual({
+      "https://x.com/a.png": "error",
+    });
   });
 
   it("resetErrors clears cached failures so they re-probe", async () => {

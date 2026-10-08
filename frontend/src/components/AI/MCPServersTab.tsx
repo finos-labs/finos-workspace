@@ -170,7 +170,7 @@ export function MCPServersTab() {
       <ManageMcpServer
         open={state.addServerOpen || !!state.editServerId}
         onClose={handleModalClose}
-        existingServerId={state.editServerId}
+        existingServerId={state.editServerId ?? undefined}
       />
     </>
   );
@@ -317,7 +317,7 @@ const MCPServerCard = memo((props: McpServerCardProps) => {
               {/* waiting for @jose-donato GIVE ME THAT ICON */}
               {/* <Tooltip message="Clear authentication">
                 <button
-                  className="obb-small-navbar-btn rounded flex items-center justify-center size-5"
+                  className="ws-small-navbar-btn rounded flex items-center justify-center size-5"
                   onClick={() => connection?.clearStorage()}
                 >
                   <Icon id="refresh-icon" className="size-3.5" />
@@ -325,7 +325,7 @@ const MCPServerCard = memo((props: McpServerCardProps) => {
               </Tooltip> */}
               <Tooltip message="Edit">
                 <button
-                  className="obb-small-navbar-btn rounded flex items-center justify-center size-5"
+                  className="ws-small-navbar-btn rounded flex items-center justify-center size-5"
                   onClick={handleEdit}
                 >
                   <Icon id="pencil-02" className="size-3.5" />
@@ -333,7 +333,7 @@ const MCPServerCard = memo((props: McpServerCardProps) => {
               </Tooltip>
               <Tooltip message="Delete">
                 <button
-                  className="obb-small-navbar-btn rounded flex items-center justify-center size-5"
+                  className="ws-small-navbar-btn rounded flex items-center justify-center size-5"
                   onClick={handleDelete}
                 >
                   <Icon id="trash-04" className="size-3.5" />

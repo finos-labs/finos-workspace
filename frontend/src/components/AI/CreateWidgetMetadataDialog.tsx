@@ -139,7 +139,7 @@ export function CreateWidgetMetadataDialog() {
   const title = isCreateMode ? "Create widget" : "Edit widget metadata";
   const description = isCreateMode
     ? "Enter the metadata for your new widget."
-    : "By editing the metadata, you will help OpenBB Copilot better understand your widget.";
+    : "By editing the metadata, you will help Copilot better understand your widget.";
 
   return (
     <BaseDialog open={!!dialogState} onClose={closeDialog}>

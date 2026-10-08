@@ -11,7 +11,7 @@
  * 3. Default handlers are in tests/mocks/handlers.ts
  */
 
-import axios from "axios";
+import axios, { type AxiosError } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   HttpResponse,
@@ -23,12 +23,23 @@ import {
   setupMSW,
 } from "../../mocks/msw-utils";
 
-const BASE_URL = "https://backend.openbb.dev";
+const BASE_URL = "https://backend.test";
 
 // Create a test axios client (similar to apiClient but without store dependencies)
 const testClient = axios.create({
   baseURL: BASE_URL,
 });
+
+/** The error a request fails with when the server refuses it. */
+async function refusal(request: Promise<unknown>): Promise<AxiosError> {
+  try {
+    await request;
+  } catch (error) {
+    if (axios.isAxiosError(error)) return error;
+    throw error;
+  }
+  throw new Error("Should have thrown an error");
+}
 
 describe("MSW Integration - Auth API", () => {
   setupMSW();
@@ -37,9 +48,9 @@ describe("MSW Integration - Auth API", () => {
     vi.clearAllMocks();
   });
 
-  describe("POST /pro/login", () => {
+  describe("POST /app/login", () => {
     it("should return user data on successful login", async () => {
-      const { data, status } = await testClient.post("/pro/login", {
+      const { data, status } = await testClient.post("/app/login", {
         email: "test@example.com",
         password: "password123",
         remember: false,
@@ -52,20 +63,18 @@ describe("MSW Integration - Auth API", () => {
     });
 
     it("should return 401 for invalid credentials", async () => {
-      try {
-        await testClient.post("/pro/login", {
+      const error = await refusal(
+        testClient.post("/app/login", {
           email: "invalid@example.com",
           password: "wrongpassword",
-        });
-        expect.fail("Should have thrown an error");
-      } catch (error: any) {
-        expect(error.response.status).toBe(401);
-        expect(error.response.data.detail).toBe("Invalid credentials");
-      }
+        }),
+      );
+      expect(error.response?.status).toBe(401);
+      expect(error.response?.data).toMatchObject({ detail: "Invalid credentials" });
     });
 
     it("should return 2FA required for 2fa@example.com", async () => {
-      const { data, status } = await testClient.post("/pro/login", {
+      const { data, status } = await testClient.post("/app/login", {
         email: "2fa@example.com",
         password: "password123",
       });
@@ -75,9 +84,9 @@ describe("MSW Integration - Auth API", () => {
     });
   });
 
-  describe("GET /pro/validate", () => {
+  describe("GET /app/validate", () => {
     it("should validate authenticated user", async () => {
-      const { data, status } = await testClient.get("/pro/validate", {
+      const { data, status } = await testClient.get("/app/validate", {
         headers: { Authorization: "Bearer valid-token" },
       });
 
@@ -87,29 +96,27 @@ describe("MSW Integration - Auth API", () => {
     });
 
     it("should reject invalid token", async () => {
-      try {
-        await testClient.get("/pro/validate", {
+      const error = await refusal(
+        testClient.get("/app/validate", {
           headers: { Authorization: "Bearer invalid-token" },
-        });
-        expect.fail("Should have thrown an error");
-      } catch (error: any) {
-        expect(error.response.status).toBe(401);
-      }
+        }),
+      );
+      expect(error.response?.status).toBe(401);
     });
   });
 
-  describe("POST /pro/logout", () => {
+  describe("POST /app/logout", () => {
     it("should successfully logout", async () => {
-      const { data, status } = await testClient.post("/pro/logout");
+      const { data, status } = await testClient.post("/app/logout");
 
       expect(status).toBe(200);
       expect(data).toHaveProperty("success", true);
     });
   });
 
-  describe("GET /pro/user", () => {
+  describe("GET /app/user", () => {
     it("should return user data when authenticated", async () => {
-      const { data, status } = await testClient.get("/pro/user", {
+      const { data, status } = await testClient.get("/app/user", {
         headers: { Authorization: "Bearer valid-token" },
       });
 
@@ -121,68 +128,14 @@ describe("MSW Integration - Auth API", () => {
     });
 
     it("should reject unauthenticated requests", async () => {
-      try {
-        await testClient.get("/pro/user");
-        expect.fail("Should have thrown an error");
-      } catch (error: any) {
-        expect(error.response.status).toBe(401);
-      }
+      const error = await refusal(testClient.get("/app/user"));
+      expect(error.response?.status).toBe(401);
     });
   });
 
-  describe("POST /pro/register", () => {
-    it("should successfully register new user", async () => {
-      const { status } = await testClient.post("/pro/register", {
-        email: "newuser@example.com",
-        newsletter: true,
-        hear_about_us: "Google",
-      });
-
-      expect(status).toBe(200);
-    });
-
-    it("should reject duplicate email", async () => {
-      try {
-        await testClient.post("/pro/register", {
-          email: "existing@example.com",
-          newsletter: true,
-          hear_about_us: "Google",
-        });
-        expect.fail("Should have thrown an error");
-      } catch (error: any) {
-        expect(error.response.status).toBe(400);
-        expect(error.response.data.detail).toBe("Email already registered");
-      }
-    });
-  });
-
-  describe("POST /forgot-password", () => {
-    it("should send forgot password email", async () => {
-      const { status } = await testClient.post("/forgot-password", {
-        email: "test@example.com",
-        redirect: "pro",
-      });
-
-      expect(status).toBe(200);
-    });
-
-    it("should return 404 for non-existent email", async () => {
-      try {
-        await testClient.post("/forgot-password", {
-          email: "notfound@example.com",
-          redirect: "pro",
-        });
-        expect.fail("Should have thrown an error");
-      } catch (error: any) {
-        expect(error.response.status).toBe(404);
-        expect(error.response.data.detail).toBe("Email not found");
-      }
-    });
-  });
-
-  describe("GET /pro/usage", () => {
+  describe("GET /app/usage", () => {
     it("should return usage data", async () => {
-      const { data, status } = await testClient.get("/pro/usage");
+      const { data, status } = await testClient.get("/app/usage");
 
       expect(status).toBe(200);
       expect(data).toEqual(mockUsage);
@@ -193,7 +146,7 @@ describe("MSW Integration - Auth API", () => {
     it("should allow overriding handlers per test", async () => {
       // Override the user endpoint for this specific test
       server.use(
-        http.get(`${BASE_URL}/pro/user`, () => {
+        http.get(`${BASE_URL}/app/user`, () => {
           return HttpResponse.json({
             uuid: "custom-uuid",
             email: "custom@test.com",
@@ -202,7 +155,7 @@ describe("MSW Integration - Auth API", () => {
         }),
       );
 
-      const { data, status } = await testClient.get("/pro/user", {
+      const { data, status } = await testClient.get("/app/user", {
         headers: { Authorization: "Bearer valid-token" },
       });
 
@@ -213,7 +166,7 @@ describe("MSW Integration - Auth API", () => {
 
     it("should reset to default handlers after previous test", async () => {
       // server.resetHandlers() is called in afterEach, so this uses default
-      const { data } = await testClient.get("/pro/user", {
+      const { data } = await testClient.get("/app/user", {
         headers: { Authorization: "Bearer valid-token" },
       });
 
@@ -224,7 +177,7 @@ describe("MSW Integration - Auth API", () => {
 
     it("should allow simulating server errors", async () => {
       server.use(
-        http.get(`${BASE_URL}/pro/user`, () => {
+        http.get(`${BASE_URL}/app/user`, () => {
           return HttpResponse.json(
             { detail: "Internal server error" },
             { status: 500 },
@@ -232,19 +185,17 @@ describe("MSW Integration - Auth API", () => {
         }),
       );
 
-      try {
-        await testClient.get("/pro/user", {
+      const error = await refusal(
+        testClient.get("/app/user", {
           headers: { Authorization: "Bearer valid-token" },
-        });
-        expect.fail("Should have thrown an error");
-      } catch (error: any) {
-        expect(error.response.status).toBe(500);
-      }
+        }),
+      );
+      expect(error.response?.status).toBe(500);
     });
 
     it("should allow simulating network delays", async () => {
       server.use(
-        http.get(`${BASE_URL}/pro/user`, async () => {
+        http.get(`${BASE_URL}/app/user`, async () => {
           // Simulate 100ms delay
           await new Promise((resolve) => setTimeout(resolve, 100));
           return HttpResponse.json(mockUser);
@@ -252,7 +203,7 @@ describe("MSW Integration - Auth API", () => {
       );
 
       const start = Date.now();
-      await testClient.get("/pro/user", {
+      await testClient.get("/app/user", {
         headers: { Authorization: "Bearer valid-token" },
       });
       const elapsed = Date.now() - start;
@@ -265,22 +216,22 @@ describe("MSW Integration - Auth API", () => {
 describe("MSW Integration - Dashboard API", () => {
   setupMSW();
 
-  describe("GET /pro/dash/sync", () => {
+  describe("GET /app/dash/sync", () => {
     it("should return dashboard data", async () => {
-      const { data, status } = await testClient.get("/pro/dash/sync");
+      const { data, status } = await testClient.get("/app/dash/sync");
 
       expect(status).toBe(200);
       expect(data).toEqual(mockDashboardData);
     });
   });
 
-  describe("POST /pro/dash/sync", () => {
+  describe("POST /app/dash/sync", () => {
     it("should save dashboard changes", async () => {
       const changes = {
         "dashboard-1": { content: { name: "Updated Dashboard" } },
       };
 
-      const { data, status } = await testClient.post("/pro/dash/sync", {
+      const { data, status } = await testClient.post("/app/dash/sync", {
         items: changes,
       });
 
@@ -289,26 +240,23 @@ describe("MSW Integration - Dashboard API", () => {
     });
   });
 
-  describe("POST /pro/dash/:dashboardUuid/share", () => {
+  describe("POST /app/dash/:dashboardUuid/share", () => {
     it("should share dashboard", async () => {
-      const { data, status } = await testClient.post(
-        "/pro/dash/dashboard-1/share",
-        { shares: { "user@example.com": "view" } },
-      );
+      const { data, status } = await testClient.post("/app/dash/dashboard-1/share", {
+        shares: { "user@example.com": "view" },
+      });
 
       expect(status).toBe(200);
       expect(data).toHaveProperty("success", true);
     });
 
     it("should return 404 for non-existent dashboard", async () => {
-      try {
-        await testClient.post("/pro/dash/non-existent/share", {
+      const error = await refusal(
+        testClient.post("/app/dash/non-existent/share", {
           shares: { "user@example.com": "view" },
-        });
-        expect.fail("Should have thrown an error");
-      } catch (error: any) {
-        expect(error.response.status).toBe(404);
-      }
+        }),
+      );
+      expect(error.response?.status).toBe(404);
     });
   });
 });
@@ -337,20 +285,18 @@ describe("MSW Integration - 2FA Endpoints", () => {
     });
 
     it("should reject invalid TOTP code", async () => {
-      try {
-        await testClient.post("/totp/activate", {
+      const error = await refusal(
+        testClient.post("/totp/activate", {
           totp_token: 999999,
-        });
-        expect.fail("Should have thrown an error");
-      } catch (error: any) {
-        expect(error.response.status).toBe(400);
-      }
+        }),
+      );
+      expect(error.response?.status).toBe(400);
     });
   });
 
-  describe("GET /pro/2fa", () => {
+  describe("GET /app/2fa", () => {
     it("should return 2FA settings", async () => {
-      const { data, status } = await testClient.get("/pro/2fa");
+      const { data, status } = await testClient.get("/app/2fa");
 
       expect(status).toBe(200);
       expect(data).toHaveProperty("two_factor_auth");

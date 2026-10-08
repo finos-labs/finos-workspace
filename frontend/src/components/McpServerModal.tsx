@@ -12,19 +12,22 @@ import {
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
+import { docsUrl } from "~/lib/docsUrl";
 import {
   type McpConnection,
   type McpServer,
   PENDING_CONNECTION_STATES,
   useShallowMcpToolsStore,
 } from "~/lib/state/mcpTools";
-import { EndpointHeadersForm } from "./DataConnectors/SingleWidget";
+import { EndpointHeadersForm } from "./DataConnectors/EndpointHeadersForm";
 import { Checkbox } from "./ds/atoms/Checkbox";
 import { FormInput, Input } from "./ds/atoms/Input";
 import { Form, FormField, useForm } from "./ds/molecules/Form";
 import SettingsMenu from "./ds/molecules/SettingsMenu";
 import { cn } from "./ds/utils";
 import SearchResultsNotFound from "./General/SearchResultsNotFound";
+
+const mcpToolsDocsHref = docsUrl("workspace/analysts/ai-features/mcp-tools");
 
 const ConnectionTools = memo(
   ({ serverId, searchTerm }: { serverId: string; searchTerm?: string }) => {
@@ -257,7 +260,7 @@ const McpServerConnection = memo(
       <div className="flex items-center gap-2">
         <Tooltip message="Edit">
           <button
-            className="obb-small-navbar-btn rounded flex items-center justify-center size-6"
+            className="ws-small-navbar-btn rounded flex items-center justify-center size-6"
             onClick={() => dispatch({ editServerId: serverId })}
           >
             <Icon id="pencil-02" className="size-4" />
@@ -265,7 +268,7 @@ const McpServerConnection = memo(
         </Tooltip>
         <Tooltip message="Delete">
           <button
-            className="obb-small-navbar-btn rounded flex items-center justify-center size-6"
+            className="ws-small-navbar-btn rounded flex items-center justify-center size-6"
             onClick={() => server?.id && onRemove(server.id)}
           >
             <Icon id="trash-04" className="size-4" />
@@ -280,15 +283,15 @@ const McpServerConnection = memo(
               >
                 <Tooltip message="Delete">
                   <button
-                    className="obb-small-navbar-btn rounded flex items-center justify-center size-5"
-                    onClick={() => onRemove(server.id)}
+                    className="ws-small-navbar-btn rounded flex items-center justify-center size-5"
+                    onClick={() => onRemove(serverId)}
                   >
                     <Icon id="trash-04" className="size-4" />
                   </button>
                 </Tooltip>
                 <Tooltip message="Edit">
                   <button
-                    className="obb-small-navbar-btn rounded flex items-center justify-center size-5"
+                    className="ws-small-navbar-btn rounded flex items-center justify-center size-5"
                     onClick={() => dispatch({ editServerId: serverId })}
                   >
                     <Icon id="pencil-02" className="size-4" />
@@ -468,14 +471,16 @@ export const McpServerModal = memo(({ onClose }: Omit<McpServerModalProps, "open
                 secondMessage={
                   <>
                     You haven't added any MCP server URLs yet.{" "}
-                    <a
-                      href="https://docs.openbb.co/workspace/analysts/ai-features/mcp-tools"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="obb-hyper-link"
-                    >
-                      Read the MCP tools guide
-                    </a>
+                    {mcpToolsDocsHref && (
+                      <a
+                        href={mcpToolsDocsHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ws-hyper-link"
+                      >
+                        Read the MCP tools guide
+                      </a>
+                    )}
                   </>
                 }
                 extraClassName="flex-1 flex flex-col gap-2 bg-general-bg-secondary rounded py-2.5"
@@ -494,7 +499,7 @@ export const McpServerModal = memo(({ onClose }: Omit<McpServerModalProps, "open
       <ManageMcpServer
         open={state.addingServer}
         onClose={() => dispatch({ addingServer: false, editServerId: null })}
-        existingServerId={state.editServerId}
+        existingServerId={state.editServerId ?? undefined}
       />
     </>
   );
@@ -535,15 +540,18 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
 
   const handleSave = useCallback(
     (server: McpServerSchema) => {
-      const newServerData = {
+      const newServerData: Pick<
+        McpServer,
+        "name" | "url" | "clientName" | "isLocal" | "customHeaders"
+      > = {
         name: server.name.trim(),
-        clientName: server.clientName.trim(),
+        clientName: (server.clientName ?? "").trim(),
         isLocal: server.isLocal,
         url: server.url.trim(),
         customHeaders: undefined,
-      } as McpServer;
+      };
 
-      if (server.customHeaders?.length > 0) {
+      if (server.customHeaders && server.customHeaders.length > 0) {
         const headersObject: Record<string, string> = {};
         for (const header of server.customHeaders) {
           if (header.key.trim() && header.value.trim()) {
@@ -612,7 +620,7 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
         <DialogDescription>
           {existingServerId
             ? "Update your MCP server details. Supports streamable HTTP only (stdio and SSE are not supported)."
-            : "Connect OpenBB Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported)."}
+            : "Connect Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported)."}
         </DialogDescription>
       </DialogHeader>
 
@@ -647,7 +655,7 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
             render={({ field, fieldState }) => (
               <FormInput
                 label="Client Name (Optional)"
-                placeholder="OpenBB Workspace"
+                placeholder="Workspace"
                 {...field}
                 message={fieldState.error?.message}
               />
@@ -700,7 +708,7 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
             disabled={
               !(form.formState.isValid || existingServerId) ||
               form.formState.isSubmitting ||
-              (existingServerId && !form.formState.isDirty)
+              (!!existingServerId && !form.formState.isDirty)
             }
             size="sm"
           >

@@ -5,6 +5,7 @@ import {
   getGroupParamName,
   useParamGroupBindings,
 } from "~/components/Widgets/Helpers/useParamGroupBindings";
+import { malformed } from "../../../mocks";
 
 const mocked = vi.hoisted(() => ({
   widget: { id: "widget-1", params: [] as ParamDef[] },
@@ -14,13 +15,13 @@ const mocked = vi.hoisted(() => ({
 
 const appStoreMock = vi.hoisted(() => ({
   getWidgetGroups: vi.fn((..._args) => [] as Group[]),
-  getTabById: vi.fn(() => undefined as any),
+  getTabById: vi.fn(() => malformed(undefined)),
   updateGroup: vi.fn(),
 }));
 
 const sharedAppStoreMock = vi.hoisted(() => ({
   getWidgetGroups: vi.fn((..._args) => [] as Group[]),
-  getDashboardById: vi.fn(() => undefined as any),
+  getDashboardById: vi.fn(() => malformed(undefined)),
 }));
 
 vi.mock("~/components/Widget.context", () => ({
@@ -34,7 +35,7 @@ vi.mock("~/components/Widget.context", () => ({
 }));
 
 vi.mock("~/lib/state/app", () => ({
-  useShallowAppStore: (selector: any) =>
+  useShallowAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       getWidgetGroups: vi.fn((...args) => {
         const [tabId] = args;

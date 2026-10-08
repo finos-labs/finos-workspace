@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { getUserPermissions } from "~/api/entity_roles.api";
+import { getUserPermissions, type RoleAccessList } from "~/api/entity_roles.api";
 import type { DataTableColumn } from "~/components/ds/molecules/DataTable";
 import { DataTable } from "~/components/ds/molecules/DataTable";
 import { Tag } from "../ds/atoms/Tag";
@@ -20,16 +20,14 @@ interface RolePermissionRow {
   hasAnyAccess: boolean;
 }
 
-type AccessList = Record<string, string>[] | undefined;
-
 // Returns the access value ("access" / "denied" / ...) a role has for a resource.
-function accessFor(access: AccessList, roleId: string): string | null {
+function accessFor(access: RoleAccessList | undefined, roleId: string): string | null {
   if (!access) return null;
   const entry = access.find((item) => Object.keys(item).includes(roleId));
   return entry ? entry[roleId] : null;
 }
 
-const isGranted = (access: AccessList, roleId: string) =>
+const isGranted = (access: RoleAccessList | undefined, roleId: string) =>
   accessFor(access, roleId) === "access";
 
 function PermissionCountCell({ label, items }: { label: string; items: string[] }) {
@@ -93,7 +91,7 @@ export default function AdminUserPermissionsSection({
     if (!data) return [];
 
     const roleIds = new Set<string>();
-    const collect = (access: AccessList) => {
+    const collect = (access: RoleAccessList | undefined) => {
       for (const item of access ?? [])
         for (const key of Object.keys(item)) roleIds.add(key);
     };
@@ -111,7 +109,7 @@ export default function AdminUserPermissionsSection({
 
       for (const template of data.templates ?? []) {
         if (isGranted(template.access, roleId)) {
-          apps.push(template.templateId ?? template.name ?? "Unknown");
+          apps.push(template.templateId ?? "Unknown");
         }
       }
       for (const connector of data.data_connectors ?? []) {

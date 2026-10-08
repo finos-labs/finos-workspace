@@ -42,7 +42,7 @@ export type PermissionsT = {
 
 export async function getUserResourcePermissions(): Promise<PermissionsT> {
   const { data } = await apiClient
-    .get<PermissionsT>("/pro/resource-permissions")
+    .get<PermissionsT>("/app/resource-permissions")
     .catch((error) => {
       console.error("API Error - getUserResourcePermissions:", error);
       return { data: { backends: [], files: [], prompts: [] } };

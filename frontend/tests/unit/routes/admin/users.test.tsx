@@ -12,13 +12,11 @@ const makeUser = (over: Partial<User>): User => ({
   email: "",
   role: "",
   billing_active: true,
-  pro_entitlements: {} as User["pro_entitlements"],
   status: "active",
   last_login: null,
   last_active: null,
   permissions_uuid: "p",
   source: "user" as User["source"],
-  renewed: false,
   ...over,
 });
 
@@ -58,10 +56,6 @@ vi.mock("~/components/LayoutAuth/Skeleton/SettingsLayout", () => ({
   SettingsLayout: ({ children }: { children: ReactNode }) => (
     <TabsPrimitive.Root value="users">{children}</TabsPrimitive.Root>
   ),
-}));
-
-vi.mock("~/components/General/SnowflakeHide", () => ({
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 vi.mock("~/components/AdminUsers/AdminUserDetailsDialog", () => ({

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { AdminApp } from "~/api/adminMarketplace.api";
 import { ReviewAppDialog } from "~/components/AdminMarketplace/ReviewAppDialog";
+import { required } from "../../mocks";
 
 vi.mock("~/hooks/useAdminMarketplace", () => ({
   useAppSubscriptions: () => ({
@@ -39,13 +40,12 @@ function makeApp(overrides: Partial<AdminApp> = {}): AdminApp {
     thumbnail_url_dark: null,
     thumbnail_url_light: null,
     media: [],
-    screenshots: [],
     api_key_url: null,
     api_key_info_url: null,
     more_information_url: null,
-    backend_base_url: "https://openbb-poly.workers.dev",
-    apps_json_url: "https://openbb-poly.workers.dev/apps.json",
-    widgets_json_url: "https://openbb-poly.workers.dev/widgets.json",
+    backend_base_url: "https://apps.test",
+    apps_json_url: "https://apps.test/apps.json",
+    widgets_json_url: "https://apps.test/widgets.json",
     is_built_in: false,
     auth_type: ["api_key"],
     auth_fields: null,
@@ -104,9 +104,12 @@ describe("ReviewAppDialog", () => {
     // prompts_count 0 → "-"
     const promptsRow = screen.getByText("Prompts").closest("div");
     expect(promptsRow).toBeTruthy();
-    expect(within(promptsRow!.parentElement as HTMLElement).getAllByText("-").length).toBeGreaterThan(0);
+    expect(
+      within(required(promptsRow).parentElement as HTMLElement).getAllByText("-")
+        .length,
+    ).toBeGreaterThan(0);
 
-    expect(screen.getByText("https://openbb-poly.workers.dev")).toBeInTheDocument();
+    expect(screen.getByText("https://apps.test")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument(); // active subs
     expect(screen.getByText("12")).toBeInTheDocument(); // total subs
   });
@@ -183,7 +186,8 @@ describe("ReviewAppDialog", () => {
     expect(publish).toBeEnabled();
 
     // Publish is the primary decision; reject secondary — both on the right group.
-    const footer = reverify.closest(".border-t") ?? reverify.parentElement?.parentElement;
+    const footer =
+      reverify.closest(".border-t") ?? reverify.parentElement?.parentElement;
     expect(footer).toBeTruthy();
   });
 

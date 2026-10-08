@@ -12,16 +12,5 @@ vi.mock("~/lib/constants", async (importOriginal) => {
   return {
     ...actual,
     VERSION: "test-version",
-    inSnowflakeNativeApp: false,
-  };
-});
-
-// onPremFeatureFlags - feature flag configuration
-vi.mock("~/lib/onPremFeatureFlags", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("~/lib/onPremFeatureFlags")>();
-  return {
-    ...actual,
-    getShowDemoRequestButton: () => true,
   };
 });

@@ -1,27 +1,29 @@
-# OpenBB Lite — Installation Guide
+# Installation guide: the Workspace Docker image
 
 ## Prerequisites
 
 - **Docker** installed and running ([Docker Desktop](https://www.docker.com/products/docker-desktop))
 - **AWS CLI** installed ([installation guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html))
-- **AWS credentials** provided by OpenBB (access key ID + secret access key)
+- **AWS credentials** provided by the image publisher (access key ID + secret access key)
 
-You do not need an AWS account — the credentials provided only authorize pulling the OpenBB Lite container image.
+You do not need an AWS account — the credentials provided only authorize pulling the Workspace container image.
+
+The image publisher also gives you three values used below: `<region>` (the AWS region of the registry), `<registry>` (the registry host) and `<repository>` (the image repository name).
 
 ---
 
 ## Step 1 — Configure your credentials
 
 ```bash
-aws configure --profile openbb-lite-profile
+aws configure --profile workspace-image
 ```
 
-Enter the credentials provided by OpenBB:
+Enter the credentials provided by the image publisher:
 
 ```
 AWS Access Key ID: <your access key ID>
 AWS Secret Access Key: <your secret access key>
-Default region name: us-east-1
+Default region name: <region>
 Default output format: json
 ```
 
@@ -32,7 +34,7 @@ Default output format: json
 The token expires every 12 hours — re-run this if you get an authentication error.
 
 ```bash
-aws ecr get-login-password --region us-east-1 --profile openbb-lite-profile | docker login --username AWS --password-stdin lite.openbb.co
+aws ecr get-login-password --region <region> --profile workspace-image | docker login --username AWS --password-stdin <registry>
 ```
 
 Expected output: `Login Succeeded`
@@ -42,18 +44,18 @@ Expected output: `Login Succeeded`
 ## Step 3 — Pull the image
 
 ```bash
-docker pull lite.openbb.co/openbb-lite:latest
+docker pull <registry>/<repository>:latest
 ```
 
 ---
 
-## Step 4 — Run OpenBB Lite
+## Step 4 — Run the Workspace
 
 ```bash
-docker run -d -p 3000:3000 -v openbb-data:/data --name openbb lite.openbb.co/openbb-lite:latest
+docker run -d -p 3000:3000 -v workspace-data:/data -e WORKSPACE_ADMIN_EMAIL=<your-email> --name workspace <registry>/<repository>:latest
 ```
 
-The `-v openbb-data:/data` volume stores your data and admin password so they survive restarts and upgrades.
+`WORKSPACE_ADMIN_EMAIL` is the address of the first administrator; the password is generated. The `-v workspace-data:/data` volume stores your data and that password so they survive restarts and upgrades.
 
 Open your browser and go to `http://localhost:3000`.
 
@@ -62,7 +64,7 @@ Open your browser and go to `http://localhost:3000`.
 ## Step 5 — Get your admin login
 
 ```bash
-docker exec openbb credentials
+docker exec workspace credentials
 ```
 
 This prints your admin email and password. Use them to sign in at `http://localhost:3000`.
@@ -71,13 +73,13 @@ This prints your admin email and password. Use them to sign in at `http://localh
 
 ## Updating to a newer version
 
-Your data and admin password live in the `openbb-data` volume, so they survive the upgrade. The explicit `docker pull` is required — Docker reuses the locally cached `latest` otherwise.
+Your data and admin password live in the `workspace-data` volume, so they survive the upgrade. The explicit `docker pull` is required — Docker reuses the locally cached `latest` otherwise.
 
 ```bash
-docker stop openbb && docker rm openbb
-aws ecr get-login-password --region us-east-1 --profile openbb-lite-profile | docker login --username AWS --password-stdin lite.openbb.co
-docker pull lite.openbb.co/openbb-lite:latest
-docker run -d -p 3000:3000 -v openbb-data:/data --name openbb lite.openbb.co/openbb-lite:latest
+docker stop workspace && docker rm workspace
+aws ecr get-login-password --region <region> --profile workspace-image | docker login --username AWS --password-stdin <registry>
+docker pull <registry>/<repository>:latest
+docker run -d -p 3000:3000 -v workspace-data:/data -e WORKSPACE_ADMIN_EMAIL=<your-email> --name workspace <registry>/<repository>:latest
 ```
 
 ---
@@ -85,13 +87,13 @@ docker run -d -p 3000:3000 -v openbb-data:/data --name openbb lite.openbb.co/ope
 ## Troubleshooting
 
 **`Login Succeeded` but `docker pull` fails with `denied`**
-Your credentials do not have access to this repository. Contact OpenBB support.
+Your credentials do not have access to this repository. Contact the image publisher.
 
 **`Error response from daemon: no matching manifest for linux/arm64`**
 Add `--platform linux/amd64` to the pull and run commands:
 ```bash
-docker pull --platform linux/amd64 lite.openbb.co/openbb-lite:latest
-docker run --platform linux/amd64 -d -p 3000:3000 -v openbb-data:/data --name openbb lite.openbb.co/openbb-lite:latest
+docker pull --platform linux/amd64 <registry>/<repository>:latest
+docker run --platform linux/amd64 -d -p 3000:3000 -v workspace-data:/data -e WORKSPACE_ADMIN_EMAIL=<your-email> --name workspace <registry>/<repository>:latest
 ```
 
 **Port 3000 is already in use**

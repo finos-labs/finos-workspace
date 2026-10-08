@@ -21,13 +21,13 @@ export function AppCardDropdown({ items }: { items: AppCardDropdownItem[] }) {
           align="end"
           side="bottom"
           sideOffset={5}
-          className="obb-dropdown-container z-50 w-[172px]"
+          className="ws-dropdown-container z-50 w-[172px]"
           onClick={(e) => e.stopPropagation()}
         >
           {items.map((item) => (
             <FeatureLock key={item.label} isLocked={!!item.locked}>
               <DropdownMenuPrimitive.Item
-                className="obb-dropdown-item"
+                className="ws-dropdown-item"
                 disabled={item.disabled}
                 onSelect={() => {
                   if (item.locked) return;

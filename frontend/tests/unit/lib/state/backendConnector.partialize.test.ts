@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
+import {
+  type BackendTemplate,
+  type Source,
+  useBackendConnectorStore,
+} from "~/lib/state/backendConnector";
 import { getStorage } from "~/lib/utils/indexDB";
+import type { WidgetsType } from "~/utils/zodForms";
+import { partial } from "../../mocks";
 
 vi.mock("sonner", () => ({
   toast: { warning: vi.fn(), success: vi.fn(), error: vi.fn() },
@@ -32,7 +38,6 @@ describe("backendConnector partialize", () => {
       apiSources: [],
       isLoadingBackends: false,
       widgetMetadata: [],
-      singleWidgets: [],
       storedFiles: [],
       queuedRefreshIds: [],
     });
@@ -47,8 +52,8 @@ describe("backendConnector partialize", () => {
     const successSource = makeSource({
       id: "ok",
       status: "success",
-      widgets: { foo: { name: "Foo Widget" } } as any,
-      templates: [{ name: "T1" }] as any,
+      widgets: partial<WidgetsType>({ foo: { name: "Foo Widget" } }),
+      templates: partial<BackendTemplate[]>([{ name: "T1" }]),
     });
 
     useBackendConnectorStore.setState({ apiSources: [successSource] });
@@ -64,8 +69,8 @@ describe("backendConnector partialize", () => {
     const source = makeSource({
       id: "ok",
       status: "success",
-      widgets: {} as any,
-      templates: [] as any,
+      widgets: partial({}),
+      templates: partial([]),
     });
 
     useBackendConnectorStore.setState({ apiSources: [source] });

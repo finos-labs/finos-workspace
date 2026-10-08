@@ -52,7 +52,7 @@ describe("EdgeHoverZone", () => {
   });
 
   it("does not render if not a pointer device", () => {
-    window.matchMedia = vi.fn().mockImplementation((query) => ({
+    window.matchMedia = vi.fn().mockImplementation((_query) => ({
       matches: false,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),

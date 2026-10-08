@@ -22,23 +22,13 @@ export function useGlobalTitleManager(): void {
   useEffect(() => {
     if (typeof document === "undefined") return;
 
-    const brandName = getConfig().whiteLabel?.name || "OpenBB Workspace";
+    const brandName = getConfig().whiteLabel?.name || "Workspace";
     let pageTitle = "";
 
     const path = location.pathname;
 
     if (path === "/login") {
       pageTitle = "Login";
-    } else if (path === "/register") {
-      pageTitle = "Register";
-    } else if (path === "/terms-of-service") {
-      pageTitle = "Terms of Service";
-    } else if (path === "/booking") {
-      pageTitle = "Book a Demo";
-    } else if (path === "/forgot-password") {
-      pageTitle = "Forgot Password";
-    } else if (path === "/forgot-password-confirmation") {
-      pageTitle = "Check Your Email";
     } else if (path === "/app") {
       pageTitle = "Apps";
     } else if (path.startsWith("/app/widgets")) {
@@ -49,8 +39,6 @@ export function useGlobalTitleManager(): void {
       pageTitle = "Connections";
     } else if (path.startsWith("/app/settings")) {
       pageTitle = "Settings";
-    } else if (path.startsWith("/app/news")) {
-      pageTitle = "News";
     } else if (path.startsWith("/app/help-documentation")) {
       pageTitle = "Help & Documentation";
     } else if (path.startsWith("/app/") && tabId) {

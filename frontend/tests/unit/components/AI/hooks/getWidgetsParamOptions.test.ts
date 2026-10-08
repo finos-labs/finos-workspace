@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getWidgetsParamOptions } from "~/components/AI/hooks/useFunctionCall";
 import type { WidgetT } from "~/components/types";
+import { malformed } from "../../../mocks";
 
 const createMockWidget = (overrides: Partial<WidgetT> = {}): WidgetT =>
   ({
@@ -45,7 +46,10 @@ describe("getWidgetsParamOptions", () => {
         ),
       ).rejects.toThrow("Widget with id non-existent-widget not found");
 
-      expect(getWidgetFromBackend).toHaveBeenCalledWith("TestOrigin", "non-existent-widget");
+      expect(getWidgetFromBackend).toHaveBeenCalledWith(
+        "TestOrigin",
+        "non-existent-widget",
+      );
     });
   });
 
@@ -198,11 +202,10 @@ describe("getWidgetsParamOptions", () => {
             paramName: "portfolio",
             type: "endpoint",
             optionsEndpoint: "https://api.example.com/portfolios",
-            optionsParams: {
-              // @ts-expect-error - ignored for now
+            optionsParams: malformed({
               limit: 10,
               region: "$selectedRegion",
-            },
+            }),
           },
         ],
       });
@@ -234,12 +237,10 @@ describe("getWidgetsParamOptions", () => {
             paramName: "portfolio",
             type: "endpoint",
             optionsEndpoint: "https://api.example.com/portfolios",
-            optionsParams: {
-              // @ts-expect-error - ignored for now
+            optionsParams: malformed({
               active: true,
-              // @ts-expect-error - ignored for now
               includeDeleted: false,
-            },
+            }),
           },
         ],
       });
@@ -265,14 +266,12 @@ describe("getWidgetsParamOptions", () => {
             paramName: "portfolio",
             type: "endpoint",
             optionsEndpoint: "https://api.example.com/portfolios",
-            optionsParams: {
+            optionsParams: malformed({
               stringVar: "$myString",
               staticString: "hello",
-              // @ts-expect-error - ignored for now
               numberValue: 42,
-              // @ts-expect-error - ignored for now
               booleanValue: true,
-            },
+            }),
           },
         ],
       });

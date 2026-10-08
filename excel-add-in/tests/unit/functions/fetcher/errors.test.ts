@@ -1,5 +1,4 @@
-import { VITE_PLATFORM_URL } from "~/constants";
-import OBBExcelError, { CFError, handleErrors } from "~/functions/fetcher/errors";
+import ExcelError, { CFError, handleErrors } from "~/functions/fetcher/errors";
 
 
 test("handleErrors.objectLen1", () => {
@@ -16,7 +15,7 @@ test("handleErrors.objectLen1", () => {
   };
   expect(() => {
     handleErrors(errorResponse);
-  }).toThrowError("query -> Field required");
+  }).toThrow("query -> Field required");
 });
 
 test("handleErrors.objectLen2", () => {
@@ -25,10 +24,10 @@ test("handleErrors.objectLen2", () => {
       {
         type: "literal_error",
         loc: ["query", "provider"],
-        msg: "Input should be 'fmp' or 'polygon'",
+        msg: "Input should be 'provider_a' or 'provider_b'",
         input: "a",
         ctx: {
-          expected: "'fmp' or 'polygon'",
+          expected: "'provider_a' or 'provider_b'",
         },
         url: "https://errors.pydantic.dev/2.5/v/literal_error",
       },
@@ -46,41 +45,41 @@ test("handleErrors.objectLen2", () => {
   };
   expect(() => {
     handleErrors(errorResponse);
-  }).toThrowError(
-    "provider -> Input should be 'fmp' or 'polygon';\nperiod -> Input should be 'annual' or 'quarter'",
+  }).toThrow(
+    "provider -> Input should be 'provider_a' or 'provider_b';\nperiod -> Input should be 'annual' or 'quarter'",
   );
 });
 
 test("handleErrors.stringObject1", () => {
   const errorResponse = {
     detail:
-      "1 validation error for FMPEquityHistoricalQueryParams\ninterval\n  Input should be '1m', '5m', '15m', '30m', '1h', '4h' or '1d' [type=literal_error, input_value='xx', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.5/v/literal_error",
+      "1 validation error for EquityHistoricalQueryParams\ninterval\n  Input should be '1m', '5m', '15m', '30m', '1h', '4h' or '1d' [type=literal_error, input_value='xx', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.5/v/literal_error",
   };
   expect(() => {
     handleErrors(errorResponse);
-  }).toThrowError(
+  }).toThrow(
     "interval ->   Input should be '1m', '5m', '15m', '30m', '1h', '4h' or '1d'",
   );
 });
 
 test("handleErrors.stringObject2", () => {
   const errorResponse = {
-    detail: `[{'type': 'literal_error', 'loc': ('query', 'provider'), 'msg': "Input should be 'fmp', 'polygon' or 'tiingo'", 'input': 'f', 'ctx': {'expected': "'fmp', 'polygon' or 'tiingo'"}, 'url': 'https://errors.pydantic.dev/2.6/v/literal_error'}]`,
+    detail: `[{'type': 'literal_error', 'loc': ('query', 'provider'), 'msg': "Input should be 'provider_a', 'provider_b' or 'provider_c'", 'input': 'f', 'ctx': {'expected': "'provider_a', 'provider_b' or 'provider_c'"}, 'url': 'https://errors.pydantic.dev/2.6/v/literal_error'}]`,
   };
   expect(() => {
     handleErrors(errorResponse);
-  }).toThrowError('provider -> Input should be "fmp", "polygon" or "tiingo"');
+  }).toThrow('provider -> Input should be "provider_a", "provider_b" or "provider_c"');
 });
 
 test("handleErrors.stringPure", () => {
   const errorResponse = {
     detail:
-      "Error in FMP request -> Required String parameter 'date' is not present",
+      "Error in provider request -> Required String parameter 'date' is not present",
   };
   expect(() => {
     handleErrors(errorResponse);
-  }).toThrowError(
-    "Error in FMP request -> Required String parameter 'date' is not present",
+  }).toThrow(
+    "Error in provider request -> Required String parameter 'date' is not present",
   );
 });
 
@@ -88,25 +87,18 @@ test("handleErrors.fallBack", () => {
   const errorResponse = { detail: null };
   expect(() => {
     handleErrors(errorResponse);
-  }).toThrowError("Failed to fetch data.");
+  }).toThrow("Failed to fetch data.");
 });
 
-test("handleErrors.invalidToken", () => {
-  const errorResponse = { detail: "test error" };
-  expect(() => {
-    handleErrors(errorResponse, 401, VITE_PLATFORM_URL);
-  }).toThrowError("Sign in with Pro account.");
-});
-
-test("OBBExcelErrorRandomError", () => {
+test("ExcelErrorRandomError", () => {
   const error = new Error("This is an error message");
   expect(() => {
-    OBBExcelError(error);
-  }).toThrowError("This is an error message");
+    ExcelError(error);
+  }).toThrow("This is an error message");
 });
 
-test("OBBExcelErrorCFError", () => {
+test("ExcelErrorCFError", () => {
   const error = CFError("This is an error message");
-  const result = OBBExcelError(error);
-  expect(result).toEqual([["#OBB!: This is an error message"]]);
+  const result = ExcelError(error);
+  expect(result).toEqual([["#ERROR!: This is an error message"]]);
 });

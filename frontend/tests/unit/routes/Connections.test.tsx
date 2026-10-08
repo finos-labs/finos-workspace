@@ -8,6 +8,7 @@ import type { BackendPermissionsT } from "~/api/user_roles.api";
 import type { ButtonProps } from "~/components/ds/atoms/Button";
 import type { ExternalCopilotHolder } from "~/lib/state/copilot";
 import ConnectionsPage from "~/routes/Connections";
+import { partial, required } from "../mocks";
 
 const {
   mockDeleteApiSource,
@@ -67,25 +68,28 @@ vi.mock("@tanstack/react-query", () => ({
 }));
 
 vi.mock("~/lib/state/backendConnector", () => ({
-  useShallowBackendConnectorStore: (selector: any) =>
-    mockUseShallowBackendConnectorStore(selector),
+  useShallowBackendConnectorStore: (
+    selector: (state: Record<string, unknown>) => unknown,
+  ) => mockUseShallowBackendConnectorStore(selector),
 }));
 
 vi.mock("~/lib/state/copilot", () => ({
-  useShallowCopilotStore: (selector: any) => mockUseShallowCopilotStore(selector),
+  useShallowCopilotStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    mockUseShallowCopilotStore(selector),
 }));
 
 vi.mock("~/lib/state/permissions", () => ({
-  useShallowPermissionsStore: (selector: any) =>
+  useShallowPermissionsStore: (selector: (state: Record<string, unknown>) => unknown) =>
     mockUseShallowPermissionsStore(selector),
 }));
 
 vi.mock("~/lib/state/theme", () => ({
-  useShallowThemeStore: (selector: any) => mockUseShallowThemeStore(selector),
+  useShallowThemeStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    mockUseShallowThemeStore(selector),
 }));
 
 vi.mock("~/lib/utils", () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
 
 vi.mock("~/components/LayoutAuth/Skeleton/SettingsLayout", () => ({
@@ -308,8 +312,8 @@ const mockExternalCopilotHolders: ExternalCopilotHolder[] = [
     url: "https://api.example.com",
     headers: {},
     copilots: [
-      { id: "agent-1", name: "Agent 1", description: "Test agent" },
-      { id: "agent-2", name: "Agent 2", description: "Test agent 2" },
+      { id: "agent-1", name: "Agent 1", description: "Test agent", endpoints: {} },
+      { id: "agent-2", name: "Agent 2", description: "Test agent 2", endpoints: {} },
     ],
   },
 ];
@@ -327,72 +331,80 @@ const mockSharedBackends: BackendPermissionsT[] = [
 ];
 
 function setupDefaultMocks() {
-  mockUseShallowBackendConnectorStore.mockImplementation((selector: any) =>
-    selector({
-      apiSources: mockApiSources,
-      updateApiSources: mockUpdateApiSources,
-      removeApiSource: mockRemoveApiSource,
-      refreshApiSourceById: mockRefreshApiSourceById,
-      deleteApiSource: mockDeleteApiSource,
-    }),
+  mockUseShallowBackendConnectorStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        apiSources: mockApiSources,
+        updateApiSources: mockUpdateApiSources,
+        removeApiSource: mockRemoveApiSource,
+        refreshApiSourceById: mockRefreshApiSourceById,
+        deleteApiSource: mockDeleteApiSource,
+      }),
   );
 
-  mockUseShallowCopilotStore.mockImplementation((selector: any) =>
-    selector({
-      externalCopilotHolders: mockExternalCopilotHolders,
-      setExternalCopilotHolders: mockSetExternalCopilotHolders,
-    }),
+  mockUseShallowCopilotStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        externalCopilotHolders: mockExternalCopilotHolders,
+        setExternalCopilotHolders: mockSetExternalCopilotHolders,
+      }),
   );
 
-  mockUseShallowPermissionsStore.mockImplementation((selector: any) =>
-    selector({
-      permissions: {
-        backends: mockSharedBackends,
-        files: [],
-        prompts: [],
-      },
-    }),
+  mockUseShallowPermissionsStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        permissions: {
+          backends: mockSharedBackends,
+          files: [],
+          prompts: [],
+        },
+      }),
   );
 
-  mockUseShallowThemeStore.mockImplementation((selector: any) =>
-    selector({
-      setManageAppDialog: mockSetManageAppDialog,
-    }),
+  mockUseShallowThemeStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        setManageAppDialog: mockSetManageAppDialog,
+      }),
   );
 }
 
 function setupEmptyMocks() {
-  mockUseShallowBackendConnectorStore.mockImplementation((selector: any) =>
-    selector({
-      apiSources: [],
-      updateApiSources: mockUpdateApiSources,
-      removeApiSource: mockRemoveApiSource,
-      refreshApiSourceById: mockRefreshApiSourceById,
-      deleteApiSource: mockDeleteApiSource,
-    }),
+  mockUseShallowBackendConnectorStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        apiSources: [],
+        updateApiSources: mockUpdateApiSources,
+        removeApiSource: mockRemoveApiSource,
+        refreshApiSourceById: mockRefreshApiSourceById,
+        deleteApiSource: mockDeleteApiSource,
+      }),
   );
 
-  mockUseShallowCopilotStore.mockImplementation((selector: any) =>
-    selector({
-      externalCopilotHolders: [],
-      setExternalCopilotHolders: mockSetExternalCopilotHolders,
-    }),
+  mockUseShallowCopilotStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        externalCopilotHolders: [],
+        setExternalCopilotHolders: mockSetExternalCopilotHolders,
+      }),
   );
 
-  mockUseShallowPermissionsStore.mockImplementation((selector: any) =>
-    selector({
-      permissions: {
-        backends: [],
-        files: [],
-        prompts: [],
-      },
-    }),
+  mockUseShallowPermissionsStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        permissions: {
+          backends: [],
+          files: [],
+          prompts: [],
+        },
+      }),
   );
 
-  mockUseShallowThemeStore.mockImplementation((selector: any) =>
-    selector({
-      setManageAppDialog: mockSetManageAppDialog,
-    }),
+  mockUseShallowThemeStore.mockImplementation(
+    (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        setManageAppDialog: mockSetManageAppDialog,
+      }),
   );
 }
 
@@ -872,7 +884,7 @@ describe("ConnectionsPage", () => {
       const urlElement = screen.getByText("https://api.example.com");
       const copyButton = urlElement.parentElement?.querySelector("button");
       expect(copyButton).toBeTruthy();
-      await user.click(copyButton!);
+      await user.click(required(copyButton));
 
       await waitFor(() => {
         expect(mockWriteText).toHaveBeenCalledWith("https://api.example.com");
@@ -945,20 +957,19 @@ describe("ConnectionsPage", () => {
 
   describe("Progressive Loading", () => {
     const fetchingQuery = () =>
-      ({
+      partial<ReturnType<typeof useQuery>>({
         isFetching: true,
         data: null,
         refetch: vi.fn().mockResolvedValue({}),
-      }) as any;
+      });
 
     afterEach(() => {
-      vi.mocked(useQuery).mockImplementation(
-        () =>
-          ({
-            isFetching: false,
-            data: null,
-            refetch: vi.fn().mockResolvedValue({}),
-          }) as any,
+      vi.mocked(useQuery).mockImplementation(() =>
+        partial<ReturnType<typeof useQuery>>({
+          isFetching: false,
+          data: null,
+          refetch: vi.fn().mockResolvedValue({}),
+        }),
       );
     });
 
@@ -982,37 +993,40 @@ describe("ConnectionsPage", () => {
 
     it("shows a validating indicator on rows that are still pending", () => {
       vi.mocked(useQuery).mockImplementation(fetchingQuery);
-      mockUseShallowBackendConnectorStore.mockImplementation((selector: any) =>
-        selector({
-          apiSources: [
-            mockApiSources[0],
-            {
-              id: "backend-pending",
-              uuid: "uuid-pending",
-              name: "Pending Backend",
-              url: "https://pending.example.com",
-              widgets: {},
-              templates: [],
-              status: "pending" as const,
-              createdDate: "2024-01-05T00:00:00Z",
-            },
-          ],
-          updateApiSources: mockUpdateApiSources,
-          removeApiSource: mockRemoveApiSource,
-          refreshApiSourceById: mockRefreshApiSourceById,
-          deleteApiSource: mockDeleteApiSource,
-        }),
+      mockUseShallowBackendConnectorStore.mockImplementation(
+        (selector: (state: Record<string, unknown>) => unknown) =>
+          selector({
+            apiSources: [
+              mockApiSources[0],
+              {
+                id: "backend-pending",
+                uuid: "uuid-pending",
+                name: "Pending Backend",
+                url: "https://pending.example.com",
+                widgets: {},
+                templates: [],
+                status: "pending" as const,
+                createdDate: "2024-01-05T00:00:00Z",
+              },
+            ],
+            updateApiSources: mockUpdateApiSources,
+            removeApiSource: mockRemoveApiSource,
+            refreshApiSourceById: mockRefreshApiSourceById,
+            deleteApiSource: mockDeleteApiSource,
+          }),
       );
       renderConnections();
 
       const pendingRow = screen.getByText("Pending Backend").closest("tr");
       expect(pendingRow).toBeTruthy();
-      expect(within(pendingRow!).getByTestId("icon-mdi-loading")).toBeInTheDocument();
+      expect(
+        within(required(pendingRow)).getByTestId("icon-mdi-loading"),
+      ).toBeInTheDocument();
 
       const successRow = screen.getByText("My Backend").closest("tr");
       expect(successRow).toBeTruthy();
       expect(
-        within(successRow!).queryByTestId("icon-mdi-loading"),
+        within(required(successRow)).queryByTestId("icon-mdi-loading"),
       ).not.toBeInTheDocument();
     });
   });

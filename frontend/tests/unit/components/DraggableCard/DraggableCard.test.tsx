@@ -4,6 +4,7 @@ import DraggableCard from "~/components/DraggableCard/DraggableCard";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { useTabContext } from "~/lib/contexts/TabContext";
+import { partial } from "../../mocks";
 
 // Mock the necessary hooks and components
 vi.mock("~/components/Widget.context", () => ({
@@ -55,13 +56,15 @@ vi.mock("~/components/DraggableCard/SetLoadingOnResize", () => ({
 }));
 
 describe("DraggableCard", () => {
-  const mockUseWidgetContext = useWidgetContext as any;
-  const mockUseTabContext = useTabContext as any;
+  const mockUseWidgetContext = vi.mocked(useWidgetContext);
+  const mockUseTabContext = vi.mocked(useTabContext);
 
   beforeEach(() => {
-    mockUseTabContext.mockReturnValue({
-      isShared: false,
-    });
+    mockUseTabContext.mockReturnValue(
+      partial({
+        isShared: false,
+      }),
+    );
 
     // Reset the useStateReducer mock to default state
     vi.mocked(useStateReducer).mockReturnValue([
@@ -71,23 +74,25 @@ describe("DraggableCard", () => {
   });
 
   it("renders normally when widget ID is not blocked", () => {
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "widget-123",
-          widgetId: "widget-123",
-          name: "Test Widget",
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "widget-123",
+            widgetId: "widget-123",
+            name: "Test Widget",
+          },
         },
-      },
-      widgetFromJSON: null,
-      widget: {
-        sourceId: "source-1",
-        widgetId: "widget-123",
-        external: false,
-        endpoint: { url: "https://example.com" },
-        sourceName: "Test Source",
-      },
-    });
+        widgetFromJSON: null,
+        widget: {
+          sourceId: "source-1",
+          widgetId: "widget-123",
+          external: false,
+          endpoint: { url: "https://example.com" },
+          sourceName: "Test Source",
+        },
+      }),
+    );
 
     render(
       <DraggableCard title="Test Widget">
@@ -100,23 +105,25 @@ describe("DraggableCard", () => {
   });
 
   it("shows error message when widget is blocked", () => {
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "blocked-widget",
-          widgetId: "blocked-widget",
-          name: "Blocked Widget",
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "blocked-widget",
+            widgetId: "blocked-widget",
+            name: "Blocked Widget",
+          },
         },
-      },
-      widgetFromJSON: null,
-      widget: {
-        sourceId: "source-1",
-        widgetId: "blocked-widget",
-        external: false,
-        endpoint: { url: "https://example.com" },
-        sourceName: "Test Source",
-      },
-    });
+        widgetFromJSON: null,
+        widget: {
+          sourceId: "source-1",
+          widgetId: "blocked-widget",
+          external: false,
+          endpoint: { url: "https://example.com" },
+          sourceName: "Test Source",
+        },
+      }),
+    );
 
     // Mock the state reducer to simulate blocked access
     vi.mocked(useStateReducer).mockReturnValue([
@@ -141,23 +148,25 @@ describe("DraggableCard", () => {
   });
 
   it("renders normally when widget is not blocked", () => {
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "widget-123",
-          widgetId: "widget-123",
-          name: "Normal Widget",
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "widget-123",
+            widgetId: "widget-123",
+            name: "Normal Widget",
+          },
         },
-      },
-      widgetFromJSON: null,
-      widget: {
-        sourceId: "source-1",
-        widgetId: "widget-123",
-        external: false,
-        endpoint: { url: "https://example.com" },
-        sourceName: "Test Source",
-      },
-    });
+        widgetFromJSON: null,
+        widget: {
+          sourceId: "source-1",
+          widgetId: "widget-123",
+          external: false,
+          endpoint: { url: "https://example.com" },
+          sourceName: "Test Source",
+        },
+      }),
+    );
 
     render(
       <DraggableCard title="Normal Widget" isBlocked={false}>
@@ -172,24 +181,26 @@ describe("DraggableCard", () => {
   });
 
   it("shows error message when widget is blocked even if it's a shared resource", () => {
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "blocked-shared-widget",
-          widgetId: "blocked-shared-widget",
-          name: "Blocked Shared Widget",
-          isSharedWidget: true,
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "blocked-shared-widget",
+            widgetId: "blocked-shared-widget",
+            name: "Blocked Shared Widget",
+            isSharedWidget: true,
+          },
         },
-      },
-      widgetFromJSON: null,
-      widget: {
-        sourceId: "source-1",
-        widgetId: "blocked-shared-widget",
-        external: false,
-        endpoint: { url: "https://example.com" },
-        sourceName: "Test Source",
-      },
-    });
+        widgetFromJSON: null,
+        widget: {
+          sourceId: "source-1",
+          widgetId: "blocked-shared-widget",
+          external: false,
+          endpoint: { url: "https://example.com" },
+          sourceName: "Test Source",
+        },
+      }),
+    );
 
     // Mock the state reducer to simulate blocked access
     vi.mocked(useStateReducer).mockReturnValue([
@@ -214,23 +225,25 @@ describe("DraggableCard", () => {
   });
 
   it("shows error message when widget ID is in blocked list", () => {
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "price-target-analyst",
-          widgetId: "price-target-analyst",
-          name: "Price Target Analyst Widget",
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "price-target-analyst",
+            widgetId: "price-target-analyst",
+            name: "Price Target Analyst Widget",
+          },
         },
-      },
-      widgetFromJSON: null,
-      widget: {
-        sourceId: "source-1",
-        widgetId: "price-target-analyst",
-        external: false,
-        endpoint: { url: "https://example.com" },
-        sourceName: "Test Source",
-      },
-    });
+        widgetFromJSON: null,
+        widget: {
+          sourceId: "source-1",
+          widgetId: "price-target-analyst",
+          external: false,
+          endpoint: { url: "https://example.com" },
+          sourceName: "Test Source",
+        },
+      }),
+    );
 
     // Mock the state reducer to simulate blocked access
     vi.mocked(useStateReducer).mockReturnValue([
@@ -255,23 +268,25 @@ describe("DraggableCard", () => {
   });
 
   it("renders normally when widget ID is not in blocked list", () => {
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "widget-not-blocked",
-          widgetId: "widget-not-blocked",
-          name: "Normal Widget",
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "widget-not-blocked",
+            widgetId: "widget-not-blocked",
+            name: "Normal Widget",
+          },
         },
-      },
-      widgetFromJSON: null,
-      widget: {
-        sourceId: "source-1",
-        widgetId: "widget-not-blocked",
-        external: false,
-        endpoint: { url: "https://example.com" },
-        sourceName: "Test Source",
-      },
-    });
+        widgetFromJSON: null,
+        widget: {
+          sourceId: "source-1",
+          widgetId: "widget-not-blocked",
+          external: false,
+          endpoint: { url: "https://example.com" },
+          sourceName: "Test Source",
+        },
+      }),
+    );
 
     render(
       <DraggableCard title="Normal Widget">
@@ -286,23 +301,25 @@ describe("DraggableCard", () => {
   });
 
   it("renders normally when external widget has blocked ID", () => {
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "yield_curve",
-          widgetId: "yield_curve",
-          name: "External Yield Curve Widget",
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "yield_curve",
+            widgetId: "yield_curve",
+            name: "External Yield Curve Widget",
+          },
         },
-      },
-      widgetFromJSON: null,
-      widget: {
-        sourceId: "source-1",
-        widgetId: "yield_curve", // This is in BLOCKED_WIDGET_IDS
-        external: true, // But it's external, so should not be blocked
-        endpoint: { url: "https://external-api.com" },
-        sourceName: "External Source",
-      },
-    });
+        widgetFromJSON: null,
+        widget: {
+          sourceId: "source-1",
+          widgetId: "yield_curve", // This is in BLOCKED_WIDGET_IDS
+          external: true, // But it's external, so should not be blocked
+          endpoint: { url: "https://external-api.com" },
+          sourceName: "External Source",
+        },
+      }),
+    );
 
     render(
       <DraggableCard title="External Yield Curve Widget">

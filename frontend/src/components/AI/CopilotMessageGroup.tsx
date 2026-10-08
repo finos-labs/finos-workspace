@@ -1,6 +1,14 @@
 import clsx from "clsx";
 import dayjs from "dayjs";
-import { Fragment, memo, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  memo,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useDebounceValue, useLocalStorage } from "usehooks-ts";
 import {
   type Message,
@@ -133,7 +141,13 @@ function getHighestEventType(message: Message, highestType: string): string {
 }
 
 export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
-  const { group, groupIndex, isLastGroup, previousGroupRole, allGroups } = props;
+  const {
+    group,
+    groupIndex,
+    isLastGroup = false,
+    previousGroupRole,
+    allGroups,
+  } = props;
 
   const [streamingStatus, loading] = useShallowStreamingStore((s) => [
     s.streamingStatus,
@@ -161,7 +175,10 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
 
   // Group event type is the highest severity of the messages in the group
   const { messagesMemo, groupEventType } = useMemo(() => {
-    const reduced = group.messages.reduce(
+    const reduced = group.messages.reduce<{
+      messagesMemo: ReactNode[];
+      groupEventType: string | null;
+    }>(
       (acc, message, messageIndex) => {
         acc.messagesMemo.push(
           <div
@@ -249,8 +266,8 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
               isExpanded={isGroupExpanded}
               isExpandable={true}
               toggleDropdown={() => setIsGroupExpanded((prev) => !prev)}
-              content={group.groupTitle}
-              eventType={groupEventType}
+              content={group.groupTitle ?? ""}
+              eventType={groupEventType ?? "INFO"}
               showIcon={true}
               isStepByStepInProgress={isStepByStepInProgress}
               groupIndex={groupIndex}
@@ -325,7 +342,7 @@ export const AgentName = memo(
     );
 
     const agentName = useMemo(() => {
-      if (props.senderId === "openbb-copilot") return "OpenBB Copilot";
+      if (props.senderId === "default-copilot") return "Copilot";
       const senderName = externalCopilotHolders
         .flatMap((holder) => holder.copilots || [])
         .find((copilot) => copilot.id === props.senderId)?.name;

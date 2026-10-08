@@ -59,8 +59,8 @@ export const usePermissionsStore = create<PermissionsState>()(
   })),
 );
 
-export function useShallowPermissionsStore<S extends PermissionsState, T>(
-  selector: Selector<S, T>,
+export function useShallowPermissionsStore<T>(
+  selector: Selector<PermissionsState, T>,
 ): T {
   return usePermissionsStore(useShallow(selector));
 }

@@ -13,61 +13,16 @@ if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
 import pytest
-from uuid import uuid4
 from sqlalchemy import text
 
 
-class TestInvites:
-    """Tests for /pro/invites/* endpoints"""
-
-    @pytest.mark.asyncio
-    async def test_get_remaining_invites_unauthenticated(self, client):
-        """Should fail without auth"""
-        response = await client.get("/pro/invites/remaining")
-        assert response.status_code in {401, 403}
-        # Validate error response structure
-        data = response.json()
-        assert isinstance(data, dict)
-        assert "detail" in data or "message" in data or "error" in data
-
-    @pytest.mark.asyncio
-    async def test_get_remaining_invites_authenticated(self, auth_client):
-        """Should return remaining invites count"""
-        response = await auth_client.get("/pro/invites/remaining")
-        # 200 for success, 400/404 if feature not available
-        assert response.status_code in {200, 400, 404}
-
-    @pytest.mark.asyncio
-    async def test_create_invite_unauthenticated(self, client):
-        """Should fail without auth"""
-        response = await client.post(
-            "/pro/invites/create", json={"email": "test@example.com"}
-        )
-        assert response.status_code in {401, 403, 422}
-        # Validate error response structure
-        data = response.json()
-        assert isinstance(data, dict)
-        assert "detail" in data or "message" in data or "error" in data
-
-    @pytest.mark.asyncio
-    async def test_create_invite_authenticated(self, auth_client):
-        """Should create an invite - may fail due to missing configuration"""
-        response = await auth_client.post(
-            "/pro/invites/create",
-            json={"email": f"invite_{uuid4().hex[:8]}@example.com"},
-        )
-        # 200/201 for success, 400/422 for validation, 403 if no invites remaining
-        # 500 may occur if email service not configured
-        assert response.status_code in {200, 201, 400, 403, 422, 500}
-
-
 class TestDisplaySettings:
-    """Tests for /pro/display-settings endpoint"""
+    """Tests for /app/display-settings endpoint"""
 
     @pytest.mark.asyncio
     async def test_display_settings_unauthenticated(self, client):
         """Should fail without auth"""
-        response = await client.post("/pro/display-settings", json={})
+        response = await client.post("/app/display-settings", json={})
         assert response.status_code in {401, 403, 422}
         # Validate error response structure
         data = response.json()
@@ -78,7 +33,7 @@ class TestDisplaySettings:
     async def test_display_settings_authenticated(self, auth_client):
         """Should save display settings"""
         response = await auth_client.post(
-            "/pro/display-settings", json={"theme": "dark", "language": "en"}
+            "/app/display-settings", json={"theme": "dark", "language": "en"}
         )
         # 200 for success, 422 for invalid data
         assert response.status_code in {200, 422}
@@ -232,47 +187,6 @@ class TestUserInputValidation:
 
 
 # =============================================================================
-# INVITE INPUT VALIDATION TESTS
-# =============================================================================
-
-
-class TestInviteInputValidation:
-    """Tests for invite endpoint input validation"""
-
-    @pytest.mark.asyncio
-    async def test_create_invite_invalid_email(self, auth_client):
-        """Creating invite with invalid email should fail"""
-        response = await auth_client.post(
-            "/pro/invites/create", json={"email": "not-an-email"}
-        )
-        assert response.status_code in {400, 422}
-
-    @pytest.mark.asyncio
-    async def test_create_invite_empty_email(self, auth_client):
-        """Creating invite with empty email should fail"""
-        response = await auth_client.post("/pro/invites/create", json={"email": ""})
-        assert response.status_code in {400, 422}
-
-    @pytest.mark.asyncio
-    async def test_create_invite_sql_injection_email(self, auth_client):
-        """SQL injection in email should be handled safely"""
-        response = await auth_client.post(
-            "/pro/invites/create",
-            json={"email": "'; DROP TABLE users; --@test.com"},
-        )
-        assert response.status_code in {400, 422, 500}
-
-    @pytest.mark.asyncio
-    async def test_create_invite_very_long_email(self, auth_client):
-        """Very long email should be rejected"""
-        response = await auth_client.post(
-            "/pro/invites/create",
-            json={"email": "a" * 300 + "@example.com"},
-        )
-        assert response.status_code in {400, 422, 500}
-
-
-# =============================================================================
 # DISPLAY SETTINGS VALIDATION TESTS
 # =============================================================================
 
@@ -284,7 +198,7 @@ class TestDisplaySettingsValidation:
     async def test_display_settings_invalid_theme(self, auth_client):
         """Invalid theme value should be handled"""
         response = await auth_client.post(
-            "/pro/display-settings",
+            "/app/display-settings",
             json={"theme": "invalid_theme_value"},
         )
         # May accept any string or validate
@@ -295,7 +209,7 @@ class TestDisplaySettingsValidation:
         """SQL injection in display settings should be handled safely - verify DB"""
         sql_payload = "'; DROP TABLE user; --"
         response = await auth_client.post(
-            "/pro/display-settings",
+            "/app/display-settings",
             json={"theme": sql_payload},
         )
         assert response.status_code in {200, 422}
@@ -310,7 +224,7 @@ class TestDisplaySettingsValidation:
         """XSS in display settings should be handled safely"""
         xss_payload = "<script>alert('xss')</script>"
         response = await auth_client.post(
-            "/pro/display-settings",
+            "/app/display-settings",
             json={"theme": xss_payload},
         )
 
@@ -323,7 +237,7 @@ class TestDisplaySettingsValidation:
     async def test_display_settings_nested_object(self, auth_client):
         """Nested objects in display settings should be handled"""
         response = await auth_client.post(
-            "/pro/display-settings",
+            "/app/display-settings",
             json={
                 "theme": "dark",
                 "extra": {"nested": "value", "deep": {"key": "value"}},
@@ -393,17 +307,6 @@ class TestUserCrossUserSecurity:
                 assert (
                     data["first_name"] != "AttemptedHijack" or True
                 )  # May not have first_name
-
-    @pytest.mark.asyncio
-    async def test_invites_isolated_per_user(self, auth_client, second_user_client):
-        """Each user should only see their own invites"""
-        # Get invites for both users
-        response1 = await auth_client.get("/pro/invites/remaining")
-        response2 = await second_user_client.get("/pro/invites/remaining")
-
-        # Both should work but be isolated
-        assert response1.status_code in {200, 400, 404}
-        assert response2.status_code in {200, 400, 404}
 
 
 # =============================================================================

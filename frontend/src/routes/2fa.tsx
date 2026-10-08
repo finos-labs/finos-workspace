@@ -7,7 +7,7 @@ export default function Setup2FA() {
         <div className="flex justify-center">
           <img
             src="/assets/images/logo.svg"
-            alt="OpenBB"
+            alt="Workspace"
             className="border-none shadow-none"
           />
         </div>

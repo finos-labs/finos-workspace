@@ -1,7 +1,6 @@
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext } from "react";
 
-// biome-ignore format: off
-export type DcTabT = "single" | "backend" | "database" | "snowflake" | "file"| "website" | "rss" | "copilot_table" | "youtube";
+export type DcTabT = "backend" | "file" | "website";
 
 type DataConnectorContextType = {
   inDashboard: boolean;
@@ -32,11 +31,10 @@ DataConnectorContext.displayName = "DataConnectorContext";
 
 export function useDataConnectorContext() {
   const context = useContext(DataConnectorContext);
-  const contextMemo = useMemo(() => context, [context]);
   if (!context) {
     throw new Error(
       "useDataConnectorContext must be used within a DataConnectorProvider",
     );
   }
-  return contextMemo;
+  return context;
 }

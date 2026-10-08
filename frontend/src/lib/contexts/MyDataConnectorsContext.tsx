@@ -8,10 +8,11 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { createWidgetStudioWidget } from "~/components/AI/hooks/useGetAppWidgets";
 import type {
+  BackendItem,
   ItemType,
   POSSIBLE_SOURCES,
+  WidgetCardItem,
 } from "~/components/DataConnectors/NewComponents/types";
 import type { WidgetT } from "~/components/types";
 import {
@@ -19,78 +20,50 @@ import {
   useUserResourcePermissions,
 } from "~/hooks/useUserResourcePermissions";
 import {
-  type SingleWidget,
   type Source,
   type StoredFile,
   useShallowBackendConnectorStore,
   type WidgetMetadataItem,
 } from "~/lib/state/backendConnector";
-import type { Database, SnowflakeDatabase } from "~/lib/state/dataConnector";
 import WIDGETS from "~/lib/widgets.json";
 import type { WidgetType } from "~/utils/zodForms";
-import { inSnowflakeNativeApp } from "../constants";
+import { getFileWidgetType } from "../constants";
 import { useAppStore } from "../state/app";
+import { isWidgetVizType } from "../types/app";
 import { convertAdvancedBackend, generateRandomName, uuidv4 } from "../utils";
 
+/** What the user picked in My Data Connectors: a widget of a backend, a stored file or a feed, or a whole backend. */
+export type SelectedWidget = WidgetCardItem &
+  Partial<Omit<WidgetType, keyof WidgetCardItem>> & {
+    parentName?: string;
+    extension?: string;
+    dataKey?: string | null;
+    storage?: WidgetT["storage"];
+    backendId?: string;
+  };
+
 export const createDashboardWidget = (
-  widget: any,
+  widget: SelectedWidget,
   widgetType: string,
 ): WidgetT | null => {
   switch (widgetType) {
     case "file":
+      if (!(widget.url && widget.extension)) return null;
       return {
         id: uuidv4(),
-        endpoint: widget.url,
-        type: "table" as const,
+        endpoint: { url: widget.url, method: "GET" },
+        type: getFileWidgetType(widget.extension),
         external: true,
         category: widget.category ?? "Others",
         subCategory: widget.subCategory,
         widgetId: `file-${widget.id}` as const,
-        dataKey: widget.dataKey,
+        dataKey: widget.dataKey ?? undefined,
         description: widget.description,
         name: widget.name,
         gridData: { w: 20, h: widget.extension === "pdf" ? 20 : 10 },
-        data: {
-          dataKey: widget.dataKey,
-          table: { enableCharts: true },
-        },
-        source: widget.source,
+        data: { dataKey: widget.dataKey ?? undefined },
+        source: widget.source ?? undefined,
         connectionType: "file" as const,
-      };
-    case "single":
-      return {
-        id: uuidv4(),
-        name: widget.name,
-        description: widget.description,
-        category: widget.category ?? "Others",
-        subCategory: widget.subCategory,
-        endpoint: widget.endpoint,
-        type: "table" as const,
-        external: true,
-        widgetId: widget.widgetId,
-        dataKey: widget.dataKey,
-        gridData: { w: 20, h: 7 },
-        data: { table: { showAll: true, enableCharts: true } },
-        source: widget.source,
-        connectionType: "single" as const,
-        endpointHeaders: widget.endpointHeaders,
-      };
-    case "rss":
-      return {
-        id: uuidv4(),
-        widgetId: `rss_viewer-${widget.id}`,
-        name: widget.name,
-        description: widget.description,
-        category: widget.category ?? "Others",
-        subCategory: widget.subCategory,
-        source: widget.source,
-        type: "table" as const,
-        external: true,
-        storage: {
-          feeds: widget.storage?.feeds,
-        },
-        data: {},
-        connectionType: "widgetMetadata" as const,
       };
     case "website":
       return {
@@ -100,72 +73,12 @@ export const createDashboardWidget = (
         description: widget.description,
         category: widget.category ?? "Others",
         subCategory: widget.subCategory,
-        source: widget.source,
+        source: widget.source ?? undefined,
         external: true,
         storage: widget.storage,
         connectionType: "widgetMetadata" as const,
         type: "iframe",
         data: {},
-      };
-    case "youtube":
-      return {
-        id: uuidv4(),
-        widgetId: `youtube-${widget.id}`,
-        name: widget.name,
-        description: widget.description,
-        category: widget.category ?? "Others",
-        subCategory: widget.subCategory,
-        source: widget.source,
-        external: true,
-        storage: widget.storage,
-        connectionType: "widgetMetadata" as const,
-        type: "youtube",
-        data: {},
-      };
-    case "note":
-      return {
-        id: uuidv4(),
-        widgetId: `rich_note-${widget.id}`,
-        name: widget.name,
-        description: widget.description,
-        category: widget.category ?? "Others",
-        subCategory: widget.subCategory,
-        external: true,
-        source: widget.source,
-        storage: widget.storage,
-        connectionType: "widgetMetadata" as const,
-        data: {},
-        type: "note",
-      };
-    case "copilot_chart":
-    case "copilot_table":
-      return {
-        id: uuidv4(),
-        widgetId: `copilot_table-${widget.id}`,
-        name: widget.name,
-        description: widget.description,
-        category: widget.category ?? "Others",
-        subCategory: widget.subCategory,
-        connectionType: "widgetMetadata" as const,
-        source: widget.source,
-        storage: widget.storage,
-        data: { table: { enableCharts: true } },
-        type: "table",
-      };
-    case "ag_chart":
-    case "ag_chart_from_table":
-      return {
-        id: uuidv4(),
-        widgetId: `${widgetType}-${widget.id}`,
-        name: widget.name,
-        description: widget.description,
-        category: widget.category ?? "Others",
-        subCategory: widget.subCategory,
-        connectionType: "widgetMetadata" as const,
-        source: widget.source,
-        storage: widget.storage,
-        data: {},
-        type: "custom",
       };
     case "html":
       return {
@@ -176,38 +89,37 @@ export const createDashboardWidget = (
         category: widget.category ?? "Others",
         subCategory: widget.subCategory,
         connectionType: "widgetMetadata" as const,
-        source: widget.source,
+        source: widget.source ?? undefined,
         storage: widget.storage,
         data: {},
         type: "html",
       };
     case "backend": {
+      const { type, ...backendWidget } = widget;
+      if (!isWidgetVizType(type)) return null;
+      // The widget is a definition the backend returned, which has nulls where a widget has nothing
       return {
-        ...(widget as any),
+        ...backendWidget,
+        type,
+        widgetType: "backend",
         id: uuidv4(),
         external: true,
         sourceId: widget.backendId,
-      };
+      } as WidgetT;
     }
-    case "widget_studio":
-      return {
-        ...widget,
-        id: uuidv4(),
-        widgetId: `widget_studio-${widget.id}`,
-        category: widget.category ?? "Widget Studio",
-        external: true,
-        connectionType: "widgetMetadata" as const,
-      };
     default:
       return null;
   }
 };
 
-export const findSelectedWidgets = (allElems: any[], selectedWidgets: Set<string>) => {
-  const foundWidgets: any[] = [];
+export const findSelectedWidgets = (
+  allElems: ElementType[],
+  selectedWidgets: Set<string>,
+) => {
+  const foundWidgets: SelectedWidget[] = [];
 
   allElems.forEach((elem) => {
-    elem.items.forEach((item) => {
+    elem.items.forEach((item: WidgetCardItem & { widgets?: WidgetCardItem[] }) => {
       if (elem.type === "backend" && item.widgets?.length === 0) {
         // means backend couldnt connect to see the widgets so we want to select only backend not the widgets inside
         foundWidgets.push({
@@ -215,7 +127,7 @@ export const findSelectedWidgets = (allElems: any[], selectedWidgets: Set<string
           type: elem.type,
         });
       } else if ("widgets" in item && item.widgets) {
-        item.widgets.forEach((widget: any) => {
+        item.widgets.forEach((widget) => {
           if (selectedWidgets.has(widget.selectionId)) {
             foundWidgets.push({
               ...widget,
@@ -224,7 +136,7 @@ export const findSelectedWidgets = (allElems: any[], selectedWidgets: Set<string
             });
           }
         });
-      } else if (selectedWidgets.has(item.selectionId)) {
+      } else if (item.selectionId && selectedWidgets.has(item.selectionId)) {
         foundWidgets.push({
           ...item,
           widgetType: elem.type,
@@ -236,27 +148,18 @@ export const findSelectedWidgets = (allElems: any[], selectedWidgets: Set<string
   return foundWidgets;
 };
 
+/** The widgets that are selected and that a user can delete: not shared, and not the backends, which the Apps page manages. */
+export const findDeletableWidgets = (
+  allElems: ElementType[],
+  selectedWidgets: Set<string>,
+) =>
+  findSelectedWidgets(allElems, selectedWidgets).filter(
+    (elem) => !(elem.shared || elem.selectionId.startsWith("backend,")),
+  );
+
 export const FILE_TYPES = {
-  csv: ["csv"],
-  json: ["json"],
   pdf: ["pdf"],
-  excel: ["xlsx"],
-  image: ["png", "jpg", "jpeg", "gif"],
   text: ["txt", "md", "docx", "html"],
-};
-
-export type SQLWidget = {
-  id: number;
-  name: string;
-  description: string;
-  widgets?: (Database & { widgetId: string })[];
-};
-
-export type SnowflakeWidget = {
-  id: string;
-  name: string;
-  description: string;
-  widgets?: (SnowflakeDatabase & { widgetId: string })[];
 };
 
 export type StoredFileWidget = {
@@ -286,9 +189,6 @@ type SelectedWidgetsContextType = {
 };
 
 function formatType(type: string): string {
-  if (type === "image") {
-    return "Image";
-  }
   return type.toUpperCase();
 }
 
@@ -300,7 +200,7 @@ export function isFileRoot(type: string) {
 
 function formatFile(files: StoredFile[]): StoredFileWidget[] {
   const results: StoredFileWidget[] = [];
-  for (const key in FILE_TYPES) {
+  for (const key of Object.keys(FILE_TYPES) as (keyof typeof FILE_TYPES)[]) {
     const filtered: StoredFile[] = files.filter((file) =>
       FILE_TYPES[key].includes(file.extension),
     );
@@ -309,8 +209,7 @@ function formatFile(files: StoredFile[]): StoredFileWidget[] {
       widgetId: item.id ?? item.uuid,
       selectionId: `file,${key},${item.id ?? item.uuid}`,
     }));
-    const fileType = key === "excel" ? "EXCEL (XLSX)" : formatType(key);
-    const description = `${fileType} file uploads.`;
+    const description = `${formatType(key)} file uploads.`;
     if (filtered.length > 0) {
       results.push({
         id: key,
@@ -324,9 +223,9 @@ function formatFile(files: StoredFile[]): StoredFileWidget[] {
   return results;
 }
 
-function formatBackendWidgets(source: Source): WidgetType[] {
+function formatBackendWidgets(source: Source): BackendItem["widgets"] {
   if (source.id === "root") {
-    return Object.values(WIDGETS) as unknown as WidgetType[];
+    return Object.values(WIDGETS) as unknown as BackendItem["widgets"];
   }
 
   return convertAdvancedBackend(source).map((widget) => {
@@ -335,24 +234,20 @@ function formatBackendWidgets(source: Source): WidgetType[] {
       backendId: source.id,
       selectionId: `backend,${source.id},${widget.widgetId}`,
     };
-  }) as unknown as WidgetType[];
+  }) as unknown as BackendItem["widgets"];
 }
 
 const MyDataConnectorsContext = createContext<SelectedWidgetsContextType | null>(null);
 
-export function createAllElements<T extends boolean = false>(params: {
+export function createAllElements(params: {
   storedFiles: StoredFile[];
   apiSources: Source[];
-  singleWidgets?: SingleWidget[];
   widgetMetadata?: WidgetMetadataItem[];
-  rolePermissionsData?: UserResourcePermissionsT<T>;
+  rolePermissionsData?: UserResourcePermissionsT;
   withOthers?: boolean;
 }): ElementType[] {
-  const notInSnowflake = !inSnowflakeNativeApp;
-
   const {
     storedFiles,
-    singleWidgets,
     apiSources,
     widgetMetadata,
     rolePermissionsData,
@@ -371,7 +266,7 @@ export function createAllElements<T extends boolean = false>(params: {
 
   const ownedBackendIds = ownedBackends.reduce(
     (acc, backend) => {
-      acc[backend.uuid] = true;
+      if (backend.uuid) acc[backend.uuid] = true;
       return acc;
     },
     {} as Record<string, boolean>,
@@ -387,7 +282,7 @@ export function createAllElements<T extends boolean = false>(params: {
 
   const sharedBackendIds = rolePermissionsData?.backends?.reduce(
     (acc, backend) => {
-      acc[backend.uuid] = true;
+      if (backend.uuid) acc[backend.uuid] = true;
       return acc;
     },
     {} as Record<string, boolean>,
@@ -419,12 +314,12 @@ export function createAllElements<T extends boolean = false>(params: {
             ...item,
             widgets: formatBackendWidgets(item),
             selectionId: `backend,${item.uuid ?? item.id}`,
-            shared: sharedBackendIds?.[item.uuid] ?? false,
+            shared: (item.uuid && sharedBackendIds?.[item.uuid]) || false,
           })),
         ...sharedBackends,
       ],
     },
-    notInSnowflake && {
+    {
       type: "file",
       items: formatFile([
         ...(storedFiles?.map((file) => ({
@@ -444,26 +339,7 @@ export function createAllElements<T extends boolean = false>(params: {
       type: "others",
       items: withOthers
         ? [
-            notInSnowflake && {
-              type: "single",
-              name: "API Endpoints",
-              widgets: singleWidgets?.map((item) => ({
-                ...item,
-                selectionId: `single,${item.uuid ?? item.id ?? item.widgetId}`,
-              })),
-            },
-            notInSnowflake && {
-              type: "rss",
-              name: "RSS Feeds",
-              widgets: widgetMetadata
-                ?.filter((item) => item.widgetType === "rss_viewer")
-                ?.map((item) => ({
-                  ...item,
-                  id: item.widgetId,
-                  selectionId: `rss,${item.widgetId}`,
-                })),
-            },
-            notInSnowflake && {
+            {
               type: "website",
               name: "Iframes",
               widgets: widgetMetadata
@@ -474,88 +350,12 @@ export function createAllElements<T extends boolean = false>(params: {
                   selectionId: `website,${item.widgetId}`,
                 })),
             },
-            notInSnowflake && {
-              type: "youtube",
-              name: "YouTube",
-              widgets: widgetMetadata
-                ?.filter((item) => item.widgetType === "youtube")
-                ?.map((item) => ({
-                  ...item,
-                  id: item.widgetId,
-                  selectionId: `youtube,${item.widgetId}`,
-                })),
-            },
-            {
-              type: "note",
-              name: "Notes",
-              widgets: widgetMetadata
-                ?.filter((item) => item.widgetType === "rich_note")
-                ?.map((item) => ({
-                  ...item,
-                  id: item.widgetId,
-                  selectionId: `note,${item.widgetId}`,
-                })),
-              hideWhenEmpty: true,
-            },
           ].filter(Boolean)
         : [],
     },
     {
-      type: "user_widgets",
-      items: [
-        {
-          type: "ag_charts",
-          name: "Charts",
-          widgets: widgetMetadata
-            ?.filter(
-              (item) =>
-                item.widgetType === "ag_chart_from_table" ||
-                item.widgetType === "ag_chart",
-            )
-            ?.map((item) => ({
-              ...item,
-              id: item.widgetId,
-              selectionId: `${item.widgetType},${item.widgetId}`,
-            })),
-          hideWhenEmpty: true,
-        },
-      ],
-    },
-    {
       type: "ai_artifacts",
       items: [
-        {
-          type: "copilot_table",
-          name: "Tables",
-          widgets: widgetMetadata
-            ?.filter(
-              (item) =>
-                item.widgetType === "copilot_table" &&
-                item.storage?.chartView?.enabled !== true,
-            )
-            ?.map((item) => ({
-              ...item,
-              id: item.widgetId,
-              selectionId: `copilot_table,${item.widgetId}`,
-            })),
-          hideWhenEmpty: true,
-        },
-        {
-          type: "copilot_chart",
-          name: "Charts",
-          widgets: widgetMetadata
-            ?.filter(
-              (item) =>
-                item.widgetType === "copilot_table" &&
-                item.storage?.chartView?.enabled === true,
-            )
-            ?.map((item) => ({
-              ...item,
-              id: item.widgetId,
-              selectionId: `copilot_table,${item.widgetId}`,
-            })),
-          hideWhenEmpty: true,
-        },
         {
           type: "html",
           name: "HTML",
@@ -570,22 +370,11 @@ export function createAllElements<T extends boolean = false>(params: {
         },
       ],
     },
-    {
-      type: "widget_studio",
-      items:
-        widgetMetadata
-          ?.filter((item) => item.widgetType === "widget_studio")
-          ?.map((item) => ({
-            ...createWidgetStudioWidget(item),
-            id: item.widgetId,
-            selectionId: `widget_studio,${item.widgetId}`,
-          })) ?? [],
-    },
   ].filter(Boolean) as ElementType[];
 }
 
 export function getTypeToUse(type: string, selectionId: string, parentType?: string) {
-  const splitType = ["others", "ai_artifacts", "user_widgets"].some((t) => type === t);
+  const splitType = ["others", "ai_artifacts"].some((t) => type === t);
 
   return splitType ? selectionId.split(",")[0] : (parentType ?? type);
 }
@@ -597,10 +386,9 @@ export function MyDataConnectorsProvider({ children }: { children: ReactNode }) 
     error,
   } = useUserResourcePermissions();
 
-  const { storedFiles, singleWidgets, apiSources, widgetMetadata, isLoadingBackends } =
+  const { storedFiles, apiSources, widgetMetadata, isLoadingBackends } =
     useShallowBackendConnectorStore((s) => ({
       storedFiles: s.storedFiles,
-      singleWidgets: s.singleWidgets,
       apiSources: s.apiSources,
       widgetMetadata: s.widgetMetadata,
       isLoadingBackends: s.isLoadingBackends,
@@ -614,12 +402,11 @@ export function MyDataConnectorsProvider({ children }: { children: ReactNode }) 
     () =>
       createAllElements({
         storedFiles,
-        singleWidgets,
         apiSources,
         widgetMetadata,
         rolePermissionsData,
       }),
-    [storedFiles, singleWidgets, apiSources, widgetMetadata, rolePermissionsData],
+    [storedFiles, apiSources, widgetMetadata, rolePermissionsData],
   );
 
   const handleAddToDashboard = useCallback(

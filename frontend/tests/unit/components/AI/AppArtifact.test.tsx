@@ -1,7 +1,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Artifact from "~/components/AI/Artifact";
+import type { WidgetT } from "~/components/types";
 import { type ArtifactT, useCopilotStore } from "~/lib/state/copilot";
+import type { createCustomTemplateTab } from "~/lib/utils/createTemplates";
+import { nthLastCall } from "../../factories";
+import { partial } from "../../mocks";
 
 const mockNavigate = vi.fn();
 const mockAddTab = vi.fn();
@@ -21,15 +25,17 @@ const mockItems = {
   },
 };
 
+type CreateTabArgs = Parameters<typeof createCustomTemplateTab>[0];
+
 // createCustomTemplateTab is exercised in createTemplates.test.ts; here we only assert
 // the artifact wires the dashboard creation request correctly.
-const mockCreateCustomTemplateTab = vi.fn(async (args: any) => {
+const mockCreateCustomTemplateTab = vi.fn(async (args: CreateTabArgs) => {
   args.addTab?.({
     index: "built-dashboard",
     data: {
       name: "Built",
       type: "template",
-      widgets: [{ id: "w1" }],
+      widgets: [partial<WidgetT>({ id: "w1" })],
       gridLayout: { overview: [] },
       groups: [],
     },
@@ -54,12 +60,12 @@ vi.mock("sonner", () => ({
 
 vi.mock("~/lib/utils/createTemplates", async (orig) => ({
   ...(await orig<typeof import("~/lib/utils/createTemplates")>()),
-  createCustomTemplateTab: (args: any) => mockCreateCustomTemplateTab(args),
+  createCustomTemplateTab: (args: CreateTabArgs) => mockCreateCustomTemplateTab(args),
 }));
 
 vi.mock("~/lib/state/app", async (orig) => ({
   ...(await orig<typeof import("~/lib/state/app")>()),
-  useShallowAppStore: (selector: any) =>
+  useShallowAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ addTab: mockAddTab, items: mockItems }),
 }));
 
@@ -89,9 +95,9 @@ function makeAppArtifact(): ArtifactT {
       prompts: ["What is the trend?"],
     },
     widget_refs: [
-      { i: "price", origin: "openbb", widget_id: "price" },
-      { i: "news", origin: "openbb", widget_id: "news" },
-      { i: "fundamentals", origin: "openbb", widget_id: "fundamentals" },
+      { i: "price", origin: "workspace", widget_id: "price" },
+      { i: "news", origin: "workspace", widget_id: "news" },
+      { i: "fundamentals", origin: "workspace", widget_id: "fundamentals" },
     ],
   } as unknown as ArtifactT;
 }
@@ -126,7 +132,7 @@ describe("AppArtifact", () => {
     fireEvent.click(screen.getByTestId("open-app-artifact-button"));
 
     await waitFor(() => expect(mockCreateCustomTemplateTab).toHaveBeenCalled());
-    const args = mockCreateCustomTemplateTab.mock.calls.at(-1)?.[0];
+    const [args] = nthLastCall(mockCreateCustomTemplateTab);
     expect(args.navigate).toBe(mockNavigate);
     expect(args.template.name).toBe("AAPL Overview");
     expect(args.dashboardBehavior).toBe("new");
@@ -165,7 +171,7 @@ describe("AppArtifact", () => {
     fireEvent.click(await screen.findByText("Yes, update"));
 
     await waitFor(() => expect(mockCreateCustomTemplateTab).toHaveBeenCalled());
-    const args = mockCreateCustomTemplateTab.mock.calls.at(-1)?.[0];
+    const [args] = nthLastCall(mockCreateCustomTemplateTab);
     expect(args.dashboardBehavior).toBe("current");
     expect(args.currentDashboard).toBe("current-dashboard");
   });

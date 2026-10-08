@@ -1,20 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   buildAppArtifactSource,
-  buildWidgetMetadataResolver,
   buildWidgetSourceResolver,
   shouldAutoOpenAppArtifact,
 } from "~/components/AI/appArtifactUtils";
 import type { Item } from "~/lib/state/app";
-import type { Source, WidgetMetadataItem } from "~/lib/state/backendConnector";
+import type { Source } from "~/lib/state/backendConnector";
 import type { AppArtifactT, AppArtifactWidgetRef, Copilot } from "~/lib/state/copilot";
-
-vi.mock("~/components/AI/hooks/useGetAppWidgets", () => ({
-  createWidgetStudioWidget: (widget: WidgetMetadataItem) => ({
-    widgetId: widget.widgetId,
-    name: widget.name,
-  }),
-}));
 
 function makeSource(name: string, widgetIds: string[]): Source {
   return {
@@ -24,7 +16,7 @@ function makeSource(name: string, widgetIds: string[]): Source {
     url: `https://${name}.example.com`,
     endpointHeaders: null,
     widgets: Object.fromEntries(
-      widgetIds.map((id) => [id, { name: id, sdkFunc: "" }]),
+      widgetIds.map((id) => [id, { name: id }]),
     ) as Source["widgets"],
   };
 }
@@ -74,12 +66,12 @@ describe("buildWidgetSourceResolver", () => {
   it("returns undefined for built-in widgets no backend exposes", () => {
     const sources = [makeSource("Backend A", ["price"])];
     const refs: AppArtifactWidgetRef[] = [
-      { i: "rich_note", origin: "OpenBB Workspace", widget_id: "rich_note" },
+      { i: "iframe", origin: "Workspace", widget_id: "iframe" },
     ];
 
     const resolve = buildWidgetSourceResolver(refs, sources);
 
-    expect(resolve("rich_note")).toBeUndefined();
+    expect(resolve("iframe")).toBeUndefined();
   });
 
   it("dedupes repeated widget ids to a single resolved source", () => {
@@ -110,25 +102,6 @@ describe("buildAppArtifactSource", () => {
     expect(source.url).toBe("");
     expect(source.endpointHeaders).toBeNull();
     expect(typeof source.name).toBe("string");
-  });
-});
-
-describe("buildWidgetMetadataResolver", () => {
-  const widgetMetadata = [
-    { widgetId: "abc", widgetType: "widget_studio", name: "Custom Studio" },
-    { widgetId: "def", widgetType: "endpoint", name: "Not Studio" },
-  ] as unknown as WidgetMetadataItem[];
-
-  it("resolves a widget_studio widget by its prefixed id", () => {
-    const resolve = buildWidgetMetadataResolver(widgetMetadata);
-    expect(resolve("widget_studio-abc")).toMatchObject({ widgetId: "abc" });
-  });
-
-  it("returns undefined for non-studio, unknown, or unprefixed ids", () => {
-    const resolve = buildWidgetMetadataResolver(widgetMetadata);
-    expect(resolve("widget_studio-def")).toBeUndefined();
-    expect(resolve("widget_studio-zzz")).toBeUndefined();
-    expect(resolve("abc")).toBeUndefined();
   });
 });
 

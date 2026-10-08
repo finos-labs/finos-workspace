@@ -14,9 +14,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  AWS_REGION: us-east-1
-  ECR_REGISTRY: ${{ secrets.IMAGE_AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
-  ECR_REPOSITORY: openbb-frontend
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REGISTRY: ${{ secrets.IMAGE_AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
 
 jobs:
   build:
@@ -37,7 +37,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.IMAGE_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.IMAGE_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
         # if: github.event_name == 'push'
@@ -57,7 +57,7 @@ jobs:
             echo "tags=${REGISTRY}:latest" >> "$GITHUB_OUTPUT"
           else
             # PR → build only, no push
-            echo "tags=openbb-frontend:pr-check" >> "$GITHUB_OUTPUT"
+            echo "tags=${{ env.ECR_REPOSITORY }}:pr-check" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push

@@ -5,7 +5,6 @@ import { useShallow } from "zustand/react/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
 import { deleteUserApp, postUserApp } from "~/api/auth.api";
-import { patchSnowflakeWidgetsEndpoint } from "~/components/DataConnectors/common/helpers";
 import { createIndexedDBStorage } from "~/lib/utils/indexDB";
 import { duplicateTabItem } from "../utils";
 import type { Item, TabData, Widget } from "./app";
@@ -144,32 +143,15 @@ export const useUserAppsStore = createWithEqualityFn<UserAppsState>()(
         },
 
         getAllUserApps: () => {
-          const locationHref =
-            typeof window !== "undefined" ? new URL(window.location.href) : undefined;
           return Object.entries(get().userApps).map(([uuid, app]) => {
             const { content, ...rest } = app;
-
-            if (content.widgets) {
-              content.widgets = patchSnowflakeWidgetsEndpoint(
-                content.widgets,
-                locationHref,
-              );
-            }
 
             return { uuid, ...content, ...rest };
           });
         },
         getAllSharedUserApps: () => {
-          const locationHref =
-            typeof window !== "undefined" ? new URL(window.location.href) : undefined;
           return Object.entries(get().sharedUserApps).map(([uuid, app]) => {
             const { content, ...rest } = app;
-            if (content.widgets) {
-              content.widgets = patchSnowflakeWidgetsEndpoint(
-                content.widgets,
-                locationHref,
-              );
-            }
 
             return { uuid, ...content, ...rest, isShared: true };
           });

@@ -8,7 +8,7 @@ import {
 } from "~/components/LayoutAuth/McpConnectSnippets";
 
 const ENDPOINT = "https://backend.test/mcp";
-const TOKEN = "obb_mcp_created123_secret";
+const TOKEN = "ws_mcp_created123_secret";
 
 describe("buildMcpConnectSnippets", () => {
   it("returns one snippet per supported client", () => {

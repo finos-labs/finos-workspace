@@ -1,23 +1,14 @@
-name: Build & publish OpenBB Lite image
+name: Build & publish the Docker image
 
-# Builds the single-image OpenBB Lite distribution. The backend (backend-api/
-# backend) and the frontend (frontend/) both come from this repository. Both
-# default to `develop` but can be pointed at any branch, tag, SHA, or PR (use
-# refs/pull/<N>/head) per run.
-#
-# GitHub only runs workflows from the root .github/workflows/, so this file is
-# inactive while it lives under lite/. The paths below assume it runs from the
-# repository root. The image is pushed to GHCR using the built-in GITHUB_TOKEN.
+# Builds the single-image distribution from this repository: the
+# backend from backend-api/backend and the frontend from frontend/, assembled
+# next to lite/Dockerfile. Runs from the repository root. The image is pushed to
+# GHCR as <owner>/lite unless the LITE_IMAGE repository variable names another
+# image (`namespace/name`), using the built-in GITHUB_TOKEN.
 
 on:
   workflow_dispatch:
     inputs:
-      backend_ref:
-        description: "Ref for backend-api/backend (branch, tag, SHA, or refs/pull/<N>/head)"
-        default: develop
-      frontend_ref:
-        description: "Ref for frontend/ (branch, tag, SHA, or refs/pull/<N>/head)"
-        default: develop
       push_image:
         description: "Push the image to GHCR (uncheck to build only)"
         type: boolean
@@ -30,9 +21,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE: openbb-finance/lite
-  # Defaults used by the `push` trigger (workflow_dispatch overrides via inputs).
-  DEFAULT_REF: develop
 
 permissions:
   contents: read
@@ -42,40 +30,26 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout lite (Dockerfile + container config)
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Checkout frontend
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.frontend_ref || env.DEFAULT_REF }}
-          sparse-checkout: frontend
-          path: _frontend
-
-      - name: Checkout backend
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.backend_ref || env.DEFAULT_REF }}
-          sparse-checkout: backend-api/backend
-          path: _backend
 
       - name: Assemble build context
         run: |
           rm -rf lite/backend lite/frontend
-          mv _frontend/frontend lite/frontend
-          mv _backend/backend-api/backend lite/backend
-          rm -rf _frontend _backend
-          echo "Backend ref:     ${{ github.event.inputs.backend_ref || env.DEFAULT_REF }}"
-          echo "Frontend ref:    ${{ github.event.inputs.frontend_ref || env.DEFAULT_REF }}"
+          cp -R backend-api/backend lite/backend
+          cp -R frontend lite/frontend
 
       - name: Resolve image tags
         id: meta
+        env:
+          LITE_IMAGE: ${{ vars.LITE_IMAGE }}
         run: |
+          image="${LITE_IMAGE:-${GITHUB_REPOSITORY_OWNER,,}/lite}"
           version="$(tr -d '[:space:]' < lite/VERSION)"
           sha="${GITHUB_SHA::12}"
-          tags="${REGISTRY}/${IMAGE}:${version},${REGISTRY}/${IMAGE}:${sha},${REGISTRY}/${IMAGE}:latest"
+          tags="${REGISTRY}/${image}:${version},${REGISTRY}/${image}:${sha},${REGISTRY}/${image}:latest"
           extra="${{ github.event.inputs.tag }}"
-          if [ -n "$extra" ]; then tags="${tags},${REGISTRY}/${IMAGE}:${extra}"; fi
+          if [ -n "$extra" ]; then tags="${tags},${REGISTRY}/${image}:${extra}"; fi
           echo "tags=$tags" >> "$GITHUB_OUTPUT"
           echo "Image tags: $tags"
 

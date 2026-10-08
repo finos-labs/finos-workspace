@@ -1,10 +1,10 @@
-import posthog from "posthog-js";
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { getIframeWidget } from "~/lib/iframeWidgetRegistry";
 import type { CopilotDataT } from "~/lib/state/copilot";
 import { CopilotErrorType } from "~/lib/state/copilot";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
+import { toError } from "~/lib/utils/utils";
 import { getAllWidgets } from "~/lib/utils/widget";
 
 type ExecuteAgentTool = (
@@ -41,19 +41,14 @@ function findEquivalentWidget(
   const toolKey = norm(mcpToolName);
 
   // Get external, backend, advanced-backend widgets that declare mcp_tool
-  const widgets = getAllWidgets(null, ["backend"]).filter(
-    (w) =>
-      // @ts-expect-error
-      w?.mcp_tool?.mcp_server &&
-      // @ts-expect-error
-      w?.mcp_tool?.tool_id,
+  const widgets = getAllWidgets(undefined, ["backend"]).filter(
+    (w) => w.mcp_tool?.mcp_server && w.mcp_tool.tool_id,
   );
 
   for (const w of widgets) {
-    // @ts-expect-error
     const meta = w.mcp_tool;
-    if (norm(meta.mcp_server) !== serverKey) continue;
-    if (norm(meta.tool_id) !== toolKey) continue;
+    if (norm(meta?.mcp_server ?? "") !== serverKey) continue;
+    if (norm(meta?.tool_id ?? "") !== toolKey) continue;
     return {
       widgetId: w.widgetId || "",
       source:
@@ -155,7 +150,7 @@ export function useMcpExecutor() {
         // Add retry logic for race conditions
         let retryCount = 0;
         const maxRetries = 3;
-        let result: any;
+        let result: unknown;
 
         while (retryCount < maxRetries) {
           try {
@@ -164,7 +159,10 @@ export function useMcpExecutor() {
             result = await mcpConnection.callTool(actualToolName, safeParameters);
             break; // Success, exit retry loop
           } catch (error) {
-            if (error.message.includes("not ready") && retryCount < maxRetries - 1) {
+            if (
+              toError(error).message.includes("not ready") &&
+              retryCount < maxRetries - 1
+            ) {
               retryCount++;
               // Wait a bit before retrying
               await new Promise((resolve) => setTimeout(resolve, 500));
@@ -184,21 +182,13 @@ export function useMcpExecutor() {
           }
         }
 
-        if (posthog) {
-          posthog.capture("MCP_USE_MCP_SUCCESS", {
-            tool_name: toolName,
-            server_id: serverId,
-            result_type: typeof result,
-          });
-        }
-
         if (server.iframeWidgetId) {
           if (calledTool?.annotations?.destructiveHint === true) {
             getIframeWidget(server.iframeWidgetId)?.sendRefresh();
           }
         }
 
-        const getContent = (result: any): string | object => {
+        const getContent = (result: unknown): unknown => {
           if (result && typeof result === "object") {
             const isMcpErrorResult = "isError" in result && result.isError === true;
             // Preserve the raw MCP error payload so backend logic can detect isError.
@@ -206,12 +196,13 @@ export function useMcpExecutor() {
 
             if (
               "structuredContent" in result &&
-              typeof result.structuredContent?.results === "object"
+              typeof (result.structuredContent as { results?: unknown } | null)
+                ?.results === "object"
             )
               return result.structuredContent;
 
             if ("content" in result && typeof result.content === "object") {
-              const handleItem = (item: any) => {
+              const handleItem = (item: unknown): unknown => {
                 if (item === null || item === undefined) return item;
                 if (Array.isArray(item)) return item.map(handleItem);
                 if (typeof item === "object" && "text" in item) return item.text;
@@ -224,9 +215,11 @@ export function useMcpExecutor() {
           return result;
         };
 
-        let content = getContent(result);
-        content =
-          typeof content === "string" ? content : JSON.stringify(content, null, 2);
+        const rawContent = getContent(result);
+        const content =
+          typeof rawContent === "string"
+            ? rawContent
+            : JSON.stringify(rawContent, null, 2);
 
         // Find equivalent widget and build citation (if any). Iframe-bound MCP
         // calls cite the iframe widget itself because they may not have a
@@ -263,7 +256,7 @@ export function useMcpExecutor() {
                 source_info: {
                   type: "widget",
                   name: iframeCitation.widgetName || iframeCitation.serverName,
-                  origin: "OpenBB Workspace",
+                  origin: "Workspace",
                   uuid: iframeCitation.widgetId,
                   widget_id: iframeCitation.widgetId,
                   description:
@@ -286,7 +279,7 @@ export function useMcpExecutor() {
             ];
           }
 
-          if (!match) return [] as any[];
+          if (!match) return [];
           const details = entries.length > 0 ? [detailsObj] : [];
           return [
             {
@@ -326,19 +319,10 @@ export function useMcpExecutor() {
         // Convert response to CopilotDataT format
         return [{ items: [{ content }], extra_citations: extraCitations }];
       } catch (error) {
-        if (posthog) {
-          posthog.capture("MCP_TOOL_EXECUTION_ERROR", {
-            tool_name: toolName,
-            server_id: serverId,
-            error_message: error.message,
-            error_stack: error.stack,
-          });
-        }
-
         console.error(`[MCP Executor] Tool execution failed for ${toolName}:`, error);
 
         // Return error in the expected format
-        return [getErrorContent(toolName, server?.name || serverId, error as Error)];
+        return [getErrorContent(toolName, server?.name || serverId, toError(error))];
       }
     },
     [mcpToolsStore],

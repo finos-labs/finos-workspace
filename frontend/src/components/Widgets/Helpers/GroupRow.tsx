@@ -92,7 +92,7 @@ export function GroupPanelHeader({ onCreate }: { onCreate?: () => void }) {
           </Tooltip>
         ) : null}
       </div>
-      <hr className="obb-divider my-0 group-dropdown" />
+      <hr className="ws-divider my-0 group-dropdown" />
     </>
   );
 }

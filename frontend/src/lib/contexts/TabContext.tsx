@@ -11,17 +11,21 @@ import type { Layout } from "react-grid-layout";
 import { useShallowAppStore, type Widget } from "~/lib/state/app";
 import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
 
+/** A widget's place in the grid, with the height it takes on a phone. */
+export type GridItem = Layout & { mobileH?: number };
+
 export type TabProviderProps = {
   currentTab: string;
-  tabId: string;
-  layouts: Layout[];
+  /** Missing outside of a saved dashboard (a preview), where there is nothing to persist. */
+  tabId?: string;
+  layouts: GridItem[];
   isShared?: boolean;
-  setLayouts?: (layouts: Layout[]) => void;
+  setLayouts?: (layouts: GridItem[]) => void;
   children: ReactNode;
 };
 
 type TabContextType = Omit<TabProviderProps, "children"> & {
-  getWidget: (widgetId: string) => Widget | null;
+  getWidget: (widgetId: string) => Widget | undefined;
 };
 
 export const TabContext = createContext<TabContextType | null>(null);

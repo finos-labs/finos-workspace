@@ -1,6 +1,6 @@
-"""Import an exported OpenBB account into this instance.
+"""Import an exported Workspace account into this instance.
 
-    python -m scripts.import_user_data /import/openbb-export-you-20260811.zip
+    python -m scripts.import_user_data /import/workspace-export-you-20260811.zip
 
 Reads the archive produced by ``scripts.export_user_data`` and recreates the
 account here. The archive is read directly -- there is no need to unzip it
@@ -93,7 +93,7 @@ def read_manifest(zf: ZipFile) -> dict[str, Any]:
         raise ImportError_(
             f"Archive manifest version {version} is not supported by this build "
             f"(supports {sorted(SUPPORTED_MANIFEST_VERSIONS)}). Use a matching "
-            "version of OpenBB Lite."
+            "version of Lite."
         )
 
     if manifest.get("scope_version") != scope.SCOPE_VERSION:
@@ -233,28 +233,6 @@ async def purge_user(db: AsyncSession, user_uuid: UUID) -> None:
 # written into this instance's storage and the stored_file rows that point at
 # them are not loaded either (see NOT_IMPORTED in user_data_scope).
 # --------------------------------------------------------------------------- #
-def duplicate_chat_warning(
-    spec: scope.TableSpec, payloads: list[dict[str, Any]], migrated_chats: int
-) -> str | None:
-    """Whether ``copilot_chat_old`` would duplicate history already imported.
-
-    migrate_duplicate_copilot_chats copies rows from copilot_chat_old into
-    copilot_chat and does *not* delete the originals, so a migrated account
-    holds every conversation in both tables -- loading both doubles their
-    history. An account the worker never reached has its only copy in the old
-    table, so it is loaded whenever copilot_chat came through empty.
-
-    Returns the warning to record when the rows should be skipped, else None.
-    """
-    if spec.table != "copilot_chat_old" or not payloads or not migrated_chats:
-        return None
-    return (
-        f"{len(payloads)} pre-refactor chat(s) were skipped: the same "
-        f"conversations are already present as {migrated_chats} migrated "
-        "chat(s). They remain in the archive."
-    )
-
-
 def count_archived_files(zf: ZipFile) -> int:
     """How many file blobs the archive carries, for the closing summary."""
     return sum(
@@ -277,11 +255,7 @@ async def import_archive(archive_path: Path, *, force: bool = False) -> ImportRe
         result.replaced = await clear_previous_import(db, user_uuid, email, force=force)
         permissions_uuid = await resolve_permissions_uuid(db)
 
-        # How many post-refactor chats the archive carried. Decides whether the
-        # pre-refactor copilot_chat_old rows are a duplicate or the only copy.
-        migrated_chats = 0
-
-        for spec in scope.included_specs(include_history=True, include_legacy=True):
+        for spec in scope.included_specs(include_history=True):
             if spec.table in scope.NOT_IMPORTED:
                 if read_rows(zf, spec) is not None:
                     result.skipped_tables.append(spec.table)
@@ -289,12 +263,6 @@ async def import_archive(archive_path: Path, *, force: bool = False) -> ImportRe
 
             payloads = read_rows(zf, spec)
             if payloads is None:
-                continue
-
-            duplicate_chats = duplicate_chat_warning(spec, payloads, migrated_chats)
-            if duplicate_chats is not None:
-                result.skipped_tables.append(spec.table)
-                result.warnings.append(duplicate_chats)
                 continue
 
             overrides = scope.import_overrides(spec)
@@ -319,8 +287,6 @@ async def import_archive(archive_path: Path, *, force: bool = False) -> ImportRe
             # Flush per table so a failure names the table that caused it.
             await db.flush()
             result.inserted[spec.table] = len(payloads)
-            if spec.table == "copilot_chat":
-                migrated_chats = len(payloads)
             if payloads:
                 logger.info(f"  {spec.table:<24} {len(payloads):>6} rows")
 
@@ -337,7 +303,7 @@ async def import_archive(archive_path: Path, *, force: bool = False) -> ImportRe
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="import_user_data",
-        description="Import an exported OpenBB account into this instance.",
+        description="Import an exported Workspace account into this instance.",
     )
     parser.add_argument("archive", nargs="?", help="Path to the export .zip")
     parser.add_argument(
@@ -354,7 +320,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.describe_scope:
-        logger.info(scope.describe(include_history=True, include_legacy=True))
+        logger.info(scope.describe(include_history=True))
         return 0
 
     if not args.archive:
@@ -378,7 +344,7 @@ def main(argv: list[str] | None = None) -> int:
     sys.stdout.write(
         f"\nThe account {result.email} now exists but has no usable password.\n"
         "To finish:\n"
-        "  1. docker exec openbb credentials      # get the admin login\n"
+        "  1. docker exec workspace credentials      # get the admin login\n"
         "  2. Sign in as the admin\n"
         f"  3. Set a password for {result.email}\n"
     )

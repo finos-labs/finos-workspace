@@ -4,6 +4,8 @@ import { BrowserRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as authApi from "~/api/auth.api";
 import LoginPage from "~/routes/login";
+import type { LoginResponse } from "~/types/auth.type";
+import { partial } from "../mocks";
 
 // Mock many things
 vi.mock("react-router-dom", async () => {
@@ -14,10 +16,6 @@ vi.mock("react-router-dom", async () => {
     useSearchParams: () => [new URLSearchParams(), vi.fn()],
   };
 });
-
-vi.mock("posthog-js/react", () => ({
-  usePostHog: () => ({ capture: vi.fn() }),
-}));
 
 vi.mock("sonner", () => ({
   toast: { error: vi.fn(), success: vi.fn() },
@@ -38,12 +36,11 @@ vi.mock("~/api/auth.api", () => ({
   isValidMainTicker: vi.fn(() => true),
 }));
 
-vi.mock("~/lib/onPremFeatureFlags", async (importOriginal) => {
-  const actual = await importOriginal<any>();
+vi.mock("~/lib/identityProviders", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
   return {
     ...actual,
     getEnabledIdentityProviders: () => ["google"],
-    isOnPremDeployment: () => false,
   };
 });
 
@@ -61,14 +58,11 @@ vi.mock("~/lib/state/app", () => ({
 vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: vi.fn(() => ({ updateThemeState: vi.fn() })),
 }));
-vi.mock("~/lib/state/tutorial", () => ({
-  useShallowTutorialStore: vi.fn(() => ({ setCompletedDates: vi.fn() })),
-}));
 vi.mock("~/lib/state/featureFlags", () => ({
   useShallowFeatureFlagsStore: vi.fn(() => ({ setFeatureFlagsAndUsage: vi.fn() })),
 }));
 vi.mock("~/lib/state/backendConnector", async (importOriginal) => {
-  const actual = await importOriginal<any>();
+  const actual = await importOriginal<Record<string, unknown>>();
   return {
     ...actual,
     useShallowBackendConnectorStore: vi.fn(() => ({ updateBackendConnector: vi.fn() })),
@@ -77,8 +71,8 @@ vi.mock("~/lib/state/backendConnector", async (importOriginal) => {
 vi.mock("~/lib/state/mcpTools", () => ({
   useShallowMcpToolsStore: vi.fn(() => ({ updateServers: vi.fn() })),
 }));
-vi.mock("~/lib/state/tableChartThemes", () => ({
-  useShallowTableChartThemesStore: vi.fn(() => ({ updateThemeSettings: vi.fn() })),
+vi.mock("~/lib/state/entityTheme", () => ({
+  useShallowEntityThemeStore: vi.fn(() => ({ updateThemeSettings: vi.fn() })),
 }));
 
 describe("LoginPage", () => {
@@ -101,11 +95,14 @@ describe("LoginPage", () => {
 
   it("calls apiLogin on submit", async () => {
     const user = userEvent.setup();
-    vi.mocked(authApi.login).mockResolvedValue({
-      status: 200,
-      user: { email: "test@test.com", pro_display_settings: {} },
-      dash_sync: { owned: [], shared: [], entity_shared: [] },
-    } as any);
+    vi.mocked(authApi.login).mockResolvedValue(
+      partial<LoginResponse>({
+        status: 200,
+        email: "test@test.com",
+        user: { display_settings: {} },
+        dash_sync: { owned: {}, shared: {}, entity_shared: {} },
+      }),
+    );
 
     render(
       <BrowserRouter>
@@ -129,10 +126,12 @@ describe("LoginPage", () => {
 
   it("shows error message on failed login", async () => {
     const user = userEvent.setup();
-    vi.mocked(authApi.login).mockResolvedValue({
-      status: 404,
-      detail: "Not found",
-    } as any);
+    vi.mocked(authApi.login).mockResolvedValue(
+      partial({
+        status: 404,
+        detail: "Not found",
+      }),
+    );
 
     render(
       <BrowserRouter>

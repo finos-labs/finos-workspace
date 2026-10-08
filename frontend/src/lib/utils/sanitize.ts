@@ -1,4 +1,4 @@
-import DOMPurify from "dompurify";
+import DOMPurify, { type Config as DOMPurifyConfig } from "dompurify";
 
 /**
  * Global DOMPurify configuration for sanitizing HTML content.
@@ -10,7 +10,7 @@ import DOMPurify from "dompurify";
  * - Blocks event handler attributes (onerror, onload, onclick, onmouseover)
  * - Allows CSS style tags for rich formatting
  */
-export const HTML_SANITIZE_CONFIG: DOMPurify.Config = {
+export const HTML_SANITIZE_CONFIG: DOMPurifyConfig = {
   FORBID_TAGS: ["script", "iframe", "form", "object", "embed"],
   FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
   ALLOW_DATA_ATTR: false,
@@ -20,7 +20,7 @@ export const HTML_SANITIZE_CONFIG: DOMPurify.Config = {
  * Allowlist-based DOMPurify config for markdown content from external sources
  * (skills, MCP tool descriptions). Only permits safe formatting tags.
  */
-export const MARKDOWN_SANITIZE_CONFIG: DOMPurify.Config = {
+export const MARKDOWN_SANITIZE_CONFIG: DOMPurifyConfig = {
   ALLOWED_TAGS: [
     "p",
     "br",

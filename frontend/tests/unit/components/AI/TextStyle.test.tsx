@@ -22,12 +22,6 @@ vi.mock("~/components/AI/hooks/useMcpToolSuggestions", () => ({
   useMcpToolSuggestions: () => ({ mcpToolOptions: [{ slashText: "/server_tool" }] }),
 }));
 
-vi.mock("~/components/AI/hooks/useSemanticViewSuggestions", () => ({
-  useSemanticViewSuggestions: () => ({
-    svOptions: [{ slashText: "/sv:DB.SCHEMA.VIEW" }],
-  }),
-}));
-
 describe("TextStyle chip rendering", () => {
   it("renders a brand mention as a single unbreakable pill that ellipsizes", () => {
     render(<TextStyle content="hi @Foo there" />);
@@ -62,16 +56,17 @@ describe("TextStyle chip rendering", () => {
     render(<TextStyle content="hi @WebThing there" />);
 
     const chip = screen.getByText("@WebThing");
-    expect(chip).toHaveClass("bg-copilot-mention-web-bg", "text-copilot-mention-web-label");
+    expect(chip).toHaveClass(
+      "bg-copilot-mention-web-bg",
+      "text-copilot-mention-web-label",
+    );
     expect(chip).not.toHaveClass("bg-copilot-mention-bg");
   });
 
-  it("renders slash commands (sv / skill / mcp) as chips", () => {
-    render(
-      <TextStyle content="run /sv:DB.SCHEMA.VIEW and /skill:my-skill and /server_tool" />,
-    );
+  it("renders slash commands (skill / mcp) as chips", () => {
+    render(<TextStyle content="run /skill:my-skill and /server_tool" />);
 
-    for (const token of ["/sv:DB.SCHEMA.VIEW", "/skill:my-skill", "/server_tool"]) {
+    for (const token of ["/skill:my-skill", "/server_tool"]) {
       expect(screen.getByText(token)).toHaveClass("bg-copilot-mention-bg");
     }
   });

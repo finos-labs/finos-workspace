@@ -1,15 +1,7 @@
-import {
-  type ComponentProps,
-  type MutableRefObject,
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-} from "react";
+import { type MutableRefObject, memo, useCallback, useEffect, useMemo } from "react";
 import {
   ControlledTreeEnvironment,
-  type DraggingPositionBetweenItems,
-  type DraggingPositionItem,
+  type DraggingPosition,
   Tree,
   type TreeItem,
   type TreeItemIndex,
@@ -30,7 +22,15 @@ import { Button } from "../ds/atoms/Button";
 import ChevronRightIcon from "../Icons/ChevronRight";
 import TabItem from "./TabItem";
 
-function RenderItemsContainer({ children, containerProps }) {
+type RenderItemProps = Parameters<NonNullable<TreeRenderProps["renderItem"]>>[0];
+type RenderItemArrowProps = Parameters<
+  NonNullable<TreeRenderProps["renderItemArrow"]>
+>[0];
+type RenderItemsContainerProps = Parameters<
+  NonNullable<TreeRenderProps["renderItemsContainer"]>
+>[0];
+
+function RenderItemsContainer({ children, containerProps }: RenderItemsContainerProps) {
   return useMemo(
     () => (
       <ul
@@ -44,10 +44,7 @@ function RenderItemsContainer({ children, containerProps }) {
   );
 }
 
-function renderItemArrow({
-  item,
-  context,
-}: ComponentProps<TreeRenderProps["renderItemArrow"]>) {
+function renderItemArrow({ item, context }: RenderItemArrowProps) {
   return item.isFolder ? (
     <span {...context.arrowProps} className="ml-0.5 mr-8">
       <ChevronRightIcon
@@ -59,7 +56,7 @@ function renderItemArrow({
   ) : null;
 }
 
-const RenderItem = (props: ComponentProps<TreeRenderProps["renderItem"]>) => {
+const RenderItem = (props: RenderItemProps) => {
   const { context, info, children, ...rest } = props;
   const childrenMemo = useMemo(() => children, [children]);
   const contextMemo = useMemo(
@@ -193,7 +190,7 @@ export function useTabsItems(
   useEffect(() => {
     tabId && queueMicrotask(() => setTimeout(() => scrollIntoView(tabId, false), 300));
     if (sideBarStore.isActive) return;
-    sideBarStore.setActiveItem(tabId);
+    sideBarStore.setActiveItem(tabId ?? null);
   }, [tabId]);
 
   useEffect(() => {
@@ -259,32 +256,23 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
 
   const sidebarExpanded = useShallowSidebarStore((state) => state.expandedMyDashboards);
 
-  const currentItems = useMemo(
-    () =>
-      items as Record<
-        TreeItemIndex,
-        TreeItem & { isRoot?: boolean; parentId?: TreeItemIndex }
-      >,
-    [Object.values(items)],
-  );
+  const currentItems = items;
 
   const currentItemsRef = useCreateRef(currentItems);
   const expandedItemsRef = useCreateRef(expandedItems);
 
   const handleOnDrop = useCallback(
-    (
-      treeItems: (TreeItem & { parentId: TreeItemIndex })[],
-      target: DraggingPositionItem | DraggingPositionBetweenItems,
-    ) => {
+    (droppedItems: TreeItem[], target: DraggingPosition) => {
       const currentItems = currentItemsRef.current;
-      const newItems = { ...currentItems };
+      const newItems: SideBarItems = { ...currentItems };
 
       const expandedItems = expandedItemsRef.current;
-      for (const item of treeItems) {
-        const parent = currentItems[item.parentId];
+      for (const droppedItem of droppedItems) {
+        const item = currentItems[droppedItem.index];
+        const parent = item?.parentId ? currentItems[item.parentId] : undefined;
 
-        if (!parent) {
-          throw Error(`Could not find parent of item "${item.index}"`);
+        if (!(item && parent)) {
+          throw Error(`Could not find parent of item "${droppedItem.index}"`);
         }
 
         if (!parent.children) {
@@ -292,7 +280,6 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
             `Parent "${parent.index}" of item "${item.index}" did not have any children`,
           );
         }
-        // @ts-expect-error
         if (target.targetType === "item" || target.targetType === "root") {
           if (!newItems[target.targetItem]?.isFolder) {
             return;
@@ -314,7 +301,7 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
 
           newItems[item.index] = {
             ...item,
-            parentId: target.targetItem,
+            parentId: String(target.targetItem),
           };
 
           if (
@@ -372,7 +359,7 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
           }
         }
       }
-      updateItems(newItems as any);
+      updateItems(newItems);
     },
     [currentItemsRef, expandedItemsRef],
   );
@@ -420,7 +407,7 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
 
   const getItemTitle = useCallback((item: TreeItem) => item.data.name, []);
   const renderItem = useCallback(
-    (props: ComponentProps<TreeRenderProps["renderItem"]>) => (
+    (props: RenderItemProps) => (
       <RenderItem key={`${props.item.index}-render`} {...props} />
     ),
     [],
@@ -442,7 +429,9 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
   );
 
   const viewState = useMemo(
-    () => ({ sidebar: { focusedItem, expandedItems, selectedItems } }),
+    () => ({
+      sidebar: { focusedItem: focusedItem ?? undefined, expandedItems, selectedItems },
+    }),
     [expandedItems, selectedItems],
   );
 

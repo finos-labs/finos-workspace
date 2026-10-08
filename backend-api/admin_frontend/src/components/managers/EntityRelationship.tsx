@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, FormField, FormInput, FormSelect, useForm } from "@openbb/ui";
+import { FormField, FormInput, FormSelect } from "ui/Form";
+import { useForm } from "react-hook-form";
 import { ManagerForm } from "components/formItems";
 import type { SubmitFormProps } from "components/managers/Base";
 import { handleRequest } from "components/managers/helpers";
@@ -80,7 +81,7 @@ export function EntityRelationshipSubmitForm({
           />
         )}
       />
-      <Button className="obb-btn-blue mt-2">Submit</Button>
+      <button type="submit" className="ws-btn-blue mt-2">Submit</button>
     </ManagerForm>
   );
 }

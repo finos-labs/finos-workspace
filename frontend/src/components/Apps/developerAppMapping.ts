@@ -32,7 +32,6 @@ export interface DeveloperAppDTO {
   category?: string | null;
   tagline?: string | null;
   media?: string[];
-  screenshots?: string[];
   totalWidgets?: number;
   status: string;
   rejectionReason?: string | null;
@@ -133,7 +132,7 @@ export function incrementVersion(version: string): string {
 }
 
 export function developerAppToSubmission(dto: DeveloperAppDTO): MarketplaceSubmission {
-  const screenshots = dto.media ?? dto.screenshots ?? [];
+  const screenshots = dto.media ?? [];
   return {
     id: dto.id,
     backendUrl: dto.backendUrl ?? "",

@@ -1,23 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { updateWidgetParamOrder } from "~/components/DataConnectors/common/helpers";
 import { shouldPersistWidgetUpdate } from "~/components/Widget.hooks";
-import { createTestWidget } from "../helpers";
+import { makeWidget } from "../factories";
 
 describe("shouldPersistWidgetUpdate", () => {
   const getParamName = (groupById: string) => groupById;
 
   it("does not persist when nothing changed", () => {
-    const widget = createTestWidget({ name: "Same" });
+    const widget = makeWidget({ name: "Same" });
 
     expect(shouldPersistWidgetUpdate(widget, { ...widget }, getParamName)).toBe(false);
   });
 
   it("persists when a grouped param value changes", () => {
-    const currentWidget = createTestWidget({
+    const currentWidget = makeWidget({
       paramGroups: { symbol: "symbol" },
       storage: { params: { symbol: "AAPL" } },
     });
-    const newWidget = createTestWidget({
+    const newWidget = makeWidget({
       paramGroups: { symbol: "symbol" },
       storage: { params: { symbol: "MSFT" } },
     });
@@ -28,7 +28,7 @@ describe("shouldPersistWidgetUpdate", () => {
   });
 
   it("persists a name-only change (MCP/copilot update_widget rename)", () => {
-    const currentWidget = createTestWidget({ name: "Old Name" });
+    const currentWidget = makeWidget({ name: "Old Name" });
     const newWidget = { ...currentWidget, name: "New Name" };
 
     expect(shouldPersistWidgetUpdate(currentWidget, newWidget, getParamName)).toBe(
@@ -37,7 +37,7 @@ describe("shouldPersistWidgetUpdate", () => {
   });
 
   it("persists a description-only change", () => {
-    const currentWidget = createTestWidget({ description: "old" });
+    const currentWidget = makeWidget({ description: "old" });
     const newWidget = { ...currentWidget, description: "new" };
 
     expect(shouldPersistWidgetUpdate(currentWidget, newWidget, getParamName)).toBe(
@@ -48,7 +48,7 @@ describe("shouldPersistWidgetUpdate", () => {
 
 describe("mergeExternalWidgetParamDefinitions", () => {
   it("preserves saved param order and visibility when refreshing external definitions", () => {
-    const widget = createTestWidget({
+    const widget = makeWidget({
       external: true,
       params: [
         {
@@ -74,7 +74,7 @@ describe("mergeExternalWidgetParamDefinitions", () => {
         },
       ],
     });
-    const definitionWidget = createTestWidget({
+    const definitionWidget = makeWidget({
       params: [
         {
           type: "text",
@@ -101,7 +101,7 @@ describe("mergeExternalWidgetParamDefinitions", () => {
       ],
     });
 
-    const params = updateWidgetParamOrder(definitionWidget.params, widget.params);
+    const params = updateWidgetParamOrder(definitionWidget.params ?? [], widget.params);
 
     expect(params?.map((param) => param.paramName)).toEqual([
       "selection",
@@ -122,7 +122,7 @@ describe("mergeExternalWidgetParamDefinitions", () => {
   });
 
   it("updates refreshed external param layout metadata", () => {
-    const widget = createTestWidget({
+    const widget = makeWidget({
       external: true,
       params: [
         {
@@ -135,7 +135,7 @@ describe("mergeExternalWidgetParamDefinitions", () => {
         },
       ],
     });
-    const definitionWidget = createTestWidget({
+    const definitionWidget = makeWidget({
       params: [
         {
           type: "endpoint",
@@ -151,7 +151,7 @@ describe("mergeExternalWidgetParamDefinitions", () => {
       ],
     });
 
-    const params = updateWidgetParamOrder(definitionWidget.params, widget.params);
+    const params = updateWidgetParamOrder(definitionWidget.params ?? [], widget.params);
 
     expect(params?.[0]).toMatchObject({
       paramName: "event_ticker",
@@ -164,7 +164,7 @@ describe("mergeExternalWidgetParamDefinitions", () => {
   });
 
   it("uses refreshed definition visibility when no saved override exists", () => {
-    const widget = createTestWidget({
+    const widget = makeWidget({
       external: true,
       params: [
         {
@@ -177,7 +177,7 @@ describe("mergeExternalWidgetParamDefinitions", () => {
         },
       ],
     });
-    const definitionWidget = createTestWidget({
+    const definitionWidget = makeWidget({
       params: [
         {
           type: "boolean",
@@ -189,7 +189,7 @@ describe("mergeExternalWidgetParamDefinitions", () => {
       ],
     });
 
-    const params = updateWidgetParamOrder(definitionWidget.params, widget.params);
+    const params = updateWidgetParamOrder(definitionWidget.params ?? [], widget.params);
 
     expect(params?.[0]).toMatchObject({
       paramName: "raw",
@@ -198,7 +198,7 @@ describe("mergeExternalWidgetParamDefinitions", () => {
   });
 
   // it("updates refreshed external run-button behavior", () => {
-  //   const widget = createTestWidget({
+  //   const widget = makeWidget({
   //     external: true,
   //     runButton: true,
   //     params: [
@@ -210,7 +210,7 @@ describe("mergeExternalWidgetParamDefinitions", () => {
   //       },
   //     ],
   //   });
-  //   const definitionWidget = createTestWidget({
+  //   const definitionWidget = makeWidget({
   //     runButton: false,
   //     params: [
   //       {

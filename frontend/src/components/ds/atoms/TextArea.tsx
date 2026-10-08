@@ -1,5 +1,6 @@
 import { cva } from "class-variance-authority";
-import React, { useEffect, useId, useImperativeHandle, useRef } from "react";
+import React, { useEffect, useId, useRef } from "react";
+import { useComposeRefs } from "~/hooks/useRefHooks";
 import { FormControl, FormItem, FormLabel, FormMessage } from "../molecules/Form";
 import { cn } from "../utils";
 import { CopyButton } from "./CopyButton";
@@ -93,7 +94,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     } = props;
 
     const ref = useRef<HTMLTextAreaElement>(null);
-    useImperativeHandle(fwRef, () => ref.current!);
+    const composedRef = useComposeRefs(ref, fwRef);
     const autoId = useId();
     const textareaId = rest.id || autoId;
 
@@ -129,7 +130,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
             <textarea
               id={textareaId}
               className={textareaClasses}
-              ref={ref}
+              ref={composedRef}
               onChange={handleChange}
               {...rest}
             />

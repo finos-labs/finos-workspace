@@ -5,6 +5,7 @@ import {
   showNotification,
   showNotificationWithRememberMe,
 } from "~/lib/utils/toast";
+import { partial } from "../../mocks";
 
 vi.mock("sonner", () => ({
   toast: {
@@ -142,9 +143,11 @@ describe("toast utils - Additional Tests", () => {
       const cancelFn = vi.fn();
 
       // Mock getElementById
-      vi.spyOn(document, "getElementById").mockReturnValue({
-        getAttribute: vi.fn(() => "checked"),
-      } as any);
+      vi.spyOn(document, "getElementById").mockReturnValue(
+        partial<HTMLElement>({
+          getAttribute: vi.fn(() => "checked"),
+        }),
+      );
 
       showNotificationWithRememberMe({
         id: NotificationId.DeleteDashboard,

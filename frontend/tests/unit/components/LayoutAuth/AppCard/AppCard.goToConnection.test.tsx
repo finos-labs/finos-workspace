@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { UnifiedTemplate } from "~/hooks/useAllTemplates";
@@ -16,7 +16,7 @@ vi.mock("react-router-dom", async (importOriginal) => {
 let mockSource: Source | null = null;
 
 vi.mock("~/lib/state/theme", () => ({
-  useShallowThemeStore: (selector: (s: any) => any) =>
+  useShallowThemeStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       theme: "light",
       setEditAppDialog: vi.fn(),
@@ -25,12 +25,15 @@ vi.mock("~/lib/state/theme", () => ({
 }));
 
 vi.mock("~/lib/state/featureFlags", () => ({
-  useShallowFeatureFlagsStore: (selector: (s: any) => any) =>
-    selector({ featureFlags: { tier: "pro" } }),
+  useShallowFeatureFlagsStore: (
+    selector: (state: Record<string, unknown>) => unknown,
+  ) => selector({ featureFlags: { tier: "full" } }),
 }));
 
 vi.mock("~/lib/state/backendConnector", () => ({
-  useShallowBackendConnectorStore: (selector: (s: any) => any) =>
+  useShallowBackendConnectorStore: (
+    selector: (state: Record<string, unknown>) => unknown,
+  ) =>
     selector({
       getApiSourceById: () => mockSource,
       refreshApiSourceById: vi.fn(),
@@ -38,37 +41,14 @@ vi.mock("~/lib/state/backendConnector", () => ({
 }));
 
 vi.mock("~/lib/state/mcpTools", () => ({
-  useShallowMcpToolsStore: (selector: (s: any) => any) =>
+  useShallowMcpToolsStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ servers: [], getMCPConnection: () => undefined }),
 }));
-
-vi.mock("~/lib/runtimeConfig", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("~/lib/runtimeConfig")>();
-  return {
-    ...actual,
-    getConfig: () => {
-      const config = actual.getConfig();
-      return {
-        ...config,
-        whiteLabel: {
-          ...config.whiteLabel,
-          leftSidebarLogo: "",
-          name: "OpenBB Workspace",
-        },
-        ui: {
-          ...config.ui,
-          odpDownloadInstaller: false,
-        },
-      };
-    },
-  };
-});
 
 vi.mock("~/lib/constants", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return {
     ...actual,
-    inSnowflakeNativeApp: false,
   };
 });
 
@@ -81,7 +61,7 @@ vi.mock("~/lib/appSubmissionFlag", () => ({
 }));
 
 vi.mock("~/components/ds/utils", () => ({
-  cn: (...args: unknown[]) => (args as any[]).filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
 
 vi.mock("~/components/Icon", () => ({
@@ -109,7 +89,9 @@ vi.mock("~/components/ds/dialogs/ConfirmDialog", () => ({
 }));
 
 vi.mock("~/components/ds/atoms/Button", () => ({
-  Button: ({ children, ...rest }: any) => <button {...rest}>{children}</button>,
+  Button: ({ children, ...rest }: ComponentProps<"button">) => (
+    <button {...rest}>{children}</button>
+  ),
 }));
 
 vi.mock("~/components/AI/WidgetTooltipItem", () => ({
@@ -148,6 +130,7 @@ vi.mock("~/components/LayoutAuth/AppCard/SharedWithPopover", () => ({
 vi.mock("~/components/LayoutAuth/AppCard/Tag", () => ({ Tag: () => null }));
 
 import AppCard from "~/components/LayoutAuth/AppCard/AppCard";
+import { partial } from "../../../mocks";
 
 function makeTemplate(
   type: UnifiedTemplate["type"],
@@ -164,7 +147,13 @@ function makeTemplate(
     creator: true,
     onDelete: vi.fn(),
     source: sourceId
-      ? ({ id: sourceId, uuid: sourceId, name: "src", url: "", endpointHeaders: [] } as any)
+      ? partial({
+          id: sourceId,
+          uuid: sourceId,
+          name: "src",
+          url: "",
+          endpointHeaders: [],
+        })
       : undefined,
   };
 }

@@ -3,7 +3,7 @@
 This is the test that stands behind the whole feature. It seeds a database
 against the live schema, runs the real ``export_user`` to produce a real zip,
 then runs the real ``import_archive`` against a *separate* database standing in
-for a fresh OpenBB Lite install, and compares the two accounts row by row.
+for a fresh Lite install, and compares the two accounts row by row.
 
 ``PRAGMA foreign_keys=ON`` is enabled on the destination, matching Lite. That
 makes insert ordering a genuine constraint rather than a claim: a row inserted
@@ -81,8 +81,6 @@ def _seed_source(session):
             last_name="Lovelace",
             confirmed=True,
             is_superuser=True,  # must not survive
-            stripe_id="cus_12345",  # must not survive
-            has_profile_url=True,
             permissions_uuid=HUB_MAP,  # must be repointed
             created_date=datetime(2024, 6, 1, 10, 0, tzinfo=UTC),
         )
@@ -108,13 +106,6 @@ def _seed_source(session):
             url="https://api.example.com/",
             endpointHeaders=[{"Authorization": "Bearer sk-live-secret"}],
         ),
-        models.SingleWidget(
-            uuid=uuid4(),
-            user_uuid=USER_UUID,
-            name="w",
-            endpoint="/data",
-            grid_data={"x": 1},
-        ),
         models.WidgetMetadata(
             uuid=uuid4(),
             user_uuid=USER_UUID,
@@ -123,7 +114,7 @@ def _seed_source(session):
             source="custom",
             category="c",
             sub_category="s",
-            widget_type="rich_note",
+            widget_type="html",
             storage={"body": "# Notes\n\nünïcøde ✅"},
             widget_config={"theme": "dark"},
             widget_id=uuid4(),
@@ -133,7 +124,7 @@ def _seed_source(session):
             creater_uuid=USER_UUID,
             file_widget_uuid=file_widget.uuid,
             s3_file_name=FILE_KEY,
-            bucket="pro-file-storage-dev",
+            bucket="file-storage-dev",
             extension="csv",
             original_file_name="prices.csv",
             size=len(FILE_BYTES),
@@ -159,7 +150,7 @@ def _seed_source(session):
             copilots=[{"name": "analyst"}],
         ),
         models.MCPServers(
-            uuid=uuid4(), user_uuid=USER_UUID, servers=[{"name": "openbb"}]
+            uuid=uuid4(), user_uuid=USER_UUID, servers=[{"name": "workspace"}]
         ),
         models.CopilotChat(uuid=CHAT_UUID, user_uuid=USER_UUID, label="My chat"),
         models.UserPrompts(
@@ -170,21 +161,6 @@ def _seed_source(session):
             user_uuid=USER_UUID,
             slug="my-skill",
             content="# Skill body",
-        ),
-        models.TradingView(
-            uuid=uuid4(),
-            user_uuid=USER_UUID,
-            charts_state={"charts": []},
-            settings={"theme": "dark"},
-        ),
-        models.EnabledWidgetBundles(
-            uuid=uuid4(),
-            user_uuid=USER_UUID,
-            enabled_bundles=["equity"],
-            disabled_widgets=[],
-        ),
-        models.CopilotChatOld(
-            uuid=uuid4(), user_uuid=USER_UUID, content={"messages": ["old"]}
         ),
     ])
     session.flush()
@@ -215,7 +191,7 @@ def _seed_destination(session):
     session.add(
         models.Entity(
             uuid=LITE_ENTITY,
-            name="OpenBB Lite",
+            name="Lite",
             entity_type_uuid=_entity_type(session),
         )
     )
@@ -232,8 +208,8 @@ def _seed_destination(session):
     session.add(
         models.User(
             uuid=LITE_ADMIN_UUID,
-            email="admin@openbb.co",
-            clean_email="admin@openbb.co",
+            email="admin@example.com",
+            clean_email="admin@example.com",
             username="migrating",  # deliberate clash with the imported username
             password="admin-password",
             confirmed=True,
@@ -263,7 +239,7 @@ def databases(tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def storage():
-    return {FILE_KEY: FILE_BYTES, f"profile-pictures/{USER_UUID}.png": b"\x89PNG"}
+    return {FILE_KEY: FILE_BYTES}
 
 
 def _redirect_io(mp, databases, storage):
@@ -357,10 +333,6 @@ async def test_every_table_arrives_identical(table, databases, imported):
     """Row for row, ignoring only the columns the importer deliberately resets."""
     if table in scope.NOT_IMPORTED:
         pytest.skip(f"{table} is archived but never imported")
-    if table == "copilot_chat_old":
-        pytest.skip(
-            "conditionally imported -- covered by the two dedup tests below"
-        )
 
     src_sessions, dst_sessions = databases
     spec = scope.spec_by_table(table)
@@ -433,8 +405,8 @@ async def test_uploaded_files_are_in_the_archive_for_the_user_to_keep(imported):
         names = set(zf.namelist())
         assert zf.read(f"files/{FILE_KEY}") == FILE_BYTES
 
-    assert f"files/profile-pictures/{USER_UUID}.png" in names
-    assert import_result.archived_files == 2
+    assert f"files/{FILE_KEY}" in names
+    assert import_result.archived_files == 1
 
 
 async def test_import_writes_no_files_anywhere(imported, storage):
@@ -442,7 +414,7 @@ async def test_import_writes_no_files_anywhere(imported, storage):
     _, import_result = imported
 
     assert not any(k.startswith("imported/") for k in storage)
-    assert set(storage) == {FILE_KEY, f"profile-pictures/{USER_UUID}.png"}
+    assert set(storage) == {FILE_KEY}
     assert "stored_file" not in import_result.inserted
 
 
@@ -482,7 +454,6 @@ async def test_hub_privileges_and_billing_do_not_transfer(databases, imported):
         user = await s.get(models.User, USER_UUID)
 
     assert user.is_superuser is False, "Hub superuser must not become a Lite superuser"
-    assert user.stripe_id is None
     assert user.billing_active is False
 
 
@@ -514,83 +485,6 @@ async def test_org_ownership_and_sharing_are_dropped(databases, imported):
 
     assert dashboard.entity_uuid is None
     assert dashboard.entity_share is False
-
-
-async def test_pre_refactor_chats_are_not_duplicated_when_already_migrated(
-    databases, imported
-):
-    """The seed has one chat in copilot_chat and one in copilot_chat_old.
-
-    On a real account these are the same conversations -- the migration worker
-    copies without deleting -- so loading both would double the user's history.
-    """
-    export_result, import_result = imported
-    _, dst_sessions = databases
-
-    with ZipFile(export_result.archive) as zf:
-        assert "data/copilot_chat_old.jsonl" in set(zf.namelist()), (
-            "the pre-refactor rows must still be preserved in the archive"
-        )
-
-    async with dst_sessions() as s:
-        old = (await s.execute(sa.select(models.CopilotChatOld))).scalars().all()
-        new = (await s.execute(sa.select(models.CopilotChat))).scalars().all()
-
-    assert old == [], "pre-refactor chats must not be loaded alongside migrated ones"
-    assert len(new) == 1
-    assert "copilot_chat_old" in import_result.skipped_tables
-    assert any("already present" in w for w in import_result.warnings)
-
-
-async def test_pre_refactor_chats_load_when_the_account_was_never_migrated(
-    tmp_path_factory, databases, storage, imported, request
-):
-    """An unmigrated account's only copy is the old table -- it must survive."""
-    export_result, _ = imported
-
-    mp = pytest.MonkeyPatch()
-    request.addfinalizer(mp.undo)
-
-    # A destination with no chats at all, standing in for a fresh Lite install.
-    root = tmp_path_factory.mktemp("unmigrated")
-    db_path = root / "lite.db"
-    sync = sa.create_engine(f"sqlite:///{db_path}")
-    Base.metadata.create_all(sync)
-    with Session(sync) as session:
-        _seed_destination(session)
-
-    sessions = async_sessionmaker(create_async_engine(f"sqlite+aiosqlite:///{db_path}"))
-
-    async def write_db():
-        async with sessions() as session:
-            yield session
-
-    mp.setattr(importer, "aget_write_db", write_db)
-
-    # Rewrite the archive so copilot_chat is empty but copilot_chat_old is not,
-    # which is what an account the migration worker never reached looks like.
-    stripped = root / "no-new-chats.zip"
-    with ZipFile(export_result.archive) as src, ZipFile(stripped, "w") as dst:
-        for name in src.namelist():
-            payload = b"" if name == "data/copilot_chat.jsonl" else src.read(name)
-            dst.writestr(name, payload)
-
-    result = await importer.import_archive(stripped)
-
-    async with sessions() as s:
-        old = (await s.execute(sa.select(models.CopilotChatOld))).scalars().all()
-
-    assert len(old) == 1, "the only copy of the history must be loaded"
-    assert "copilot_chat_old" not in result.skipped_tables
-
-
-async def test_legacy_blob_table_is_reported_but_not_loaded(imported, databases):
-    export_result, import_result = imported
-
-    with ZipFile(export_result.archive) as zf:
-        assert "data/copilot_chats.jsonl" not in set(zf.namelist())
-
-    assert "copilot_chats" not in import_result.inserted
 
 
 # --------------------------------------------------------------------------- #

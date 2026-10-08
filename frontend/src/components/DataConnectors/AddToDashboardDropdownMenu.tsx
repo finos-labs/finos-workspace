@@ -37,7 +37,7 @@ export default function AddToDashboardDropdownMenu({
     addTab: state.addTab,
   }));
 
-  const validDashboards = Object.values(items).filter(
+  const validDashboards = Object.values(items ?? {}).filter(
     (item) => !(item.isFolder || item.isRoot),
   );
 
@@ -57,7 +57,7 @@ export default function AddToDashboardDropdownMenu({
         ) : mainButton ? (
           <DropdownMenuTrigger
             className={
-              "obb-small-navbar-btn rounded flex items-center justify-center size-7"
+              "ws-small-navbar-btn rounded flex items-center justify-center size-7"
             }
             onClick={(e) => {
               e.stopPropagation();

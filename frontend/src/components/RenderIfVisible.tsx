@@ -1,4 +1,4 @@
-import { forwardRef, type MutableRefObject, type ReactNode } from "react";
+import { forwardRef, type ReactNode } from "react";
 import { useIntersectionObserver } from "usehooks-ts";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn } from "~/lib/utils";
@@ -23,7 +23,7 @@ type Props = {
 
 export const InitialVisibleWidgetIds = ["navigation_bar", "market_indices"];
 
-const RenderIfVisible = forwardRef(
+const RenderIfVisible = forwardRef<HTMLDivElement, Props>(
   (
     {
       initialVisible = false,
@@ -31,8 +31,8 @@ const RenderIfVisible = forwardRef(
       stayRendered = true,
       rootElementClass = "widgetContent w-full h-full rounded bg-white text-xs shadow-xs dark:bg-[#151518]",
       children,
-    }: Props,
-    _forwardedRef: MutableRefObject<HTMLDivElement>,
+    },
+    _forwardedRef,
   ) => {
     const widgetId = useWidgetContext(true)?.widget?.widgetId;
     const isMinimized = useWidgetContext(true)?.widget?.isMinimized;
@@ -46,8 +46,11 @@ const RenderIfVisible = forwardRef(
       rootMargin: `${visibleOffset}px 0px ${visibleOffset}px 0px`,
       threshold: 0.5,
       freezeOnceVisible: stayRendered,
-      initialIsIntersecting:
-        isMinimized || InitialVisibleWidgetIds.includes(widgetId) || initialVisible,
+      initialIsIntersecting: Boolean(
+        isMinimized ||
+          (widgetId !== undefined && InitialVisibleWidgetIds.includes(widgetId)) ||
+          initialVisible,
+      ),
     });
 
     const renderChildren = isIntersecting || initialVisible;

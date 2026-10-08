@@ -1,14 +1,11 @@
-import type { ChartTypeExCombo } from "ag-grid-community";
 import tlds from "tlds";
 import { getConfig } from "./runtimeConfig";
 import type { Copilot } from "./state/copilot";
-import type { McpServer } from "./state/mcpTools";
 
 export const VERSION = import.meta.env.VITE_RELEASE_VERSION;
 
-export const USER_AGENT_BACKEND = "pro";
+export const USER_AGENT_BACKEND = "app";
 export const REFRESH_WIDGET_INTERVAL = 1000 * 60 * 15; // 15 minutes
-export const MODE: "web" | "native" = "web";
 
 export const ENABLE_SHARING = "true";
 export const MAX_COPILOT_LINKS = 4;
@@ -27,27 +24,27 @@ export const MAX_SKILL_DESCRIPTION_LENGTH = 500;
 export const TOOLTIP_OPEN_DELAY_MS = 700;
 export const TOOLTIP_SKIP_DELAY_MS = 300;
 
-// The backend is configured to only accept these options, make sure to also add any of
-// these options on the backend. Ordered documents -> tabular -> images so the
-// derived "supported formats" strings read consistently across the workspace
-// dropzone and the Copilot dropzone.
+// File types the File connector turns into widgets: each one opens in the PDF, HTML or
+// Markdown viewer. The backend accepts these options too (it accepts more, for Copilot
+// uploads).
 // biome-ignore format: off
-export const ExtensionOptions = ["pdf","txt","md","docx","html","csv","json","xlsx","png","jpg","jpeg","gif"] as const;
+export const ExtensionOptions = ["pdf","txt","md","docx","html"] as const;
 
 export type Extension = (typeof ExtensionOptions)[number];
-
-export function validImageExtension(value: string): value is Extension {
-  return ["png", "jpg", "jpeg", "gif"].includes(value as Extension);
-}
 
 export function validExtension(value: string): value is Extension {
   return ExtensionOptions.includes(value as Extension);
 }
 
-// Accept list for Copilot's file upload — intentionally narrower than
-// ExtensionOptions (Copilot doesn't ingest JSON/GIF). Same docs -> tabular ->
-// images ordering as ExtensionOptions so the tooltip reads in lockstep with
-// the dashboard "Supported formats" string.
+/** The viewer widget type for an uploaded file. */
+export function getFileWidgetType(extension: string): "pdf" | "html" | "markdown" {
+  if (extension === "pdf") return "pdf";
+  if (extension === "html") return "html";
+  return "markdown";
+}
+
+// Accept list for Copilot's file upload. Wider than ExtensionOptions: the Copilot
+// also reads spreadsheets and images it is given as context.
 export const COPILOT_ACCEPTED_MIME_TYPES = {
   "application/pdf": [".pdf"],
   "text/plain": [".txt"],
@@ -64,32 +61,13 @@ export const COPILOT_ACCEPTED_EXTENSIONS = Array.from(
   new Set(Object.values(COPILOT_ACCEPTED_MIME_TYPES).flat()),
 );
 
-export const inSnowflakeNativeApp =
-  import.meta.env.VITE_SNOWFLAKE_NATIVE_APP === "true";
-
 // Runtime config accessors — safe to call at any point (falls back to import.meta.env)
 export function getApiUrl() {
-  return getConfig().urls.backend;
-}
-export function getPaymentsApiUrl() {
   return getConfig().urls.backend;
 }
 export function getAiApiUrl() {
   return getConfig().urls.ai;
 }
-export function getDataPlatformUrl() {
-  return getConfig().urls.platform;
-}
-
-export const LETS_TALK_FORM_URL =
-  "https://app.formbricks.com/s/cqx6ygvxkpy0gydm9jafz57w?embed=true";
-
-// Formbricks form embedded in the "Contact" popup for marketplace apps (lite mode).
-// TODO: replace the form id with the dedicated vendor-contact form id.
-export const CONTACT_VENDOR_FORM_URL =
-  "https://app.formbricks.com/s/cqx6ygvxkpy0gydm9jafz57w?embed=true";
-
-export const IMAGE_FILE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif"];
 
 /**
  * Copilot feature constants shared across components
@@ -114,29 +92,7 @@ export const AGENT_ENABLED_FEATURES = new Set([
   "widget-dashboard-search",
 ]);
 
-/**
- * Default MCP server configuration
- * Added automatically for new users when VITE_MCP_DEFAULT_SERVER_ENABLED is true
- */
-export const DEFAULT_MCP_SERVER: McpServer = {
-  id: "openbb-docs-default",
-  name: "OpenBB Documentation",
-  url: "https://openbb-docs-mcp.external.openbb.app/mcp",
-  enabled: true,
-  clientName: "OpenBB Workspace",
-  isLocal: false,
-  tools: [],
-  autoReconnect: true,
-};
-
-export const FILE_EXTENSIONS = [
-  ".pdf",
-  ...IMAGE_FILE_EXTENSIONS,
-  ".txt",
-  ".docx",
-  ".md",
-  ".html",
-];
+export const FILE_EXTENSIONS = [".pdf", ".txt", ".docx", ".md", ".html"];
 
 export const UNIQUE_AVATAR_COLORS = [
   "#3174ad", // Blue
@@ -169,32 +125,6 @@ export const LINK_REGEX = new RegExp(
 
 // Email regex to identify and filter out email addresses
 export const EMAIL_REGEX = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
-
-export const BENZINGA_NEWS_IMG_URLS = [
-  "https://cdn.benzinga.com/files/imagecache/1024x768xUP/images/story/2023/options_image_0.jpeg",
-  "https://cdn.benzinga.com/files/imagecache/1024x768xUP/images/story/2023/options_image_2.jpeg",
-  "https://cdn.benzinga.com/files/imagecache/250x187xUP/images/story/2023/options_image_4.jpeg",
-  "https://cdn.benzinga.com/files/imagecache/1024x768xUP/images/story/2023/movers_image_0.jpeg",
-  "https://cdn.benzinga.com/files/imagecache/1024x768xUP/images/story/2023/movers_image_1.jpeg",
-  "https://cdn.benzinga.com/files/imagecache/1024x768xUP/images/story/2023/movers_image_5.jpeg",
-  "https://cdn.benzinga.com/files/images/story/2024/untitled_9.jpeg?optimize=medium&dpr=2&auto=webp&width=260",
-  "https://cdn.benzinga.com/files/images/story/2024/02/26/stock_art.jpg?optimize=medium&dpr=2&auto=webp&width=260",
-  "https://cdn.benzinga.com/files/images/story/2024/02/26/image39.jpeg?optimize=medium&dpr=2&auto=webp&width=260",
-  "https://cdn.benzinga.com/files/maxim-hopman-fixlqxahcfk-unsplash_8_4.jpg?optimize=medium&dpr=2&auto=webp&width=260",
-];
-
-export const BLOCKED_WIDGETS = [
-  "analyst_price_target",
-  "global_news",
-  "company_news",
-  "economic_overview",
-  "country_indicators",
-  "economic_indicators",
-  "yield_curve",
-  "analyst_estimates",
-];
-
-export const BLOCKED_WIDGET_IDS = new Set(BLOCKED_WIDGETS);
 
 export const AI_SUPPORTED_FILE_TYPES = [
   "pdf",
@@ -323,10 +253,10 @@ let _defaultCopilot: Copilot | null = null;
 export function getDefaultCopilot(): Copilot {
   if (!_defaultCopilot) {
     _defaultCopilot = {
-      id: "openbb-copilot",
-      name: "OpenBB Copilot",
-      description: "OpenBB Copilot is the default agent for OpenBB Workspace.",
-      image: "/assets/images/openbb.png",
+      id: "default-copilot",
+      name: "Copilot",
+      description: "Copilot is the default agent for Workspace.",
+      image: "/assets/images/brand.png",
       endpoints: {
         upload_docs: "",
         query: `${getAiApiUrl()}/v1/query`,
@@ -343,88 +273,17 @@ export function getDefaultCopilot(): Copilot {
       },
     } as Copilot;
 
-    if (!inSnowflakeNativeApp) {
-      _defaultCopilot.features["workspace-web-search"] = {
+    _defaultCopilot.features = {
+      ..._defaultCopilot.features,
+      "workspace-web-search": {
         label: "Web Search",
         default: true,
         description: "Allows the copilot to search the web.",
-      };
-    }
+      },
+    };
   }
   return _defaultCopilot;
 }
-
-export const defaultGroup = {
-  id: "35c413e5-a7ca-42a1-895f-97bfe46ab9e9",
-  name: "Group 1",
-  color: "#33BBFF",
-  ticker: { symbol: "AAPL", id: "AAPL", category: "equity" },
-};
-
-export const RSS_FEEDS = [
-  {
-    tag: "Bloomberg",
-    enabled: true,
-    source: "Markets News",
-    url: "https://feeds.bloomberg.com/markets/news.rss",
-  },
-  {
-    tag: "Bloomberg",
-    enabled: true,
-    source: "Politics News",
-    url: "https://feeds.bloomberg.com/politics/news.rss",
-  },
-  {
-    tag: "Bloomberg",
-    enabled: true,
-    source: "Technology News",
-    url: "https://feeds.bloomberg.com/technology/news.rss",
-  },
-  {
-    tag: "Bloomberg",
-    enabled: true,
-    source: "Wealth News",
-    url: "https://feeds.bloomberg.com/wealth/news.rss",
-  },
-  {
-    tag: "Reuters",
-    enabled: true,
-    source: "General News",
-    url: "https://www.reutersagency.com/feed/?taxonomy=best-sectors&post_type=best",
-  },
-  {
-    tag: "New York Times",
-    enabled: true,
-    source: "General News",
-    url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
-  },
-  {
-    tag: "CNBC",
-    enabled: true,
-    source: "Business News",
-    url: "https://www.cnbc.com/id/100003114/device/rss/rss.html",
-  },
-  {
-    tag: "CNBC",
-    enabled: true,
-    source: "Top News",
-    url: "https://www.cnbc.com/id/100727362/device/rss/rss.html",
-  },
-  {
-    tag: "FED",
-    enabled: true,
-    source: "FED Press Releases",
-    url: "https://www.federalreserve.gov/feeds/press_all.xml",
-  },
-];
-
-export type RSSFeed = (typeof RSS_FEEDS)[number];
-export type OldRSSFeed = {
-  name: string;
-  url: string;
-  category: string;
-  enabled: boolean;
-};
 
 export const butterflyTypes = [
   "Azure Morpho",
@@ -688,617 +547,6 @@ export const butterflyTypes = [
   "Obsidian Daggerwing",
 ];
 
-// This is the json file from econdb :)
-export const econdbCountries = [
-  {
-    region: "Africa",
-    verbose: "Algeria",
-    iso2: "DZ",
-  },
-  {
-    region: "Latin America",
-    verbose: "Argentina",
-    iso2: "AR",
-  },
-  {
-    region: "G20",
-    verbose: "Argentina",
-    iso2: "AR",
-  },
-  {
-    region: "Oceania",
-    verbose: "Australia",
-    iso2: "AU",
-  },
-  {
-    region: "G20",
-    verbose: "Australia",
-    iso2: "AU",
-  },
-  {
-    region: "Europe",
-    verbose: "Austria",
-    iso2: "AT",
-  },
-  {
-    region: "Central Asia",
-    verbose: "Azerbaijan",
-    iso2: "AZ",
-  },
-  {
-    region: "South Asia",
-    verbose: "Bangladesh",
-    iso2: "BD",
-  },
-  {
-    region: "Europe",
-    verbose: "Belarus",
-    iso2: "BY",
-  },
-  {
-    region: "Europe",
-    verbose: "Belgium",
-    iso2: "BE",
-  },
-  {
-    region: "Latin America",
-    verbose: "Brazil",
-    iso2: "BR",
-  },
-  {
-    region: "G20",
-    verbose: "Brazil",
-    iso2: "BR",
-  },
-  {
-    region: "Europe",
-    verbose: "Bulgaria",
-    iso2: "BG",
-  },
-  {
-    region: "Southeast Asia",
-    verbose: "Cambodia",
-    iso2: "KH",
-  },
-  {
-    region: "North America",
-    verbose: "Canada",
-    iso2: "CA",
-  },
-  {
-    region: "G20",
-    verbose: "Canada",
-    iso2: "CA",
-  },
-  {
-    region: "Latin America",
-    verbose: "Chile",
-    iso2: "CL",
-  },
-  {
-    region: "East Asia",
-    verbose: "China",
-    iso2: "CN",
-  },
-  {
-    region: "G20",
-    verbose: "China",
-    iso2: "CN",
-  },
-  {
-    region: "Latin America",
-    verbose: "Colombia",
-    iso2: "CO",
-  },
-  {
-    region: "Europe",
-    verbose: "Croatia",
-    iso2: "HR",
-  },
-  {
-    region: "Latin America",
-    verbose: "Cuba",
-    iso2: "CU",
-  },
-  {
-    region: "Europe",
-    verbose: "Czechia",
-    iso2: "CZ",
-  },
-  {
-    region: "Europe",
-    verbose: "Denmark",
-    iso2: "DK",
-  },
-  {
-    region: "Latin America",
-    verbose: "Dominican Republic",
-    iso2: "DO",
-  },
-  {
-    region: "Latin America",
-    verbose: "Ecuador",
-    iso2: "EC",
-  },
-  {
-    region: "Africa",
-    verbose: "Egypt",
-    iso2: "EG",
-  },
-  {
-    region: "Europe",
-    verbose: "Estonia",
-    iso2: "EE",
-  },
-  {
-    region: "Africa",
-    verbose: "Ethiopia",
-    iso2: "ET",
-  },
-  {
-    region: "Europe",
-    verbose: "European Union",
-    iso2: "EU",
-  },
-  {
-    region: "Europe",
-    verbose: "Euro Area",
-    iso2: "EA",
-  },
-  {
-    region: "G20",
-    verbose: "European Union",
-    iso2: "EU",
-  },
-  {
-    region: "Europe",
-    verbose: "Finland",
-    iso2: "FI",
-  },
-  {
-    region: "Europe",
-    verbose: "France",
-    iso2: "FR",
-  },
-  {
-    region: "G20",
-    verbose: "France",
-    iso2: "FR",
-  },
-  {
-    region: "Europe",
-    verbose: "Germany",
-    iso2: "DE",
-  },
-  {
-    region: "G20",
-    verbose: "Germany",
-    iso2: "DE",
-  },
-  {
-    region: "Europe",
-    verbose: "Greece",
-    iso2: "GR",
-  },
-  {
-    region: "Latin America",
-    verbose: "Guatemala",
-    iso2: "GT",
-  },
-  {
-    region: "Latin America",
-    verbose: "Honduras",
-    iso2: "HN",
-  },
-  {
-    region: "East Asia",
-    verbose: "Hong Kong",
-    iso2: "HK",
-  },
-  {
-    region: "Europe",
-    verbose: "Hungary",
-    iso2: "HU",
-  },
-  {
-    region: "G20",
-    verbose: "India",
-    iso2: "IN",
-  },
-  {
-    region: "South Asia",
-    verbose: "India",
-    iso2: "IN",
-  },
-  {
-    region: "G20",
-    verbose: "Indonesia",
-    iso2: "ID",
-  },
-  {
-    region: "Southeast Asia",
-    verbose: "Indonesia",
-    iso2: "ID",
-  },
-  {
-    region: "Middle East",
-    verbose: "Iran",
-    iso2: "IR",
-  },
-  {
-    region: "Middle East",
-    verbose: "Iraq",
-    iso2: "IQ",
-  },
-  {
-    region: "Europe",
-    verbose: "Ireland",
-    iso2: "IE",
-  },
-  {
-    region: "Middle East",
-    verbose: "Israel",
-    iso2: "IL",
-  },
-  {
-    region: "Europe",
-    verbose: "Italy",
-    iso2: "IT",
-  },
-  {
-    region: "G20",
-    verbose: "Italy",
-    iso2: "IT",
-  },
-  {
-    region: "East Asia",
-    verbose: "Japan",
-    iso2: "JP",
-  },
-  {
-    region: "G20",
-    verbose: "Japan",
-    iso2: "JP",
-  },
-  {
-    region: "Central Asia",
-    verbose: "Kazakhstan",
-    iso2: "KZ",
-  },
-  {
-    region: "Africa",
-    verbose: "Kenya",
-    iso2: "KE",
-  },
-  {
-    region: "Middle East",
-    verbose: "Kuwait",
-    iso2: "KW",
-  },
-  {
-    region: "Europe",
-    verbose: "Latvia",
-    iso2: "LV",
-  },
-  {
-    region: "Middle East",
-    verbose: "Lebanon",
-    iso2: "LB",
-  },
-  {
-    region: "Europe",
-    verbose: "Lithuania",
-    iso2: "LT",
-  },
-  {
-    region: "Europe",
-    verbose: "Luxembourg",
-    iso2: "LU",
-  },
-  {
-    region: "Southeast Asia",
-    verbose: "Malaysia",
-    iso2: "MY",
-  },
-  {
-    region: "North America",
-    verbose: "Mexico",
-    iso2: "MX",
-  },
-  {
-    region: "G20",
-    verbose: "Mexico",
-    iso2: "MX",
-  },
-  {
-    region: "Central Asia",
-    verbose: "Mongolia",
-    iso2: "MN",
-  },
-  {
-    region: "Africa",
-    verbose: "Morocco",
-    iso2: "MA",
-  },
-  {
-    region: "Europe",
-    verbose: "Netherlands",
-    iso2: "NL",
-  },
-  {
-    region: "Oceania",
-    verbose: "New Zealand",
-    iso2: "NZ",
-  },
-  {
-    region: "Africa",
-    verbose: "Nigeria",
-    iso2: "NG",
-  },
-  {
-    region: "Europe",
-    verbose: "North Macedonia",
-    iso2: "MK",
-  },
-  {
-    region: "Europe",
-    verbose: "Norway",
-    iso2: "NO",
-  },
-  {
-    region: "Middle East",
-    verbose: "Oman",
-    iso2: "OM",
-  },
-  {
-    region: "South Asia",
-    verbose: "Pakistan",
-    iso2: "PK",
-  },
-  {
-    region: "Latin America",
-    verbose: "Panama",
-    iso2: "PA",
-  },
-  {
-    region: "Latin America",
-    verbose: "Paraguay",
-    iso2: "PY",
-  },
-  {
-    region: "Latin America",
-    verbose: "Peru",
-    iso2: "PE",
-  },
-  {
-    region: "Southeast Asia",
-    verbose: "Philippines",
-    iso2: "PH",
-  },
-  {
-    region: "Europe",
-    verbose: "Poland",
-    iso2: "PL",
-  },
-  {
-    region: "Europe",
-    verbose: "Portugal",
-    iso2: "PT",
-  },
-  {
-    region: "Middle East",
-    verbose: "Qatar",
-    iso2: "QA",
-  },
-  {
-    region: "Europe",
-    verbose: "Romania",
-    iso2: "RO",
-  },
-  {
-    region: "Europe",
-    verbose: "Russian Federation",
-    iso2: "RU",
-  },
-  {
-    region: "G20",
-    verbose: "Russian Federation",
-    iso2: "RU",
-  },
-  {
-    region: "Middle East",
-    verbose: "Saudi Arabia",
-    iso2: "SA",
-  },
-  {
-    region: "G20",
-    verbose: "Saudi Arabia",
-    iso2: "SA",
-  },
-  {
-    region: "Europe",
-    verbose: "Serbia",
-    iso2: "RS",
-  },
-  {
-    region: "Southeast Asia",
-    verbose: "Singapore",
-    iso2: "SG",
-  },
-  {
-    region: "Europe",
-    verbose: "Slovakia",
-    iso2: "SK",
-  },
-  {
-    region: "Europe",
-    verbose: "Slovenia",
-    iso2: "SI",
-  },
-  {
-    region: "Africa",
-    verbose: "Tanzania",
-    iso2: "TZ",
-  },
-  {
-    region: "Africa",
-    verbose: "Namibia",
-    iso2: "NA",
-  },
-  {
-    region: "Africa",
-    verbose: "Libya",
-    iso2: "LY",
-  },
-  {
-    region: "Africa",
-    verbose: "South Africa",
-    iso2: "ZA",
-  },
-  {
-    region: "G20",
-    verbose: "South Africa",
-    iso2: "ZA",
-  },
-  {
-    region: "East Asia",
-    verbose: "South Korea",
-    iso2: "KR",
-  },
-  {
-    region: "G20",
-    verbose: "South Korea",
-    iso2: "KR",
-  },
-  {
-    region: "Europe",
-    verbose: "Spain",
-    iso2: "ES",
-  },
-  {
-    region: "Europe",
-    verbose: "Sweden",
-    iso2: "SE",
-  },
-  {
-    region: "Europe",
-    verbose: "Switzerland",
-    iso2: "CH",
-  },
-  {
-    region: "East Asia",
-    verbose: "Taiwan",
-    iso2: "TW",
-  },
-  {
-    region: "Southeast Asia",
-    verbose: "Thailand",
-    iso2: "TH",
-  },
-  {
-    region: "Africa",
-    verbose: "Tunisia",
-    iso2: "TN",
-  },
-  {
-    region: "Europe",
-    verbose: "Turkey",
-    iso2: "TR",
-  },
-  {
-    region: "G20",
-    verbose: "Turkey",
-    iso2: "TR",
-  },
-  {
-    region: "Europe",
-    verbose: "Ukraine",
-    iso2: "UA",
-  },
-  {
-    region: "Middle East",
-    verbose: "United Arab Emirates",
-    iso2: "AE",
-  },
-  {
-    region: "Europe",
-    verbose: "United Kingdom",
-    iso2: "UK",
-  },
-  {
-    region: "G20",
-    verbose: "United Kingdom",
-    iso2: "UK",
-  },
-  {
-    region: "North America",
-    verbose: "United States",
-    iso2: "US",
-  },
-  {
-    region: "G20",
-    verbose: "United States",
-    iso2: "US",
-  },
-  {
-    region: "Central Asia",
-    verbose: "Uzbekistan",
-    iso2: "UZ",
-  },
-  {
-    region: "Latin America",
-    verbose: "Venezuela",
-    iso2: "VE",
-  },
-  {
-    region: "Southeast Asia",
-    verbose: "Vietnam",
-    iso2: "VN",
-  },
-];
-
-export const CHART_TYPE_TO_SERIES_TYPE = {
-  column: "bar",
-  groupedColumn: "bar",
-  stackedColumn: "bar",
-  normalizedColumn: "bar",
-  bar: "bar",
-  groupedBar: "bar",
-  stackedBar: "bar",
-  normalizedBar: "bar",
-  line: "line",
-  stackedLine: "line",
-  normalizedLine: "line",
-  scatter: "scatter",
-  bubble: "bubble",
-  pie: "pie",
-  donut: "donut",
-  doughnut: "donut",
-  area: "area",
-  stackedArea: "area",
-  normalizedArea: "area",
-  histogram: "histogram",
-  radarLine: "radar-line",
-  radarArea: "radar-area",
-  nightingale: "nightingale",
-  radialColumn: "radial-column",
-  radialBar: "radial-bar",
-  sunburst: "sunburst",
-  rangeBar: "range-bar",
-  rangeArea: "range-area",
-  boxPlot: "box-plot",
-  treemap: "treemap",
-  heatmap: "heatmap",
-  waterfall: "waterfall",
-  funnel: "funnel",
-  coneFunnel: "cone-funnel",
-  pyramid: "pyramid",
-} as const;
-
-export const AG_CHART_TYPES = Object.keys(
-  CHART_TYPE_TO_SERIES_TYPE,
-) as ChartTypeExCombo[];
-
 // For srcDoc= iframes (HtmlViewer, Artifact) — would inherit parent origin.
 // On-prem with allowHtmlJsExecution enabled intentionally treats uploaded and
 // fetched .html file widgets as trusted executable content. allow-same-origin
@@ -1309,9 +557,5 @@ export const IFRAME_SRCDOC_SANDBOX_ATTRIBUTES =
 
 // For src= iframes (Iframe.tsx) — external URL origin, NOT parent origin.
 // allow-same-origin lets external site use its own cookies/storage.
-// SAFE: different origin cannot access pro.openbb.co localStorage.
+// SAFE: a different origin cannot access this app's localStorage.
 export const IFRAME_SANDBOX_ATTRIBUTES = `${IFRAME_SRCDOC_SANDBOX_ATTRIBUTES} allow-same-origin`;
-
-// Widget Metadata Constants
-export const WIDGET_STUDIO_TYPE = "widget_studio" as const;
-export const WIDGET_METADATA_CONNECTION_TYPE = "widgetMetadata" as const;

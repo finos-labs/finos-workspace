@@ -1,4 +1,4 @@
-import { HttpResponse, http, passthrough } from "msw";
+import { HttpResponse, http, type JsonBodyType, passthrough } from "msw";
 
 // Default mock data
 export const mockUser = {
@@ -8,8 +8,6 @@ export const mockUser = {
   last_name: "User",
   token: "mock-jwt-token",
   is_superuser: false,
-  accepted_pro_tos: true,
-  is_trial_entity: false,
 };
 
 export const mockValidateResponse = {
@@ -40,7 +38,7 @@ export const mockUsage = {
 };
 
 export const mockFeatureFlags = {
-  tier: "pro",
+  tier: "full",
   features: {
     copilot: true,
     file_uploads: true,
@@ -48,28 +46,22 @@ export const mockFeatureFlags = {
   },
 };
 
-// Base URL for API - matches VITE_PAYMENTS_URL in tests
-const BASE_URL = "https://backend.openbb.dev";
+// Base URL for API - matches VITE_BACKEND_URL in tests
+const BASE_URL = "https://backend.test";
 
 export const handlers = [
   // ============ Auth Endpoints ============
 
   // Login
-  http.post(`${BASE_URL}/pro/login`, async ({ request }) => {
+  http.post(`${BASE_URL}/app/login`, async ({ request }) => {
     const body = (await request.json()) as { email: string; password: string };
 
     if (body.email === "invalid@example.com") {
-      return HttpResponse.json(
-        { detail: "Invalid credentials" },
-        { status: 401 },
-      );
+      return HttpResponse.json({ detail: "Invalid credentials" }, { status: 401 });
     }
 
     if (body.email === "2fa@example.com") {
-      return HttpResponse.json(
-        { requires_2fa: true, status: 200 },
-        { status: 200 },
-      );
+      return HttpResponse.json({ requires_2fa: true, status: 200 }, { status: 200 });
     }
 
     return HttpResponse.json({
@@ -79,7 +71,7 @@ export const handlers = [
   }),
 
   // Validate user
-  http.get(`${BASE_URL}/pro/validate`, ({ request }) => {
+  http.get(`${BASE_URL}/app/validate`, ({ request }) => {
     const authHeader = request.headers.get("Authorization");
 
     if (!authHeader || authHeader === "Bearer invalid-token") {
@@ -90,12 +82,12 @@ export const handlers = [
   }),
 
   // Logout
-  http.post(`${BASE_URL}/pro/logout`, () => {
+  http.post(`${BASE_URL}/app/logout`, () => {
     return HttpResponse.json({ success: true });
   }),
 
   // Get user
-  http.get(`${BASE_URL}/pro/user`, ({ request }) => {
+  http.get(`${BASE_URL}/app/user`, ({ request }) => {
     const authHeader = request.headers.get("Authorization");
 
     if (!authHeader) {
@@ -106,67 +98,36 @@ export const handlers = [
   }),
 
   // Google auth
-  http.post(`${BASE_URL}/pro/google-auth`, async ({ request }) => {
+  http.post(`${BASE_URL}/app/google-auth`, async ({ request }) => {
     const body = (await request.json()) as { token: string };
 
     if (body.token === "invalid-google-token") {
-      return HttpResponse.json(
-        { detail: "Invalid Google token" },
-        { status: 401 },
-      );
+      return HttpResponse.json({ detail: "Invalid Google token" }, { status: 401 });
     }
 
     return HttpResponse.json({ ...mockUser, status: 200 });
   }),
 
   // Microsoft auth
-  http.post(`${BASE_URL}/pro/microsoft-auth`, async ({ request }) => {
+  http.post(`${BASE_URL}/app/microsoft-auth`, async ({ request }) => {
     const body = (await request.json()) as { token: string };
 
     if (body.token === "invalid-microsoft-token") {
-      return HttpResponse.json(
-        { detail: "Invalid Microsoft token" },
-        { status: 401 },
-      );
+      return HttpResponse.json({ detail: "Invalid Microsoft token" }, { status: 401 });
     }
 
     return HttpResponse.json({ ...mockUser, status: 200 });
   }),
 
-  // Register
-  http.post(`${BASE_URL}/pro/register`, async ({ request }) => {
-    const body = (await request.json()) as { email: string };
-
-    if (body.email === "existing@example.com") {
-      return HttpResponse.json(
-        { detail: "Email already registered" },
-        { status: 400 },
-      );
-    }
-
-    return HttpResponse.json({ status: 200 });
-  }),
-
-  // Forgot password
-  http.post(`${BASE_URL}/forgot-password`, async ({ request }) => {
-    const body = (await request.json()) as { email: string };
-
-    if (body.email === "notfound@example.com") {
-      return HttpResponse.json({ detail: "Email not found" }, { status: 404 });
-    }
-
-    return HttpResponse.json({ status: 200 });
-  }),
-
   // Accept terms
-  http.post(`${BASE_URL}/pro/accepted-pro-tos`, () => {
+  http.post(`${BASE_URL}/app/accepted-tos`, () => {
     return HttpResponse.json({ success: true });
   }),
 
   // 2FA endpoints
   http.post(`${BASE_URL}/totp`, () => {
     return HttpResponse.json({
-      uri: "otpauth://totp/OpenBB:test@example.com?secret=TESTSECRET",
+      uri: "otpauth://totp/Workspace:test@example.com?secret=TESTSECRET",
       secret: "TESTSECRET",
     });
   }),
@@ -181,31 +142,31 @@ export const handlers = [
     return HttpResponse.json({ status: 200 });
   }),
 
-  http.get(`${BASE_URL}/pro/2fa`, () => {
+  http.get(`${BASE_URL}/app/2fa`, () => {
     return HttpResponse.json({
       two_factor_auth: false,
       entity_require_authenticator: false,
     });
   }),
 
-  http.put(`${BASE_URL}/pro/2fa`, () => {
+  http.put(`${BASE_URL}/app/2fa`, () => {
     return HttpResponse.json({ success: true });
   }),
 
   // ============ Dashboard Endpoints ============
 
   // Get dashboards
-  http.get(`${BASE_URL}/pro/dash/sync`, () => {
+  http.get(`${BASE_URL}/app/dash/sync`, () => {
     return HttpResponse.json(mockDashboardData);
   }),
 
   // Get owned dashboards
-  http.get(`${BASE_URL}/pro/dash/sync/owned`, () => {
+  http.get(`${BASE_URL}/app/dash/sync/owned`, () => {
     return HttpResponse.json({ owned: mockDashboardData.owned });
   }),
 
   // Get shared dashboards
-  http.get(`${BASE_URL}/pro/dash/sync/shared`, () => {
+  http.get(`${BASE_URL}/app/dash/sync/shared`, () => {
     return HttpResponse.json({
       shared: mockDashboardData.shared,
       entity_shared: mockDashboardData.entity_shared,
@@ -213,135 +174,98 @@ export const handlers = [
   }),
 
   // Post dashboards (sync)
-  http.post(`${BASE_URL}/pro/dash/sync`, async ({ request }) => {
+  http.post(`${BASE_URL}/app/dash/sync`, async ({ request }) => {
     const body = await request.json();
     return HttpResponse.json({ success: true, items: body });
   }),
 
   // Share dashboard
-  http.post(`${BASE_URL}/pro/dash/:dashboardUuid/share`, async ({ params }) => {
+  http.post(`${BASE_URL}/app/dash/:dashboardUuid/share`, async ({ params }) => {
     const { dashboardUuid } = params;
 
     if (dashboardUuid === "non-existent") {
-      return HttpResponse.json(
-        { detail: "Dashboard not found" },
-        { status: 404 },
-      );
+      return HttpResponse.json({ detail: "Dashboard not found" }, { status: 404 });
     }
 
     return HttpResponse.json({ success: true });
   }),
 
   // Get dashboard shares
-  http.get(`${BASE_URL}/pro/dash/:dashboardUuid/shares`, ({ params }) => {
+  http.get(`${BASE_URL}/app/dash/:dashboardUuid/shares`, ({ params }) => {
     const { dashboardUuid } = params;
 
     if (dashboardUuid === "non-existent") {
-      return HttpResponse.json(
-        { detail: "Dashboard not found" },
-        { status: 404 },
-      );
+      return HttpResponse.json({ detail: "Dashboard not found" }, { status: 404 });
     }
 
     return HttpResponse.json({ shares: {} });
   }),
 
   // Delete dashboard share
-  http.delete(`${BASE_URL}/pro/dash/:dashboardUuid/share`, () => {
+  http.delete(`${BASE_URL}/app/dash/:dashboardUuid/share`, () => {
     return HttpResponse.json({ success: true });
   }),
 
   // ============ Usage & Tier Endpoints ============
 
   // Get usage
-  http.get(`${BASE_URL}/pro/usage`, () => {
+  http.get(`${BASE_URL}/app/usage`, () => {
     return HttpResponse.json(mockUsage);
-  }),
-
-  // Put tier
-  http.put(`${BASE_URL}/pro/tier`, async ({ request }) => {
-    const body = (await request.json()) as { tier: string };
-
-    return HttpResponse.json({
-      success: true,
-      entitlement: mockFeatureFlags,
-      usage: mockUsage,
-      is_trial_entity: body.tier === "trial",
-    });
   }),
 
   // ============ Widget Metadata Endpoints ============
 
-  http.get(`${BASE_URL}/pro/widget-metadata`, () => {
+  http.get(`${BASE_URL}/app/widget-metadata`, () => {
     return HttpResponse.json([]);
   }),
 
-  http.post(`${BASE_URL}/pro/widget-metadata`, () => {
+  http.post(`${BASE_URL}/app/widget-metadata`, () => {
     return HttpResponse.json({ success: true });
   }),
 
-  http.patch(`${BASE_URL}/pro/widget-metadata`, () => {
+  http.patch(`${BASE_URL}/app/widget-metadata`, () => {
     return HttpResponse.json({ success: true });
   }),
 
-  http.delete(`${BASE_URL}/pro/widget-metadata/:widgetId`, () => {
+  http.delete(`${BASE_URL}/app/widget-metadata/:widgetId`, () => {
     return HttpResponse.json([]);
   }),
 
   // ============ Data Connector Endpoints ============
 
   // API Sources
-  http.get(`${BASE_URL}/pro/data-connectors/api-source`, () => {
+  http.get(`${BASE_URL}/app/data-connectors/api-source`, () => {
     return HttpResponse.json([]);
   }),
 
-  http.post(`${BASE_URL}/pro/data-connectors/api-source/:sourceUuid`, () => {
+  http.post(`${BASE_URL}/app/data-connectors/api-source/:sourceUuid`, () => {
     return HttpResponse.json({ status: 200 });
   }),
 
-  http.delete(`${BASE_URL}/pro/data-connectors/api-source/:sourceUuid`, () => {
+  http.delete(`${BASE_URL}/app/data-connectors/api-source/:sourceUuid`, () => {
     return HttpResponse.json({ status: 200 });
   }),
 
   // File widgets
-  http.get(`${BASE_URL}/pro/data-connectors/file`, () => {
+  http.get(`${BASE_URL}/app/data-connectors/file`, () => {
     return HttpResponse.json([]);
   }),
 
-  http.post(`${BASE_URL}/pro/data-connectors/file/:sourceUuid`, () => {
+  http.post(`${BASE_URL}/app/data-connectors/file/:sourceUuid`, () => {
     return HttpResponse.json({ status: 200 });
   }),
 
-  http.delete(`${BASE_URL}/pro/data-connectors/file/:sourceUuid`, () => {
+  http.delete(`${BASE_URL}/app/data-connectors/file/:sourceUuid`, () => {
     return HttpResponse.json({ status: 200 });
   }),
-
-  // Single widgets
-  http.get(`${BASE_URL}/pro/data-connectors/single-widget`, () => {
-    return HttpResponse.json([]);
-  }),
-
-  http.post(
-    `${BASE_URL}/pro/data-connectors/single-widget/:sourceUuid`,
-    () => {
-      return HttpResponse.json({ status: 200 });
-    },
-  ),
-
-  http.delete(
-    `${BASE_URL}/pro/data-connectors/single-widget/:widgetUuid`,
-    () => {
-      return HttpResponse.json({ status: 200 });
-    },
-  ),
 
   // ============ Files Endpoints ============
 
-  http.get(`${BASE_URL}/pro/files`, () => {
+  http.get(`${BASE_URL}/app/files`, () => {
     return HttpResponse.json([]);
   }),
 
-  http.get(`${BASE_URL}/pro/files/:fileUuid/presigned-url`, ({ params }) => {
+  http.get(`${BASE_URL}/app/files/:fileUuid/presigned-url`, ({ params }) => {
     const { fileUuid } = params;
     return HttpResponse.json({
       pre_signed_url: `https://storage.example.com/${fileUuid}`,
@@ -350,107 +274,60 @@ export const handlers = [
     });
   }),
 
-  http.delete(`${BASE_URL}/pro/files/:fileUuid`, () => {
+  http.delete(`${BASE_URL}/app/files/:fileUuid`, () => {
     return HttpResponse.json({ status: 200 });
   }),
 
-  http.delete(`${BASE_URL}/pro/files`, () => {
+  http.delete(`${BASE_URL}/app/files`, () => {
     return HttpResponse.json({ status: 200 });
   }),
 
   // ============ Copilot Endpoints ============
 
-  http.get(`${BASE_URL}/pro/copilot-chats`, () => {
+  http.get(`${BASE_URL}/app/copilot-chats`, () => {
     return HttpResponse.json({ chats: [] });
   }),
 
-  http.post(`${BASE_URL}/pro/copilot-chats`, () => {
+  http.post(`${BASE_URL}/app/copilot-chats`, () => {
     return HttpResponse.json(mockUsage);
   }),
 
-  http.get(`${BASE_URL}/pro/custom-copilot`, () => {
+  http.get(`${BASE_URL}/app/custom-copilot`, () => {
     return HttpResponse.json([]);
   }),
 
-  http.put(`${BASE_URL}/pro/custom-copilot`, () => {
+  http.put(`${BASE_URL}/app/custom-copilot`, () => {
     return HttpResponse.json({ success: true });
   }),
 
-  http.delete(`${BASE_URL}/pro/custom-copilot/:uuid`, () => {
+  http.delete(`${BASE_URL}/app/custom-copilot/:uuid`, () => {
     return HttpResponse.json({ success: true });
   }),
 
   // ============ Prompts Endpoints ============
 
-  http.get(`${BASE_URL}/pro/prompts`, () => {
+  http.get(`${BASE_URL}/app/prompts`, () => {
     return HttpResponse.json([]);
   }),
 
-  http.post(`${BASE_URL}/pro/prompts`, () => {
+  http.post(`${BASE_URL}/app/prompts`, () => {
     return HttpResponse.json({ success: true });
   }),
 
   // ============ Other Endpoints ============
 
-  // Zero to hero (onboarding)
-  http.post(`${BASE_URL}/pro/zero-to-hero`, () => {
-    return HttpResponse.json({ status: 200 });
-  }),
-
-  // Developer onboarding
-  http.get(`${BASE_URL}/pro/pro-developer-onboarding-info`, () => {
-    return HttpResponse.json({});
-  }),
-
-  http.post(`${BASE_URL}/pro/pro-developer-onboarding-info`, () => {
-    return HttpResponse.json({ success: true });
-  }),
-
-  // Book demo
-  http.post(`${BASE_URL}/pro/book-demo`, () => {
-    return HttpResponse.json({ status: 200 });
-  }),
-
-  // Enabled bundles
-  http.get(`${BASE_URL}/pro/enabled-bundles`, () => {
-    return HttpResponse.json({});
-  }),
-
-  http.put(`${BASE_URL}/pro/enabled-bundles`, () => {
-    return HttpResponse.json({ success: true });
-  }),
-
   // User has entity
-  http.get(`${BASE_URL}/pro/user-has-entity`, () => {
+  http.get(`${BASE_URL}/app/user-has-entity`, () => {
     return HttpResponse.json({ success: true });
   }),
 
   // Theme settings
-  http.get(`${BASE_URL}/pro/theme-settings`, () => {
+  http.get(`${BASE_URL}/app/theme-settings`, () => {
     return HttpResponse.json({ light: null, dark: null });
   }),
 
   // MCP servers
-  http.post(`${BASE_URL}/pro/mcp-servers`, () => {
-    return HttpResponse.json({ status: 200 });
-  }),
-
-  // Marketing/newsletters
-  http.get(`${BASE_URL}/marketing`, () => {
-    return HttpResponse.json({
-      email_newsletter: false,
-      email_academia: false,
-      email_bot: false,
-      email_prowaitlist: false,
-    });
-  }),
-
-  http.put(`${BASE_URL}/marketing`, () => {
-    return HttpResponse.json({ status: 200 });
-  }),
-
-  // TV state
-  http.post(`${BASE_URL}/pro/tv-state`, () => {
+  http.post(`${BASE_URL}/app/mcp-servers`, () => {
     return HttpResponse.json({ status: 200 });
   }),
 
@@ -471,7 +348,7 @@ export const handlers = [
 export function createMockHandler(
   method: "get" | "post" | "put" | "delete" | "patch",
   path: string,
-  response: unknown,
+  response: JsonBodyType,
   status = 200,
 ) {
   const httpMethod = http[method];

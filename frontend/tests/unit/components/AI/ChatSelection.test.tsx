@@ -27,7 +27,10 @@ vi.mock("~/lib/utils/chatExport", () => ({
 // Render every row synchronously instead, matching the pattern used for
 // NewAdvancedSelect's virtualized dropdown list.
 vi.mock("@tanstack/react-virtual", () => ({
-  useVirtualizer: (opts: any) => ({
+  useVirtualizer: (opts: {
+    count: number;
+    getItemKey?: (index: number) => string | number;
+  }) => ({
     getVirtualItems: () =>
       Array.from({ length: opts.count }, (_, i) => ({
         key: opts.getItemKey?.(i) ?? i,
@@ -62,7 +65,7 @@ const chatToday: Chat = {
   label: "Today Chat",
   messages: [],
   lastInteraction: now,
-  agentIds: ["openbb-copilot"],
+  agentIds: ["default-copilot"],
 };
 
 const chatOlder: Chat = {
@@ -70,10 +73,10 @@ const chatOlder: Chat = {
   createdAt: now - 10 * 24 * 60 * 60 * 1000,
   label: "Older Chat",
   messages: [
-    { copilotId: "openbb-copilot", timestamp: now, role: "human", content: "Hi" },
+    { copilotId: "default-copilot", timestamp: now, role: "human", content: "Hi" },
   ],
   lastInteraction: now - 10 * 24 * 60 * 60 * 1000,
-  agentIds: ["openbb-copilot"],
+  agentIds: ["default-copilot"],
 };
 
 async function openPopover() {

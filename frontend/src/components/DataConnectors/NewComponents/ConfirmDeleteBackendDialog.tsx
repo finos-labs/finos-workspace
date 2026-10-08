@@ -4,6 +4,7 @@ import type { BaseDialogProps } from "~/components/ds/dialogs/BaseDialog";
 import { BaseDialog } from "~/components/ds/dialogs/BaseDialog";
 
 interface Props extends BaseDialogProps {
+  onClose: () => void;
   name: string;
   onConfirm: () => Promise<void>;
 }

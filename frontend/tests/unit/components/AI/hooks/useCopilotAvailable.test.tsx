@@ -27,7 +27,7 @@ describe("isCopilotAvailable", () => {
   beforeEach(() => {
     useCopilotStore.setState({ externalCopilotHolders: [] });
     mockConfig.copilot.enabled = true;
-    mockConfig.copilot.openbbCopilot = true;
+    mockConfig.copilot.defaultCopilot = true;
   });
 
   it("returns false when copilot is disabled", () => {
@@ -35,24 +35,24 @@ describe("isCopilotAvailable", () => {
     expect(isCopilotAvailable()).toBe(false);
   });
 
-  it("returns true with the OpenBB default copilot and no custom agents", () => {
-    mockConfig.copilot.openbbCopilot = true;
+  it("returns true with the default copilot and no custom agents", () => {
+    mockConfig.copilot.defaultCopilot = true;
     expect(isCopilotAvailable()).toBe(true);
   });
 
-  it("returns false when openbbCopilot is off and there are no custom agents", () => {
-    mockConfig.copilot.openbbCopilot = false;
+  it("returns false when defaultCopilot is off and there are no custom agents", () => {
+    mockConfig.copilot.defaultCopilot = false;
     expect(isCopilotAvailable()).toBe(false);
   });
 
-  it("returns true when a custom agent is connected (openbbCopilot off)", () => {
-    mockConfig.copilot.openbbCopilot = false;
+  it("returns true when a custom agent is connected (defaultCopilot off)", () => {
+    mockConfig.copilot.defaultCopilot = false;
     useCopilotStore.setState({ externalCopilotHolders: [holder(true)] });
     expect(isCopilotAvailable()).toBe(true);
   });
 
   it("excludes holders with enabled:false", () => {
-    mockConfig.copilot.openbbCopilot = false;
+    mockConfig.copilot.defaultCopilot = false;
     useCopilotStore.setState({ externalCopilotHolders: [holder(false)] });
     expect(isCopilotAvailable()).toBe(false);
   });

@@ -25,7 +25,7 @@ export async function exportRecordsToFile(
   fileName: string,
   format: ExportFormat,
 ): Promise<void> {
-  const name = fileName || `openbb_pro_${sheetName.toLowerCase()}`;
+  const name = fileName || `workspace_${sheetName.toLowerCase()}`;
 
   if (format === "csv") {
     const csv = Papa.unparse(rows, { columns: [...headers], delimiter: ";" });

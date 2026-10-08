@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 const mockSetOpen = vi.fn();
 const mockRemoveWidget = vi.fn();
 const mockGetWidgetsByAttribute = vi.fn(() => ({}));
-const mockSetDatabases = vi.fn();
 const mockUpdateApiSource = vi.fn();
 const mockHandleWidgetDeletion = vi.fn();
 const mockUpdateWidgetEndpoints = vi.fn();
@@ -96,37 +95,47 @@ describe("RightSideActions", () => {
 
   describe("button visibility", () => {
     it("renders delete button for all types", () => {
-      render(<RightSideActions id="test-id" type="single" />);
+      render(
+        <RightSideActions selectionId="selection-1" id="test-id" type="websites" />,
+      );
 
       expect(screen.getByTestId("icon-trash-04")).toBeInTheDocument();
     });
 
     it("does not render add widget button for non-connection types", () => {
-      render(<RightSideActions id="test-id" type="single" />);
+      render(
+        <RightSideActions selectionId="selection-1" id="test-id" type="websites" />,
+      );
 
       expect(screen.queryByTestId("icon-plus-icon")).not.toBeInTheDocument();
     });
 
     it("renders edit button for editable types", () => {
-      render(<RightSideActions id="test-id" type="single" />);
+      render(
+        <RightSideActions selectionId="selection-1" id="test-id" type="websites" />,
+      );
 
       expect(screen.getByTestId("icon-pencil-02")).toBeInTheDocument();
     });
 
     it("does not render edit button for types with showEdit=false", () => {
-      render(<RightSideActions id="test-id" type="widget_studio" />);
+      render(<RightSideActions selectionId="selection-1" id="test-id" type="html" />);
 
       expect(screen.queryByTestId("icon-pencil-02")).not.toBeInTheDocument();
     });
 
     it("renders refresh button for backend type", () => {
-      render(<RightSideActions id="backend-1" type="backend" />);
+      render(
+        <RightSideActions selectionId="selection-1" id="backend-1" type="backend" />,
+      );
 
       expect(screen.getByTestId("icon-refresh-right")).toBeInTheDocument();
     });
 
     it("does not render refresh button for non-backend types", () => {
-      render(<RightSideActions id="test-id" type="single" />);
+      render(
+        <RightSideActions selectionId="selection-1" id="test-id" type="websites" />,
+      );
 
       expect(screen.queryByTestId("icon-refresh-right")).not.toBeInTheDocument();
     });
@@ -134,7 +143,14 @@ describe("RightSideActions", () => {
 
   describe("disabled state", () => {
     it("disables all buttons when disabled prop is true", () => {
-      render(<RightSideActions id="backend-1" type="backend" disabled={true} />);
+      render(
+        <RightSideActions
+          selectionId="selection-1"
+          id="backend-1"
+          type="backend"
+          disabled={true}
+        />,
+      );
 
       const buttons = screen.getAllByRole("button");
       for (const button of buttons) {
@@ -145,13 +161,22 @@ describe("RightSideActions", () => {
 
   describe("data-testid", () => {
     it("sets delete data-testid when name is provided", () => {
-      render(<RightSideActions id="test-id" type="single" name="my-widget" />);
+      render(
+        <RightSideActions
+          selectionId="selection-1"
+          id="test-id"
+          type="websites"
+          name="my-widget"
+        />,
+      );
 
       expect(screen.getByTestId("delete-my-widget")).toBeInTheDocument();
     });
 
     it("does not set delete data-testid when name is not provided", () => {
-      render(<RightSideActions id="test-id" type="single" />);
+      render(
+        <RightSideActions selectionId="selection-1" id="test-id" type="websites" />,
+      );
 
       expect(screen.queryByTestId("delete-undefined")).not.toBeInTheDocument();
     });
@@ -159,15 +184,19 @@ describe("RightSideActions", () => {
 
   describe("download action", () => {
     it("renders download button only for file type", () => {
-      const { unmount } = render(<RightSideActions id="file-1" type="file" />);
+      const { unmount } = render(
+        <RightSideActions selectionId="selection-1" id="file-1" type="file" />,
+      );
       expect(screen.getByTestId("icon-download")).toBeInTheDocument();
       unmount();
 
-      render(<RightSideActions id="test-id" type="single" />);
+      render(
+        <RightSideActions selectionId="selection-1" id="test-id" type="websites" />,
+      );
       expect(screen.queryByTestId("icon-download")).not.toBeInTheDocument();
     });
 
-    const FILE_URL = "https://api.example.com/pro/files/0221d26e-0b5c.csv";
+    const FILE_URL = "https://api.example.com/app/files/0221d26e-0b5c.csv";
 
     it("fetches the file blob and saves it under the original file name", async () => {
       const blob = new Blob(["a,b,c"], { type: "text/csv" });
@@ -186,6 +215,7 @@ describe("RightSideActions", () => {
 
       render(
         <RightSideActions
+          selectionId="selection-1"
           id="file-1"
           type="file"
           name="PGA Field Performance Trends"
@@ -218,7 +248,7 @@ describe("RightSideActions", () => {
     });
 
     it("shows an error toast when there is no file URL", async () => {
-      render(<RightSideActions id="file-1" type="file" />);
+      render(<RightSideActions selectionId="selection-1" id="file-1" type="file" />);
       await clickIconButton("icon-download");
 
       expect(mockGetStoredFileBlob).not.toHaveBeenCalled();
@@ -228,7 +258,14 @@ describe("RightSideActions", () => {
     it("shows an error toast when the download request fails", async () => {
       mockGetStoredFileBlob.mockRejectedValue(new Error("network"));
 
-      render(<RightSideActions id="file-1" type="file" fileUrl={FILE_URL} />);
+      render(
+        <RightSideActions
+          selectionId="selection-1"
+          id="file-1"
+          type="file"
+          fileUrl={FILE_URL}
+        />,
+      );
       await clickIconButton("icon-download");
 
       expect(mockToastError).toHaveBeenCalledWith("Failed to download file");
@@ -237,19 +274,26 @@ describe("RightSideActions", () => {
 
   describe("edit action", () => {
     it("calls setOpen with edit mode when edit button is clicked", async () => {
-      render(<RightSideActions id="test-id" type="single" />);
+      render(<RightSideActions selectionId="selection-1" id="test-id" type="file" />);
 
       await clickIconButton("icon-pencil-02");
 
       expect(mockSetOpen).toHaveBeenCalledWith(true, {
         mode: "edit",
-        dcTab: "single",
+        dcTab: "file",
         id: "test-id",
       });
     });
 
     it("maps websites type to website dcTab", async () => {
-      render(<RightSideActions id="test-id" type="others" parentType="websites" />);
+      render(
+        <RightSideActions
+          selectionId="selection-1"
+          id="test-id"
+          type="others"
+          parentType="websites"
+        />,
+      );
 
       await clickIconButton("icon-pencil-02");
 
@@ -259,23 +303,13 @@ describe("RightSideActions", () => {
         id: "test-id",
       });
     });
-
-    it("maps rss_feeds type to rss dcTab", async () => {
-      render(<RightSideActions id="test-id" type="others" parentType="rss_feeds" />);
-
-      await clickIconButton("icon-pencil-02");
-
-      expect(mockSetOpen).toHaveBeenCalledWith(true, {
-        mode: "edit",
-        dcTab: "rss",
-        id: "test-id",
-      });
-    });
   });
 
   describe("delete action", () => {
     it("opens confirm dialog for non-backend types", async () => {
-      render(<RightSideActions id="test-id" type="single" />);
+      render(
+        <RightSideActions selectionId="selection-1" id="test-id" type="websites" />,
+      );
 
       await clickIconButton("icon-trash-04");
 
@@ -286,7 +320,9 @@ describe("RightSideActions", () => {
     });
 
     it("opens backend-specific dialog for backend type", async () => {
-      render(<RightSideActions id="backend-1" type="backend" />);
+      render(
+        <RightSideActions selectionId="selection-1" id="backend-1" type="backend" />,
+      );
 
       await clickIconButton("icon-trash-04");
 
@@ -295,7 +331,14 @@ describe("RightSideActions", () => {
     });
 
     it("opens backend-specific dialog for others with backend parentType", async () => {
-      render(<RightSideActions id="test-id" type="others" parentType="backend" />);
+      render(
+        <RightSideActions
+          selectionId="selection-1"
+          id="test-id"
+          type="others"
+          parentType="backend"
+        />,
+      );
 
       await clickIconButton("icon-trash-04");
 
@@ -303,32 +346,22 @@ describe("RightSideActions", () => {
     });
 
     it("calls handleWidgetDeletion on confirm and shows success toast", async () => {
-      render(<RightSideActions id="test-id" type="single" />);
-
-      await clickIconButton("icon-trash-04");
-      await userEvent.setup().click(screen.getByText("Yes, Delete"));
-
-      expect(mockHandleWidgetDeletion).toHaveBeenCalledWith(
-        expect.objectContaining({ type: "single", id: "test-id" }),
+      render(
+        <RightSideActions selectionId="selection-1" id="test-id" type="websites" />,
       );
-      expect(mockToastSuccess).toHaveBeenCalled();
-    });
-
-    it("calls handleWidgetDeletion for ag_chart_from_table and shows success toast", async () => {
-      render(<RightSideActions id="test-id" type="ag_chart_from_table" />);
 
       await clickIconButton("icon-trash-04");
       await userEvent.setup().click(screen.getByText("Yes, Delete"));
 
       expect(mockHandleWidgetDeletion).toHaveBeenCalledWith(
-        expect.objectContaining({ type: "ag_chart_from_table", id: "test-id" }),
+        expect.objectContaining({ type: "websites", id: "test-id" }),
       );
       expect(mockToastSuccess).toHaveBeenCalled();
     });
 
     it("shows error toast when deletion fails", async () => {
       mockHandleWidgetDeletion.mockRejectedValueOnce(new Error("Failed"));
-      render(<RightSideActions id="test-id" type="file" />);
+      render(<RightSideActions selectionId="selection-1" id="test-id" type="file" />);
 
       await clickIconButton("icon-trash-04");
       await userEvent.setup().click(screen.getByText("Yes, Delete"));
@@ -343,7 +376,9 @@ describe("RightSideActions", () => {
         widgets: { w1: {} },
         errorMessage: null,
       });
-      render(<RightSideActions id="backend-1" type="backend" />);
+      render(
+        <RightSideActions selectionId="selection-1" id="backend-1" type="backend" />,
+      );
 
       await clickIconButton("icon-refresh-right");
 
@@ -359,7 +394,9 @@ describe("RightSideActions", () => {
         widgets: {},
         errorMessage: "Connection refused",
       });
-      render(<RightSideActions id="backend-1" type="backend" />);
+      render(
+        <RightSideActions selectionId="selection-1" id="backend-1" type="backend" />,
+      );
 
       await clickIconButton("icon-refresh-right");
 
@@ -372,7 +409,7 @@ describe("RightSideActions", () => {
 
   describe("type title mapping", () => {
     it("uses File title for file type", async () => {
-      render(<RightSideActions id="test-id" type="file" />);
+      render(<RightSideActions selectionId="selection-1" id="test-id" type="file" />);
 
       await clickIconButton("icon-trash-04");
 
@@ -380,7 +417,9 @@ describe("RightSideActions", () => {
     });
 
     it("uses Widget title for other types", async () => {
-      render(<RightSideActions id="test-id" type="single" />);
+      render(
+        <RightSideActions selectionId="selection-1" id="test-id" type="websites" />,
+      );
 
       await clickIconButton("icon-trash-04");
 

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { inviteUser } from "~/api/admin.api";
+import { getErrorResponse } from "~/api/errors";
 import AdminDialogFooter from "~/components/AdminUsers/common/AdminDialogFooter";
 import type { TUserForm } from "~/components/AdminUsers/InviteUser/InviteSingleUser";
 import { Button } from "~/components/ds/atoms/Button";
@@ -11,6 +12,9 @@ import { TabsContent } from "~/components/ds/molecules/Tabs";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import type { CreateUserDTO } from "~/types/user.type";
+
+/** A user a row of the CSV file names, who is invited with the permissions chosen. */
+type FileUser = Pick<TUserForm, "first_name" | "last_name" | "email">;
 
 export default function ImportUsers({
   permissions,
@@ -20,7 +24,7 @@ export default function ImportUsers({
   onClose: () => void;
 }) {
   const [usersFileError, setUsersFileError] = useState<string | null>(null);
-  const [usersFromFile, setUsersFromFile] = useState<TUserForm[]>([]);
+  const [usersFromFile, setUsersFromFile] = useState<FileUser[]>([]);
   const usersFileRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +62,7 @@ export default function ImportUsers({
       const file = acceptedFiles[0];
       parseCSVFile(file).then(() => {
         const input = document.getElementById("upload-import-file") as HTMLInputElement;
-        if (input) input.value = null;
+        if (input) input.value = "";
       });
     },
   });
@@ -108,7 +112,8 @@ export default function ImportUsers({
       onClose();
     } catch (error) {
       if (
-        error?.response?.data?.detail === "This email already has an account registered"
+        getErrorResponse(error).data.detail ===
+        "This email already has an account registered"
       ) {
         setError("Email already has an account registered");
       }
@@ -120,7 +125,7 @@ export default function ImportUsers({
   const parseCSVFile = async (file: File) => {
     setFileName(file.name);
 
-    return Papa.parse(file, {
+    return Papa.parse<Record<string, string | undefined>>(file, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
@@ -131,18 +136,12 @@ export default function ImportUsers({
           return;
         }
 
-        const users = results.data
-          .map((row: any) => {
-            const { first_name, last_name, email } = row;
-            if (!email?.includes("@")) return null;
+        const users = results.data.flatMap((row): FileUser[] => {
+          const { first_name, last_name, email } = row;
+          if (!email?.includes("@")) return [];
 
-            return {
-              first_name: first_name || "",
-              last_name: last_name || "",
-              email,
-            };
-          })
-          .filter(Boolean) as TUserForm[];
+          return [{ first_name: first_name || "", last_name: last_name || "", email }];
+        });
 
         if (users.length === 0) {
           setError("No valid users found in the CSV file");
@@ -195,8 +194,7 @@ export default function ImportUsers({
       <div className="flex items-center gap-2">
         <button
           onClick={() => {
-            const template =
-              "first_name,last_name,email\nJohn,Doe,john.doe@example.com";
+            const template = "first_name,last_name,email\n";
             const blob = new Blob([template], { type: "text/csv" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");

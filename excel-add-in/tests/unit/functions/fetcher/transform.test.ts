@@ -6,21 +6,21 @@ describe("transformData", () => {
     const input = null;
     expect(() => {
       transformData(input);
-    }).toThrowError("Data not found");
+    }).toThrow("Data not found");
   });
 
   test("empty1", () => {
     const input = {};
     expect(() => {
       transformData(input);
-    }).toThrowError("Data not found");
+    }).toThrow("Data not found");
   });
 
   test("empty2", () => {
     const input: any[] = [];
     expect(() => {
       transformData(input);
-    }).toThrowError("Data not found");
+    }).toThrow("Data not found");
   });
 
   test("full", () => {

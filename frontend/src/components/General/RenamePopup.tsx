@@ -139,7 +139,7 @@ export default function RenamePopup() {
             }}
             ref={inputRef}
             defaultValue={defaultRename}
-            className="obb-minimal-input-search h-[34px]! w-full"
+            className="ws-minimal-input-search h-[34px]! w-full"
           />
         </div>
         {aiEnhancements && aiCopilotAiEnhancementsFF && editingType === "tab" && (
@@ -158,12 +158,12 @@ export default function RenamePopup() {
         )}
       </div>
       <div className="mt-auto flex items-center justify-end gap-2.5">
-        <DialogClose className="obb-btn-secondary-v2 px-3 py-1 font-medium md:w-fit">
+        <DialogClose className="ws-btn-secondary-v2 px-3 py-1 font-medium md:w-fit">
           Cancel
         </DialogClose>
         <button
           onClick={handleSubmit}
-          className="obb-btn-blue px-3 py-1 font-medium md:w-fit"
+          className="ws-btn-blue px-3 py-1 font-medium md:w-fit"
         >
           Rename
         </button>

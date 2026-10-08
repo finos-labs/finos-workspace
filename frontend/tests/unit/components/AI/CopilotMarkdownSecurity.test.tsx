@@ -19,7 +19,10 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("usehooks-ts", () => ({
-  useLocalStorage: vi.fn((_key: string, defaultValue: any) => [defaultValue, vi.fn()]),
+  useLocalStorage: vi.fn(<T,>(_key: string, defaultValue: T) => [
+    defaultValue,
+    vi.fn(),
+  ]),
 }));
 
 vi.mock("~/lib/state/copilot", () => ({
@@ -79,7 +82,7 @@ describe("Copilot markdown security", () => {
         message={{
           role: "ai",
           content: "",
-          copilotId: "openbb-copilot",
+          copilotId: "default-copilot",
           timestamp: 1705330200000,
           citations: [],
           ...message,

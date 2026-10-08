@@ -2,7 +2,6 @@ import * as HoverCard from "@radix-ui/react-hover-card";
 import dayjs from "dayjs";
 import { type FC, memo, useCallback, useEffect, useState } from "react";
 import { getUsage } from "~/api/auth.api";
-import { getShowDemoRequestButton } from "~/lib/onPremFeatureFlags";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowThemeStore } from "~/lib/state/theme";
@@ -11,19 +10,14 @@ import { Button } from "../ds/atoms/Button";
 import Icon from "../Icon";
 import useQueriesLeft from "./hooks/useQueriesLeft";
 
-const showDemoRequestButton = getShowDemoRequestButton();
-
 const CopilotUsageInfo: FC = () => {
   const { queriesLeft, usage } = useQueriesLeft(true);
-  const { setUsage, isProTier } = useShallowFeatureFlagsStore((state) => ({
+  const { setUsage, isFullTier } = useShallowFeatureFlagsStore((state) => ({
     setUsage: state.setUsage,
-    isProTier: state.featureFlags?.tier === "pro",
+    isFullTier: state.featureFlags?.tier === "full",
   }));
 
-  const { setBookingOpen, setApiKeyDialogOpen } = useShallowThemeStore((s) => ({
-    setBookingOpen: s.setBookingOpen,
-    setApiKeyDialogOpen: s.setApiKeyDialogOpen,
-  }));
+  const setApiKeyDialogOpen = useShallowThemeStore((s) => s.setApiKeyDialogOpen);
   const openaiApiKey = useShallowAuthStore((s) => s.openaiApiKey);
 
   const [timeLeft, setTimeLeft] = useState("");
@@ -58,7 +52,7 @@ const CopilotUsageInfo: FC = () => {
 
   if (!usage?.copilot_calls_limit) return null;
 
-  const percentLeft = (queriesLeft / usage.copilot_calls_limit) * 100;
+  const percentLeft = ((queriesLeft ?? 0) / usage.copilot_calls_limit) * 100;
 
   return (
     <HoverCard.Root openDelay={300}>
@@ -93,30 +87,24 @@ const CopilotUsageInfo: FC = () => {
                   })}
                 />
                 <h3 className="font-bold">
-                  {queriesLeft > 0
+                  {(queriesLeft ?? 0) > 0
                     ? `You have ${queriesLeft} daily queries left`
-                    : "Daily limit of queries reached"}
+                    : "Daily limit reached"}
                 </h3>
               </div>
+              {usage.copilot_tokens_limit != null && (
+                <p className="dark:text-light-100 text-light-600">
+                  {(usage.number_copilot_tokens_day_count ?? 0).toLocaleString()} of{" "}
+                  {usage.copilot_tokens_limit.toLocaleString()} daily tokens used
+                </p>
+              )}
               <p className="dark:text-light-100 text-light-600">
-                {isProTier
-                  ? "Add your own API keys for more usage."
-                  : "Add your own API keys or upgrade for more usage."}
+                Add your own API keys for more usage.
               </p>
               <p className="dark:text-dark-50 text-light-500">
                 Resets in <span className="font-bold">{timeLeft}</span>
               </p>
               <div className="flex gap-1.5">
-                {!isProTier && showDemoRequestButton && (
-                  <Button
-                    size="xs"
-                    variant="primary"
-                    className="w-full"
-                    onClick={() => setBookingOpen(true)}
-                  >
-                    Upgrade Plan
-                  </Button>
-                )}
                 <Button
                   size="xs"
                   variant="secondary"

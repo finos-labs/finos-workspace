@@ -25,14 +25,14 @@ export default function BrandedLogo({ className, animate = true }: BrandedLogoPr
             ? leftSidebarLogoDark
             : leftSidebarLogo
         }
-        alt={name || "OpenBB"}
+        alt={name || "Workspace"}
       />
     );
   }
 
   return (
     <Icon
-      id="openbb-butterfly-logo"
+      id="brand-mark"
       className={cn(
         "h-[50px] w-[100px] text-ds-text-caption",
         animate && "animate-pulse",

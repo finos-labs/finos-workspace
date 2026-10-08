@@ -1,10 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
-import posthog from "posthog-js";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useLocalStorage } from "usehooks-ts";
-import { v4 as uuidv4 } from "uuid";
 import { useCallbackRef } from "~/hooks/useRefHooks";
 import { useCopilotContext } from "~/lib/contexts/CopilotChatContext";
 import { getConfig } from "~/lib/runtimeConfig";
@@ -17,6 +15,7 @@ import {
 import {
   type AIMessage,
   type AppArtifactT,
+  type ArtifactT,
   type Citation as CitationT,
   type Copilot,
   type CopilotCommandResultT,
@@ -42,7 +41,6 @@ import { createCustomTemplateTab } from "~/lib/utils/createTemplates";
 import type { SkillPayload } from "~/types/auth.type";
 import {
   buildAppArtifactSource,
-  buildWidgetMetadataResolver,
   buildWidgetSourceResolver,
   shouldAutoOpenAppArtifact,
 } from "../appArtifactUtils";
@@ -54,13 +52,18 @@ import { useManageNavigationBar } from "./useManageNavigationBar";
 import useQueriesLeft from "./useQueriesLeft";
 import {
   ResetState,
+  type StreamingData,
   type StreamingState,
   StreamingStatus,
   useShallowStreamingStore,
   useStreamingHooks,
   useStreamingStore,
 } from "./useStreaming";
-import { dispatchCopilotCommand, partitionFilesOnSend } from "./utils";
+import {
+  dispatchCopilotCommand,
+  normalizeCitations,
+  partitionFilesOnSend,
+} from "./utils";
 
 export type CopilotSubmitParams = {
   question?: string;
@@ -69,13 +72,18 @@ export type CopilotSubmitParams = {
     | string
     | {
         messageContent: string;
-        citations?: any[];
-        artifact?: any;
+        citations?: CitationT[];
+        artifact?: ArtifactT;
       };
 };
 
 const aiCopilotAiEnhancementsFF =
   getConfig().copilot.enabled && getConfig().copilot.aiEnhancements;
+
+type StreamAccumulator = {
+  accumulatedMessageData: string;
+  accumulatedCitations: CitationT[];
+};
 
 const createFunctionCallMessages = (
   dataOrResults: (CopilotDataT | CopilotFunctionCallError)[] | CopilotCommandResultT[],
@@ -122,14 +130,7 @@ function useStreamResponse(stopSubmit: () => void) {
 
   const userToken = useShallowAuthStore((s) => s.user?.token);
   const addTab = useShallowAppStore((s) => s.addTab);
-  const { apiSources, widgetMetadata } = useShallowBackendConnectorStore((s) => ({
-    apiSources: s.apiSources,
-    widgetMetadata: s.widgetMetadata,
-  }));
-  const resolveWidget = useMemo(
-    () => buildWidgetMetadataResolver(widgetMetadata),
-    [widgetMetadata],
-  );
+  const apiSources = useShallowBackendConnectorStore((s) => s.apiSources);
   const generativeUiEnabled = useShallowCopilotDataStore((s) => s.generativeUiEnabled);
 
   const copilot = useShallowCopilotStore((s) => ({
@@ -173,7 +174,7 @@ function useStreamResponse(stopSubmit: () => void) {
   // Add a new ref to store the resolution function
   const resolveStreamRef = useRef<(() => void) | null>(null);
   const handleEventRef =
-    useRef<(props: HandleEventProps) => Promise<Record<string, any>>>();
+    useRef<(props: HandleEventProps) => Promise<StreamAccumulator>>();
 
   // Store pending MCP citations across streaming lifecycle (accumulates across multiple tool calls)
   const pendingMcpCitationsRef = useRef<CitationT[]>([]);
@@ -208,7 +209,6 @@ function useStreamResponse(stopSubmit: () => void) {
             artifact.widget_refs ?? [],
             apiSources,
           ),
-          resolveWidget,
         });
       } catch (error) {
         toast.error("Failed to open app", {
@@ -221,7 +221,6 @@ function useStreamResponse(stopSubmit: () => void) {
       navigate,
       currentDashboard,
       apiSources,
-      resolveWidget,
       generativeUiEnabled,
       copilot.selectedCopilot?.features,
     ],
@@ -267,7 +266,7 @@ function useStreamResponse(stopSubmit: () => void) {
     ) => {
       const decoder = new TextDecoder("utf-8");
       let accumulatedMessageData = "";
-      let accumulatedCitations = [];
+      let accumulatedCitations: CitationT[] = [];
       let streamBuffer = "";
 
       while (true) {
@@ -302,7 +301,7 @@ function useStreamResponse(stopSubmit: () => void) {
 
         // The leftover text to remain in the buffer is whatever doesn't have two newlines after it. If the buffer ended
         // with two newlines, this will be an empty string.
-        streamBuffer = events.pop()!;
+        streamBuffer = events.pop() ?? "";
         let event = "";
 
         for (const eventChunk of events) {
@@ -341,13 +340,13 @@ function useStreamResponse(stopSubmit: () => void) {
           }
 
           // Parse the data as JSON
-          data = JSON.parse(data);
+          const parsedData: unknown = JSON.parse(data);
 
           if (handleEventRef.current)
             ({ accumulatedMessageData, accumulatedCitations } =
               await handleEventRef.current({
                 event,
-                data,
+                data: parsedData,
                 question,
                 accumulatedMessageData,
                 accumulatedCitations,
@@ -374,7 +373,7 @@ function useStreamResponse(stopSubmit: () => void) {
       const copilotId = targetAgent?.id || copilot.selectedCopilot?.id;
 
       const updateChatMessages = (aiMessage: AIMessage, toolMessage: ToolMessage) => {
-        if (!copilot.selectedCopilot) return;
+        if (!copilot.selectedCopilot || !copilotId) return;
         copilot.addMessage({
           ...aiMessage,
           copilotId,
@@ -399,9 +398,10 @@ function useStreamResponse(stopSubmit: () => void) {
         functionCallSpec.function === "execute_agent_tool" &&
         Array.isArray(dataOrResults)
       ) {
-        const citations = dataOrResults.flatMap((item: any) =>
-          Array.isArray(item?.extra_citations) ? item.extra_citations : [],
-        );
+        const citations = dataOrResults.flatMap((item): unknown[] => {
+          const extra = (item as { extra_citations?: unknown } | null)?.extra_citations;
+          return Array.isArray(extra) ? extra : [];
+        });
         if (citations.length > 0) {
           const normalized = normalizeCitations(citations);
           // Deduplicate by id while accumulating
@@ -447,22 +447,6 @@ function useStreamResponse(stopSubmit: () => void) {
       const { functionCallSpec, xHeaders, abortSignal, incomingMessage } = props;
       copilot.makeLastMessageFC();
 
-      if (posthog) {
-        const dataSources = functionCallSpec.input_arguments?.data_sources;
-        const sourceOrigins = Array.isArray(dataSources)
-          ? [
-              ...new Set(
-                dataSources.map((ds: { origin?: string }) => ds.origin).filter(Boolean),
-              ),
-            ]
-          : undefined;
-        posthog.capture(`copilot_${functionCallSpec.function}`, {
-          widget_uuid: dataSources,
-          trace_id: xHeaders?.traceId,
-          source_origins: sourceOrigins,
-        });
-      }
-
       const forwardMessageToAi = async (
         message: string,
         fromAgentId: string,
@@ -503,7 +487,9 @@ function useStreamResponse(stopSubmit: () => void) {
             });
             return;
           } catch (e) {
-            throw new Error(`Failed to process agent response: ${e.message}`);
+            throw new Error(
+              `Failed to process agent response: ${e instanceof Error ? e.message : String(e)}`,
+            );
           }
         }
 
@@ -538,7 +524,6 @@ function useStreamResponse(stopSubmit: () => void) {
         case "add_widget_to_dashboard": {
           const results = await addWidgetToDashboard(
             functionCallSpec.input_arguments.data_sources || [],
-            functionCallSpec.extra_state?.copilot_function_call_arguments,
           );
           return await submitFunctionCallResponse(props, results);
         }
@@ -567,6 +552,8 @@ function useStreamResponse(stopSubmit: () => void) {
         }
         case "execute_agent_tool": {
           const { server_id, tool_name, parameters } = functionCallSpec.input_arguments;
+          if (!(server_id && tool_name))
+            throw new Error("execute_agent_tool requires server_id and tool_name");
           const data = await executeAgentTool(server_id, tool_name, parameters);
           return await submitFunctionCallResponse(props, data);
         }
@@ -597,15 +584,6 @@ function useStreamResponse(stopSubmit: () => void) {
             reason?: string;
           };
           const skill = getSkillBySlug(slug);
-
-          if (posthog) {
-            posthog.capture("skill_model_requested", {
-              skill_slug: slug,
-              reason: reason,
-              found: !!skill,
-              trace_id: xHeaders?.traceId,
-            });
-          }
 
           if (!skill) {
             return await submitFunctionCallResponse(props, [
@@ -663,9 +641,14 @@ function useStreamResponse(stopSubmit: () => void) {
         props;
       let aiMessageBuffer: string = props.accumulatedMessageData;
       let citationBuffer: CitationT[] = props.accumulatedCitations;
-      const copilotId = targetAgent?.id || copilot.selectedCopilot?.id;
 
-      if (!copilot.selectedCopilot) return;
+      if (!copilot.selectedCopilot) {
+        return {
+          accumulatedMessageData: aiMessageBuffer,
+          accumulatedCitations: citationBuffer,
+        };
+      }
+      const copilotId = targetAgent?.id || copilot.selectedCopilot.id;
 
       const flushBuffers = () => {
         // Used when there is a MessageChunk receiving stream ongoing
@@ -692,22 +675,8 @@ function useStreamResponse(stopSubmit: () => void) {
           // the state is still loading until the next message
           if (content.hidden) break;
           if (content.eventType === "WARNING") {
-            if (posthog) {
-              posthog.capture("WARNING_COPILOT_MESSAGE", {
-                copilot_warning_error: content?.eventType,
-                copilot_warning_message: content?.message,
-                trace_id: xHeaders?.traceId,
-              });
-            }
           }
           if (content.eventType === "ERROR") {
-            if (posthog) {
-              posthog.capture("ERROR_COPILOT_MESSAGE", {
-                copilot_error_error: content?.eventType,
-                copilot_error_message: content?.message,
-                trace_id: xHeaders?.traceId,
-              });
-            }
             // Usually this will be a context exceeded error.
             // By removing the last AI and tool messages we remove
             // the function call result that is exceeding the context.
@@ -735,12 +704,13 @@ function useStreamResponse(stopSubmit: () => void) {
             });
             dispatch(StreamingStatus.STARTED);
           }
+          const artifact = data as ArtifactT;
           const suffix = aiMessageBuffer.endsWith("| ") ? "\n" : "";
-          const artifactMarker = `${suffix}<artifact className="${data.name}"/>`;
+          const artifactMarker = `${suffix}<artifact className="${artifact.name}"/>`;
           aiMessageBuffer += artifactMarker;
-          copilot.addArtifactToCurrentChat(data);
+          copilot.addArtifactToCurrentChat(artifact);
           setStreamedData((prevData) => prevData + artifactMarker);
-          if (data?.type === "app") void autoOpenAppArtifact(data, targetAgent);
+          if (artifact.type === "app") void autoOpenAppArtifact(artifact, targetAgent);
 
           break;
         }
@@ -755,7 +725,7 @@ function useStreamResponse(stopSubmit: () => void) {
             });
             dispatch(StreamingStatus.STARTED);
           }
-          const delta = data.delta;
+          const delta = (data as { delta?: string }).delta;
           if (!delta) break;
           aiMessageBuffer += delta;
           setStreamedData((prevData) => prevData + delta);
@@ -772,8 +742,9 @@ function useStreamResponse(stopSubmit: () => void) {
             dispatch(StreamingStatus.STARTED);
           }
 
-          let citationMarkers = data.citations
-            .map((citation: CitationT) => `<citation className="${citation.id}"/>`)
+          const { citations } = data as { citations: CitationT[] };
+          let citationMarkers = citations
+            .map((citation) => `<citation className="${citation.id}"/>`)
             .join("");
 
           if (citationMarkers && aiMessageBuffer.endsWith("| "))
@@ -783,10 +754,10 @@ function useStreamResponse(stopSubmit: () => void) {
           setStreamedData((prevData) => prevData + citationMarkers);
 
           setStreamedCitations((prevData) => {
-            return [...prevData, ...data.citations];
+            return [...prevData, ...citations];
           });
 
-          citationBuffer.push(...data.citations);
+          citationBuffer.push(...citations);
           break;
         }
         case "copilotFunctionCall": {
@@ -802,7 +773,8 @@ function useStreamResponse(stopSubmit: () => void) {
           break;
         }
         case "copilotPromptSuggestions": {
-          const suggestions = data?.suggestions;
+          const suggestions = (data as { suggestions?: unknown } | undefined)
+            ?.suggestions;
           if (Array.isArray(suggestions) && suggestions.length > 0) {
             copilot.updateLastMessage({ suggestions });
           }
@@ -844,7 +816,7 @@ function useStreamResponse(stopSubmit: () => void) {
           if (aiMessageBuffer) {
             updateMessage.content = aiMessageBuffer;
             // Only update title if there is actual AI message content
-            // Title generation is an OpenBB backend feature available for all agents
+            // Title generation is an Workspace backend feature available for all agents
             if (aiEnhancements && aiCopilotAiEnhancementsFF) {
               updateCopilotTitle(xHeaders?.traceId || "");
             }
@@ -852,11 +824,10 @@ function useStreamResponse(stopSubmit: () => void) {
           if (citationBuffer.length > 0) {
             updateMessage.citations = citationBuffer;
           }
-          if (copilot.selectedCopilot.id === "openbb-copilot") {
-            for (const key of ["traceId", "completionId"]) {
-              if (xHeaders[key]) {
-                updateMessage[key] = xHeaders[key];
-              }
+          if (copilot.selectedCopilot.id === "default-copilot") {
+            for (const key of ["traceId", "completionId"] as const) {
+              const value = xHeaders[key];
+              if (value) updateMessage[key] = value;
             }
           }
           if (Object.keys(updateMessage).length > 0) {
@@ -894,6 +865,8 @@ function useStreamResponse(stopSubmit: () => void) {
   const startStreamCb = useCallback(
     async (params: CopilotSubmitParams): Promise<void> => {
       const { question, addHumanMessage = true, mockResponse } = params;
+      const selectedCopilot = copilot.selectedCopilot;
+      if (!selectedCopilot) return;
       copilot.setIsTyping(false);
 
       const { sent, hasPending } = partitionFilesOnSend(
@@ -919,7 +892,7 @@ function useStreamResponse(stopSubmit: () => void) {
           copilot.addMessage({
             role: "human",
             content: question || commandRef.current,
-            copilotId: copilot.selectedCopilot.id,
+            copilotId: selectedCopilot.id,
             timestamp: Date.now(),
             ...(sentFiles.length ? { files: sentFiles } : {}),
           });
@@ -941,7 +914,7 @@ function useStreamResponse(stopSubmit: () => void) {
         copilot.addMessage({
           role: "ai",
           content: content,
-          copilotId: copilot.selectedCopilot.id,
+          copilotId: selectedCopilot.id,
           timestamp: Date.now() + 1,
           citations:
             typeof mockResponse === "object" ? mockResponse.citations : undefined,
@@ -986,7 +959,7 @@ function useStreamResponse(stopSubmit: () => void) {
         copilot.addMessage({
           role: "human" as const,
           content: incomingMessage,
-          copilotId: copilot.selectedCopilot.id,
+          copilotId: selectedCopilot.id,
           timestamp: Date.now(),
           ...(sentFiles.length ? { files: sentFiles } : {}),
         });
@@ -1049,28 +1022,20 @@ function useStreamResponse(stopSubmit: () => void) {
     ],
   );
 
-  const { mutateAsync } = useMutation<any, Error, CopilotSubmitParams>({
+  const { mutateAsync } = useMutation<void, Error, CopilotSubmitParams>({
     mutationFn: startStreamCb,
     onSuccess: (_data, _question) => {},
     onError: (error) => throwError(error),
   });
 
   const throwError = useCallback(
-    (error: any) => {
-      if (typeof error === "string") {
-        error = new Error(error);
-      }
-      if (error.name === "AbortError") {
+    (error: unknown) => {
+      const err = typeof error === "string" ? new Error(error) : error;
+      if (err instanceof Error && err.name === "AbortError") {
         // Ignore errors related to user aborting the request
         return;
       }
-      console.error("Error:", error);
-      if (posthog) {
-        posthog.capture("CRITICAL_COPILOT_MESSAGE", {
-          copilot_critical_error: error.stack,
-          copilot_critical_message: error.message,
-        });
-      }
+      console.error("Error:", err);
       copilot.updateLastMessageError(true);
       dispatch({ loading: false, ...StreamingStatus.READY });
       dispatchCopilotCommand("");
@@ -1085,7 +1050,7 @@ function useStreamResponse(stopSubmit: () => void) {
   }, [mutateAsync]);
 
   const handleSubmit = useCallback(
-    async ({ question, addHumanMessage, mockResponse }) => {
+    async ({ question, addHumanMessage, mockResponse }: CopilotSubmitParams = {}) => {
       // makes sure all widgets are visible before sending the question
       // otherwise dashboard data might be incomplete
       useThemeStore.getState().setPendingExport(true);
@@ -1126,7 +1091,7 @@ export function useHandleStreaming() {
   }));
 
   const stopSubmit = useCallbackRef(() => {
-    const newState = { ...ResetState } as any;
+    const newState: Partial<StreamingData> = { ...ResetState };
     if (abortController) {
       abortController.abort();
       newState.abortController = null;
@@ -1184,7 +1149,7 @@ export function useHandleStreaming() {
     stopSubmitRef.current = stopSubmit;
     const ctrl = new AbortController();
 
-    function dispatchedSubmit(e: CustomEvent) {
+    function dispatchedSubmit(e: CustomEvent<CopilotSubmitParams | undefined>) {
       handleSubmit(e.detail);
     }
     window.addEventListener("copilotSubmit", dispatchedSubmit, { signal: ctrl.signal });
@@ -1197,10 +1162,10 @@ export default useStreamResponse;
 
 type HandleEventProps = {
   event: string;
-  data?: any;
+  data?: unknown;
   question: string;
   accumulatedMessageData: string;
-  accumulatedCitations: any[];
+  accumulatedCitations: CitationT[];
   abortSignal: AbortSignal;
   xHeaders: XHeadersT;
   keepAlive?: boolean;
@@ -1215,8 +1180,8 @@ type HandleFunctionCallProps = {
   targetAgent?: Copilot;
 };
 
-function isReadableStream<T>(obj: any): obj is ReadableStreamDefaultReader<T> {
-  return obj && typeof obj.read === "function";
+function isReadableStream<T>(obj: unknown): obj is ReadableStreamDefaultReader<T> {
+  return !!obj && typeof (obj as { read?: unknown }).read === "function";
 }
 
 function getLatestAiToolPairTimestamps(messages: Message[]): number[] | null {
@@ -1233,20 +1198,4 @@ function getLatestAiToolPairTimestamps(messages: Message[]): number[] | null {
     }
   }
   return null;
-}
-
-// Helper to normalize extra_citations (add id/signature) into CitationT[]
-function normalizeCitations(citations: any[]): CitationT[] {
-  if (!Array.isArray(citations)) return [];
-  return citations.map((c: any) => {
-    if (c?.id && c?.signature !== undefined) return c as CitationT;
-    return {
-      id: c?.id || uuidv4(),
-      signature: c?.signature || "",
-      source_info: c?.source_info,
-      details: c?.details,
-      artifacts: c?.artifacts,
-      quote_bounding_boxes: c?.quote_bounding_boxes,
-    } as CitationT;
-  });
 }

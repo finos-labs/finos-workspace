@@ -112,7 +112,7 @@ describe("CopilotFooter", () => {
     (useShallowCopilotStore as Mock).mockImplementation((selector) => {
       return selector({
         selectedCopilot: {
-          id: "openbb-copilot",
+          id: "default-copilot",
           features: {
             "file-upload": true,
           },
@@ -261,7 +261,7 @@ describe("CopilotFooter", () => {
       (useShallowCopilotStore as Mock).mockImplementation((selector) => {
         return selector({
           selectedCopilot: {
-            id: "openbb-copilot",
+            id: "default-copilot",
             features: {
               "file-upload": false,
             },

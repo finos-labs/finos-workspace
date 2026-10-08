@@ -16,10 +16,10 @@ describe("Calendar", () => {
 });
 
 vi.mock("react-day-picker", () => ({
-  DayPicker: ({ components }: any) => {
+  DayPicker: ({ components }: { components?: { Select?: unknown } }) => {
     return (
       <div data-testid="day-picker">
-        {components?.Select && <div data-testid="mock-select" />}
+        {components?.Select ? <div data-testid="mock-select" /> : null}
       </div>
     );
   },

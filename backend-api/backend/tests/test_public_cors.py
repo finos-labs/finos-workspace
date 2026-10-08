@@ -23,7 +23,7 @@ def _build_app() -> Starlette:
     app = Starlette(
         routes=[
             Route("/marketplace/apps", marketplace_apps, methods=["GET", "OPTIONS"]),
-            Route("/pro/secret", other, methods=["GET", "OPTIONS"]),
+            Route("/app/secret", other, methods=["GET", "OPTIONS"]),
         ]
     )
     app.add_middleware(PublicCORSMiddleware)
@@ -56,7 +56,7 @@ class TestPublicCORSMiddleware:
     def test_non_public_path_untouched(self):
         client = TestClient(_build_app())
         resp = client.get(
-            "/pro/secret",
+            "/app/secret",
             headers={"Origin": "http://localhost:3000"},
         )
         assert resp.status_code == 200

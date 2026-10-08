@@ -56,7 +56,8 @@ export interface PermissionItem {
   name: string;
   description?: string;
   category?: "backend" | "file" | "prompt" | "template";
-  access: "no-access" | "access";
+  /** Unset until the role's saved permissions are applied */
+  access?: "no-access" | "access";
   isChecked?: boolean;
   status?: "success" | "error";
   widgets?: PermissionItem[];

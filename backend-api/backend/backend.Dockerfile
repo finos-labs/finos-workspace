@@ -1,5 +1,5 @@
 ###############################################
-# Base Image - OpenBB Backend (consolidated)
+# Base Image - Backend (consolidated)
 ###############################################
 ARG PLATFORM=linux/amd64
 FROM --platform=$PLATFORM python:3.13-slim AS python-base

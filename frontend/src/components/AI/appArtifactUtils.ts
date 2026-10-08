@@ -1,8 +1,6 @@
-import type { WidgetT } from "~/components/types";
 import type { Item } from "~/lib/state/app";
-import type { Source, WidgetMetadataItem } from "~/lib/state/backendConnector";
+import type { Source } from "~/lib/state/backendConnector";
 import type { AppArtifactT, AppArtifactWidgetRef, Copilot } from "~/lib/state/copilot";
-import { createWidgetStudioWidget } from "./hooks/useGetAppWidgets";
 
 /**
  * Build a per-widget Source resolver from an app artifact's widget refs and the user's
@@ -33,27 +31,13 @@ export function buildWidgetSourceResolver(
   return (widgetId) => byWidgetId.get(widgetId);
 }
 
-export function buildWidgetMetadataResolver(
-  widgetMetadata: WidgetMetadataItem[],
-): (widgetId: string) => WidgetT | undefined {
-  const widgetStudioById = new Map(
-    widgetMetadata
-      .filter((widget) => widget.widgetType === "widget_studio")
-      .map((widget) => [`widget_studio-${widget.widgetId}`, widget]),
-  );
-
-  return (widgetId) => {
-    const widget = widgetStudioById.get(widgetId);
-    return widget ? createWidgetStudioWidget(widget) : undefined;
-  };
-}
-
 /**
  * Representative Source used only for template-id derivation. The per-widget resolver
  * handles real widget lookups, so this just needs a stable id and a label.
  */
 export function buildAppArtifactSource(artifact: AppArtifactT): Source {
   return {
+    id: artifact.uuid,
     uuid: artifact.uuid,
     name: "Copilot App",
     url: "",

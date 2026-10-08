@@ -1,34 +1,47 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { DownloadIcon, Pencil1Icon } from "@radix-ui/react-icons";
 import clsx from "clsx";
-import { Fragment, useCallback } from "react";
-import type { TreeItem } from "react-complex-tree";
+import { Fragment, type ReactNode, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import MoveToFolder from "~/components/LayoutAuth/DropdownSubs/MoveToFolder";
-import { useShallowAppStore } from "~/lib/state/app";
+import { type Item, type SideBarItem, useShallowAppStore } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { dispatchSaveState, generateRandomName } from "~/lib/utils";
 import TrashIcon from "../../Icons/Trash";
 
-export default function FolderPopup({
+type FolderPopupProps = {
+  item: SideBarItem;
+  deleteItem: (item: SideBarItem) => void;
+  depth: number;
+  setOpen: (open: boolean) => void;
+};
+
+type FolderMenuItem = {
+  shortcut: string;
+  label: string;
+  color?: string;
+  icon?: ReactNode;
+  action: () => void;
+};
+
+export default function FolderPopup(props: FolderPopupProps) {
+  const itemData = useShallowAppStore((state) => state.getFolderById(props.item.index));
+
+  return itemData ? <FolderPopupMenu {...props} itemData={itemData} /> : null;
+}
+
+function FolderPopupMenu({
   item,
+  itemData,
   deleteItem,
   depth,
   setOpen,
-}: {
-  item: TreeItem<any>;
-  deleteItem: (item: TreeItem<any>) => void;
-  depth: number;
-  setOpen: (open: boolean) => void;
-}) {
-  const { getFolderById, createTabInsideFolder, createFolder } = useShallowAppStore(
-    (state) => ({
-      getFolderById: state.getFolderById,
-      createTabInsideFolder: state.createTabInsideFolder,
-      createFolder: state.createFolder,
-    }),
-  );
+}: FolderPopupProps & { itemData: Item }) {
+  const { createTabInsideFolder, createFolder } = useShallowAppStore((state) => ({
+    createTabInsideFolder: state.createTabInsideFolder,
+    createFolder: state.createFolder,
+  }));
   const {
     setRenamePopup,
     setCreateFolderPopup,
@@ -40,7 +53,6 @@ export default function FolderPopup({
     setExportFolderPopup: state.setExportFolderPopup,
     setExportFolderItem: state.setExportFolderItem,
   }));
-  const itemData = getFolderById(item.index as string);
   const navigate = useNavigate();
 
   const handleCreate = useCallback(
@@ -51,8 +63,9 @@ export default function FolderPopup({
       }
 
       const id = uuidv4();
-      const tab = {
+      const tab: Item = {
         index: id,
+        children: [],
         data: {
           name: generateRandomName(),
           type: "custom",
@@ -60,7 +73,7 @@ export default function FolderPopup({
           widgets: [],
         },
       };
-      createTabInsideFolder(itemData.index, tab as any);
+      createTabInsideFolder(itemData.index, tab);
 
       await dispatchSaveState();
       queueMicrotask(() => navigate(`/app/${id}`));
@@ -70,7 +83,7 @@ export default function FolderPopup({
     [createTabInsideFolder, createFolder, itemData.index, setOpen, navigate],
   );
 
-  const folderMenuItems = [
+  const folderMenuItems: FolderMenuItem[] = [
     {
       shortcut: "t",
       label: "Create dashboard",
@@ -140,7 +153,7 @@ export default function FolderPopup({
 
                 folderMenuItems[i].action();
               }}
-              className="obb-dropdown-item overflow-auto"
+              className="ws-dropdown-item overflow-auto"
             >
               <span className={clsx("grow truncate", color)}>{label}</span>
             </DropdownMenuPrimitive.Item>

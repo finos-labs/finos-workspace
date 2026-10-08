@@ -140,6 +140,8 @@ describe("ListedAppCard — owner submission", () => {
 
     expect(screen.getByText("Rejected")).toBeInTheDocument();
     expect(screen.getByText(/why was this rejected/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /edit submission/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /edit submission/i }),
+    ).toBeInTheDocument();
   });
 });

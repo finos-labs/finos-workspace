@@ -76,10 +76,9 @@ export interface ListedApp {
   totalWidgets?: number;
   prompts?: string[];
   mcpServers?: ListedAppMcpServer[];
-  screenshots?: string[];
   /** Media items: images, videos (.mp4/.webm/.mov), or YouTube URLs */
   media?: string[];
-  /** Built-in apps (like OpenBB Sandbox) are pre-subscribed */
+  /** Built-in apps (like Sandbox) are pre-subscribed */
   isBuiltIn?: boolean;
   /** Determines if the app is in development. If true, the app will only be visible to owner. */
   isDevelopment?: boolean;
@@ -127,7 +126,7 @@ export function appRequiresAuth(app: ListedApp): boolean {
 export function appHasSavedAuth(
   app: ListedApp,
   endpointHeaders?:
-    | { key: string; value: string; location: "headers" | "query" }[]
+    | { key: string; value: string; location?: "headers" | "query" }[]
     | null,
 ): boolean {
   const authFields = getListedAppAuthFields(app);

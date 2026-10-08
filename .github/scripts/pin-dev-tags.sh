@@ -11,8 +11,8 @@ Waits for the Apps run. If the run fails, sets the tags back to what they were
 and exits non-zero.
 
 Options:
-  -r, --repo REPO      infra repository, e.g. openbq-org/workspace-infra
-  -v, --values PATH    values file in that repository, e.g. FINOS/dev/apps/values.yaml
+  -r, --repo REPO      infra repository, e.g. <owner>/<infrastructure-repository>
+  -v, --values PATH    values file in that repository, e.g. <folder>/dev/apps/values.yaml
   -k, --keys KEYS      comma-separated top-level keys whose image.tag changes, e.g. backend,backendWorker
   -t, --tag TAG        the new image tag
   -s, --source TEXT    what built the tag, used in the commit message

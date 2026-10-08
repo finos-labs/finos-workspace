@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BackendPromptCard } from "~/components/AI/BackendPromptCard";
+import { required } from "../../mocks";
 
 const { mockToast } = vi.hoisted(() => ({
   mockToast: { success: vi.fn(), error: vi.fn() },
@@ -25,13 +26,9 @@ vi.mock("~/components/Icon", () => ({
 }));
 
 vi.mock("~/components/Tooltip", () => ({
-  default: ({
-    children,
-    message,
-  }: {
-    children: ReactNode;
-    message: string;
-  }) => <div title={message}>{children}</div>,
+  default: ({ children, message }: { children: ReactNode; message: string }) => (
+    <div title={message}>{children}</div>
+  ),
 }));
 
 vi.mock("~/components/ds/molecules/LibraryList", () => ({
@@ -55,7 +52,9 @@ describe("BackendPromptCard", () => {
 
     render(<BackendPromptCard prompt="Test prompt" onDuplicate={onDuplicate} />);
 
-    const duplicateButton = screen.getByTestId("icon-copy-03").closest("button")!;
+    const duplicateButton = required(
+      screen.getByTestId("icon-copy-03").closest("button"),
+    );
     await user.click(duplicateButton);
 
     expect(onDuplicate).toHaveBeenCalledWith("Test prompt");
@@ -67,7 +66,9 @@ describe("BackendPromptCard", () => {
 
     render(<BackendPromptCard prompt="Copy me" onDuplicate={vi.fn()} />);
 
-    const copyButton = screen.getByTestId("icon-clipboard-icon").closest("button")!;
+    const copyButton = required(
+      screen.getByTestId("icon-clipboard-icon").closest("button"),
+    );
     await user.click(copyButton);
 
     expect(mockToast.success).toHaveBeenCalledWith("Prompt copied to clipboard");

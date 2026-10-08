@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MCPServersTab } from "~/components/AI/MCPServersTab";
 import type { ButtonProps } from "~/components/ds/atoms/Button";
 import type { InputProps } from "~/components/ds/atoms/Input";
+import type { McpConnection } from "~/lib/state/mcpTools";
+import { required } from "../../mocks";
 
 // Mock framer-motion so AnimatePresence exit animations complete synchronously in jsdom
 vi.mock("framer-motion", () => ({
@@ -199,53 +201,39 @@ const MOCK_SERVERS = [
   }),
 ];
 
-const makeConnectionReady = (
-  tools?: Array<{ name: string; description?: string }>,
-) => ({
+const makeConnection = (overrides: Partial<McpConnection> = {}): McpConnection => ({
   state: "ready",
-  tools: tools ?? [],
-  callTool: vi.fn(),
-  error: undefined,
-  disconnect: vi.fn(),
-  retry: vi.fn(),
-  clearStorage: vi.fn(),
-});
-
-const makeConnectionFailed = () => ({
-  state: "failed",
-  tools: [],
-  callTool: undefined,
-  error: new Error("Connection failed"),
-  disconnect: vi.fn(),
-  retry: vi.fn(),
-  clearStorage: vi.fn(),
-});
-
-const makeConnectionPending = (state = "connecting") => ({
-  state,
   tools: [],
   callTool: undefined,
   error: undefined,
   disconnect: vi.fn(),
   retry: vi.fn(),
   clearStorage: vi.fn(),
+  ...overrides,
 });
 
-const makeConnectionDisconnected = () => ({
-  state: "disconnected",
-  tools: [],
-  callTool: undefined,
-  error: undefined,
-  disconnect: vi.fn(),
-  retry: vi.fn(),
-  clearStorage: vi.fn(),
-});
+const makeConnectionReady = (tools?: Array<{ name: string; description?: string }>) =>
+  makeConnection({
+    tools: (tools ?? []).map((tool) => ({
+      ...tool,
+      inputSchema: { type: "object" as const },
+    })),
+    callTool: vi.fn(),
+  });
+
+const makeConnectionFailed = () =>
+  makeConnection({ state: "failed", error: "Connection failed" });
+
+const makeConnectionPending = (state: McpConnection["state"] = "connecting") =>
+  makeConnection({ state });
+
+const makeConnectionDisconnected = () => makeConnection({ state: "disconnected" });
 
 // --- Setup helpers ---
 
 function setupStore(
   servers = MOCK_SERVERS,
-  connectionOverrides: Record<string, ReturnType<typeof makeConnectionReady>> = {},
+  connectionOverrides: Record<string, McpConnection> = {},
 ) {
   mockGetMCPConnection.mockImplementation((serverId: string) => {
     if (connectionOverrides[serverId]) return connectionOverrides[serverId];
@@ -703,7 +691,7 @@ describe("MCPServersTab", () => {
       const editButtons = screen.getAllByTitle("Edit");
       // Click edit on the first server
       const editBtn = editButtons[0].querySelector("button");
-      await user.click(editBtn!);
+      await user.click(required(editBtn));
 
       expect(screen.getByTestId("manage-mcp-server-modal")).toBeInTheDocument();
       expect(screen.getByTestId("modal-existing-server-id")).toHaveTextContent(
@@ -717,7 +705,7 @@ describe("MCPServersTab", () => {
 
       const deleteButtons = screen.getAllByTitle("Delete");
       const deleteBtn = deleteButtons[0].querySelector("button");
-      await user.click(deleteBtn!);
+      await user.click(required(deleteBtn));
 
       expect(mockRemoveServer).toHaveBeenCalledWith("server-1");
     });
@@ -728,7 +716,7 @@ describe("MCPServersTab", () => {
 
       const deleteButtons = screen.getAllByTitle("Delete");
       const deleteBtn = deleteButtons[1].querySelector("button");
-      await user.click(deleteBtn!);
+      await user.click(required(deleteBtn));
 
       expect(mockRemoveServer).toHaveBeenCalledWith("server-2");
     });
@@ -739,7 +727,7 @@ describe("MCPServersTab", () => {
 
       const deleteButtons = screen.getAllByTitle("Delete");
       const deleteBtn = deleteButtons[0].querySelector("button");
-      await user.click(deleteBtn!);
+      await user.click(required(deleteBtn));
 
       expect(mockToastSuccess).toHaveBeenCalledWith(
         "Alpha Server deleted successfully",
@@ -810,7 +798,12 @@ describe("MCPServersTab", () => {
     });
 
     it("shows spinner for all pending connection states", async () => {
-      const pendingStates = ["loading", "connecting", "discovering", "authenticating"];
+      const pendingStates = [
+        "loading",
+        "connecting",
+        "discovering",
+        "authenticating",
+      ] as const;
 
       for (const state of pendingStates) {
         vi.clearAllMocks();
@@ -852,7 +845,7 @@ describe("MCPServersTab", () => {
       // Open edit modal
       const editButtons = screen.getAllByTitle("Edit");
       const editBtn = editButtons[0].querySelector("button");
-      await user.click(editBtn!);
+      await user.click(required(editBtn));
 
       expect(screen.getByTestId("manage-mcp-server-modal")).toBeInTheDocument();
 

@@ -1,8 +1,11 @@
 import { render } from "@testing-library/react";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { FormParamElement } from "~/components/DraggableCard/FormParamDef";
+import type { WidgetT } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useJsonData } from "~/lib/api";
+import { partial } from "../../mocks";
 
 vi.mock("~/components/Widget.context", () => ({
   useWidgetContext: vi.fn(),
@@ -23,8 +26,13 @@ vi.mock("~/lib/api", () => ({
 }));
 
 vi.mock("~/components/ds/molecules/Form", () => ({
-  FormField: ({ render: renderProp, name }: any) =>
-    renderProp({ field: { value: "", onChange: vi.fn(), name } }),
+  FormField: ({
+    render: renderProp,
+    name,
+  }: {
+    render: (props: { field: object }) => ReactNode;
+    name?: string;
+  }) => renderProp({ field: { value: "", onChange: vi.fn(), name } }),
 }));
 
 vi.mock("~/components/NewAdvancedSelect", () => ({
@@ -32,7 +40,7 @@ vi.mock("~/components/NewAdvancedSelect", () => ({
 }));
 
 vi.mock("~/components/Tooltip", () => ({
-  default: ({ children }: any) => <>{children}</>,
+  default: ({ children }: { children?: ReactNode }) => <>{children}</>,
 }));
 
 vi.mock("sonner", () => ({
@@ -45,7 +53,7 @@ const CUSTOM_HEADERS = {
   "X-Custom-Header": "custom-value",
 };
 
-const mockWidget = {
+const mockWidget = partial<WidgetT>({
   id: "test-widget",
   endpoint: {
     url: "https://my-api.com/data",
@@ -68,9 +76,9 @@ const mockWidget = {
       ],
     },
   ],
-};
+});
 
-const createMockWidgetContext = (widget = mockWidget) => ({
+const createMockWidgetContext = (widget: WidgetT = mockWidget) => ({
   widget,
   updateWidget: vi.fn(),
   widgetRef: { current: widget },
@@ -107,12 +115,12 @@ describe("FormParamElement - EndpointType", () => {
   });
 
   it("still fetches options when widget has no endpoint headers", () => {
-    const widgetWithoutHeaders = {
+    const widgetWithoutHeaders = partial<WidgetT>({
       ...mockWidget,
       endpoint: { url: "https://my-api.com/data", headers: {} },
-    };
+    });
     (useWidgetContext as Mock).mockReturnValue(
-      createMockWidgetContext(widgetWithoutHeaders as any),
+      createMockWidgetContext(widgetWithoutHeaders),
     );
 
     render(<FormParamElement />);

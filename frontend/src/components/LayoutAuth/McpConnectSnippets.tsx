@@ -8,13 +8,13 @@ import {
 } from "~/components/ds/molecules/Tabs";
 
 /** Stable server name used across every client snippet. */
-export const MCP_SERVER_NAME = "openbb";
+export const MCP_SERVER_NAME = "workspace";
 
 /**
  * Codex won't accept the bearer token inline, so it's exported to the shell
  * first and Codex reads it from this env var.
  */
-export const CODEX_TOKEN_ENV_VAR = "OBB_MCP_TOKEN";
+export const CODEX_TOKEN_ENV_VAR = "WORKSPACE_MCP_TOKEN";
 
 export interface McpConnectSnippet {
   value: string;

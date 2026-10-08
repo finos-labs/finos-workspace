@@ -1,9 +1,3 @@
-import {
-  OPENBB_SANDBOX_ID,
-  VERSION,
-  VITE_ADDIN_BASE_URL,
-  VITE_PLATFORM_URL,
-} from "~/constants";
 import excelDateToString, {
   currentDateModifier,
 } from "~/functions/fetcher/dates.ts";
@@ -19,64 +13,8 @@ import {
   WidgetRequest,
 } from "~/types/widget.types.ts";
 
-export const OPENBB_SANDBOX_BACKEND: Backend = {
-  id: OPENBB_SANDBOX_ID,
-  uuid: OPENBB_SANDBOX_ID,
-  createDate: new Date().toISOString(),
-  updateDate: new Date().toISOString(),
-  name: "OpenBB Sandbox",
-  url: VITE_PLATFORM_URL,
-  endpointHeaders: [
-    {
-      key: "Content-Type",
-      value: "application/json",
-      location: "headers" as const,
-    },
-    {
-      key: "X-OpenBB-Client",
-      value: VITE_ADDIN_BASE_URL ?? "excel",
-      location: "headers" as const,
-    },
-    {
-      key: "X-OpenBB-Client-Version",
-      value: VERSION ? VERSION.replace(".", "_") : "0_0.0.0",
-      location: "headers" as const,
-    },
-  ],
-};
-
-function isOpenBBSandbox(backend: string): boolean {
-  // The name is case-sensitive, the url is not
-  return (
-    backend === OPENBB_SANDBOX_BACKEND.name ||
-    backend.toLowerCase() === OPENBB_SANDBOX_BACKEND.url.toLowerCase()
-  );
-}
-
 export function getCustomBackend(backend: string): Backend {
-  // TODO: This can be moved to the authStore under a method .getBackend
   const { user } = useAuthStore.getState();
-  // TODO: This name "OpenBB Sandbox" should be reserved for internal usage.
-  if (isOpenBBSandbox(backend)) {
-    const baseHeaders = [...OPENBB_SANDBOX_BACKEND.endpointHeaders];
-    let endpointHeaders = baseHeaders;
-    if (user?.access_token) {
-      // Remove any existing Authorization header and add the new one
-      endpointHeaders = [
-        ...baseHeaders.filter((header) => header.key !== "Authorization"),
-        {
-          key: "Authorization",
-          value: `Bearer ${user.access_token}`,
-          location: "headers" as const,
-        },
-      ];
-    }
-
-    return {
-      ...OPENBB_SANDBOX_BACKEND,
-      endpointHeaders,
-    };
-  }
   const customBackend = user?.profile?.api_sources.find(
     // The name is case-sensitive, the url is not
     (b) => b.name === backend || b.url.toLowerCase() === backend.toLowerCase(),
@@ -230,7 +168,7 @@ export async function fetchWidgetRequest(request: WidgetRequest): Promise<any> {
   const response = await fetch(myRequest);
   if (!response.ok) {
     const errorResponse = await response.json();
-    handleErrors(errorResponse, response.status, url);
+    handleErrors(errorResponse);
   }
   return await response.json();
 }

@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import type { Group, GroupTypeT, ParamDef } from "~/components/types";
+import type { Group, GroupTypeT, ParamDef, StoredParamValue } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
@@ -110,7 +110,7 @@ export function useParamGroupBindings(params?: {
 
   /** Writes a single param value into its bound group. Returns whether a group matched. */
   const updateGroupedParam = useCallback(
-    (paramName: string, value: string | string[]) => {
+    (paramName: string, value: StoredParamValue) => {
       const group = bindings.find(([name]) => name === paramName)?.[1];
       if (!group?.id) return false;
 
@@ -122,7 +122,7 @@ export function useParamGroupBindings(params?: {
 
   /** Writes each provided param value into its bound group, skipping unchanged values. */
   const updateGroupedParams = useCallback(
-    (params: Record<string, string | string[]>) => {
+    (params: Record<string, StoredParamValue>) => {
       for (const [paramName, group] of bindings) {
         if (!Object.prototype.hasOwnProperty.call(params, paramName)) continue;
 

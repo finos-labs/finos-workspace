@@ -5,6 +5,13 @@ import { ExpandableSection } from "./ExpandableSection";
 const meta = {
   title: "Molecules/ExpandableSection",
   component: ExpandableSection,
+  args: {
+    title: "Section",
+    description: "Description",
+    isExpanded: false,
+    onToggle: () => {},
+    children: null,
+  },
   tags: ["autodocs"],
   parameters: {
     semanticTokens: [

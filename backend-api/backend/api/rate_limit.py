@@ -36,36 +36,36 @@ def exempt_user_agent(request: Request) -> bool:
     """Exempt frontend from rate limiting. This is done by providing a custom
     user agent in the header.
     """
-    user_agent = request.headers.get("X-OpenBB-User-Agent") or request.headers.get(
+    user_agent = request.headers.get("X-Workspace-User-Agent") or request.headers.get(
         "User-Agent"
     )
-    if user_agent is None:
+    frontend = settings.WORKSPACE_FRONTEND_USER_AGENT
+    if user_agent is None or not frontend:
         return False
-    frontend = settings.OPENBB_FRONTEND_USER_AGENT
     return frontend in user_agent
 
 
-def exempt_openbb_ai(request: Request) -> bool:
-    """Exempt OpenBB AI from rate limiting.
+def exempt_service_token(request: Request) -> bool:
+    """Exempt the Copilot service from rate limiting.
 
     Only exempts requests that:
-    1. Have a valid OpenBB Authorization token
-    2. Are running in development environment
+    1. Have a valid Workspace Authorization token
+    2. Reach a deployment with RATE_LIMIT_EXEMPT_ENABLED set (development only)
 
     Returns
     -------
     bool
         True if the request should be exempt from rate limiting
     """
-    if settings.SELFURL != "https://payments.openbb.dev":
+    if not settings.RATE_LIMIT_EXEMPT_ENABLED:
         return False
 
     try:
-        openbb_auth = request.headers.get("X-OpenBB-Authorization")
-        openbb_scheme, openbb_param = get_authorization_scheme_param(openbb_auth)
+        service_auth = request.headers.get("X-Workspace-Authorization")
+        service_scheme, service_param = get_authorization_scheme_param(service_auth)
 
-        if openbb_scheme.lower() == "bearer":
-            auth_helpers.check_openbb(openbb_param)
+        if service_scheme.lower() == "bearer":
+            auth_helpers.check_origin(service_param)
             return True
     except auth_helpers.credentials_exception:
         return False

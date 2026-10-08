@@ -10,19 +10,13 @@ import AppsPage from "~/routes/Apps";
 
 const {
   mockUpdateApiSources,
-  mockSetOpenDataPlatformModalOpen,
   mockUseShallowBackendConnectorStore,
-  mockUseShallowFeatureFlagsStore,
-  mockUseShallowThemeStore,
   mockUseAllTemplates,
   mockUseSharedTemplates,
   localStorageInitial,
 } = vi.hoisted(() => ({
   mockUpdateApiSources: vi.fn(),
-  mockSetOpenDataPlatformModalOpen: vi.fn(),
   mockUseShallowBackendConnectorStore: vi.fn(),
-  mockUseShallowFeatureFlagsStore: vi.fn(),
-  mockUseShallowThemeStore: vi.fn(),
   mockUseAllTemplates: vi.fn(),
   mockUseSharedTemplates: vi.fn(),
   localStorageInitial: { state: {} as Record<string, unknown> },
@@ -74,15 +68,6 @@ vi.mock("usehooks-ts", async () => {
 vi.mock("~/lib/state/backendConnector", () => ({
   useShallowBackendConnectorStore: (selector: unknown) =>
     mockUseShallowBackendConnectorStore(selector),
-}));
-
-vi.mock("~/lib/state/featureFlags", () => ({
-  useShallowFeatureFlagsStore: (selector: unknown) =>
-    mockUseShallowFeatureFlagsStore(selector),
-}));
-
-vi.mock("~/lib/state/theme", () => ({
-  useShallowThemeStore: (selector: unknown) => mockUseShallowThemeStore(selector),
 }));
 
 vi.mock("~/hooks/useAllTemplates", () => ({
@@ -365,16 +350,6 @@ function setupDefaultMocks(
     (selector as (state: unknown) => unknown)({
       apiSources,
       updateApiSources: mockUpdateApiSources,
-    }),
-  );
-
-  mockUseShallowFeatureFlagsStore.mockImplementation((selector: unknown) =>
-    (selector as (state: unknown) => unknown)({ featureFlags: { tier: "free" } }),
-  );
-
-  mockUseShallowThemeStore.mockImplementation((selector: unknown) =>
-    (selector as (state: unknown) => unknown)({
-      setOpenDataPlatformModalOpen: mockSetOpenDataPlatformModalOpen,
     }),
   );
 
@@ -697,7 +672,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
 
   describe("Stale Backend Cleanup", () => {
     it("removes selected backends that no longer exist in apiSources", async () => {
-      localStorageInitial.state["apps-options-v2"] = {
+      localStorageInitial.state["apps-options"] = {
         filterBy: "all",
         sortBy: "newest",
         selectedBackends: ["backend-1", "removed-backend"],
@@ -715,7 +690,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
     });
 
     it("shows all backends selected when every selected backend was removed", async () => {
-      localStorageInitial.state["apps-options-v2"] = {
+      localStorageInitial.state["apps-options"] = {
         filterBy: "all",
         sortBy: "newest",
         selectedBackends: ["removed-1", "removed-2"],
@@ -732,25 +707,6 @@ describe("AppsPage - Backend Filter Dropdown", () => {
     });
   });
 
-  describe("Legacy localStorage migration", () => {
-    it("shows all apps for returning users with the pre-#2012 empty-array selection", () => {
-      // Builds before #2012 persisted `selectedBackends: []` to mean "All Backends".
-      // The tri-state filter now reads `[]` as "No Backends", which would blank the
-      // page. Returning users must not inherit an empty page from that flipped sentinel.
-      localStorageInitial.state["apps-options"] = {
-        filterBy: "all",
-        sortBy: "newest",
-        selectedBackends: [],
-      };
-
-      renderApps();
-
-      expect(screen.getByTestId("app-card-t-1")).toBeInTheDocument();
-      expect(screen.getByTestId("app-card-t-2")).toBeInTheDocument();
-      expect(screen.getByTestId("popover-trigger")).toHaveTextContent("All Backends");
-    });
-  });
-
   describe("Backend Filter Display Text", () => {
     it("shows 'All Backends' when nothing is selected", () => {
       renderApps();
@@ -760,7 +716,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
     });
 
     it("shows backend name in trigger when exactly one is selected", async () => {
-      localStorageInitial.state["apps-options-v2"] = {
+      localStorageInitial.state["apps-options"] = {
         filterBy: "all",
         sortBy: "newest",
         selectedBackends: ["backend-1"],
@@ -779,7 +735,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
         name: "",
       });
 
-      localStorageInitial.state["apps-options-v2"] = {
+      localStorageInitial.state["apps-options"] = {
         filterBy: "all",
         sortBy: "newest",
         selectedBackends: ["nameless"],
@@ -793,7 +749,7 @@ describe("AppsPage - Backend Filter Dropdown", () => {
     });
 
     it("shows 'Backends (N)' when N > 1 backends are selected", () => {
-      localStorageInitial.state["apps-options-v2"] = {
+      localStorageInitial.state["apps-options"] = {
         filterBy: "all",
         sortBy: "newest",
         selectedBackends: ["backend-1", "backend-2"],

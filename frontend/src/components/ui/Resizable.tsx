@@ -104,7 +104,7 @@ const ResizableHandle = memo(
     );
 
     const [isDragging, setIsDragging] = useState(false);
-    const draggingTimeoutRef = useRef<NodeJS.Timeout>(null);
+    const draggingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const drag = useMemo(
       () => (

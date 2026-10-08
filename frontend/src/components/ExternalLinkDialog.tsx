@@ -45,7 +45,7 @@ export function ExternalLinkDialog({
         <DialogTitle>Opening External Link</DialogTitle>
         <DialogDescription>
           You are about to open an external link:{" "}
-          <span className="obb-hyper-link">{url}</span>
+          <span className="ws-hyper-link">{url}</span>
         </DialogDescription>
       </DialogHeader>
 

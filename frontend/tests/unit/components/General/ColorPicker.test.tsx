@@ -28,24 +28,16 @@ describe("ColorPicker", () => {
     });
 
     it("renders color preview box with correct background color", () => {
-      const { container } = render(
-        <ColorPicker value="#00FF00" onChange={vi.fn()} />,
-      );
+      const { container } = render(<ColorPicker value="#00FF00" onChange={vi.fn()} />);
 
-      const colorBox = container.querySelector(
-        ".w-4.h-4.rounded",
-      ) as HTMLElement;
+      const colorBox = container.querySelector(".w-4.h-4.rounded") as HTMLElement;
       expect(colorBox).toBeInTheDocument();
       expect(colorBox).toHaveStyle({ backgroundColor: "#00FF00" });
     });
 
     it("applies custom className", () => {
       const { container } = render(
-        <ColorPicker
-          value="#FF0000"
-          onChange={vi.fn()}
-          className="custom-class"
-        />,
+        <ColorPicker value="#FF0000" onChange={vi.fn()} className="custom-class" />,
       );
 
       const wrapper = container.querySelector(".custom-class");
@@ -59,9 +51,7 @@ describe("ColorPicker", () => {
         <ColorPicker value="#FF0000" onChange={vi.fn()} disabled />,
       );
 
-      const colorBox = container.querySelector(
-        ".w-4.h-4.rounded",
-      ) as HTMLElement;
+      const colorBox = container.querySelector(".w-4.h-4.rounded") as HTMLElement;
       expect(colorBox).toHaveClass("opacity-50", "cursor-not-allowed");
     });
   });
@@ -87,8 +77,7 @@ describe("ColorPicker", () => {
       fireEvent.focus(input);
 
       await waitFor(() => {
-        const colorPickerElement =
-          document.querySelector(".react-colorful");
+        const colorPickerElement = document.querySelector(".react-colorful");
         expect(colorPickerElement).toBeInTheDocument();
       });
     });
@@ -107,9 +96,7 @@ describe("ColorPicker", () => {
       await user.keyboard("{Tab}");
 
       await waitFor(() => {
-        expect(
-          document.querySelector(".react-colorful"),
-        ).not.toBeInTheDocument();
+        expect(document.querySelector(".react-colorful")).not.toBeInTheDocument();
       });
     });
 
@@ -127,17 +114,13 @@ describe("ColorPicker", () => {
       await user.keyboard("{Escape}");
 
       await waitFor(() => {
-        expect(
-          document.querySelector(".react-colorful"),
-        ).not.toBeInTheDocument();
+        expect(document.querySelector(".react-colorful")).not.toBeInTheDocument();
       });
     });
 
     it("calls onBlur when input loses focus", async () => {
       const handleBlur = vi.fn();
-      render(
-        <ColorPicker value="#FF0000" onChange={vi.fn()} onBlur={handleBlur} />,
-      );
+      render(<ColorPicker value="#FF0000" onChange={vi.fn()} onBlur={handleBlur} />);
 
       const input = screen.getByRole("textbox");
       fireEvent.focus(input);
@@ -154,23 +137,17 @@ describe("ColorPicker", () => {
         </div>,
       );
 
-      const colorBox = container.querySelector(
-        ".w-4.h-4.rounded",
-      ) as HTMLElement;
+      const colorBox = container.querySelector(".w-4.h-4.rounded") as HTMLElement;
       fireEvent.click(colorBox);
 
       expect(handleClick).not.toHaveBeenCalled();
     });
 
     it("focuses the input when color box is clicked (when not disabled)", () => {
-      const { container } = render(
-        <ColorPicker value="#FF0000" onChange={vi.fn()} />,
-      );
+      const { container } = render(<ColorPicker value="#FF0000" onChange={vi.fn()} />);
 
       const input = screen.getByRole("textbox");
-      const colorBox = container.querySelector(
-        ".w-4.h-4.rounded",
-      ) as HTMLElement;
+      const colorBox = container.querySelector(".w-4.h-4.rounded") as HTMLElement;
 
       fireEvent.click(colorBox);
 

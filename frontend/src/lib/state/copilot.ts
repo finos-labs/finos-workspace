@@ -1,4 +1,3 @@
-import type { ChartType } from "ag-grid-enterprise";
 import cloneDeep from "lodash/cloneDeep";
 import isEqual from "lodash.isequal";
 import { v4 as uuidv4 } from "uuid";
@@ -14,16 +13,8 @@ import {
 } from "~/api/auth.api";
 import { showDeprecatedFlagsToast } from "~/components/AI/hooks/utils";
 import { getConfig } from "~/lib/runtimeConfig";
-import {
-  AI_SUPPORTED_FILE_TYPES,
-  getDefaultCopilot,
-  inSnowflakeNativeApp,
-} from "../constants";
-import {
-  type FunctionCallSchemaT,
-  mergeDuplicateChats,
-  migrateFuncCallArgs,
-} from "../utils";
+import { AI_SUPPORTED_FILE_TYPES, getDefaultCopilot } from "../constants";
+import { type FunctionCallT, mergeDuplicateChats } from "../utils";
 import type { Selector } from "./app";
 
 export const copilotSchema = z
@@ -87,18 +78,10 @@ export type CopilotModel = { id: string; name: string };
 export interface WidgetSignature {
   origin: string;
   widgetId: string;
-  args: Record<string, any>;
-  ssmRequest?: Record<string, any>; // For ssrm_table widgets
+  args: Record<string, unknown>;
 }
 
-const ParseAsTypes = [
-  "html",
-  "text",
-  "table",
-  "chart",
-  "snowflake_query",
-  "snowflake_python",
-] as const;
+const ParseAsTypes = ["html", "text"] as const;
 
 type ParseAs = (typeof ParseAsTypes)[number];
 
@@ -108,26 +91,7 @@ interface DataFormatBase<P extends ParseAs = ParseAs> {
   parse_as?: P;
 }
 
-interface DataFormatChart extends DataFormatBase<"chart"> {
-  chart_params?: {
-    chartType: ChartType;
-    xKey: string;
-    yKey: string[];
-    labelKey?: string;
-    labelName?: string;
-  };
-}
-
-interface DataFormatSnowflake
-  extends DataFormatBase<"snowflake_query" | "snowflake_python"> {
-  query_data_source: {
-    origin: string;
-    id: string;
-    widget_uuid: string;
-  };
-}
-
-export type DataFormat = DataFormatBase | DataFormatChart | DataFormatSnowflake;
+export type DataFormat = DataFormatBase;
 
 export interface DataContent {
   content: string;
@@ -170,16 +134,17 @@ const SourceInfoSchema = z.object({
   uuid: z.string().nullish().optional(),
   widget_id: z.string().nullish().optional(),
   description: z.string().nullish().optional(),
-  metadata: z.record(z.string(), z.any()).nullish().optional(),
+  metadata: z.record(z.string(), z.unknown()).nullish().optional(),
   citable: z.boolean().optional(),
 });
 
 const ExtraCitationSchema = z.object({
   id: z.string().optional(),
   source_info: SourceInfoSchema,
-  details: z.array(z.any()).optional(),
-  artifacts: z.array(z.any()).optional(),
-  quote_bounding_boxes: z.array(z.array(z.any())).optional(),
+  // What the backend sends is taken as the types say, as it always was
+  details: z.custom<DetailT[]>().optional(),
+  artifacts: z.custom<ArtifactT[]>().optional(),
+  quote_bounding_boxes: z.custom<QuoteBoundingBox[][]>().optional(),
   signature: z.string().optional(),
 });
 
@@ -236,7 +201,7 @@ export const CopilotDataItemSchema = z.preprocess(
     if ("file_reference" in data && !("url" in data)) {
       return {
         ...data,
-        url: (data as any).file_reference,
+        url: data.file_reference as string,
       };
     }
     return data;
@@ -313,7 +278,7 @@ export interface CopilotWidget {
   sub_category?: string;
   columns?: string[];
   params: WidgetParam[];
-  metadata: Record<string, unknown> & {
+  metadata?: Record<string, unknown> & {
     tabWidgets?: CopilotWidget[];
     innerTabId?: string;
     widgetCount?: number;
@@ -359,31 +324,6 @@ type BaseArtifact = {
 };
 type TextArtifact = BaseArtifact & { type: "text"; content: string };
 type HtmlArtifact = BaseArtifact & { type: "html"; content: string };
-type TableArtifact = BaseArtifact & { type: "table"; content: Record<string, any>[] };
-export type ChartArtifactT = BaseArtifact & {
-  type: "chart";
-  content: Record<string, any>[];
-  chart_params: {
-    chartType: ChartType;
-    xKey: string;
-    yKey: string[];
-    angleKey?: string;
-    calloutLabelKey?: string;
-    labelKey?: string;
-    labelName?: string;
-  };
-};
-
-export type SnowflakeArtifactT = BaseArtifact & {
-  type: "snowflake_query" | "snowflake_python";
-  content: string;
-  query_data_source: {
-    origin: string;
-    id: string;
-    widget_uuid: string;
-  };
-};
-
 /** Per-widget grid placement inside an app artifact tab. `i` MUST equal `widget_id`. */
 type AppArtifactLayoutItem = {
   i: string;
@@ -429,20 +369,11 @@ export type AppArtifactT = BaseArtifact & {
   widget_refs: AppArtifactWidgetRef[];
 };
 
-export type ArtifactT =
-  | TextArtifact
-  | HtmlArtifact
-  | TableArtifact
-  | ChartArtifactT
-  | SnowflakeArtifactT
-  | AppArtifactT;
+export type ArtifactT = TextArtifact | HtmlArtifact | AppArtifactT;
 
-export type ArtifactType<T extends ArtifactT["type"]> =
-  T extends SnowflakeArtifactT["type"]
-    ? SnowflakeArtifactT
-    : Extract<ArtifactT, { type: T }>;
+export type ArtifactType<T extends ArtifactT["type"]> = Extract<ArtifactT, { type: T }>;
 
-export type DetailT = Record<string, any> | null;
+export type DetailT = Record<string, unknown> | null;
 
 export interface DatetimeState {
   timestamp: number;
@@ -477,7 +408,7 @@ export interface Citation {
 
 export interface MessageGroup {
   role: "human" | "ai" | "system" | "tool";
-  groupTitle: string;
+  groupTitle?: string;
   parentGroupId?: string;
   messages: Message[];
   senderId: string;
@@ -526,7 +457,7 @@ export interface ToolMessageBase extends BaseMessage {
   data: CopilotDataT[] | CopilotCommandResultT[];
 }
 
-export type ToolMessage = ToolMessageBase & FunctionCallSchemaT;
+export type ToolMessage = ToolMessageBase & FunctionCallT;
 
 export type Message = HumanMessage | AIMessage | SystemMessage | ToolMessage;
 
@@ -623,7 +554,7 @@ export interface CopilotState {
   getChatsData: () => Omit<Chat, "messages" | "artifacts">[];
   /** Updates the chats, including merging and migrations.*/
   updateChats: (
-    chats: Chat[],
+    chats: Chat[] | undefined,
     options?: { customCopilots?: CustomCopilot[]; questionsHistory?: string[] },
   ) => void;
   /** Resets all chats to the default state.*/
@@ -644,7 +575,7 @@ export interface CopilotState {
   /** Updates the last message in the current chat, typically an AI message.*/
   updateLastMessage: (update: Partial<AIMessage>) => void;
   /** Updates a specific property of an AI message.*/
-  updateAIMessage: (property: string, value: any, messageTimestamp: number) => void;
+  updateAIMessage: (property: string, value: unknown, messageTimestamp: number) => void;
   /** Sets the error state of the last message.*/
   updateLastMessageError: (isError?: boolean) => void;
   /** Marks the last message as a function call.*/
@@ -709,7 +640,7 @@ export interface CopilotState {
   closeCreateWidgetMetadataDialog: () => void;
 }
 
-const aiCopilotOpenBBCopilotFF = getConfig().copilot.openbbCopilot;
+const aiCopilotDefaultCopilotFF = getConfig().copilot.defaultCopilot;
 
 const currentDate = Date.now();
 const DEFAULT_CHAT = {
@@ -720,7 +651,7 @@ const DEFAULT_CHAT = {
   titleManuallyUpdated: false,
   titleNeedsUpdate: true,
   lastOpened: currentDate,
-  agentIds: ["openbb-copilot"],
+  agentIds: ["default-copilot"],
 } as Chat;
 
 function getChatLastOpened(chats: Chat[], currentChat?: number | null) {
@@ -751,7 +682,7 @@ function removeChatScrollY(chatId: number) {
 
 export function getReachableArtifacts(
   messages: Message[],
-  artifacts: ArtifactT[],
+  artifacts: ArtifactT[] | undefined,
 ): ArtifactT[] {
   const aiMessages = messages?.filter((message) => message.role === "ai") ?? [];
   if (!artifacts?.length) return artifacts ?? [];
@@ -769,7 +700,7 @@ export function getReachableArtifacts(
 
 function updateAgentIds(chat: Chat, selectedCopilot: Copilot | null, reset = false) {
   if (reset) {
-    chat.agentIds = [selectedCopilot?.id || "openbb-copilot"];
+    chat.agentIds = [selectedCopilot?.id || "default-copilot"];
     return chat;
   }
   if (!(chat && selectedCopilot?.id)) return chat;
@@ -871,7 +802,7 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
 
             const artifactMapping = (chat.artifacts || []).reduce(
               (acc, a) => {
-                acc[a.name] = a;
+                if (a.name !== undefined) acc[a.name] = a;
                 acc[a.uuid] = a;
 
                 return acc;
@@ -889,13 +820,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
 
               // Backward compatibility for AI messages
               if (message.role === "ai") {
-                try {
-                  const content = migrateFuncCallArgs(JSON.parse(message.content));
-                  message.content = JSON.stringify(content);
-                } catch (e) {
-                  // Ignore errors
-                }
-
                 // Backward compatibility for citations
                 if (typeof message.content === "string") {
                   for (const citation of message.citations || []) {
@@ -913,30 +837,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
                     }
                   }
                 }
-              }
-
-              // Backward compatibility for tool messages
-              if (message?.role === "tool") {
-                // @ts-expect-error
-                const old_content = message?.content;
-                if (old_content) {
-                  // @ts-expect-error
-                  message.data = [{ content: old_content }];
-                  // @ts-expect-error
-                  message.content = undefined;
-                }
-
-                if (!Array.isArray(message.data)) {
-                  message.data = [{ items: [message.data] }];
-                }
-
-                // We ignore because the old schema is not declared
-                message.data = message.data.map((element) => {
-                  if (Array.isArray(element.items)) return element;
-                  return { items: [element] };
-                });
-
-                migrateFuncCallArgs(message);
               }
 
               lastInteraction = Math.max(lastInteraction || 0, message.timestamp);
@@ -1136,7 +1036,7 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
               (m) => m.timestamp === messageTimestamp,
             );
             if (message && message.role === "ai") {
-              message[property] = value;
+              Object.assign(message, { [property]: value });
               set({
                 chats: chats.map((c) =>
                   c.createdAt === currentChat ? { ...c, messages: updatedMessages } : c,
@@ -1164,16 +1064,18 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
             selectedModelByAgent: { ...state.selectedModelByAgent, [agentId]: modelId },
           })),
         getSelectedModelForAgent: (agentId) => get().selectedModelByAgent[agentId],
-        selectedCopilot: aiCopilotOpenBBCopilotFF ? getDefaultCopilot() : null,
+        selectedCopilot: aiCopilotDefaultCopilotFF ? getDefaultCopilot() : null,
         setSelectedCopilot: (copilot) => {
           // This is a temporary check to notify users about outdated copilots.json
           // We need to implement copilots.json versioning to handle this properly.
-          const outdatedFlags = [
-            copilot.hasDocuments !== undefined && "hasDocuments",
-            copilot.hasFunctionCalling !== undefined && "hasFunctionCalling",
-            copilot.hasStreaming !== undefined && "hasStreaming",
-          ].filter(Boolean);
-          if (copilot.id !== "openbb-copilot" && outdatedFlags.length > 0) {
+          const outdatedFlags = copilot
+            ? [
+                copilot.hasDocuments !== undefined && "hasDocuments",
+                copilot.hasFunctionCalling !== undefined && "hasFunctionCalling",
+                copilot.hasStreaming !== undefined && "hasStreaming",
+              ].filter((flag): flag is string => typeof flag === "string")
+            : [];
+          if (copilot && copilot.id !== "default-copilot" && outdatedFlags.length > 0) {
             showDeprecatedFlagsToast(copilot, outdatedFlags);
           }
 
@@ -1217,7 +1119,7 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
         },
         setCopilotById: (copilotId) => {
           const { externalCopilotHolders, setSelectedCopilot } = get();
-          if (copilotId === "openbb-copilot")
+          if (copilotId === "default-copilot")
             return setSelectedCopilot(getDefaultCopilot());
 
           const copilot = externalCopilotHolders
@@ -1246,16 +1148,16 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
 
           // Auto-select an agent when none is currently selected (or the current
           // selection is gone). Without this, agents arriving from the backend or
-          // persist rehydrate (e.g. lite, where openbbCopilot is off and
+          // persist rehydrate (e.g. lite, where defaultCopilot is off and
           // selectedCopilot starts null) leave the panel stuck on "No copilot
-          // selected" until the user re-adds the agent. The built-in OpenBB copilot
+          // selected" until the user re-adds the agent. The built-in copilot
           // and any still-valid selection are preserved.
           const selectedCopilot = get().selectedCopilot;
           const availableCopilots = uniqueCopilots
             .filter((holder) => holder.enabled !== false)
             .flatMap((holder) => holder.copilots || []);
           const selectionStillValid =
-            selectedCopilot?.id === "openbb-copilot" ||
+            selectedCopilot?.id === "default-copilot" ||
             availableCopilots.some((c) => c.id === selectedCopilot?.id);
           const nextSelectedCopilot = selectionStillValid
             ? selectedCopilot
@@ -1284,7 +1186,8 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
                 (copilot) => copilot.id === selectedCopilot?.id,
               );
               // If the selected copilot is in the holder, update it
-              if (selectedUpdate) Object.assign(selectedCopilot, selectedUpdate);
+              if (selectedUpdate && selectedCopilot)
+                Object.assign(selectedCopilot, selectedUpdate);
 
               Object.assign(existingHolder, holder);
               return acc;
@@ -1367,9 +1270,10 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
               chats: state.chats.map((chat) => {
                 if (chat.createdAt !== state.currentChat) return chat;
                 const messages = chat.messages.filter((m) => m.copilotId !== copilotId);
-                const artifacts = getReachableArtifacts(messages, chat.artifacts);
+                const artifacts = getReachableArtifacts(messages, chat.artifacts ?? []);
                 const agentIds = (chat.agentIds || []).filter((id) => id !== copilotId);
-                if (agentIds.length === 0) agentIds.push(copilotId || "openbb-copilot");
+                if (agentIds.length === 0)
+                  agentIds.push(copilotId || "default-copilot");
 
                 return { ...chat, uuid, id: uuid, messages, artifacts, agentIds };
               }),
@@ -1531,11 +1435,9 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
       {
         name: "copilot",
         partialize: (state) => {
-          if (state?.selectedCopilot?.id === "openbb-copilot") {
+          if (state?.selectedCopilot?.id === "default-copilot") {
             state.selectedCopilot = getDefaultCopilot();
           }
-
-          if (inSnowflakeNativeApp) state.agentOrchestrationMap = {};
 
           return {
             externalCopilotHolders: state.externalCopilotHolders,
@@ -1550,10 +1452,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
           };
         },
         onRehydrateStorage: () => (state) => {
-          if (inSnowflakeNativeApp) {
-            state.orchestrationModeEnabled = false;
-            state.agentOrchestrationMap = {};
-          }
           if (state?.selectedCopilot) {
             const result = copilotSchema.safeParse(state.selectedCopilot);
             if (result.success) {
@@ -1566,7 +1464,7 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
           ) {
             const validatedHolders = state.externalCopilotHolders.map((holder) => ({
               ...holder,
-              copilots: holder.copilots.map((copilot) => {
+              copilots: (holder.copilots ?? []).map((copilot) => {
                 const result = copilotSchema.safeParse(copilot);
                 return result.success ? result.data : copilot;
               }),
@@ -1594,8 +1492,6 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
   shallow,
 );
 
-export function useShallowCopilotStore<S extends CopilotState, T>(
-  selector: Selector<S, T>,
-): T {
+export function useShallowCopilotStore<T>(selector: Selector<CopilotState, T>): T {
   return useCopilotStore(useShallow(selector), (prev, next) => isEqual(prev, next));
 }

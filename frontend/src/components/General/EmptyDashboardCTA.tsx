@@ -134,8 +134,7 @@ export default function EmptyDashboardCTA({ locked = false }: { locked?: boolean
                 Add iframe widget
               </p>
               <p className="mt-1 body-xs-regular dark:text-light-100 text-light-800">
-                Add any embeddable iframe URL (e.g. Streamlit or Plotly dashboards) to
-                your workspace.
+                Add any embeddable iframe URL (e.g. a Streamlit app) to your workspace.
               </p>
               <div className="mt-2.5 grow rounded border dark:border-dark-600 border-light-300 p-2.5 flex flex-col gap-2.5 items-center justify-center">
                 <Icon

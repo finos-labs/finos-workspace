@@ -11,6 +11,7 @@ import {
   type AIMessage,
   type ArtifactT,
   type Citation as CitationT,
+  type MessageGroup,
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
 import { cn } from "../ds/utils";
@@ -31,7 +32,7 @@ import { escapeMarkdownUnderscores } from "./utils/markdown";
 type CopilotAIMessageProps = {
   message: AIMessage;
   isLastGroup: boolean;
-  allGroups?: any[];
+  allGroups?: MessageGroup[];
   groupIndex?: number;
 };
 
@@ -79,7 +80,7 @@ export default function CopilotAIMessage(props: CopilotAIMessageProps) {
   const markdownOptions = useMemo<MarkdownToJSX.Options>(() => {
     const renderCitation = (citationId: string, key: string) => {
       const normalizedCitationId = citationId.replace(/\\_/g, "_");
-      const { citation, index } = messageCitations.reduce(
+      const { citation, index } = (messageCitations ?? []).reduce(
         (acc, citation, index) => {
           if (citation.id === normalizedCitationId) {
             Object.assign(acc, { citation, index });
@@ -137,7 +138,7 @@ export default function CopilotAIMessage(props: CopilotAIMessageProps) {
       groupIndex,
     );
 
-    if (strategy.shouldShowDatetime) {
+    if (strategy.shouldShowDatetime && strategy.targetGroupId) {
       showDatetime(strategy.timestamp, strategy.targetGroupId);
     }
   }, [message, allGroups, groupIndex, showDatetime]);
@@ -184,7 +185,7 @@ export default function CopilotAIMessage(props: CopilotAIMessageProps) {
       </div>
       {(!message.isCancelled || (message.isCancelled && messageContent)) && (
         <div className="inline-block">
-          <div className="obb-divider my-1 mx-1.25" />
+          <div className="ws-divider my-1 mx-1.25" />
           <div className="flex items-center">
             <Tooltip message="Copy message text">
               <button

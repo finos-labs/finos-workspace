@@ -1,12 +1,12 @@
 ---
 title: Layout Grid and Groups
-uri: openbb://workspace/specs/layout-grid
+uri: workspace://specs/layout-grid
 use_when: You are placing widgets, sizing them, or wiring synchronized parameter groups in apps.json.
 language_specific: false
 related:
-  - openbb://workspace/specs/apps-json
-  - openbb://workspace/specs/widgets-json
-  - openbb://workspace/specs/widget-parameters
+  - workspace://specs/apps-json
+  - workspace://specs/widgets-json
+  - workspace://specs/widget-parameters
 ---
 
 # Layout Grid and Groups
@@ -33,12 +33,11 @@ Use `i` for the widget id (not `id`). Use `x`, `y`, `w`, `h` directly (not neste
 
 | Widget type | Recommended `h` |
 |-------------|------------------|
-| `metric` | 4–6 |
-| `table` (small) | 8–12 |
-| `table` (medium) | 12–15 |
-| `chart` | 12–15 |
-| `newsfeed` | 12–15 |
 | `markdown` | 8–12 |
+| `html` | 12–15 |
+| `newsfeed` | 12–15 |
+| `pdf` | 15–20 |
+| `iframe` | 12–20 |
 
 ## Tabs
 
@@ -52,10 +51,10 @@ For a single, unnamed tab use empty strings:
 
 ## Parameter groups
 
-Groups synchronize a parameter (e.g. `symbol`) across multiple widgets. The runtime is strict:
+Groups synchronize a parameter (e.g. `team`) across multiple widgets. The runtime is strict:
 
-1. **Group `name` must follow the literal `Group 1`, `Group 2`, ...** Custom names like `"symbol-group"` validate but don't link.
-2. **Group `type` must match the widget param's shape** — see `openbb://workspace/specs/apps-json`.
+1. **Group `name` must follow the literal `Group 1`, `Group 2`, ...** Custom names like `"team-group"` validate but don't link.
+2. **Group `type` must match the widget param's shape** — see `workspace://specs/apps-json`.
 3. **Three places must agree:** `groups[].widgetIds`, each layout item's `groups: ["Group N"]`, and each widget's own param config.
 
 Group object shape:
@@ -64,59 +63,21 @@ Group object shape:
 {
   "name": "Group 1",
   "type": "endpointParam",
-  "paramName": "symbol",
-  "widgetIds": ["watchlist", "price_chart"],
-  "defaultValue": "AAPL"
+  "paramName": "team",
+  "widgetIds": ["team_summary", "team_report"],
+  "defaultValue": "platform"
 }
 ```
 
-## Click-through navigation (apply aggressively)
+## Checklist
 
-The single biggest UX upgrade: clicking a row in a discovery table updates the rest of the dashboard. Audit every `table` widget for it before declaring an app done.
-
-**The rule.** For every table column, check the column's `field`. If any `field` matches a `paramName` used by an app-level group (and the cell value is what the param expects, e.g. a ticker symbol), that column MUST have:
-
-```json
-{
-  "field": "ticker",
-  "headerName": "Ticker",
-  "cellDataType": "text",
-  "pinned": "left",
-  "renderFn": "cellOnClick",
-  "renderFnParams": {
-    "actionType": "groupBy",
-    "groupBy": { "paramName": "symbol", "valueField": "ticker" }
-  }
-}
-```
-
-**Requirements for the click to actually fire:**
-
-1. The clickable widget AND target widgets share `"groups": ["Group 1"]` in the layout.
-2. Target widgets expose a parameter matching `paramName` (e.g. `symbol`).
-3. The clickable widget is also listed in the group's `widgetIds`.
-4. Use `renderFnParams.groupBy.paramName`, not `groupByParamName` (legacy name fails silently).
-5. Use `valueField` when the cell display differs from the param value (e.g. showing "Apple Inc." but sending "AAPL").
-
-**Discovery widgets (top movers, screeners, watchlists, IPO calendars, peer comparisons) belong in the symbol group's `widgetIds` AND their layout entry must include `"groups": ["Group 1"]` — even if the widget itself has no `symbol` param.** They emit clicks; they don't receive them.
-
-**Sharp edge — `cellOnClick` plus a visible duplicate dropdown breaks the interaction.** If a widget has BOTH a `cellOnClick` column targeting param `X` AND that same `X` exposed as a visible dropdown in its own `params`, the click stops propagating reliably and the user gets a confusing dual-control UX. Pick one:
-
-- Keep the cellOnClick. Add `"show": false` to that param so the dropdown is hidden.
-- Or drop the cellOnClick from the column.
-
-This rule applies only when the widget *receives* the click-targeted param. Pure-emitter widgets are unaffected.
-
-## Build-time audit checklist
-
-- [ ] Every `ticker`/`symbol` column in every table has `cellOnClick` with the right `groupBy`.
-- [ ] Every discovery table is in the symbol group's `widgetIds`.
-- [ ] Every layout entry that participates has `"groups": ["Group 1"]`.
-- [ ] For widgets that have BOTH a cellOnClick column AND a matching param: the param has `"show": false`.
-- [ ] Render in Workspace and click a row — confirm other widgets refresh.
+- [ ] Every layout item uses `i` and matches a key in `widgets.json`.
+- [ ] Every widget that shares a parameter has `"groups": ["Group N"]` in its layout entry, is listed in that group's `widgetIds`, and declares the matching param.
+- [ ] Widgets do not overlap and fit in the 40 columns.
+- [ ] Open the app in Workspace and change the shared param in one widget — confirm the others refresh.
 
 ## What this spec does not cover
 
-- Required `apps.json` fields and tab/layout schema — see `openbb://workspace/specs/apps-json`.
-- Widget-side param definitions — see `openbb://workspace/specs/widget-parameters`.
-- Type cheatsheet for groups — covered in `openbb://workspace/specs/apps-json`.
+- Required `apps.json` fields and tab/layout schema — see `workspace://specs/apps-json`.
+- Widget-side param definitions — see `workspace://specs/widget-parameters`.
+- Type cheatsheet for groups — covered in `workspace://specs/apps-json`.

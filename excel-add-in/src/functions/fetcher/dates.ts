@@ -1,7 +1,6 @@
 import dayjs from "dayjs";
 import dayjsBusinessDays from "dayjs-business-days2";
 import moment from "moment-timezone";
-import posthog from "posthog-js";
 import { CFError } from "./errors";
 
 dayjs.extend(dayjsBusinessDays);
@@ -194,7 +193,6 @@ async function getDateInfo(prop: string): Promise<string> {
 
     return systemInfo;
   } catch (error) {
-    posthog.capture("date_info_error", { error_message: error.message });
     console.warn("Error fetching date info:", error);
     return "m/d/yyyy";
   }

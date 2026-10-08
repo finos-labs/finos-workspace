@@ -9,7 +9,10 @@ vi.mock("~/lib/utils", () => ({
 }));
 
 vi.mock("@tanstack/react-virtual", () => ({
-  useVirtualizer: (opts: any) => ({
+  useVirtualizer: (opts: {
+    count: number;
+    getItemKey?: (index: number) => string | number;
+  }) => ({
     getVirtualItems: () =>
       Array.from({ length: opts.count }, (_, i) => ({
         key: opts.getItemKey?.(i) ?? i,

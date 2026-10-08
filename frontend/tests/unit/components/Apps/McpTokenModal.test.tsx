@@ -22,21 +22,27 @@ vi.mock("~/components/ds/atoms/Button", () => ({
 }));
 
 vi.mock("~/components/ds/atoms/Input", () => ({
-  Input: forwardRef<HTMLInputElement, any>(
-    ({ label, value, onChange, placeholder, ...rest }, ref) => (
-      <label>
-        <span>{label}</span>
-        <input
-          {...rest}
-          ref={ref}
-          aria-label={label}
-          value={value}
-          placeholder={placeholder}
-          onChange={(e) => onChange?.(e.target.value)}
-        />
-      </label>
-    ),
-  ),
+  Input: forwardRef<
+    HTMLInputElement,
+    {
+      label?: string;
+      value?: string;
+      placeholder?: string;
+      onChange?: (value: string) => void;
+    }
+  >(({ label, value, onChange, placeholder, ...rest }, ref) => (
+    <label>
+      <span>{label}</span>
+      <input
+        {...rest}
+        ref={ref}
+        aria-label={label}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
+    </label>
+  )),
 }));
 
 vi.mock("~/components/ds/dialogs/Dialog", () => ({
@@ -91,15 +97,11 @@ describe("McpTokenModal", () => {
   });
 
   it("shows edit copy and a masked placeholder when a token exists", () => {
-    render(
-      <McpTokenModal {...baseProps} currentToken="existing" onSave={vi.fn()} />,
-    );
+    render(<McpTokenModal {...baseProps} currentToken="existing" onSave={vi.fn()} />);
 
     expect(screen.getByRole("heading", { name: "Edit token" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Update" })).toBeInTheDocument();
-    expect(
-      screen.getByPlaceholderText("•••••••• (saved)"),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("•••••••• (saved)")).toBeInTheDocument();
   });
 
   it("invokes onRemove when the token is removed", () => {

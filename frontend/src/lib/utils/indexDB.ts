@@ -8,11 +8,11 @@ type UseStore = <T>(
 function promisifyRequest<T = undefined>(
   request: IDBRequest<T> | IDBTransaction,
 ): Promise<T> {
+  // A transaction completes where a request succeeds, and both are settled the same way
+  const settled = request as IDBRequest<T> & IDBTransaction;
   return new Promise<T>((resolve, reject) => {
-    // @ts-expect-error
-    request.oncomplete = request.onsuccess = () => resolve(request.result);
-    // @ts-expect-error
-    request.onabort = request.onerror = () => reject(request.error);
+    settled.oncomplete = settled.onsuccess = () => resolve(settled.result);
+    settled.onabort = settled.onerror = () => reject(settled.error);
   });
 }
 
@@ -47,7 +47,7 @@ function createStore(dbName: string, storeName: string): UseStore {
  * @param key
  * @param store Method to get a custom store. Use with caution (see the docs).
  */
-export function get<T = any>(
+export function get<T = unknown>(
   key: IDBValidKey,
   store: UseStore,
 ): Promise<T | undefined> {
@@ -61,7 +61,7 @@ export function get<T = any>(
  * @param value
  * @param store Method to get a custom store. Use with caution (see the docs).
  */
-export function set(key: IDBValidKey, value: any, store: UseStore): Promise<void> {
+export function set(key: IDBValidKey, value: unknown, store: UseStore): Promise<void> {
   return store("readwrite", (store) => {
     store.put(value, key);
     return promisifyRequest(store.transaction);
@@ -95,12 +95,12 @@ export function del(key: IDBValidKey, store: UseStore): Promise<void> {
  */
 export function createIndexedDBStorage() {
   return createJSONStorage(() => {
-    const store = createStore("OpenBB", "workspace");
+    const store = createStore("Workspace", "workspace");
     return {
       async getItem(key: IDBValidKey) {
-        return await get(key, store).then((value) => value || null);
+        return await get<string>(key, store).then((value) => value || null);
       },
-      async setItem(key: IDBValidKey, value: any) {
+      async setItem(key: IDBValidKey, value: string) {
         await set(key, value, store);
       },
       async removeItem(key: IDBValidKey) {
@@ -111,6 +111,6 @@ export function createIndexedDBStorage() {
 }
 
 export async function getStorage(key: IDBValidKey) {
-  const store = createStore("OpenBB", "workspace");
-  return await get(key, store).then((value) => value || null);
+  const store = createStore("Workspace", "workspace");
+  return await get<string>(key, store).then((value) => value || null);
 }

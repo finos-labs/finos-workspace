@@ -1,13 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  isExcludedWidgetId,
-  useFeatureFlagsStore,
   type DataBundle,
   type FeatureFlags,
+  isExcludedWidgetId,
   type Usage,
+  useFeatureFlagsStore,
 } from "~/lib/state/featureFlags";
+import { required } from "../../mocks";
 
-const createMockFeatureFlags = (overrides: Partial<FeatureFlags> = {}): FeatureFlags => ({
+const createMockFeatureFlags = (
+  overrides: Partial<FeatureFlags> = {},
+): FeatureFlags => ({
   admin_access: true,
   bring_your_own_copilot: true,
   bring_your_own_data: true,
@@ -16,19 +19,21 @@ const createMockFeatureFlags = (overrides: Partial<FeatureFlags> = {}): FeatureF
   data_bundle_info: null,
   excel_add_in: true,
   number_copilot_calls_day: 100,
+  number_copilot_tokens_day: null,
   share_widgets: "private",
   support: true,
-  tier: "pro",
+  tier: "full",
   total_file_upload_size_gb: 50,
-  is_trial: false,
   can_submit_marketplace: false,
   ...overrides,
 });
 
 const createMockUsage = (overrides: Partial<Usage> = {}): Usage => ({
   number_copilot_calls_day_count: 10,
+  number_copilot_tokens_day_count: 0,
   total_file_upload_size_gb_count: 5,
   copilot_calls_limit: 100,
+  copilot_tokens_limit: null,
   file_upload_size_limit: 50,
   ...overrides,
 });
@@ -94,13 +99,15 @@ describe("useFeatureFlagsStore", () => {
     });
 
     it("should merge partial feature flags with existing state", () => {
-      const initialFlags = createMockFeatureFlags({ tier: "pro", admin_access: true });
+      const initialFlags = createMockFeatureFlags({ tier: "full", admin_access: true });
       useFeatureFlagsStore.setState({ featureFlags: initialFlags });
 
-      useFeatureFlagsStore.getState().setFeatureFlags({ tier: "terminal", support: false });
+      useFeatureFlagsStore
+        .getState()
+        .setFeatureFlags({ tier: "basic", support: false });
 
       const { featureFlags } = useFeatureFlagsStore.getState();
-      expect(featureFlags?.tier).toBe("terminal");
+      expect(featureFlags?.tier).toBe("basic");
       expect(featureFlags?.support).toBe(false);
       expect(featureFlags?.admin_access).toBe(true);
     });
@@ -112,7 +119,9 @@ describe("useFeatureFlagsStore", () => {
       });
       useFeatureFlagsStore.setState({ featureFlags: initialFlags });
 
-      useFeatureFlagsStore.getState().setFeatureFlags({ number_copilot_calls_day: 200 });
+      useFeatureFlagsStore
+        .getState()
+        .setFeatureFlags({ number_copilot_calls_day: 200 });
 
       const { featureFlags } = useFeatureFlagsStore.getState();
       expect(featureFlags?.number_copilot_calls_day).toBe(200);
@@ -121,9 +130,9 @@ describe("useFeatureFlagsStore", () => {
 
     it("should handle setting data_bundle_info", () => {
       const dataBundle = createMockDataBundle({ bundle_name: "Equity Research" });
-      useFeatureFlagsStore.getState().setFeatureFlags(
-        createMockFeatureFlags({ data_bundle_info: dataBundle })
-      );
+      useFeatureFlagsStore
+        .getState()
+        .setFeatureFlags(createMockFeatureFlags({ data_bundle_info: dataBundle }));
 
       const { featureFlags } = useFeatureFlagsStore.getState();
       expect(featureFlags?.data_bundle_info?.bundle_name).toBe("Equity Research");
@@ -156,7 +165,9 @@ describe("useFeatureFlagsStore", () => {
       });
       useFeatureFlagsStore.setState({ usage: initialUsage });
 
-      useFeatureFlagsStore.getState().setUsage({ number_copilot_calls_day_count: 20 } as Usage);
+      useFeatureFlagsStore
+        .getState()
+        .setUsage({ number_copilot_calls_day_count: 20 } as Usage);
 
       const { usage } = useFeatureFlagsStore.getState();
       expect(usage?.number_copilot_calls_day_count).toBe(20);
@@ -177,7 +188,9 @@ describe("useFeatureFlagsStore", () => {
       const initialUsage = createMockUsage({ file_upload_size_limit: 50 });
       useFeatureFlagsStore.setState({ usage: initialUsage });
 
-      useFeatureFlagsStore.getState().setUsage({ file_upload_size_limit: 100 } as Usage);
+      useFeatureFlagsStore
+        .getState()
+        .setUsage({ file_upload_size_limit: 100 } as Usage);
 
       const { usage } = useFeatureFlagsStore.getState();
       expect(usage?.file_upload_size_limit).toBe(100);
@@ -197,11 +210,17 @@ describe("useFeatureFlagsStore", () => {
     });
 
     it("should completely replace existing feature flags", () => {
-      const initialFlags = createMockFeatureFlags({ tier: "pro", admin_access: true });
+      const initialFlags = createMockFeatureFlags({ tier: "full", admin_access: true });
       const initialUsage = createMockUsage();
-      useFeatureFlagsStore.setState({ featureFlags: initialFlags, usage: initialUsage });
+      useFeatureFlagsStore.setState({
+        featureFlags: initialFlags,
+        usage: initialUsage,
+      });
 
-      const newFlags = createMockFeatureFlags({ tier: "terminal", admin_access: false });
+      const newFlags = createMockFeatureFlags({
+        tier: "basic",
+        admin_access: false,
+      });
       const newUsage = createMockUsage({ number_copilot_calls_day_count: 50 });
 
       useFeatureFlagsStore.getState().setFeatureFlagsAndUsage(newFlags, newUsage);
@@ -215,14 +234,13 @@ describe("useFeatureFlagsStore", () => {
       expect(useFeatureFlagsStore.getState().featureFlags).toBeNull();
       expect(useFeatureFlagsStore.getState().usage).toBeNull();
 
-      const flags = createMockFeatureFlags({ tier: "pro", is_trial: true });
+      const flags = createMockFeatureFlags({ tier: "full" });
       const usage = createMockUsage({ number_copilot_calls_day_count: 0 });
 
       useFeatureFlagsStore.getState().setFeatureFlagsAndUsage(flags, usage);
 
       const state = useFeatureFlagsStore.getState();
-      expect(state.featureFlags?.tier).toBe("pro");
-      expect(state.featureFlags?.is_trial).toBe(true);
+      expect(state.featureFlags?.tier).toBe("full");
       expect(state.usage?.number_copilot_calls_day_count).toBe(0);
     });
   });
@@ -230,22 +248,27 @@ describe("useFeatureFlagsStore", () => {
   describe("updateFeatureFlagsAndUsage", () => {
     it("should partially update both feature flags and usage", () => {
       const initialFlags = createMockFeatureFlags({
-        tier: "pro",
+        tier: "full",
         number_copilot_calls_day: 100,
       });
       const initialUsage = createMockUsage({
         number_copilot_calls_day_count: 10,
         copilot_calls_limit: 100,
       });
-      useFeatureFlagsStore.setState({ featureFlags: initialFlags, usage: initialUsage });
+      useFeatureFlagsStore.setState({
+        featureFlags: initialFlags,
+        usage: initialUsage,
+      });
 
-      useFeatureFlagsStore.getState().updateFeatureFlagsAndUsage(
-        { number_copilot_calls_day: 200 },
-        { copilot_calls_limit: 200 }
-      );
+      useFeatureFlagsStore
+        .getState()
+        .updateFeatureFlagsAndUsage(
+          { number_copilot_calls_day: 200 },
+          { copilot_calls_limit: 200 },
+        );
 
       const state = useFeatureFlagsStore.getState();
-      expect(state.featureFlags?.tier).toBe("pro");
+      expect(state.featureFlags?.tier).toBe("full");
       expect(state.featureFlags?.number_copilot_calls_day).toBe(200);
       expect(state.usage?.number_copilot_calls_day_count).toBe(10);
       expect(state.usage?.copilot_calls_limit).toBe(200);
@@ -254,9 +277,14 @@ describe("useFeatureFlagsStore", () => {
     it("should preserve unmodified fields in both states", () => {
       const initialFlags = createMockFeatureFlags();
       const initialUsage = createMockUsage();
-      useFeatureFlagsStore.setState({ featureFlags: initialFlags, usage: initialUsage });
+      useFeatureFlagsStore.setState({
+        featureFlags: initialFlags,
+        usage: initialUsage,
+      });
 
-      useFeatureFlagsStore.getState().updateFeatureFlagsAndUsage({ support: false }, {});
+      useFeatureFlagsStore
+        .getState()
+        .updateFeatureFlagsAndUsage({ support: false }, {});
 
       const state = useFeatureFlagsStore.getState();
       expect(state.featureFlags?.admin_access).toBe(true);
@@ -270,7 +298,7 @@ describe("useFeatureFlagsStore", () => {
     it("should return false when featureFlags is null", () => {
       useFeatureFlagsStore.setState({ featureFlags: null });
 
-      const result = isExcludedWidgetId("etf_holdings");
+      const result = isExcludedWidgetId("widget_a");
 
       expect(result).toBeFalsy();
     });
@@ -279,7 +307,7 @@ describe("useFeatureFlagsStore", () => {
       const flags = createMockFeatureFlags({ data_bundle_info: null });
       useFeatureFlagsStore.setState({ featureFlags: flags });
 
-      const result = isExcludedWidgetId("etf_holdings");
+      const result = isExcludedWidgetId("widget_a");
 
       expect(result).toBeFalsy();
     });
@@ -289,7 +317,7 @@ describe("useFeatureFlagsStore", () => {
       const flags = createMockFeatureFlags({ data_bundle_info: dataBundle });
       useFeatureFlagsStore.setState({ featureFlags: flags });
 
-      const result = isExcludedWidgetId("etf_holdings");
+      const result = isExcludedWidgetId("widget_a");
 
       expect(result).toBeFalsy();
     });
@@ -299,39 +327,43 @@ describe("useFeatureFlagsStore", () => {
       const flags = createMockFeatureFlags({ data_bundle_info: dataBundle });
       useFeatureFlagsStore.setState({ featureFlags: flags });
 
-      const result = isExcludedWidgetId("etf_holdings");
+      const result = isExcludedWidgetId("widget_a");
 
       expect(result).toBe(false);
     });
 
     it("should return true when widget is in except_widgets list", () => {
       const dataBundle = createMockDataBundle({
-        except_widgets: ["etf_holdings", "earnings_trends"],
+        except_widgets: ["widget_a", "widget_b"],
       });
       const flags = createMockFeatureFlags({ data_bundle_info: dataBundle });
       useFeatureFlagsStore.setState({ featureFlags: flags });
 
-      const result = isExcludedWidgetId("etf_holdings");
+      const result = isExcludedWidgetId("widget_a");
 
       expect(result).toBe(true);
     });
 
     it("should return false when widget is not in except_widgets list", () => {
       const dataBundle = createMockDataBundle({
-        except_widgets: ["etf_holdings", "earnings_trends"],
+        except_widgets: ["widget_a", "widget_b"],
       });
       const flags = createMockFeatureFlags({ data_bundle_info: dataBundle });
       useFeatureFlagsStore.setState({ featureFlags: flags });
 
-      const result = isExcludedWidgetId("revenue_trends");
+      const result = isExcludedWidgetId("widget_c");
 
       expect(result).toBe(false);
     });
 
     it("should handle all widget types correctly", () => {
-      const excludedWidgets: Array<
-        "etf_holdings" | "earnings_trends" | "revenue_trends" | "etf_classification" | "etf_characteristics"
-      > = ["etf_holdings", "earnings_trends", "revenue_trends", "etf_classification", "etf_characteristics"];
+      const excludedWidgets = [
+        "widget_a",
+        "widget_b",
+        "widget_c",
+        "widget_d",
+        "widget_e",
+      ];
       const dataBundle = createMockDataBundle({ except_widgets: excludedWidgets });
       const flags = createMockFeatureFlags({ data_bundle_info: dataBundle });
       useFeatureFlagsStore.setState({ featureFlags: flags });
@@ -342,37 +374,37 @@ describe("useFeatureFlagsStore", () => {
     });
 
     it("should handle invalid widget id type gracefully", () => {
-      const dataBundle = createMockDataBundle({ except_widgets: ["etf_holdings"] });
+      const dataBundle = createMockDataBundle({ except_widgets: ["widget_a"] });
       const flags = createMockFeatureFlags({ data_bundle_info: dataBundle });
       useFeatureFlagsStore.setState({ featureFlags: flags });
 
       expect(isExcludedWidgetId(undefined)).toBeFalsy();
-      expect(isExcludedWidgetId(null)).toBeFalsy();
-      expect(isExcludedWidgetId(123)).toBeFalsy();
-      expect(isExcludedWidgetId({})).toBeFalsy();
+      expect(isExcludedWidgetId(null as unknown as string)).toBeFalsy();
+      expect(isExcludedWidgetId(123 as unknown as string)).toBeFalsy();
+      expect(isExcludedWidgetId({} as unknown as string)).toBeFalsy();
     });
   });
 
   describe("tier-based feature access logic", () => {
-    it("should correctly identify pro tier", () => {
-      const flags = createMockFeatureFlags({ tier: "pro" });
+    it("should correctly identify full tier", () => {
+      const flags = createMockFeatureFlags({ tier: "full" });
       useFeatureFlagsStore.setState({ featureFlags: flags });
 
       const { featureFlags } = useFeatureFlagsStore.getState();
-      expect(featureFlags?.tier).toBe("pro");
+      expect(featureFlags?.tier).toBe("full");
     });
 
-    it("should correctly identify terminal tier", () => {
-      const flags = createMockFeatureFlags({ tier: "terminal" });
+    it("should correctly identify basic tier", () => {
+      const flags = createMockFeatureFlags({ tier: "basic" });
       useFeatureFlagsStore.setState({ featureFlags: flags });
 
       const { featureFlags } = useFeatureFlagsStore.getState();
-      expect(featureFlags?.tier).toBe("terminal");
+      expect(featureFlags?.tier).toBe("basic");
     });
 
-    it("should handle pro tier with limited features", () => {
+    it("should handle full tier with limited features", () => {
       const flags = createMockFeatureFlags({
-        tier: "pro",
+        tier: "full",
         admin_access: false,
         bring_your_own_copilot: false,
         bring_your_own_data: false,
@@ -383,14 +415,14 @@ describe("useFeatureFlagsStore", () => {
       useFeatureFlagsStore.setState({ featureFlags: flags });
 
       const { featureFlags } = useFeatureFlagsStore.getState();
-      expect(featureFlags?.tier).toBe("pro");
+      expect(featureFlags?.tier).toBe("full");
       expect(featureFlags?.admin_access).toBe(false);
       expect(featureFlags?.bring_your_own_copilot).toBe(false);
     });
 
-    it("should handle terminal tier with full features", () => {
+    it("should handle basic tier with full features", () => {
       const flags = createMockFeatureFlags({
-        tier: "terminal",
+        tier: "basic",
         admin_access: true,
         bring_your_own_copilot: true,
         bring_your_own_data: true,
@@ -402,31 +434,9 @@ describe("useFeatureFlagsStore", () => {
       useFeatureFlagsStore.setState({ featureFlags: flags });
 
       const { featureFlags } = useFeatureFlagsStore.getState();
-      expect(featureFlags?.tier).toBe("terminal");
+      expect(featureFlags?.tier).toBe("basic");
       expect(featureFlags?.admin_access).toBe(true);
       expect(featureFlags?.share_widgets).toBe("public");
-    });
-
-    it("should handle trial state correctly", () => {
-      const flags = createMockFeatureFlags({
-        tier: "pro",
-        is_trial: true,
-      });
-      useFeatureFlagsStore.setState({ featureFlags: flags });
-
-      const { featureFlags } = useFeatureFlagsStore.getState();
-      expect(featureFlags?.is_trial).toBe(true);
-    });
-
-    it("should handle non-trial state correctly", () => {
-      const flags = createMockFeatureFlags({
-        tier: "terminal",
-        is_trial: false,
-      });
-      useFeatureFlagsStore.setState({ featureFlags: flags });
-
-      const { featureFlags } = useFeatureFlagsStore.getState();
-      expect(featureFlags?.is_trial).toBe(false);
     });
   });
 
@@ -434,20 +444,20 @@ describe("useFeatureFlagsStore", () => {
     it("should handle Default bundle", () => {
       const dataBundle = createMockDataBundle({
         bundle_name: "Default",
-        providers: ["fmp", "econdb", "benzinga"],
+        providers: ["provider_a", "provider_b", "provider_c"],
       });
       const flags = createMockFeatureFlags({ data_bundle_info: dataBundle });
       useFeatureFlagsStore.setState({ featureFlags: flags });
 
       const { featureFlags } = useFeatureFlagsStore.getState();
       expect(featureFlags?.data_bundle_info?.bundle_name).toBe("Default");
-      expect(featureFlags?.data_bundle_info?.providers).toContain("fmp");
+      expect(featureFlags?.data_bundle_info?.providers).toContain("provider_a");
     });
 
     it("should handle Equity Research bundle", () => {
       const dataBundle = createMockDataBundle({
         bundle_name: "Equity Research",
-        except_widgets: ["etf_holdings", "etf_classification"],
+        except_widgets: ["widget_a", "widget_d"],
         excel_add_in: true,
         data_export: true,
       });
@@ -459,41 +469,20 @@ describe("useFeatureFlagsStore", () => {
       expect(featureFlags?.data_bundle_info?.except_widgets).toHaveLength(2);
     });
 
-    it("should handle Pro Trial bundle with restrictions", () => {
-      const dataBundle = createMockDataBundle({
-        bundle_name: "Pro Trial",
-        except_widgets: ["etf_holdings"],
-        except_dashboard_templates: ["charting"],
-        except_team_collaboration: ["pdf_reports", "sharing"],
-        excel_add_in: false,
-        data_export: false,
-        invite_your_colleagues: false,
-        number_copilot_calls_day: 10,
-        total_file_upload_size_gb: 1,
-      });
-      const flags = createMockFeatureFlags({
-        data_bundle_info: dataBundle,
-        is_trial: true,
-      });
-      useFeatureFlagsStore.setState({ featureFlags: flags });
-
-      const { featureFlags } = useFeatureFlagsStore.getState();
-      expect(featureFlags?.data_bundle_info?.bundle_name).toBe("Pro Trial");
-      expect(featureFlags?.data_bundle_info?.excel_add_in).toBe(false);
-      expect(featureFlags?.data_bundle_info?.invite_your_colleagues).toBe(false);
-      expect(featureFlags?.data_bundle_info?.number_copilot_calls_day).toBe(10);
-    });
-
     it("should handle except_dashboard_templates correctly", () => {
       const dataBundle = createMockDataBundle({
-        except_dashboard_templates: ["charting", "equity"],
+        except_dashboard_templates: ["template_a", "template_b"],
       });
       const flags = createMockFeatureFlags({ data_bundle_info: dataBundle });
       useFeatureFlagsStore.setState({ featureFlags: flags });
 
       const { featureFlags } = useFeatureFlagsStore.getState();
-      expect(featureFlags?.data_bundle_info?.except_dashboard_templates).toContain("charting");
-      expect(featureFlags?.data_bundle_info?.except_dashboard_templates).toContain("equity");
+      expect(featureFlags?.data_bundle_info?.except_dashboard_templates).toContain(
+        "template_a",
+      );
+      expect(featureFlags?.data_bundle_info?.except_dashboard_templates).toContain(
+        "template_b",
+      );
     });
 
     it("should handle except_team_collaboration correctly", () => {
@@ -504,8 +493,12 @@ describe("useFeatureFlagsStore", () => {
       useFeatureFlagsStore.setState({ featureFlags: flags });
 
       const { featureFlags } = useFeatureFlagsStore.getState();
-      expect(featureFlags?.data_bundle_info?.except_team_collaboration).toContain("pdf_reports");
-      expect(featureFlags?.data_bundle_info?.except_team_collaboration).toContain("sharing");
+      expect(featureFlags?.data_bundle_info?.except_team_collaboration).toContain(
+        "pdf_reports",
+      );
+      expect(featureFlags?.data_bundle_info?.except_team_collaboration).toContain(
+        "sharing",
+      );
     });
   });
 
@@ -522,7 +515,8 @@ describe("useFeatureFlagsStore", () => {
       expect(state.usage?.copilot_calls_limit).toBe(100);
 
       const remainingCalls =
-        state.usage!.copilot_calls_limit - state.usage!.number_copilot_calls_day_count;
+        required(state.usage).copilot_calls_limit -
+        required(state.usage).number_copilot_calls_day_count;
       expect(remainingCalls).toBe(5);
     });
 
@@ -538,7 +532,8 @@ describe("useFeatureFlagsStore", () => {
       expect(state.usage?.file_upload_size_limit).toBe(50);
 
       const remainingStorage =
-        state.usage!.file_upload_size_limit - state.usage!.total_file_upload_size_gb_count;
+        required(state.usage).file_upload_size_limit -
+        required(state.usage).total_file_upload_size_gb_count;
       expect(remainingStorage).toBe(5);
     });
 
@@ -551,7 +546,8 @@ describe("useFeatureFlagsStore", () => {
 
       const state = useFeatureFlagsStore.getState();
       const remaining =
-        state.usage!.copilot_calls_limit - state.usage!.number_copilot_calls_day_count;
+        required(state.usage).copilot_calls_limit -
+        required(state.usage).number_copilot_calls_day_count;
       expect(remaining).toBe(0);
     });
 
@@ -564,7 +560,8 @@ describe("useFeatureFlagsStore", () => {
 
       const state = useFeatureFlagsStore.getState();
       const remaining =
-        state.usage!.copilot_calls_limit - state.usage!.number_copilot_calls_day_count;
+        required(state.usage).copilot_calls_limit -
+        required(state.usage).number_copilot_calls_day_count;
       expect(remaining).toBe(-5);
     });
   });
@@ -576,11 +573,13 @@ describe("useFeatureFlagsStore", () => {
         (state) => state.featureFlags?.tier,
         () => {
           tierUpdates++;
-        }
+        },
       );
 
-      useFeatureFlagsStore.getState().setFeatureFlags(createMockFeatureFlags({ tier: "pro" }));
-      useFeatureFlagsStore.getState().setFeatureFlags({ tier: "terminal" });
+      useFeatureFlagsStore
+        .getState()
+        .setFeatureFlags(createMockFeatureFlags({ tier: "full" }));
+      useFeatureFlagsStore.getState().setFeatureFlags({ tier: "basic" });
 
       expect(tierUpdates).toBe(2);
 
@@ -589,13 +588,15 @@ describe("useFeatureFlagsStore", () => {
 
     it("should not trigger subscription when value unchanged", () => {
       let tierUpdates = 0;
-      useFeatureFlagsStore.getState().setFeatureFlags(createMockFeatureFlags({ tier: "pro" }));
+      useFeatureFlagsStore
+        .getState()
+        .setFeatureFlags(createMockFeatureFlags({ tier: "full" }));
 
       const unsubscribe = useFeatureFlagsStore.subscribe(
         (state) => state.featureFlags?.tier,
         () => {
           tierUpdates++;
-        }
+        },
       );
 
       useFeatureFlagsStore.getState().setFeatureFlags({ admin_access: false });

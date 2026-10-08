@@ -9,7 +9,6 @@ import SettingsMenu from "~/components/ds/molecules/SettingsMenu";
 import AppCard from "~/components/LayoutAuth/AppCard/AppCard";
 import type { AppTemplate } from "~/components/LayoutAuth/AppCard/types";
 import Tooltip from "~/components/Tooltip";
-import { inSnowflakeNativeApp } from "~/lib/constants";
 import { noop } from "~/lib/utils";
 import Icon from "../../Icon";
 import { PromptsSection } from "./PromptsSection";
@@ -97,43 +96,41 @@ export function AppDialogShell({
                   )}
                 />
 
-                {!inSnowflakeNativeApp && (
-                  <FormField
-                    name="imageUrl"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormInput
-                        label={
-                          <span className="inline-flex items-center gap-1">
-                            Image cover
-                            <span className="text-ds-text-caption italic font-normal">
-                              (optional)
-                            </span>
-                            <Tooltip
-                              message="Recommended 5:3 ratio — e.g. 1000×600. Image will fill the card, so leave a safe area near the edges to avoid important content being cropped."
-                              className="max-w-[280px]"
-                            >
-                              <button
-                                type="button"
-                                tabIndex={0}
-                                aria-label="Image cover guidance"
-                                className="inline-flex items-center justify-center cursor-help"
-                              >
-                                <Icon
-                                  id="info-circled-icon"
-                                  className="size-3.5 text-ds-text-caption"
-                                />
-                              </button>
-                            </Tooltip>
+                <FormField
+                  name="imageUrl"
+                  control={form.control}
+                  render={({ field }) => (
+                    <FormInput
+                      label={
+                        <span className="inline-flex items-center gap-1">
+                          Image cover
+                          <span className="text-ds-text-caption italic font-normal">
+                            (optional)
                           </span>
-                        }
-                        placeholder="https://example.com/image.png"
-                        maxLength={500}
-                        {...field}
-                      />
-                    )}
-                  />
-                )}
+                          <Tooltip
+                            message="Recommended 5:3 ratio — e.g. 1000×600. Image will fill the card, so leave a safe area near the edges to avoid important content being cropped."
+                            className="max-w-[280px]"
+                          >
+                            <button
+                              type="button"
+                              tabIndex={0}
+                              aria-label="Image cover guidance"
+                              className="inline-flex items-center justify-center cursor-help"
+                            >
+                              <Icon
+                                id="info-circled-icon"
+                                className="size-3.5 text-ds-text-caption"
+                              />
+                            </button>
+                          </Tooltip>
+                        </span>
+                      }
+                      placeholder="https://example.com/image.png"
+                      maxLength={500}
+                      {...field}
+                    />
+                  )}
+                />
               </SettingsMenu>
 
               <SettingsMenu title="App Preview">

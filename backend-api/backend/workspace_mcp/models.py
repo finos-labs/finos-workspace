@@ -1,9 +1,8 @@
 """Typed protocol models shared by the sidecar HTTP, websocket, and MCP layers."""
 
 from typing import Annotated, Any, Literal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from openbb_ai.models import AgentTool, WorkspaceState
 from pydantic import (
     AliasChoices,
     BaseModel,
@@ -22,7 +21,7 @@ type BridgeErrorCode = Literal[
     "unknown",
 ]
 type NavigationOperation = Literal["create", "add_tabs", "remove_tabs", "rename_tabs"]
-type GenerativeWidgetType = Literal["note", "table", "chart", "html"]
+type GenerativeWidgetType = Literal["note", "html"]
 type DashboardOperation = Literal["create", "read", "update"]
 type WorkspaceNavigationOperation = Literal["dashboard", "tab"]
 type BackendsOperation = Literal["list", "add", "update", "refresh", "remove"]
@@ -89,13 +88,81 @@ class BrowserSessionStartResponse(Model):
     websocket_url: str
 
 
-class WorkspaceSnapshot(Model):
-    """Bridge snapshot envelope around canonical OpenBB workspace models.
+class AgentFeatureSelectOption(BaseModel):
+    """One choice of a select-type agent feature."""
 
-    The sidecar keeps the transport envelope local, but it reuses
-    ``openbb_ai.models.WorkspaceState`` and ``openbb_ai.models.AgentTool`` so
-    there is one source of truth for the main workspace payloads.
-    """
+    label: str
+    value: str
+
+
+class AgentFeatureOption(BaseModel):
+    """An agent feature that has more than an on/off state."""
+
+    label: str
+    type: Literal["toggle", "text", "select"] | None = None
+    default: bool | str | None = None
+    description: str | None = None
+    placeholder: str | None = None
+    options: list[AgentFeatureSelectOption] | None = None
+
+
+class WorkspaceAgent(BaseModel):
+    """An agent the workspace can talk to."""
+
+    holder_url: str | None = None
+    id: str
+    name: str
+    description: str | None = None
+    features: dict[str, bool | AgentFeatureOption] = Field(default_factory=dict)
+
+
+class WidgetInfo(BaseModel):
+    """A widget of a dashboard tab."""
+
+    widget_uuid: str
+    name: str
+
+
+class TabInfo(BaseModel):
+    """A tab of a dashboard and its widgets."""
+
+    tab_id: str = "__no_tab__"
+    widgets: list[WidgetInfo] | None = None
+
+
+class DashboardInfo(BaseModel):
+    """The dashboard that is open, with its tabs."""
+
+    id: str
+    name: str
+    current_tab_id: str
+    tabs: list[TabInfo] | None = None
+
+
+class WorkspaceState(BaseModel):
+    """What the workspace shows right now."""
+
+    action_history: list[str] | None = None
+    agents: list[WorkspaceAgent] | None = None
+    current_dashboard_uuid: UUID | None = None
+    current_dashboard_info: DashboardInfo | None = None
+    current_page_context: str | None = None
+
+
+class AgentTool(BaseModel):
+    """A tool that an agent can run."""
+
+    server_id: str | None = None
+    name: str
+    url: str
+    endpoint: str | None = None
+    description: str | None = None
+    input_schema: dict[str, Any] | None = None
+    auth_token: str | None = None
+
+
+class WorkspaceSnapshot(Model):
+    """Bridge snapshot envelope around the workspace state and the agent tools."""
 
     generated_at: int
     workspace_state: WorkspaceState | None = None
@@ -138,7 +205,6 @@ class WidgetDataRequest(Model):
         ),
     )
     widget_uuid: str | None = None
-    ssm_request: dict[str, Any] | None = None
 
 
 class ParamOptionsRequest(Model):
@@ -299,10 +365,9 @@ class AddGenerativeWidgetCommand(Model):
     request_id: str | None = None
     dashboard_id: str | None = None
     widget_type: GenerativeWidgetType
-    data: list[dict[str, Any]] | str | None = None
+    data: str | None = None
     name: str | None = None
     description: str | None = None
-    chart_params: dict[str, Any] | None = None
     inner_tab: str | None = None
 
 
@@ -382,7 +447,7 @@ class ManageBackendsCommand(Model):
     url: str | None = None
     endpoint_headers: list[BackendEndpointHeader] | None = None
     validate_widgets: bool | None = None
-    is_openbb_platform: bool | None = None
+    is_platform: bool | None = None
 
 
 class ManageAppsCommand(Model):

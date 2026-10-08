@@ -9,7 +9,7 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { runInNewContext } from "node:vm";
-import { RuntimeConfigSchema } from "../src/lib/runtimeConfigSchema";
+import { ENV_NAMES, RuntimeConfigSchema } from "../src/lib/runtimeConfigSchema";
 
 type Config = Record<string, Record<string, unknown>>;
 
@@ -26,8 +26,7 @@ const rows = table[1]
     return { path: `${group}.${field}`, group, field, variable, type };
   });
 
-// For each type: a value to set in the environment, and the value config.js
-// must then hold.
+// For each type: a value to set in the environment and the value config.js must then hold.
 const samples: Record<string, [string, unknown]> = {
   string: ['a "quoted" \\ value', 'a "quoted" \\ value'],
   bool: ["false", false],
@@ -66,6 +65,13 @@ for (const path of new Set(tablePaths)) {
 for (const row of rows) {
   if (!(row.type in samples)) errors.push(`${row.path} has unknown type ${row.type}`);
 }
+// The container takes the variable names of ENV_NAMES without their VITE_ prefix.
+for (const row of rows) {
+  const name = (ENV_NAMES as Record<string, Record<string, string>>)[row.group]?.[row.field];
+  if (name?.replace(/^VITE_/, "") !== row.variable) {
+    errors.push(`${row.path}: ${row.variable} is not ${name} without VITE_`);
+  }
+}
 
 if (!RuntimeConfigSchema.safeParse(render({})).success) {
   errors.push("config.js written with no variables set fails the schema");
@@ -91,11 +97,17 @@ if (!parsed.success) {
   }
 }
 
-try {
-  render({ AUTHENTICATION_ALLOW_REGISTRATION: "yes" });
-  errors.push("the script accepted an invalid boolean");
-} catch {
-  // Expected: invalid values stop the script, so the container does not start.
+// Invalid values stop the script, so the container does not start.
+for (const [variable, value, what] of [
+  ["AUTHENTICATION_ALLOW_EMAIL_LOGIN", "yes", "boolean"],
+  ["UI_DEFAULT_THEME", "blue", "theme"],
+]) {
+  try {
+    render({ [variable]: value });
+    errors.push(`the script accepted an invalid ${what}`);
+  } catch {
+    // Expected.
+  }
 }
 
 if (errors.length > 0) {

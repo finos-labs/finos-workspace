@@ -3,12 +3,13 @@ import { AxiosError } from "axios";
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { deleteUser } from "~/api/admin.api";
+import { getErrorResponse } from "~/api/errors";
 import AdminDialogFooter from "~/components/AdminUsers/common/AdminDialogFooter";
 import { NotificationId, showNotification } from "~/lib/utils/toast";
 import type { User } from "~/types/user.type";
-import { BaseDialog, type BaseDialogProps } from "../ds/dialogs/BaseDialog";
+import { BaseDialog, type ClosableDialogProps } from "../ds/dialogs/BaseDialog";
 
-interface Props extends BaseDialogProps {
+interface Props extends ClosableDialogProps {
   user: User;
   onConfirm: () => void;
 }
@@ -35,7 +36,7 @@ export default function AdminRemoveUserFromEntityDialog(props: Props) {
         toastType: "success",
       });
     } catch (error) {
-      console.error(error.response?.data);
+      console.error(getErrorResponse(error).data);
       if (error instanceof AxiosError) {
         toast.error("Error removing account", {
           description: error.response?.data?.detail || error.message,

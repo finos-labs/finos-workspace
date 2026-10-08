@@ -1,40 +1,23 @@
 import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import Sidebar from "~/components/General/Sidebar";
-
-vi.mock("~/lib/onPremFeatureFlags", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("~/lib/onPremFeatureFlags")>();
-  return {
-    ...actual,
-    getShowDemoRequestButton: () => true,
-  };
-});
-
-vi.mock("~/lib/state/theme", () => ({
-  useShallowThemeStore: (selector: any) =>
-    selector({
-      setBookingOpen: vi.fn(),
-      bookingOpen: false,
-    }),
-}));
-
-vi.mock("~/components/General/Feedback", () => ({
-  default: () => <div data-testid="feedback">Feedback</div>,
-}));
 
 vi.mock("~/components/General/ChangelogDialog", () => ({
   default: () => null,
 }));
 
 vi.mock("~/components/Tooltip", () => ({
-  default: ({ children }: any) => <div data-testid="tooltip">{children}</div>,
+  default: ({ children }: { children?: ReactNode }) => (
+    <div data-testid="tooltip">{children}</div>
+  ),
 }));
 
 vi.mock("~/components/ds/dialogs/BaseDialog", () => ({
-  BaseDialog: ({ children, open }: any) =>
+  BaseDialog: ({ children, open }: { children?: ReactNode; open?: boolean }) =>
     open ? <div data-testid="base-dialog">{children}</div> : null,
-  DialogContent: ({ children }: any) => <div>{children}</div>,
+  DialogContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
 
 const renderSidebar = (props = {}) => {
@@ -74,11 +57,5 @@ describe("Sidebar", () => {
     renderSidebar();
 
     expect(screen.getByText("Sidebar content")).toBeInTheDocument();
-  });
-
-  it("renders feedback component", () => {
-    renderSidebar();
-
-    expect(screen.getByTestId("feedback")).toBeInTheDocument();
   });
 });

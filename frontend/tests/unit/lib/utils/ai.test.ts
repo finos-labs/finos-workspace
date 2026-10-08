@@ -11,7 +11,6 @@ import {
   handleStreamingResponse,
   isWidgetDataFunctionCall,
   mergeDuplicateChats,
-  migrateFuncCallArgs,
   paramOptionQueryResult,
   paramOptionSchema,
 } from "~/lib/utils/ai";
@@ -135,21 +134,6 @@ describe("ai.ts utility functions", () => {
       expect(result.success).toBe(true);
     });
 
-    it("should accept data sources with ssm_request", () => {
-      const result = getWidgetDataInputArguments.safeParse({
-        data_sources: [
-          {
-            widget_uuid: "widget-1",
-            origin: "backend",
-            id: "ag_grid_table",
-            input_args: { limit: 50 },
-            ssm_request: { filter: "active" },
-          },
-        ],
-      });
-      expect(result.success).toBe(true);
-    });
-
     it("should reject missing required fields", () => {
       const result = getWidgetDataInputArguments.safeParse({
         data_sources: [
@@ -265,59 +249,11 @@ describe("ai.ts utility functions", () => {
       expect(result.success).toBe(false);
     });
 
-    it("should accept a table with array-of-objects data", () => {
+    it.each(["table", "chart"])("should reject the %s widget type", (widgetType) => {
       const result = addGenerativeWidgetInputArguments.safeParse({
-        widget_type: "table",
-        data: [{ symbol: "AAPL", price: 100 }],
-        name: "My Table",
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it("should reject a table with string data", () => {
-      const result = addGenerativeWidgetInputArguments.safeParse({
-        widget_type: "table",
-        data: "symbol,price",
-        name: "My Table",
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it("should accept a chart with array data and full chart_params", () => {
-      const result = addGenerativeWidgetInputArguments.safeParse({
-        widget_type: "chart",
+        widget_type: widgetType,
         data: [{ date: "2024-01-01", value: 1 }],
-        name: "My Chart",
-        chart_params: { chartType: "line", xKey: "date", yKey: ["value"] },
-      });
-      expect(result.success).toBe(true);
-    });
-
-    it("should reject a chart without chart_params", () => {
-      const result = addGenerativeWidgetInputArguments.safeParse({
-        widget_type: "chart",
-        data: [{ date: "2024-01-01", value: 1 }],
-        name: "My Chart",
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it("should reject a chart with an empty yKey", () => {
-      const result = addGenerativeWidgetInputArguments.safeParse({
-        widget_type: "chart",
-        data: [{ date: "2024-01-01", value: 1 }],
-        name: "My Chart",
-        chart_params: { chartType: "line", xKey: "date", yKey: [] },
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it("should reject a chart with string data", () => {
-      const result = addGenerativeWidgetInputArguments.safeParse({
-        widget_type: "chart",
-        data: "invalid",
-        name: "My Chart",
-        chart_params: { chartType: "line", xKey: "date", yKey: ["value"] },
+        name: "My Widget",
       });
       expect(result.success).toBe(false);
     });
@@ -436,7 +372,7 @@ describe("ai.ts utility functions", () => {
         expect(result.success).toBe(true);
       });
 
-      it("should reject add_generative_widget chart calls without chart_params", () => {
+      it("should reject add_generative_widget chart calls", () => {
         const result = functionCallSchema.safeParse({
           function: "add_generative_widget",
           input_arguments: {
@@ -744,172 +680,6 @@ describe("ai.ts utility functions", () => {
       await handleStreamingResponse(reader, updateData);
 
       expect(updateData).toHaveBeenCalledWith("Data");
-    });
-  });
-
-  describe("migrateFuncCallArgs", () => {
-    describe("get_widget_data migration", () => {
-      it("should migrate widget_uuid to widget_uuids array", () => {
-        const message = {
-          function: "get_widget_data",
-          input_arguments: {
-            widget_uuid: "uuid-123",
-          },
-        } as const;
-
-        const result = migrateFuncCallArgs(message);
-
-        expect(result.input_arguments).toHaveProperty("widget_uuids", ["uuid-123"]);
-        expect(result.input_arguments.widget_uuid).toBeUndefined();
-      });
-
-      it("should migrate id to widget_uuids array when widget_uuid is missing", () => {
-        const message = {
-          function: "get_widget_data",
-          input_arguments: {
-            id: "id-456",
-          },
-        } as const;
-
-        const result = migrateFuncCallArgs(message);
-
-        expect(result.input_arguments).toHaveProperty("widget_uuids", ["id-456"]);
-      });
-
-      it("should prefer widget_uuid over id when both exist", () => {
-        const message = {
-          function: "get_widget_data",
-          input_arguments: {
-            widget_uuid: "uuid-123",
-            id: "id-456",
-          },
-        } as const;
-
-        const result = migrateFuncCallArgs(message);
-
-        expect(result.input_arguments).toHaveProperty("widget_uuids", ["uuid-123"]);
-      });
-
-      it("should migrate copilot_function_call_arguments widget_uuid", () => {
-        const message = {
-          function: "get_widget_data",
-          input_arguments: {},
-          copilot_function_call_arguments: {
-            widget_uuid: "copilot-uuid",
-          },
-        } as const;
-
-        const result = migrateFuncCallArgs(message);
-
-        expect(result.copilot_function_call_arguments).toHaveProperty("widget_uuids", [
-          "copilot-uuid",
-        ]);
-        expect(result.copilot_function_call_arguments?.widget_uuid).toBeUndefined();
-      });
-
-      it("should not modify message without widget_uuid or id", () => {
-        const message = {
-          function: "get_widget_data",
-          input_arguments: {
-            other_field: "value",
-          },
-        } as const;
-
-        const result = migrateFuncCallArgs(message);
-
-        expect(result.input_arguments).not.toHaveProperty("widget_uuids");
-      });
-    });
-
-    describe("get_direct_retrieval_data migration", () => {
-      it("should migrate single data source to data_sources array", () => {
-        const message = {
-          function: "get_direct_retrieval_data",
-          input_arguments: {
-            id: "widget-id",
-            origin: "platform",
-            input_args: { symbol: "AAPL" },
-          },
-        };
-
-        // @ts-expect-error - ignored for now
-        const result = migrateFuncCallArgs(message);
-
-        expect(result.input_arguments).toHaveProperty("data_sources");
-        expect(Array.isArray(result.input_arguments.data_sources)).toBe(true);
-      });
-
-      it("should migrate copilot_function_call_arguments search queries", () => {
-        const message = {
-          function: "get_direct_retrieval_data",
-          input_arguments: {},
-          copilot_function_call_arguments: {
-            data_source_description: "Stock metrics",
-            query: "Get AAPL data",
-          },
-        };
-
-        // @ts-expect-error - ignored for now
-        const result = migrateFuncCallArgs(message);
-
-        expect(result.copilot_function_call_arguments).toHaveProperty(
-          "data_source_search_queries",
-        );
-      });
-
-      it("should not migrate if input_args is missing", () => {
-        const message = {
-          function: "get_direct_retrieval_data",
-          input_arguments: {
-            id: "widget-id",
-            origin: "platform",
-          },
-        };
-
-        // @ts-expect-error - ignored for now
-        const result = migrateFuncCallArgs(message);
-
-        expect(result.input_arguments).not.toHaveProperty("data_sources");
-      });
-    });
-
-    describe("edge cases", () => {
-      it("should return message unchanged for non-migrateable functions", () => {
-        const message = {
-          function: "add_widget_to_dashboard",
-          input_arguments: {
-            widget_id: "clock",
-          },
-        } as const;
-
-        const result = migrateFuncCallArgs(message);
-
-        expect(result).toEqual(message);
-      });
-
-      it("should handle undefined message by returning it (errors are caught internally)", () => {
-        const result = migrateFuncCallArgs(undefined as any);
-        expect(result).toBeUndefined();
-      });
-
-      it("should handle null message by returning it (errors are caught internally)", () => {
-        const result = migrateFuncCallArgs(null as any);
-        expect(result).toBeNull();
-      });
-
-      it("should handle empty object", () => {
-        const result = migrateFuncCallArgs({});
-        expect(result).toEqual({});
-      });
-
-      it("should not throw on malformed input", () => {
-        const malformedMessage = {
-          function: "get_widget_data",
-          input_arguments: null,
-        };
-
-        expect(() => migrateFuncCallArgs(malformedMessage as any)).not.toThrow();
-      });
     });
   });
 

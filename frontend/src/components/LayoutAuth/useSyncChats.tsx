@@ -2,7 +2,7 @@ import cloneDeep from "lodash/cloneDeep";
 import isEqual from "lodash.isequal";
 import { useCallback, useEffect } from "react";
 import { useDebouncedCallback } from "use-debounce";
-import { type PostUserChats, postUserChats } from "~/api/auth.api";
+import { type ChatDiff, type PostUserChats, postUserChats } from "~/api/auth.api";
 import { useShallowStreamingStore } from "~/components/AI/hooks/useStreaming";
 import { type Chat, useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
@@ -21,21 +21,24 @@ export default function useSyncChats() {
     (s) => s.loading || s.streamingStatus === "streaming-started",
   );
 
-  const saveChats = useCallback(async (currentChats: Chat[], previousChats: Chat[]) => {
-    if (currentChats?.length === 0) return;
-    try {
-      const diff = diffChatsWithRemote(currentChats, previousChats);
-      if (import.meta.env.DEV) console.log(diff);
-      if (Object.keys(diff).length > 0) {
-        const { status, usage } = await postUserChats(diff);
-        if (status === 200) {
-          updateRemoteChats(currentChats);
+  const saveChats = useCallback(
+    async (currentChats: Chat[] | null, previousChats: Chat[] | null) => {
+      if (!currentChats?.length) return;
+      try {
+        const diff = diffChatsWithRemote(currentChats, previousChats);
+        if (import.meta.env.DEV) console.log(diff);
+        if (Object.keys(diff).length > 0) {
+          const { status, usage } = await postUserChats(diff);
+          if (status === 200) {
+            updateRemoteChats(currentChats);
 
-          if (usage) setUsage(usage);
+            if (usage) setUsage(usage);
+          }
         }
-      }
-    } catch (_) {}
-  }, []);
+      } catch (_) {}
+    },
+    [],
+  );
 
   const saveChatsDebounced = useDebouncedCallback(saveChats, 5 * 1000, {
     trailing: true,
@@ -86,7 +89,7 @@ export const diffChatsWithRemote = (
 ): PostUserChats => {
   if (!remoteChats) return {};
   if (!currentChats?.length) throw new Error("Current state is empty");
-  const diff = {};
+  const diff: PostUserChats = {};
 
   const current = prepareChats(currentChats);
   const remote = prepareChats(remoteChats);
@@ -99,7 +102,7 @@ export const diffChatsWithRemote = (
     if (lastMessage?.role === "ai" && lastMessage?.content === "") continue;
 
     if (!(remote[key] && isEqual(value, remote[key]))) {
-      const messagesDiff = {};
+      const messagesDiff: NonNullable<ChatDiff["messages"]> = {};
       const remoteUuids = new Set(Object.keys(remote[key]?.messages || {}));
 
       for (const [uuid, msg] of Object.entries(value?.messages || {})) {

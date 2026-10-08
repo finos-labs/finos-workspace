@@ -3,13 +3,14 @@ import { AxiosError } from "axios";
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { resetUserPassword } from "~/api/admin.api";
+import { getErrorResponse } from "~/api/errors";
 import AdminDialogFooter from "~/components/AdminUsers/common/AdminDialogFooter";
 import { NotificationId, showNotification } from "~/lib/utils/toast";
 import type { User } from "~/types/user.type";
-import { BaseDialog, type BaseDialogProps } from "../ds/dialogs/BaseDialog";
+import { BaseDialog, type ClosableDialogProps } from "../ds/dialogs/BaseDialog";
 
-interface Props extends BaseDialogProps {
-  user: Partial<User>;
+interface Props extends ClosableDialogProps {
+  user: User;
   onConfirm: (temporaryPassword: string) => void;
 }
 
@@ -33,7 +34,7 @@ export default function AdminResetUserPasswordDialog(props: Props) {
         });
       }
     } catch (error) {
-      console.error(error.response?.data);
+      console.error(getErrorResponse(error).data);
       if (error instanceof AxiosError) {
         toast.error("Error resetting user password", {
           description: error.response?.data?.detail || error.message,

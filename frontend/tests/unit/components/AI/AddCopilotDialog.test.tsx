@@ -30,7 +30,6 @@ vi.mock("~/api/auth.api", () => ({
   putCustomCopilot: (...args: unknown[]) => mockPutCustomCopilot(...args),
 }));
 
-vi.mock("posthog-js", () => ({ default: { capture: vi.fn() } }));
 vi.mock("sonner", () => ({ toast: mockToast }));
 
 vi.mock("~/lib/api", () => ({
@@ -69,7 +68,7 @@ vi.mock("~/components/Icon", () => ({
   ),
 }));
 
-vi.mock("~/components/DataConnectors/SingleWidget", () => ({
+vi.mock("~/components/DataConnectors/EndpointHeadersForm", () => ({
   EndpointHeadersForm: () => null,
 }));
 

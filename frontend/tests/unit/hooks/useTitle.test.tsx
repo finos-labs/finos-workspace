@@ -3,7 +3,7 @@
  */
 
 import { renderHook } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import useGlobalTitleManager from "~/hooks/useTitle";
 
 // Mock react-router-dom
@@ -23,13 +23,15 @@ vi.mock("~/lib/runtimeConfig", () => ({
 // Mock appState store
 const mockUseShallowAppStore = vi.fn();
 vi.mock("~/lib/state/app", () => ({
-  useShallowAppStore: (selector: any) => mockUseShallowAppStore(selector),
+  useShallowAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    mockUseShallowAppStore(selector),
 }));
 
 // Mock sharedAppState store
 const mockUseShallowSharedAppStore = vi.fn();
 vi.mock("~/lib/state/sharedApp", () => ({
-  useShallowSharedAppStore: (selector: any) => mockUseShallowSharedAppStore(selector),
+  useShallowSharedAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    mockUseShallowSharedAppStore(selector),
 }));
 
 describe("useGlobalTitleManager", () => {
@@ -64,7 +66,7 @@ describe("useGlobalTitleManager", () => {
 
     renderHook(() => useGlobalTitleManager());
 
-    expect(document.title).toBe("OpenBB Workspace");
+    expect(document.title).toBe("Workspace");
   });
 
   it("should set custom brand name when path is root and white label name is configured", () => {
@@ -85,7 +87,7 @@ describe("useGlobalTitleManager", () => {
 
     renderHook(() => useGlobalTitleManager());
 
-    expect(document.title).toBe("Login | OpenBB Workspace");
+    expect(document.title).toBe("Login | Workspace");
   });
 
   it("should respect custom brand name in static page titles", () => {
@@ -117,7 +119,7 @@ describe("useGlobalTitleManager", () => {
 
     renderHook(() => useGlobalTitleManager());
 
-    expect(document.title).toBe("Dashboard alpha | OpenBB Workspace");
+    expect(document.title).toBe("Dashboard alpha | Workspace");
   });
 
   it("should resolve dynamic tab titles from shared app store", () => {
@@ -140,6 +142,6 @@ describe("useGlobalTitleManager", () => {
 
     renderHook(() => useGlobalTitleManager());
 
-    expect(document.title).toBe("Shared Dashboard | OpenBB Workspace");
+    expect(document.title).toBe("Shared Dashboard | Workspace");
   });
 });

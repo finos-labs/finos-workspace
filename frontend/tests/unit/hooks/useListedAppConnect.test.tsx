@@ -105,8 +105,8 @@ describe("useListedAppConnect", () => {
         endpointHeaders: [
           { key: "Authorization", value: "Bearer secret", location: "headers" },
           { key: "X-Client-Id", value: "client-123", location: "headers" },
-          { key: "X-OpenBB-Workspace", value: "true", location: "headers" },
-          { key: "X-OpenBB-Listed-App-Id", value: "app-1", location: "headers" },
+          { key: "X-Workspace", value: "true", location: "headers" },
+          { key: "X-Workspace-Listed-App-Id", value: "app-1", location: "headers" },
         ],
       }),
     );

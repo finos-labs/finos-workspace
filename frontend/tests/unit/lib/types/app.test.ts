@@ -1,62 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
-import { z } from "zod";
+import { describe, expect, it } from "vitest";
 import {
   _GridDataSchema,
-  ChartTypeSchema,
-  ChartViewOptionsSchema,
-  ColorOptionsSchema,
-  ColorRuleSchema,
-  DataSchema,
   ExternalWidgetSchema,
   InternalWidgetSchema,
   isWidgetVizType,
   ParamDefSchema,
   ParamsSchema,
-  RenderFnSchema,
   StorageSchema,
-  TableColumnDefsSchema,
-  TableSchema,
   TickerSchema,
   WidgetSchemaBase,
   WidgetVizTypes,
   widgetTypesSchema,
 } from "~/lib/types/app";
 
-vi.mock("../constants", () => ({
-  AG_CHART_TYPES: ["line", "bar", "area", "scatter", "pie", "histogram"] as const,
-}));
-
 describe("Zod Schemas from app.ts", () => {
-  describe("ChartTypeSchema", () => {
-    it("should validate valid chart types", () => {
-      expect(ChartTypeSchema.safeParse("columnLineCombo").success).toBe(true);
-      expect(ChartTypeSchema.safeParse("line").success).toBe(true);
-      expect(ChartTypeSchema.safeParse("bar").success).toBe(true);
-    });
-
-    it("should apply default value 'line'", () => {
-      const result = ChartTypeSchema.safeParse(undefined);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data).toBe("line");
-      }
-    });
-
-    it("should invalidate an unknown chart type", () => {
-      const result = ChartTypeSchema.safeParse("unknownChart");
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0].message).toBe("Invalid chart type");
-      }
-    });
-
-    it("should be optional", () => {
-      const obj = z.object({ chartType: ChartTypeSchema });
-      expect(obj.safeParse({}).success).toBe(true);
-      expect(obj.safeParse({ chartType: undefined }).data?.chartType).toBe("line");
-    });
-  });
-
   describe("TickerSchema", () => {
     it("should have a consistent shape", () => {
       const shapeKeys = Object.keys(TickerSchema.shape).sort();
@@ -140,223 +97,6 @@ describe("Zod Schemas from app.ts", () => {
         expect(
           result.error.issues.find((issue) => issue.path.includes("category"))?.message,
         ).toContain("Invalid input");
-      }
-    });
-  });
-
-  describe("ColorOptionsSchema", () => {
-    it("should validate predefined colors", () => {
-      expect(ColorOptionsSchema.safeParse({ color: "green" }).success).toBe(true);
-      expect(ColorOptionsSchema.safeParse({ color: "red", fill: true }).success).toBe(
-        true,
-      );
-    });
-
-    it("should validate hex colors", () => {
-      expect(ColorOptionsSchema.safeParse({ color: "#FF0000" }).success).toBe(true);
-      expect(
-        ColorOptionsSchema.safeParse({ color: "#123456", fill: false }).success,
-      ).toBe(true);
-    });
-
-    it("should apply default for fill", () => {
-      const result = ColorOptionsSchema.safeParse({ color: "blue" });
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.fill).toBe(false);
-      }
-    });
-  });
-
-  describe("ColorRuleSchema", () => {
-    it("should validate ColorBaseSchema variant", () => {
-      const validBaseRule = {
-        color: "green",
-        condition: "eq",
-        value: 10,
-      };
-      const result = ColorRuleSchema.safeParse(validBaseRule);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        // Test transform (type assertion)
-        expect(result.data).toEqual(expect.objectContaining(validBaseRule));
-      }
-    });
-
-    it("should validate ColorBetweenSchema variant", () => {
-      const validBetweenRule = {
-        color: "#ABCDEF",
-        fill: true,
-        condition: "between",
-        range: { min: 5, max: 15 },
-      };
-      const result = ColorRuleSchema.safeParse(validBetweenRule);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data).toEqual(expect.objectContaining(validBetweenRule));
-      }
-    });
-
-    it("should invalidate if condition is wrong for ColorBaseSchema", () => {
-      const invalidRule = {
-        color: "red",
-        condition: "is",
-        value: "test",
-      };
-      const result = ColorRuleSchema.safeParse(invalidRule);
-      expect(result.success).toBe(false);
-    });
-
-    it("should invalidate if condition is wrong for ColorBetweenSchema", () => {
-      const invalidRule = {
-        color: "blue",
-        condition: "gt", // "gt" requires 'value', not 'range'
-        range: { min: 1, max: 2 },
-      };
-      const result = ColorRuleSchema.safeParse(invalidRule);
-      expect(result.success).toBe(false);
-    });
-
-    it("should invalidate if range is missing for 'between' condition", () => {
-      const invalidRule = {
-        color: "#FFF",
-        condition: "between",
-        // value: 10, // Missing range
-      };
-      const result = ColorRuleSchema.safeParse(invalidRule);
-      expect(result.success).toBe(false);
-    });
-  });
-
-  describe("RenderFnSchema", () => {
-    it("should validate predefined render functions", () => {
-      expect(RenderFnSchema.safeParse("greenRed").success).toBe(true);
-      expect(RenderFnSchema.safeParse("titleCase").success).toBe(true);
-    });
-
-    it("should be optional", () => {
-      expect(RenderFnSchema.safeParse(undefined).success).toBe(true);
-      expect(RenderFnSchema.safeParse(undefined).data).toBeUndefined();
-    });
-
-    it("should invalidate an unknown render function", () => {
-      const result = RenderFnSchema.safeParse("unknownFunction");
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        const expected = `"greenRed"|"titleCase"|"hoverCard"|"cellOnClick"|"columnColor"|"showCellChange"`;
-        expect(result.error.issues[0].message).toBe(
-          `Invalid option: expected one of ${expected}`,
-        );
-      }
-    });
-  });
-
-  describe("TableColumnDefsSchema", () => {
-    it("should have a consistent shape for its array items", () => {
-      // Test shape of the object within the array
-      const itemShapeKeys = Object.keys(TableColumnDefsSchema.element.shape).sort();
-      expect(itemShapeKeys).toMatchInlineSnapshot(`
-        [
-          "aggFunc",
-          "align",
-          "cellDataType",
-          "chartDataType",
-          "decimalPlaces",
-          "enableCellChangeWs",
-          "field",
-          "formatterFn",
-          "headerName",
-          "headerTooltip",
-          "hide",
-          "maxWidth",
-          "minWidth",
-          "pinned",
-          "prefix",
-          "renderFn",
-          "renderFnParams",
-          "rowGroup",
-          "sparkline",
-          "suffix",
-          "width",
-        ]
-      `);
-    });
-
-    it("should validate a valid column definition array", () => {
-      const validCols = [
-        {
-          field: "price",
-          headerName: "Price",
-          chartDataType: "series",
-          cellDataType: "number",
-          formatterFn: "normalizedPercent",
-          renderFn: ["greenRed", "hoverCard"],
-          renderFnParams: {
-            hoverCard: { title: "Price Details" },
-            colorRules: [{ color: "green", condition: "gt", value: 0 }],
-          },
-        },
-        { field: "name", headerName: "Name" },
-      ];
-      const result = TableColumnDefsSchema.safeParse(validCols);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data[0].renderFn).toEqual(["greenRed", "hoverCard"]);
-        expect(result.data[0].enableCellChangeWs).toBe(true);
-      }
-    });
-
-    it("should transform string renderFn to array", () => {
-      const cols = [
-        { field: "a", headerName: "A", renderFn: ["greenRed", "titleCase"] },
-      ];
-
-      const result = TableColumnDefsSchema.safeParse(cols);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data[0].renderFn).toEqual(["greenRed", "titleCase"]);
-      }
-    });
-
-    it("should invalidate if required fields (field, headerName) are missing", () => {
-      const invalidCols = [{ headerName: "Only Name" }];
-      const result = TableColumnDefsSchema.safeParse(invalidCols);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(
-          result.error.issues.some(
-            (i) =>
-              i.path.join(".") === "0.field" &&
-              i.message.includes("received undefined"),
-          ),
-        ).toBe(true);
-      }
-    });
-
-    it("should invalidate with wrong chartDataType", () => {
-      const invalidCols = [{ field: "a", headerName: "A", chartDataType: "invalid" }];
-      const result = TableColumnDefsSchema.safeParse(invalidCols);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(
-          result.error.issues.find((i) => i.path.join(".") === "0.chartDataType")
-            ?.message,
-        ).toBe(`Invalid option: expected one of "category"|"series"|"time"|"excluded"`);
-      }
-    });
-
-    it("should handle renderFnParams being passthrough", () => {
-      const cols = [
-        {
-          field: "a",
-          headerName: "A",
-          renderFnParams: { customParam: 123, colorValueKey: "val" },
-        },
-      ];
-      const result = TableColumnDefsSchema.safeParse(cols);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data[0].renderFnParams?.customParam).toBe(123);
       }
     });
   });
@@ -537,28 +277,16 @@ describe("Zod Schemas from app.ts", () => {
 
   describe("widgetTypesSchema", () => {
     it("should validate known widget types", () => {
-      WidgetVizTypes.forEach((type) => {
-        if (type === "note") {
-          // "note" is transformed
-          expect(widgetTypesSchema.safeParse(type).data).toBe("rich_note");
-        } else
-          type === "multi_file_viewer" ||
-            type === "file_viewer" ||
-            type === "newsfeed" ||
-            type === "omni" ||
-            type === "live_grid" ||
-            type === "advanced_charting";
-      });
-      expect(widgetTypesSchema.safeParse("chart").success).toBe(true);
-      expect(widgetTypesSchema.safeParse("pdf").success).toBe(true);
+      for (const type of WidgetVizTypes) {
+        expect(widgetTypesSchema.safeParse(type).data).toBe(type);
+      }
     });
 
-    it("should transform 'note' to 'rich_note'", () => {
-      const result = widgetTypesSchema.safeParse("note");
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data).toBe("rich_note");
-      }
+    it("should reject widget types this Workspace does not render", () => {
+      expect(widgetTypesSchema.safeParse("table").success).toBe(false);
+      expect(widgetTypesSchema.safeParse("chart").success).toBe(false);
+      expect(widgetTypesSchema.safeParse("note").success).toBe(false);
+      expect(widgetTypesSchema.safeParse("rich_note").success).toBe(false);
     });
 
     it("should be nullish", () => {
@@ -587,12 +315,10 @@ describe("Zod Schemas from app.ts", () => {
           "disableRetrievalForCopilot",
           "exportable",
           "external",
-          "fileEndpoint",
           "groupById",
           "groupId",
           "id",
           "innerTab",
-          "inputType",
           "name",
           "params",
           "raw",
@@ -615,7 +341,7 @@ describe("Zod Schemas from app.ts", () => {
       if (result.success) {
         expect(result.data.staleTime).toBe(1000 * 60 * 5);
         expect(result.data.refetchInterval).toBe(1000 * 60 * 15);
-        expect(result.data.data).toEqual({ table: {} });
+        expect(result.data.data).toEqual({});
       }
     });
 
@@ -623,7 +349,7 @@ describe("Zod Schemas from app.ts", () => {
       const widget = {
         id: "widget2",
         widgetId: "internal2",
-        type: "chart",
+        type: "html",
         data: {
           mainTicker: { id: "t1", symbol: "AAPL", category: "equity" },
         },
@@ -631,7 +357,7 @@ describe("Zod Schemas from app.ts", () => {
       const result = InternalWidgetSchema.safeParse(widget);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.type).toBe("chart");
+        expect(result.data.type).toBe("html");
         expect(result.data.data?.mainTicker?.symbol).toBe("AAPL");
       }
     });
@@ -672,22 +398,18 @@ describe("Zod Schemas from app.ts", () => {
           "endpoint",
           "exportable",
           "external",
-          "fileEndpoint",
           "groupById",
           "groupId",
           "id",
           "innerTab",
-          "inputType",
           "isSharedWidget",
           "name",
           "params",
           "raw",
           "refetchInterval",
           "runButton",
-          "schemaName",
           "showTitle",
           "source",
-          "sourceDatabase",
           "sourceId",
           "sourceName",
           "staleTime",
@@ -695,7 +417,6 @@ describe("Zod Schemas from app.ts", () => {
           "subCategory",
           "type",
           "widgetId",
-          "wsEndpoint",
         ]
       `);
     });
@@ -708,7 +429,7 @@ describe("Zod Schemas from app.ts", () => {
         // Check defaults from base and transform
         expect(result.data.staleTime).toBe(1000 * 60 * 5);
         expect(result.data.refetchInterval).toBe(1000 * 60 * 15); // Default from transform when runButton is undefined
-        expect(result.data.data).toEqual({ table: {} });
+        expect(result.data.data).toEqual({});
       }
     });
 
@@ -745,31 +466,6 @@ describe("Zod Schemas from app.ts", () => {
       }
     });
 
-    it("refine logic: multi_file_viewer requires param with role 'fileSelector'", () => {
-      const invalidWidget = {
-        id: "w",
-        widgetId: "w",
-        type: "multi_file_viewer",
-        params: [{ paramName: "p1", type: "text" }], // No fileSelector
-      };
-      const resultInvalid = ExternalWidgetSchema.safeParse(invalidWidget);
-      expect(resultInvalid.success).toBe(false);
-      if (!resultInvalid.success) {
-        expect(resultInvalid.error.issues[0].path).toEqual(["params"]);
-        expect(resultInvalid.error.issues[0].message).toBe(
-          'Endpoint param with `{ roles: ["fileSelector"] }` required for `multi_file_viewer`.',
-        );
-      }
-
-      const validWidget = {
-        id: "w",
-        widgetId: "w",
-        type: "multi_file_viewer",
-        params: [{ paramName: "f", type: "endpoint", roles: ["fileSelector"] }],
-      };
-      expect(ExternalWidgetSchema.safeParse(validWidget).success).toBe(true);
-    });
-
     it("should validate endpoint object structure", () => {
       const widget = {
         id: "w",
@@ -794,9 +490,9 @@ describe("Zod Schemas from app.ts", () => {
 
   describe("isWidgetVizType utility function", () => {
     it("should return true for valid WidgetVizTypes", () => {
-      expect(isWidgetVizType("chart")).toBe(true);
-      expect(isWidgetVizType("table")).toBe(true);
-      expect(isWidgetVizType("multi_file_viewer")).toBe(true);
+      expect(isWidgetVizType("html")).toBe(true);
+      expect(isWidgetVizType("markdown")).toBe(true);
+      expect(isWidgetVizType("pdf")).toBe(true);
     });
 
     it("should return false for invalid types", () => {
@@ -940,209 +636,6 @@ describe("Zod Schemas from app.ts", () => {
     });
   });
 
-  describe("ChartViewOptionsSchema", () => {
-    it("should have a consistent shape", () => {
-      const shapeKeys = Object.keys(ChartViewOptionsSchema.shape).sort();
-      expect(shapeKeys).toMatchInlineSnapshot(`
-        [
-          "cellRangeCols",
-          "chartSettingsOpen",
-          "chartType",
-          "enabled",
-          "ignoreCellRange",
-          "xLabel",
-          "yLabel",
-        ]
-      `);
-    });
-
-    it("should validate a valid ChartViewOptions object", () => {
-      const validOptions = {
-        enabled: true,
-        chartType: "columnLineCombo",
-        cellRangeCols: {
-          columnLineCombo: ["colA", "colB"],
-          line: ["colC"],
-        },
-        chartSettingsOpen: true,
-      };
-      const result = ChartViewOptionsSchema.safeParse(validOptions);
-      expect(result.success).toBe(true);
-    });
-
-    it("should apply default values", () => {
-      const result = ChartViewOptionsSchema.safeParse({});
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.enabled).toBe(false);
-        expect(result.data.chartSettingsOpen).toBe(false);
-        expect(result.data.cellRangeCols).toBeUndefined();
-      }
-    });
-
-    it("should validate cellRangeCols structure", () => {
-      const validCellRange = {
-        enabled: false,
-        cellRangeCols: {
-          line: ["series1", "series2"],
-          invalidChartType: ["data"], // This key itself uses ChartTypeSchema
-        },
-      };
-      const result = ChartViewOptionsSchema.safeParse(validCellRange);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        const issue = result.error.issues.find((i) => i.code === "unrecognized_keys");
-        expect(issue).toBeDefined();
-        expect(issue?.path).toEqual(["cellRangeCols"]);
-        expect(issue?.keys).toEqual(["invalidChartType"]);
-      }
-      const validCellRange2 = {
-        enabled: false,
-        cellRangeCols: {
-          line: ["series1", "series2"],
-          bar: [123], // Value of array should be string
-        },
-      };
-      const result2 = ChartViewOptionsSchema.safeParse(validCellRange2);
-      expect(result2.success).toBe(false);
-      if (!result2.success) {
-        expect(
-          result2.error.issues.some(
-            (i) =>
-              i.path.join(".") === "cellRangeCols.bar.0" && i.code === "invalid_type",
-          ),
-        ).toBe(true);
-      }
-    });
-  });
-
-  describe("DataSchema", () => {
-    it("should have a consistent shape (empty by definition, but check behavior)", () => {
-      const innerSchema = DataSchema._def.innerType;
-      const shapeKeys = Object.keys(innerSchema.shape).sort();
-      expect(shapeKeys).toMatchInlineSnapshot("[]");
-    });
-
-    it("should validate an empty object", () => {
-      const result = DataSchema.safeParse({});
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data).toEqual({});
-      }
-    });
-
-    it("should validate an object with arbitrary keys due to passthrough", () => {
-      const data = { customKey: "value", another: 123 };
-      const result = DataSchema.safeParse(data);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data).toEqual(data);
-      }
-    });
-
-    it("should be optional (allow undefined)", () => {
-      const result = DataSchema.safeParse(undefined);
-      expect(result.success).toBe(true);
-      expect(result.data).toBeUndefined();
-    });
-  });
-
-  describe("TableSchema", () => {
-    it("should have a consistent shape", () => {
-      // Access the inner object schema's shape
-      const innerSchema = TableSchema._def.innerType;
-      const shapeKeys = Object.keys(innerSchema.shape).sort();
-      expect(shapeKeys).toMatchInlineSnapshot(`
-        [
-          "chartView",
-          "columnState",
-          "columnsDefs",
-          "enableAdvanced",
-          "enableFormulas",
-          "filterModel",
-          "formatterFn",
-          "showAll",
-          "transpose",
-        ]
-      `);
-    });
-
-    it("should be optional (allow undefined for the whole schema)", () => {
-      const result = TableSchema.safeParse(undefined);
-      expect(result.success).toBe(true);
-      expect(result.data).toBeUndefined();
-    });
-
-    it("should validate a valid Table object with all fields", () => {
-      const validTable = {
-        showAll: true,
-        chartView: { enabled: true, chartType: "line" },
-        columnsDefs: [{ field: "col1", headerName: "Column 1" }],
-        columnState: { order: ["col1"] },
-        filterModel: { col1: { type: "equals", filter: "value" } },
-      };
-      const result = TableSchema.safeParse(validTable);
-      expect(result.success).toBe(true);
-    });
-
-    it("should validate an empty object (all fields are optional within)", () => {
-      const result = TableSchema.safeParse({});
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data).toEqual({
-          // All inner fields are optional, so they'd be undefined if not provided.
-        });
-      }
-    });
-
-    it("should handle optional sub-schemas correctly", () => {
-      const tableWithMissingParts = {
-        showAll: null, // nullish is allowed
-      };
-      const result = TableSchema.safeParse(tableWithMissingParts);
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data?.chartView).toBeUndefined();
-        expect(result.data?.columnsDefs).toBeUndefined();
-        expect(result.data?.showAll).toBeNull();
-      }
-    });
-
-    it("should accept valid formatterFn values", () => {
-      const validFormatters = [
-        "int",
-        "none",
-        "percent",
-        "normalized",
-        "normalizedPercent",
-        "dateToYear",
-      ];
-      for (const formatter of validFormatters) {
-        const result = TableSchema.safeParse({ formatterFn: formatter });
-        expect(result.success).toBe(true);
-        if (result.success) {
-          expect(result.data?.formatterFn).toBe(formatter);
-        }
-      }
-    });
-
-    it("should reject invalid formatterFn values", () => {
-      const result = TableSchema.safeParse({ formatterFn: "invalid" });
-      expect(result.success).toBe(false);
-    });
-
-    it("should allow null and undefined formatterFn", () => {
-      const nullResult = TableSchema.safeParse({ formatterFn: null });
-      expect(nullResult.success).toBe(true);
-
-      const undefinedResult = TableSchema.safeParse({});
-      expect(undefinedResult.success).toBe(true);
-      if (undefinedResult.success) {
-        expect(undefinedResult.data?.formatterFn).toBeUndefined();
-      }
-    });
-  });
-
   describe("WidgetSchemaBase", () => {
     it("should have a consistent shape", () => {
       const shapeKeys = Object.keys(WidgetSchemaBase.shape).sort();
@@ -1154,12 +647,10 @@ describe("Zod Schemas from app.ts", () => {
           "disableRetrievalForCopilot",
           "exportable",
           "external",
-          "fileEndpoint",
           "groupById",
           "groupId",
           "id",
           "innerTab",
-          "inputType",
           "name",
           "params",
           "raw",
@@ -1189,8 +680,7 @@ describe("Zod Schemas from app.ts", () => {
       const fullWidget = {
         id: "fullId",
         widgetId: "fullWidgetId",
-        type: "chart" as const,
-        fileEndpoint: "/file",
+        type: "html" as const,
         name: "My Widget",
         showTitle: false,
         description: "A detailed description.",

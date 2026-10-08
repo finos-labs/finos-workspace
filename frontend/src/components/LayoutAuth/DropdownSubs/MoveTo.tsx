@@ -1,7 +1,6 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Fragment } from "react";
-import type { TreeItem } from "react-complex-tree";
-import { useShallowAppStore } from "~/lib/state/app";
+import { type SideBarItem, useShallowAppStore } from "~/lib/state/app";
 import MoveGeneric from "./MoveGeneric";
 
 export default function MoveTo({
@@ -11,9 +10,9 @@ export default function MoveTo({
   itemData,
 }: {
   label: string;
-  color: string;
+  color?: string;
   depth: number;
-  itemData: TreeItem<any> & { index: string };
+  itemData: SideBarItem;
 }) {
   const { moveTabToFolder, folders } = useShallowAppStore((s) => ({
     moveTabToFolder: s.moveTabToFolder,
@@ -38,7 +37,7 @@ export default function MoveTo({
                 moveTabToFolder(folder.index, itemData.index, "");
               }}
               key={folder.index}
-              className="obb-dropdown-item truncate"
+              className="ws-dropdown-item truncate"
             >
               {folder.data.name}
             </DropdownMenuPrimitive.Item>

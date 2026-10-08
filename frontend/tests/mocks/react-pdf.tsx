@@ -1,4 +1,6 @@
-export const Document = ({ children }) => (
+import type { ReactNode } from "react";
+
+export const Document = ({ children }: { children?: ReactNode }) => (
   <div data-testid="pdf-document">{children}</div>
 );
 export const Page = () => <div data-testid="pdf-page" />;

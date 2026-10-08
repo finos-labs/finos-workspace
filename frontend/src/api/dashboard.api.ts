@@ -1,9 +1,9 @@
 import axiosRetry from "axios-retry";
-import { type Items, useAppStore } from "~/lib/state/app";
+import { type Item, useAppStore } from "~/lib/state/app";
 import { useAuthStore } from "~/lib/state/auth";
 import { useFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useSharedAppStore } from "~/lib/state/sharedApp";
-import { diffItemsWithRemote, dispatchSaveState, getValidItems } from "~/lib/utils";
+import { diffItemsWithRemote, dispatchSaveState } from "~/lib/utils";
 import { NotificationId, showNotificationWithRememberMe } from "~/lib/utils/toast";
 import type { DashShared, DashSync } from "~/types/auth.type";
 import { apiClient } from "./api";
@@ -11,8 +11,8 @@ import { apiClient } from "./api";
 axiosRetry(apiClient, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
 /* Post dashboard */
-export async function postDashboards(dashboardData: { [key: string]: any | "DELETE" }) {
-  const { data } = await apiClient.post("/pro/dash/sync", {
+export async function postDashboards(dashboardData: Record<string, Item | "DELETE">) {
+  const { data } = await apiClient.post("/app/dash/sync", {
     items: dashboardData,
   });
   return data;
@@ -20,67 +20,35 @@ export async function postDashboards(dashboardData: { [key: string]: any | "DELE
 
 /* Get dashboard */
 export async function getDashboards<T extends DashSync>(): Promise<T> {
-  const { data } = await apiClient.get<T>("/pro/dash/sync");
+  const { data } = await apiClient.get<T>("/app/dash/sync");
   return data;
 }
 
 export async function getOwnedDashboards<T extends DashSync<"owned">>(): Promise<T> {
   const { data } = await apiClient
-    .get<T>("/pro/dash/sync/owned")
+    .get<T>("/app/dash/sync/owned")
     .catch(() => ({ data: {} as T }));
   return data as T;
 }
 
 export async function getSharedDashboards<T extends DashShared>(): Promise<T> {
   const { data } = await apiClient
-    .get<T>("/pro/dash/sync/shared")
+    .get<T>("/app/dash/sync/shared")
     .catch(() => ({ data: {} as T }));
   return data as T;
 }
 
 export async function getSharedDashboardsAndUpdate() {
   const { featureFlags } = useFeatureFlagsStore.getState();
-  const isFreeTier = featureFlags?.tier === "terminal";
+  const isFreeTier = featureFlags?.tier === "basic";
 
   if (isFreeTier) return;
 
   const remoteData = await getSharedDashboards();
   useSharedAppStore.getState().updateOnlySharedItems({
-    shared: remoteData.shared,
-    entityShared: remoteData.entity_shared,
+    shared: remoteData.shared ?? {},
+    entityShared: remoteData.entity_shared ?? {},
   });
-}
-
-/** @deprecated use not being used right now */
-export async function getDashboardOwnedItemsFiltered(): Promise<Items> {
-  const { data } = await apiClient
-    .get<DashSync>("/pro/dash/sync")
-    .catch(() => ({ data: {} as DashSync }));
-  const filteredRemoteItems = {} as Items;
-
-  if (!data.owned) {
-    return filteredRemoteItems;
-  }
-
-  for (const key in data.owned) {
-    if (data.owned[key].content && Object.keys(data.owned[key].content).length > 0) {
-      filteredRemoteItems[key] = data.owned[key].content;
-    }
-  }
-
-  // we check all isFolder items and make sure the children are valid items
-  for (const key in filteredRemoteItems) {
-    const item = filteredRemoteItems[key];
-    if (item?.isFolder && item?.children?.length > 0) {
-      filteredRemoteItems[key].children = item.children.filter((child: string) => {
-        const childItem = filteredRemoteItems[child];
-        return childItem?.data?.name;
-      });
-    }
-  }
-
-  // we check all items are valid
-  return getValidItems(filteredRemoteItems);
 }
 
 type SaveDashboardsParams = {
@@ -112,7 +80,7 @@ export async function saveDashboards(params?: SaveDashboardsParams) {
   const { items, itemsStoredInCloud, updateItemsStoredInCloud } =
     useAppStore.getState();
 
-  if (Object.keys(items ?? {}).length === 0) return;
+  if (!items || Object.keys(items).length === 0) return;
 
   getSharedDashboardsAndUpdate().catch(
     () =>
@@ -146,15 +114,15 @@ export async function saveDashboards(params?: SaveDashboardsParams) {
 }
 
 export async function getDashboardShares(dashboardUuid: string) {
-  const { data } = await apiClient.get(`/pro/dash/${dashboardUuid}/shares`);
+  const { data } = await apiClient.get(`/app/dash/${dashboardUuid}/shares`);
   return data;
 }
 
 export async function deleteAllDashboards() {
-  const { data } = await apiClient.get("/pro/dash/sync");
+  const { data } = await apiClient.get("/app/dash/sync");
   const ids = Object.keys(data.owned);
-  await apiClient.post("/pro/dash/sync", {
-    items: ids.reduce((acc, id) => {
+  await apiClient.post("/app/dash/sync", {
+    items: ids.reduce<Record<string, "DELETE">>((acc, id) => {
       acc[id] = "DELETE";
       return acc;
     }, {}),
@@ -166,14 +134,14 @@ export async function shareDashboard(dashboardUuid: string, emails: string) {
   const emailArray = emails.split(",");
 
   // Convert the email array into the required shares object format
-  const shares = emailArray.reduce((acc, email) => {
+  const shares = emailArray.reduce<Record<string, "view">>((acc, email) => {
     acc[email] = "view"; // Assuming "view" is the desired permission for all
     return acc;
   }, {});
 
   // Make the API call
   const { data } = await apiClient
-    .post(`/pro/dash/${dashboardUuid}/share`, {
+    .post(`/app/dash/${dashboardUuid}/share`, {
       shares,
     })
     .catch((e) => {
@@ -189,7 +157,7 @@ export async function shareDashboard(dashboardUuid: string, emails: string) {
 }
 
 export async function deleteDashboardShare(dashboardUuid: string, emails: string[]) {
-  const url = `/pro/dash/${dashboardUuid}/share`;
+  const url = `/app/dash/${dashboardUuid}/share`;
 
   const { data } = await apiClient.delete(url, {
     data: { shares: emails },
@@ -199,6 +167,6 @@ export async function deleteDashboardShare(dashboardUuid: string, emails: string
 }
 
 export async function getDashboardShareUsers(dashboardUuid: string) {
-  const { data } = await apiClient.get(`/pro/dash/${dashboardUuid}/shares/users`);
+  const { data } = await apiClient.get(`/app/dash/${dashboardUuid}/shares/users`);
   return data;
 }

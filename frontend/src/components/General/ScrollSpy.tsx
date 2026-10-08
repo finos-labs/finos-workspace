@@ -19,7 +19,14 @@ interface IScrollspyContext {
   setActiveId: (v: string | null) => void;
   dataAttrActive?: string;
 }
-const ScrollspyContext = createContext<IScrollspyContext>(null);
+const ScrollspyContext = createContext<IScrollspyContext | null>(null);
+
+function useScrollspy() {
+  const context = useContext(ScrollspyContext);
+  if (!context)
+    throw new Error("A Scrollspy component must be used inside ScrollspyRoot");
+  return context;
+}
 
 interface ScrollspyRootProps {
   children: ReactNode;
@@ -53,7 +60,7 @@ export function ScrollSpy(props: SpyProps) {
 
   const ref = useRef<HTMLDivElement>(null);
   const [visibleElements, setVisibleElements] = useState<Element[]>([]);
-  const { setActiveId } = useContext(ScrollspyContext);
+  const { setActiveId } = useScrollspy();
 
   const [observer] = useState(
     new IntersectionObserver(
@@ -85,6 +92,7 @@ export function ScrollSpy(props: SpyProps) {
     const root = ref.current?.parentElement;
     if (!root) {
       setActiveId(sorted[0]?.id ?? null);
+      return;
     }
 
     const paddingTop = Number.parseInt(
@@ -182,7 +190,7 @@ interface TriggerProps {
  */
 export function ScrollTrigger(props: TriggerProps) {
   const { children, onClick, id, ...rest } = props;
-  const { activeId, setActiveId, dataAttrActive } = useContext(ScrollspyContext);
+  const { activeId, setActiveId, dataAttrActive = DATA_ACTIVE } = useScrollspy();
   const ref = useRef<HTMLButtonElement>(null);
 
   function handleClick(e: ReactMouseEvent<HTMLButtonElement>) {
@@ -192,7 +200,7 @@ export function ScrollTrigger(props: TriggerProps) {
       //! so we need this hack to render the active state on the next tick.
       //! 50 ms hack is for Safari
       setTimeout(() => {
-        setActiveId(id);
+        setActiveId(id ?? null);
       }, 50);
     }
     onClick?.(e);

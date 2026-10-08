@@ -144,10 +144,9 @@ describe("McpAuthPopup", () => {
     expect(mockStoreState.setMcpAuthPopup).not.toHaveBeenCalled();
     expect(screen.getByTestId("base-dialog")).toBeInTheDocument();
     expect(screen.getByText(/Authorization Popup Blocked/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Authorize MCP Connection/ })).toHaveAttribute(
-      "href",
-      POPUP_VALUE.authUrl,
-    );
+    expect(
+      screen.getByRole("link", { name: /Authorize MCP Connection/ }),
+    ).toHaveAttribute("href", POPUP_VALUE.authUrl);
   });
 
   it("does nothing when there is no pending auth popup", () => {

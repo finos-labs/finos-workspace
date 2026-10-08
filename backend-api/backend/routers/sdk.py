@@ -87,7 +87,6 @@ async def login(
 ):
     columns = [
         User.uuid,
-        User.primary_usage,
         User.confirmed,
         User.email,
         User.password,
@@ -110,7 +109,6 @@ async def login(
         "access_token": access_token,
         "token_type": "bearer",
         "uuid": db_user.uuid,
-        "primary_usage": db_user.primary_usage or "bot",
         "email": db_user.email,
         "username": db_user.username,
     }

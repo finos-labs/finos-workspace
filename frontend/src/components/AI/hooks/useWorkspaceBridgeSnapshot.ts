@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useActiveWorkspaceDashboardId } from "~/components/AI/hooks/useActiveWorkspaceDashboardId";
 import type { WorkspaceStateT } from "~/components/AI/hooks/useAiFetchRequestInit";
 import { ALL_AI_FEATURES } from "~/lib/constants";
-import { useAppStore } from "~/lib/state/app";
+import { type Item, useAppStore } from "~/lib/state/app";
 import { useAuthStore } from "~/lib/state/auth";
 import { useCopilotStore } from "~/lib/state/copilot";
 import { useCopilotDataStore } from "~/lib/state/copilotData";
@@ -50,15 +50,11 @@ function getPageContext(
   }
 }
 
-function getDashboardTabCount(item: Record<string, any>) {
-  const widgets = Array.isArray(item.data?.widgets) ? item.data.widgets : [];
-  const gridLayout = item.data?.gridLayout || {};
-  const navBarWidget = widgets.find(
-    (widget: Record<string, unknown>) => widget.widgetId === "navigation_bar",
-  );
-  const navBarTabs = Array.isArray(navBarWidget?.storage?.tabs)
-    ? (navBarWidget.storage.tabs as { id: string; name: string }[])
-    : [];
+function getDashboardTabCount(item: Item) {
+  const widgets = item.data?.widgets ?? [];
+  const gridLayout = item.data?.gridLayout ?? {};
+  const navBarWidget = widgets.find((widget) => widget.widgetId === "navigation_bar");
+  const navBarTabs = navBarWidget?.storage?.tabs ?? [];
   const tabIds = new Set<string>();
 
   for (const tab of navBarTabs) {

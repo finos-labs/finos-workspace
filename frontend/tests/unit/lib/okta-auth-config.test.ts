@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockConfig } from "../../mocks/runtimeConfig";
 
 // Mock OktaAuth constructor since we don't want to actually initialize the SDK
@@ -19,7 +19,10 @@ describe("getOktaAuth", () => {
       _resetConfig: vi.fn(),
     }));
     vi.doMock("@okta/okta-auth-js", () => ({
-      OktaAuth: vi.fn().mockImplementation(function (this: Record<string, unknown>, config: unknown) {
+      OktaAuth: vi.fn().mockImplementation(function (
+        this: Record<string, unknown>,
+        config: unknown,
+      ) {
         this._config = config;
       }),
     }));
@@ -41,8 +44,7 @@ describe("getOktaAuth", () => {
 
     const result = getOktaAuth();
     expect(result).not.toBeNull();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((result as any)?._config).toEqual(
+    expect((result as { _config?: unknown } | null)?._config).toEqual(
       expect.objectContaining({
         clientId: "okta-client-id",
         issuer: "https://dev-123.okta.com/oauth2/default",

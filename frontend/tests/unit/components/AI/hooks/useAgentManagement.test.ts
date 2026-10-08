@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAgentManagement } from "~/components/AI/hooks/useAgentManagement";
+import { required } from "../../../mocks";
 
 // --- Hoisted mocks ---
 const {
@@ -106,8 +107,8 @@ vi.mock("~/lib/constants", async (importOriginal) => {
   return {
     ...actual,
     DEFAULT_COPILOT: {
-      id: "openbb-copilot",
-      name: "OpenBB Copilot",
+      id: "default-copilot",
+      name: "Copilot",
       description: "Default",
       endpoints: {},
     },
@@ -304,12 +305,10 @@ describe("useAgentManagement", () => {
         makeHolder({ uuid: "holder-1" }),
         makeHolder({ uuid: "holder-2", url: "https://other.example.com" }),
       ];
-      mockFetchAgentsData.mockImplementation(
-        async (holder: { uuid: string }) => {
-          if (holder.uuid === "holder-2") throw new Error("boom");
-          return [makeCopilot()];
-        },
-      );
+      mockFetchAgentsData.mockImplementation(async (holder: { uuid: string }) => {
+        if (holder.uuid === "holder-2") throw new Error("boom");
+        return [makeCopilot()];
+      });
 
       const { result } = renderHook(() => useAgentManagement());
 
@@ -437,7 +436,7 @@ describe("useAgentManagement", () => {
         "Agent group deleted successfully",
       );
       expect(mockSetSelectedCopilot).toHaveBeenCalledWith(
-        expect.objectContaining({ id: "openbb-copilot" }),
+        expect.objectContaining({ id: "default-copilot" }),
       );
       expect(result.current.state.groupToDelete).toBeNull();
     });
@@ -530,7 +529,7 @@ describe("useAgentManagement", () => {
 
       expect(result.current.filteredGroups).toHaveLength(1);
       expect(result.current.filteredGroups[0].copilots).toHaveLength(1);
-      expect(result.current.filteredGroups[0].copilots![0].id).toBe("alpha");
+      expect(required(result.current.filteredGroups[0].copilots)[0].id).toBe("alpha");
     });
 
     it("includes holders when URL matches search term even if no agents match", async () => {

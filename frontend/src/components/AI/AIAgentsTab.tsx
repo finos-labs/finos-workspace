@@ -22,7 +22,7 @@ import { getConfig } from "~/lib/runtimeConfig";
 import { cn } from "~/lib/utils";
 
 export function AIAgentsTab() {
-  const aiCopilotOpenBBCopilotFF = getConfig().copilot.openbbCopilot;
+  const aiCopilotDefaultCopilotFF = getConfig().copilot.defaultCopilot;
   const {
     state,
     dispatch,
@@ -45,12 +45,12 @@ export function AIAgentsTab() {
   const defaultCopilot = getDefaultCopilot();
   const searchTerm = debouncedSearch.toLowerCase().trim();
   const showDefaultCopilot =
-    aiCopilotOpenBBCopilotFF &&
+    aiCopilotDefaultCopilotFF &&
     (!searchTerm ||
       defaultCopilot.name.toLowerCase().includes(searchTerm) ||
       defaultCopilot.description.toLowerCase().includes(searchTerm));
 
-  const hasNoAgents = state.groups.length === 0 && !aiCopilotOpenBBCopilotFF;
+  const hasNoAgents = state.groups.length === 0 && !aiCopilotDefaultCopilotFF;
   const showNoResults =
     debouncedSearch && !showDefaultCopilot && filteredGroups.length === 0;
 

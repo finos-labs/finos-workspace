@@ -1,6 +1,6 @@
-# The build context is assembled from this directory + the backend/ and
-# frontend/ source trees. Keep heavy / irrelevant directories out so the
-# context stays small and Docker layer caching stays effective.
+# The build context is assembled from this directory + the backend/ and frontend/ source
+# trees. Keep heavy / irrelevant directories out so the context stays small and Docker
+# layer caching stays effective.
 
 # Dependency / build artifacts pulled in when copying local checkouts.
 **/node_modules
@@ -19,9 +19,11 @@
 **/.git
 **/.gitignore
 **/.gitmodules
-_src
 
-# Local env / editor noise.
+# Local env / editor noise, and the settings of a local stack (secrets and an administrator).
+**/envs/.env
+**/scripts/cfgs/*.toml
+**/user_create.json
 **/.env.local
 **/.DS_Store
 **/.idea

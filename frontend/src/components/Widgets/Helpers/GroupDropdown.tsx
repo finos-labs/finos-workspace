@@ -16,10 +16,9 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
-import { areTruthy } from "~/components/General/Table/utils";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/SpecialTooltip";
-import type { Group, GroupTypes, ParamDef, Ticker, Widget } from "~/components/types";
+import type { Group, GroupTypes, ParamDef, Widget } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import {
@@ -28,26 +27,26 @@ import {
   useAppStore,
   useShallowAppStore,
 } from "~/lib/state/app";
+import { useEntityThemeStore } from "~/lib/state/entityTheme";
 import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
-import { useTableChartThemesStore } from "~/lib/state/tableChartThemes";
 import { useShallowThemeStore, useThemeStore } from "~/lib/state/theme";
-import { useShallowTutorialStore } from "~/lib/state/tutorial";
 import {
   COLORS,
   cn,
   getEndpointParamName,
   getEndpointParams,
   getGroupInfo,
+  getGroupKindLabel,
   getGroupLabel,
   getJsonWidget,
   getWidgetsWithSupportedAssetClass,
-  groupParamOverride,
   scoreArrays,
   triggerCustomEvent,
   useEventListener,
   uuidv4,
 } from "~/lib/utils";
 import { NotificationId, showNotificationWithRememberMe } from "~/lib/utils/toast";
+import { areTruthy } from "~/lib/utils/values";
 import { getContrastTextColor } from "~/utils/colorUtils";
 import { GroupPanelHeader, GroupRow } from "./GroupRow";
 
@@ -59,7 +58,7 @@ interface GroupDropdownProps {
   className?: string;
 }
 
-const GROUP_TYPE = {
+const GROUP_TYPE: Record<string, "endpointParam" | "ticker" | undefined> = {
   endpoint: "endpointParam",
   ticker: "ticker",
 };
@@ -69,24 +68,18 @@ export const GroupDropdownAnchorContext =
 
 export const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
   (
-    { children, className = "obb-parameter", paramDef, ...rest }: GroupDropdownProps,
+    { children, className = "ws-parameter", paramDef, ...rest }: GroupDropdownProps,
     _ref,
   ) => {
     const {
-      widget: {
-        id: widgetUuid,
-        widgetId,
-        paramGroups,
-        groupId,
-        storage: { sqlParamDefs } = {},
-      } = {},
+      widget: { id: widgetUuid, paramGroups, groupId } = {},
       activeDashboardId,
       widgetFromJSON,
     } = useWidgetContext();
 
     const params = useMemo(
-      () => (widgetFromJSON?.params ?? []).concat(sqlParamDefs ?? []),
-      [widgetFromJSON?.params, sqlParamDefs],
+      () => widgetFromJSON?.params ?? [],
+      [widgetFromJSON?.params],
     );
 
     const props = useMemo(() => {
@@ -110,25 +103,17 @@ export const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
       if (props?.type !== "param") return [];
 
       if (!paramDef) {
-        const paramName = groupParamOverride(props?.groupById, widgetId);
+        const paramName = props?.groupById;
         const param = params?.find(
           (param) =>
             param.paramName === paramName &&
             !["ticker", "endpoint"].includes(param.type),
         );
-        return param?.options?.map((o: any) => o.value) || [];
+        return param?.options?.map((o) => o.value) || [];
       }
 
-      return paramDef?.options?.map((o: any) => o.value) || [];
+      return paramDef?.options?.map((o) => o.value) || [];
     }, [params, paramDef?.options, paramDef?.type, props?.type, props?.groupById]);
-
-    const { currentTutorial, currentStep, goToStep } = useShallowTutorialStore(
-      (state) => ({
-        currentTutorial: state.currentTutorial,
-        currentStep: state.currentStep,
-        goToStep: state.goToStep,
-      }),
-    );
 
     const [state, dispatch] = useStateReducer({
       canGroup: false,
@@ -148,10 +133,10 @@ export const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
         currentEndpointParams: TabEndpointParams;
       }) => {
         const { groups, currentTabParams, currentEndpointParams } = params;
-        const paramName = props?.groupById;
+        const paramName = props?.groupById ?? "";
 
         const group = groups?.find((group) => {
-          if (["param", "endpointParam"].includes(props.type))
+          if (["param", "endpointParam"].includes(props.type ?? ""))
             return group.type === props.type && paramGroups?.[paramName] === group.id;
 
           return group.id === groupId && group.type === props.type;
@@ -160,18 +145,18 @@ export const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
         let canGroup = !!activeDashboardId;
         if (props.type === "param" && canGroup) {
           const tabParam = currentTabParams?.[paramName];
-          canGroup = tabParam?.total > 1 || !!group?.id;
+          canGroup = (tabParam?.total ?? 0) > 1 || !!group?.id;
 
           if (areTruthy(optionValues, tabParam?.options)) {
             const score = scoreArrays(optionValues, tabParam?.options, true)?.score;
 
-            canGroup = (score > 0.5 && tabParam?.total > 1) || !!group?.id;
+            canGroup = (score > 0.5 && (tabParam?.total ?? 0) > 1) || !!group?.id;
           }
         }
 
         if (props.type === "endpointParam" && canGroup) {
           const tabEndpointParam = currentEndpointParams?.[paramName];
-          canGroup = tabEndpointParam > 1 || !!group?.id;
+          canGroup = (tabEndpointParam ?? 0) > 1 || !!group?.id;
         }
 
         const groupTextColor = getContrastTextColor(group?.color ?? "");
@@ -189,7 +174,6 @@ export const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
 
     useEffect(() => {
       let unsub = null;
-      if (widgetId === "pyth_price_feeds") return;
 
       unsub = useAppStore.subscribe(
         (s) => {
@@ -249,22 +233,6 @@ export const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
       );
     }, [group?.name, groupParamValueDetails]);
 
-    const triggerOnClick = useCallback(() => {
-      if (currentTutorial) {
-        if (currentTutorial === "grouping") {
-          if (currentStep === 1) {
-            setTimeout(() => {
-              goToStep(2);
-            }, 500);
-          } else if (currentStep === 3) {
-            setTimeout(() => {
-              goToStep(4);
-            }, 500);
-          }
-        }
-      }
-    }, [currentStep, currentTutorial, goToStep]);
-
     const groupContentMemo = useMemo(() => <GroupContent {...props} />, [props]);
 
     const childrenMemo = useMemo(() => children, [children]);
@@ -309,12 +277,7 @@ export const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
       );
 
     if (!groupingVisible && group) {
-      //TODO: we need to update types because they dont match reality?
-      //@ts-expect-error
-      let label = group.groupBy ?? group.paramName ?? group.type;
-      if (group.type === "ticker" && group?.value?.category === "country") {
-        label = "country";
-      }
+      const label = getGroupKindLabel(group);
       return (
         <Tooltip
           className="max-w-[265px]"
@@ -376,7 +339,7 @@ export const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
         >
           <DropdownMenu.Root open={show} onOpenChange={setShow} modal={false}>
             <Tooltip className="max-w-[365px]" message={currentGroupTooltip}>
-              <DropdownMenu.Trigger onClick={triggerOnClick} asChild={true}>
+              <DropdownMenu.Trigger asChild={true}>
                 <button className="_group-dropdown-trigger w-full h-full flex items-center justify-center">
                   {group?.name ? (
                     <span
@@ -411,7 +374,7 @@ export const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
                   boxShadow: "0px 4px 8px 0px rgba(0, 0, 0, 0.25)",
                 }}
                 className={cn(
-                  "obb-dropdown-container",
+                  "ws-dropdown-container",
                   "flex flex-col gap-2 p-2",
                   "text-xs",
                   "z-50 min-w-[183px]",
@@ -438,35 +401,22 @@ function GroupContent(props: Omit<GroupDropdownProps, "children">) {
     [],
   );
   const { widget, activeDashboardId } = useWidgetContext();
-  const { currentTutorial, currentStep, goToStep } = useShallowTutorialStore(
-    (state) => ({
-      currentTutorial: state.currentTutorial,
-      currentStep: state.currentStep,
-      goToStep: state.goToStep,
-    }),
-  );
 
   const getDashboardById = useShallowSharedAppStore((s) => s.getDashboardById);
 
-  const { addGroup, updateGroup, setWidgetGroupId, groups, watchlistWidget } =
-    useShallowAppStore((s) => {
+  const { addGroup, updateGroup, setWidgetGroupId, groups } = useShallowAppStore(
+    (s) => {
       const tab =
         s.getTabById(activeDashboardId) || getDashboardById(activeDashboardId);
-      let watchlistWidget = {} as Widget;
-      if (type === "ticker") {
-        watchlistWidget = tab?.data?.widgets.find(
-          (widget) => widget.widgetId === "watchlist",
-        );
-      }
 
       return {
         addGroup: s.addGroup,
         updateGroup: s.updateGroup,
         setWidgetGroupId: s.setWidgetGroupId,
         groups: tab?.data?.groups || [],
-        watchlistWidget,
       };
-    });
+    },
+  );
 
   const validGroups = groups.filter((group) => {
     if (type === "param")
@@ -511,7 +461,7 @@ function GroupContent(props: Omit<GroupDropdownProps, "children">) {
 
       // If the group has an asset class that is in the widget's supported asset classes, return true
 
-      return [group?.value?.category, "all"].some((type) =>
+      return [group?.value?.category ?? "", "all"].some((type) =>
         widgetAssetClasses.includes(type),
       );
     },
@@ -527,10 +477,9 @@ function GroupContent(props: Omit<GroupDropdownProps, "children">) {
           element={element}
           validateAssetClass={validateAssetClass}
           updateGroup={debouncedUpdateGroup}
-          watchlistWidget={watchlistWidget}
         />
       )),
-    [validGroups, validateAssetClass, debouncedUpdateGroup, watchlistWidget],
+    [validGroups, validateAssetClass, debouncedUpdateGroup],
   );
 
   const onClick = useCallback(() => {
@@ -543,14 +492,6 @@ function GroupContent(props: Omit<GroupDropdownProps, "children">) {
 
     addGroup(activeDashboardId, newGroup);
     setWidgetGroupId(activeDashboardId, widget?.id, newGroup);
-
-    if (currentTutorial === "grouping") {
-      if (currentStep === 2) {
-        setTimeout(() => {
-          goToStep(3);
-        }, 500);
-      }
-    }
   }, [widget, groups, widgetAssetClasses, type, groupById]);
 
   return (
@@ -572,29 +513,15 @@ function GroupContent(props: Omit<GroupDropdownProps, "children">) {
 const GroupContentItem = memo(
   (props: {
     element: Group;
-    watchlistWidget?: Widget;
     validateAssetClass: (group: Group) => boolean;
     updateGroup: (tabId: string, groupId: string, group: Group) => void;
   }) => {
-    const { element, watchlistWidget, validateAssetClass, updateGroup } = props;
+    const { element, validateAssetClass, updateGroup } = props;
 
     const {
-      widget: {
-        external,
-        paramGroups,
-        groupId,
-        id: widgetUUid,
-        data: { mainTicker } = {},
-      } = {},
+      widget: { external, paramGroups, groupId, id: widgetUUid } = {},
       activeDashboardId,
     } = useWidgetContext();
-    const { currentTutorial, currentStep, goToStep } = useShallowTutorialStore(
-      (state) => ({
-        currentTutorial: state.currentTutorial,
-        currentStep: state.currentStep,
-        goToStep: state.goToStep,
-      }),
-    );
     const groupedInfo = useMemo(() => {
       const canGroup = validateAssetClass(element);
       const groupedValue = getGroupLabel(element);
@@ -611,7 +538,7 @@ const GroupContentItem = memo(
     }));
 
     const onCheckboxClick = useCallback(
-      (e: ReactMouseEvent<HTMLDivElement>) => {
+      (e: ReactMouseEvent) => {
         e.stopPropagation();
         e.preventDefault();
 
@@ -636,13 +563,7 @@ const GroupContentItem = memo(
           return;
         }
 
-        if (currentTutorial === "grouping") {
-          if (currentStep === 4) {
-            setTimeout(() => {
-              goToStep(5);
-            }, 500);
-          }
-        }
+        if (!(activeDashboardId && widgetUUid)) return;
 
         // For the single widget, check if it's already in the group
         if (selected) {
@@ -650,25 +571,14 @@ const GroupContentItem = memo(
           return setWidgetGroupId(activeDashboardId, widgetUUid, element, true);
         }
 
-        if (watchlistWidget?.groupId === element.id) {
-          addTickerToWatchlist({
-            watchlistWidget,
-            mainTicker: mainTicker,
-            tabId: activeDashboardId,
-          });
-        }
         // If it's not, add it to the group
         setWidgetGroupId(activeDashboardId, widgetUUid, element);
       },
       [
         groupedInfo,
-        currentStep,
-        currentTutorial,
         deleteGroup,
         element,
         updateGroup,
-        watchlistWidget,
-        mainTicker,
         external,
         widgetUUid,
         activeDashboardId,
@@ -685,7 +595,7 @@ const GroupContentItem = memo(
             Object.values(w.paramGroups || {}).includes(element.id),
         );
 
-      if (widgetsInGroup?.length > 0) {
+      if ((widgetsInGroup?.length ?? 0) > 0) {
         // If there are, show a warning message
         return showNotificationWithRememberMe({
           id: NotificationId.GroupNotEmpty,
@@ -755,28 +665,6 @@ const GroupContentItem = memo(
   },
 );
 
-function addTickerToWatchlist(params: {
-  watchlistWidget?: Widget;
-  mainTicker?: Ticker;
-  tabId: string;
-}) {
-  const { watchlistWidget, mainTicker, tabId } = params;
-  if (
-    mainTicker &&
-    !watchlistWidget.data?.secondaryTickers?.find(
-      (ticker) => ticker.symbol === mainTicker.symbol,
-    )
-  ) {
-    useAppStore.getState().updateWidget(tabId, {
-      ...watchlistWidget,
-      data: {
-        ...watchlistWidget.data,
-        secondaryTickers: [...watchlistWidget.data.secondaryTickers, mainTicker],
-      },
-    });
-  }
-}
-
 export function getNewGroup(
   widget: Widget,
   groups: Group[],
@@ -796,7 +684,7 @@ export function getNewGroup(
 
   // Get color palette from theme store or fall back to COLORS
   const currentTheme = useThemeStore.getState().theme;
-  const themeStore = useTableChartThemesStore.getState();
+  const themeStore = useEntityThemeStore.getState();
   const palette = themeStore[currentTheme]?.appTheme?.grouping?.palette || COLORS;
 
   // Select a unique color for the new group
@@ -823,7 +711,7 @@ export function getNewGroup(
       ...newGroup,
       type: "param",
       groupById,
-      value: widget?.storage?.params?.[groupById] ?? null,
+      value: (groupById ? widget?.storage?.params?.[groupById] : undefined) ?? null,
     } as Group;
   }
 

@@ -25,13 +25,18 @@ interface RightSideActionsProps {
   disabled?: boolean;
   parentId?: string;
   parentType?: string;
-  selectionId?: string;
+  selectionId: string;
   name?: string;
   /** Stored-file endpoint URL (file rows only); fetched through the authed client to download. */
   fileUrl?: string;
   /** Original uploaded file name (file rows only); used as the saved download name. */
   originalFileName?: string;
 }
+
+const sourceMeta: Record<
+  string,
+  { name: string; icon: string; showEdit?: boolean } | undefined
+> = SourceMeta;
 
 const getTypeTitle = (type: string) => {
   if (["backend", "file"].includes(type)) return capitalize(type);
@@ -56,10 +61,9 @@ export const RightSideActions = ({
     showDeleteDialog: false,
     deleteConfirmOpen: false,
   }));
-  const showEdit = SourceMeta[type]?.showEdit ?? true;
+  const showEdit = sourceMeta[type]?.showEdit ?? true;
   const { setOpen } = useDataConnectorContext();
   const backendConnector = useShallowBackendConnectorStore((s) => ({
-    setSingleWidgets: s.setSingleWidgets,
     updateApiSources: s.updateApiSources,
     setStoredFiles: s.setStoredFiles,
     setWidgetMetadata: s.setWidgetMetadata,
@@ -172,12 +176,7 @@ export const RightSideActions = ({
       e.stopPropagation();
       setOpen(true, {
         mode: "edit",
-        dcTab:
-          typeToEdit === "websites"
-            ? "website"
-            : typeToEdit === "rss_feeds"
-              ? "rss"
-              : (typeToEdit as DcTabT),
+        dcTab: typeToEdit === "websites" ? "website" : (typeToEdit as DcTabT),
         id,
       });
     },
@@ -192,7 +191,7 @@ export const RightSideActions = ({
             <Button
               size="xs"
               variant="ghost"
-              className="size-6 obb-small-navbar-btn p-1"
+              className="size-6 ws-small-navbar-btn p-1"
               onClick={onDownload}
               disabled={disabled || state.isDownloading}
               loading={state.isDownloading}
@@ -207,7 +206,7 @@ export const RightSideActions = ({
           <Button
             size="xs"
             variant="ghost"
-            className="size-6 obb-small-navbar-btn p-1"
+            className="size-6 ws-small-navbar-btn p-1"
             onClick={onDelete}
             disabled={disabled}
             {...(name && { "data-testid": `delete-${name}` })}
@@ -220,7 +219,7 @@ export const RightSideActions = ({
             <Button
               size="xs"
               variant="ghost"
-              className="size-6 obb-small-navbar-btn p-1"
+              className="size-6 ws-small-navbar-btn p-1"
               onClick={onEdit}
               disabled={disabled}
             >
@@ -233,7 +232,7 @@ export const RightSideActions = ({
             <Button
               size="xs"
               variant="ghost"
-              className="size-6 obb-small-navbar-btn p-1"
+              className="size-6 ws-small-navbar-btn p-1"
               disabled={disabled}
               onClick={async (e) => {
                 e.stopPropagation();

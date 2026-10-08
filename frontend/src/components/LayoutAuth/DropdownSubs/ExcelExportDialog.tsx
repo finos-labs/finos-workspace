@@ -1,6 +1,5 @@
 import ExcelJS from "exceljs";
 import { useState } from "react";
-import type { TreeItem } from "react-complex-tree";
 import { toast } from "sonner";
 import { Button } from "~/components/ds/atoms/Button";
 import { BaseDialog } from "~/components/ds/dialogs/BaseDialog";
@@ -11,9 +10,20 @@ import {
   DialogTitle,
 } from "~/components/ds/dialogs/Dialog";
 import type { WidgetT } from "~/components/types";
-import { useAppStore, useShallowAppStore } from "~/lib/state/app";
+import { docsUrl } from "~/lib/docsUrl";
+import { type SideBarItem, useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { dispatchSaveState } from "~/lib/utils";
+import { isTruthyRecord } from "~/lib/utils/values";
+
+const excelDocsHref = docsUrl("excel");
+
+/** A widget of a backend connection that has parameters, which is what the export can query. */
+export const isExportableWidget = (widget: WidgetT): boolean =>
+  widget.connectionType === "advanced-backend" && !!widget.storage?.params;
+
+export const getExportableWidgets = (widgets: WidgetT[]): WidgetT[] =>
+  widgets.filter(isExportableWidget);
 
 // Helper function to sanitize sheet names
 function sanitizeSheetName(name: string): string {
@@ -26,7 +36,7 @@ function sanitizeSheetName(name: string): string {
 }
 
 // Helper function to format parameter value for Excel
-function formatParamValue(value: any): string | boolean | number {
+function formatParamValue(value: unknown): string | boolean | number {
   if (value === undefined || value === null || value === "") return "";
 
   // Handle boolean values
@@ -54,7 +64,7 @@ function formatParamValue(value: any): string | boolean | number {
 }
 
 // Helper function to format widget parameters for display
-function formatWidgetParams(params: Record<string, any>): string {
+function formatWidgetParams(params: Record<string, unknown>): string {
   if (!params) return "";
 
   return Object.entries(params)
@@ -69,7 +79,7 @@ function formatWidgetParams(params: Record<string, any>): string {
 // Helper function to get formula format based on parameter style
 function getExplicitParamsFormat(
   widget: WidgetT,
-  params: Record<string, any>,
+  params: Record<string, unknown>,
   useExplicit: boolean,
 ): string {
   // Filter out empty values
@@ -84,25 +94,25 @@ function getExplicitParamsFormat(
   if (widget.connectionType === "advanced-backend") {
     if (useExplicit) {
       const numParams = Object.keys(filteredParams).length;
-      return `=OBB.WIDGET("${widget.sourceName}","${widget.widgetId}",A1:B${numParams})`;
+      return `=WORKSPACE.WIDGET("${widget.sourceName}","${widget.widgetId}",A1:B${numParams})`;
     }
     // Implicit format - parameters directly in formula
     const paramString = Object.entries(filteredParams)
       .map(([key, value]) => `"${key}","${formatParamValue(value)}"`)
       .join(";");
-    return `=OBB.WIDGET("${widget.sourceName}","${widget.widgetId}",{${paramString}})`;
+    return `=WORKSPACE.WIDGET("${widget.sourceName}","${widget.widgetId}",{${paramString}})`;
   }
 
   // For other functions
   if (useExplicit) {
     const numParams = Object.keys(filteredParams).length;
-    return `=OBB.${widget.excelDataFunction?.[0]?.replace("OBB.", "").toUpperCase()}(A1:B${numParams})`;
+    return `=WORKSPACE.${widget.excelDataFunction?.[0]?.replace("WORKSPACE.", "").toUpperCase()}(A1:B${numParams})`;
   }
   // Implicit format - parameters directly in formula
   const paramString = Object.entries(filteredParams)
     .map(([key, value]) => `"${key}","${formatParamValue(value)}"`)
     .join(";");
-  return `=OBB.${widget.excelDataFunction?.[0]?.replace("OBB.", "").toUpperCase()}({${paramString}})`;
+  return `=WORKSPACE.${widget.excelDataFunction?.[0]?.replace("WORKSPACE.", "").toUpperCase()}({${paramString}})`;
 }
 
 // Helper function to format date for display
@@ -129,8 +139,22 @@ function formatDateForFilename(date: Date): string {
   return `${year}${month}${day}_${hours}${minutes}${seconds}`;
 }
 
+/** What a widget returns when there is nothing to export for the parameters it has. */
+type NoData = { _noData: true; parameters: Record<string, unknown>; message: string };
+
+const isNoData = (data: unknown): data is NoData =>
+  isTruthyRecord(data) && data._noData === true;
+
+/** The data of a response: what is under the widget's data key, else the results, else all of it. */
+function unwrapExportData(data: unknown, dataKey: string | undefined): unknown {
+  if (!isTruthyRecord(data)) return data;
+  if (dataKey && data[dataKey] !== undefined) return data[dataKey];
+  if (data.results !== undefined) return data.results;
+  return data;
+}
+
 // Helper function to get widget export data
-async function getWidgetExportData(widget: WidgetT): Promise<any> {
+async function getWidgetExportData(widget: WidgetT): Promise<unknown> {
   try {
     // console.log("Processing widget:", {
     //   name: widget.name,
@@ -225,16 +249,7 @@ async function getWidgetExportData(widget: WidgetT): Promise<any> {
           );
         }
 
-        const data = await response.json();
-        // Use dataKey > results > root data
-        let finalData: any;
-        if (widget.dataKey && data[widget.dataKey] !== undefined) {
-          finalData = data[widget.dataKey];
-        } else if (data.results !== undefined) {
-          finalData = data.results;
-        } else {
-          finalData = data;
-        }
+        const finalData = unwrapExportData(await response.json(), widget.dataKey);
 
         // Check if the data is empty (null, undefined, empty array, or empty object)
         const isEmpty =
@@ -276,9 +291,9 @@ async function getWidgetExportData(widget: WidgetT): Promise<any> {
 
     // For regular widgets with excelDataFunction
     if (widget.excelDataFunction) {
-      const functionName = widget.excelDataFunction[0].replace("OBB.", "");
-      // Use the pro endpoint for Excel functions
-      const endpoint = `/pro/excel/${functionName.toLowerCase()}`;
+      const functionName = widget.excelDataFunction[0].replace("WORKSPACE.", "");
+      // Use the app endpoint for Excel functions
+      const endpoint = `/app/excel/${functionName.toLowerCase()}`;
       // console.log(`Fetching regular widget data from: ${endpoint}`, {
       //   widgetName: widget.name,
       //   functionName,
@@ -311,16 +326,7 @@ async function getWidgetExportData(widget: WidgetT): Promise<any> {
           );
         }
 
-        const data = await response.json();
-        // Use dataKey > results > root data
-        let finalData: any;
-        if (widget.dataKey && data[widget.dataKey] !== undefined) {
-          finalData = data[widget.dataKey];
-        } else if (data.results !== undefined) {
-          finalData = data.results;
-        } else {
-          finalData = data;
-        }
+        const finalData = unwrapExportData(await response.json(), widget.dataKey);
         // console.log("Regular widget API response:", {
         //   widget: widget.name,
         //   dataKeys:
@@ -373,11 +379,11 @@ async function getWidgetExportData(widget: WidgetT): Promise<any> {
 }
 
 // Helper function to add data to Excel sheet
-function addDataToSheet(sheet: ExcelJS.Worksheet, data: any, startRow = 1) {
+function addDataToSheet(sheet: ExcelJS.Worksheet, data: unknown, startRow = 1) {
   if (!data) return;
 
   // Handle special case for no data
-  if (data._noData === true) {
+  if (isNoData(data)) {
     // Skip parameter addition since they're already added in the main export logic
     // Just add the message about no data
     const messageRow = startRow;
@@ -408,7 +414,10 @@ function addDataToSheet(sheet: ExcelJS.Worksheet, data: any, startRow = 1) {
     }
 
     // Get headers from first row if it's an array of objects
-    const headers = typeof data[0] === "object" ? Object.keys(data[0]) : ["Value"];
+    const headers =
+      typeof data[0] === "object" && data[0] !== null
+        ? Object.keys(data[0])
+        : ["Value"];
 
     // Add headers
     headers.forEach((header, colIndex) => {
@@ -426,9 +435,9 @@ function addDataToSheet(sheet: ExcelJS.Worksheet, data: any, startRow = 1) {
     data.forEach((row, rowIndex) => {
       if (typeof row === "object") {
         headers.forEach((header, colIndex) => {
-          sheet.getCell(startRow + rowIndex + 1, colIndex + 1).value = row[
-            header
-          ] as ExcelJS.CellValue;
+          sheet.getCell(startRow + rowIndex + 1, colIndex + 1).value = (
+            row as Record<string, unknown>
+          )[header] as ExcelJS.CellValue;
         });
       } else {
         sheet.getCell(startRow + rowIndex + 1, 1).value = row as ExcelJS.CellValue;
@@ -565,8 +574,8 @@ async function ensureWidgetDataLoaded(widget: WidgetT): Promise<boolean> {
   // For widgets with excelDataFunction
   if (widget.excelDataFunction) {
     try {
-      const functionName = widget.excelDataFunction[0].replace("OBB.", "");
-      const endpoint = `/pro/excel/${functionName.toLowerCase()}`;
+      const functionName = widget.excelDataFunction[0].replace("WORKSPACE.", "");
+      const endpoint = `/app/excel/${functionName.toLowerCase()}`;
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -848,33 +857,25 @@ export default function ExcelExportDialog() {
   const [currentWidget, setCurrentWidget] = useState<string | null>(null);
   const [processedWidgets, setProcessedWidgets] = useState<WidgetProgress[]>([]);
 
-  const handleGenerateExcel = async (item: TreeItem<any> & { index: string }) => {
+  const handleGenerateExcel = async (item: SideBarItem) => {
     let exportSuccess = false;
     try {
       setIsGenerating(true);
       const tab = getTabById(item.index);
       // Get all widgets from the dashboard
-      let allWidgets: any[] = [];
+      let allWidgets: WidgetT[] = [];
 
       if (tab?.data?.widgets) {
-        // Get all widgets that are advanced-backend widgets with chartView
-        allWidgets = tab.data.widgets.filter(
-          (widget) =>
-            widget.connectionType === "advanced-backend" &&
-            widget.storage?.params &&
-            widget?.storage?.chartView,
-        );
+        allWidgets = getExportableWidgets(tab.data.widgets);
       }
 
       if (allWidgets.length === 0) {
-        toast.error(
-          "No advanced-backend widgets with chart view found in this dashboard",
-        );
+        toast.error("No exportable widgets found in this dashboard");
         return;
       }
 
       const workbook = new ExcelJS.Workbook();
-      workbook.creator = "OpenBB Workspace";
+      workbook.creator = "Workspace";
       workbook.created = new Date();
       workbook.modified = new Date();
       workbook.properties.date1904 = false;
@@ -1013,13 +1014,7 @@ export default function ExcelExportDialog() {
 
       // Create a sheet for each widget
       for (const widget of allWidgets) {
-        if (
-          !(
-            widget.connectionType === "advanced-backend" &&
-            widget.storage?.params &&
-            widget?.storage?.chartView
-          )
-        ) {
+        if (!isExportableWidget(widget)) {
           continue;
         }
 
@@ -1118,7 +1113,7 @@ export default function ExcelExportDialog() {
       const a = document.createElement("a");
       a.href = url;
       const timestamp = formatDateForFilename(new Date());
-      a.download = `OBB - ${sanitizeSheetName(item.data.name || "dashboard")} - ${timestamp}.xlsx`;
+      a.download = `Workspace - ${sanitizeSheetName(item.data.name || "dashboard")} - ${timestamp}.xlsx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1128,17 +1123,22 @@ export default function ExcelExportDialog() {
       toast.success("Excel file exported successfully", {
         description: (
           <>
-            Note: The OpenBB Add-in for Excel is required to get updated data. More
-            information can be found in the{" "}
-            <a
-              href="https://docs.openbb.co/excel"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-            >
-              Excel add-in docs
-            </a>
-            .
+            Note: The Add-in for Excel is required to get updated data.
+            {excelDocsHref && (
+              <>
+                {" "}
+                More information can be found in the{" "}
+                <a
+                  href={excelDocsHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                >
+                  Excel add-in docs
+                </a>
+                .
+              </>
+            )}
           </>
         ),
       });
@@ -1154,7 +1154,7 @@ export default function ExcelExportDialog() {
     }
   };
 
-  const handleGenerateStaticExcel = async (item: TreeItem<any> & { index: string }) => {
+  const handleGenerateStaticExcel = async (item: SideBarItem) => {
     let exportSuccess = false;
     try {
       setIsGenerating(true);
@@ -1163,7 +1163,7 @@ export default function ExcelExportDialog() {
       setProcessedWidgets([]);
 
       const tab = getTabById(item.index);
-      let allWidgets: any[] = [];
+      let allWidgets: WidgetT[] = [];
 
       if (tab?.data?.widgets) {
         // Log the tab data to see what we're working with
@@ -1181,12 +1181,7 @@ export default function ExcelExportDialog() {
         //   })),
         // });
 
-        allWidgets = tab.data.widgets.filter(
-          (widget) =>
-            widget.connectionType === "advanced-backend" &&
-            widget.storage?.params &&
-            widget?.storage?.chartView,
-        );
+        allWidgets = getExportableWidgets(tab.data.widgets);
 
         // First phase: Prepare widgets
         // console.log("Preparing widgets for export...");
@@ -1320,14 +1315,12 @@ export default function ExcelExportDialog() {
       }
 
       if (allWidgets.length === 0) {
-        toast.error(
-          "No advanced-backend widgets with chart view found in this dashboard",
-        );
+        toast.error("No exportable widgets found in this dashboard");
         return;
       }
 
       const workbook = new ExcelJS.Workbook();
-      workbook.creator = "OpenBB Workspace";
+      workbook.creator = "Workspace";
       workbook.created = new Date();
       workbook.modified = new Date();
       workbook.properties.date1904 = false;
@@ -1466,13 +1459,7 @@ export default function ExcelExportDialog() {
 
       // Create a sheet for each widget with static data
       for (const widget of allWidgets) {
-        if (
-          !(
-            widget.connectionType === "advanced-backend" &&
-            widget.storage?.params &&
-            widget?.storage?.chartView
-          )
-        ) {
+        if (!isExportableWidget(widget)) {
           continue;
         }
         try {
@@ -1488,7 +1475,6 @@ export default function ExcelExportDialog() {
           //   sourceName: widget.sourceName,
           //   latestParams,
           //   originalStorageParams: widget.storage?.params,
-          //   hasChartView: !!widget?.storage?.chartView,
           // });
 
           const tabSuffix =
@@ -1559,7 +1545,7 @@ export default function ExcelExportDialog() {
 
             // Add the data to the sheet (without Data header)
             if (data) {
-              if (data.success) {
+              if (isTruthyRecord(data) && data.success) {
                 // If the widget handled its own export, just add a note
                 sheet.getCell(`A${currentRow}`).value =
                   "Data exported to separate file";
@@ -1625,7 +1611,7 @@ export default function ExcelExportDialog() {
       const a = document.createElement("a");
       a.href = url;
       const timestamp = formatDateForFilename(new Date());
-      a.download = `OBB - ${sanitizeSheetName(item.data.name || "dashboard")} - ${timestamp}.xlsx`;
+      a.download = `Workspace - ${sanitizeSheetName(item.data.name || "dashboard")} - ${timestamp}.xlsx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1635,17 +1621,22 @@ export default function ExcelExportDialog() {
       toast.success("Excel file exported successfully", {
         description: (
           <>
-            Note: The OpenBB Add-in for Excel is required to get updated data. More
-            information can be found in the{" "}
-            <a
-              href="https://docs.openbb.co/excel"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-            >
-              Excel add-in docs
-            </a>
-            .
+            Note: The Add-in for Excel is required to get updated data.
+            {excelDocsHref && (
+              <>
+                {" "}
+                More information can be found in the{" "}
+                <a
+                  href={excelDocsHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                >
+                  Excel add-in docs
+                </a>
+                .
+              </>
+            )}
           </>
         ),
       });

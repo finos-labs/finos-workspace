@@ -23,8 +23,6 @@ import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { useCanSubmitApp } from "~/lib/appSubmissionFlag";
-import { inSnowflakeNativeApp } from "~/lib/constants";
-import { isLiteEnvironment } from "~/lib/onPremFeatureFlags";
 import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
@@ -54,13 +52,13 @@ const AppCard = memo<AppCardProps>((props) => {
       setShareUserAppsPopupId: state.setShareUserAppsPopupId,
     }),
   );
-  const isProTier = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.tier === "pro",
+  const isFullTier = useShallowFeatureFlagsStore(
+    (state) => state.featureFlags?.tier === "full",
   );
   const navigate = useNavigate();
   const canSubmitApp = useCanSubmitApp();
 
-  const isSaveAppLocked = !isProTier && !inSnowflakeNativeApp;
+  const isSaveAppLocked = !isFullTier;
 
   const { source, refreshApiSourceById } = useShallowBackendConnectorStore((state) => ({
     source: template.source?.id ? state.getApiSourceById(template.source.id) : null,
@@ -186,11 +184,6 @@ const AppCard = memo<AppCardProps>((props) => {
     [template.description, descriptionRef],
   );
 
-  const isOpenBBSandbox = useMemo(
-    () => template?.name?.includes("Sandbox App (FMP Data)"),
-    [template?.name],
-  );
-
   const isListedApp = template.type === "listed";
   const isBackendApp =
     template.source?.id && template.type !== "generated" && !isListedApp;
@@ -203,8 +196,8 @@ const AppCard = memo<AppCardProps>((props) => {
     const tagName = template.vendorName || template.source?.name;
     if (tagName) return <Tag name={tagName} />;
 
-    return isOpenBBSandbox ? <Tag name="OpenBB" /> : null;
-  }, [template.type, template.source?.name, template.vendorName, isOpenBBSandbox]);
+    return null;
+  }, [template.type, template.source?.name, template.vendorName]);
 
   const dropDownItems = useMemo<AppCardDropdownItem[]>(() => {
     if (isListedApp) {
@@ -271,10 +264,11 @@ const AppCard = memo<AppCardProps>((props) => {
     // Backends the user connected themselves (type "user") map 1:1 to a row on
     // the Connections page; link there and highlight it. Excludes shared/listed
     // backends, whose connection row id wouldn't match this source id.
-    if (template.type === "user" && template.source?.id) {
+    const connectionId = template.source?.id;
+    if (template.type === "user" && connectionId) {
       elements.unshift({
         label: "Go to connection",
-        onClick: () => navigate(`/app/connections?connectionId=${template.source!.id}`),
+        onClick: () => navigate(`/app/connections?connectionId=${connectionId}`),
       });
     }
 
@@ -284,8 +278,7 @@ const AppCard = memo<AppCardProps>((props) => {
       canSubmitApp &&
       isBackendApp &&
       template.type === "user" &&
-      template.source?.id &&
-      !isLiteEnvironment()
+      template.source?.id
     ) {
       elements.splice(elements.length - 1, 0, {
         label: "List app to marketplace",
@@ -405,10 +398,7 @@ const AppCard = memo<AppCardProps>((props) => {
       );
     }
 
-    if (
-      !(isOpenBBSandbox || template.creator) &&
-      (template.type === "openbb" || template.type === "shared" || template.isShared)
-    ) {
+    if (!template.creator && (template.type === "shared" || template.isShared)) {
       items.push(
         <HoverPopover
           key="shared"
@@ -445,7 +435,6 @@ const AppCard = memo<AppCardProps>((props) => {
     }
 
     if (
-      !isOpenBBSandbox &&
       template.type === "generated" &&
       template.creator &&
       template.sharedWith &&
@@ -463,7 +452,6 @@ const AppCard = memo<AppCardProps>((props) => {
     return items;
   }, [
     template,
-    isOpenBBSandbox,
     uniqueId,
     widgetTooltipItems,
     mcpServer,
@@ -516,7 +504,7 @@ const AppCard = memo<AppCardProps>((props) => {
         </div>
         <div className="mt-2.5 w-full rounded overflow-hidden bg-surface-card aspect-[5/3] border border-general-border-secondary">
           <AuthenticatedAvatar
-            src={inSnowflakeNativeApp ? undefined : imgSrc}
+            src={imgSrc}
             source={template.source}
             alt={template.name}
             className="w-full h-full object-cover text-ds-text-body text-center text-2xs"
@@ -530,7 +518,7 @@ const AppCard = memo<AppCardProps>((props) => {
                         ? whiteLabel.leftSidebarLogoDark
                         : whiteLabel.leftSidebarLogo
                     }
-                    alt={whiteLabel.name || "OpenBB"}
+                    alt={whiteLabel.name || "Workspace"}
                   />
                 ) : (
                   <Icon

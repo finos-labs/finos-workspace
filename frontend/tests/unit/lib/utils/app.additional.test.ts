@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { WidgetT } from "~/components/types";
+import type { ParamDef, WidgetT } from "~/components/types";
 import type { Group, Item, Items } from "~/lib/state/app";
 import {
   deleteItem,
@@ -15,20 +15,20 @@ import {
   getWidgetGroupValue,
   needsGroupValuesUpdate,
   needsGroupValueUpdate,
-  removeWidgetAndReposition,
   unlinkItemFn,
   updateWidgetGroupValues,
   updateWidgetInItem,
 } from "~/lib/utils/app";
+import {
+  makeParamGroup,
+  makeTabData,
+  makeTicker,
+  makeTickerGroup,
+  makeWidget,
+} from "../../factories";
+import { malformed, partial } from "../../mocks";
 
 // Mock external dependencies
-vi.mock("~/lib/state/charting", () => ({
-  useChartingStore: {
-    getState: () => ({
-      removeTabWidgetsData: vi.fn(),
-    }),
-  },
-}));
 
 vi.mock("~/lib/state/copilotData", () => ({
   useCopilotDataStore: {
@@ -56,7 +56,7 @@ describe("lib/utils/app - Additional Tests", () => {
           name: "Tab 1",
           isFolder: false,
           children: [],
-          data: { name: "Tab 1", widgets: [] },
+          data: makeTabData({ name: "Tab 1", widgets: [] }),
         },
       };
       expect(deleteItem("item-1", items)).toEqual(["item-1"]);
@@ -69,21 +69,21 @@ describe("lib/utils/app - Additional Tests", () => {
           name: "Folder",
           isFolder: true,
           children: ["item-1", "item-2"],
-          data: { name: "Folder" },
+          data: makeTabData({ name: "Folder" }),
         },
         "item-1": {
           index: "item-1",
           name: "Item 1",
           isFolder: false,
           children: [],
-          data: { name: "Item 1", widgets: [] },
+          data: makeTabData({ name: "Item 1", widgets: [] }),
         },
         "item-2": {
           index: "item-2",
           name: "Item 2",
           isFolder: false,
           children: [],
-          data: { name: "Item 2", widgets: [] },
+          data: makeTabData({ name: "Item 2", widgets: [] }),
         },
       };
       const result = deleteItem("folder-1", items);
@@ -102,21 +102,21 @@ describe("lib/utils/app - Additional Tests", () => {
           isFolder: true,
           isRoot: true,
           children: ["item-1", "item-2"],
-          data: { name: "Root" },
+          data: makeTabData({ name: "Root" }),
         },
         "item-1": {
           index: "item-1",
           name: "Item 1",
           isFolder: false,
           children: [],
-          data: { name: "Item 1", widgets: [] },
+          data: makeTabData({ name: "Item 1", widgets: [] }),
         },
         "item-2": {
           index: "item-2",
           name: "Item 2",
           isFolder: false,
           children: [],
-          data: { name: "Item 2", widgets: [] },
+          data: makeTabData({ name: "Item 2", widgets: [] }),
         },
       };
 
@@ -138,21 +138,21 @@ describe("lib/utils/app - Additional Tests", () => {
           isFolder: true,
           isRoot: true,
           children: ["item-1", "item-2"],
-          data: { name: "Root" },
+          data: makeTabData({ name: "Root" }),
         },
         "item-1": {
           index: "item-1",
           name: "Item 1",
           isFolder: false,
           children: [],
-          data: { name: "Item 1", widgets: [] },
+          data: makeTabData({ name: "Item 1", widgets: [] }),
         },
         "item-2": {
           index: "item-2",
           name: "Item 2",
           isFolder: false,
           children: [],
-          data: { name: "Item 2", widgets: [] },
+          data: makeTabData({ name: "Item 2", widgets: [] }),
         },
       };
 
@@ -165,66 +165,58 @@ describe("lib/utils/app - Additional Tests", () => {
 
   describe("getGroupLabel", () => {
     it("returns symbol for ticker group", () => {
-      const group: Group = {
+      const group = makeTickerGroup({
         id: "g1",
-        type: "ticker",
-        // @ts-expect-error - ignored for now
-        value: { symbol: "AAPL", id: "AAPL", name: "Apple", category: "equity" },
-      };
+        value: makeTicker({ name: "Apple" }),
+      });
       expect(getGroupLabel(group)).toBe("AAPL");
     });
 
     it("returns value for non-ticker group", () => {
-      // @ts-expect-error - ignored for now
-      const group: Group = {
-        id: "g1",
-        type: "param",
-        value: "annual",
-        groupById: "period",
-      };
+      const group = makeParamGroup({ id: "g1", groupById: "period", value: "annual" });
       expect(getGroupLabel(group)).toBe("annual");
     });
   });
 
   describe("getEndpointParamDef", () => {
-    const params = [
+    const params = partial<ParamDef[]>([
       { paramName: "date", type: "date" },
       { paramName: "ticker", type: "ticker" },
       { paramName: "endpoint1", type: "endpoint", groupById: "ep1" },
-    ];
+    ]);
 
     it("finds endpoint param by groupById", () => {
-      const result = getEndpointParamDef(params as any, "ep1");
+      const result = getEndpointParamDef(params, "ep1");
       expect(result?.paramName).toBe("endpoint1");
     });
 
     it("finds endpoint param by paramName for older saved groups", () => {
-      const result = getEndpointParamDef(params as any, "endpoint1");
+      const result = getEndpointParamDef(params, "endpoint1");
       expect(result?.groupById).toBe("ep1");
     });
 
     it("returns undefined for non-existent param", () => {
-      const result = getEndpointParamDef(params as any, "nonexistent");
+      const result = getEndpointParamDef(params, "nonexistent");
       expect(result).toBeUndefined();
     });
   });
 
   describe("getEndpointParamName", () => {
-    const params = [
+    const params = partial<ParamDef[]>([
       { paramName: "date", type: "date" },
       { paramName: "endpoint1", type: "endpoint", groupById: "ep1" },
-    ];
+    ]);
 
     it("returns param name for matching groupById", () => {
-      expect(getEndpointParamName(params as any, "ep1")).toBe("endpoint1");
+      expect(getEndpointParamName(params, "ep1")).toBe("endpoint1");
     });
 
     it("returns param name for matching paramName", () => {
-      expect(getEndpointParamName(params as any, "endpoint1")).toBe("endpoint1");
+      expect(getEndpointParamName(params, "endpoint1")).toBe("endpoint1");
     });
 
     it("returns undefined for non-matching groupById", () => {
-      expect(getEndpointParamName(params as any, "ep2")).toBeUndefined();
+      expect(getEndpointParamName(params, "ep2")).toBeUndefined();
     });
   });
 
@@ -236,54 +228,42 @@ describe("lib/utils/app - Additional Tests", () => {
     });
 
     it("returns mainTicker for ticker group", () => {
-      const widget = {
-        data: { mainTicker: { symbol: "AAPL" } },
-      } as any;
-      const group: Group = {
-        id: "g1",
-        type: "ticker",
-        value: { symbol: "AAPL" },
-      } as any;
-      expect(getWidgetGroupValue(widget, group)).toEqual({ symbol: "AAPL" });
+      const widget = makeWidget({ data: { mainTicker: makeTicker() } });
+      const group = makeTickerGroup({ id: "g1", value: makeTicker() });
+      expect(getWidgetGroupValue(widget, group)).toEqual(makeTicker());
     });
 
     it("returns param value for param group", () => {
-      const widget = {
+      const widget = partial<WidgetT>({
         storage: { params: { period: "annual" } },
-      } as any;
-      // @ts-expect-error - ignored for now
-      const group: Group = {
-        id: "g1",
-        type: "param",
-        groupById: "period",
-        value: "annual",
-      };
+      });
+      const group = makeParamGroup({ id: "g1", groupById: "period", value: "annual" });
       expect(getWidgetGroupValue(widget, group)).toBe("annual");
     });
   });
 
   describe("getTickerParamName", () => {
     it("returns paramName from ticker param", () => {
-      const widget = {
+      const widget = partial<WidgetT>({
         params: [{ type: "ticker", paramName: "symbol" }],
         data: { mainTicker: { category: "equity" } },
-      } as any;
+      });
       expect(getTickerParamName(widget)).toBe("symbol");
     });
 
     it("returns 'country' for economy group without ticker param", () => {
-      const widget = {
+      const widget = partial<WidgetT>({
         params: [],
         data: { mainTicker: { category: "country" } },
-      } as any;
+      });
       expect(getTickerParamName(widget)).toBe("country");
     });
 
     it("returns null when no ticker param and not economy group", () => {
-      const widget = {
+      const widget = partial<WidgetT>({
         params: [],
         data: { mainTicker: { category: "equity" } },
-      } as any;
+      });
       expect(getTickerParamName(widget)).toBeNull();
     });
   });
@@ -295,24 +275,23 @@ describe("lib/utils/app - Additional Tests", () => {
         name: "Tab",
         isFolder: false,
         children: [],
-        data: {
+        data: makeTabData({
           name: "Tab",
           widgets: [
-            { id: "w1", widgetId: "equity_profile" } as any,
-            { id: "w2", widgetId: "company_news" } as any,
+            partial<WidgetT>({ id: "w1", widgetId: "equity_profile" }),
+            partial<WidgetT>({ id: "w2", widgetId: "company_news" }),
           ],
-        },
+        }),
       };
-      const updatedWidget = {
+      const updatedWidget = partial<WidgetT>({
         id: "w1",
         widgetId: "equity_profile",
-        label: "Updated",
-      } as any;
+        name: "Updated",
+      });
 
       const result = updateWidgetInItem(item, updatedWidget);
 
-      // @ts-expect-error - ignored for now
-      expect(result.data?.widgets?.[0].label).toBe("Updated");
+      expect(result.data?.widgets?.[0].name).toBe("Updated");
       expect(result.data?.numberOfChanges).toBe(1);
     });
 
@@ -322,21 +301,25 @@ describe("lib/utils/app - Additional Tests", () => {
         name: "Tab",
         isFolder: false,
         children: [],
-        data: {
+        data: makeTabData({
           name: "Tab",
           numberOfChanges: 0,
-          widgets: [{ id: "w1", widgetId: "equity_profile", isNew: true } as any],
-        },
+          widgets: [
+            partial<WidgetT>({ id: "w1", widgetId: "equity_profile", isNew: true }),
+          ],
+        }),
       };
 
-      const result = updateWidgetInItem(item, {
-        id: "w1",
-        widgetId: "equity_profile",
-        label: "Startup update",
-      } as any);
+      const result = updateWidgetInItem(
+        item,
+        partial<WidgetT>({
+          id: "w1",
+          widgetId: "equity_profile",
+          name: "Startup update",
+        }),
+      );
 
-      // @ts-expect-error - ignored for now
-      expect(result.data?.widgets?.[0].label).toBe("Startup update");
+      expect(result.data?.widgets?.[0].name).toBe("Startup update");
       expect(result.data?.numberOfChanges).toBe(0);
     });
 
@@ -346,18 +329,17 @@ describe("lib/utils/app - Additional Tests", () => {
         name: "Tab",
         isFolder: false,
         children: [],
-        data: {
+        data: makeTabData({
           name: "Tab",
           numberOfChanges: 0,
-          widgets: [{ id: "w1", widgetId: "equity_profile" } as any],
-        },
+          widgets: [partial<WidgetT>({ id: "w1", widgetId: "equity_profile" })],
+        }),
       };
 
-      const result = updateWidgetInItem(item, {
-        id: "w1",
-        widgetId: "equity_profile",
-        label: "User update",
-      } as any);
+      const result = updateWidgetInItem(
+        item,
+        partial<WidgetT>({ id: "w1", widgetId: "equity_profile", name: "User update" }),
+      );
 
       expect(result.data?.numberOfChanges).toBe(1);
     });
@@ -368,37 +350,13 @@ describe("lib/utils/app - Additional Tests", () => {
         name: "Folder",
         isFolder: true,
         children: ["child-1"],
-        data: { name: "Folder" },
+        data: makeTabData({ name: "Folder" }),
       };
-      const widget = { id: "w1" } as any;
+      const widget = partial<WidgetT>({ id: "w1" });
 
       const result = updateWidgetInItem(item, widget);
 
       expect(result).toEqual(item);
-    });
-  });
-
-  describe("removeWidgetAndReposition", () => {
-    it("removes widget and returns updated array", () => {
-      const widgets = [
-        { id: "w1", gridData: { x: 0, y: 0, w: 20, h: 10, i: "w1" } },
-        { id: "w2", gridData: { x: 20, y: 0, w: 20, h: 10, i: "w2" } },
-      ] as any[];
-
-      const result = removeWidgetAndReposition(widgets, "w1");
-
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe("w2");
-    });
-
-    it("handles non-existent widget gracefully", () => {
-      const widgets = [
-        { id: "w1", gridData: { x: 0, y: 0, w: 20, h: 10, i: "w1" } },
-      ] as any[];
-
-      const result = removeWidgetAndReposition(widgets, "nonexistent");
-
-      expect(result).toHaveLength(1);
     });
   });
 
@@ -435,7 +393,7 @@ describe("lib/utils/app - Additional Tests", () => {
         tab2: [{ i: "w2" }],
       };
 
-      const result = getInnerTabsGridLayout(gridLayout as any);
+      const result = getInnerTabsGridLayout(gridLayout);
 
       expect(result[""]).toBeUndefined();
       expect(result.tab2).toBeDefined();
@@ -447,7 +405,7 @@ describe("lib/utils/app - Additional Tests", () => {
         tab2: [{ i: "w2" }],
       };
 
-      const result = getInnerTabsGridLayout(gridLayout as any);
+      const result = getInnerTabsGridLayout(gridLayout);
 
       expect(result.tab1).toBeUndefined();
       expect(result.tab2).toBeDefined();
@@ -457,15 +415,15 @@ describe("lib/utils/app - Additional Tests", () => {
   describe("getStoredFileUUIDs", () => {
     it("extracts UUIDs from file widgets with endpoint url", () => {
       const widgets = [
-        {
+        partial<WidgetT>({
           widgetId: "file-widget",
           connectionType: "file",
           endpoint: {
             url: "https://example.com/files/c0ebd61e-39fa-4382-b82f-4374ea96a30f.pdf",
           },
-        },
-        { widgetId: "equity_profile", connectionType: "platform" },
-      ] as any[];
+        }),
+        partial<WidgetT>({ widgetId: "equity_profile", connectionType: "single" }),
+      ];
 
       const result = getStoredFileUUIDs(widgets);
 
@@ -474,8 +432,8 @@ describe("lib/utils/app - Additional Tests", () => {
 
     it("returns empty array when no file widgets", () => {
       const widgets = [
-        { widgetId: "equity_profile", connectionType: "platform" },
-      ] as any[];
+        partial<WidgetT>({ widgetId: "equity_profile", connectionType: "single" }),
+      ];
 
       const result = getStoredFileUUIDs(widgets);
 
@@ -485,33 +443,21 @@ describe("lib/utils/app - Additional Tests", () => {
 
   describe("needsGroupValueUpdate", () => {
     it("returns true when widget param differs from group value", () => {
-      const widget = {
+      const widget = partial<WidgetT>({
         groupId: "g1",
         storage: { params: { period: "quarterly" } },
-      } as any;
-      // @ts-expect-error - ignored for now
-      const group: Group = {
-        id: "g1",
-        type: "param",
-        groupById: "period",
-        value: "annual",
-      };
+      });
+      const group = makeParamGroup({ id: "g1", groupById: "period", value: "annual" });
 
       expect(needsGroupValueUpdate(widget, group)).toBe(true);
     });
 
     it("returns false when values match", () => {
-      const widget = {
+      const widget = partial<WidgetT>({
         groupId: "g1",
         storage: { params: { period: "annual" } },
-      } as any;
-      // @ts-expect-error - ignored for now
-      const group: Group = {
-        id: "g1",
-        type: "param",
-        groupById: "period",
-        value: "annual",
-      };
+      });
+      const group = makeParamGroup({ id: "g1", groupById: "period", value: "annual" });
 
       expect(needsGroupValueUpdate(widget, group)).toBe(false);
     });
@@ -519,7 +465,8 @@ describe("lib/utils/app - Additional Tests", () => {
 
   describe("updateWidgetGroupValues", () => {
     it("updates param group values when widget params are row-grouped", () => {
-      const widget = {
+      // Widgets saved before their params were flat group them in rows
+      const widget = malformed<WidgetT>({
         widgetId: "muni_stats_filters",
         storage: { params: { use_categories: "" } },
         params: [
@@ -538,7 +485,7 @@ describe("lib/utils/app - Additional Tests", () => {
             },
           ],
         ],
-      } as any;
+      });
       const group = {
         id: "use-categories-group",
         type: "param",
@@ -550,7 +497,7 @@ describe("lib/utils/app - Additional Tests", () => {
 
       const updatedWidget = updateWidgetGroupValues(widget, [group]);
 
-      expect(updatedWidget.storage.params.use_categories).toBe(
+      expect(updatedWidget.storage?.params?.use_categories).toBe(
         "correctional_facilities",
       );
     });
@@ -558,13 +505,12 @@ describe("lib/utils/app - Additional Tests", () => {
 
   describe("needsGroupValuesUpdate", () => {
     it("returns true if any group needs update", () => {
-      const widget = {
+      const widget = partial<WidgetT>({
         groupId: "g1",
         storage: { params: { period: "quarterly" } },
-      } as any;
-      const groups: Group[] = [
-        // @ts-expect-error - ignored for now
-        { id: "g1", type: "param", groupById: "period", value: "annual" },
+      });
+      const groups = [
+        makeParamGroup({ id: "g1", groupById: "period", value: "annual" }),
       ];
 
       expect(needsGroupValuesUpdate(widget, groups)).toBe(true);
@@ -581,7 +527,11 @@ describe("lib/utils/app - Additional Tests", () => {
         data: {
           name: "My Tab",
           widgets: [
-            { id: "w1", widgetId: "equity_profile", innerTab: "overview" } as any,
+            partial<WidgetT>({
+              id: "w1",
+              widgetId: "equity_profile",
+              innerTab: "overview",
+            }),
           ],
           gridLayout: {
             overview: [{ i: "w1", x: 0, y: 0, w: 20, h: 10 }],
@@ -608,11 +558,11 @@ describe("lib/utils/app - Additional Tests", () => {
         data: {
           name: "My Tab",
           widgets: [
-            {
+            partial<WidgetT>({
               id: "w1",
               widgetId: "equity_profile",
               innerTab: "nonexistent-tab",
-            } as any,
+            }),
           ],
           gridLayout: {
             overview: [], // Widget not in overview either
@@ -634,11 +584,11 @@ describe("lib/utils/app - Additional Tests", () => {
         data: {
           name: "My Tab",
           widgets: [
-            {
+            partial<WidgetT>({
               id: "w1",
               widgetId: "equity_profile",
               innerTab: "tab-that-doesnt-exist",
-            } as any,
+            }),
           ],
           gridLayout: {}, // No tabs at all
           groups: [],

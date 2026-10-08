@@ -1,14 +1,11 @@
 import type { Config } from "tailwindcss";
-import conf from "@openbb/ui/tailwind.config";
 
 export default {
   darkMode: "class",
   content: [
     "./index.html",
     "./src/**/*.{js,jsx,ts,tsx,mdx}",
-    "./node_modules/@openbb/ui/dist/**/*.{js,jsx,ts,tsx}",
   ],
-  presets: [conf],
   theme: {
     extend: {
       fontFamily: {

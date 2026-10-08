@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  dangerousQuery,
-  validateEmail,
-  validateFolderName,
-} from "~/utils/validators";
+import { validateEmail, validateFolderName } from "~/utils/validators";
+import { malformed } from "../mocks";
 
 describe("validateEmail", () => {
   describe("valid emails", () => {
@@ -76,10 +73,10 @@ describe("validateEmail", () => {
     });
 
     it("should reject non-string inputs", () => {
-      expect(validateEmail(null as any)).toBe(false);
-      expect(validateEmail(undefined as any)).toBe(false);
-      expect(validateEmail(123 as any)).toBe(false);
-      expect(validateEmail({} as any)).toBe(false);
+      expect(validateEmail(malformed(null))).toBe(false);
+      expect(validateEmail(malformed(undefined))).toBe(false);
+      expect(validateEmail(malformed(123))).toBe(false);
+      expect(validateEmail(malformed({}))).toBe(false);
     });
 
     it("should reject empty string", () => {
@@ -132,8 +129,8 @@ describe("validateFolderName", () => {
 
     it("should handle null/undefined as falsy", () => {
       // validateFolderName returns falsy for null/undefined due to && short-circuit
-      expect(!!validateFolderName(null as any)).toBe(false);
-      expect(!!validateFolderName(undefined as any)).toBe(false);
+      expect(!!validateFolderName(malformed(null))).toBe(false);
+      expect(!!validateFolderName(malformed(undefined))).toBe(false);
     });
   });
 
@@ -147,101 +144,6 @@ describe("validateFolderName", () => {
       expect(validateFolderName("ROOT")).toBe(true);
       expect(validateFolderName("new folder")).toBe(true);
       expect(validateFolderName("New Folder")).toBe(true);
-    });
-  });
-});
-
-describe("dangerousQuery", () => {
-  describe("dangerous SQL keywords", () => {
-    it("should detect DROP keyword", () => {
-      expect(dangerousQuery("DROP TABLE users")).toBe("drop");
-      expect(dangerousQuery("drop table accounts")).toBe("drop");
-    });
-
-    it("should detect DELETE keyword", () => {
-      expect(dangerousQuery("DELETE FROM users")).toBe("delete");
-      expect(dangerousQuery("delete from accounts")).toBe("delete");
-    });
-
-    it("should detect INSERT keyword", () => {
-      expect(dangerousQuery("INSERT INTO users VALUES (1)")).toBe("insert");
-      expect(dangerousQuery("insert into accounts")).toBe("insert");
-    });
-
-    it("should detect UPDATE keyword", () => {
-      expect(dangerousQuery("UPDATE users SET name='test'")).toBe("update");
-      expect(dangerousQuery("update accounts set balance=0")).toBe("update");
-    });
-
-    it("should detect CREATE keyword", () => {
-      expect(dangerousQuery("CREATE TABLE test")).toBe("create");
-      expect(dangerousQuery("create database mydb")).toBe("create");
-    });
-
-    it("should detect ALTER keyword", () => {
-      expect(dangerousQuery("ALTER TABLE users")).toBe("alter");
-      // Note: "add column" contains "add" which comes first in banned_keywords list
-      expect(dangerousQuery("alter table accounts")).toBe("alter");
-    });
-
-    it("should detect EXEC keyword", () => {
-      expect(dangerousQuery("EXEC sp_executesql")).toBe("exec");
-      expect(dangerousQuery("exec stored_procedure")).toBe("exec");
-    });
-
-    it("should detect ADD keyword", () => {
-      expect(dangerousQuery("ADD COLUMN name")).toBe("add");
-    });
-
-    it("should detect BACKUP keyword", () => {
-      expect(dangerousQuery("BACKUP DATABASE mydb")).toBe("backup");
-    });
-
-    it("should detect CHECK keyword", () => {
-      expect(dangerousQuery("CHECK TABLE users")).toBe("check");
-    });
-
-    it("should detect CONSTRAINT keyword", () => {
-      expect(dangerousQuery("CONSTRAINT pk_id PRIMARY KEY")).toBe("constraint");
-    });
-  });
-
-  describe("safe queries", () => {
-    it("should return null for SELECT queries", () => {
-      expect(dangerousQuery("SELECT * FROM users")).toBe(null);
-      expect(dangerousQuery("select name, email from accounts")).toBe(null);
-    });
-
-    it("should return null for normal search terms", () => {
-      expect(dangerousQuery("apple stock price")).toBe(null);
-      expect(dangerousQuery("AAPL")).toBe(null);
-      expect(dangerousQuery("Microsoft earnings")).toBe(null);
-    });
-
-    it("should return null for empty strings", () => {
-      expect(dangerousQuery("")).toBe(null);
-    });
-  });
-
-  describe("case sensitivity", () => {
-    it("should detect keywords regardless of case", () => {
-      expect(dangerousQuery("DROP")).toBe("drop");
-      expect(dangerousQuery("drop")).toBe("drop");
-      expect(dangerousQuery("DrOp")).toBe("drop");
-      expect(dangerousQuery("DELETE")).toBe("delete");
-      expect(dangerousQuery("delete")).toBe("delete");
-    });
-  });
-
-  describe("keywords in context", () => {
-    it("should detect keywords within longer text", () => {
-      expect(dangerousQuery("Please drop this table")).toBe("drop");
-      expect(dangerousQuery("Can you delete my account")).toBe("delete");
-    });
-
-    it("should detect multiple dangerous keywords (returns first)", () => {
-      const result = dangerousQuery("DROP TABLE; DELETE FROM users");
-      expect(result).toBeTruthy();
     });
   });
 });

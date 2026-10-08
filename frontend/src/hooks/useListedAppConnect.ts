@@ -100,13 +100,14 @@ export function useListedAppConnect() {
 
       let endpointHeaders: Source["endpointHeaders"] = [
         ...authHeaders,
-        { key: "X-OpenBB-Workspace", value: "true", location: "headers" },
-        { key: "X-OpenBB-Listed-App-Id", value: app.id, location: "headers" },
+        { key: "X-Workspace", value: "true", location: "headers" },
+        { key: "X-Workspace-Listed-App-Id", value: app.id, location: "headers" },
       ];
 
-      if (parentAppUuid && existingSource.endpointHeaders?.length > 0) {
-        endpointHeaders = existingSource.endpointHeaders.map((header) => {
-          if (header.key === "X-OpenBB-Listed-App-Id") {
+      const existingHeaders = existingSource?.endpointHeaders;
+      if (parentAppUuid && existingHeaders && existingHeaders.length > 0) {
+        endpointHeaders = existingHeaders.map((header) => {
+          if (header.key === "X-Workspace-Listed-App-Id") {
             return { ...header, value: parentAppUuid };
           }
           return header;

@@ -29,7 +29,7 @@ interface PromptLibraryState {
   getPromptById: (id: string) => Prompt | undefined;
   reorderPrompts: (newOrder: Prompt[]) => void;
   uploadUserPrompts: () => Promise<void>;
-  debounceUpdatePrompts: () => Promise<void>;
+  debounceUpdatePrompts: () => Promise<void> | undefined;
   initializePrompts: () => Promise<void>;
 }
 

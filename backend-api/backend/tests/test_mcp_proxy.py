@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from routers.pro.index import MCPProxyRequest
+from routers.app.index import MCPProxyRequest
 from utilities.config import settings
 
 

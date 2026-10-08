@@ -3,18 +3,21 @@ import type React from "react";
 import { formatDate } from "~/lib/utils/utils";
 import { SourceMeta } from "../DataConnectors/NewComponents/types";
 import Icon from "../Icon";
+import type { IconId } from "../Icon.types";
 
 interface WidgetItemProps {
   name: string;
-  connectionType: string;
+  connectionType?: string;
   category?: string;
   subCategory?: string;
   description?: string;
   imgUrl?: string;
-  source?: string | string[];
+  source?: string | string[] | null;
   customIcon?: React.ReactNode;
   uploadedAt?: string | number;
 }
+
+const sourceIcons: Record<string, { icon: IconId } | undefined> = SourceMeta;
 
 const WidgetInfoTooltip: React.FC<WidgetItemProps> = ({
   name,
@@ -37,14 +40,14 @@ const WidgetInfoTooltip: React.FC<WidgetItemProps> = ({
         <div>
           {customIcon || (
             <Icon
-              id={SourceMeta[connectionType]?.icon ?? "widget"}
+              id={(connectionType && sourceIcons[connectionType]?.icon) || "widget"}
               className="size-4 min-w-4 text-brand-lighter dark:text-brand-main stroke-1.5"
             />
           )}
         </div>
         <span className="body-xs-medium line-clamp-2">{name}</span>
       </div>
-      {(category || description || uploadedAt) && <hr className="obb-divider my-1.5" />}
+      {(category || description || uploadedAt) && <hr className="ws-divider my-1.5" />}
       {category && (
         <p className="body-xs-medium mb-1.5 text-light-600 dark:text-dark-50">
           {[category && capitalize(category), subCategory && capitalize(subCategory)]
@@ -70,7 +73,7 @@ const WidgetInfoTooltip: React.FC<WidgetItemProps> = ({
         </p>
       )}
       {source && (
-        <div className="obb-uppercase-small-title pt-2 text-light-600 dark:text-dark-50">
+        <div className="ws-uppercase-small-title pt-2 text-light-600 dark:text-dark-50">
           {source}
         </div>
       )}

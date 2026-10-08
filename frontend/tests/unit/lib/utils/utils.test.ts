@@ -10,7 +10,6 @@ import {
   formatNumberMagnitude,
   formatNumberNoMagnitude,
   formatNumberThousands,
-  getContrastColor,
   hexToRGBString,
   isLight,
   isTabPath,
@@ -22,6 +21,7 @@ import {
   slugifyWithExtension,
   toFixedString,
 } from "~/lib/utils/utils";
+import { malformed } from "../../mocks";
 
 describe("slugifyWithExtension", () => {
   it("should slugify filenames with unicode characters", () => {
@@ -140,7 +140,7 @@ describe("extractUrlsFromText", () => {
   });
 
   it("should NOT detect false positives in code with dot notation", () => {
-    const codeText = `from snowflake.snowpark.functions import col, count_distinct
+    const codeText = `from pyspark.sql.functions import col, countDistinct
 
 # Tables (use your own DB/SCHEMA if needed)
 idx = session.table("SEC_DEMO.SEC_REPORT_IDX").alias("idx")
@@ -343,8 +343,8 @@ describe("beautifySlug", () => {
   });
 
   it("should handle null/undefined", () => {
-    expect(beautifySlug(null as any)).toBe("");
-    expect(beautifySlug(undefined as any)).toBe("");
+    expect(beautifySlug(malformed(null))).toBe("");
+    expect(beautifySlug(malformed(undefined))).toBe("");
   });
 
   it("should respect toUpperCase parameter", () => {
@@ -496,22 +496,6 @@ describe("parseValue", () => {
   });
 });
 
-describe("getContrastColor", () => {
-  it("should return white for dark colors", () => {
-    expect(getContrastColor("#000000")).toBe("#FFFFFF");
-    expect(getContrastColor("#333333")).toBe("#FFFFFF");
-  });
-
-  it("should return black for light colors", () => {
-    expect(getContrastColor("#FFFFFF")).toBe("#000000");
-    expect(getContrastColor("#EEEEEE")).toBe("#000000");
-  });
-
-  it("should return black for invalid colors", () => {
-    expect(getContrastColor("invalid")).toBe("#000000");
-  });
-});
-
 describe("isLight", () => {
   it("should return true for light colors", () => {
     expect(isLight("#FFFFFF")).toBe(true);
@@ -597,7 +581,7 @@ describe("ensureString", () => {
   });
 
   it("should handle null/undefined", () => {
-    expect(ensureString(null as any)).toBe("");
-    expect(ensureString(undefined as any)).toBe("");
+    expect(ensureString(malformed(null))).toBe("");
+    expect(ensureString(malformed(undefined))).toBe("");
   });
 });

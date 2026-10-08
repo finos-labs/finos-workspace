@@ -2,18 +2,16 @@ import { Responsive, WidthProvider } from "@jose-donato/react-grid-layout";
 import {
   type ComponentClass,
   forwardRef,
-  type LegacyRef,
   memo,
   type PropsWithChildren,
-  type ReactNode,
+  type Ref,
   useCallback,
   useMemo,
-  useRef,
 } from "react";
 import type { Layout, ResponsiveProps, WidthProviderProps } from "react-grid-layout";
 import { useDebouncedCallback } from "use-debounce";
 import useIsMobile from "~/hooks/useIsMobile";
-import { useTabContext } from "~/lib/contexts/TabContext";
+import { type GridItem, useTabContext } from "~/lib/contexts/TabContext";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn, saveToLS } from "~/lib/utils";
@@ -44,18 +42,14 @@ interface GridLayoutProps extends PropsWithChildren {
   extraClassName?: string;
 }
 
-interface LayoutProps extends Omit<ResponsiveProps, "resizeHandle"> {
-  resizeHandle: (resizeHandle: string, ref: LegacyRef<HTMLDivElement>) => ReactNode;
-}
-
-export const resizeHandle = (resizeHandle: string, ref: LegacyRef<HTMLDivElement>) => {
+export const resizeHandle = (resizeHandle: string, ref: Ref<HTMLElement>) => {
   return (
     <div
       className={cn(
         "absolute m-1 react-resizable-handler rotate-90",
         `react-resizable-handle-${resizeHandle}`,
       )}
-      ref={ref}
+      ref={ref as Ref<HTMLDivElement>}
     >
       <Icon id="maximize-01" className="w-3 h-3 text-light-500" />
     </div>
@@ -79,7 +73,6 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
       extraClassName = "",
     } = props;
 
-    const ref = useRef<HTMLDivElement>(null);
     const ReactGridLayout = useMemo(
       () =>
         WidthProvider(Responsive) as ComponentClass<
@@ -115,23 +108,22 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
               // remove all undefined values from the layout
               // this is to prevent dashboard diff always being different causing
               // unnecessary saves to the server
-              const newItem = { ...item };
-              for (const key in newItem)
-                if (newItem[key] === undefined) delete newItem[key];
+              const newItem = Object.fromEntries(
+                Object.entries(item).filter(([, value]) => value !== undefined),
+              ) as GridItem;
 
               if (!newItem.minH) newItem.minH = 4;
               if (!newItem.minW) newItem.minW = 8;
-              // @ts-expect-error
               if (isMobile) newItem.mobileH = newItem.h;
               return newItem;
             }),
             currentTab,
           );
         } else {
-          if (saveToLocalStorage) {
+          if (saveToLocalStorage && localStorageKey) {
             saveToLS(localStorageKey, "layout", layout);
           }
-          setLayouts(layout);
+          setLayouts?.(layout);
         }
       },
       [currentTab, saveTab, tabId, saveToLocalStorage, localStorageKey, isMobile],
@@ -259,11 +251,11 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
             };
           }
         },
-        onResizeStop: (..._args: any) => {
+        onResizeStop: () => {
           setIsResizingGridElement("");
           setPointerEvents(true);
         },
-      } as const satisfies LayoutProps;
+      } as const satisfies ResponsiveProps;
 
       return gridProps;
     }, []);
@@ -276,7 +268,6 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
           x: 0,
           w: 40,
           y: currentY,
-          // @ts-expect-error
           h: Math.max(item.mobileH || item.h, 8),
         };
         currentY += mobileItem.h;
@@ -307,8 +298,6 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
       return (
         <ReactGridLayout
           resizeHandles={gridCorners}
-          // @ts-expect-error
-          ref={(el) => (ref.current = el)}
           autoSize={true}
           draggableHandle={draggableHandle}
           rowHeight={rowHeight}
@@ -325,7 +314,6 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
           isResizable={enableResizing}
           breakpoints={memoizedGridProps.breakpoints}
           cols={memoizedGridProps.cols}
-          // @ts-expect-error
           resizeHandle={memoizedGridProps.resizeHandle}
           onDragStart={memoizedGridProps.onDragStart}
           onDrag={memoizedGridProps.onDrag}
@@ -341,7 +329,6 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
         </ReactGridLayout>
       );
     }, [
-      ref,
       childrenMemo,
       gridCorners,
       gridSnapping,

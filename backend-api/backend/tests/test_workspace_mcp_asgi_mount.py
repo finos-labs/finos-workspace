@@ -2,7 +2,7 @@ from starlette.routing import Mount
 
 
 def test_workspace_mcp_router_does_not_import_custom_jsonrpc_handler():
-    from routers.pro.workspace_mcp import router
+    from routers.app.workspace_mcp import router
 
     assert not hasattr(router, "handle_mcp_request")
 
@@ -22,7 +22,7 @@ def test_mcp_is_mounted_as_fastmcp_asgi_app():
 
 
 async def test_mcp_server_uses_sidecar_tool_schema():
-    from routers.pro.workspace_mcp.asgi import create_workspace_mcp_server
+    from routers.app.workspace_mcp.asgi import create_workspace_mcp_server
 
     server = create_workspace_mcp_server()
     tools = {tool.name: tool for tool in await server.list_tools()}

@@ -13,6 +13,7 @@ import {
   shareDashboard,
 } from "~/api/dashboard.api";
 import { showNotificationWithRememberMe } from "~/lib/utils/toast";
+import { partial } from "../mocks";
 
 // Mock apiClient
 vi.mock("~/api/api", () => ({
@@ -52,7 +53,7 @@ vi.mock("~/lib/state/auth", () => ({
 vi.mock("~/lib/state/featureFlags", () => ({
   useFeatureFlagsStore: {
     getState: vi.fn().mockReturnValue({
-      featureFlags: { tier: "pro" },
+      featureFlags: { tier: "full" },
     }),
   },
 }));
@@ -97,13 +98,13 @@ describe("Dashboard API functions", () => {
 
   describe("postDashboards", () => {
     it("should post dashboards correctly", async () => {
-      const dashboardData = { key: "value" };
+      const dashboardData = { key: "DELETE" } as const;
 
       vi.spyOn(apiClient, "post").mockResolvedValue({ data: {} });
 
       await postDashboards(dashboardData);
 
-      expect(apiClient.post).toHaveBeenCalledWith("/pro/dash/sync", {
+      expect(apiClient.post).toHaveBeenCalledWith("/app/dash/sync", {
         items: dashboardData,
       });
     });
@@ -113,7 +114,7 @@ describe("Dashboard API functions", () => {
     vi.spyOn(apiClient, "get").mockResolvedValue({ data: {} });
 
     await getDashboards();
-    expect(apiClient.get).toHaveBeenCalledWith("/pro/dash/sync");
+    expect(apiClient.get).toHaveBeenCalledWith("/app/dash/sync");
   });
 
   it("should handle errors when getting owned dashboards", async () => {
@@ -130,18 +131,22 @@ describe("Dashboard API functions", () => {
     });
 
     // The expect condition is not working. Either the mock is not working or the function is not being called.
-    it("should update shared dashboards for pro tier", async () => {
+    it("should update shared dashboards for full tier", async () => {
       const { useSharedAppStore } = await import("~/lib/state/sharedApp");
       const { useFeatureFlagsStore } = await import("~/lib/state/featureFlags");
 
       const updateOnlySharedItemsMock = vi.fn();
-      vi.mocked(useSharedAppStore.getState).mockReturnValue({
-        updateOnlySharedItems: updateOnlySharedItemsMock,
-      } as any);
+      vi.mocked(useSharedAppStore.getState).mockReturnValue(
+        partial({
+          updateOnlySharedItems: updateOnlySharedItemsMock,
+        }),
+      );
 
-      vi.mocked(useFeatureFlagsStore.getState).mockReturnValue({
-        featureFlags: { tier: "pro" },
-      } as any);
+      vi.mocked(useFeatureFlagsStore.getState).mockReturnValue(
+        partial({
+          featureFlags: { tier: "full" },
+        }),
+      );
 
       // Mock the API call
       vi.spyOn(apiClient, "get").mockResolvedValue({
@@ -163,19 +168,23 @@ describe("Dashboard API functions", () => {
       expect(updateOnlySharedItemsMock).toHaveBeenCalled();
     });
 
-    it("should not update shared dashboards for terminal tier", async () => {
+    it("should not update shared dashboards for basic tier", async () => {
       const { useSharedAppStore } = await import("~/lib/state/sharedApp");
       const { useFeatureFlagsStore } = await import("~/lib/state/featureFlags");
 
       const updateOnlySharedItemsMock = vi.fn();
-      vi.mocked(useSharedAppStore.getState).mockReturnValue({
-        updateOnlySharedItems: updateOnlySharedItemsMock,
-      } as any);
+      vi.mocked(useSharedAppStore.getState).mockReturnValue(
+        partial({
+          updateOnlySharedItems: updateOnlySharedItemsMock,
+        }),
+      );
 
-      // Mock the feature flags to be terminal
-      vi.mocked(useFeatureFlagsStore.getState).mockReturnValue({
-        featureFlags: { tier: "terminal" },
-      } as any);
+      // Mock the feature flags to be basic
+      vi.mocked(useFeatureFlagsStore.getState).mockReturnValue(
+        partial({
+          featureFlags: { tier: "basic" },
+        }),
+      );
 
       // Call the function
       await getSharedDashboardsAndUpdate();
@@ -190,12 +199,14 @@ describe("Dashboard API functions", () => {
     const { diffItemsWithRemote } = await import("~/lib/utils");
     const { useAppStore } = await import("~/lib/state/app");
 
-    vi.mocked(diffItemsWithRemote).mockReturnValue({ "some-uuid": "NEW" } as any);
-    vi.mocked(useAppStore.getState).mockReturnValue({
-      items: { "some-uuid": {} },
-      itemsStoredInCloud: {},
-      updateItemsStoredInCloud: vi.fn(),
-    } as any);
+    vi.mocked(diffItemsWithRemote).mockReturnValue({ "some-uuid": "DELETE" });
+    vi.mocked(useAppStore.getState).mockReturnValue(
+      partial({
+        items: { "some-uuid": {} },
+        itemsStoredInCloud: {},
+        updateItemsStoredInCloud: vi.fn(),
+      }),
+    );
 
     await saveDashboards({ withNotification: true });
 
@@ -212,7 +223,7 @@ describe("Dashboard API functions", () => {
     vi.spyOn(apiClient, "post").mockResolvedValue({});
 
     await deleteAllDashboards();
-    expect(apiClient.post).toHaveBeenCalledWith("/pro/dash/sync", {
+    expect(apiClient.post).toHaveBeenCalledWith("/app/dash/sync", {
       items: { id1: "DELETE", id2: "DELETE" },
     });
   });
@@ -223,7 +234,7 @@ describe("Dashboard API functions", () => {
     const dashboardUuid = "uuid";
     const emails = "test@example.com,another@example.com";
     await shareDashboard(dashboardUuid, emails);
-    expect(apiClient.post).toHaveBeenCalledWith(`/pro/dash/${dashboardUuid}/share`, {
+    expect(apiClient.post).toHaveBeenCalledWith(`/app/dash/${dashboardUuid}/share`, {
       shares: {
         "test@example.com": "view",
         "another@example.com": "view",
@@ -237,7 +248,7 @@ describe("Dashboard API functions", () => {
     const dashboardUuid = "uuid";
     const emails = ["test@example.com", "another@example.com"];
     await deleteDashboardShare(dashboardUuid, emails);
-    expect(apiClient.delete).toHaveBeenCalledWith(`/pro/dash/${dashboardUuid}/share`, {
+    expect(apiClient.delete).toHaveBeenCalledWith(`/app/dash/${dashboardUuid}/share`, {
       data: { shares: emails },
     });
   });
@@ -248,7 +259,7 @@ describe("Dashboard API functions", () => {
     const dashboardUuid = "uuid";
     await getDashboardShareUsers(dashboardUuid);
     expect(apiClient.get).toHaveBeenCalledWith(
-      `/pro/dash/${dashboardUuid}/shares/users`,
+      `/app/dash/${dashboardUuid}/shares/users`,
     );
   });
 });

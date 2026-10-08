@@ -7,19 +7,26 @@ import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
 import type { WorkspaceStateT } from "~/components/AI/hooks/useAiFetchRequestInit";
 import { compareSignatures, createSignatureMap } from "~/components/AI/hooks/utils";
-import type { WidgetT } from "~/components/types";
-import { inSnowflakeNativeApp } from "~/lib/constants";
+import type { ParamDef, WidgetT } from "~/components/types";
 import type { Selector } from "./app";
 import type { Copilot, CopilotWidget, DataContent, WidgetSignature } from "./copilot";
+
+export type WidgetDataMetadata = {
+  params?: Record<string, unknown>;
+  options?: Record<string, NonNullable<ParamDef["options"]>>;
+  columns?: string[];
+  param_sync?: unknown;
+  [key: string]: unknown;
+};
 
 export interface DashboardWidgetData {
   title?: string;
   innerTab?: string;
-  description: string;
+  description?: string;
   endpointUrl?: string;
-  metadata?: any;
-  data?: any; // replace with your actual data type
-  storage?: any;
+  metadata?: WidgetDataMetadata;
+  data?: unknown;
+  storage?: Record<string, unknown>;
   dashboardId?: string;
   captureExecutedParams?: boolean;
 }
@@ -33,8 +40,8 @@ export interface WidgetData extends DashboardWidgetData {
 export interface WidgetSubsetData {
   uuid: string;
   name: string;
-  description: string;
-  metadata: Record<string, any>;
+  description?: string;
+  metadata: Record<string, unknown>;
   data?: DataContent;
 }
 
@@ -48,10 +55,10 @@ export type CopilotWidgets = {
 };
 
 export type CopilotWidgetRuntimeState = {
-  copilotDraftParams?: Record<string, any>;
-  copilotExecutedParams?: Record<string, any>;
-  copilotPendingParams?: Record<string, any>;
-  [key: string]: any;
+  copilotDraftParams?: Record<string, unknown>;
+  copilotExecutedParams?: Record<string, unknown>;
+  copilotPendingParams?: Record<string, unknown>;
+  [key: string]: unknown;
 };
 
 const defaultState = {
@@ -98,22 +105,22 @@ export interface CopilotDataStore extends CopilotDataState {
   getCopilotWidgets: (targetAgend?: Copilot) => CopilotWidgets;
   setCopilotWidgets: (widgets: Partial<CopilotWidgets>) => void;
   updateSignaturesMap: () => Promise<void>;
-  getWidgetFromSignature: (signature: WidgetSignature) => WidgetT | null;
+  getWidgetFromSignature: (signature: WidgetSignature) => WidgetT | null | undefined;
   checkWidgetSignature: (uuid: string, signature: WidgetSignature) => boolean;
-  debounceUpdateSignaturesMap: () => Promise<void>;
-  getWidgetsInCurrentDashboard: (uuid?: string) => WidgetT | WidgetT[] | null;
+  debounceUpdateSignaturesMap: () => Promise<void> | undefined;
+  getWidgetsInCurrentDashboard: (uuid?: string) => WidgetT | WidgetT[] | undefined;
   setWidgetsInCurrentDashboard: (widgets: WidgetT[]) => void;
   /* Dashboard widgets data */
-  getDashboardWidgetData: (uuid?: string) => DashboardWidgetData | null; // get data for a specific widget
+  getDashboardWidgetData: (uuid?: string) => DashboardWidgetData | undefined; // get data for a specific widget
   getDashboardWidgetsData: () => Record<string, DashboardWidgetData> | null; // get data for all widgets
   addDataOnDashboardWidget: (widgetId: string, data: DashboardWidgetData) => void;
   setWidgetCopilotDraftParams: (
     widgetId: string,
-    draftParams: Record<string, any>,
+    draftParams: Record<string, unknown>,
   ) => void;
   beginWidgetCopilotExecution: (
     widgetId: string,
-    submittedParams: Record<string, any>,
+    submittedParams: Record<string, unknown>,
   ) => void;
   removeDataFromDashboardWidget: (widgetId: string, checkData?: boolean) => void; // new action for removing data from dashboard widget
   /* Widget subset data */
@@ -129,7 +136,7 @@ export interface CopilotDataStore extends CopilotDataState {
   extraWidgetsEnabled: boolean;
   toggleExtraWidgetsEnabled: () => boolean;
   generativeUiEnabled: boolean;
-  toggleGenerativeUiEnabled: () => boolean; // optional for backward compatibility
+  toggleGenerativeUiEnabled: () => boolean;
   /* Mention tracking */
   setMentionTrackedWidgets: (uuids: string[]) => void; // set mention-tracked widgets
   addMentionTrackedWidget: (uuid: string) => void; // add widget to mention tracking
@@ -144,7 +151,7 @@ export interface CopilotDataStore extends CopilotDataState {
   removeWidgetData: (uuid: string) => void; // clear all data related to a specific widget
   removeTabWidgetsData: (widgetIds: string[]) => void; // clear all data related to a list of widgets
   /* Widget runtime state */
-  setWidgetRuntimeState: (widgetId: string, state: any) => void; // set runtime state for a widget
+  setWidgetRuntimeState: (widgetId: string, state: CopilotWidgetRuntimeState) => void; // set runtime state for a widget
   getWidgetRuntimeState: (widgetId: string) => CopilotWidgetRuntimeState | undefined; // get runtime state for a widget
   clearWidgetRuntimeState: (widgetId: string) => void; // clear runtime state for a widget
 }
@@ -200,8 +207,10 @@ export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
           const features = targetAgent?.features || {};
 
           const copilotWidgets = cloneDeep(get().copilotWidgets);
-          for (const [key, feature] of Object.entries(CopilotFeatureMapping)) {
-            if (!features[feature]) copilotWidgets[key] = [];
+          for (const key of Object.keys(
+            CopilotFeatureMapping,
+          ) as (keyof typeof CopilotFeatureMapping)[]) {
+            if (!features[CopilotFeatureMapping[key]]) copilotWidgets[key] = [];
           }
 
           if (!features["widget-dashboard-select"]) {
@@ -388,7 +397,13 @@ export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
             ...state,
             widgetSubsetData: [
               ...state.widgetSubsetData,
-              { uuid, name, description, metadata, data: { content: content } },
+              {
+                uuid,
+                name: name ?? "",
+                description,
+                metadata: metadata ?? {},
+                data: { content: content },
+              },
             ],
           }));
         },
@@ -397,11 +412,11 @@ export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
           set((state) => ({
             ...state,
             widgetSubsetData: state.widgetSubsetData.filter(
-              (item) => item.data.content !== content,
+              (item) => item.data?.content !== content,
             ),
           })),
         clearWidgetSubsetData: () => set({ widgetSubsetData: [] }),
-        extraWidgetsEnabled: inSnowflakeNativeApp,
+        extraWidgetsEnabled: false,
         toggleExtraWidgetsEnabled: () => {
           const { extraWidgetsEnabled } = get();
           set((state) => ({
@@ -410,7 +425,7 @@ export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
           }));
           return !extraWidgetsEnabled;
         },
-        generativeUiEnabled: inSnowflakeNativeApp,
+        generativeUiEnabled: false,
         toggleGenerativeUiEnabled: () => {
           const { generativeUiEnabled } = get();
           set((state) => ({
@@ -480,7 +495,7 @@ export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
         removeTabWidgetsData: (widgetIds: string[]) => {
           for (const widgetId of widgetIds) get().removeWidgetData(widgetId);
         },
-        setWidgetRuntimeState: (widgetId: string, state: any) =>
+        setWidgetRuntimeState: (widgetId: string, state: CopilotWidgetRuntimeState) =>
           set((prev) => {
             const newRuntimeState = new Map(prev.widgetRuntimeState);
             newRuntimeState.set(widgetId, state);
@@ -498,8 +513,8 @@ export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
       {
         name: "copilot-data",
         partialize: (state) => ({
-          extraWidgetsEnabled: inSnowflakeNativeApp ? true : state.extraWidgetsEnabled,
-          generativeUiEnabled: inSnowflakeNativeApp ? true : state.generativeUiEnabled,
+          extraWidgetsEnabled: state.extraWidgetsEnabled,
+          generativeUiEnabled: state.generativeUiEnabled,
         }),
       },
     ),
@@ -507,8 +522,8 @@ export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
   shallow,
 );
 
-export function useShallowCopilotDataStore<S extends CopilotDataStore, T>(
-  selector: Selector<S, T>,
+export function useShallowCopilotDataStore<T>(
+  selector: Selector<CopilotDataStore, T>,
 ): T {
   return useCopilotDataStore(useShallow(selector), (prev, next) => isEqual(prev, next));
 }

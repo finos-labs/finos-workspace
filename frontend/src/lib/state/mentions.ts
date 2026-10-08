@@ -28,8 +28,6 @@ export const useMentionsStore = createWithEqualityFn<MentionsState>()(
   shallow,
 );
 
-export function useShallowMentionsStore<S extends MentionsState, T>(
-  selector: Selector<S, T>,
-): T {
+export function useShallowMentionsStore<T>(selector: Selector<MentionsState, T>): T {
   return useMentionsStore(useShallow(selector), (prev, next) => isEqual(prev, next));
 }

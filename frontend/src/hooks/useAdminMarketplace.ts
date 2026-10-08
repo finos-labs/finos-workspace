@@ -136,7 +136,7 @@ export function useAddWhitelist() {
     onError: (error: AxiosError) => {
       const message =
         error.response?.status === 404
-          ? "No user with that email — ask the developer to create an OpenBB account first"
+          ? "No user with that email — ask the developer to create an Workspace account first"
           : apiErrorMessage(error, "Couldn't add the developer");
       showNotification({
         message: "Couldn't add the developer",

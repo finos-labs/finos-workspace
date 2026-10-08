@@ -114,7 +114,7 @@ export interface InputProps<
 }
 
 /** Plain input component, can be used in form or outside it */
-export const Input = React.forwardRef<HTMLInputElement, InputProps>((props, fwRef) => {
+const InputBase = React.forwardRef<HTMLInputElement, InputProps>((props, fwRef) => {
   const {
     // default props
     className,
@@ -176,7 +176,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>((props, fwRe
   }
 
   function clear() {
-    const onChange = props.onChange! as (value: string) => void;
+    const onChange = props.onChange as ((value: string) => void) | undefined;
     if (onChange) {
       onChange("");
     } else {
@@ -282,19 +282,20 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>((props, fwRe
       <Message error={error}>{message}</Message>
     </div>
   );
-}) as <T extends InputValue = string>(
+});
+
+InputBase.displayName = "Input";
+
+export const Input = InputBase as <T extends InputValue = string>(
   props: InputProps<T> & { ref?: ForwardedRef<HTMLInputElement> },
 ) => ReactElement;
-
-// @ts-expect-error
-Input.displayName = "Input";
 
 /* Form */
 
 type FormInputProps<T extends InputValue = string> = InputProps<T>;
 
 /** Input field used inside <Form> only. */
-export const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
+const FormInputBase = React.forwardRef<HTMLInputElement, FormInputProps>(
   (props, ref) => {
     const { label, message, ...rest } = props;
 
@@ -308,9 +309,10 @@ export const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
       </FormItem>
     );
   },
-) as <T extends InputValue = string>(
+);
+
+FormInputBase.displayName = "FormInput";
+
+export const FormInput = FormInputBase as <T extends InputValue = string>(
   props: FormInputProps<T> & { ref?: ForwardedRef<HTMLInputElement> },
 ) => ReactElement;
-
-// @ts-expect-error
-FormInput.displayName = "FormInput";

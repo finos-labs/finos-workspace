@@ -8,10 +8,15 @@ import {
 import { useShallowAuthStore } from "~/lib/state/auth";
 import type { CopilotContextItem } from "~/lib/state/copilot";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
+import type { WidgetSubsetData } from "~/lib/state/copilotData";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
-import { extractUrlsFromText } from "~/lib/utils";
 import { showNotification } from "~/lib/utils/toast";
+import {
+  computeExpandedWidgets,
+  convertArtifactsToContextItems,
+  extractUrls,
+} from "./useAiFetchRequestInit";
 import { useGetCopilotRequestHeaders } from "./useGetCopilotRequestHeaders";
 import { useGetCustomApiKeys } from "./useGetCustomApiKeys";
 import { useGetFinalMessagesAndWidgets } from "./useGetFinalMessagesAndWidgets";
@@ -139,10 +144,10 @@ export function useEnhancePrompt() {
 
         const artifacts = getCurrentChatArtifacts();
         const contextArtifacts = convertArtifactsToContextItems(artifacts);
-        const context = [
+        const context: (CopilotContextItem | WidgetSubsetData)[] = [
           ...contextArtifacts,
           ...(widgetSubsetData || []),
-        ] as CopilotContextItem[];
+        ];
 
         // Get enabled tools if MCP is enabled
         const enabledTools = mcpToolsEnabled ? await getEnabledToolsForAgent() : [];
@@ -214,114 +219,4 @@ export function useEnhancePrompt() {
   );
 
   return { enhancePrompt, isEnhancing };
-}
-
-// Helper functions (copied from useAiFetchRequestInit.tsx to keep the hook self-contained)
-function computeExpandedWidgets(
-  selectedWidgets: any[],
-  temporaryWidgets: any[],
-  allWidgets: any[],
-  mentionWidgets: any[],
-  finalDashboardWidgets: any[],
-) {
-  const preExpandedPrimary = [
-    ...selectedWidgets,
-    ...temporaryWidgets,
-    ...mentionWidgets,
-  ];
-  const preExpandedSecondary = finalDashboardWidgets;
-
-  const expandedPrimary = expandTabsToWidgets(preExpandedPrimary);
-  const expandedSecondary = expandTabsToWidgets(preExpandedSecondary);
-  const expandedAllWidgets = expandTabsToWidgets(allWidgets);
-
-  const [dedupedPrimaryRaw, dedupedSecondaryRaw] = mutuallyExclude(
-    [expandedPrimary, expandedSecondary],
-    widgetDedupeKey,
-  );
-
-  const uniqueBy = (arr: any[], key: (item: any) => unknown) => {
-    const seen = new Set();
-    return arr.filter((item) => {
-      const val = key(item);
-      if (seen.has(val)) return false;
-      seen.add(val);
-      return true;
-    });
-  };
-
-  const dedupedPrimary = uniqueBy(dedupedPrimaryRaw, widgetDedupeKey);
-  const dedupedSecondary = uniqueBy(dedupedSecondaryRaw, widgetDedupeKey);
-
-  return {
-    expandedPrimaryWidgets: dedupedPrimary,
-    expandedSecondaryWidgets: dedupedSecondary,
-    expandedAllWidgets,
-  };
-}
-
-// Attachment widgets have no `uuid`, only `widget_id` — without the fallback they
-// all collide on `undefined` and get dropped as duplicates of each other.
-const widgetDedupeKey = (widget: any) => widget.uuid ?? widget.widget_id;
-
-function mutuallyExclude(groups: any[][], equalityKey: (item: any) => unknown) {
-  return groups.reduce((acc, currentGroup, _) => {
-    const newGroup = currentGroup.filter(
-      (widget) =>
-        !acc.some((group) =>
-          group.some((item) => equalityKey(item) === equalityKey(widget)),
-        ),
-    );
-    acc.push(newGroup);
-    return acc;
-  }, [] as any[][]);
-}
-
-function expandTabsToWidgets(widgets: any[]): any[] {
-  const tabWidgets = widgets.filter((widget) => widget.widget_id?.startsWith("tab_"));
-  const nonTabWidgets = widgets.filter(
-    (widget) => !widget.widget_id?.startsWith("tab_"),
-  );
-
-  const expandedWidgets: any[] = [];
-
-  tabWidgets.forEach((tabWidget) => {
-    const tabWidgetsInTab = tabWidget.metadata?.tabWidgets || [];
-    if (tabWidgetsInTab.length > 0) {
-      expandedWidgets.push(...tabWidgetsInTab);
-    }
-  });
-
-  return [...nonTabWidgets, ...expandedWidgets];
-}
-
-function extractUrls(text: string, limit = 4) {
-  const urls = extractUrlsFromText(text);
-  return urls.slice(0, limit);
-}
-
-function convertArtifactsToContextItems(artifacts: any[]): CopilotContextItem[] {
-  return artifacts.map((artifact) => {
-    return {
-      uuid: artifact.uuid,
-      name: artifact.name ?? "",
-      description: artifact.description ?? "",
-      data: {
-        items: [
-          {
-            content: JSON.stringify(artifact.content),
-            data_format: {
-              data_type: "object",
-              chart_params:
-                artifact.type === "chart" ? artifact.chart_params : undefined,
-              parse_as:
-                artifact.type === "chart" && artifact.chart_params
-                  ? "chart"
-                  : artifact.type,
-            },
-          },
-        ],
-      },
-    };
-  });
 }

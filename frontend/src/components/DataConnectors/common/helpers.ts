@@ -1,14 +1,11 @@
 import cloneDeep from "lodash/cloneDeep";
 import isEqual from "lodash.isequal";
 import { v4 as uuidv4 } from "uuid";
-import { deleteApiSource, patchWidgetMetadata } from "~/api/auth.api";
 import type { ParamDef, WidgetT } from "~/components/types";
-import { inSnowflakeNativeApp } from "~/lib/constants";
 import { useAppStore, type Widget } from "~/lib/state/app";
 import type { Source } from "~/lib/state/backendConnector";
 import { useCopilotStore } from "~/lib/state/copilot";
-import { useUserAppsStore } from "~/lib/state/userApps";
-import { isWidgetVizType, TableColumnDefsSchema } from "~/lib/types/app";
+import { isWidgetVizType } from "~/lib/types/app";
 import {
   createParamDefs,
   createURLString,
@@ -17,11 +14,8 @@ import {
   dispatchSaveState,
   dispatchUpdateWidget,
   generateRandomName,
-  isSSRMType,
-  syncEnableAdvancedFromDefinition,
 } from "~/lib/utils";
-import type { WidgetMetadataResponse } from "~/types/auth.type";
-import type { DatabaseSubmitForm, WidgetsType, WidgetType } from "~/utils/zodForms";
+import type { WidgetsType, WidgetType } from "~/utils/zodForms";
 
 export function listToSortedSet(list: string[]): string[] {
   return [...new Set(list)].sort();
@@ -106,10 +100,6 @@ export function createSourceWidget(
     endpointHeaders: source.endpointHeaders ?? [],
   } as WidgetT;
 
-  if (widget.type === "live_grid" && widget.wsEndpoint) {
-    newWidget.wsEndpoint = createURLString(widget.wsEndpoint, source.url);
-  }
-
   if (source.isSharedSource) {
     newWidget.isSharedWidget = true;
     newWidget.sourceName = `shared-${source.name}`;
@@ -129,28 +119,6 @@ export function getSourceWidgetsToAdd(widgets: WidgetsType, source: Source): Wid
   });
 }
 
-export function updateWidgets(
-  type: string,
-  realId: string | number,
-  values: DatabaseSubmitForm,
-) {
-  const { getWidgetsByAttribute, updateWidget } = useAppStore.getState();
-  const identifier = `${type}-${realId}`;
-  const selectedWidgets = getWidgetsByAttribute("widgetId", identifier);
-  const { name, query, sub_category, category } = values;
-  for (const [dashId, widgets] of Object.entries(selectedWidgets)) {
-    for (const widget of widgets) {
-      updateWidget(dashId, {
-        ...widget,
-        name,
-        description: query,
-        subCategory: sub_category,
-        category,
-      });
-    }
-  }
-}
-
 export const CATEGORY_OPTIONS = [
   "Economy",
   "Crypto",
@@ -164,7 +132,7 @@ export const CATEGORY_OPTIONS = [
   "Others",
 ] as const;
 
-export function getCleanedCategory(category: string) {
+export function getCleanedCategory(category: string | null | undefined) {
   const cleanedCategory = CATEGORY_OPTIONS.find(
     (c) => c.toLowerCase() === category?.toLowerCase()?.trim(),
   );
@@ -176,7 +144,10 @@ const reduceParams = (acc: string[], p: ParamDef) => {
   return show ? acc.concat(p.paramName) : acc;
 };
 
-export const getParamsOrder = (origParams: ParamDef[], params: ParamDef[]) => {
+export const getParamsOrder = (
+  origParams: ParamDef[] | undefined,
+  params: ParamDef[] | undefined,
+) => {
   const origParamOrder = (origParams || []).reduce(reduceParams, []);
   const paramOrder = (params || []).reduce(reduceParams, []);
 
@@ -217,7 +188,9 @@ export function updateWidgetEndpoints(
   saveState = true,
 ) {
   const { items, getWidgetsByAttributes, updateWidget } = useAppStore.getState();
-  const currentTab = items?.[activeDashboardId]?.data?.currentTab;
+  const currentTab = activeDashboardId
+    ? items?.[activeDashboardId]?.data?.currentTab
+    : undefined;
   const isSharedSource = source?.isSharedSource;
   const sourceName = source.prevName ?? source.name;
 
@@ -227,12 +200,16 @@ export function updateWidgetEndpoints(
     ...(isSharedSource && { isSharedWidget: true }),
   });
 
-  if (source.prevName && source.prevName !== source.name) {
+  if (source.prevName && source.name && source.prevName !== source.name) {
     const updateCitationsOrigin = useCopilotStore.getState().updateCitationsOrigin;
     updateCitationsOrigin(source.prevName, source.name);
   }
 
-  const onUpdatedWidget = (dashId: string, widget: WidgetT, innerTab: string) => {
+  const onUpdatedWidget = (
+    dashId: string,
+    widget: WidgetT,
+    innerTab: string | undefined,
+  ) => {
     if (activeDashboardId === dashId && innerTab === currentTab) {
       return dispatchUpdateWidget(widget.id, widget);
     }
@@ -243,8 +220,8 @@ export function updateWidgetEndpoints(
   const endpointHeaders = source.endpointHeaders ?? [];
   for (const [dashId, widgets] of Object.entries(selectedWidgets)) {
     for (const w of widgets) {
-      const widgetId = w.widgetId.replace(`${sourceName}-`, "");
-      const widgetJson = source.widgets[widgetId];
+      const widgetId = (w.widgetId ?? "").replace(`${sourceName}-`, "");
+      const widgetJson = source.widgets?.[widgetId];
       if (!widgetJson) {
         const newEndpoint = createWidgetEndpoint(w.endpoint?.url, endpointHeaders);
         const updatedWidget = {
@@ -262,10 +239,6 @@ export function updateWidgetEndpoints(
         w?.params,
       );
       const groupById = params?.find((p) => p?.type === "endpoint")?.groupById;
-      const wTable = widgetJson?.data?.table;
-
-      const columnsDefs = TableColumnDefsSchema.safeParse(wTable?.columnsDefs)?.data;
-      const chartView = wTable?.chartView;
 
       const newEndpoint = createWidgetEndpoint(
         createURLString(widgetJson.endpoint, source.url),
@@ -274,8 +247,6 @@ export function updateWidgetEndpoints(
 
       const subCategory = widgetJson.sub_category ?? widgetJson.subCategory;
       const widgetType = widgetJson.type ?? widgetJson.defaultViz;
-      const showAll =
-        wTable?.showAll !== undefined ? wTable?.showAll : w.data?.table?.showAll;
       const dataKey = widgetJson.data?.dataKey ?? w.data?.dataKey;
 
       const updatedWidget = {
@@ -292,13 +263,6 @@ export function updateWidgetEndpoints(
         data: {
           ...(w.data ?? {}),
           dataKey,
-          table: {
-            ...(w.data?.table ?? {}),
-            showAll,
-            columnsDefs: columnsDefs ?? [],
-            chartView: chartView ?? w.data?.table?.chartView,
-            formatterFn: wTable?.formatterFn,
-          },
         },
         endpoint: { ...w.endpoint, ...newEndpoint },
         staleTime: widgetJson.staleTime ?? w.staleTime,
@@ -319,48 +283,7 @@ export function updateWidgetEndpoints(
       const initialParams = createWidgetInitParams(updatedWidget, w?.data?.mainTicker);
       updatedWidget.storage = { ...updatedWidget.storage, params: initialParams };
 
-      if (updatedWidget.type === "file_viewer" && widgetJson.fileEndpoint) {
-        updatedWidget.fileEndpoint = widgetJson.fileEndpoint;
-      }
-
-      if (updatedWidget?.storage?.chartModel && chartView?.chartType) {
-        updatedWidget.storage.chartModel.chartType = chartView.chartType;
-      }
-
-      if (chartView?.chartType) {
-        updatedWidget.storage.chartView = chartView;
-      }
-
-      if (updatedWidget.type === "live_grid") {
-        if (widgetJson.wsEndpoint)
-          updatedWidget.wsEndpoint = createURLString(widgetJson.wsEndpoint, source.url);
-
-        if (widgetJson.data?.wsRowIdColumn || widgetJson.data?.wsRowIdColumns) {
-          const { wsRowIdColumns, wsRowIdColumn } = widgetJson.data;
-          const value = wsRowIdColumns || wsRowIdColumn;
-          updatedWidget.data.wsRowIdColumns =
-            typeof value === "string" ? [value] : value;
-        }
-      }
-
-      if (isSSRMType(updatedWidget.type)) {
-        updatedWidget.data.dataKey = "rowData";
-      }
-
-      if (updatedWidget.type === "ssrm_advanced" || updatedWidget.type === "omni") {
-        for (const key of ["schemaName"]) {
-          if (widgetJson[key]) {
-            updatedWidget[key] = widgetJson[key];
-          }
-        }
-      }
-
-      const advancedSynced = syncEnableAdvancedFromDefinition(
-        updatedWidget,
-        wTable?.enableAdvanced,
-      );
-
-      onUpdatedWidget(dashId, advancedSynced ?? updatedWidget, w.innerTab);
+      onUpdatedWidget(dashId, updatedWidget, w.innerTab);
     }
   }
 
@@ -386,169 +309,4 @@ export function deleteSourceWidgets(source: Source) {
       });
     }
   }
-}
-
-export function updateWidgetsSourceId(
-  sourceId: string,
-  prevSourceId: string,
-  locationHref: URL,
-) {
-  const { getWidgetsByAttributes, updateWidget } = useAppStore.getState();
-
-  const selectedWidgets = getWidgetsByAttributes({ sourceId: prevSourceId });
-
-  for (const [dashId, widgets] of Object.entries(selectedWidgets)) {
-    for (const widget of widgets) {
-      if (locationHref && widget.endpoint) {
-        widget.endpoint = patchSnowflakeEndpoint(widget.endpoint, locationHref);
-      }
-      updateWidget(dashId, { ...widget, sourceId });
-    }
-  }
-}
-
-export function patchSnowflakeEndpoint<T extends string | WidgetT["endpoint"]>(
-  endpoint: T,
-  locationHref: URL,
-): T {
-  if (!(locationHref && inSnowflakeNativeApp && !import.meta.env.DEV)) return endpoint;
-
-  try {
-    const updateUrl = (value: string) => {
-      if (!value?.includes("snowflakecomputing")) return value;
-
-      const url = new URL(value);
-      if (url.origin !== locationHref.origin) {
-        locationHref.pathname = url.pathname;
-        return locationHref.toString();
-      }
-      return value;
-    };
-
-    if (typeof endpoint === "string") {
-      endpoint = updateUrl(endpoint) as T;
-    } else if (typeof endpoint === "object" && endpoint.url) {
-      endpoint.url = updateUrl(endpoint.url);
-    }
-  } catch (error) {
-    console.error("Error patching Snowflake endpoint:", error);
-  }
-  return endpoint;
-}
-
-export function patchSnowflakeWidgetsEndpoint<T extends WidgetType | WidgetT>(
-  widgets: T[],
-  locationHref: URL,
-): T[] {
-  if (!(locationHref && inSnowflakeNativeApp && !import.meta.env.DEV)) return widgets;
-
-  for (const widget of widgets) {
-    widget.endpoint = patchSnowflakeEndpoint(widget.endpoint, locationHref);
-  }
-
-  return widgets;
-}
-
-/**
- * Patches widgets and user apps to reference the correct Snowflake API Source for an entity,
- * and removes any duplicate non-entity Snowflake API Sources.
- *
- * This function addresses legacy deployments where multiple Snowflake API Sources may exist for users
- * within the same entity. It updates all widgets and user apps that reference non-entity sources to use
- * the entity-level source, and deletes the obsolete sources.
- *
- * Workflow:
- * 1. Identifies the entity-level Snowflake API Source and collects IDs of other sources.
- * 2. Finds all widget metadata referencing non-entity sources and updates their `sourceId` to the entity source.
- * 3. Updates widgets in user apps to reference the entity source instead of non-entity sources.
- * 4. Deletes the obsolete non-entity Snowflake API Sources.
- *
- * Errors during patching or deletion are logged to the console.
- *
- * @param apiSources - Array of API sources associated with the user, including entity and non-entity sources.
- * @param metadataWidgets - Array of widget metadata responses to check for references to non-entity sources.
- * @returns A promise that resolves to an array containing only the entity-level API source after patching.
- */
-export async function patchSnowflakeSourceId(
-  apiSources: Source[],
-  metadataWidgets: WidgetMetadataResponse[],
-  locationHref: URL,
-) {
-  const { entitySource, otherSourceIds } = apiSources.reduce(
-    (acc, source) => {
-      if (source.isEntityBackend && !acc.entitySource) acc.entitySource = source;
-      else if (source.name === "Snowflake") acc.otherSourceIds.push(source.id!);
-      return acc;
-    },
-    { entitySource: null as Source | null, otherSourceIds: [] as string[] },
-  );
-
-  if (!entitySource || otherSourceIds.length === 0) return apiSources;
-
-  const widgetMetadata = metadataWidgets.filter(
-    (w) => w.widgetConfig?.sourceId && otherSourceIds.includes(w.widgetConfig.sourceId),
-  );
-
-  for (const item of widgetMetadata) {
-    const widgetConfig = {
-      ...item.widgetConfig,
-      sourceId: entitySource.id,
-    };
-    if (widgetConfig.endpoint) {
-      widgetConfig.endpoint = patchSnowflakeEndpoint(
-        widgetConfig.endpoint,
-        locationHref,
-      );
-    }
-    await patchWidgetMetadata({ widgetConfig }, item.widgetId).catch((err) => {
-      console.error(
-        `Failed to update widget metadata for widget ${item.widgetId}: ${err.message}`,
-      );
-    });
-  }
-
-  const { userApps, editUserApp } = useUserAppsStore.getState();
-
-  for (const sourceId of otherSourceIds) {
-    updateWidgetsSourceId(entitySource.id!, sourceId, locationHref);
-    for (const [appId, app] of Object.entries(userApps)) {
-      let hasWidget = false;
-      for (const widget of app.content.widgets) {
-        if (widget.sourceId === sourceId) {
-          widget.sourceId = entitySource.id!;
-          if (widget.endpoint) {
-            widget.endpoint = patchSnowflakeEndpoint(widget.endpoint, locationHref);
-          }
-          hasWidget = true;
-        }
-      }
-      if (!hasWidget) continue;
-
-      const widgets = cloneDeep(app.content.widgets);
-      await editUserApp(appId, { widgets }).catch((err) => {
-        console.error(
-          `Failed to update user app ${app.content.name} (${appId}): ${err.message}`,
-        );
-      });
-    }
-
-    await deleteApiSource(sourceId).catch((err) => {
-      console.error(`Failed to delete source ${sourceId}: ${err.message}`);
-    });
-  }
-
-  const { getWidgetsByAttributes, updateWidget } = useAppStore.getState();
-
-  const selectedWidgets = getWidgetsByAttributes({ sourceName: "Snowflake" });
-
-  for (const [dashId, widgets] of Object.entries(selectedWidgets)) {
-    for (const widget of widgets) {
-      if (locationHref && widget.endpoint?.url?.includes("snowflakecomputing")) {
-        const endpoint = patchSnowflakeEndpoint(widget.endpoint, locationHref);
-        if (endpoint?.url !== widget.endpoint?.url) updateWidget(dashId, { ...widget });
-      }
-    }
-  }
-
-  return [entitySource];
 }

@@ -9,7 +9,9 @@ type OperatingSystem = {
 const useDetectOS = (): OperatingSystem => {
   // Use modern userAgentData API with fallback
   const userAgent = navigator.userAgent.toLowerCase();
-  const userAgentData = (navigator as any).userAgentData;
+  const { userAgentData } = navigator as Navigator & {
+    userAgentData?: { platform?: string };
+  };
 
   // Modern browsers
   if (userAgentData?.platform) {

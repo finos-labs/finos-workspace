@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { createUser, inviteUser } from "~/api/admin.api";
 import { getEntityRoles } from "~/api/entity_roles.api";
+import { getErrorResponse } from "~/api/errors";
 import AdminDialogFooter from "~/components/AdminUsers/common/AdminDialogFooter";
 import { Checkbox } from "~/components/ds/atoms/Checkbox";
 import { FormInput } from "~/components/ds/atoms/Input";
@@ -14,12 +15,7 @@ import { Form, FormField } from "~/components/ds/molecules/Form";
 import { TabsContent } from "~/components/ds/molecules/Tabs";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
-import { isLiteEnvironment } from "~/lib/onPremFeatureFlags";
-import { getConfig } from "~/lib/runtimeConfig";
 import type { CreateUserDTO } from "~/types/user.type";
-
-const servicesEmailFF = getConfig().services.email;
-const isLite = isLiteEnvironment();
 
 const userFormSchemaBase = z.object({
   first_name: z.string().min(1),
@@ -64,7 +60,7 @@ export default function InviteSingleUser({
       last_name: "",
       email: "",
       role: "",
-      bypass_invitation: isLite || !servicesEmailFF,
+      bypass_invitation: true,
     },
   });
 
@@ -80,10 +76,10 @@ export default function InviteSingleUser({
       try {
         let toast_msg: string;
         let toast_description: string | JSX.Element;
-        let res: any;
+        let res: { success: boolean };
         if (values.bypass_invitation) {
           const { success, temporary_password } = await createUser(dto);
-          res = { success, temporary_password };
+          res = { success };
           if (import.meta.env.DEV) {
             console.log("success: ", success);
           }
@@ -123,8 +119,8 @@ export default function InviteSingleUser({
           onClose();
         }
       } catch (error) {
-        const data = error.response.data;
-        setErrorMessage(data.detail || "Unable to register the user");
+        const data = getErrorResponse(error).data;
+        setErrorMessage(String(data.detail || "Unable to register the user"));
         return;
       }
     },
@@ -161,49 +157,38 @@ export default function InviteSingleUser({
                     placeholder="Select a role"
                     options={roleOptions}
                     {...field}
+                    value={field.value ?? undefined}
                   />
                 )}
               />
             )}
-            {!isLite && (
-              <FormField
-                name="bypass_invitation"
-                control={userForm.control}
-                render={({ field }) => (
-                  <div className="flex items-center gap-1.5 pb-6">
-                    <Checkbox
-                      label="Bypass invitation"
-                      className="text-ds-text-caption"
-                      labelClassName="max-w-none whitespace-nowrap ml-1"
-                      checked={!servicesEmailFF || field.value}
-                      onCheckedChange={servicesEmailFF ? field.onChange : undefined}
-                      disabled={!servicesEmailFF}
-                    />
-                    <Tooltip
-                      message={
-                        servicesEmailFF
-                          ? "By selecting this option, the user will be added to the organization without the need to accept an invitation."
-                          : "Email service is disabled. Users will be added directly without invitation emails."
-                      }
-                      position="top"
-                    >
-                      <button type="button" className="inline-flex">
-                        <Icon
-                          id="help-outline-circle"
-                          className="text-ds-text-caption"
-                        />
-                      </button>
-                    </Tooltip>
-                  </div>
-                )}
-              />
-            )}
+            <FormField
+              name="bypass_invitation"
+              control={userForm.control}
+              render={({ field }) => (
+                <div className="flex items-center gap-1.5 pb-6">
+                  <Checkbox
+                    label="Bypass invitation"
+                    className="text-ds-text-caption"
+                    labelClassName="max-w-none whitespace-nowrap ml-1"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                  <Tooltip
+                    message="By selecting this option, the user will be added to the organization without the need to accept an invitation."
+                    position="top"
+                  >
+                    <button type="button" className="inline-flex">
+                      <Icon id="help-outline-circle" className="text-ds-text-caption" />
+                    </button>
+                  </Tooltip>
+                </div>
+              )}
+            />
           </div>
           {errorMessage && <p className="text-alert-error pb-6">{errorMessage}</p>}
           <AdminDialogFooter
-            primaryButtonName={
-              userForm.watch("bypass_invitation") || !servicesEmailFF ? "Add" : "Invite"
-            }
+            primaryButtonName={userForm.watch("bypass_invitation") ? "Add" : "Invite"}
             className="pr-0"
             primaryButtonDisabled={!userForm.formState.isValid}
           />

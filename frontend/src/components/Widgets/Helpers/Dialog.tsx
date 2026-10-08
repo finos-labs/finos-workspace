@@ -128,7 +128,7 @@ export default function Dialog({
         <div className="mt-auto flex items-center justify-end gap-2.5">
           {!(hideCancel || hideCloseButton) && (
             <DialogPrimitive.Close
-              className="obb-btn-outlined border px-3 py-1 font-medium md:w-fit"
+              className="ws-btn-outlined border px-3 py-1 font-medium md:w-fit"
               disabled={cancelBottomBar.disabled}
               onClick={cancelBottomBar.onClick}
             >
@@ -136,7 +136,7 @@ export default function Dialog({
             </DialogPrimitive.Close>
           )}
           <DialogPrimitive.Close
-            className="obb-btn-tertiary h-8 px-3 py-1 font-medium md:w-fit"
+            className="ws-btn-tertiary h-8 px-3 py-1 font-medium md:w-fit"
             disabled={actionBottomBar.disabled}
             onClick={actionBottomBar.onClick}
           >
@@ -181,11 +181,11 @@ export default function Dialog({
         <DialogPrimitive.Portal>
           {modal ? (
             <DialogPrimitive.Overlay
-              className={twMerge("obb-modal-overlay", extraOverlayClass)}
+              className={twMerge("ws-modal-overlay", extraOverlayClass)}
             />
           ) : (
             <div
-              className={twMerge("obb-modal-overlay w-full h-full", extraOverlayClass)}
+              className={twMerge("ws-modal-overlay w-full h-full", extraOverlayClass)}
               onClick={() => {
                 setOpen(false);
               }}
@@ -196,7 +196,7 @@ export default function Dialog({
       ) : (
         <>
           <DialogPrimitive.Overlay
-            className={twMerge("obb-modal-overlay", extraOverlayClass)}
+            className={twMerge("ws-modal-overlay", extraOverlayClass)}
           />
           {renderContent()}
         </>

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { mockConfig } from "../../mocks/runtimeConfig";
 
 // getDefaultCopilot uses a module-level cache, so we need a fresh import per test.
@@ -14,18 +14,14 @@ describe("getDefaultCopilot", () => {
       getConfig: () => mockConfig,
       _resetConfig: vi.fn(),
     }));
-    // Ensure inSnowflakeNativeApp evaluates to false on re-import
-    const origVal = import.meta.env.VITE_SNOWFLAKE_NATIVE_APP;
-    import.meta.env.VITE_SNOWFLAKE_NATIVE_APP = "false";
     const mod = await import("~/lib/constants");
-    import.meta.env.VITE_SNOWFLAKE_NATIVE_APP = origVal;
     getDefaultCopilot = mod.getDefaultCopilot;
   });
 
   it("returns a copilot with the correct id and name", () => {
     const copilot = getDefaultCopilot();
-    expect(copilot.id).toBe("openbb-copilot");
-    expect(copilot.name).toBe("OpenBB Copilot");
+    expect(copilot.id).toBe("default-copilot");
+    expect(copilot.name).toBe("Copilot");
   });
 
   it("builds the query endpoint from runtime AI URL", () => {
@@ -41,32 +37,30 @@ describe("getDefaultCopilot", () => {
 
   it("includes expected feature flags", () => {
     const copilot = getDefaultCopilot();
-    expect(copilot.features.streaming).toBe(true);
-    expect(copilot.features["file-upload"]).toBe(true);
-    expect(copilot.features["widget-dashboard-select"]).toBe(true);
-    expect(copilot.features["widget-global-search"]).toBe(true);
-    expect(copilot.features["generative-ui"]).toBe(true);
-    expect(copilot.features["mcp-tools"]).toBe(true);
-    expect(copilot.features["agent-orchestration"]).toBe(true);
+    expect(copilot.features?.streaming).toBe(true);
+    expect(copilot.features?.["file-upload"]).toBe(true);
+    expect(copilot.features?.["widget-dashboard-select"]).toBe(true);
+    expect(copilot.features?.["widget-global-search"]).toBe(true);
+    expect(copilot.features?.["generative-ui"]).toBe(true);
+    expect(copilot.features?.["mcp-tools"]).toBe(true);
+    expect(copilot.features?.["agent-orchestration"]).toBe(true);
   });
 
-  it("includes workspace-web-search when not in Snowflake native app", () => {
-    // The mock sets inSnowflakeNativeApp = false (via constants mock)
+  it("includes workspace-web-search", () => {
     const copilot = getDefaultCopilot();
-    expect(copilot.features["workspace-web-search"]).toBeDefined();
-    expect(copilot.features["workspace-web-search"]).toEqual(
+    expect(copilot.features?.["workspace-web-search"]).toBeDefined();
+    expect(copilot.features?.["workspace-web-search"]).toEqual(
       expect.objectContaining({ label: "Web Search" }),
     );
   });
 });
 
-describe("getApiUrl / getAiApiUrl / getPaymentsApiUrl / getDataPlatformUrl", () => {
+describe("getApiUrl / getAiApiUrl", () => {
   let constants: typeof import("~/lib/constants");
 
   beforeEach(async () => {
     mockConfig.urls.backend = "https://backend.test";
     mockConfig.urls.ai = "https://ai.test";
-    mockConfig.urls.platform = "https://platform.test";
     vi.resetModules();
     vi.doMock("~/lib/runtimeConfig", () => ({
       getConfig: () => mockConfig,
@@ -79,15 +73,7 @@ describe("getApiUrl / getAiApiUrl / getPaymentsApiUrl / getDataPlatformUrl", () 
     expect(constants.getApiUrl()).toBe("https://backend.test");
   });
 
-  it("getPaymentsApiUrl returns urls.backend from runtime config", () => {
-    expect(constants.getPaymentsApiUrl()).toBe("https://backend.test");
-  });
-
   it("getAiApiUrl returns urls.ai from runtime config", () => {
     expect(constants.getAiApiUrl()).toBe("https://ai.test");
-  });
-
-  it("getDataPlatformUrl returns urls.platform from runtime config", () => {
-    expect(constants.getDataPlatformUrl()).toBe("https://platform.test");
   });
 });

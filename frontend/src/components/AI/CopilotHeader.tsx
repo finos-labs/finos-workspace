@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  isValidElement,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { useCopilotContext } from "~/lib/contexts/CopilotChatContext";
@@ -10,7 +18,7 @@ import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
 import { isTabPath } from "~/lib/utils/utils";
-import widgetsMetadata from "~/lib/widgets.json";
+import { getCatalogWidget } from "~/lib/utils/widget";
 import { Popover, PopoverTrigger } from "../ds/atoms/Popover";
 import { cn } from "../ds/utils";
 import Icon from "../Icon";
@@ -24,10 +32,17 @@ import { useMentions } from "./hooks/useMentions";
 import { useShallowStreamingStore } from "./hooks/useStreaming";
 import { dispatchCollapseCopilotPanel, dispatchCopilotCommand } from "./hooks/utils";
 
+/** The message of a rich tooltip element, or the name when the tooltip is not one. */
+function getTooltipMessage(tooltip: ReactNode, name: string): ReactNode {
+  return isValidElement<{ message?: ReactNode }>(tooltip)
+    ? (tooltip.props.message ?? name)
+    : name;
+}
+
 interface WidgetInfo {
   uuid: string;
   name: string;
-  widget: CopilotWidget;
+  widget: CopilotWidget | null;
 }
 
 interface TabInfo {
@@ -105,7 +120,7 @@ function DashboardButton() {
     const createWidgetData = (widget: WidgetT) => {
       const customName = widget.name;
       const widgetId = widget.widgetId;
-      const metadataName = widgetsMetadata[widgetId]?.name;
+      const metadataName = getCatalogWidget(widgetId)?.name;
       const name = customName || metadataName || widgetId || "Unnamed Widget";
       const copilotWidget = createCopilotWidget(widget.id, widget);
 
@@ -132,7 +147,7 @@ function DashboardButton() {
     }
 
     return { hasTabs: true, widgetsByTab };
-  }, [getTabById, isWidgetSelected, widgetsMetadata, currentDashboardId]);
+  }, [getTabById, isWidgetSelected, currentDashboardId]);
 
   const { widgetData, totalWidgetCount, tabIds } = useMemo(() => {
     const widgetData = getWidgetsByTabs();
@@ -187,14 +202,16 @@ function DashboardButton() {
 
       if (!wasSelected) {
         const dashboard = getTabById(currentDashboardId);
-        const finalWidgets = dashboard.data?.widgets || [];
+        const finalWidgets = dashboard?.data?.widgets || [];
         const widget = finalWidgets.find((w) => w.id === widgetUuid);
         if (widget) {
           const widgetDataForContext = {
             title:
-              widget.name || widgetsMetadata[widget.widgetId]?.name || "Unnamed Widget",
-            description: widgetsMetadata[widget.widgetId]?.description || "",
-            endpointUrl: widgetsMetadata[widget.widgetId]?.endpoint_url || "",
+              widget.name ||
+              getCatalogWidget(widget.widgetId)?.name ||
+              "Unnamed Widget",
+            description: getCatalogWidget(widget.widgetId)?.description || "",
+            endpointUrl: "",
             data: widget.data || null,
             lastUpdate: Date.now(),
             source: "header-button",
@@ -216,7 +233,6 @@ function DashboardButton() {
       addDataOnDashboardWidget,
       getTabById,
       currentDashboardId,
-      widgetsMetadata,
     ],
   );
 
@@ -230,7 +246,7 @@ function DashboardButton() {
       onOpenChange={setIsExpanded}
       side="top"
       align="start"
-      id="obb-copilot-dashboard-button"
+      id="ws-copilot-dashboard-button"
       className="p-0! bg-general-bg-primary border border-general-border-secondary rounded-lg shadow-lg z-50 max-h-90 overflow-y-auto"
       style={{ minWidth: "16rem", maxWidth: "32rem" }} // min-w-64, max-w-[512px]
       onOpenAutoFocus={(e) => {
@@ -261,11 +277,10 @@ function DashboardButton() {
                     </div>
                   ) : (
                     tabData.widgets.map((widget, index) => {
-                      const widgetTooltipElement = getRichWidgetTooltip(
-                        widget.widget,
-                      ) as any;
-                      const tooltipMessage =
-                        widgetTooltipElement?.props?.message ?? widget.name;
+                      const tooltipMessage = getTooltipMessage(
+                        widget.widget && getRichWidgetTooltip(widget.widget),
+                        widget.name,
+                      );
                       return (
                         <Tooltip
                           id={`widget-badge-tooltip-${widget.uuid}`}
@@ -305,9 +320,10 @@ function DashboardButton() {
         ) : totalWidgetCount > 0 ? (
           <div className="p-2 space-y-1">
             {widgetData.widgets.map((widget, index) => {
-              const widgetTooltipElement = getRichWidgetTooltip(widget.widget) as any;
-              const tooltipMessage =
-                widgetTooltipElement?.props?.message ?? widget.name;
+              const tooltipMessage = getTooltipMessage(
+                widget.widget && getRichWidgetTooltip(widget.widget),
+                widget.name,
+              );
               return (
                 <Tooltip
                   id={`widget-badge-tooltip-${widget.uuid}`}
@@ -424,7 +440,7 @@ export function CopilotHeader() {
         if (copilotData.isMentionTrackedWidget?.(widget.uuid)) {
           // Update the command using the global dispatch
           dispatchCopilotCommand((prev) => {
-            const updatedText = removeMentionFromText(prev, widget.uuid);
+            const updatedText = removeMentionFromText(prev, widget.uuid ?? "");
             if (updatedText !== prev) return updatedText;
             return prev;
           });
@@ -437,7 +453,7 @@ export function CopilotHeader() {
 
   const buttons = useMemo(
     () => (
-      <div className="flex gap-0.5 items-center" id="obb-copilot-header-buttons">
+      <div className="flex gap-0.5 items-center" id="ws-copilot-header-buttons">
         <Tooltip
           message={
             loading
@@ -475,7 +491,7 @@ export function CopilotHeader() {
               });
               copilot.setCurrentChat(date);
             }}
-            className="obb-small-navbar-btn flex items-center justify-center"
+            className="ws-small-navbar-btn flex items-center justify-center"
           >
             <Icon id="plus" className="h-3.5 w-3.5" />
           </button>
@@ -515,7 +531,7 @@ export function CopilotHeader() {
                 );
               }
             }}
-            className="obb-small-navbar-btn flex items-center justify-center"
+            className="ws-small-navbar-btn flex items-center justify-center"
           >
             <Icon id="trash-02" className="h-3.5 w-3.5" />
           </button>
@@ -543,7 +559,7 @@ export function CopilotHeader() {
                 copilot.setLastPanelState(copilot.isFullscreen ? "fullscreen" : "open");
                 copilot.toggleFullscreen();
               }}
-              className="obb-small-navbar-btn flex items-center justify-center"
+              className="ws-small-navbar-btn flex items-center justify-center"
             >
               <Icon
                 id={copilot.isFullscreen ? "minimize-01" : "maximize-01"}
@@ -558,7 +574,7 @@ export function CopilotHeader() {
         >
           <button
             onClick={() => dispatchCollapseCopilotPanel()}
-            className="obb-small-navbar-btn flex items-center justify-center"
+            className="ws-small-navbar-btn flex items-center justify-center"
           >
             <Icon id="x-close" className="w-3.5 h-3.5" />
           </button>
@@ -588,7 +604,7 @@ export function CopilotHeader() {
             {effectiveFullscreen ? (
               <div
                 className="w-full flex items-center justify-between gap-2"
-                id="obb-copilot-header"
+                id="ws-copilot-header"
               >
                 {/* Left: Dashboard Button */}
                 <div className="flex items-center gap-2 min-h-[32px] flex-shrink-0 min-w-0">
@@ -609,7 +625,7 @@ export function CopilotHeader() {
                   expandedHeader ? "flex gap-2 w-full" : "",
                   "justify-between",
                 )}
-                id="obb-copilot-header"
+                id="ws-copilot-header"
               >
                 <div className="flex justify-between items-center gap-2">
                   <div className="flex items-center gap-1">

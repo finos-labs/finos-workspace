@@ -8,7 +8,7 @@ export async function login(
   password: string,
   remember: boolean,
 ): Promise<User> {
-  const { data } = await backendClient.post<BackendUser>("/pro/login", {
+  const { data } = await backendClient.post<BackendUser>("/app/login", {
     email: email,
     password: password,
     remember: remember,
@@ -25,16 +25,16 @@ export async function login(
 }
 
 export async function validateUser(): Promise<ValidationResponse> {
-  const { data } = await backendClient.get("/pro/validate");
+  const { data } = await backendClient.get("/app/validate");
   return data;
 }
 
 export async function logout() {
-  const { data } = await backendClient.post("/pro/logout");
+  const { data } = await backendClient.post("/app/logout");
   return data;
 }
 
 export async function getUserProfile(): Promise<UserProfile> {
-  const { data } = await backendClient.get<UserProfile>("/pro/user");
+  const { data } = await backendClient.get<UserProfile>("/app/user");
   return data;
 }

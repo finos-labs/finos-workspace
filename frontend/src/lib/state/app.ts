@@ -1,7 +1,6 @@
 import cloneDeep from "lodash/cloneDeep";
 import debounce from "lodash/debounce";
 import isEqual from "lodash.isequal";
-import posthog from "posthog-js";
 import type { Layout } from "react-grid-layout";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
@@ -15,23 +14,20 @@ import type {
   GridLayoutT as GridLayout,
   GroupT as Group,
   GroupTypeT,
+  NewWidget,
   ParamDef,
   TickerT as Ticker,
   WidgetT as Widget,
   WidgetJsonT,
 } from "~/components/types";
-import WIDGET_BUNDLES from "~/lib/widget_bundles.json";
 import type { DashSync } from "~/types/auth.type";
-import { getAllowedDataVendors } from "../onPremFeatureFlags";
 import {
   addDuplicateWidgetToItem,
   addToWidgetParamGroups,
-  checkIfWidgetsHaveMainTickerAndAreTheSame,
+  createRootFolder,
   deleteItemFn,
   diffItemsWithRemote,
   duplicateTabItem,
-  getCellOnClickParams,
-  getEndpointParamGroupByIds,
   getEndpointParamName,
   getEndpointParams,
   getInnerTabsGridLayout,
@@ -50,24 +46,16 @@ import { NotificationId, showNotificationWithRememberMe } from "../utils/toast";
 import {
   dispatchSaveState,
   dispatchUpdateWidget,
-  ensureArray,
   extractUUIDFromURL,
   scoreArrays,
   triggerCustomEvent,
 } from "../utils/utils";
-import { groupParamOverride } from "../utils/widget";
 import { createParamDefs } from "../utils/widgetParams";
 import { useAuthStore } from "./auth";
-import { useBackendConnectorStore } from "./backendConnector";
-import { useChartingStore } from "./charting";
 import { useCopilotDataStore } from "./copilotData";
 import { useFeatureFlagsStore } from "./featureFlags";
 import { useSharedAppStore } from "./sharedApp";
 import { useSidebarStore } from "./sidebar";
-import { useThemeStore } from "./theme";
-import { tickersStore } from "./tickers";
-
-const allowedVendorsFF = getAllowedDataVendors();
 
 export type Selector<S, T> = (state: S) => T;
 
@@ -77,19 +65,22 @@ export type Items = {
   [key: string]: Item;
 };
 
-export type MoveToTabs = Omit<Item, "children" | "widgets"> & {
+export type MoveToTabs = Omit<Item, "children" | "data"> & {
+  data: Omit<TabData, "widgets">;
   children?: MoveToTabs[];
 };
 
 export type Item = {
-  index?: string;
+  index: string;
   name?: "root" | string;
-  children?: string[];
+  children: string[];
   isFolder?: boolean;
   isShared?: boolean;
   isRoot?: boolean;
+  /** Whether the dashboard is shared with the whole entity. */
+  isEntityShared?: boolean;
   parentId?: string;
-  data?: TabData;
+  data: TabData;
   created_date?: string;
   updated_date?: string;
   created_by?: string;
@@ -98,25 +89,13 @@ export type Item = {
 export type TabData = {
   name: string;
   type?: "custom" | "template";
-  templateId?:
-    | "charting"
-    | "news"
-    | "equity"
-    | "equityAnalyst"
-    | "calendar"
-    | "etf"
-    | "comparison"
-    | "countryEconomics"
-    | "onboarding"
-    | "earnings"
-    | "custom"
-    | `custom-${string}`;
+  templateId?: "custom" | `custom-${string}`;
   gridLayout?: GridLayout;
-  widgets?: Widget[];
+  widgets: Widget[];
   locked?: boolean;
   lastUpdated?: number;
   numberOfChanges?: number;
-  groups?: Group[];
+  groups: Group[];
   currentTab?: string;
   storedFileUUIDs?: string[];
 };
@@ -129,27 +108,32 @@ export type SideBarItems = {
   [key: string]: SideBarItem;
 };
 
-type ItemT = Omit<Item, "data"> & {
-  data?: Omit<TabData, "widgets"> & { widgets?: (Widget | WidgetJsonT)[] };
+/** What it takes to add a tab: the store fills in the rest. */
+type ItemT = Omit<Item, "data" | "children"> & {
+  children?: string[];
+  data: Pick<TabData, "name"> &
+    Partial<Omit<TabData, "name" | "widgets">> & {
+      widgets?: (Widget | WidgetJsonT)[];
+    };
 };
 
-type WidgetTypes = Widget | WidgetJsonT;
+type WidgetTypes = NewWidget | WidgetJsonT;
 
 export type InnerTab = { id: string; name: string; newId?: string };
 export type InnerTabsT = { [tabId: string]: InnerTab };
-export type TabParamT = { total: number; options: string[] };
+export type TabParamT = { total: number; options: (string | number | boolean)[] };
 export type TabParams = { [key: string]: TabParamT };
 export type TabEndpointParams = { [key: string]: number };
 
 export type AppState = {
   unSavedChanges: boolean;
-  checkForChanges: () => boolean;
+  checkForChanges: () => boolean | undefined;
   getWidgetsFromGroup: (groupId: string, tabId?: string) => Widget[];
   getRootTabs: () => Item[];
   getMoveToTabs: (currentTab: string) => MoveToTabs[];
   isDashboardShared: (id: string) => boolean;
   setDashboardShared: (id: string, shared: boolean) => void;
-  getLatestDashboard: () => string;
+  getLatestDashboard: () => string | undefined;
   setTabLocked: (tabId: string, locked: boolean) => void;
   moveTabToFolder: (folderId: string, tabId: string, newName: string) => void;
   getAllTabs: () => Item[];
@@ -171,7 +155,7 @@ export type AppState = {
     remove?: boolean,
   ) => void;
   getWidgetGroup: (tabId: string, widgetId: string) => Group | undefined;
-  getWidgetGroups: (tabId: string, widgetId: string) => Group[];
+  getWidgetGroups: (tabId: string, widgetId: string | undefined) => Group[];
   addGroup: (tabId: string, group: Group) => void;
   duplicateWidgetById: (tabId: string, widgetId: string) => void;
   duplicateWidget: (tabId: string, widget: Widget) => void;
@@ -179,11 +163,12 @@ export type AppState = {
   currentTabParams: TabParams;
   currentEndpointParams: TabEndpointParams;
   updateTabParams: (tabId: string) => void;
-  items: Items;
+  /** `null` until the dashboards have been loaded. */
+  items: Items | null;
   hasItems: boolean;
-  rootItem: SideBarItem;
+  rootItem: SideBarItem | null;
   sideBarItems: SideBarItems;
-  itemsStoredInCloud: Items;
+  itemsStoredInCloud: Items | null;
   getSideBarItem: (id: string) => SideBarItem | undefined;
   updateItemsStoredInCloud: (items: Items) => void;
   updateItems: (items: SideBarItems) => void;
@@ -204,8 +189,8 @@ export type AppState = {
     >,
   ) => void;
   updateInnerTabs: (tabId: string, innerTabs: InnerTabsT) => void;
-  addWidget: (tabId: string, widget: WidgetTypes) => Promise<string>;
-  addWidgets: (tabId: string, widget: WidgetTypes[]) => Promise<string>;
+  addWidget: (tabId: string, widget: WidgetTypes) => Promise<string | undefined>;
+  addWidgets: (tabId: string, widget: WidgetTypes[]) => Promise<string | undefined>;
   addWidgetsToTabs: (
     tabIds: string[],
     widget: WidgetTypes | WidgetTypes[],
@@ -213,11 +198,11 @@ export type AppState = {
   getWidgetById: (widgetId: string) => Widget | undefined;
   getWidgetsByAttribute: <T extends keyof Widget>(
     attribute: T,
-    value: string,
+    value: Widget[T],
   ) => { [tabId: string]: Widget[] };
-  getWidgetsByAttributes: <T extends keyof Widget>(
-    attributes: { [TKey in T]: Widget[TKey] },
-  ) => { [tabId: string]: Widget[] };
+  getWidgetsByAttributes: (attributes: Partial<Widget>) => {
+    [tabId: string]: Widget[];
+  };
   removeWidget: (tabId: string, widgetId: string) => void;
   updateWidget: (tabId: string, widget: Widget) => void;
   updateTabWidgetsLayout: (
@@ -232,7 +217,7 @@ export type AppState = {
   updateRemoteItems: (remoteData: DashSync<"owned">) => void;
   updateOnlyItems: (items: Items) => void;
   saveDashboards: (props?: { logout?: boolean; withNotification?: boolean }) => void;
-  debounceSaveDashboards: () => Promise<void>;
+  debounceSaveDashboards: () => Promise<void> | undefined;
   getWidgetGridData: (tabId: string, widgetId: string) => GridData | undefined;
   minimizeWidget: (
     tabId: string,
@@ -242,30 +227,10 @@ export type AppState = {
   ) => void;
 };
 
-const isWidgetVendorAllowed = (widget: Widget | WidgetJsonT) => {
-  const realWidgetId = widget?.widgetId?.split("-")?.[0];
+/** The dashboards in the state, which are only read once they have been loaded. */
+const itemsOf = (state: AppState): Items => state.items ?? {};
 
-  // For core widgets (from openbb bundle), always allow them
-  if (WIDGET_BUNDLES.openbb.widgets.includes(realWidgetId)) {
-    return true;
-  }
-
-  // For external widgets, always allow them
-  if (widget.external || widget.type === "custom" || !widget.source) {
-    return true;
-  }
-
-  // Check if widget's source is in allowed vendors
-  if (typeof widget.source === "string") {
-    return allowedVendorsFF.includes(widget.source.toLowerCase());
-  }
-
-  return widget.source?.some((source) =>
-    allowedVendorsFF.includes(source.toLowerCase()),
-  );
-};
-
-function getLatestDashboardId(currentItems: Items) {
+function getLatestDashboardId(currentItems: Items | null) {
   const items = Object.values(currentItems || {});
   if (items.length === 0) return;
 
@@ -280,34 +245,38 @@ function getLatestDashboardId(currentItems: Items) {
 }
 
 function getSideBarItems(items: Items): SideBarItems {
-  return Object.entries(items).reduce((acc, [key, item]) => {
+  return Object.entries(items).reduce<SideBarItems>((acc, [key, item]) => {
     const { data, ...rest } = item;
-    acc[key] = rest;
     const lastUpdated = data?.lastUpdated || 0;
-    if (item.updated_date && lastUpdated > Date.parse(item.updated_date)) {
-      acc[key].updated_date = new Date(lastUpdated).toISOString();
-    }
-    acc[key].data = {
-      name: item.data?.name,
-      type: item.data?.type,
-      templateId: item.data?.templateId,
-      hasChanges: item.data?.numberOfChanges > 0,
+    acc[key] = {
+      ...rest,
+      ...(item.updated_date && lastUpdated > Date.parse(item.updated_date)
+        ? { updated_date: new Date(lastUpdated).toISOString() }
+        : {}),
+      data: {
+        name: item.data?.name,
+        type: item.data?.type,
+        templateId: item.data?.templateId,
+        hasChanges: (item.data?.numberOfChanges ?? 0) > 0,
+      },
     };
     return acc;
   }, {});
 }
 
-function getRootItem(sideBarItems: SideBarItems, state?: AppState) {
-  const rootItem = sideBarItems[state?.rootItem?.index];
-  if (!(rootItem || rootItem?.isRoot))
-    return Object.values(sideBarItems || {}).find((i) => i.isRoot);
+function getRootItem(sideBarItems: SideBarItems, state?: AppState): SideBarItem | null {
+  const rootIndex = state?.rootItem?.index;
+  const rootItem = rootIndex === undefined ? undefined : sideBarItems[rootIndex];
+  if (!rootItem) return Object.values(sideBarItems || {}).find((i) => i.isRoot) ?? null;
   return rootItem;
 }
 
 function updateSideBarItems(newItems: Items, state?: AppState) {
   const sideBarItems = getSideBarItems(newItems);
   const rootItem = getRootItem(sideBarItems, state);
-  const hasItems = sideBarItems[rootItem?.index]?.children?.length > 0;
+  const hasItems =
+    rootItem?.index !== undefined &&
+    (sideBarItems[rootItem.index]?.children?.length ?? 0) > 0;
 
   return { sideBarItems, rootItem, hasItems };
 }
@@ -370,9 +339,9 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         if (!item) {
           const sharedItems = useSharedAppStore?.getState().sharedItems;
           const sharedItem = sharedItems?.[id];
-          return sharedItem?.isShared;
+          return sharedItem?.isShared ?? false;
         }
-        return item?.isShared;
+        return item?.isShared ?? false;
       },
       setDashboardShared: (id: string, shared: boolean) => {
         const { items } = get();
@@ -383,7 +352,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           const newItems = {
             ...state.items,
             [id]: {
-              ...state.items[id],
+              ...itemsOf(state)[id],
               isShared: shared,
             },
           };
@@ -394,9 +363,9 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           };
         });
       },
-      getWidgetsFromGroup: (groupId: string, tabId: string) => {
-        const dashboards = get().items;
-        let widgetsList: Widget[] = dashboards?.[tabId]?.data?.widgets || [];
+      getWidgetsFromGroup: (groupId: string, tabId?: string) => {
+        const dashboards = get().items ?? {};
+        let widgetsList: Widget[] = tabId ? dashboards[tabId]?.data?.widgets || [] : [];
 
         if (!tabId) {
           widgetsList = Object.values(dashboards).flatMap(
@@ -416,7 +385,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
 
         const root = Object.values(items).find((item) => item.isRoot);
         const rootChildren = root?.children || [];
-        const allTabs = [];
+        const allTabs: Item[] = [];
         const getAllChildrenTabs = (children: string[]) => {
           for (const childId of children) {
             const child = items[childId];
@@ -443,17 +412,20 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           const tabs: MoveToTabs[] = [];
           for (const childId of children) {
             const child = items[childId];
+            if (!child) continue;
 
-            // biome-ignore format: off
-            const {data: { widgets, ...data },...rest } = child;
-            if (child?.isFolder && child?.children?.length > 0) {
+            const {
+              data: { widgets: _widgets, ...data },
+              ...rest
+            } = child;
+            if (child.isFolder && child.children.length > 0) {
               const children = recursiveGetMoveToTabs(child.children);
-              tabs.push({ ...rest, data: data, children });
+              tabs.push({ ...rest, data, children });
               continue;
             }
 
-            if (child?.index !== currentTab && child?.data) {
-              tabs.push({ ...rest, data: data, children: [] });
+            if (child.index !== currentTab) {
+              tabs.push({ ...rest, data, children: [] });
             }
           }
           return tabs;
@@ -465,8 +437,13 @@ export const useAppStore = createWithEqualityFn<AppState>()(
 
         const gridLayout = getInnerTabsGridLayout(items[currentTab]?.data?.gridLayout);
 
-        if (Object.keys(gridLayout).length > 1) {
-          moveToTabs.unshift(items[currentTab] as MoveToTabs);
+        const currentItem = items[currentTab];
+        if (currentItem && Object.keys(gridLayout).length > 1) {
+          const {
+            data: { widgets: _widgets, ...data },
+            ...rest
+          } = currentItem;
+          moveToTabs.unshift({ ...rest, data, children: [] });
         }
 
         return moveToTabs;
@@ -482,22 +459,13 @@ export const useAppStore = createWithEqualityFn<AppState>()(
       updateRemoteItems: (remoteData) => {
         set((_state: AppState) => {
           if (!remoteData || Object.keys(remoteData).length === 0) {
-            const rootId = uuidv4();
-            const items = {
-              [rootId]: {
-                index: rootId,
-                name: "root",
-                isFolder: true,
-                isRoot: true,
-                children: [],
-                data: { name: "root" },
-              },
-            };
+            const root = createRootFolder();
+            const items: Items = { [root.index]: root };
             const sideBarItems = getSideBarItems(items);
             return {
               items,
               itemsStoredInCloud: cloneDeep(items),
-              rootItem: sideBarItems[rootId],
+              rootItem: sideBarItems[root.index],
               hasItems: false,
             };
           }
@@ -524,7 +492,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           // we check all isFolder items and make sure the children are valid items
           for (const key in filteredRemoteItems) {
             const item = filteredRemoteItems[key];
-            if (item?.isFolder && item?.children?.length > 0) {
+            if (item?.isFolder && (item?.children?.length ?? 0) > 0) {
               filteredRemoteItems[key].children = item.children.filter(
                 (child: string) => {
                   const childItem = filteredRemoteItems[child];
@@ -576,31 +544,15 @@ export const useAppStore = createWithEqualityFn<AppState>()(
             const params = createParamDefs({ params: w.params || [] }).filter(
               (p) => p.type !== "ticker",
             );
-            const sqlParams = createParamDefs({
-              params: w.storage?.sqlParamDefs || [],
-            });
-
-            for (const p of sqlParams) {
-              if (p.type === "endpoint") {
-                const groupById = p.groupById || btoa(p.query.trim());
-                if (!acc.endpointParams[groupById]) acc.endpointParams[groupById] = 0;
-                acc.endpointParams[groupById] += 1;
-                continue;
-              }
-
-              if (!acc.tabParamOptions[p.paramName])
-                acc.tabParamOptions[p.paramName] = [];
-              acc.tabParamOptions[p.paramName].push(p.options || []);
-            }
-
             for (const param of params) {
               if (param.type === "endpoint") {
                 const groupById = param.groupById;
+                if (groupById === undefined) continue;
                 if (!acc.endpointParams[groupById]) acc.endpointParams[groupById] = 0;
                 acc.endpointParams[groupById] += 1;
                 continue;
               }
-              const paramName = groupParamOverride(param.paramName, w.widgetId, true);
+              const paramName = param.paramName;
 
               if (!acc.tabParamOptions[paramName]) acc.tabParamOptions[paramName] = [];
               acc.tabParamOptions[paramName].push(param?.options || []);
@@ -608,8 +560,8 @@ export const useAppStore = createWithEqualityFn<AppState>()(
 
             return acc;
           },
-          { tabParamOptions: {}, endpointParams: {}, sqlEndpointParams: {} } as {
-            tabParamOptions: { [key: string]: ParamDef["options"][] };
+          { tabParamOptions: {}, endpointParams: {} } as {
+            tabParamOptions: { [key: string]: NonNullable<ParamDef["options"]>[] };
             endpointParams: { [key: string]: number };
           },
         );
@@ -631,7 +583,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           paramOptions.sort((a, b) => b.length - a.length);
 
           for (const options of paramOptions) {
-            const values = options?.map((o: any) => o.value) || [];
+            const values = options?.map((o) => o.value) || [];
 
             if (!uniqueParams[paramName]) {
               uniqueParams[paramName] = { total: 1, options: values };
@@ -665,9 +617,9 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           items: {
             ...state.items,
             [tabId]: {
-              ...state.items[tabId],
+              ...itemsOf(state)[tabId],
               data: {
-                ...state.items[tabId].data,
+                ...itemsOf(state)[tabId].data,
                 locked,
               },
             },
@@ -689,15 +641,18 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         }
         return undefined;
       },
-      getWidgetsByAttribute: <T extends keyof Widget>(attribute: T, value: string) => {
+      getWidgetsByAttribute: <T extends keyof Widget>(
+        attribute: T,
+        value: Widget[T],
+      ) => {
         const { items } = get();
         if (!items) return {};
 
-        const widgets = {};
+        const widgets: { [tabId: string]: Widget[] } = {};
         for (const key in items) {
           if (Object.prototype.hasOwnProperty.call(items, key)) {
             const item = items[key];
-            if (item?.data?.widgets?.length > 0) {
+            if ((item?.data?.widgets?.length ?? 0) > 0) {
               const selections = item?.data?.widgets?.filter(
                 (w) => w[attribute] === value,
               );
@@ -711,15 +666,17 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         const { items } = get();
         if (!items) return {};
 
-        const widgets = {};
+        const widgets: { [tabId: string]: Widget[] } = {};
         for (const key in items) {
           if (Object.prototype.hasOwnProperty.call(items, key)) {
             const item = items[key];
-            if (item?.data?.widgets?.length > 0) {
+            if ((item?.data?.widgets?.length ?? 0) > 0) {
               const selections = item?.data?.widgets?.filter((w) =>
-                Object.entries(attributes).every(([key, value]) => w[key] === value),
+                Object.entries(attributes).every(
+                  ([key, value]) => w[key as keyof Widget] === value,
+                ),
               );
-              if (selections?.length > 0) widgets[item.index] = selections;
+              if (selections && selections.length > 0) widgets[item.index] = selections;
             }
           }
         }
@@ -733,7 +690,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         const { items } = get();
         if (!items) return;
 
-        const itemsToUpdate = Object.entries(sideBarItems).reduce(
+        const itemsToUpdate = Object.entries(sideBarItems).reduce<Items>(
           (acc, [key, item]) => {
             const currentItem = items[key];
             if (!currentItem) return acc;
@@ -780,18 +737,20 @@ export const useAppStore = createWithEqualityFn<AppState>()(
 
         const rootFolder = Object.values(items).find((item) => item.isRoot);
 
-        const parentFolder = items?.[parentFolderId] || rootFolder;
+        const parentFolder =
+          (parentFolderId === undefined ? undefined : items[parentFolderId]) ||
+          rootFolder;
 
         if (!(parentFolder?.isRoot || parentFolder?.isFolder)) return;
 
-        const parentId = parentFolder?.index;
+        const parentId = parentFolder.index;
 
         set((state: AppState) => {
           const newItems = {
             ...state.items,
             [parentId]: {
-              ...state.items[parentId],
-              children: [...state.items[parentId].children, folder.index],
+              ...itemsOf(state)[parentId],
+              children: [...itemsOf(state)[parentId].children, folder.index],
             },
             [folder.index]: {
               index: folder.index,
@@ -800,6 +759,8 @@ export const useAppStore = createWithEqualityFn<AppState>()(
               children: [],
               data: {
                 name: folder.data.name,
+                widgets: [],
+                groups: [],
               },
             },
           };
@@ -812,8 +773,6 @@ export const useAppStore = createWithEqualityFn<AppState>()(
 
         triggerCustomEvent("scrollToTabItem", { tabId: folder.index });
         get().debounceSaveDashboards();
-
-        if (posthog) posthog.capture("created_a_folder", { name: folder.data.name });
       },
       deleteFolder: (id: string) => {
         const { items } = get();
@@ -837,11 +796,11 @@ export const useAppStore = createWithEqualityFn<AppState>()(
 
         const newItems = unlinkItemFn(items, folderId);
         const folderToMove = newItems[folderId];
-        let newFolder = newItems[newFolderId];
+        let newFolder: Item | undefined = newItems[newFolderId];
 
         if (newFolderId === "root") {
-          newFolder = Object.values(items).find((item) => item.isRoot);
-          newFolderId = newFolder?.index;
+          newFolder = rootFolder;
+          newFolderId = rootFolder?.index ?? newFolderId;
         }
 
         if (!newFolder) {
@@ -853,12 +812,17 @@ export const useAppStore = createWithEqualityFn<AppState>()(
             parentId: rootId,
             data: {
               name: newName,
+              widgets: [],
+              groups: [],
             },
           };
 
           if (!rootFolder) return;
 
-          newItems[rootId].children = [...newItems[rootId].children, newId];
+          newItems[rootFolder.index].children = [
+            ...newItems[rootFolder.index].children,
+            newId,
+          ];
           newItems[folderId] = {
             ...folderToMove,
             parentId: newId,
@@ -893,13 +857,13 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         if (!items?.[tabId]) return;
 
         const newItems = unlinkItemFn(items, tabId);
-        let folder = folderId ? newItems[folderId] : null;
+        let folder: Item | null | undefined = folderId ? newItems[folderId] : null;
         const rootFolder = Object.values(items).find((item) => item.isRoot);
         const rootId = rootFolder?.index;
 
         if (folderId === "root") {
-          folder = Object.values(items).find((item) => item.isRoot);
-          folderId = folder?.index;
+          folder = rootFolder;
+          folderId = folder?.index ?? folderId;
         }
 
         if (!folder) {
@@ -911,11 +875,16 @@ export const useAppStore = createWithEqualityFn<AppState>()(
             parentId: rootId,
             data: {
               name: newName,
+              widgets: [],
+              groups: [],
             },
           };
 
           if (!rootFolder) return;
-          newItems[rootId].children = [...newItems[rootId].children, newId];
+          newItems[rootFolder.index].children = [
+            ...newItems[rootFolder.index].children,
+            newId,
+          ];
           newItems[tabId].parentId = newId;
 
           return set((state: AppState) => ({
@@ -951,17 +920,6 @@ export const useAppStore = createWithEqualityFn<AppState>()(
             [tabId]: newTab,
           };
 
-          try {
-            if (posthog) {
-              posthog.capture("duplicated_a_widget", {
-                widget_name: widget.widgetId,
-                backend_name: widget.sourceName,
-              });
-            }
-          } catch (error) {
-            console.log(error);
-          }
-
           return {
             items: newItems,
             ...updateSideBarItems(newItems, state),
@@ -985,17 +943,6 @@ export const useAppStore = createWithEqualityFn<AppState>()(
             [tabId]: newTab,
           };
 
-          try {
-            if (posthog) {
-              posthog.capture("duplicated_a_widget", {
-                widget_name: widget.widgetId,
-                backend_name: widget.sourceName,
-              });
-            }
-          } catch (error) {
-            console.log(error);
-          }
-
           return {
             items: newItems,
             ...updateSideBarItems(newItems, state),
@@ -1006,7 +953,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
       },
       getAllTabs: () => {
         const { items } = get();
-        return Object.values(items).filter((i) => !i.isFolder && i.data);
+        return Object.values(items ?? {}).filter((i) => !i.isFolder && i.data);
       },
       getAllTabActiveGroups: (tabId: string) => {
         const { items } = get();
@@ -1037,7 +984,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           tab.data.groups = tab.data.groups.filter((g) => g.id !== groupId);
 
           tab.data.widgets = tab.data.widgets.map((w) => {
-            if (["param", "endpointParam"].includes(group?.type)) {
+            if (group && ["param", "endpointParam"].includes(group.type)) {
               w.paramGroups = Object.entries(w.paramGroups || {}).reduce(
                 (acc, [key, value]) => {
                   if (value !== groupId) {
@@ -1045,7 +992,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
                   }
                   return acc;
                 },
-                {} as Record<string, string | null>,
+                {} as Record<string, string>,
               );
             }
 
@@ -1068,10 +1015,10 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           const newItems = {
             ...state.items,
             [id]: {
-              ...state.items[id],
+              ...itemsOf(state)[id],
               data: {
-                ...state.items[id].data,
-                numberOfChanges: state.items[id].data.numberOfChanges ?? 0 + 1,
+                ...itemsOf(state)[id].data,
+                numberOfChanges: itemsOf(state)[id].data.numberOfChanges ?? 0 + 1,
                 lastUpdated: Date.now(),
                 name: newName,
               },
@@ -1142,7 +1089,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
                       }
                       return acc;
                     },
-                    {} as Record<string, string | null>,
+                    {} as Record<string, string>,
                   );
                 } else {
                   w.paramGroups = addToWidgetParamGroups(w?.paramGroups, group);
@@ -1176,7 +1123,8 @@ export const useAppStore = createWithEqualityFn<AppState>()(
 
         return tab.data.groups.find((g) => g.id === widget.groupId);
       },
-      getWidgetGroups: (tabId: string, widgetId: string) => {
+      getWidgetGroups: (tabId: string, widgetId: string | undefined) => {
+        if (!widgetId) return [];
         const { items } = get();
         const { getDashboardById, getWidgetGroups } = useSharedAppStore.getState();
         if (getDashboardById(tabId)) return getWidgetGroups(tabId, widgetId);
@@ -1218,13 +1166,6 @@ export const useAppStore = createWithEqualityFn<AppState>()(
             [tabId]: newTab,
           },
         }));
-
-        if (posthog) {
-          posthog.capture("added_a_group", {
-            group: group,
-            tab_id: tabId,
-          });
-        }
       },
       getTabById: (id: string) => {
         const { items } = get();
@@ -1247,10 +1188,10 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         if (!items?.[id]) return;
 
         const rootFolder = Object.values(items).find((item) => item.isRoot);
-        const rootId = rootFolder?.index;
 
         if (!rootFolder) return;
 
+        const rootId = rootFolder.index;
         const duplicatedTab = duplicateTabItem(items[id], rootId);
 
         const newItems = {
@@ -1267,41 +1208,26 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           ...updateSideBarItems(newItems, state),
         }));
 
-        if (posthog) posthog.capture("duplicated_a_tab", { tab_id: id });
-
         triggerCustomEvent("scrollToTabItem", { tabId: duplicatedTab.index });
         get().debounceSaveDashboards();
 
         return duplicatedTab.index;
       },
-      addTab: (tab, ignoreLastWidgetGridData = false, defaultTicker = null) => {
+      addTab: (tab, ignoreLastWidgetGridData = false, defaultTicker?: Ticker) => {
         const { items } = get();
         if (!items) return;
 
         const rootFolder = Object.values(items).find((item) => item.isRoot);
-        const rootId = rootFolder?.index;
 
         if (!rootFolder) return;
 
-        const mainTicker = defaultTicker || useThemeStore.getState().defaultTicker;
+        const rootId = rootFolder.index;
+        const mainTicker = defaultTicker;
 
         let gridLayout = { ...(tab?.data?.gridLayout || {}) } as GridLayout;
         const widgets = [] as Widget[];
         const groups = tab?.data?.groups || [];
         let tabWidgetsFiltered = tab?.data?.widgets || [];
-
-        const initialLength = tabWidgetsFiltered.length;
-
-        // we need this for on prem feature flags for allowed vendors
-        tabWidgetsFiltered = tabWidgetsFiltered.filter(isWidgetVendorAllowed);
-        if (initialLength !== tabWidgetsFiltered.length) {
-          gridLayout = updateWidgetGridLayout({
-            widget: { id: "" } as Widget,
-            gridLayout,
-            tabWidgets: tabWidgetsFiltered,
-            removeWidget: true,
-          });
-        }
 
         const exceptWidgets =
           useFeatureFlagsStore.getState().featureFlags?.data_bundle_info
@@ -1309,7 +1235,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
 
         if (exceptWidgets?.length > 0) {
           tabWidgetsFiltered = tabWidgetsFiltered?.filter(
-            (w) => !exceptWidgets.includes(w.widgetId as any),
+            (w) => !(w.widgetId && exceptWidgets.includes(w.widgetId)),
           );
 
           // Removes widgets in gridlayout that are excluded
@@ -1324,7 +1250,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         const widgetsInGrid = Object.entries(gridLayout).reduce(
           (acc, [key, grid]) => {
             for (const g of grid) {
-              acc[g.i] = { ...g, innerTab: key };
+              if (g.i !== undefined) acc[g.i] = { ...g, innerTab: key };
             }
             return acc;
           },
@@ -1336,8 +1262,9 @@ export const useAppStore = createWithEqualityFn<AppState>()(
             (g): g is GroupTypeT<"param" | "endpointParam"> =>
               Object.values(w?.paramGroups || {}).includes(g.id),
           );
-          const group = w?.groupId && groups.find((g) => g.id === w.groupId);
-          const newMainTicker = group?.type === "ticker" ? group.value : mainTicker;
+          const group = w?.groupId ? groups.find((g) => g.id === w.groupId) : undefined;
+          const newMainTicker =
+            group?.type === "ticker" ? (group.value ?? mainTicker) : mainTicker;
           const newWidget = getWidgetData({ widget: w, defaultTicker: newMainTicker });
 
           for (const g of paramGroups) {
@@ -1371,10 +1298,12 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         const parentId = tab?.parentId || rootId;
 
         const newTab = removeDuplicateNavBarWidgets({
+          ...tab,
           index: tab.index || uuidv4(),
           isFolder: false,
           created_date: new Date().toISOString(),
           parentId,
+          children: tab.children ?? [],
           data: {
             ...tab.data,
             currentTab: tab.data?.currentTab ?? Object.keys(gridLayout)?.[0] ?? "",
@@ -1385,7 +1314,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
             storedFileUUIDs: getStoredFileUUIDs(widgets),
             gridLayout,
           },
-        } as Item);
+        });
 
         set((state: AppState) => {
           const newItems = { ...state.items };
@@ -1402,37 +1331,9 @@ export const useAppStore = createWithEqualityFn<AppState>()(
             };
             newItems[newTab.index] = cloneDeep({ ...newTab });
           }
-          if (posthog) {
-            posthog.capture("added_a_tab", {
-              tab_id: tab.index,
-              ticker: defaultTicker?.symbol,
-              tab_name: tab.data.name,
-              tab_template: tab.data.templateId,
-            });
-
-            if (!tab?.data?.templateId) {
-              const getApiSourceById =
-                useBackendConnectorStore.getState().getApiSourceById;
-              for (const widget of newTab.data.widgets) {
-                const source = widget.sourceId
-                  ? getApiSourceById(widget.sourceId)
-                  : undefined;
-                posthog.capture("added_a_widget", {
-                  widget_name: widget.widgetId,
-                  tab_id: newTab.index,
-                  backend_name: widget.sourceName,
-                  external: widget.external,
-                  source_id: widget.sourceId,
-                  listed_app_id: source?.vendorApp?.uuid,
-                  vendor_name: source?.vendorApp?.name,
-                });
-              }
-            }
-          }
 
           return {
             items: newItems as Items,
-            hasItems: true,
             ...updateSideBarItems(newItems, state),
           };
         });
@@ -1440,7 +1341,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         triggerCustomEvent("scrollToTabItem", { tabId: newTab.index });
         get().debounceSaveDashboards();
       },
-      removeTab: (id: string, navigate: (path: string) => void) => {
+      removeTab: (id: string, navigate?: (path: string) => void) => {
         const { items, getLastInnerTab } = get();
         const tab = items?.[id];
         if (!tab) return;
@@ -1487,15 +1388,18 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         const newGridLayout = {} as GridLayout;
         const currentTab = tab.data.currentTab;
         const newCurrentTab =
-          innerTabs?.[currentTab]?.newId || Object.keys(innerTabs || {})?.[0] || "";
+          (currentTab === undefined ? undefined : innerTabs?.[currentTab]?.newId) ||
+          Object.keys(innerTabs || {})?.[0] ||
+          "";
 
-        for (const key in tab.data?.gridLayout || {}) {
+        const tabGridLayout = tab.data.gridLayout ?? {};
+        for (const key in tabGridLayout) {
           const value = innerTabs?.[key];
 
           if (value?.newId) {
-            newGridLayout[value.newId] = tab.data?.gridLayout[key];
+            newGridLayout[value.newId] = tabGridLayout[key];
           } else if (value?.id) {
-            newGridLayout[key] = tab.data.gridLayout[key];
+            newGridLayout[key] = tabGridLayout[key];
           }
         }
 
@@ -1509,7 +1413,8 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         const newWidgets = tab.data.widgets
           .filter(
             (w) =>
-              innerTabs?.[w.innerTab] || (w.widgetId === "navigation_bar" && hasTabs),
+              (w.innerTab !== undefined && innerTabs?.[w.innerTab]) ||
+              (w.widgetId === "navigation_bar" && hasTabs),
           )
           .map((w) => {
             if (w.widgetId === "navigation_bar") {
@@ -1521,9 +1426,9 @@ export const useAppStore = createWithEqualityFn<AppState>()(
                 },
               };
             }
-            if (innerTabs[w.innerTab]?.newId) {
-              w.innerTab = innerTabs[w.innerTab].newId;
-            }
+            const renamedTab =
+              w.innerTab === undefined ? undefined : innerTabs[w.innerTab]?.newId;
+            if (renamedTab) w.innerTab = renamedTab;
             return w;
           });
 
@@ -1595,23 +1500,9 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           });
           return;
         }
-        // we need this for on prem feature flags for allowed vendors
-        const widgetsToAdd = widgets.filter(isWidgetVendorAllowed);
+        const widgetsToAdd = widgets;
         let currentTab = tab.data.currentTab ?? "";
         const storedFileUUIDs = new Set<string>(tab.data?.storedFileUUIDs || []);
-
-        const symbols = widgetsToAdd
-          .filter(
-            (w) =>
-              w.params?.find((p) => p.paramName === "symbol" && p.type === "ticker") &&
-              w.storage?.params?.symbol,
-          )
-          .map((w) => w.storage?.params?.symbol as string);
-
-        let tickersObj: Record<string, Ticker> | null = null;
-        if (symbols.length > 0) {
-          tickersObj = await tickersStore.getState().getOrQueryTickers(symbols);
-        }
 
         const newWidgets: Widget[] = [];
         let gridLayout: GridLayout = { ...(tab.data.gridLayout || {}) };
@@ -1619,29 +1510,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           initialWidget.innerTab = initialWidget?.innerTab || currentTab;
           const tabWidgets = [...tab.data.widgets, ...newWidgets];
 
-          // This is a temporary solution to handle ticker param type
-          // The method addWidget needs to be async, but it only awaits for tickersStore
-          // Once we fix the ticker issue the method can be synchronous again
-          let defaultTicker = useThemeStore.getState().defaultTicker;
-          const symbolParam = initialWidget.params?.find(
-            (p) => p.paramName === "symbol" && p.type === "ticker",
-          );
-          if (symbolParam) {
-            const symbol: string = ensureArray(
-              initialWidget.storage?.params?.symbol,
-            )?.[0];
-            if (tickersObj?.[symbol]) defaultTicker = tickersObj[symbol];
-          }
-
-          const finalWidget = getWidgetData({
-            widget: initialWidget,
-            defaultTicker: defaultTicker || useThemeStore.getState().defaultTicker,
-          });
-
-          const { someHaveMainTicker, allTheSame, mainTicker } =
-            checkIfWidgetsHaveMainTickerAndAreTheSame(
-              tabWidgets.length > 1 ? tabWidgets : [...tabWidgets, finalWidget],
-            );
+          const finalWidget = getWidgetData({ widget: initialWidget });
 
           const id = initialWidget.id ? initialWidget.id : uuidv4();
           const newWidget = {
@@ -1660,9 +1529,9 @@ export const useAppStore = createWithEqualityFn<AppState>()(
             });
           }
 
-          const widgetGroup =
-            newWidget?.groupId &&
-            tab?.data?.groups?.find((g) => g.id === newWidget?.groupId);
+          const widgetGroup = newWidget?.groupId
+            ? tab.data.groups.find((g) => g.id === newWidget?.groupId)
+            : undefined;
 
           const hasNavigationBar = tabWidgets.some(
             (widget) => widget.widgetId === "navigation_bar",
@@ -1681,7 +1550,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           }
 
           if (newWidget.widgetId !== "navigation_bar") {
-            currentTab = newWidget?.innerTab || tab.data.currentTab;
+            currentTab = newWidget?.innerTab || tab.data.currentTab || "";
           }
 
           gridLayout = updateWidgetGridLayout({
@@ -1690,35 +1559,6 @@ export const useAppStore = createWithEqualityFn<AppState>()(
             currentTab: currentTab,
             tabWidgets,
           });
-
-          const allSameCategory = tabWidgets.every(
-            (widget) =>
-              widget.data?.mainTicker?.category ===
-              newWidget?.data?.mainTicker?.category,
-          );
-
-          if (!defaultTicker && someHaveMainTicker && allTheSame && allSameCategory) {
-            if (newWidget.data && !newWidget.external) {
-              newWidget.data.mainTicker = mainTicker;
-            }
-          }
-
-          if (!defaultTicker && tabWidgets?.length > 0 && allSameCategory) {
-            const allSameGroupId = tabWidgets.every(
-              (widget) => widget.groupId && widget.groupId === tabWidgets[0].groupId,
-            );
-
-            if (allSameGroupId && newWidget.data) {
-              const groupTicker = tab?.data?.groups
-                ?.filter((g) => g.type === "ticker")
-                ?.find((g) => g.id === tabWidgets[0].groupId)?.value;
-
-              if (groupTicker) {
-                newWidget.groupId = tabWidgets[0].groupId;
-                newWidget.data.mainTicker = groupTicker;
-              }
-            }
-          }
 
           if (newWidget?.connectionType === "file") {
             const fileUUID = extractUUIDFromURL(newWidget?.endpoint?.url);
@@ -1767,15 +1607,12 @@ export const useAppStore = createWithEqualityFn<AppState>()(
 
           newWidget.isNew = true;
 
-          // Stamp a creation datetime on static artifacts (markdown notes,
-          // uploaded files, AI-added artifacts) so the widget navbar can surface
+          // Stamp a creation datetime on static artifacts (uploaded files,
+          // AI-added artifacts) so the widget navbar can surface
           // when it was added. Only set once so re-adds keep the original time.
           const isStaticArtifact =
-            newWidget.widgetId?.startsWith("rich_note") ||
-            newWidget.widgetId?.startsWith("copilot_table") ||
             newWidget.widgetId?.startsWith("html") ||
             newWidget.widgetId?.startsWith("file") ||
-            newWidget.widgetId === "ag_grid_file" ||
             newWidget.connectionType === "file";
           if (isStaticArtifact && !newWidget.storage?.createdAt) {
             newWidget.storage = {
@@ -1815,29 +1652,6 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           };
         });
 
-        if (posthog) {
-          const getApiSourceById = useBackendConnectorStore.getState().getApiSourceById;
-          for (const initialWidget of widgetsToAdd) {
-            const newWidget = newWidgets.find(
-              (w) => w.widgetId === initialWidget.widgetId,
-            );
-            if (!newWidget) continue;
-            const source = initialWidget.sourceId
-              ? getApiSourceById(initialWidget.sourceId)
-              : undefined;
-            posthog.capture("added_a_widget", {
-              widget_name: initialWidget.widgetId,
-              tab_id: tabId,
-              backend_name: initialWidget.sourceName,
-              external: initialWidget.external,
-              widgetType: newWidget.type,
-              source_id: initialWidget.sourceId,
-              listed_app_id: source?.vendorApp?.uuid,
-              vendor_name: source?.vendorApp?.name,
-            });
-          }
-        }
-
         get().debounceSaveDashboards();
 
         return newWidgets[newWidgets.length - 1]?.id;
@@ -1861,6 +1675,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           let currentTab = tab.data.currentTab;
 
           const widgetToRemove = widgets.find((w) => w.id === widgetId);
+          if (!widgetToRemove) return {};
 
           const paramGroups = Object.values(widgetToRemove?.paramGroups || {});
 
@@ -1886,7 +1701,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           }
 
           if (widgetToRemove?.widgetId === "navigation_bar") {
-            gridLayout = { overview: gridLayout[currentTab] };
+            gridLayout = { overview: gridLayout[currentTab ?? ""] ?? [] };
             const filteredWidgets = [];
 
             for (const w of tab.data.widgets) {
@@ -1926,7 +1741,6 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           };
 
           useCopilotDataStore.getState()?.removeWidgetData(widgetId);
-          useChartingStore.getState()?.removeWidgetData(widgetId);
 
           return {
             items: {
@@ -1946,47 +1760,25 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         const tab = items?.[tabId] || sharedTab;
         if (!tab) return;
 
-        const cellOnClickParams = getCellOnClickParams(widget, false);
-        const endpointParams = getEndpointParamGroupByIds(widget);
-        // Prevents parameter groups controlled by `cellOnClick` interactions from
-        // being overwritten during widget saves. Those groups are updated through
-        // updateGroup; widget storage can lag behind and must not become source of truth.
-        const shouldSkip = (group: GroupTypeT<"endpointParam" | "param">) => {
-          const groupById = group.groupById;
-          const paramName = endpointParams?.[groupById] ?? groupById;
-          return cellOnClickParams.includes(paramName);
-        };
-
         const widgetGroup = tab.data?.groups?.find(
           (g) => widget?.groupId && g.id === widget.groupId,
         );
 
-        const newGroupValue = getWidgetGroupValue(widget, widgetGroup);
-        if (
-          widgetGroup?.type === "ticker" &&
-          newGroupValue?.id !== widgetGroup?.value?.id
-        ) {
-          widgetGroup.value = newGroupValue;
+        if (widgetGroup?.type === "ticker") {
+          const newTicker = getWidgetGroupValue(widget, widgetGroup) ?? null;
+          if (newTicker?.id !== widgetGroup.value?.id) widgetGroup.value = newTicker;
         }
 
-        if (
-          widgetGroup?.type === "endpointParam" &&
-          !shouldSkip(widgetGroup) &&
-          widgetGroup?.value !== newGroupValue
-        ) {
-          widgetGroup.value = newGroupValue;
+        if (widgetGroup?.type === "endpointParam") {
+          const newValue = getWidgetGroupValue(widget, widgetGroup) ?? null;
+          if (widgetGroup.value !== newValue) widgetGroup.value = newValue;
         }
 
         const currentGroups = Object.values(widget.paramGroups || {});
 
         for (const group of (tab.data.groups || []) as Group[]) {
-          if (
-            group?.type === "ticker" ||
-            !currentGroups.includes(group?.id) ||
-            shouldSkip(group)
-          )
-            continue;
-          const value = getWidgetGroupValue(widget, group);
+          if (group?.type === "ticker" || !currentGroups.includes(group?.id)) continue;
+          const value = getWidgetGroupValue(widget, group) ?? null;
 
           if (value !== group.value) {
             group.value = value;
@@ -2046,17 +1838,17 @@ export const useAppStore = createWithEqualityFn<AppState>()(
       getWidgetGridData: (tabId: string, widgetId: string) => {
         const { items } = get();
         const tab = items?.[tabId];
-        if (!(tab || tab?.data?.gridLayout)) return;
+        if (!tab) return;
 
-        const { gridLayout, currentTab = "" } = tab.data;
+        const { gridLayout = {}, currentTab = "" } = tab.data;
 
         const gridData = gridLayout[currentTab]?.find((grid) => grid.i === widgetId);
         if (gridData) return gridData;
 
-        return Object.keys(gridLayout).reduce((acc, key) => {
-          if (acc) return acc;
-          return gridLayout[key].find((grid) => grid.i === widgetId);
-        }, null);
+        return Object.keys(gridLayout).reduce<GridData | undefined>(
+          (acc, key) => acc ?? gridLayout[key].find((grid) => grid.i === widgetId),
+          undefined,
+        );
       },
       minimizeWidget: (
         tabId: string,
@@ -2139,7 +1931,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
   shallow,
 );
 
-export function useShallowAppStore<S extends AppState, T>(selector: Selector<S, T>): T {
+export function useShallowAppStore<T>(selector: Selector<AppState, T>): T {
   return useAppStore(useShallow(selector), (prev, next) => isEqual(prev, next));
 }
 

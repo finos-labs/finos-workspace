@@ -24,12 +24,12 @@ from uuid import uuid4
 
 
 class TestDashboardSync:
-    """Tests for /pro/dash/sync endpoints"""
+    """Tests for /app/dash/sync endpoints"""
 
     @pytest.mark.asyncio
     async def test_get_dashboards_unauthenticated(self, client):
         """Should fail without auth"""
-        response = await client.get("/pro/dash/sync")
+        response = await client.get("/app/dash/sync")
         assert response.status_code in {401, 403}
         # Validate error response structure
         data = response.json()
@@ -39,7 +39,7 @@ class TestDashboardSync:
     @pytest.mark.asyncio
     async def test_get_dashboards_authenticated(self, auth_client):
         """Should return user dashboards"""
-        response = await auth_client.get("/pro/dash/sync")
+        response = await auth_client.get("/app/dash/sync")
         assert response.status_code == 200
         data = response.json()
         # Should return a list or dict with dashboards
@@ -59,7 +59,7 @@ class TestDashboardSync:
     @pytest.mark.asyncio
     async def test_sync_dashboards_unauthenticated(self, client):
         """Should fail without auth"""
-        response = await client.post("/pro/dash/sync", json={})
+        response = await client.post("/app/dash/sync", json={})
         assert response.status_code in {401, 403, 422}
         # Validate error response structure
         data = response.json()
@@ -71,7 +71,7 @@ class TestDashboardSync:
         """Should sync dashboards"""
         # Send valid empty sync data
         dashboard_data = {"items": {}}
-        response = await auth_client.post("/pro/dash/sync", json=dashboard_data)
+        response = await auth_client.post("/app/dash/sync", json=dashboard_data)
         assert response.status_code == 200
         # Validate response structure
         data = response.json()
@@ -81,17 +81,17 @@ class TestDashboardSync:
     async def test_sync_dashboards_invalid_schema(self, auth_client):
         """Should return 422 for invalid schema"""
         dashboard_data = {"dashboards": [], "version": 1}  # Old/Invalid format
-        response = await auth_client.post("/pro/dash/sync", json=dashboard_data)
+        response = await auth_client.post("/app/dash/sync", json=dashboard_data)
         assert response.status_code == 422
 
 
 class TestOwnedDashboards:
-    """Tests for /pro/dash/sync/owned endpoint"""
+    """Tests for /app/dash/sync/owned endpoint"""
 
     @pytest.mark.asyncio
     async def test_get_owned_dashboards_unauthenticated(self, client):
         """Should fail without auth"""
-        response = await client.get("/pro/dash/sync/owned")
+        response = await client.get("/app/dash/sync/owned")
         assert response.status_code in {401, 403}
         # Validate error response structure
         data = response.json()
@@ -101,7 +101,7 @@ class TestOwnedDashboards:
     @pytest.mark.asyncio
     async def test_get_owned_dashboards_authenticated(self, auth_client):
         """Should return owned dashboards"""
-        response = await auth_client.get("/pro/dash/sync/owned")
+        response = await auth_client.get("/app/dash/sync/owned")
         assert response.status_code == 200
         # Validate response structure
         data = response.json()
@@ -111,12 +111,12 @@ class TestOwnedDashboards:
 
 
 class TestSharedDashboards:
-    """Tests for /pro/dash/sync/shared endpoint"""
+    """Tests for /app/dash/sync/shared endpoint"""
 
     @pytest.mark.asyncio
     async def test_get_shared_dashboards_unauthenticated(self, client):
         """Should fail without auth"""
-        response = await client.get("/pro/dash/sync/shared")
+        response = await client.get("/app/dash/sync/shared")
         assert response.status_code in {401, 403}
         # Validate error response structure
         data = response.json()
@@ -126,7 +126,7 @@ class TestSharedDashboards:
     @pytest.mark.asyncio
     async def test_get_shared_dashboards_authenticated(self, auth_client):
         """Should return shared dashboards"""
-        response = await auth_client.get("/pro/dash/sync/shared")
+        response = await auth_client.get("/app/dash/sync/shared")
         assert response.status_code == 200
         # Validate response structure
         data = response.json()
@@ -136,13 +136,13 @@ class TestSharedDashboards:
 
 
 class TestDashboardShares:
-    """Tests for /pro/dash/{uuid}/shares endpoints"""
+    """Tests for /app/dash/{uuid}/shares endpoints"""
 
     @pytest.mark.asyncio
     async def test_get_shares_unauthenticated(self, client):
         """Should fail without auth"""
         test_uuid = str(uuid4())
-        response = await client.get(f"/pro/dash/{test_uuid}/shares")
+        response = await client.get(f"/app/dash/{test_uuid}/shares")
         assert response.status_code in {401, 403}
         # Validate error response structure
         data = response.json()
@@ -156,7 +156,7 @@ class TestDashboardShares:
     async def test_get_shares_nonexistent(self, auth_client):
         """Should return 200 (empty list) or 404 for nonexistent dashboard"""
         test_uuid = str(uuid4())
-        response = await auth_client.get(f"/pro/dash/{test_uuid}/shares")
+        response = await auth_client.get(f"/app/dash/{test_uuid}/shares")
         # API may return 200 with empty list or 404 - both are valid
         assert response.status_code in {200, 404, 400}
 
@@ -165,7 +165,7 @@ class TestDashboardShares:
         """Should fail without auth"""
         test_uuid = str(uuid4())
         response = await client.post(
-            f"/pro/dash/{test_uuid}/share", json={"email": "share@example.com"}
+            f"/app/dash/{test_uuid}/share", json={"email": "share@example.com"}
         )
         assert response.status_code in {401, 403, 422}
 
@@ -173,34 +173,34 @@ class TestDashboardShares:
     async def test_revoke_share_unauthenticated(self, client):
         """Should fail without auth"""
         test_uuid = str(uuid4())
-        response = await client.delete(f"/pro/dash/{test_uuid}/share")
+        response = await client.delete(f"/app/dash/{test_uuid}/share")
         assert response.status_code in {401, 403, 422}
 
 
 class TestDashboardShareUsers:
-    """Tests for /pro/dash/{uuid}/shares/users endpoint"""
+    """Tests for /app/dash/{uuid}/shares/users endpoint"""
 
     @pytest.mark.asyncio
     async def test_get_share_users_unauthenticated(self, client):
         """Should fail without auth"""
         test_uuid = str(uuid4())
-        response = await client.get(f"/pro/dash/{test_uuid}/shares/users")
+        response = await client.get(f"/app/dash/{test_uuid}/shares/users")
         assert response.status_code in {401, 403}
 
 
 class TestValidateAndSync:
-    """Tests for /pro/dash/validate-and-sync endpoint"""
+    """Tests for /app/dash/validate-and-sync endpoint"""
 
     @pytest.mark.asyncio
     async def test_validate_sync_unauthenticated(self, client):
         """Should fail without auth"""
-        response = await client.get("/pro/dash/validate-and-sync")
+        response = await client.get("/app/dash/validate-and-sync")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
     async def test_validate_sync_authenticated(self, auth_client):
         """Should validate and sync dashboards"""
-        response = await auth_client.get("/pro/dash/validate-and-sync")
+        response = await auth_client.get("/app/dash/validate-and-sync")
         # May return 200 (success), 400 (validation error), or 404 (no dashboards)
         assert response.status_code in {200, 400, 404}
 
@@ -230,13 +230,13 @@ class TestDashboardCRUDLifecycle:
                 }
             ]
         }
-        create_response = await auth_client.post("/pro/dash/sync", json=create_payload)
+        create_response = await auth_client.post("/app/dash/sync", json=create_payload)
         # Accept various success codes
         assert create_response.status_code in {200, 201, 422}
 
         if create_response.status_code in {200, 201}:
             # Step 2: Verify dashboard exists via GET
-            get_response = await auth_client.get("/pro/dash/sync")
+            get_response = await auth_client.get("/app/dash/sync")
             assert get_response.status_code == 200
 
             # Step 3: Update the dashboard
@@ -252,14 +252,14 @@ class TestDashboardCRUDLifecycle:
                 ]
             }
             update_response = await auth_client.post(
-                "/pro/dash/sync", json=update_payload
+                "/app/dash/sync", json=update_payload
             )
             assert update_response.status_code in {200, 201, 422}
 
             # Step 4: Delete the dashboard
             delete_payload = {"dashboards": [], "deletes": [dashboard_uuid]}
             delete_response = await auth_client.post(
-                "/pro/dash/sync", json=delete_payload
+                "/app/dash/sync", json=delete_payload
             )
             assert delete_response.status_code in {200, 422}
 
@@ -277,7 +277,7 @@ class TestDashboardCRUDLifecycle:
         ]
 
         response = await auth_client.post(
-            "/pro/dash/sync", json={"dashboards": dashboards}
+            "/app/dash/sync", json={"dashboards": dashboards}
         )
         assert response.status_code in {200, 201, 422}
 
@@ -288,7 +288,7 @@ class TestDashboardResponseSchema:
     @pytest.mark.asyncio
     async def test_sync_response_contains_expected_fields(self, auth_client):
         """Dashboard sync response should have expected structure"""
-        response = await auth_client.get("/pro/dash/sync")
+        response = await auth_client.get("/app/dash/sync")
         assert response.status_code == 200
         data = response.json()
 
@@ -304,7 +304,7 @@ class TestDashboardResponseSchema:
     @pytest.mark.asyncio
     async def test_owned_dashboards_response_structure(self, auth_client):
         """Owned dashboards should return proper structure"""
-        response = await auth_client.get("/pro/dash/sync/owned")
+        response = await auth_client.get("/app/dash/sync/owned")
         assert response.status_code == 200
         data = response.json()
 
@@ -315,7 +315,7 @@ class TestDashboardResponseSchema:
     @pytest.mark.asyncio
     async def test_shared_dashboards_response_structure(self, auth_client):
         """Shared dashboards should return proper structure"""
-        response = await auth_client.get("/pro/dash/sync/shared")
+        response = await auth_client.get("/app/dash/sync/shared")
         assert response.status_code == 200
         data = response.json()
 
@@ -330,7 +330,7 @@ class TestDashboardValidation:
     @pytest.mark.asyncio
     async def test_sync_empty_payload(self, auth_client):
         """Sync with empty payload should be handled"""
-        response = await auth_client.post("/pro/dash/sync", json={})
+        response = await auth_client.post("/app/dash/sync", json={})
         # May succeed (no-op) or return validation error
         assert response.status_code in {200, 422}
 
@@ -346,7 +346,7 @@ class TestDashboardValidation:
                 }
             ]
         }
-        response = await auth_client.post("/pro/dash/sync", json=payload)
+        response = await auth_client.post("/app/dash/sync", json=payload)
         assert response.status_code in {400, 422}
 
     @pytest.mark.asyncio
@@ -360,7 +360,7 @@ class TestDashboardValidation:
                 }
             ]
         }
-        response = await auth_client.post("/pro/dash/sync", json=payload)
+        response = await auth_client.post("/app/dash/sync", json=payload)
         assert response.status_code in {400, 422}
 
     @pytest.mark.asyncio
@@ -377,7 +377,7 @@ class TestDashboardValidation:
                 }
             ]
         }
-        response = await auth_client.post("/pro/dash/sync", json=payload)
+        response = await auth_client.post("/app/dash/sync", json=payload)
         # Should either succeed or return validation error
         assert response.status_code in {200, 201, 400, 422}
 
@@ -399,12 +399,12 @@ class TestDashboardSharing:
                 }
             ]
         }
-        create_response = await auth_client.post("/pro/dash/sync", json=create_payload)
+        create_response = await auth_client.post("/app/dash/sync", json=create_payload)
 
         if create_response.status_code in {200, 201}:
             # Try to share it
             share_response = await auth_client.post(
-                f"/pro/dash/{dashboard_uuid}/share",
+                f"/app/dash/{dashboard_uuid}/share",
                 json={"email": "sharetest@example.com", "permissions": "view"},
             )
             # 200 for success, 404 if not found, 422 for validation
@@ -415,7 +415,7 @@ class TestDashboardSharing:
         """Sharing with invalid email should fail"""
         dashboard_uuid = str(uuid4())
         response = await auth_client.post(
-            f"/pro/dash/{dashboard_uuid}/share",
+            f"/app/dash/{dashboard_uuid}/share",
             json={"email": "not-an-email", "permissions": "view"},
         )
         assert response.status_code in {400, 404, 422}
@@ -434,12 +434,12 @@ class TestDashboardSharing:
                 }
             ]
         }
-        await auth_client.post("/pro/dash/sync", json=create_payload)
+        await auth_client.post("/app/dash/sync", json=create_payload)
 
         # Try to share with test user's own email
         response = await auth_client.post(
-            f"/pro/dash/{dashboard_uuid}/share",
-            json={"email": "testrunner@openbb.co", "permissions": "view"},
+            f"/app/dash/{dashboard_uuid}/share",
+            json={"email": "testrunner@example.com", "permissions": "view"},
         )
         # Should fail or be handled gracefully
         assert response.status_code in {200, 400, 404, 422}
@@ -458,12 +458,12 @@ class TestDashboardSharing:
                 }
             ]
         }
-        create_response = await auth_client.post("/pro/dash/sync", json=create_payload)
+        create_response = await auth_client.post("/app/dash/sync", json=create_payload)
 
         if create_response.status_code in {200, 201}:
             # Toggle entity sharing
             toggle_response = await auth_client.post(
-                f"/pro/dash/{dashboard_uuid}/toggle-entity-sharing"
+                f"/app/dash/{dashboard_uuid}/toggle-entity-sharing"
             )
             assert toggle_response.status_code in {200, 400, 404}
 
@@ -475,14 +475,14 @@ class TestDashboardVersions:
     async def test_get_versions_unauthenticated(self, client):
         """Should fail without auth"""
         test_uuid = str(uuid4())
-        response = await client.get(f"/pro/dash/{test_uuid}/versions")
+        response = await client.get(f"/app/dash/{test_uuid}/versions")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
     async def test_get_versions_nonexistent(self, auth_client):
         """Should return 404 for nonexistent dashboard (or 403 if permission denied first)"""
         test_uuid = str(uuid4())
-        response = await auth_client.get(f"/pro/dash/{test_uuid}/versions")
+        response = await auth_client.get(f"/app/dash/{test_uuid}/versions")
         # 403 if permission denied, 404 if dashboard not found
         assert response.status_code in {200, 403, 404}
 
@@ -501,7 +501,7 @@ class TestDashboardVersions:
                 }
             ]
         }
-        create_response = await auth_client.post("/pro/dash/sync", json=create_payload)
+        create_response = await auth_client.post("/app/dash/sync", json=create_payload)
 
         if create_response.status_code in {200, 201}:
             # Update to v2
@@ -514,11 +514,11 @@ class TestDashboardVersions:
                     }
                 ]
             }
-            await auth_client.post("/pro/dash/sync", json=update_payload)
+            await auth_client.post("/app/dash/sync", json=update_payload)
 
             # Check versions
             versions_response = await auth_client.get(
-                f"/pro/dash/{dashboard_uuid}/versions"
+                f"/app/dash/{dashboard_uuid}/versions"
             )
             assert versions_response.status_code in {200, 404}
 
@@ -546,7 +546,7 @@ class TestDashboardEdgeCases:
                     }
                 ]
             }
-            response = await auth_client.post("/pro/dash/sync", json=payload)
+            response = await auth_client.post("/app/dash/sync", json=payload)
             # Should handle gracefully - either succeed or validation error
             assert response.status_code in {
                 200,
@@ -565,7 +565,7 @@ class TestDashboardEdgeCases:
                 {"uuid": duplicate_uuid, "name": "Second", "data": {}},
             ]
         }
-        response = await auth_client.post("/pro/dash/sync", json=payload)
+        response = await auth_client.post("/app/dash/sync", json=payload)
         # Should handle - either last one wins or validation error
         assert response.status_code in {200, 201, 400, 422}
 
@@ -581,7 +581,7 @@ class TestDashboardEdgeCases:
                 }
             ]
         }
-        response = await auth_client.post("/pro/dash/sync", json=payload)
+        response = await auth_client.post("/app/dash/sync", json=payload)
         # Should handle - either accept null or require data
         assert response.status_code in {200, 201, 422}
 
@@ -598,13 +598,13 @@ class TestDashboardVersionHistory:
     async def test_get_versions_unauthenticated(self, client):
         """Should fail without auth"""
         test_uuid = str(uuid4())
-        response = await client.get(f"/pro/dash/{test_uuid}/versions")
+        response = await client.get(f"/app/dash/{test_uuid}/versions")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
     async def test_get_versions_invalid_uuid(self, auth_client):
         """Should return 422 for invalid UUID"""
-        response = await auth_client.get("/pro/dash/not-a-uuid/versions")
+        response = await auth_client.get("/app/dash/not-a-uuid/versions")
         assert response.status_code == 422
 
     @pytest.mark.asyncio
@@ -614,7 +614,7 @@ class TestDashboardVersionHistory:
 
         # Create a dashboard
         create_response = await auth_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={
                 "items": {
                     dashboard_uuid: {"name": "Version Test v1", "data": {"widgets": []}}
@@ -627,7 +627,7 @@ class TestDashboardVersionHistory:
 
         # Get versions - should have at least initial version
         versions_response = await auth_client.get(
-            f"/pro/dash/{dashboard_uuid}/versions"
+            f"/app/dash/{dashboard_uuid}/versions"
         )
         assert (
             versions_response.status_code == 200
@@ -643,7 +643,7 @@ class TestDashboardVersionHistory:
 
         # Step 1: Create initial dashboard
         create_response = await auth_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={
                 "items": {
                     dashboard_uuid: {"name": "Version Test v1", "data": {"version": 1}}
@@ -655,7 +655,7 @@ class TestDashboardVersionHistory:
         # Step 2: Update the dashboard multiple times
         for i in range(2, 5):
             update_response = await auth_client.post(
-                "/pro/dash/sync",
+                "/app/dash/sync",
                 json={
                     "items": {
                         dashboard_uuid: {
@@ -669,7 +669,7 @@ class TestDashboardVersionHistory:
 
         # Step 3: Get versions and verify we have entries
         versions_response = await auth_client.get(
-            f"/pro/dash/{dashboard_uuid}/versions"
+            f"/app/dash/{dashboard_uuid}/versions"
         )
         assert versions_response.status_code == 200
 
@@ -685,13 +685,13 @@ class TestDashboardVersionHistory:
 
         # Create dashboard
         await auth_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={"items": {dashboard_uuid: {"name": "Schema Test", "data": {}}}},
         )
 
         # Update it
         await auth_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={
                 "items": {
                     dashboard_uuid: {
@@ -704,7 +704,7 @@ class TestDashboardVersionHistory:
 
         # Get versions
         versions_response = await auth_client.get(
-            f"/pro/dash/{dashboard_uuid}/versions"
+            f"/app/dash/{dashboard_uuid}/versions"
         )
 
         if versions_response.status_code == 200:
@@ -718,7 +718,7 @@ class TestDashboardVersionHistory:
     async def test_cannot_access_other_users_dashboard_versions(self, auth_client):
         """Random UUID should return 403/404 - cannot access others' dashboards"""
         other_user_uuid = str(uuid4())
-        response = await auth_client.get(f"/pro/dash/{other_user_uuid}/versions")
+        response = await auth_client.get(f"/app/dash/{other_user_uuid}/versions")
         # Should be forbidden or not found
         assert response.status_code in {403, 404}
 
@@ -739,7 +739,7 @@ class TestDashboardShareLifecycle:
 
         # Step 1: Create a dashboard
         create_response = await auth_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={"items": {dashboard_uuid: {"name": "Share Test", "data": {}}}},
         )
         assert (
@@ -748,14 +748,14 @@ class TestDashboardShareLifecycle:
 
         # Step 2: Share the dashboard
         share_response = await auth_client.post(
-            f"/pro/dash/{dashboard_uuid}/share",
+            f"/app/dash/{dashboard_uuid}/share",
             json={"shares": {share_email: "comment"}},
         )
         # Share may succeed or fail depending on user setup
         if share_response.status_code == 200:
             # Step 3: Verify share exists in shares list
             shares_response = await auth_client.get(
-                f"/pro/dash/{dashboard_uuid}/shares"
+                f"/app/dash/{dashboard_uuid}/shares"
             )
             assert shares_response.status_code == 200
 
@@ -772,35 +772,35 @@ class TestDashboardShareLifecycle:
 
         # Create dashboard
         create_response = await auth_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={"items": {dashboard_uuid: {"name": "Revoke Test", "data": {}}}},
         )
         assert create_response.status_code == 200
 
         # Share it
         share_response = await auth_client.post(
-            f"/pro/dash/{dashboard_uuid}/share",
+            f"/app/dash/{dashboard_uuid}/share",
             json={"shares": {share_email: "view"}},
         )
 
         if share_response.status_code == 200:
             # Verify share exists
             shares = (
-                await auth_client.get(f"/pro/dash/{dashboard_uuid}/shares")
+                await auth_client.get(f"/app/dash/{dashboard_uuid}/shares")
             ).json()
             assert share_email in shares
 
             # Revoke access
             revoke_response = await auth_client.request(
                 "DELETE",
-                f"/pro/dash/{dashboard_uuid}/share",
+                f"/app/dash/{dashboard_uuid}/share",
                 json={"shares": [share_email]},
             )
             assert revoke_response.status_code == 200
 
             # Verify share is removed
             shares_after = (
-                await auth_client.get(f"/pro/dash/{dashboard_uuid}/shares")
+                await auth_client.get(f"/app/dash/{dashboard_uuid}/shares")
             ).json()
             # After revoke, email should not have active permissions
             if share_email in shares_after:
@@ -814,7 +814,7 @@ class TestDashboardShareLifecycle:
 
         # Create dashboard
         create_response = await auth_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={"items": {dashboard_uuid: {"name": "Multi Share Test", "data": {}}}},
         )
         assert create_response.status_code == 200
@@ -822,14 +822,14 @@ class TestDashboardShareLifecycle:
         # Share with multiple users
         shares_dict = {email: "comment" for email in emails}
         share_response = await auth_client.post(
-            f"/pro/dash/{dashboard_uuid}/share",
+            f"/app/dash/{dashboard_uuid}/share",
             json={"shares": shares_dict},
         )
 
         if share_response.status_code == 200:
             # Verify all shares exist
             shares = (
-                await auth_client.get(f"/pro/dash/{dashboard_uuid}/shares")
+                await auth_client.get(f"/app/dash/{dashboard_uuid}/shares")
             ).json()
             for email in emails:
                 assert email in shares, f"Missing share for {email}"
@@ -842,27 +842,27 @@ class TestDashboardShareLifecycle:
 
         # Create dashboard
         await auth_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={"items": {dashboard_uuid: {"name": "Update Share Test", "data": {}}}},
         )
 
         # Share with 'view' permission
         share_response = await auth_client.post(
-            f"/pro/dash/{dashboard_uuid}/share",
+            f"/app/dash/{dashboard_uuid}/share",
             json={"shares": {share_email: "view"}},
         )
 
         if share_response.status_code == 200:
             # Update to 'edit' permission
             update_response = await auth_client.post(
-                f"/pro/dash/{dashboard_uuid}/share",
+                f"/app/dash/{dashboard_uuid}/share",
                 json={"shares": {share_email: "edit"}},
             )
 
             if update_response.status_code == 200:
                 # Verify permission updated
                 shares = (
-                    await auth_client.get(f"/pro/dash/{dashboard_uuid}/shares")
+                    await auth_client.get(f"/app/dash/{dashboard_uuid}/shares")
                 ).json()
                 if share_email in shares:
                     assert shares[share_email]["permissions"] == "edit"
@@ -880,7 +880,7 @@ class TestDashboardSharesUsers:
     async def test_get_share_users_unauthenticated(self, client):
         """Should fail without auth"""
         test_uuid = str(uuid4())
-        response = await client.get(f"/pro/dash/{test_uuid}/shares/users")
+        response = await client.get(f"/app/dash/{test_uuid}/shares/users")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
@@ -890,13 +890,13 @@ class TestDashboardSharesUsers:
 
         # Create dashboard
         create_response = await auth_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={"items": {dashboard_uuid: {"name": "Users Dict Test", "data": {}}}},
         )
         assert create_response.status_code == 200
 
         # Get shares/users
-        response = await auth_client.get(f"/pro/dash/{dashboard_uuid}/shares/users")
+        response = await auth_client.get(f"/app/dash/{dashboard_uuid}/shares/users")
         assert response.status_code == 200
 
         data = response.json()
@@ -911,7 +911,7 @@ class TestDashboardSharesUsers:
 
         # Create dashboard
         await auth_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={
                 "items": {dashboard_uuid: {"name": "Visible Users Test", "data": {}}}
             },
@@ -919,13 +919,13 @@ class TestDashboardSharesUsers:
 
         # Share with user
         share_response = await auth_client.post(
-            f"/pro/dash/{dashboard_uuid}/share",
+            f"/app/dash/{dashboard_uuid}/share",
             json={"shares": {share_email: "comment"}},
         )
 
         if share_response.status_code == 200:
             # Check shares/users includes this user
-            response = await auth_client.get(f"/pro/dash/{dashboard_uuid}/shares/users")
+            response = await auth_client.get(f"/app/dash/{dashboard_uuid}/shares/users")
             assert response.status_code == 200
 
             data = response.json()
@@ -937,7 +937,7 @@ class TestDashboardSharesUsers:
     async def test_cannot_access_other_users_dashboard_shares(self, auth_client):
         """Cannot access shares/users for dashboard you don't own"""
         other_uuid = str(uuid4())
-        response = await auth_client.get(f"/pro/dash/{other_uuid}/shares/users")
+        response = await auth_client.get(f"/app/dash/{other_uuid}/shares/users")
         assert response.status_code in {403, 404}
 
 
@@ -953,7 +953,7 @@ class TestDashboardSharesGet:
     async def test_get_shares_unauthenticated(self, client):
         """Should fail without auth"""
         test_uuid = str(uuid4())
-        response = await client.get(f"/pro/dash/{test_uuid}/shares")
+        response = await client.get(f"/app/dash/{test_uuid}/shares")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
@@ -963,13 +963,13 @@ class TestDashboardSharesGet:
 
         # Create dashboard
         create_response = await auth_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={"items": {dashboard_uuid: {"name": "Get Shares Test", "data": {}}}},
         )
         assert create_response.status_code == 200
 
         # Get shares
-        response = await auth_client.get(f"/pro/dash/{dashboard_uuid}/shares")
+        response = await auth_client.get(f"/app/dash/{dashboard_uuid}/shares")
         assert response.status_code == 200
 
         data = response.json()
@@ -983,20 +983,20 @@ class TestDashboardSharesGet:
 
         # Create dashboard
         await auth_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={"items": {dashboard_uuid: {"name": "Reflect Test", "data": {}}}},
         )
 
         # Share with users
         share_response = await auth_client.post(
-            f"/pro/dash/{dashboard_uuid}/share",
+            f"/app/dash/{dashboard_uuid}/share",
             json={"shares": {emails[0]: "view", emails[1]: "comment"}},
         )
 
         if share_response.status_code == 200:
             # Verify shares shows correct permissions
             shares = (
-                await auth_client.get(f"/pro/dash/{dashboard_uuid}/shares")
+                await auth_client.get(f"/app/dash/{dashboard_uuid}/shares")
             ).json()
 
             if emails[0] in shares:

@@ -21,7 +21,7 @@ vi.mock("~/lib/state/app", () => ({
       }),
     }),
   },
-  useShallowAppStore: (selector: (state: any) => any) =>
+  useShallowAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       getLastInnerTab: mockGetLastInnerTab,
       getSideBarItem: mockGetSideBarItem,
@@ -29,7 +29,7 @@ vi.mock("~/lib/state/app", () => ({
 }));
 
 vi.mock("~/lib/state/auth", () => ({
-  useShallowAuthStore: (selector: (state: any) => any) =>
+  useShallowAuthStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ lastVisitedPage: "/app" }),
   useAuthStore: () => ({ getState: () => ({}) }),
 }));
@@ -41,7 +41,7 @@ const mockGetWidgetsInCurrentDashboard = vi.fn().mockReturnValue([]);
 const mockSetCopilotWidgets = vi.fn();
 
 vi.mock("~/lib/state/copilotData", () => ({
-  useShallowCopilotDataStore: (selector: (state: any) => any) =>
+  useShallowCopilotDataStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       selectedWidgetIDs: [],
       getDashboardWidgetData: mockGetDashboardWidgetData,
@@ -61,12 +61,12 @@ const copilotTestState = vi.hoisted(() => ({
     "widget-dashboard-search": false,
     "file-upload": false,
   } as Record<string, boolean>,
-  messages: undefined as any[] | undefined,
-  files: [] as any[],
+  messages: undefined as Message[] | undefined,
+  files: [] as CopilotFile[],
 }));
 
 vi.mock("~/lib/state/copilot", () => ({
-  useShallowCopilotStore: (selector: (state: any) => any) =>
+  useShallowCopilotStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       selectedCopilot: {
         id: "copilot-1",
@@ -87,7 +87,7 @@ vi.mock("~/components/AI/hooks/useWidgetsInCurrentDashboard", () => ({
 }));
 
 vi.mock("~/components/AI/hooks/useGetAppWidgets", () => ({
-  useShallowAppWidgetsStore: (selector: (state: any) => any) =>
+  useShallowAppWidgetsStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       lastUpdated: 0,
       getAppWidget: vi.fn().mockReturnValue(null),
@@ -96,7 +96,7 @@ vi.mock("~/components/AI/hooks/useGetAppWidgets", () => ({
 }));
 
 vi.mock("~/components/AI/hooks/useStreaming", () => ({
-  useShallowStreamingStore: (selector: (state: any) => any) =>
+  useShallowStreamingStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ files: copilotTestState.files }),
 }));
 
@@ -132,14 +132,15 @@ import {
   createCopilotWidget,
   useGetCopilotWidgets,
 } from "~/components/AI/hooks/useGetCopilotWidgets";
+import type { CopilotFile, HumanMessage, Message } from "~/lib/state/copilot";
 
 // Helper to create mock widgets
 function createWidget(overrides: Partial<WidgetT> & { id: string }): WidgetT {
   return {
     name: "Test Widget",
     description: "",
-    widgetId: "chart",
-    type: "chart",
+    widgetId: "html",
+    type: "html",
     params: [],
     storage: {},
     data: {},
@@ -181,13 +182,13 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
       }),
       createWidget({
         id: "w-1",
-        widgetId: "chart",
+        widgetId: "html",
         name: "AAPL Chart",
         innerTab: "overview",
       }),
       createWidget({
         id: "w-2",
-        widgetId: "chart",
+        widgetId: "html",
         name: "MSFT Chart",
         innerTab: "detailed-charts",
       }),
@@ -232,7 +233,7 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
       }),
       createWidget({
         id: "w-1",
-        widgetId: "chart",
+        widgetId: "html",
         name: "AAPL Chart",
         innerTab: "overview",
       }),
@@ -269,7 +270,7 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
       }),
       createWidget({
         id: "w-1",
-        widgetId: "chart",
+        widgetId: "html",
         name: "Orphan Widget",
         innerTab: "unknown-tab",
       }),
@@ -329,7 +330,7 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
       }),
       createWidget({
         id: "w-1",
-        widgetId: "chart",
+        widgetId: "html",
         name: "Widget",
         innerTab: "some-tab",
       }),
@@ -357,12 +358,12 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
     const widgets = [
       createWidget({
         id: "w-1",
-        widgetId: "chart",
+        widgetId: "html",
         name: "Widget A",
       }),
       createWidget({
         id: "w-2",
-        widgetId: "chart",
+        widgetId: "html",
         name: "Widget B",
       }),
     ];
@@ -399,7 +400,7 @@ describe("useGetCopilotWidgets - nav bar tab mapping", () => {
       }),
       createWidget({
         id: "w-1",
-        widgetId: "chart",
+        widgetId: "html",
         name: "Chart",
         innerTab: "overview",
       }),
@@ -433,7 +434,7 @@ describe("useGetCopilotWidgets - temporary file widgets", () => {
     url: `https://files.test/${uuid}.pdf`,
   });
 
-  const humanMessage = (files: ReturnType<typeof uploadedFile>[]) => ({
+  const humanMessage = (files: ReturnType<typeof uploadedFile>[]): HumanMessage => ({
     role: "human",
     content: "summarize this",
     copilotId: "copilot-1",
@@ -471,7 +472,7 @@ describe("useGetCopilotWidgets - temporary file widgets", () => {
 
     expect(temporaryWidgets).toHaveLength(1);
     expect(temporaryWidgets[0]).toMatchObject({
-      origin: "OpenBB Hub",
+      origin: "the backend",
       widget_id: "file-uuid-1",
       name: "dailyreport.pdf",
       metadata: { extension: "pdf" },
@@ -533,7 +534,7 @@ describe("createCopilotWidget - runtime state", () => {
 
     const widget = createWidget({
       id: "test-widget",
-      widgetId: "chart",
+      widgetId: "html",
       params: [{ paramName: "query", type: "text", value: "default query" }],
     });
 
@@ -573,7 +574,7 @@ describe("createCopilotWidget - runtime state", () => {
 
     const widget = createWidget({
       id: "test-widget",
-      widgetId: "chart",
+      widgetId: "html",
       params: [{ paramName: "ticker", type: "text", value: "AAPL" }],
     });
 
@@ -608,7 +609,7 @@ describe("createCopilotWidget - runtime state", () => {
 
     const widget = createWidget({
       id: "test-widget",
-      widgetId: "chart",
+      widgetId: "html",
       params: [{ paramName: "query", type: "text", value: "default" }],
     });
 

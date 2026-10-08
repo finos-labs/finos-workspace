@@ -4,7 +4,7 @@ import type { NotificationId } from "../utils/toast";
 
 interface ToastState {
   toasts: Partial<Record<NotificationId, { dontShowAgain: boolean }>>;
-  getToastDontShowAgain: (id: NotificationId) => boolean;
+  getToastDontShowAgain: (id: NotificationId) => boolean | undefined;
   setToastDontShowAgain: (id: NotificationId, dontShowAgain: boolean) => void;
 }
 

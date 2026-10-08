@@ -3,7 +3,7 @@ import dayjs from "dayjs";
 import { useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { extendTrialUser, updateUser } from "~/api/admin.api";
+import { updateUser } from "~/api/admin.api";
 import { useEntityMap } from "~/components/AdminRoles/adminUseQueries";
 import AdminDialogFooter from "~/components/AdminUsers/common/AdminDialogFooter";
 import { useStateReducer } from "~/hooks/useStateReducer";
@@ -38,7 +38,6 @@ interface Props {
 interface UserInfo {
   permissions_uuid: User["permissions_uuid"];
   billing_active: User["billing_active"];
-  pro_entitlements: User["pro_entitlements"];
 }
 
 interface BaseState extends UserInfo {
@@ -65,7 +64,6 @@ export function getBaseState(user: User | UserInfo, initial?: Partial<BaseState>
   return {
     permissions_uuid: user.permissions_uuid,
     billing_active: user.billing_active,
-    pro_entitlements: user.pro_entitlements,
     ...(initial || {}),
   } as BaseState;
 }
@@ -77,14 +75,13 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
 
   const userInfo = useMemo(() => {
     const activeUser = user.status === "active";
-    const sameUser = user.email === loggedInUser.email;
-    const isTrial = user.permissions_uuid === "11111111-1111-1111-1111-111111111111";
+    const sameUser = user.email === loggedInUser?.email;
     const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ");
     const lastLogin = user.last_login
       ? dayjs(user.last_login).locale("en").format("MMM D, YYYY h:mm A")
       : "-";
 
-    return { activeUser, sameUser, isTrial, fullName, lastLogin };
+    return { activeUser, sameUser, fullName, lastLogin };
   }, [user, loggedInUser?.email]);
 
   useEffect(() => {
@@ -119,26 +116,9 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
     [entityMap],
   );
 
-  const userExtension = useMutation({
-    mutationFn: async () => extendTrialUser(user.uuid),
-    onSuccess: (_data) => {
-      toast.success("User extended successfully!");
-      onClose();
-    },
-    onError: (err) => {
-      toast.error("Something went wrong");
-      console.error(err);
-    },
-  });
-
   const handleSubmit = useCallback(async () => {
     await userMutation.mutateAsync(getBaseState(state));
   }, [userMutation.mutateAsync, state]);
-
-  const handleExtend = useCallback(async () => {
-    if (userExtension.isPending) return;
-    await userExtension.mutateAsync();
-  }, [userExtension.isPending, userExtension.mutateAsync]);
 
   return (
     <>
@@ -169,7 +149,7 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
                     <button
                       type="button"
                       data-testid="reset-2fa-button"
-                      className="obb-small-navbar-btn flex items-center justify-center size-6 rounded"
+                      className="ws-small-navbar-btn flex items-center justify-center size-6 rounded"
                       onClick={(e) => {
                         e.stopPropagation();
                         dispatch({ openReset2FA: true });
@@ -182,7 +162,7 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
                     <button
                       type="button"
                       data-testid="reset-password-button"
-                      className="obb-small-navbar-btn flex items-center justify-center size-6 rounded"
+                      className="ws-small-navbar-btn flex items-center justify-center size-6 rounded"
                       onClick={(e) => {
                         e.stopPropagation();
                         dispatch({ openResetPassword: true });
@@ -196,7 +176,7 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
                       <button
                         type="button"
                         data-testid="remove-account-button"
-                        className="obb-small-navbar-btn flex items-center justify-center size-6 rounded"
+                        className="ws-small-navbar-btn flex items-center justify-center size-6 rounded"
                         onClick={(e) => {
                           e.stopPropagation();
                           dispatch({ openRemove: true });
@@ -210,7 +190,7 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
                     <button
                       type="button"
                       data-testid="delete-account-button"
-                      className="obb-small-navbar-btn flex items-center justify-center size-6 rounded"
+                      className="ws-small-navbar-btn flex items-center justify-center size-6 rounded"
                       onClick={(e) => {
                         e.stopPropagation();
                         dispatch({ openDelete: true });
@@ -308,11 +288,6 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
               }
               disabled={!userInfo.activeUser || userInfo.sameUser}
             />
-            {userInfo.isTrial && !user.renewed && (
-              <Button variant="secondary" size="xs" onClick={handleExtend}>
-                Extend Account
-              </Button>
-            )}
             {state.temporaryPassword && (
               <div className="flex items-center gap-1">
                 <span className="body-xs-medium">Temporary password:</span>

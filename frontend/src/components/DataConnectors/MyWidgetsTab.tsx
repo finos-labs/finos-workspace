@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import { useDebounceValue } from "usehooks-ts";
 import WidgetInfoTooltip from "~/components/General/WidgetInfoTooltip";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { inSnowflakeNativeApp } from "~/lib/constants";
 import {
+  findDeletableWidgets,
   findSelectedWidgets,
   getTypeToUse,
   useMyDataConnectors,
@@ -14,8 +14,8 @@ import {
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
-import { useTutorialStore } from "~/lib/state/tutorial";
 import { cn, handleWidgetDeletion } from "~/lib/utils";
+import { someTruthy } from "~/lib/utils/values";
 import { Button } from "../ds/atoms/Button";
 import { Checkbox } from "../ds/atoms/Checkbox";
 import { ConfirmDialog } from "../ds/dialogs/ConfirmDialog";
@@ -27,8 +27,6 @@ import {
 } from "../ds/molecules/LibraryList";
 import BrandedLoadingState from "../General/BrandedLoadingState";
 import SearchResultsNotFound from "../General/SearchResultsNotFound";
-import SnowflakeHide from "../General/SnowflakeHide";
-import { someTruthy } from "../General/Table/utils";
 import Icon from "../Icon";
 import {
   TabPageEmptyState,
@@ -62,7 +60,6 @@ export function MyWidgetsTab() {
   } = useMyDataConnectors();
 
   const backendConnector = useShallowBackendConnectorStore((s) => ({
-    setSingleWidgets: s.setSingleWidgets,
     updateApiSources: s.updateApiSources,
     setStoredFiles: s.setStoredFiles,
     setWidgetMetadata: s.setWidgetMetadata,
@@ -71,7 +68,6 @@ export function MyWidgetsTab() {
     removeWidget: s.removeWidget,
     getWidgetsByAttribute: s.getWidgetsByAttribute,
   }));
-  const { currentTutorial, currentStep, goToStep } = useTutorialStore();
   const { setOpen } = useDataConnectorContext();
 
   const [state, dispatch] = useStateReducer(null, () => ({
@@ -183,50 +179,14 @@ export function MyWidgetsTab() {
   );
 
   const handleDelete = useCallback(async () => {
-    const foundWidgets = findSelectedWidgets(allElems, selectedWidgets);
-
-    const elemsToDelete: {
-      type: string;
-      id: string;
-      parentName: string;
-      uuid: string;
-    }[] = [];
-
-    for (const elem of foundWidgets) {
-      if (elem.shared || elem.selectionId.startsWith("backend,")) {
-        continue;
-      }
-
-      if (elem.widgetType) elem.type = elem.widgetType;
-
-      elemsToDelete.push(elem);
-    }
-
+    const elemsToDelete = findDeletableWidgets(allElems, selectedWidgets);
     if (elemsToDelete.length === 0) return;
 
     dispatch({ deleteConfirmOpen: true });
   }, [allElems, selectedWidgets]);
 
   const confirmDelete = useCallback(async () => {
-    const foundWidgets = findSelectedWidgets(allElems, selectedWidgets);
-
-    const elemsToDelete: {
-      type: string;
-      id: string;
-      parentName: string;
-      uuid: string;
-      selectionId: string;
-    }[] = [];
-
-    for (const elem of foundWidgets) {
-      if (elem.shared || elem.selectionId.startsWith("backend,")) {
-        continue;
-      }
-
-      if (elem.widgetType) elem.type = elem.widgetType;
-
-      elemsToDelete.push(elem);
-    }
+    const elemsToDelete = findDeletableWidgets(allElems, selectedWidgets);
 
     if (elemsToDelete.length === 0) {
       return dispatch({ deleteConfirmOpen: false });
@@ -237,12 +197,15 @@ export function MyWidgetsTab() {
 
       const settled = await Promise.allSettled(
         elemsToDelete.map(async (widget) => {
-          const { type, id, uuid, selectionId } = widget;
+          const { id, uuid, selectionId } = widget;
+          const type = widget.widgetType ?? widget.type;
+          const widgetId = id ?? uuid;
+          if (!(type && widgetId)) throw new Error("The widget has no type or id");
 
           const typeToRemove = getTypeToUse(type, selectionId);
           return await handleWidgetDeletion({
             type: typeToRemove,
-            id: id ?? uuid,
+            id: widgetId,
             backendConnector,
             deleteWidgets,
           });
@@ -319,7 +282,7 @@ export function MyWidgetsTab() {
                 }
               >
                 <button
-                  className="obb-small-navbar-btn rounded flex items-center justify-center size-7"
+                  className="ws-small-navbar-btn rounded flex items-center justify-center size-7"
                   disabled={!selectionState || onlyBackendSelected}
                   onClick={handleDelete}
                 >
@@ -333,23 +296,18 @@ export function MyWidgetsTab() {
                 disabled={!selectionState}
               />
             </TabPageToolbarActions>
-            <SnowflakeHide>
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={() => {
-                  if (currentTutorial === "data_connectors" && currentStep === 1) {
-                    setTimeout(() => goToStep(2), 500);
-                  }
-                  setOpen(true, {
-                    dcTab: "backend",
-                    mode: "create",
-                  });
-                }}
-              >
-                Add Data
-              </Button>
-            </SnowflakeHide>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                setOpen(true, {
+                  dcTab: "backend",
+                  mode: "create",
+                });
+              }}
+            >
+              Add Data
+            </Button>
           </div>
         </TabPageToolbar>
 
@@ -386,21 +344,19 @@ export function MyWidgetsTab() {
                   title="No widgets added"
                   description="You haven't added any widgets yet."
                   action={
-                    <SnowflakeHide>
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        className="mt-2"
-                        onClick={() => {
-                          setOpen(true, {
-                            dcTab: "backend",
-                            mode: "create",
-                          });
-                        }}
-                      >
-                        Add Data
-                      </Button>
-                    </SnowflakeHide>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="mt-2"
+                      onClick={() => {
+                        setOpen(true, {
+                          dcTab: "backend",
+                          mode: "create",
+                        });
+                      }}
+                    >
+                      Add Data
+                    </Button>
                   }
                 />
               )}
@@ -494,17 +450,12 @@ function SourceTypeSection<T extends POSSIBLE_SOURCES>({
 
   const { setOpen } = useDataConnectorContext();
 
-  const { name } = useMemo(() => {
-    const metadata = SourceMeta[type as keyof typeof SourceMeta];
-    if (type === "backend" && inSnowflakeNativeApp)
-      return { ...metadata, name: "Widgets" };
-    return metadata;
-  }, [type]);
+  const { name } = useMemo(() => SourceMeta[type as keyof typeof SourceMeta], [type]);
 
   const [isOpen, setIsOpen] = useState(!!hasMatchingBackend);
   const [userClosed, setUserClosed] = useState(false);
-  const isProTier = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.tier === "pro",
+  const isFullTier = useShallowFeatureFlagsStore(
+    (state) => state.featureFlags?.tier === "full",
   );
 
   const isEmpty = items.length === 0;
@@ -528,33 +479,22 @@ function SourceTypeSection<T extends POSSIBLE_SOURCES>({
       disabled={isEmpty}
       className={cn({ "opacity-50": isEmpty })}
       tooltip={
-        isEmpty && !(type === "widget_studio" && inSnowflakeNativeApp) ? (
-          type === "widget_studio" ? (
-            <div className="flex flex-col gap-2">
-              <p>Create custom widgets</p>
-              <Link to="/app/widget-studio" className="w-full">
-                <Button className="w-full" size="xs">
-                  Go to Widget Studio
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <p>Zero connections added</p>
-              <Button
-                className="w-full"
-                size="xs"
-                onClick={() => {
-                  setOpen(true, {
-                    dcTab: type as DcTabT,
-                    mode: "create",
-                  });
-                }}
-              >
-                Add Data
-              </Button>
-            </div>
-          )
+        isEmpty ? (
+          <div className="flex flex-col gap-2">
+            <p>Zero connections added</p>
+            <Button
+              className="w-full"
+              size="xs"
+              onClick={() => {
+                setOpen(true, {
+                  dcTab: type as DcTabT,
+                  mode: "create",
+                });
+              }}
+            >
+              Add Data
+            </Button>
+          </div>
         ) : undefined
       }
       rightSection={
@@ -564,7 +504,7 @@ function SourceTypeSection<T extends POSSIBLE_SOURCES>({
             message={
               <>
                 App widgets can only be managed in the{" "}
-                <Link to="/app" className="obb-hyper-link">
+                <Link to="/app" className="ws-hyper-link">
                   Apps page
                 </Link>
               </>
@@ -672,8 +612,9 @@ function SourceItemSection<T extends POSSIBLE_SOURCES>({
   const [userClosed, setUserClosed] = useState(false);
   const [isOpen, setIsOpen] = useState(defaultExpanded);
   const sectionRef = useRef<HTMLDivElement>(null);
-  const hasChildren = "widgets" in item;
-  const hasChildrenEmpty = hasChildren && item.widgets.length === 0;
+  const widgets = "widgets" in item ? item.widgets : undefined;
+  const hasChildren = widgets !== undefined;
+  const hasChildrenEmpty = hasChildren && widgets.length === 0;
   const backendOffline = type === "backend" && item?.status === "error";
   const { toggleGroup, isGroupSelected } = useMyDataConnectors();
 
@@ -683,10 +624,10 @@ function SourceItemSection<T extends POSSIBLE_SOURCES>({
         childrenIds: [],
         selectionState: isGroupSelected([item.selectionId]),
       };
-    const childrenIds = item.widgets.map((widget) => widget.selectionId);
+    const childrenIds = widgets.map((widget) => widget.selectionId);
     const selectionState = isGroupSelected(childrenIds);
     return { childrenIds, selectionState };
-  }, [item, hasChildren, isGroupSelected]);
+  }, [item, widgets, hasChildren, isGroupSelected]);
 
   useEffect(() => {
     if (hasChildren) {
@@ -710,7 +651,7 @@ function SourceItemSection<T extends POSSIBLE_SOURCES>({
   const filteredItems = useMemo(() => {
     if (!hasChildren) return [];
     const lowerFilter = filter?.toLowerCase() ?? "";
-    return item.widgets?.filter((child) => {
+    return widgets.filter((child) => {
       if (!child.name?.trim()) return false;
       return (
         child.name?.toLowerCase().includes(lowerFilter) ||
@@ -720,7 +661,7 @@ function SourceItemSection<T extends POSSIBLE_SOURCES>({
         child.subCategory?.toLowerCase().includes(lowerFilter)
       );
     });
-  }, [item, hasChildren, filter]);
+  }, [widgets, hasChildren, filter]);
 
   const leftSectionMemo = useMemo(
     () => (
@@ -892,7 +833,7 @@ const WidgetCard = memo(
               isDropdownOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
             )}
           >
-            {!shared && type !== "backend" && (
+            {id && !shared && type !== "backend" && (
               <RightSideActions
                 parentId={parentId}
                 parentType={parentType}

@@ -12,10 +12,10 @@ import { renderHook } from "@testing-library/react";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
-  useRecordRef,
-  useCreateRef,
   useCallbackRef,
   useComposeRefs,
+  useCreateRef,
+  useRecordRef,
 } from "~/hooks/useRefHooks";
 
 describe("useRecordRef", () => {
@@ -62,9 +62,7 @@ describe("useRecordRef", () => {
   });
 
   it("should maintain ref identity across rerenders", () => {
-    const { result, rerender } = renderHook(() =>
-      useRecordRef({ value: "test" }),
-    );
+    const { result, rerender } = renderHook(() => useRecordRef({ value: "test" }));
 
     const firstRef = result.current;
     rerender();
@@ -270,12 +268,9 @@ describe("useComposeRefs", () => {
     const ref1 = createRef<string>();
     const ref2 = createRef<string>();
 
-    const { result, rerender } = renderHook(
-      ({ refs }) => useComposeRefs(...refs),
-      {
-        initialProps: { refs: [ref1, ref2] as const },
-      },
-    );
+    const { result, rerender } = renderHook(({ refs }) => useComposeRefs(...refs), {
+      initialProps: { refs: [ref1, ref2] as const },
+    });
 
     const firstResult = result.current;
     rerender({ refs: [ref1, ref2] as const });

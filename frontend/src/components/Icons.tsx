@@ -106,7 +106,7 @@ export const CollapseLeft = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-export const CollapseRight = (props) => (
+export const CollapseRight = (props: SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={16} height={16} fill="none" {...props}>
     <path
       stroke="currentColor"
@@ -125,7 +125,7 @@ export const CollapseRight = (props) => (
   </svg>
 );
 
-export const FolderIcon = (props) => (
+export const FolderIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={16} height={16} fill="none" {...props}>
     <path
       stroke="currentColor"
@@ -137,7 +137,7 @@ export const FolderIcon = (props) => (
   </svg>
 );
 
-export const FileIcon = (props) => (
+export const FileIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={16} height={16} fill="none" {...props}>
     <path
       stroke="currentColor"
@@ -179,17 +179,6 @@ export function HomeIcon(props: SVGProps<SVGSVGElement>) {
         strokeLinejoin="round"
         strokeWidth="1.5"
         d="M6 14.667V8h4v6.667"
-      />
-    </svg>
-  );
-}
-
-export function MaterialSymbols123(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
-      <path
-        fill="currentColor"
-        d="M5.5 15v-4.5H4V9h3v6H5.5ZM9 15v-2.5q0-.425.288-.713T10 11.5h2v-1H9V9h3.5q.425 0 .713.288T13.5 10v1.5q0 .425-.288.713t-.712.287h-2v1h3V15H9Zm6 0v-1.5h3v-1h-2v-1h2v-1h-3V9h3.5q.425 0 .713.288T19.5 10v4q0 .425-.288.713T18.5 15H15Z"
       />
     </svg>
   );

@@ -24,7 +24,7 @@ export const UNRESOLVED_MENTION_FALLBACK_LABEL = "@Unavailable";
  * Ids are query-string shaped (`tab_id=X&inner_tab=Y`, `widget_id=X&uuid=Y`) or
  * a bare widget id. Only `inner_tab` round-trips to a name — tab ids are
  * `slugify(tab.name)` (see `Widgets/ui/NavigationBar.tsx`). The widget shapes
- * carry an API identifier, not a title (`portfolio_industries_custom_obb` is
+ * carry an API identifier, not a title (`portfolio_industries_custom` is
  * not "Portfolio Exposure by Industry"), so they get the generic label rather
  * than an invented one.
  */

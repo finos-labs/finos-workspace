@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { deleteApiSource, deleteWidgetMetadata } from "~/api/auth.api";
+import { deleteApiSource } from "~/api/auth.api";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import type { Source, WidgetMetadataItem } from "~/lib/state/backendConnector";
+import type { Source } from "~/lib/state/backendConnector";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import {
@@ -32,7 +32,6 @@ type ManageAppsState = {
   deleteConfirmOpen: boolean;
   deleting: boolean;
   refreshLoadingId: string;
-  deleteWidgetsFromStudioAssociated: boolean; // widgets from widget studio
 };
 
 export default function ManageAppsDialog() {
@@ -42,21 +41,13 @@ export default function ManageAppsDialog() {
       setManageAppsDialogOpen: state.setManageAppsDialogOpen,
       setManageAppDialog: state.setManageAppDialog,
     }));
-  const {
-    apiSources,
-    removeApiSource,
-    updateApiSource,
-    widgetMetadata,
-    setWidgetMetadata,
-    getApiSourceById,
-  } = useShallowBackendConnectorStore((state) => ({
-    apiSources: state.apiSources,
-    removeApiSource: state.removeApiSource,
-    updateApiSource: state.updateApiSource,
-    widgetMetadata: state.widgetMetadata,
-    setWidgetMetadata: state.setWidgetMetadata,
-    getApiSourceById: state.getApiSourceById,
-  }));
+  const { apiSources, removeApiSource, updateApiSource, getApiSourceById } =
+    useShallowBackendConnectorStore((state) => ({
+      apiSources: state.apiSources,
+      removeApiSource: state.removeApiSource,
+      updateApiSource: state.updateApiSource,
+      getApiSourceById: state.getApiSourceById,
+    }));
 
   const [state, dispatch] = useStateReducer<ManageAppsState>({
     loading: false,
@@ -65,7 +56,6 @@ export default function ManageAppsDialog() {
     deleteConfirmOpen: false,
     deleting: false,
     refreshLoadingId: "",
-    deleteWidgetsFromStudioAssociated: true,
   });
 
   const closeManageApps = useCallback(() => {
@@ -103,24 +93,6 @@ export default function ManageAppsDialog() {
         state.selectedSources.map(async (sourceId) => {
           const source = getApiSourceById(sourceId);
           if (source) {
-            if (state.deleteWidgetsFromStudioAssociated) {
-              // we need to check for all widget studio elements with widget.widgetConfig.sourceId and widget.widgetConfig.sourceName
-              const widgetStudioToDelete = widgetMetadata.filter(
-                (widget) =>
-                  widget.widgetType === "widget_studio" &&
-                  widget.widgetConfig.sourceId === source.id &&
-                  widget.widgetConfig.sourceName === source.name,
-              );
-
-              let lastResult: WidgetMetadataItem[] = [];
-
-              for (const widget of widgetStudioToDelete) {
-                lastResult = await deleteWidgetMetadata(widget.widgetId);
-              }
-
-              setWidgetMetadata(lastResult);
-            }
-
             deleteSourceWidgets(source);
             await deleteApiSource(sourceId);
             removeApiSource(sourceId);
@@ -209,21 +181,6 @@ export default function ManageAppsDialog() {
     );
   }, [apiSources, state.search]);
 
-  const affectedWidgets = useMemo(() => {
-    const selectedSourcesData = apiSources.filter((source) =>
-      state.selectedSources.includes(source.id),
-    );
-
-    return selectedSourcesData.flatMap((source) =>
-      widgetMetadata.filter(
-        (widget) =>
-          widget.widgetType === "widget_studio" &&
-          widget.widgetConfig.sourceId === source.id &&
-          widget.widgetConfig.sourceName === source.name,
-      ),
-    );
-  }, [apiSources, state.selectedSources, widgetMetadata]);
-
   return (
     <>
       <BaseDialog
@@ -233,7 +190,7 @@ export default function ManageAppsDialog() {
       >
         <DialogTitle>Manage Backends</DialogTitle>
         <DialogDescription className="sr-only">
-          Manage the backends available in the OpenBB Workspace.
+          Manage the backends available in the Workspace.
         </DialogDescription>
         <div className="flex only-sm:flex-wrap sm:justify-between gap-2.5 items-center">
           <div className="only-sm:w-full">
@@ -258,7 +215,7 @@ export default function ManageAppsDialog() {
             </Button>
             <div className="h-8 flex p-1 items-center rounded bg-white border-light-200 dark:bg-dark-800 border dark:border-dark-750">
               <button
-                className="obb-small-navbar-btn rounded flex items-center justify-center size-7"
+                className="ws-small-navbar-btn rounded flex items-center justify-center size-7"
                 onClick={handleDeleteClick}
                 disabled={state.selectedSources.length === 0}
               >
@@ -340,7 +297,7 @@ export default function ManageAppsDialog() {
                   >
                     <Tooltip message="Delete">
                       <button
-                        className="obb-small-navbar-btn rounded flex items-center justify-center size-5"
+                        className="ws-small-navbar-btn rounded flex items-center justify-center size-5"
                         onClick={() => handleDeleteSource(source)}
                       >
                         <Icon id="trash-04" className="size-4" />
@@ -348,7 +305,7 @@ export default function ManageAppsDialog() {
                     </Tooltip>
                     <Tooltip message="Edit">
                       <button
-                        className="obb-small-navbar-btn rounded flex items-center justify-center size-5"
+                        className="ws-small-navbar-btn rounded flex items-center justify-center size-5"
                         onClick={() => handleEditSource(source)}
                       >
                         <Icon id="pencil-02" className="size-4" />
@@ -356,7 +313,7 @@ export default function ManageAppsDialog() {
                     </Tooltip>
                     <Tooltip message="Refresh">
                       <button
-                        className="obb-small-navbar-btn rounded flex items-center justify-center size-5"
+                        className="ws-small-navbar-btn rounded flex items-center justify-center size-5"
                         onClick={() => handleRefreshSource(source)}
                       >
                         <Icon
@@ -377,7 +334,7 @@ export default function ManageAppsDialog() {
                       ) : (
                         <span>
                           Backend not connected. Please check your{" "}
-                          <Link to="/app/widgets" className="obb-hyper-link">
+                          <Link to="/app/widgets" className="ws-hyper-link">
                             connections
                           </Link>
                         </span>
@@ -426,43 +383,6 @@ export default function ManageAppsDialog() {
                 Widgets already added to dashboards will be disabled. This action cannot
                 be undone.
               </p>
-
-              {affectedWidgets.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      checked={state.deleteWidgetsFromStudioAssociated}
-                      onCheckedChange={(checked) =>
-                        dispatch({
-                          deleteWidgetsFromStudioAssociated: checked as boolean,
-                        })
-                      }
-                    />
-                    <span className="body-xs-regular text-light-900 dark:text-light-100">
-                      Also delete associated widgets from Widget Studio (
-                      {affectedWidgets.length})
-                    </span>
-                  </div>
-
-                  {state.deleteWidgetsFromStudioAssociated && (
-                    <div className="ml-6 space-y-1">
-                      <p className="body-xs-regular text-light-600 dark:text-dark-50">
-                        The following widgets will be deleted:
-                      </p>
-                      <div className="max-h-24 overflow-y-auto space-y-1">
-                        {affectedWidgets.map((widget) => (
-                          <p
-                            key={widget.widgetId}
-                            className="body-xs-regular text-light-600 dark:text-dark-50 ml-2"
-                          >
-                            • {widget.widgetConfig.name || `Widget ${widget.widgetId}`}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         }

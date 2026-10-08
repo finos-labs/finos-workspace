@@ -28,9 +28,11 @@ export function FooterLink({ link }: { link: string }) {
       <Tooltip message="Create iframe widget">
         <button
           onClick={() => {
+            if (!id) return;
             addWidget(id, {
               id: uuidv4(),
               widgetId: "iframe",
+              type: "custom",
               name: link,
               description: `${link} iframe`,
               storage: { html: formattedUrl },
@@ -38,7 +40,7 @@ export function FooterLink({ link }: { link: string }) {
                 w: 20,
                 h: 25,
               },
-            } as any);
+            });
           }}
           type="button"
           className="shrink-0"

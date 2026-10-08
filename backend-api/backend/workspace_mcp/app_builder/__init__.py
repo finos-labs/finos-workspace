@@ -1,4 +1,4 @@
-"""App-builder knowledge resources for OpenBB Workspace MCP."""
+"""App-builder knowledge resources for Workspace MCP."""
 
 from workspace_mcp.app_builder.resources import (
     AppBuilderResource,

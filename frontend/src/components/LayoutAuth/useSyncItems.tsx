@@ -11,14 +11,14 @@ import {
   useBackendConnectorStore,
   useShallowBackendConnectorStore,
 } from "~/lib/state/backendConnector";
-import { useShallowTradingViewStore } from "~/lib/state/charting";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
+import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import { useCopilotDataStore } from "~/lib/state/copilotData";
+import { useShallowEntityThemeStore } from "~/lib/state/entityTheme";
 import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import { useSharedAppStore } from "~/lib/state/sharedApp";
 import { useShallowSkillsLibraryStore } from "~/lib/state/skillsLibrary";
-import { useShallowTableChartThemesStore } from "~/lib/state/tableChartThemes";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { useShallowUserAppsStore } from "~/lib/state/userApps";
 import { dispatchSaveState } from "~/lib/utils";
@@ -29,11 +29,8 @@ export default function useSyncItems() {
   const { pathname } = useLocation();
   useGetAppWidgets(); // Initialize the app widgets store
 
-  const { user, checkNewBundles } = useShallowAuthStore((state) => ({
-    user: state.user,
-    checkNewBundles: state.checkNewBundles,
-  }));
-  const updateThemeSettings = useShallowTableChartThemesStore(
+  const user = useShallowAuthStore((state) => state.user);
+  const updateThemeSettings = useShallowEntityThemeStore(
     (state) => state.updateThemeSettings,
   );
   const updateUserApps = useShallowUserAppsStore((state) => state.updateUserApps);
@@ -49,7 +46,6 @@ export default function useSyncItems() {
       updateBackendConnector: state.updateBackendConnector,
     }),
   );
-  const updateTVState = useShallowTradingViewStore((state) => state.updateTVState);
   const updateOnlySharedItems = useSharedAppStore(
     (state) => state.updateOnlySharedItems,
   );
@@ -75,7 +71,7 @@ export default function useSyncItems() {
   const { mutateAsync: getDashboards } = useMutation<DashSyncT>({
     mutationFn: async () => {
       const { data } = await apiClient
-        .get("/pro/dash/validate-and-sync")
+        .get("/app/dash/validate-and-sync")
         .catch((error) => {
           if (error?.response?.status === 401) {
             // If the user is unauthorized, log them out
@@ -89,33 +85,32 @@ export default function useSyncItems() {
     onSuccess: (dashboardsData) => {
       queueMicrotask(async () => {
         const data = dashboardsData;
-        setFeatureFlagsAndUsage(
-          {
-            ...data.feature_entitlements,
-            is_trial: data.is_trial_entity,
-            can_submit_marketplace: data.can_submit_marketplace ?? false,
-          },
-          data.usage,
-        );
+        if (data.feature_entitlements) {
+          setFeatureFlagsAndUsage(
+            {
+              ...data.feature_entitlements,
+              can_submit_marketplace: data.can_submit_marketplace ?? false,
+            },
+            data.usage ?? null,
+          );
+        }
 
         updateChats(data.copilot_chats, { questionsHistory: data.questions_history });
         updateRemoteItems(data.owned);
         updateOnlySharedItems({
-          shared: data.shared,
-          entityShared: data.entity_shared,
+          shared: data.shared ?? {},
+          entityShared: data.entity_shared ?? {},
         });
 
         if (data.entity_theme_settings) updateThemeSettings(data.entity_theme_settings);
 
-        updateTVState(data.trading_view);
-        checkNewBundles(data.feature_entitlements.tier === "pro");
-        updateThemeState(data.pro_display_settings || {});
+        updateThemeState(data.display_settings || {});
         updateBackendConnector({
           storedFiles: data.file_widgets || [],
-          singleWidgets: data.single_widgets || [],
           widgetMetadata: data.widget_metadata || [],
         });
-        updateMCPServers(data.mcp_servers);
+        updateMCPServers(data.mcp_servers ?? []);
+        useCopilotAccessStore.getState().setAccess(data.copilot_access);
         updateUserApps(data.user_apps || {}, true);
         updateUserSkills(data.user_skills || []);
         if (pathname === "/app") return;

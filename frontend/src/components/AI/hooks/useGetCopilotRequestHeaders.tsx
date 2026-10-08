@@ -12,20 +12,20 @@ export function useGetCopilotRequestHeaders() {
 
   const getCopilotRequestHeaders = useCallback(
     (xTraceId?: string, targetAgent?: Copilot) => {
-      // openbb-copilot is the only copilot without a holderUuid
+      // default-copilot is the only copilot without a holderUuid
       // If targetAgent is provided, use it; otherwise fall back to selectedCopilot
       const copilotToUse = targetAgent || selectedCopilot;
-      const isOpenBBCopilot = !copilotToUse?.holderUuid;
+      const isDefaultCopilot = !copilotToUse?.holderUuid;
       const { uuid: chatId } = getCurrentChat();
 
-      const headers = {
+      const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        ...(isOpenBBCopilot && {
-          Authorization: `Bearer ${user?.token}`,
-          "X-User-Id": user?.uuid,
-        }),
         "X-Trace-Id": xTraceId || chatId,
       };
+      if (isDefaultCopilot) {
+        headers.Authorization = `Bearer ${user?.token}`;
+        if (user?.uuid) headers["X-User-Id"] = user.uuid;
+      }
 
       const copilotHeaders = copilotToUse?.headers;
 

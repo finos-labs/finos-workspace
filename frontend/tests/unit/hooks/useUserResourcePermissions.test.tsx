@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { PermissionsT } from "~/api/user_roles.api";
+import type { FilePermissionsT, PermissionsT } from "~/api/user_roles.api";
 
 vi.mock("sonner", () => ({
   toast: {
@@ -28,6 +28,7 @@ import { getUserResourcePermissions } from "~/api/user_roles.api";
 import { useProcessBackendWidgets } from "~/hooks/useProcessBackendWidgets";
 import { useUserResourcePermissions } from "~/hooks/useUserResourcePermissions";
 import { useShallowPermissionsStore } from "~/lib/state/permissions";
+import { malformed, partial, stubStoreState } from "../mocks";
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -51,12 +52,11 @@ describe("useUserResourcePermissions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    (useShallowPermissionsStore as any).mockImplementation(
-      (selector: (state: { setPermissions: typeof mockSetPermissions }) => any) =>
-        selector({ setPermissions: mockSetPermissions }),
-    );
+    stubStoreState(useShallowPermissionsStore, { setPermissions: mockSetPermissions });
 
-    (useProcessBackendWidgets as any).mockReturnValue(mockProcessBackendWidgets);
+    vi.mocked(useProcessBackendWidgets).mockReturnValue(
+      partial(mockProcessBackendWidgets),
+    );
   });
 
   describe("successful data fetching", () => {
@@ -75,15 +75,15 @@ describe("useUserResourcePermissions", () => {
       };
 
       const mockPermissions: PermissionsT = {
-        backends: [mockBackend as any],
+        backends: [partial(mockBackend)],
         files: [
           {
             uuid: "file-1",
             access: "access",
-            name: "test.csv",
+            name: "test.pdf",
             description: "Test file",
-            url: "https://storage.example.com/test.csv",
-            extension: "csv",
+            url: "https://storage.example.com/test.pdf",
+            extension: "pdf",
           },
         ],
         prompts: [
@@ -92,15 +92,15 @@ describe("useUserResourcePermissions", () => {
             access: "access",
             prompt: {
               id: "prompt-1",
-              // @ts-expect-error - ignored for now
-              name: "Test Prompt",
-              content: "Test content",
+              prompt: "Test content",
+              createdAt: "2024-01-01T00:00:00Z",
+              updatedAt: "2024-01-01T00:00:00Z",
             },
           },
         ],
       };
 
-      (getUserResourcePermissions as any).mockResolvedValue(mockPermissions);
+      vi.mocked(getUserResourcePermissions).mockResolvedValue(partial(mockPermissions));
       mockProcessBackendWidgets.mockResolvedValue(mockProcessedBackend);
 
       const { result } = renderHook(() => useUserResourcePermissions(), {
@@ -123,7 +123,7 @@ describe("useUserResourcePermissions", () => {
       expect(result.current.data?.files).toEqual([
         {
           ...mockPermissions.files[0],
-          extension: "csv",
+          extension: "pdf",
           shared: true,
         },
       ]);
@@ -137,24 +137,24 @@ describe("useUserResourcePermissions", () => {
           {
             uuid: "file-1",
             access: "access",
-            name: "data",
-            description: "JSON file",
-            url: "https://storage.example.com/path/to/file.json",
-            extension: "json",
+            name: "notes",
+            description: "Markdown file",
+            url: "https://storage.example.com/path/to/file.md",
+            extension: "md",
           },
           {
             uuid: "file-2",
             access: "access",
-            name: "excel",
-            description: "Excel file",
-            url: "https://storage.example.com/data.xlsx",
-            extension: "xlsx",
+            name: "report",
+            description: "Word file",
+            url: "https://storage.example.com/data.docx",
+            extension: "docx",
           },
         ],
         prompts: [],
       };
 
-      (getUserResourcePermissions as any).mockResolvedValue(mockPermissions);
+      vi.mocked(getUserResourcePermissions).mockResolvedValue(partial(mockPermissions));
 
       const { result } = renderHook(() => useUserResourcePermissions(), {
         wrapper: createWrapper(),
@@ -164,11 +164,9 @@ describe("useUserResourcePermissions", () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(result.current.data?.files[0].extension).toBe("json");
-      expect(result.current.data?.files[1].extension).toBe("xlsx");
-      // @ts-expect-error - ignored for now
+      expect(result.current.data?.files[0].extension).toBe("md");
+      expect(result.current.data?.files[1].extension).toBe("docx");
       expect(result.current.data?.files[0].shared).toBe(true);
-      // @ts-expect-error - ignored for now
       expect(result.current.data?.files[1].shared).toBe(true);
     });
 
@@ -179,7 +177,7 @@ describe("useUserResourcePermissions", () => {
         prompts: [],
       };
 
-      (getUserResourcePermissions as any).mockResolvedValue(mockPermissions);
+      vi.mocked(getUserResourcePermissions).mockResolvedValue(partial(mockPermissions));
 
       const { result } = renderHook(() => useUserResourcePermissions(), {
         wrapper: createWrapper(),
@@ -197,7 +195,7 @@ describe("useUserResourcePermissions", () => {
     });
 
     it("should handle null/undefined response gracefully", async () => {
-      (getUserResourcePermissions as any).mockResolvedValue(null);
+      vi.mocked(getUserResourcePermissions).mockResolvedValue(malformed(null));
 
       const { result } = renderHook(() => useUserResourcePermissions(), {
         wrapper: createWrapper(),
@@ -222,12 +220,12 @@ describe("useUserResourcePermissions", () => {
       ];
 
       const mockPermissions: PermissionsT = {
-        backends: mockBackends as any,
+        backends: partial(mockBackends),
         files: [],
         prompts: [],
       };
 
-      (getUserResourcePermissions as any).mockResolvedValue(mockPermissions);
+      vi.mocked(getUserResourcePermissions).mockResolvedValue(partial(mockPermissions));
       mockProcessBackendWidgets.mockImplementation((backend) =>
         Promise.resolve({ ...backend, processed: true }),
       );
@@ -242,14 +240,16 @@ describe("useUserResourcePermissions", () => {
 
       expect(mockProcessBackendWidgets).toHaveBeenCalledTimes(3);
       expect(result.current.data?.backends).toHaveLength(3);
-      expect(result.current.data?.backends.every((b: any) => b.processed)).toBe(true);
+      expect(
+        result.current.data?.backends.every((b) => "processed" in b && b.processed),
+      ).toBe(true);
     });
   });
 
   describe("error handling", () => {
     it("should show error toast when fetch fails", async () => {
       const mockError = new Error("Network error");
-      (getUserResourcePermissions as any).mockRejectedValue(mockError);
+      vi.mocked(getUserResourcePermissions).mockRejectedValue(mockError);
 
       const { result } = renderHook(() => useUserResourcePermissions(), {
         wrapper: createWrapper(),
@@ -265,7 +265,7 @@ describe("useUserResourcePermissions", () => {
 
     it("should throw error after showing toast", async () => {
       const mockError = new Error("API Error");
-      (getUserResourcePermissions as any).mockRejectedValue(mockError);
+      vi.mocked(getUserResourcePermissions).mockRejectedValue(mockError);
 
       const { result } = renderHook(() => useUserResourcePermissions(), {
         wrapper: createWrapper(),
@@ -301,7 +301,7 @@ describe("useUserResourcePermissions", () => {
         prompts: [],
       };
 
-      (getUserResourcePermissions as any).mockResolvedValue(mockPermissions);
+      vi.mocked(getUserResourcePermissions).mockResolvedValue(partial(mockPermissions));
 
       const { result } = renderHook(() => useUserResourcePermissions(), {
         wrapper: createWrapper(),
@@ -321,7 +321,7 @@ describe("useUserResourcePermissions", () => {
         prompts: [],
       };
 
-      (getUserResourcePermissions as any).mockResolvedValue(mockPermissions);
+      vi.mocked(getUserResourcePermissions).mockResolvedValue(partial(mockPermissions));
 
       const customOnSuccess = vi.fn();
 
@@ -358,7 +358,7 @@ describe("useUserResourcePermissions", () => {
         prompts: [],
       };
 
-      (getUserResourcePermissions as any).mockResolvedValue(mockPermissions);
+      vi.mocked(getUserResourcePermissions).mockResolvedValue(partial(mockPermissions));
 
       const { result } = renderHook(() => useUserResourcePermissions(), {
         wrapper: createWrapper(),
@@ -368,12 +368,11 @@ describe("useUserResourcePermissions", () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      // @ts-expect-error - ignored for now
       expect(result.current.data?.files[0].shared).toBe(true);
     });
 
     it("should preserve all original file properties", async () => {
-      const originalFile = {
+      const originalFile: FilePermissionsT = {
         uuid: "file-1",
         access: "access",
         name: "important.pdf",
@@ -384,12 +383,11 @@ describe("useUserResourcePermissions", () => {
 
       const mockPermissions: PermissionsT = {
         backends: [],
-        // @ts-expect-error - ignored for now
         files: [originalFile],
         prompts: [],
       };
 
-      (getUserResourcePermissions as any).mockResolvedValue(mockPermissions);
+      vi.mocked(getUserResourcePermissions).mockResolvedValue(partial(mockPermissions));
 
       const { result } = renderHook(() => useUserResourcePermissions(), {
         wrapper: createWrapper(),

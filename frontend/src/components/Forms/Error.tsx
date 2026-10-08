@@ -5,7 +5,7 @@ export default function ErrorContent({
   text,
   className,
 }: {
-  text: string;
+  text: string | null | undefined;
   className?: string;
 }) {
   if (!text) return null;

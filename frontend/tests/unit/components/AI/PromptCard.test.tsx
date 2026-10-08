@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PromptCard } from "~/components/AI/PromptCard";
+import { required } from "../../mocks";
 
 const { mockToast } = vi.hoisted(() => ({
   mockToast: { success: vi.fn(), error: vi.fn() },
@@ -18,9 +19,9 @@ vi.mock("~/components/AI/TextStyle", () => ({
   ),
 }));
 
-vi.mock("~/components/General/Table/AgGridUtils", () => ({
+vi.mock("~/lib/utils/format", () => ({
   formatDate: (date: Date) => date.toISOString().split("T")[0],
-  isDate: (_value: any) => false,
+  isDate: (_value: unknown) => false,
 }));
 
 vi.mock("~/components/Icon", () => ({
@@ -141,7 +142,7 @@ describe("PromptCard", () => {
 
     render(<PromptCard prompt={defaultPrompt} onEdit={onEdit} onDelete={vi.fn()} />);
 
-    await user.click(screen.getByTestId("icon-edit").closest("button")!);
+    await user.click(required(screen.getByTestId("icon-edit").closest("button")));
 
     expect(onEdit).toHaveBeenCalledWith("prompt-1");
   });
@@ -152,7 +153,7 @@ describe("PromptCard", () => {
 
     render(<PromptCard prompt={defaultPrompt} onEdit={vi.fn()} onDelete={onDelete} />);
 
-    await user.click(screen.getByTestId("icon-trash-02").closest("button")!);
+    await user.click(required(screen.getByTestId("icon-trash-02").closest("button")));
 
     expect(onDelete).toHaveBeenCalledWith("prompt-1");
   });
@@ -171,7 +172,7 @@ describe("PromptCard", () => {
       />,
     );
 
-    await user.click(screen.getByTestId("icon-copy-03").closest("button")!);
+    await user.click(required(screen.getByTestId("icon-copy-03").closest("button")));
 
     expect(onDuplicate).toHaveBeenCalledWith("What is the market outlook?");
   });
@@ -181,7 +182,9 @@ describe("PromptCard", () => {
 
     render(<PromptCard prompt={defaultPrompt} onEdit={vi.fn()} onDelete={vi.fn()} />);
 
-    await user.click(screen.getByTestId("icon-clipboard-icon").closest("button")!);
+    await user.click(
+      required(screen.getByTestId("icon-clipboard-icon").closest("button")),
+    );
 
     expect(mockToast.success).toHaveBeenCalledWith("Prompt copied to clipboard");
   });
@@ -257,7 +260,9 @@ describe("PromptCard", () => {
         />,
       );
 
-      await user.click(screen.getByTestId("icon-square-arrow-up").closest("button")!);
+      await user.click(
+        required(screen.getByTestId("icon-square-arrow-up").closest("button")),
+      );
       expect(onMoveUp).toHaveBeenCalled();
     });
 
@@ -277,7 +282,9 @@ describe("PromptCard", () => {
         />,
       );
 
-      await user.click(screen.getByTestId("icon-square-arrow-down").closest("button")!);
+      await user.click(
+        required(screen.getByTestId("icon-square-arrow-down").closest("button")),
+      );
       expect(onMoveDown).toHaveBeenCalled();
     });
 
@@ -294,10 +301,12 @@ describe("PromptCard", () => {
         />,
       );
 
-      const moveUpBtn = screen.getByTestId("icon-square-arrow-up").closest("button")!;
-      const moveDownBtn = screen
-        .getByTestId("icon-square-arrow-down")
-        .closest("button")!;
+      const moveUpBtn = required(
+        screen.getByTestId("icon-square-arrow-up").closest("button"),
+      );
+      const moveDownBtn = required(
+        screen.getByTestId("icon-square-arrow-down").closest("button"),
+      );
 
       expect(moveUpBtn).toBeDisabled();
       expect(moveDownBtn).toBeDisabled();

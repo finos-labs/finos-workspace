@@ -70,9 +70,11 @@ export function PdfViewerCore({
   const onPageRenderSuccess = useCallback(
     (page: pdfjs.PDFPageProxy) => {
       const originalViewport = page.getViewport({ scale: 1 });
-      const xScale = canvasRef.current.clientWidth / originalViewport.width;
-      const yScale = canvasRef.current.clientHeight / originalViewport.height;
-      props.setPageScale({
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const xScale = canvas.clientWidth / originalViewport.width;
+      const yScale = canvas.clientHeight / originalViewport.height;
+      props.setPageScale?.({
         x: xScale,
         y: yScale,
       });
@@ -188,7 +190,7 @@ export function PdfViewerCore({
                   )}
 
                   {showPageNavigation && showZoomControls && (
-                    <div className="obb-divider-vertical mx-3 min-h-[20px] shrink-0" />
+                    <div className="ws-divider-vertical mx-3 min-h-[20px] shrink-0" />
                   )}
 
                   {showZoomControls && (
@@ -305,8 +307,9 @@ export function usePdfTextSearch(
         const pagePromises = Array.from({ length: pageCount }, (_, pageNumber) => {
           return docData.getPage(pageNumber + 1).then((pageData) => {
             return pageData.getTextContent().then((textContent) => {
-              // @ts-expect-error
-              return textContent.items.map(({ str }) => str).join(" ");
+              return textContent.items
+                .map((item) => ("str" in item ? item.str : ""))
+                .join(" ");
             });
           });
         });
@@ -358,7 +361,7 @@ function Search({
   const results = usePdfTextSearch(file, debounceQuery);
   const [isSearchResultVisible, setIsSearchResultVisible] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

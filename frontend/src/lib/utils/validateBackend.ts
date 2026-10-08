@@ -1,7 +1,11 @@
-import cloneDeep from "lodash/cloneDeep";
 import type { $ZodIssue } from "zod/v4/core";
 import type { WidgetT } from "~/components/types";
-import { backendTemplateSchema, KNOWN_TEMPLATE_KEYS } from "~/lib/types/app";
+import {
+  backendTemplateSchema,
+  isWidgetVizType,
+  KNOWN_TEMPLATE_KEYS,
+  WidgetVizTypes,
+} from "~/lib/types/app";
 
 // Snake_case aliases accepted on apps.json templates. Backends following the
 // public docs may emit snake_case; we rewrite to camelCase before validation
@@ -22,6 +26,7 @@ function normalizeBackendTemplate(template: unknown) {
   return obj;
 }
 
+import { type InvalidItem, toInspectableJson } from "~/lib/utils/invalidItems";
 import {
   cleanSearchParams,
   convertHeadersToRecord,
@@ -30,7 +35,6 @@ import {
   createURLString,
   createWidgetInitParams,
 } from "~/lib/utils/widgetParams";
-import WIDGETS from "~/lib/widgets.json";
 import {
   detectUnrecognizedKeys,
   KNOWN_WIDGET_KEYS,
@@ -45,52 +49,7 @@ import type {
   Source,
   ValidateBackend,
 } from "../state/backendConnector";
-
-/**
- * Creates the appropriate HTTP method and payload for widget endpoint validation
- */
-function createValidationRequest(
-  widget: WidgetType,
-  initialParams: Record<string, any>,
-) {
-  // POST widgets that need special handling
-  if (widget.type === "omni") {
-    return {
-      method: "POST",
-      body: JSON.stringify({
-        prompt: "test validation query",
-        ...initialParams,
-      }),
-      headers: { "Content-Type": "application/json" },
-    };
-  }
-
-  if (widget.type === "ssrm_table") {
-    return {
-      method: "POST",
-      body: JSON.stringify({
-        startRow: 0,
-        endRow: 10,
-        ...initialParams,
-      }),
-      headers: { "Content-Type": "application/json" },
-    };
-  }
-
-  if (widget.type === "multi_file_viewer") {
-    return {
-      method: "POST",
-      body: JSON.stringify({ ...initialParams }),
-      headers: { "Content-Type": "application/json" },
-    };
-  }
-
-  // Default to GET for all other widget types
-  return {
-    method: "GET",
-    headers: {},
-  };
-}
+import { getJsonWidget } from "./widget";
 
 export async function validateBackendEndpoints(
   widgets: WidgetsType,
@@ -105,35 +64,8 @@ export async function validateBackendEndpoints(
     const initialParams = createWidgetInitParams(widget as unknown as WidgetT);
 
     const url = createURLString(widget.endpoint, backendUrl);
-    const validationRequest = createValidationRequest(widget, initialParams);
-
-    let endpoint: string;
-    let requestOptions: RequestInit;
-
-    if (validationRequest.method === "POST") {
-      // For POST requests, don't add params to URL, they go in the body
-      endpoint = url;
-      requestOptions = {
-        method: "POST",
-        headers: {
-          ...headers,
-          ...validationRequest.headers,
-        },
-        body: validationRequest.body,
-        signal,
-      };
-    } else {
-      // For GET requests, add params to URL as before
-      endpoint = cleanSearchParams(url, initialParams);
-      requestOptions = {
-        method: "GET",
-        headers: {
-          ...headers,
-          ...validationRequest.headers,
-        },
-        signal,
-      };
-    }
+    const endpoint = cleanSearchParams(url, initialParams);
+    const requestOptions: RequestInit = { method: "GET", headers, signal };
 
     const endpointRes = await fetch(endpoint, requestOptions).catch(
       (err: Error) =>
@@ -161,7 +93,38 @@ export async function validateBackendEndpoints(
   return failedEndpoints;
 }
 
-const isValidWidget = (widget: any): widget is WidgetType => {
+/**
+ * Splits a widgets.json into the widgets this Workspace renders and the IDs of the
+ * rest. The Workspace protocol has more widget types (tables, charts and others)
+ * than this build displays; a widget of another type, or with no type (the
+ * protocol's default is a table), is left out instead of failing the whole backend.
+ */
+export function partitionSupportedWidgets(widgets: WidgetsType): {
+  supported: WidgetsType;
+  unsupported: string[];
+} {
+  if (!widgets || typeof widgets !== "object" || Array.isArray(widgets)) {
+    return { supported: widgets, unsupported: [] };
+  }
+
+  const supported = {} as WidgetsType;
+  const unsupported: string[] = [];
+  for (const [widgetId, widget] of Object.entries(widgets)) {
+    // Not a widget at all: it is invalid, which is reported, not a type left out
+    if (!widget || typeof widget !== "object" || Array.isArray(widget)) {
+      supported[widgetId] = widget;
+      continue;
+    }
+
+    const type = widget?.type ?? widget?.defaultViz;
+    if (typeof type === "string" && isWidgetVizType(type)) supported[widgetId] = widget;
+    else unsupported.push(widgetId);
+  }
+
+  return { supported, unsupported };
+}
+
+const isValidWidget = (widget: unknown): widget is WidgetType => {
   return specificationSchema.safeParse({ data_widget: widget }).success;
 };
 
@@ -183,36 +146,103 @@ const getInvalidError = (object: unknown): string => {
   return error;
 };
 
-export function validateObject(object: object): null | string {
-  if (Array.isArray(object) || isValidWidget(object)) return getInvalidError(object);
+/**
+ * Validates widgets.json entry by entry. A widget that fails validation is reported on its own
+ * and left out, the others are kept. `fileError` is set when the file as a whole is not a map
+ * of widgets.
+ */
+export function validateWidgetItems(object: object): {
+  fileError: string | null;
+  valid: WidgetsType;
+  invalid: InvalidItem[];
+} {
+  const valid = {} as WidgetsType;
+  const invalid: InvalidItem[] = [];
+  if (Array.isArray(object) || isValidWidget(object)) {
+    return { fileError: getInvalidError(object), valid, invalid };
+  }
 
   // Mutate params in place. `cloneDeep` removed: downstream (`processWorkerResults`)
   // recomputes `widget.params` from scratch anyway, so the mutation is harmless and
   // the clone was the dominant cost for backends with hundreds/thousands of widgets.
   const widgets = object as Record<string, WidgetType>;
-  const errors: string[] = [];
 
   for (const widgetId in widgets) {
     const widget = widgets[widgetId];
+
+    if (!widget || typeof widget !== "object" || Array.isArray(widget)) {
+      invalid.push({
+        file: "widgets.json",
+        id: widgetId,
+        errors: `${widgetId}:\n [object]: Expected an object, received \`${Array.isArray(widget) ? "array" : String(widget)}\``,
+        json: toInspectableJson(widget),
+      });
+      continue;
+    }
+
+    const sentParams = widget.params;
     widget.params = createParamDefs(widget);
 
     const parsedWidget = specificationSchema.safeParse({ [widgetId]: widget });
-    const issues = parsedWidget.error?.issues;
-    formatZodIssues(issues, errors, widget, widgetId);
+    const errors = formatZodIssues(
+      parsedWidget.error?.issues ?? [],
+      [],
+      widget,
+      widgetId,
+    );
+
+    if (errors.length === 0) {
+      valid[widgetId] = widget as WidgetsType[string];
+      continue;
+    }
+
+    invalid.push({
+      file: "widgets.json",
+      id: widgetId,
+      name: typeof widget.name === "string" && widget.name ? widget.name : undefined,
+      errors: errors.join("\n\n"),
+      // The widget as the backend sent it, not with the parameters computed above
+      json: toInspectableJson({ ...widget, params: sentParams }),
+    });
   }
 
   if (import.meta.env.DEV) console.log("Valid widgets.json");
 
-  return errors.length > 0 ? errors.join("\n\n") : null;
+  return { fileError: null, valid, invalid };
+}
+
+/** The widgets.json problems as one message: the file's, or each invalid widget's. */
+function widgetErrorMessage(items: ReturnType<typeof validateWidgetItems>) {
+  if (items.fileError) return items.fileError;
+  return items.invalid.length > 0
+    ? items.invalid.map((item) => item.errors).join("\n\n")
+    : null;
+}
+
+export function validateObject(object: object): null | string {
+  return widgetErrorMessage(validateWidgetItems(object));
 }
 
 const expectedRegex = /expected one of (.+) - received (.*)/;
 function formatZodIssue(issue: $ZodIssue, widgetId?: string): string {
-  //@ts-expect-error
-  const { message, path, code, expected = "", input } = issue;
+  // Which of the fields an issue has depends on its code
+  const {
+    message,
+    path,
+    code,
+    expected = "",
+    input,
+  } = issue as $ZodIssue & { expected?: unknown; input?: unknown };
   const cleanedPath = path.filter((p) => p !== widgetId).join(", ") || "object";
 
-  if (code === "invalid_type") return `[${cleanedPath}]: ${message}`;
+  if (code === "invalid_type") {
+    // The app's error messages can be as short as "Invalid input": say what was expected
+    const hint =
+      expected && !String(message).includes(String(expected))
+        ? ` (expected \`${expected}\`)`
+        : "";
+    return `[${cleanedPath}]: ${message}${hint}`;
+  }
   if (expected && input) {
     const errorMsg = `\nExpected: \`${expected}\` - Received: \`${input}\``;
     return `[${cleanedPath}]: ${code} ${errorMsg}`;
@@ -236,10 +266,11 @@ function formatZodIssue(issue: $ZodIssue, widgetId?: string): string {
 export function formatZodIssues(
   issues: $ZodIssue[],
   errors: string[] = [],
-  widget?: any,
+  widget?: Record<string, unknown>,
   widgetId?: string,
 ) {
-  widgetId = widgetId || widget?.widgetId;
+  widgetId =
+    widgetId || (typeof widget?.widgetId === "string" ? widget.widgetId : undefined);
 
   if (issues?.length > 0) {
     const issuesString = issues
@@ -271,29 +302,45 @@ export function formatZodIssues(
   return errors;
 }
 
-// Update the validateBackendTemplate function to include template name in errors
-function validateBackendTemplates(templates: BackendTemplate[]): string[] {
-  const appEntries = cloneDeep(templates) as BackendTemplate[];
-  const errors: string[] = [];
+/**
+ * Validates apps.json entry by entry. An app that fails validation is reported on its own
+ * and left out, the others are kept.
+ */
+function partitionTemplates(
+  templates: BackendTemplate[],
+  file: "apps.json" | "templates.json" = "apps.json",
+): { valid: BackendTemplate[]; invalid: InvalidItem[] } {
+  const valid: BackendTemplate[] = [];
+  const invalid: InvalidItem[] = [];
 
-  for (const template of appEntries) {
+  for (const template of templates) {
     // Skip null, undefined, or invalid templates
     if (!template || typeof template !== "object") {
       continue;
     }
 
     const result = backendTemplateSchema.safeParse(template);
-    if (!result.success) {
-      const issues = result.error.issues;
-      template.name = template.name || "Unknown App";
-      formatZodIssues(issues, errors, template);
+    if (result.success) {
+      valid.push(template);
+      continue;
     }
+
+    const name = template.name || "Unknown App";
+    invalid.push({
+      file,
+      id: name,
+      name,
+      errors: formatZodIssues(result.error.issues, [], { ...template, name }).join(
+        "\n\n",
+      ),
+      json: toInspectableJson(template),
+    });
   }
 
-  return errors;
+  return { valid, invalid };
 }
 
-const errorResponse = {
+export const errorResponse = {
   widgets: {},
   errorMessage: null,
   templates: [] as BackendTemplate[],
@@ -302,7 +349,7 @@ const errorResponse = {
   templateErrorMessage: null,
   templateWarningMessage: null,
   unrecognizedKeysMessage: null,
-  isOpenBBPlatform: null,
+  isPlatform: null,
 } satisfies ValidateBackend;
 
 const DEFAULT_OPTIONS = {
@@ -310,8 +357,6 @@ const DEFAULT_OPTIONS = {
   vendorAppCache: false,
   agents: true,
   apps: true,
-  schemas: true,
-  semanticViews: true,
   extraHeaders: {} as Record<string, string>,
 };
 
@@ -331,19 +376,19 @@ function parseOptions(
 }
 
 function validateWidgetsAppsJson(params: {
-  templates: BackendTemplate[];
+  invalidTemplates: InvalidItem[];
   widgetValidationError: string | null;
   failedEndpoints?: string[];
   unrecognizedReports?: UnrecognizedKeysReport[];
 }) {
   const {
-    templates,
+    invalidTemplates,
     widgetValidationError,
     failedEndpoints = [],
     unrecognizedReports = [],
   } = params;
 
-  const templateErrors = validateBackendTemplates(templates);
+  const templateErrors = invalidTemplates.map((item) => item.errors);
   const templateErrorMessage =
     templateErrors.length > 0 ? templateErrors.join("\n\n") : null;
 
@@ -376,29 +421,38 @@ export async function validateBackend(
 
   if (isVendorApp && !options.validateAllWidgets && options.vendorAppCache) {
     const { widgetsJsonCache = {}, appsJsonCache = [] } = source.vendorApp || {};
-    const widgetValidationError = validateObject(widgetsJsonCache);
+    const { supported: vendorWidgets, unsupported: unsupportedWidgets } =
+      partitionSupportedWidgets(widgetsJsonCache);
+    const widgetItems = validateWidgetItems(vendorWidgets);
+    const widgetValidationError = widgetErrorMessage(widgetItems);
     const unrecognizedReports = [] as UnrecognizedKeysReport[];
     for (const t of appsJsonCache) normalizeBackendTemplate(t);
 
-    if (!widgetValidationError) {
+    if (!widgetItems.fileError) {
       const report = detectUnrecognizedKeys(
         "[widgets.json]",
-        Object.values(widgetsJsonCache),
+        Object.values(widgetItems.valid),
         KNOWN_WIDGET_KEYS,
       );
       if (report) unrecognizedReports.push(report);
     }
 
+    const templateItems = partitionTemplates(appsJsonCache);
     const jsonErrors = validateWidgetsAppsJson({
-      templates: appsJsonCache,
+      invalidTemplates: templateItems.invalid,
       widgetValidationError,
       unrecognizedReports,
     });
 
     return {
-      widgets: widgetValidationError ? {} : widgetsJsonCache, // return empty widgets if validation failed
+      widgets: widgetValidationError ? {} : vendorWidgets, // return empty widgets if validation failed
+      validWidgets: widgetItems.valid,
+      unsupportedWidgets,
       ...jsonErrors,
       templates: jsonErrors.templateErrors.length > 0 ? [] : appsJsonCache, // return empty templates if validation failed
+      validTemplates: templateItems.valid,
+      invalidItems: [...widgetItems.invalid, ...templateItems.invalid],
+      fatalErrorMessage: widgetItems.fileError,
       agents: [], // vendor apps don't have agents
     } as ValidateBackend;
   }
@@ -451,22 +505,24 @@ export async function validateBackend(
   // template check runs independently since templates have their own pipeline.
   const unrecognizedReports = [] as UnrecognizedKeysReport[];
 
-  const widgets = (await widgetsRes.json()) as WidgetsType;
-  const isOpenBBPlatform =
-    widgetsRes.headers.get("X-Backend-Type") === "OpenBB Platform";
-  const widgetValidationError = validateObject(widgets);
+  const rawWidgets = (await widgetsRes.json()) as WidgetsType;
+  const { supported: widgets, unsupported: unsupportedWidgets } =
+    partitionSupportedWidgets(rawWidgets);
+  const isPlatform = widgetsRes.headers.get("X-Backend-Type") === "Platform";
+  const widgetItems = validateWidgetItems(widgets);
+  const widgetValidationError = widgetErrorMessage(widgetItems);
 
-  if (!widgetValidationError) {
+  if (!widgetItems.fileError) {
     const report = detectUnrecognizedKeys(
       "[widgets.json]",
-      Object.values(widgets),
+      Object.values(widgetItems.valid),
       KNOWN_WIDGET_KEYS,
     );
     if (report) unrecognizedReports.push(report);
   }
   // don't early return here - continue to check templates even if widgets have errors,
   // this is so we can still show the user the apps they have and the errors they have
-  let failedEndpoints = [];
+  let failedEndpoints: string[] = [];
   if (options.validateAllWidgets && !widgetValidationError) {
     failedEndpoints = await validateBackendEndpoints(
       widgets,
@@ -478,11 +534,10 @@ export async function validateBackend(
   }
 
   let templates: BackendTemplate[] = [];
+  let templatesFile: "apps.json" | "templates.json" = "apps.json";
   let agents: BackendAgent[] = [];
-  let schemas: Source["schemas"];
-  let semanticViews: Source["semanticViews"];
 
-  const getPromise = async (fn: () => Promise<Response>, enabled: boolean) => {
+  const getPromise = async (fn: () => Promise<Response>, enabled?: boolean) => {
     if (!enabled) return Promise.resolve({ ok: false } as Response);
     return fn().catch(() => ({ ok: false }) as Response);
   };
@@ -508,6 +563,7 @@ export async function validateBackend(
       const fileName = tempsRes.url?.endsWith("apps.json")
         ? "apps.json"
         : "templates.json";
+      templatesFile = fileName;
       const data = await tempsRes.json().catch(() => []);
       // Handle different response types properly:
       // - [] (empty array) -> []
@@ -548,37 +604,9 @@ export async function validateBackend(
     }
   }
 
-  const hasSSRM =
-    !widgetValidationError &&
-    Object.values(widgets || {}).some((w) => w.type === "ssrm_advanced");
-
-  // Database-only endpoints — fired in parallel after widgets parse confirms SSRM.
-  if (hasSSRM && (options.schemas || options.semanticViews)) {
-    const schemasReq = getPromise(
-      () => fetch(createURL("table-schemas", backendUrl, newParams), reqInit),
-      options.schemas,
-    );
-
-    const semanticViewsReq = getPromise(
-      () => fetch(createURL("semantic-views", backendUrl, newParams), reqInit),
-      options.semanticViews,
-    );
-
-    const [schemasRes, semanticViewsRes] = await Promise.all([
-      schemasReq,
-      semanticViewsReq,
-    ]);
-
-    if (schemasRes.ok) {
-      schemas = await schemasRes.json().catch(() => undefined);
-    }
-    if (semanticViewsRes.ok) {
-      semanticViews = await semanticViewsRes.json().catch(() => undefined);
-    }
-  }
-
+  const templateItems = partitionTemplates(templates, templatesFile);
   const jsonErrors = validateWidgetsAppsJson({
-    templates,
+    invalidTemplates: templateItems.invalid,
     widgetValidationError,
     failedEndpoints,
     unrecognizedReports,
@@ -586,22 +614,18 @@ export async function validateBackend(
 
   return {
     widgets: widgetValidationError ? {} : widgets, // return empty widgets if validation failed
+    validWidgets: widgetItems.valid,
+    unsupportedWidgets,
     ...jsonErrors,
     templates: jsonErrors.templateErrors.length > 0 ? [] : templates, // return empty templates if validation failed
+    validTemplates: templateItems.valid,
+    invalidItems: [...widgetItems.invalid, ...templateItems.invalid],
+    // What leaves nothing usable: the file is not a map of widgets, or endpoints are unreachable
+    fatalErrorMessage:
+      [widgetItems.fileError, ...failedEndpoints].filter(Boolean).join("\n\n") || null,
     agents,
-    schemas,
-    semanticViews,
-    isOpenBBPlatform,
+    isPlatform,
   } as ValidateBackend;
-}
-
-export function getJsonWidget(widget: string | Partial<WidgetT>): WidgetT | null {
-  if (typeof widget === "string") {
-    widget = WIDGETS[widget] as Partial<WidgetT>;
-    if (!widget) return null;
-  }
-
-  return cloneDeep({ ...(WIDGETS[widget?.widgetId] ?? widget) });
 }
 
 export async function validateSource(
@@ -609,16 +633,38 @@ export async function validateSource(
   options?: GetApiSourceWidgetsOptions | boolean,
 ) {
   const validated = await validateBackend(source, options).catch(
-    (e) => ({ ...errorResponse, errorMessage: e.message }) as ValidateBackend,
+    (e) =>
+      ({
+        ...errorResponse,
+        errorMessage: e.message,
+        fatalErrorMessage: e.message,
+      }) as ValidateBackend,
   );
 
-  if (!validated.templates.length || validated.errorMessage) return validated;
+  const unsupportedWidgets = validated.unsupportedWidgets ?? [];
+  if (unsupportedWidgets.length > 0) {
+    validated.templateWarningMessage = [
+      `[widgets.json]: Not shown, this Workspace does not render their widget type: \`${unsupportedWidgets.join("`, `")}\``,
+      `[widgets.json]: Supported widget types: \`${WidgetVizTypes.join("`, `")}\`. A widget with no \`type\` is a table, which is not supported.`,
+    ].join("\n\n");
+  }
+
+  // What loads: an invalid widget or app does not take the others down with it
+  const loadedTemplates = validated.validTemplates ?? validated.templates;
+  if (!loadedTemplates.length || validated.fatalErrorMessage) return validated;
+
+  const loadedWidgets = validated.validWidgets ?? validated.widgets;
+  const invalidWidgetIds = new Set(
+    validated.invalidItems
+      ?.filter((item) => item.file === "widgets.json")
+      .map((item) => item.id),
+  );
 
   const tabWidgets = {} as { [appName: string]: { [tabId: string]: string[] } };
   const vendorApp = source.vendorApp;
-  const isSingleTemplate = validated.templates.length === 1;
+  const isSingleTemplate = loadedTemplates.length === 1;
 
-  for (const t of validated.templates) {
+  for (const t of loadedTemplates) {
     if (vendorApp && isSingleTemplate) t.name = vendorApp.name;
 
     for (const tab of Object.values(t.tabs || {})) {
@@ -636,7 +682,15 @@ export async function validateSource(
   // check for widgets used in apps that are missing from the backend widgets
   for (const [appName, item] of Object.entries(tabWidgets)) {
     for (const [tabId, widgetIds] of Object.entries(item)) {
-      const missingWidgetIds = widgetIds.filter((id) => !validated.widgets[id]);
+      const missingWidgetIds = widgetIds.filter(
+        (id) =>
+          !(
+            loadedWidgets[id] ||
+            validated.unsupportedWidgets?.includes(id) ||
+            // Already reported as invalid
+            invalidWidgetIds.has(id)
+          ),
+      );
       if (missingWidgetIds.length === 0) continue;
 
       const errors = [
@@ -669,18 +723,22 @@ export async function getApiSourceWidgets(
 ) {
   const validated = await validateSource(source, options);
 
-  if (validated.templates.length > 0) {
+  const loadedTemplates = validated.validTemplates ?? validated.templates;
+  if (loadedTemplates.length > 0) {
     // do some validation here
-    validated.templates = validated.templates.map((template) => {
+    const processed = loadedTemplates.map((template) => {
       template.id = `custom-${source.id ?? source.uuid}-${slugify(template.name)}`;
       template.templateId = template.templateId || template.id;
       // handle relative URLs for images
-      for (const img_key of ["img", "img_dark", "img_light"]) {
-        if (!template[img_key]) continue;
-        template[img_key] = createURLString(template[img_key], source.url);
+      for (const img_key of ["img", "img_dark", "img_light"] as const) {
+        const img = template[img_key];
+        if (!img) continue;
+        template[img_key] = createURLString(img, source.url);
       }
       return template;
     });
+    if (validated.validTemplates) validated.validTemplates = processed;
+    if (validated.templates.length > 0) validated.templates = processed;
   }
 
   return validated;
@@ -710,23 +768,32 @@ export function processWorkerResults(
       const { source: apiSource, result } = cur;
 
       try {
-        if (result.errorMessage) {
+        // An invalid widget or app is skipped and reported, the backend still loads. Only a
+        // backend with nothing usable (unreachable, not a widgets.json) is an error.
+        const fatalErrorMessage = result.validWidgets
+          ? result.fatalErrorMessage
+          : result.errorMessage;
+        if (fatalErrorMessage) {
           apiSource.status = "error";
           acc.apiSources.push(handleVendorAppSource({ ...apiSource }));
           return acc;
         }
 
         const {
-          widgets,
-          errorMessage,
           templateWarningMessage,
           unrecognizedKeysMessage,
-          templates,
-          schemas,
-          semanticViews,
           agents,
+          invalidItems = [],
         } = result;
-        if (semanticViews) acc.semanticViews = semanticViews;
+        const widgets = result.validWidgets ?? result.widgets;
+        const templates = result.validTemplates ?? result.templates;
+
+        if (!partial && invalidItems.length > 0) {
+          acc.invalidItems.push({
+            source: { name: apiSource.name, id: apiSource.id },
+            items: invalidItems,
+          });
+        }
 
         if (!partial && templateWarningMessage) {
           acc.toastErrors.push({
@@ -744,48 +811,45 @@ export function processWorkerResults(
           });
         }
 
-        if (errorMessage) {
-          console.error(errorMessage);
-          apiSource.status = "error";
-          acc.apiSources.push(handleVendorAppSource({ ...apiSource }));
-          return acc;
-        }
+        apiSource.widgets = Object.entries(widgets).reduce<WidgetsType>(
+          (acc, [key, widget]) => {
+            widget.params = createParamDefs(widget, apiSource.url);
+            const subCategory = widget.sub_category ?? widget.subCategory;
 
-        apiSource.widgets = Object.entries(widgets).reduce((acc, [key, widget]) => {
-          widget.params = createParamDefs(widget, apiSource.url);
-          const subCategory = widget.sub_category ?? widget.subCategory;
-
-          acc[key] = {
-            ...widget,
-            widgetId: key,
-            subCategory,
-            endpointHeaders: apiSource.endpointHeaders,
-          };
-          return acc;
-        }, {});
+            acc[key] = {
+              ...widget,
+              widgetId: key,
+              subCategory,
+              endpointHeaders: apiSource.endpointHeaders,
+            };
+            return acc;
+          },
+          {},
+        );
 
         acc.apiSources.push({
           ...apiSource,
           templates,
-          schemas,
-          semanticViews,
           agents,
           status: "success",
         });
         return acc;
       } catch (err) {
-        console.error(err.message);
+        console.error(err instanceof Error ? err.message : err);
         acc.apiSources.push(handleVendorAppSource({ ...apiSource }));
         return acc;
       }
     },
     {
       apiSources: [] as Source[],
-      semanticViews: null as Source["semanticViews"],
       toastErrors: [] as { source: { name: string; id: string }; message: string }[],
       unrecognizedKeysMessages: [] as {
         source: { name: string; id: string };
         reports: UnrecognizedKeysReport[];
+      }[],
+      invalidItems: [] as {
+        source: { name: string; id: string };
+        items: InvalidItem[];
       }[],
       __partial: partial,
     },

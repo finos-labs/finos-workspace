@@ -1,21 +1,18 @@
 import clsx from "clsx";
-import { useCallback, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 import { z } from "zod";
 import { deleteUploadedFile } from "~/api/auth.api";
 import { CATEGORY_OPTIONS } from "~/components/DataConnectors/common/helpers";
 import { UploadedFile } from "~/components/General/UploadedFile";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { fetchWithToken } from "~/lib/api";
 import { ExtensionOptions } from "~/lib/constants";
 import { FormInput } from "../ds/atoms/Input";
 import { FormSelect } from "../ds/atoms/Select";
 import { FormTextarea } from "../ds/atoms/TextArea";
 import { FormField } from "../ds/molecules/Form";
-import { countItemsPerKey } from "../General/Table/utils";
 import Icon from "../Icon";
 import { type FileType, useFileContext } from "./FileContext";
-import { getExtension, getLabel } from "./NewComponents/File/UploadFilesTab1";
 
 const filesSchema = z.record(
   z.string(),
@@ -44,12 +41,11 @@ type FileFormElementProps = {
 type FileExtraSettingsProps = {
   fileIndex: number;
   fileKey: string;
-  selectOptions: { path: string; count: number | string }[];
 };
 
 export function FileExtraSettings(props: FileExtraSettingsProps) {
   const form = useFormContext<FilesForm>();
-  const { fileIndex, fileKey, selectOptions } = props;
+  const { fileIndex, fileKey } = props;
 
   return (
     <div className="collapsible-content mt-2" key={`${fileKey}-collapsible-content`}>
@@ -85,27 +81,6 @@ export function FileExtraSettings(props: FileExtraSettingsProps) {
               <FormInput className="" label={<p className="">Source</p>} {...field} />
             )}
           />
-
-          {selectOptions?.length > 0 && (
-            <>
-              <div className="my-2" />
-              <FormField
-                name={`${fileIndex}.dataKey`}
-                control={form.control}
-                render={({ field }) => (
-                  <FormSelect
-                    className=""
-                    label={<p className="">Data Key (optional)</p>}
-                    options={selectOptions.map((item) => ({
-                      label: getLabel(item.path, item.count),
-                      value: item.path,
-                    }))}
-                    {...field}
-                  />
-                )}
-              />
-            </>
-          )}
         </div>
         <div className="w-full col-span-2 md:col-span-1 md:w-3/5">
           <FormField
@@ -135,37 +110,7 @@ export function FileFormElement(props: FileFormElementProps) {
 
   const [state, dispatch] = useStateReducer({
     isOpen: false,
-    selectOptions: [] as { path: string; count: number | string }[],
   });
-
-  const getKeys = useCallback(async (parsed: any) => {
-    if (Array.isArray(parsed)) {
-      return;
-    }
-    const counts = countItemsPerKey(parsed);
-
-    if (Object.values(counts).every((item) => item.count === 1)) return;
-
-    counts.sort((a, b) => b.count - a.count);
-    dispatch({ selectOptions: [{ path: "None", count: "" }, ...counts] });
-  }, []);
-
-  useEffect(() => {
-    // we populate the data key options
-    if (file?.url) {
-      const extension = getExtension(file?.url);
-      if (extension === "json") {
-        fetchWithToken(file?.url)
-          .then(async (response) => {
-            const data = await response.json();
-            getKeys(data);
-          })
-          .catch((error) => {
-            console.error("Error fetching file: ", error);
-          });
-      }
-    }
-  }, [file?.url, getKeys]);
 
   const fileKey = useMemo(
     () => `${file?.originalFileName}_${fileIndex}`,
@@ -232,11 +177,7 @@ export function FileFormElement(props: FileFormElementProps) {
             <p className="text-dark-50 ml-2 italic">(optional)</p>
           </div>
           {state.isOpen && (
-            <FileExtraSettings
-              fileIndex={fileIndex}
-              fileKey={fileKey}
-              selectOptions={state.selectOptions}
-            />
+            <FileExtraSettings fileIndex={fileIndex} fileKey={fileKey} />
           )}
         </div>
       </div>

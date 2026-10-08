@@ -51,7 +51,7 @@ export function SubmissionMcpSection() {
     >
       <p className="body-xs-regular text-ds-text-caption">
         When off, we use whatever your apps.json declares under{" "}
-        <code className="obb-code">mcp_servers</code>. Turn this on to attach a server
+        <code className="ws-code">mcp_servers</code>. Turn this on to attach a server
         here instead — it overrides the manifest for this listing.
       </p>
 

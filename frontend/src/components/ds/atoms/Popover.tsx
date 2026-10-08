@@ -103,8 +103,8 @@ PopoverArrow.displayName = PopoverPrimitive.Arrow.displayName;
 export interface PopoverProps extends TooltipProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  onOpenAutoFocus?: (event: FocusEvent) => void;
-  onCloseAutoFocus?: (event: FocusEvent) => void;
+  onOpenAutoFocus?: (event: Event) => void;
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 /** `Popover` is a hint, same as `Tooltip`, but appears on click or manually */

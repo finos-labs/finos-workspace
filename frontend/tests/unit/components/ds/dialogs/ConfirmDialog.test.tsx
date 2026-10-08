@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ConfirmDialog } from "~/components/ds/dialogs/ConfirmDialog";
 
@@ -68,22 +69,24 @@ describe("ConfirmDialog", () => {
 });
 
 vi.mock("./BaseDialog", () => ({
-  BaseDialog: ({ children, open }: any) => (
+  BaseDialog: ({ children, open }: { children?: ReactNode; open?: boolean }) => (
     <div data-testid="base-dialog">{open && children}</div>
   ),
 }));
 
 vi.mock("./Dialog", () => ({
-  DialogTitle: ({ children }: any) => <h2>{children}</h2>,
-  DialogDescription: ({ children }: any) => <p>{children}</p>,
-  DialogFooter: ({ children }: any) => <footer>{children}</footer>,
-  DialogClose: ({ children }: any) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children?: ReactNode }) => <h2>{children}</h2>,
+  DialogDescription: ({ children }: { children?: ReactNode }) => <p>{children}</p>,
+  DialogFooter: ({ children }: { children?: ReactNode }) => <footer>{children}</footer>,
+  DialogClose: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("../atoms/Button", () => ({
-  Button: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
+  Button: ({ children, onClick }: { children?: ReactNode; onClick: () => void }) => (
+    <button onClick={onClick}>{children}</button>
+  ),
 }));
 
 vi.mock("../utils", () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));

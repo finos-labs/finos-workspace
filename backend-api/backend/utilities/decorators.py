@@ -9,8 +9,6 @@ from typing import Any
 from loguru import logger
 from starlette.concurrency import run_in_threadpool
 
-from utilities.config import settings
-
 NoArgsNoReturnFuncT = Callable[[], None]
 NoArgsNoReturnAsyncFuncT = Callable[[], Coroutine[Any, Any, None]]
 NoArgsNoReturnDecorator = Callable[
@@ -143,14 +141,3 @@ def repeat_every(
         return wrapped
 
     return decorator
-
-
-def require_hubspot_enabled(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if not settings.HUBSPOT:
-            logger.debug("Hubspot is disabled, skipping contact sync.")
-            return None
-        return func(*args, **kwargs)
-
-    return wrapper

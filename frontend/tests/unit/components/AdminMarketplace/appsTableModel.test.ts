@@ -90,7 +90,7 @@ describe("selectApps", () => {
   const apps = [
     makeApp({ name: "InReview Dev", status: "development" }),
     makeApp({ name: "InReview Submitted", status: "submitted" }),
-    makeApp({ name: "Live One", status: "published", vendor_name: "Polymarket" }),
+    makeApp({ name: "Live One", status: "published", vendor_name: "Acme Data" }),
     makeApp({ name: "Hidden", status: "disabled" }),
     makeApp({ name: "Gone", status: "removed" }),
   ];
@@ -110,7 +110,7 @@ describe("selectApps", () => {
   });
 
   it("matches search against name, vendor and version, case-insensitively", () => {
-    expect(names(selectApps(apps, "all", "POLYMARKET", null))).toEqual(["Live One"]);
+    expect(names(selectApps(apps, "all", "ACME DATA", null))).toEqual(["Live One"]);
     expect(names(selectApps(apps, "all", "live", null))).toEqual(["Live One"]);
     expect(names(selectApps(apps, "all", "1", null))).toHaveLength(5);
   });

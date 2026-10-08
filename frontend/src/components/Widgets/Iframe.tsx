@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { useDebounceValue } from "usehooks-ts";
 import DraggableCard from "~/components/DraggableCard";
+import { useWidgetParamsPositions } from "~/components/WidgetParams/QueryParams";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { IFRAME_SANDBOX_ATTRIBUTES } from "~/lib/constants";
 import {
@@ -22,7 +23,6 @@ import { BaseDialog } from "../ds/dialogs/BaseDialog";
 import { DialogDescription, DialogHeader, DialogTitle } from "../ds/dialogs/Dialog";
 import { Form, FormField } from "../ds/molecules/Form";
 import SearchResultsNotFound from "../General/SearchResultsNotFound";
-import { useWidgetParamsPositions } from "../General/Table/NavBar/QueryParams";
 import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import { useWidgetContext } from "../Widget.context";
@@ -60,10 +60,10 @@ function paramsEqual(a: Record<string, string> | null, b: Record<string, string>
   return aKeys.every((key) => a[key] === b[key]);
 }
 
-function filterSupportedParams(
-  params: Record<string, string>,
+function filterSupportedParams<T>(
+  params: Record<string, T>,
   supportedParamNames: Set<string> | null,
-) {
+): Record<string, T> {
   if (!supportedParamNames) return params;
   return Object.fromEntries(
     Object.entries(params).filter(([key]) => supportedParamNames.has(key)),
@@ -134,8 +134,9 @@ export default function Iframe() {
         const newWidget = { ...prev };
         const { paramsUpdate, ...storageUpdate } = state.pendingStorageUpdate;
 
+        const storage = (newWidget.storage ??= {});
         for (const [key, value] of Object.entries(storageUpdate)) {
-          newWidget.storage[key] = { ...(newWidget.storage?.[key] ?? {}), ...value };
+          storage[key] = { ...(storage[key] ?? {}), ...value };
         }
 
         if (paramsUpdate) {
@@ -221,7 +222,9 @@ export default function Iframe() {
 
   const { supportedIframeParamNames, visibleParamDefs } = useMemo(() => {
     if (!paramDefs) return { supportedIframeParamNames: null, visibleParamDefs: null };
-    const widgetParamNames = new Set(widget.params.map((param) => param.paramName));
+    const widgetParamNames = new Set(
+      (widget.params ?? []).map((param) => param.paramName),
+    );
 
     return {
       supportedIframeParamNames: widgetParamNames.union(
@@ -359,7 +362,7 @@ export default function Iframe() {
   }, [mcpServerId, storedMcpUrl, updateMcpServer, widget.name]);
 
   const effectiveIframeParams = useMemo(() => {
-    const iframeParams: Record<string, string> = widget.storage?.iframeParams ?? {};
+    const iframeParams = normalizeParamRecord(widget.storage?.iframeParams);
     const widgetParams = normalizeParamRecord(widget.storage?.params);
     return { ...iframeParams, ...widgetParams, ...groupedParams, theme };
   }, [groupedParams, widget.storage?.iframeParams, theme, widget.storage?.params]);
@@ -462,7 +465,7 @@ export default function Iframe() {
           <Tooltip message="Refresh">
             <button
               type="button"
-              className="obb-small-navbar-btn"
+              className="ws-small-navbar-btn"
               onClick={handleRefresh}
             >
               <Icon id="refresh-icon-ds" className="w-4 h-4" />
@@ -482,7 +485,7 @@ export default function Iframe() {
               >
                 <Icon id="edit-03" />
                 <span
-                  className="obb-hyper-link font-normal whitespace-nowrap truncate max-w-[400px]"
+                  className="ws-hyper-link font-normal whitespace-nowrap truncate max-w-[400px]"
                   title={state.url}
                 >
                   {state.url}
@@ -496,7 +499,7 @@ export default function Iframe() {
               <Tooltip message="Zoom Out">
                 <button
                   type="button"
-                  className="obb-small-navbar-btn"
+                  className="ws-small-navbar-btn"
                   onClick={() => handleScaleChange(Math.max(0.2, state.scale - 0.1))}
                   disabled={state.scale <= 0.2}
                 >
@@ -509,7 +512,7 @@ export default function Iframe() {
               <Tooltip message="Zoom In">
                 <button
                   type="button"
-                  className="obb-small-navbar-btn"
+                  className="ws-small-navbar-btn"
                   onClick={() => handleScaleChange(state.scale + 0.1)}
                 >
                   <Icon id="plus-icon" className="w-4 h-4" />

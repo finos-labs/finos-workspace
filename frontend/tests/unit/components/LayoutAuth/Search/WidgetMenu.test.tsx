@@ -55,16 +55,6 @@ vi.mock("~/lib/state/theme", () => ({
   ),
 }));
 
-vi.mock("~/lib/state/tutorial", () => ({
-  useShallowTutorialStore: vi.fn((selector) =>
-    selector({
-      currentTutorial: null,
-      goToStep: vi.fn(),
-      currentStep: 0,
-    }),
-  ),
-}));
-
 vi.mock("~/lib/providers/MobileProvider", () => ({
   useMobile: vi.fn(() => false),
 }));
@@ -88,7 +78,10 @@ vi.mock("~/lib/state/backendConnector", () => ({
 }));
 
 vi.mock("@tanstack/react-virtual", () => ({
-  useVirtualizer: (opts: any) => ({
+  useVirtualizer: (opts: {
+    count: number;
+    getItemKey?: (index: number) => string | number;
+  }) => ({
     getVirtualItems: () =>
       Array.from({ length: opts.count }, (_, i) => ({
         key: opts.getItemKey?.(i) ?? i,
@@ -108,7 +101,7 @@ const createMockWidget = (overrides: Partial<WidgetItem> = {}): WidgetItem => ({
   category: "Equity",
   subCategory: "Charts",
   description: "A test widget",
-  source: "openbb",
+  source: "workspace",
   widgetType: "backend",
   ...overrides,
 });
@@ -380,17 +373,8 @@ describe("CreateCheckbox", () => {
 });
 
 describe("connectorTypes", () => {
-  it("contains expected connector types", () => {
-    expect(connectorTypes).toContain("backend");
-    expect(connectorTypes).toContain("file");
-    expect(connectorTypes).toContain("single");
-    expect(connectorTypes).toContain("snowflake");
-    expect(connectorTypes).toContain("database");
-    expect(connectorTypes).toContain("copilot_table");
-  });
-
-  it("has correct length", () => {
-    expect(connectorTypes).toHaveLength(6);
+  it("lists the backend and file connector types", () => {
+    expect(connectorTypes).toEqual(["backend", "file"]);
   });
 });
 

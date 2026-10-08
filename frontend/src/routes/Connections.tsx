@@ -116,7 +116,7 @@ type ConnectionsToolbarProps = {
   dispatch: StateDispatch<ConnectionsState>;
   selectedCount: number;
   onConnectBackend: () => void;
-  inputRef: RefObject<HTMLInputElement | null>;
+  inputRef: RefObject<HTMLInputElement>;
   onRefresh: () => void;
   isRefreshing: boolean;
 };
@@ -333,7 +333,7 @@ type ConnectionRowActionsProps = {
   connection: ConnectionRow;
   onEdit: (source: Source) => void;
   onDelete: (connection: ConnectionRow) => void;
-  onRefresh: (connectionId: string) => Promise<any>;
+  onRefresh: (connectionId: string) => Promise<unknown>;
 };
 
 const ConnectionRowActions = memo<ConnectionRowActionsProps>((props) => {
@@ -370,7 +370,7 @@ const ConnectionRowActions = memo<ConnectionRowActionsProps>((props) => {
         <Tooltip position="top" message="Refresh backend">
           <button
             className={cn(
-              "opacity-0 group-hover:opacity-100 transition-opacity duration-300 obb-small-navbar-btn rounded flex items-center justify-center",
+              "opacity-0 group-hover:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center",
               { "opacity-100": isRefreshing },
             )}
             onClick={handleRefresh}
@@ -394,7 +394,7 @@ const ConnectionRowActions = memo<ConnectionRowActionsProps>((props) => {
           <button
             className={cn(
               "opacity-0 group-hover:opacity-100 transition-opacity",
-              "duration-300 obb-small-navbar-btn",
+              "duration-300 ws-small-navbar-btn",
               "rounded flex items-center justify-center",
               disableEdit && "group-hover:opacity-40 cursor-not-allowed",
             )}
@@ -408,7 +408,7 @@ const ConnectionRowActions = memo<ConnectionRowActionsProps>((props) => {
       {!connection.isShared && (
         <Tooltip position="top" message="Delete connection">
           <button
-            className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 obb-small-navbar-btn rounded flex items-center justify-center"
+            className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center"
             onClick={handleDelete}
           >
             <Icon id="trash-04" className="size-3.5" />
@@ -879,6 +879,7 @@ export default function ConnectionsPage() {
       const backendsToDelete = connectionsToDelete.filter((c) => c.backend);
       await Promise.all(
         backendsToDelete.map(async (connection) => {
+          if (!connection.backend) return;
           deleteSourceWidgets(connection.backend);
           await deleteApiSource(connection.backend);
         }),
@@ -1122,13 +1123,14 @@ export default function ConnectionsPage() {
   );
 }
 
-const StatusOrder = { success: 0, rehydrated: 1, pending: 1, error: 2 };
+const StatusOrder = { success: 0, rehydrated: 1, pending: 1, error: 2 } as const;
 
 function sortConnections(connections: ConnectionRow[], sortBy: SortOption["value"]) {
   connections.sort((a, b) => {
     switch (sortBy) {
       case "last-activity": {
-        const statusDiff = StatusOrder[a.status] - StatusOrder[b.status];
+        const statusDiff =
+          StatusOrder[a.status ?? "pending"] - StatusOrder[b.status ?? "pending"];
         if (statusDiff !== 0) return statusDiff;
         const aDate = new Date(a.updatedDate || a.createdDate || 0).getTime();
         const bDate = new Date(b.updatedDate || b.createdDate || 0).getTime();

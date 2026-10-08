@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CopyButton } from "~/components/ds/atoms/CopyButton";
 
@@ -43,7 +44,7 @@ vi.mock("~/components/Icon", () => ({
 }));
 
 vi.mock("./Button", () => ({
-  Button: ({ children, onClick, ...props }: any) => (
+  Button: ({ children, onClick, ...props }: ComponentProps<"button">) => (
     <button onClick={onClick} {...props}>
       {children}
     </button>
@@ -51,7 +52,15 @@ vi.mock("./Button", () => ({
 }));
 
 vi.mock("./Popover", () => ({
-  Popover: ({ children, open, content }: any) => (
+  Popover: ({
+    children,
+    open,
+    content,
+  }: {
+    children?: ReactNode;
+    open?: boolean;
+    content?: ReactNode;
+  }) => (
     <div>
       {children}
       {open && <div>{content}</div>}
@@ -61,5 +70,5 @@ vi.mock("./Popover", () => ({
 
 vi.mock("../utils", () => ({
   sleep: vi.fn(() => Promise.resolve()),
-  cn: (...args: any[]) => args.filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));

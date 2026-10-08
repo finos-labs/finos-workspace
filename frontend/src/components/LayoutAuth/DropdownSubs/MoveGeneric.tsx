@@ -16,7 +16,7 @@ export default function MoveGeneric({
   moveFunction: (value: string) => void;
   children: ReactNode;
   label: string;
-  color: string;
+  color?: string;
   depth: number;
   moveInnerFunction: () => void;
 }) {
@@ -25,14 +25,14 @@ export default function MoveGeneric({
   );
   return (
     <DropdownMenuPrimitive.Sub>
-      <DropdownMenuPrimitive.SubTrigger className="obb-dropdown-item justify-between overflow-auto">
+      <DropdownMenuPrimitive.SubTrigger className="ws-dropdown-item justify-between overflow-auto">
         <span className={clsx("grow truncate", color)}>{label}</span>
         <ChevronRightIcon />
       </DropdownMenuPrimitive.SubTrigger>
       <DropdownMenuPrimitive.SubContent
         className={cn(
           "origin-radix-context-menu radix-side-right:animate-scale-in",
-          "w-fit text-xs z-[60] obb-dropdown-container",
+          "w-fit text-xs z-[60] ws-dropdown-container",
         )}
       >
         {depth !== 0 && (
@@ -40,7 +40,7 @@ export default function MoveGeneric({
             onClick={() => {
               moveInnerFunction();
             }}
-            className="obb-dropdown-item"
+            className="ws-dropdown-item"
           >
             The sidebar
           </DropdownMenuPrimitive.Item>
@@ -48,7 +48,7 @@ export default function MoveGeneric({
         {children}
         <DropdownMenuPrimitive.Item
           onClick={() => setCreateFolderPopup((value) => moveFunction(value))}
-          className="obb-dropdown-item"
+          className="ws-dropdown-item"
         >
           A new folder
         </DropdownMenuPrimitive.Item>

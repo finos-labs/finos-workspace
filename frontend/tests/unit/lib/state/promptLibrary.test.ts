@@ -9,7 +9,7 @@
 
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { usePromptLibraryStore, type Prompt } from "~/lib/state/promptLibrary";
+import { type Prompt, usePromptLibraryStore } from "~/lib/state/promptLibrary";
 
 // Mock API calls
 vi.mock("~/api/auth.api", () => ({
@@ -380,7 +380,9 @@ describe("usePromptLibraryStore", () => {
           .updatePrompt(addedPrompt.id, { prompt: "Updated content" });
       });
 
-      expect(usePromptLibraryStore.getState().prompts[0].prompt).toBe("Updated content");
+      expect(usePromptLibraryStore.getState().prompts[0].prompt).toBe(
+        "Updated content",
+      );
 
       // Get prompt by id
       const retrievedPrompt = usePromptLibraryStore
@@ -419,9 +421,7 @@ describe("usePromptLibraryStore", () => {
 
       // Save edit
       act(() => {
-        usePromptLibraryStore
-          .getState()
-          .updatePrompt("prompt-1", { prompt: "Edited" });
+        usePromptLibraryStore.getState().updatePrompt("prompt-1", { prompt: "Edited" });
         usePromptLibraryStore.getState().setEditingPromptId(null);
         usePromptLibraryStore.getState().setAddPromptDialogOpen(false);
       });

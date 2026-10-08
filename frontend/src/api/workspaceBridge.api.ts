@@ -58,7 +58,7 @@ export async function startBridgeSession(
 ) {
   const resp = await apiClient
     .post<BrowserSessionStartResponse>(
-      "/pro/workspace-mcp/bridge/session/start",
+      "/app/workspace-mcp/bridge/session/start",
       body,
       { signal },
     )
@@ -71,7 +71,7 @@ export async function startBridgeSession(
 
 export async function listWorkspaceMcpTokens() {
   const resp = await apiClient
-    .get<WorkspaceMcpTokenMetadata[]>("/pro/workspace-mcp/tokens")
+    .get<WorkspaceMcpTokenMetadata[]>("/app/workspace-mcp/tokens")
     .catch(catchError);
 
   return parseJsonResponse(resp);
@@ -81,14 +81,14 @@ export async function createWorkspaceMcpToken(
   name: string,
 ): Promise<WorkspaceMcpTokenCreateResponse> {
   const resp = await apiClient
-    .post<WorkspaceMcpTokenCreateResponse>("/pro/workspace-mcp/tokens", { name })
+    .post<WorkspaceMcpTokenCreateResponse>("/app/workspace-mcp/tokens", { name })
     .catch(catchError);
   return parseJsonResponse(resp);
 }
 
 export async function revokeWorkspaceMcpToken(tokenUuid: string): Promise<void> {
   const resp = await apiClient
-    .delete(`/pro/workspace-mcp/tokens/${tokenUuid}`)
+    .delete(`/app/workspace-mcp/tokens/${tokenUuid}`)
     .catch(catchError);
 
   parseJsonResponse(resp, 204);

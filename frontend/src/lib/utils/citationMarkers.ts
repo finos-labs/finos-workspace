@@ -72,9 +72,7 @@ function replaceAiMarkers(
  */
 export function protectAiMarkers(text: string) {
   const markers: { type: AiMarkerType; id: string }[] = [];
-  const placeholderPrefix = `__OPENBB_AI_MARKER_${Math.random()
-    .toString(36)
-    .slice(2)}_`;
+  const placeholderPrefix = `__AI_MARKER_${Math.random().toString(36).slice(2)}_`;
   const placeholderRegex = new RegExp(`${placeholderPrefix}(\\d+)__`, "g");
   const protectedText = replaceAiMarkers(text, (type, markerId) => {
     markers.push({ type, id: markerId });

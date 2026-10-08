@@ -16,7 +16,7 @@ import { useShallowStreamingStore } from "./hooks/useStreaming";
 
 const uiShowCopilotSwitcherFF = getConfig().ui.showCopilotSwitcher;
 
-const aiCopilotOpenBBCopilotFF = getConfig().copilot.openbbCopilot;
+const aiCopilotDefaultCopilotFF = getConfig().copilot.defaultCopilot;
 
 const aiShowCustomCopilotKeyFF = getConfig().copilot.showCustomKey;
 
@@ -99,9 +99,9 @@ export default function CopilotSwitcher() {
         </div>
 
         <div className="w-full">
-          {aiCopilotOpenBBCopilotFF && (
+          {aiCopilotDefaultCopilotFF && (
             <>
-              <div className="obb-divider my-1" />
+              <div className="ws-divider my-1" />
               <div className="mx-0.5">
                 <div
                   key={`default::${defaultCopilot.id}`}
@@ -141,7 +141,7 @@ export default function CopilotSwitcher() {
                           <span className="text-xs">
                             {hasHolders ? (
                               <>
-                                OpenBB Copilot will delegate tasks to
+                                Copilot will delegate tasks to
                                 <br />
                                 the agents available.
                               </>
@@ -168,7 +168,7 @@ export default function CopilotSwitcher() {
                             return showNotification({
                               message: "Orchestration Disabled",
                               description:
-                                "OpenBB Copilot will no longer delegate tasks to external agents. All queries will be handled directly by the OpenBB Copilot.",
+                                "Copilot will no longer delegate tasks to external agents. All queries will be handled directly by the Copilot.",
                               toastType: "info",
                             });
                           }
@@ -188,7 +188,7 @@ export default function CopilotSwitcher() {
 
                           showNotification({
                             message: "Orchestration Enabled",
-                            description: `Tasks will be automatically routed to the most appropriate agent. OpenBB Copilot can now delegate tasks to the following agents: ${agentList}.`,
+                            description: `Tasks will be automatically routed to the most appropriate agent. Copilot can now delegate tasks to the following agents: ${agentList}.`,
                             toastType: "info",
                           });
                         }}
@@ -197,7 +197,7 @@ export default function CopilotSwitcher() {
                   </div>
                 </div>
               </div>
-              {hasHolders && <div className="obb-divider my-1" />}
+              {hasHolders && <div className="ws-divider my-1" />}
             </>
           )}
           <div className="max-h-50 overflow-y-auto mx-0.5 w-full">
@@ -326,7 +326,7 @@ const AgentItem = memo(
               className="flex items-center gap-2 flex-1 hover:bg-general-bg-secondary rounded px-2 py-1 cursor-pointer"
               onClick={() => {
                 setSelectedCopilot(agent);
-                // Turn off orchestration when selecting a non-OpenBB agent
+                // Turn off orchestration when selecting a non-default agent
                 if (orchestrationModeEnabled) setOrchestrationModeEnabled(false);
               }}
             >

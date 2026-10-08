@@ -29,33 +29,33 @@
   }
 }
 
-@utility obb-avatar-user {
+@utility ws-avatar-user {
   @apply min-w-7 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium border-2 border-white dark:border-dark-800 uppercase;
 }
 
-@utility obb-label {
+@utility ws-label {
   @apply body-xs-regular mb-1 inline-block text-general-label;
   @apply group-aria-disabled:cursor-not-allowed group-aria-disabled:text-general-label-disabled;
   @apply peer-disabled:cursor-not-allowed peer-disabled:text-general-label-disabled;
 }
 
-@utility obb-parameter {
+@utility ws-parameter {
   @apply rounded-sm border border-general-border-primary hover:border-general-border-primary hover:bg-input-field-bg-hover bg-input-field-bg text-general-label py-0.5 pl-1;
 }
 
-@utility obb-page-container {
+@utility ws-page-container {
   @apply mx-[22px] my-[10px] min-h-[96.5vh] overflow-y-auto rounded bg-general-bg-primary p-2.5 only-sm:max-h-[90vh] only-sm:min-h-[90vh];
 }
 
-@utility obb-uppercase-small-title {
+@utility ws-uppercase-small-title {
   @apply text-2xs uppercase tracking-wider text-dark-100;
 }
 
-@utility obb-tag {
+@utility ws-tag {
   @apply rounded-[12px] px-1.5 text-2xs bg-tab-bg-primary text-link-color;
 }
 
-@utility obb-small-navbar-btn {
+@utility ws-small-navbar-btn {
   @apply cursor-pointer h-5 w-5 rounded-[2px] p-0.5 text-ds-text-body disabled:opacity-40 radix-state-open:bg-general-bg-secondary disabled:cursor-not-allowed disabled:text-general-label-disabled;
 
   @media (hover: hover) {
@@ -68,30 +68,30 @@
   }
 }
 
-@utility obb-icon-btn-v2 {
+@utility ws-icon-btn-v2 {
   @apply cursor-pointer flex h-8 w-8 items-center justify-center rounded p-1 text-ds-text-body hover:bg-general-bg-primary-hover focus:outline-hidden disabled:text-general-label-disabled disabled:hover:bg-transparent! radix-state-open:bg-general-bg-primary-hover;
 }
 
-@utility obb-icon-btn {
+@utility ws-icon-btn {
   @apply cursor-pointer inline-flex h-[26px] w-[26px] items-center justify-center rounded bg-general-bg-secondary text-ds-text-body hover:bg-general-bg-secondary-hover;
   & > svg {
     @apply h-[14px] w-[14px];
   }
 }
 
-@utility obb-dropdown-container {
+@utility ws-dropdown-container {
   @apply flex flex-col gap-2 rounded border border-dropdown-border bg-dropdown-bg p-2 text-xs text-ds-text-subtitle shadow-dropdown;
 }
 
-@utility obb-dropdown-item {
+@utility ws-dropdown-item {
   @apply inline-flex w-full cursor-pointer items-center justify-start gap-1.5 whitespace-nowrap rounded-[2px] p-1 transition-colors hover:bg-general-bg-secondary-hover;
 }
 
-@utility obb-dropdown-item-noclick {
+@utility ws-dropdown-item-noclick {
   @apply inline-flex w-full items-center justify-start gap-1.5 whitespace-nowrap rounded-[2px] p-1 transition-colors;
 }
 
-@utility obb-navigation-item {
+@utility ws-navigation-item {
   @apply flex h-8 cursor-pointer items-center gap-2 whitespace-nowrap rounded p-2 text-xs text-ds-text-body;
   @apply hover:bg-general-bg-secondary;
   @apply transition-all;
@@ -106,7 +106,7 @@
 }
 
 @utility active {
-  &.obb-navigation-item {
+  &.ws-navigation-item {
     @apply bg-tab-bg-primary hover:bg-tab-bg-primary text-general-label;
 
     & svg {
@@ -115,7 +115,7 @@
   }
 }
 
-@utility obb-navigation-item-active {
+@utility ws-navigation-item-active {
   @apply bg-tab-bg-primary hover:bg-tab-bg-primary text-general-label-hover;
 
   & svg {
@@ -127,28 +127,28 @@
   @apply text-link-color!;
 }
 
-@utility obb-modal-close {
+@utility ws-modal-close {
   @apply absolute right-2 top-2 rounded-[4px] text-ds-text-body focus:outline focus:outline-light-500 md:right-[46px] md:top-[40px];
 }
 
-@utility obb-modal {
+@utility ws-modal {
   @apply fixed left-1/2 top-1/2 z-50 flex w-[90%] max-w-[568px] -translate-x-1/2 -translate-y-1/2 animate-fade-in flex-col items-start overflow-auto rounded bg-general-bg-primary p-2 duration-300 focus:outline-hidden md:p-10 lg:min-w-[570px] 2xl:min-w-[800px];
   box-shadow: 10px 14px 14px 0px rgba(0, 0, 0, 0.2);
 }
 
-@utility obb-modal-overlay {
+@utility ws-modal-overlay {
   @apply fixed inset-0 z-40 bg-surface-layer backdrop-blur-xs backdrop-filter;
 }
 
-@utility obb-modal-title {
+@utility ws-modal-title {
   @apply mb-4 text-base font-semibold;
 }
 
-@utility obb-modal-description {
+@utility ws-modal-description {
   @apply mb-4 text-xs;
 }
 
-@utility obb-card {
+@utility ws-card {
   @apply overflow-hidden rounded-md border border-general-border-primary bg-surface-card text-ds-text-body;
 }
 
@@ -156,53 +156,53 @@
   @apply transition duration-150 ease-out;
 }
 
-@utility obb-btn-common {
+@utility ws-btn-common {
   @apply inline-flex h-[32px] items-center justify-center gap-2 rounded px-3 py-1 text-center text-xs no-underline! transition duration-150 ease-out md:w-fit;
   @apply cursor-pointer;
 }
 
-@utility obb-btn-secondary-v2 {
-  @apply obb-btn-common bg-btn-secondary-bg px-3 py-1;
+@utility ws-btn-secondary-v2 {
+  @apply ws-btn-common bg-btn-secondary-bg px-3 py-1;
   @apply hover:bg-btn-secondary-bg-hover;
   @apply active:bg-general-bg-secondary-hover;
   @apply focus:outline focus:outline-general-border-disabled;
   @apply disabled:bg-btn-secondary-bg-disabled disabled:text-general-label-disabled;
 }
 
-@utility obb-btn {
-  @apply obb-btn-common bg-btn-secondary-bg text-general-label hover:bg-general-bg-secondary-hover focus:outline focus:outline-light-500 active:bg-general-bg-secondary-disabled disabled:bg-general-bg-secondary-disabled disabled:text-ds-text-caption;
+@utility ws-btn {
+  @apply ws-btn-common bg-btn-secondary-bg text-general-label hover:bg-general-bg-secondary-hover focus:outline focus:outline-light-500 active:bg-general-bg-secondary-disabled disabled:bg-general-bg-secondary-disabled disabled:text-ds-text-caption;
   @apply disabled:pointer-events-none disabled:cursor-not-allowed;
 }
 
-@utility obb-btn-blue {
-  @apply obb-btn-common bg-btn-primary-bg text-btn-primary-label hover:bg-btn-primary-bg-hover focus:outline focus:outline-light-500 disabled:bg-btn-primary-bg-disabled disabled:text-btn-primary-label-disabled;
+@utility ws-btn-blue {
+  @apply ws-btn-common bg-btn-primary-bg text-btn-primary-label hover:bg-btn-primary-bg-hover focus:outline focus:outline-light-500 disabled:bg-btn-primary-bg-disabled disabled:text-btn-primary-label-disabled;
   @apply disabled:pointer-events-none disabled:cursor-not-allowed;
 }
 
-@utility obb-btn-secondary {
-  @apply obb-btn-common border border-btn-secondary-border text-general-label outline-offset-0 hover:border-general-label-hover hover:text-general-label-hover focus:outline focus:outline-light-500 active:border-general-label-hover active:bg-general-bg-secondary-hover active:text-general-label-hover disabled:border-general-label-disabled disabled:bg-transparent disabled:text-ds-text-caption;
+@utility ws-btn-secondary {
+  @apply ws-btn-common border border-btn-secondary-border text-general-label outline-offset-0 hover:border-general-label-hover hover:text-general-label-hover focus:outline focus:outline-light-500 active:border-general-label-hover active:bg-general-bg-secondary-hover active:text-general-label-hover disabled:border-general-label-disabled disabled:bg-transparent disabled:text-ds-text-caption;
 }
 
-@utility obb-btn-tertiary {
-  @apply obb-btn-common bg-general-bg-secondary text-ds-text-subtitle hover:bg-general-bg-secondary-hover hover:text-general-label-hover focus:bg-general-bg-secondary-disabled focus:outline focus:outline-light-500 active:bg-general-bg-secondary-disabled active:text-general-label-hover disabled:bg-general-bg-primary-disabled disabled:text-general-label-disabled;
+@utility ws-btn-tertiary {
+  @apply ws-btn-common bg-general-bg-secondary text-ds-text-subtitle hover:bg-general-bg-secondary-hover hover:text-general-label-hover focus:bg-general-bg-secondary-disabled focus:outline focus:outline-light-500 active:bg-general-bg-secondary-disabled active:text-general-label-hover disabled:bg-general-bg-primary-disabled disabled:text-general-label-disabled;
   @apply disabled:cursor-not-allowed disabled:hover:bg-general-bg-primary-disabled disabled:hover:text-general-label-disabled;
 }
 
-@utility obb-btn-outlined {
-  @apply obb-btn-common border border-btn-outlined-border text-btn-outlined-label hover:border-btn-outlined-border-hover hover:text-general-label-hover focus-visible:text-general-label-hover active:text-general-label disabled:text-btn-outlined-label-disabled;
+@utility ws-btn-outlined {
+  @apply ws-btn-common border border-btn-outlined-border text-btn-outlined-label hover:border-btn-outlined-border-hover hover:text-general-label-hover focus-visible:text-general-label-hover active:text-general-label disabled:text-btn-outlined-label-disabled;
   @apply disabled:cursor-not-allowed disabled:border-btn-outlined-border-disabled;
 }
 
-@utility obb-btn-ghost {
-  @apply obb-btn-common text-btn-ghost-label hover:text-general-label-hover hover:bg-btn-ghost-bg-hover focus-visible:text-general-label-hover active:text-general-label disabled:text-btn-ghost-label-disabled;
+@utility ws-btn-ghost {
+  @apply ws-btn-common text-btn-ghost-label hover:text-general-label-hover hover:bg-btn-ghost-bg-hover focus-visible:text-general-label-hover active:text-general-label disabled:text-btn-ghost-label-disabled;
   @apply disabled:cursor-not-allowed;
 }
 
-@utility obb-btn-underline {
-  @apply obb-btn-common border border-btn-outlined-border text-btn-ghost-label hover:text-general-label-hover hover:border-btn-outlined-border-hover focus-visible:text-general-label-hover active:text-general-label disabled:text-btn-ghost-label-disabled;
+@utility ws-btn-underline {
+  @apply ws-btn-common border border-btn-outlined-border text-btn-ghost-label hover:text-general-label-hover hover:border-btn-outlined-border-hover focus-visible:text-general-label-hover active:text-general-label disabled:text-btn-ghost-label-disabled;
 }
 
-@utility obb-group-tab {
+@utility ws-group-tab {
   @apply mb-12 flex w-full;
 }
 
@@ -210,51 +210,51 @@
   @apply h-12 w-full rounded-md border border-general-border-primary bg-transparent py-3 pl-4 pr-2 text-sm text-ds-text-heading focus:ring-0 disabled:border-general-border-disabled;
 }
 
-@utility obb-small-input {
+@utility ws-small-input {
   @apply h-9 w-full rounded border border-general-border-primary bg-input-field-bg px-2 py-1 text-xs focus:outline-hidden focus:ring-0;
 }
 
-@utility obb-floating-label {
+@utility ws-floating-label {
   @apply absolute left-4 top-2 z-0 origin-[0] -translate-y-8 scale-75 transform px-1 text-sm text-ds-text-caption duration-300 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:scale-100 peer-focus:-top-2 peer-focus:-translate-y-4 peer-focus:scale-75 peer-focus:px-1 peer-focus:text-ds-text-heading;
 }
 
-@utility obb-hyper-link {
+@utility ws-hyper-link {
   @apply text-link-color underline font-medium;
 }
 
-@utility obb-hyper-link-copilot {
+@utility ws-hyper-link-copilot {
   @apply text-link-color underline font-medium;
 }
 
-@utility obb-divider {
+@utility ws-divider {
   @apply h-[1px] w-full bg-surface-divider;
 }
 
-@utility obb-divider-vertical {
+@utility ws-divider-vertical {
   @apply h-full w-[1px] bg-surface-divider;
 }
 
-@utility obb-code {
+@utility ws-code {
   @apply bg-general-bg-primary border-general-border-primary/50 text-ds-text-heading rounded border p-2;
 }
 
-@utility obb-floating-actions {
+@utility ws-floating-actions {
   @apply flex p-1.5 rounded gap-1.5 items-center bg-general-bg-primary shadow-[0px_2px_10px_0px_rgba(0,0,0,0.2)];
 }
 
-@utility obb-minimal-input {
+@utility ws-minimal-input {
   @apply h-[20px] rounded border border-general-border-primary bg-input-field-bg p-1.5 text-xs text-ds-text-body focus:border-general-label focus:outline-hidden active:border-general-label;
 }
 
-@utility obb-minimal-input-full {
+@utility ws-minimal-input-full {
   @apply h-[20px] resize-none rounded border border-general-border-primary bg-input-field-bg p-1.5 text-xs text-ds-text-heading placeholder:text-ds-text-subtitle focus:border-general-label focus:outline-hidden focus:placeholder:text-ds-text-heading active:border-general-label;
 }
 
-@utility obb-minimal-input-search {
+@utility ws-minimal-input-search {
   @apply h-[25px] rounded border px-3 border-general-border-primary bg-input-field-bg text-ds-text-heading;
 }
 
-@utility obb-new-input {
+@utility ws-new-input {
   @apply h-[30px] rounded border px-3 border-general-border-primary bg-input-field-bg text-ds-text-heading focus:border-general-label active:border-general-label;
 }
 
@@ -266,11 +266,11 @@
   @apply divide-surface-divider;
 }
 
-@utility obb-toggle-group-minimal {
-  @apply obb-parameter flex h-5 w-fit gap-1 overflow-hidden rounded-sm p-0 border-l-0 border-r-0;
+@utility ws-toggle-group-minimal {
+  @apply ws-parameter flex h-5 w-fit gap-1 overflow-hidden rounded-sm p-0 border-l-0 border-r-0;
 }
 
-@utility obb-toggle-group-minimal-item {
+@utility ws-toggle-group-minimal-item {
   @apply px-0.5 text-ds-text-heading radix-state-checked:bg-tab-bg-primary radix-state-on:bg-tab-bg-primary;
 }
 
@@ -442,17 +442,6 @@
   }
 }
 
-.plotly-plot .js-plotly-plot .plotly .cursor-crosshair {
-  cursor: none !important;
-}
-
-@font-face {
-  font-family: "NotoColorEmojiLimited";
-  unicode-range: U+1F1E6-1F1FF;
-  src: url("/assets/fonts/NotoColorEmoji-flagsonly.ttf");
-  font-display: swap;
-}
-
 @font-face {
   font-family: "Inter";
   src: url("/assets/fonts/Inter.var.woff2") format("woff2-variations");
@@ -485,10 +474,6 @@ body {
   background-repeat: no-repeat;
   background-position: top 0px center;
   background-size: clamp(640px, calc(100vw * 1.6), 1440px);
-}
-
-.country-flag {
-  font-family: "NotoColorEmojiLimited" !important;
 }
 
 @media (min-width: 1500px) {
@@ -617,37 +602,12 @@ body {
   padding: 0px !important;
 }
 
-/* PLOTLY STYLES START */
-
-.modebar-group {
-  background-color: transparent !important;
-}
-
-@media screen and (max-width: 600px) {
-  .modebar-group {
-    background-color: transparent !important;
-  }
-}
-
 @media screen and (max-width: 640px) {
-  .obb-modal {
+  .ws-modal {
     animation: popup 0.3s ease-in-out;
     height: 85% !important;
     overflow: auto !important;
   }
-}
-
-.modebar-btn path {
-  fill: var(--brand-main, #00acff) !important;
-}
-.modebar-btn:hover .icon path {
-  fill: #bdbdbd !important;
-}
-.modebar-btn.active:hover .icon path {
-  fill: #bdbdbd !important;
-}
-.modebar-btn.active .icon path {
-  fill: var(--brand-main, #00acff) !important;
 }
 
 .title-container {
@@ -675,8 +635,6 @@ body {
   ); /* Adjust the color to match your background */
 }
 
-/* PLOTLY STYLES END */
-
 input[type="color"] {
   -webkit-appearance: none;
   appearance: none;
@@ -693,18 +651,6 @@ input[type="color"]::-webkit-color-swatch-wrapper {
 /* Stops flying in effect of widgets */
 .react-grid-item {
   transition: none;
-}
-
-.ProseMirror:focus {
-  outline: none;
-}
-
-.ProseMirror img {
-  height: auto;
-  max-width: 100%;
-}
-.ProseMirror img.ProseMirror-selectednode {
-  outline: 3px solid #68cef8;
 }
 
 /* SCROLLBAR */
@@ -741,170 +687,9 @@ input[type="color"]::-webkit-color-swatch-wrapper {
   text-transform: capitalize;
 }
 
-.ag-theme-alpine {
-  --ag-font-size: 12px !important;
-  --ag-borders: none !important;
-  --ag-row-border-width: 0.5px !important;
-  --ag-header-column-resize-handle-color: #181d1f !important;
-  --ag-header-column-resize-handle-width: 1px !important;
-  --ag-header-background-color: #f6f6f6 !important;
-  --ag-cell-horizontal-padding: 7px !important;
-  --ag-border-radius: 0px !important;
-  --ag-alpine-active-color: #337dba !important;
-  --ag-control-panel-background-color: #f6f6f6 !important;
-}
-
-.ag-header-cell-resize {
-  display: none;
-}
-
-.ag-header:hover .ag-header-cell-resize {
-  display: flex;
-}
-
-.ag-tool-panel-wrapper .ag-react-container {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.hide-grid-header .ag-header {
-  display: none; /* This will hide the entire header, including the border */
-}
-
-.hide-grid-header .ag-header-cell {
-  border-top: none !important;
-}
-
-.ag-grid-stack:has([data-testid="_active-filters-banner"]) .ag-root-wrapper {
-  border-top-left-radius: 0 !important;
-  border-top-right-radius: 0 !important;
-}
-
-.ag-theme-alpine .ag-header {
-  background-color: #ebebed !important;
-}
-
-.ag-theme-alpine-dark .ag-header {
-  background-color: #36363f !important;
-}
-
-.ag-status-bar {
-  padding-left: 2px !important;
-}
-
-.ag-side-buttons {
-  overflow-y: hidden !important;
-}
-
-.ag-theme-alpine-dark .ag-status-bar {
-  background-color: #151518 !important;
-}
-
-.ag-theme-alpine .ag-row-odd {
-  background-color: #f6f6f6 !important;
-}
-
-.ag-theme-alpine .ag-row-even {
-  background-color: #fff !important;
-}
-
-.ag-theme-alpine-dark .ag-row-even {
-  background-color: #1f1e23 !important;
-}
-
-.ag-theme-alpine-dark .ag-row-odd {
-  background-color: #2a2a31 !important;
-}
-
-.ag-theme-alpine-dark {
-  --ag-font-size: 12px !important;
-  --ag-borders: none !important;
-  --ag-row-border-width: 0.5px !important;
-  --ag-header-column-resize-handle-color: white !important;
-  --ag-header-column-resize-handle-width: 1px !important;
-  --ag-header-background-color: #24242aff !important;
-  --ag-background-color: #151518ff !important;
-  --ag-cell-horizontal-padding: 7px !important;
-  --ag-border-radius: 0px !important;
-  --ag-alpine-active-color: #337dba !important;
-  --ag-control-panel-background-color: #24242aff !important;
-}
-
-.ag-popup-child {
-  z-index: 9999 !important;
-}
-
-.ag-theme-alpine-dark .ag-popup-child {
-  box-shadow: 0px 2px 10px 0px rgba(0, 0, 0, 0.4) !important;
-  border: 1px solid rgba(54, 54, 63, 1) !important;
-  border-radius: 4px !important;
-}
-
-.ag-theme-alpine .ag-popup-child {
-  border: 1px solid rgba(218, 219, 222, 1) !important;
-  box-shadow: 0px 2px 10px 0px rgba(0, 0, 0, 0.1);
-  border-radius: 4px !important;
-}
-
-.ag-chart-menu-icon {
-  width: 16px !important;
-  height: 16px !important;
-  font-size: 16px !important;
-  line-height: 16px !important;
-}
-
-.ag-paging-panel {
-  height: 30px !important;
-}
-
-.ssrm-advanced-grid-container {
-  container-type: inline-size;
-}
-
-@container (min-width: 520px) {
-  .ssrm-advanced-grid-container .ag-paging-panel {
-    padding-left: 72px !important;
-  }
-
-  .ssrm-advanced-grid-container .ssrm-advanced-footer-actions {
-    display: flex;
-  }
-}
-
-.ag-header-cell-text {
-  font-weight: 500 !important;
-}
-
-.ag-header-group-cell-with-group {
-  justify-content: center !important;
-}
-
-.ag-row {
-  border-bottom: none !important;
-}
-
-.ag-cell {
-  font-size: 12px !important;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
-}
-
-/* _ag-grid-artifact styles */
-/* Font + header bg are intentionally NOT overridden here so artifact tables
-   inherit the admin entity theme (agTheme) like dashboard widget tables do. */
-._ag-grid-artifact .ag-header-cell-comp-wrapper div {
-  align-items: center;
-}
-
 /*.dark .react-grid-item > .react-resizable-handle::after {
   border-color: #a2a2a2 !important;
 }*/
-
-.react-resizable-hide > .react-resizable-handler {
-  display: none;
-}
 
 .react-grid-item > .react-resizable-handler {
   opacity: 0;
@@ -921,48 +706,9 @@ input[type="color"]::-webkit-color-swatch-wrapper {
   }
 }
 
-.ag-theme-alpine .ca-row-selected {
-  background-color: #ccdeee !important;
-}
-
-.ag-theme-alpine-dark .ca-row-selected {
-  background-color: #334859 !important;
-}
-
-.ProseMirror p.is-editor-empty:first-child::before {
-  color: #adb5bd;
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-}
-
 *:focus {
   outline: none;
 }
-
-.ag-filter-body {
-  display: flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-}
-.ag-filter-to {
-  margin-top: 0 !important;
-}
-.ag-filter-from {
-  width: 100% !important;
-}
-
-/*
-  .ag-filter-to::before {
-    content: "To";
-    margin-bottom: 2px;
-  }
-
-  .ag-filter-from::before {
-    content: "From";
-    margin-bottom: 2px;
-  }*/
 
 input[type="date"]::-webkit-calendar-picker-indicator {
   background-position: right;
@@ -986,47 +732,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 }
 
-@keyframes pulse_shadow_blue {
-  0% {
-    box-shadow: 0px 0px 0px 0px var(--brand-main, #00acff);
-  }
-  100% {
-    box-shadow: 0px 0px 0px 4px rgba(from var(--brand-main, #00acff) r g b / 0.15);
-  }
-}
-
 .pulse-box-shadow {
   animation: pulse_shadow 1.3s infinite;
-}
-
-.pulse-box-shadow-blue {
-  animation: pulse_shadow_blue 1.3s infinite;
-}
-
-.sql-param-highlight {
-  background: var(--general-bg-secondary);
-  outline: 1px solid var(--brand-main);
-  outline-offset: 0;
-  border-radius: 2px;
-}
-
-.sql-param-text-hidden {
-  font-size: 0 !important;
-  letter-spacing: 0 !important;
-}
-
-.sql-param-value {
-  color: var(--brand-main);
-  background: var(--general-bg-secondary);
-  border: 1px solid transparent;
-  border-radius: 2px;
-  padding: 0 4px;
-  margin: 0 1px;
-  font-style: normal;
-}
-
-.sql-param-value--highlight {
-  border-color: var(--brand-main);
 }
 
 .roadmap ul {
@@ -1221,127 +928,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   opacity: 1;
 }
 
-@media (max-width: 639px) {
-  .onboarding-container {
-    padding: 10px;
-  }
-
-  .role-selection-container {
-    flex-direction: column;
-  }
-
-  .onboarding-svg {
-    width: 30%;
-    height: auto;
-  }
-
-  .onboarding-svg2 {
-    width: 70%;
-    height: auto;
-  }
-
-  ._mobilePadding {
-    padding-left: 0.75rem;
-  }
-}
-
-._article table {
-  border-collapse: collapse;
-  text-align: left;
-  width: 100%;
-}
-._article table tr {
-  border-bottom: 1px solid;
-}
-._article table th,
-._article table td {
-  padding: 10px 20px;
-}
-
-/* Simple CSS for flexbox table on mobile */
-@media (max-width: 768px) {
-  ._article table thead {
-    left: -9999px;
-    position: absolute;
-    visibility: hidden;
-  }
-  ._article table tr {
-    border-bottom: 0;
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    margin-bottom: 40px;
-  }
-  ._article table td {
-    border: 1px solid;
-    margin: 0 -1px -1px 0;
-    padding-top: 35px;
-    position: relative;
-    width: 50%;
-  }
-}
-
-.ag-icon.ag-icon-save.ag-chart-menu-icon {
-  display: none;
-}
-
-@media (min-width: 640px) {
-  .ag-body-viewport::-webkit-scrollbar,
-  .ag-center-cols-viewport::-webkit-scrollbar {
-    display: none !important;
-  }
-}
-
-@media (max-width: 639px) {
-  .ag-theme-alpine,
-  .ag-theme-alpine-dark {
-    --ag-font-size: 14px !important;
-    --ag-row-height: 44px !important;
-    --ag-header-height: 44px !important;
-  }
-
-  .ag-cell {
-    font-size: 14px !important;
-  }
-}
-
-.ag-chart-tooltip .ag-chart-tooltip-title {
-  font-weight: 550 !important;
-  border-radius: 3px 3px 0 0 !important;
-}
-
-.ag-chart-tooltip .ag-chart-tooltip-content {
-  border-radius: 0 0 3px 3px !important;
-}
-
-.dark .ag-chart-tooltip .ag-chart-tooltip-title {
-  color: #000 !important;
-  border: 1px solid #1f1e23 !important;
-}
-
-.dark .ag-chart-tooltip .ag-chart-tooltip-content {
-  background-color: #1f1e23 !important;
-  color: #fff !important;
-  border: 1px solid #1f1e23 !important;
-}
-
-.ag-side-bar .ag-tool-panel-wrapper .ag-tool-panel-horizontal-resize {
-  width: 2px !important;
-}
-
-.ag-ltr .ag-side-bar-right .ag-tool-panel-horizontal-resize {
-  left: 0px !important;
-}
-
-.cm-editor {
-  outline: none !important;
-  border-radius: calc(var(--radius) - 2px) !important;
-}
-
-.ag-ltr .ag-row-group-indent-1 {
-  padding-left: 10px !important;
-}
-
 .drag-over {
   border: 2px dashed #0088cc; /* Example style for drag-over indicator */
   background-color: rgba(0, 136, 204, 0.1); /* Slight background color change */
@@ -1372,55 +958,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 ._note h5,
 ._note h6 {
   color: inherit !important;
-}
-
-.headerWrapper {
-  display: flex;
-  overflow: hidden;
-  gap: 0.25rem;
-}
-
-.customHeaderLabel {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.customSortRemoveLabel {
-  font-size: 11px;
-}
-
-.walkthrough-active {
-  pointer-events: none;
-}
-
-.walkthrough-active .react-floater,
-.walkthrough-active .react-floater * {
-  pointer-events: auto;
-}
-
-.walkthrough-overlay {
-  pointer-events: auto;
-}
-
-/* replace docked chart close icon with chevron right to prevent conflict with our widget close icon */
-.ag-chart-docked-container .ag-icon-cross {
-  /* set a new image */
-  background: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB2aWV3Qm94PSIwIDAgMTggMTgiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSIgeG1sbnM6c2VyaWY9Imh0dHA6Ly93d3cuc2VyaWYuY29tLyIgc3R5bGU9ImZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO3N0cm9rZS1saW5lam9pbjpyb3VuZDtzdHJva2UtbWl0ZXJsaW1pdDoyOyI+CiAgICA8ZyBpZD0ibmV4dCIgdHJhbnNmb3JtPSJtYXRyaXgoMC4wMTc1NzgxLDAsMCwwLjAxNzU3ODEsMCwwKSI+CiAgICAgICAgPHBhdGggZmlsbD0iIzAzYTlmNCIgZD0iTTQxNC4wOCwyNTZMMzUzLjkyLDMxNi4xNkw1NDkuMzMzLDUxMkwzNTMuOTIsNzA3Ljg0TDQxNC4wOCw3NjhMNjcwLjA4LDUxMkw0MTQuMDgsMjU2WiIgc3R5bGU9ImZpbGwtcnVsZTpub256ZXJvOyIvPgogICAgPC9nPgo8L3N2Zz4K");
-  /* hide the existing image-mask based icon from the provided theme */
-  color: transparent;
-  /* make the icon white */
-  filter: brightness(0);
-}
-
-.dark .ag-chart-docked-container .ag-icon-cross {
-  /* make the icon white */
-  filter: brightness(0) invert(1);
-}
-
-/* align chevron icon to the center*/
-.ag-chart-docked-container
-.ag-tabs-close-button-wrapper.ag-chart-tabbed-menu-close-button-wrapper {
-  display: flex;
 }
 
 /* Animated gradient for step-by-step reasoning */
@@ -1468,10 +1005,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   transform-origin: center;
 }
 
-.obb-autofill-light input:-webkit-autofill,
-.obb-autofill-light input:-webkit-autofill:hover,
-.obb-autofill-light input:-webkit-autofill:focus,
-.obb-autofill-light input:-webkit-autofill:active {
+.ws-autofill-light input:-webkit-autofill,
+.ws-autofill-light input:-webkit-autofill:hover,
+.ws-autofill-light input:-webkit-autofill:focus,
+.ws-autofill-light input:-webkit-autofill:active {
   -webkit-box-shadow: inset 0 0 0px 1000px white !important;
   -webkit-text-fill-color: #1f2937 !important;
 }
@@ -1498,39 +1035,4 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 .react-colorful__last-control {
   margin-bottom: 2px !important;
-}
-
-.ag-wrapper.ag-input-wrapper.ag-checkbox-input-wrapper.ag-disabled {
-  .ag-input-field-input.ag-checkbox-input {
-    cursor: default !important;
-  }
-  cursor: default !important;
-}
-
-.ag-paging-description,
-.ag-paging-row-summary-panel {
-  white-space: nowrap; /* so we dont show the stats in multiple lines for src/components/General/Table/AgGridSSRMAdvanced.tsx https://openbb.atlassian.net/browse/AA-3871 */
-}
-
-/* vega-embed applies `.vega-embed` directly to our ref div and ships
-   `display: inline-block` + `padding-right: 38px` defaults that break
-   fit-to-container sizing inside our draggable widgets. Since our ref div
-   ends up with BOTH `.chart-vegalite` and `.vega-embed` classes, override
-   on the same element. Scoped so any other vega-embed usage stays untouched. */
-.chart-vegalite {
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  overflow: hidden !important;
-  padding: 0 !important;
-  position: relative;
-}
-.chart-vegalite .chart-wrapper {
-  width: 100% !important;
-  height: 100% !important;
-}
-.chart-vegalite .vega-embed-wrapper {
-  overflow: hidden !important;
-  max-width: 100% !important;
-  padding-right: 0 !important;
 }

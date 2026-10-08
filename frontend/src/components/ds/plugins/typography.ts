@@ -1,4 +1,3 @@
-// @ts-expect-error - ignored for now
 import plugin from "tailwindcss/plugin";
 
 const STYLE = {

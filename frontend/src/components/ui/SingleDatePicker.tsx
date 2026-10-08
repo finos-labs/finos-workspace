@@ -11,8 +11,8 @@ import {
   useState,
 } from "react";
 import { cn } from "~/lib/utils";
+import { formatDate } from "~/lib/utils/format";
 import { Button } from "../ds/atoms/Button";
-import { formatDate } from "../General/Table/AgGridUtils";
 import Tooltip from "../Tooltip";
 import { GroupDropdownAnchorContext } from "../Widgets/Helpers/GroupDropdown";
 import { Calendar } from "./Calendar";
@@ -22,7 +22,7 @@ const DATE_FMT = "MMM DD, YYYY";
 type SingleDatePickerProps = {
   triggerClassName?: string;
   defaultDate: string;
-  onSave: (date: string) => void;
+  onSave: (date: string | undefined) => void;
   toolTipProps?: Omit<ComponentProps<typeof Tooltip>, "children">;
 };
 
@@ -32,7 +32,7 @@ export const SingleDatePicker = forwardRef<HTMLButtonElement, SingleDatePickerPr
       defaultDate,
       onSave,
       toolTipProps = { hide: true, message: "" },
-      triggerClassName = "obb-parameter",
+      triggerClassName = "ws-parameter",
     },
     _ref,
   ) => {
@@ -90,7 +90,7 @@ export const SingleDatePicker = forwardRef<HTMLButtonElement, SingleDatePickerPr
             className={cn(
               "radix-side-top:animate-slide-up radix-side-bottom:animate-slide-down",
               "text-xs z-10 p-0",
-              "obb-dropdown-container",
+              "ws-dropdown-container",
             )}
           >
             <Calendar
@@ -98,12 +98,12 @@ export const SingleDatePicker = forwardRef<HTMLButtonElement, SingleDatePickerPr
               autoFocus={true}
               captionLayout="dropdown"
               mode="single"
-              selected={currentDate}
+              selected={currentDate ?? undefined}
               onSelect={(date) => {
-                setCurrentDate(date);
+                setCurrentDate(date ?? null);
                 onSave(date && formatDate(date));
               }}
-              defaultMonth={currentDate}
+              defaultMonth={currentDate ?? undefined}
             />
             <Button
               size="xs"

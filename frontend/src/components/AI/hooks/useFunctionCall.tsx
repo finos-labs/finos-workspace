@@ -1,29 +1,23 @@
 import { get } from "lodash";
-import posthog from "posthog-js";
 import { useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { getPreSignedUrl } from "~/api/auth.api";
 import * as workspaceApi from "~/api/workspace.api";
-import { isTruthy } from "~/components/General/Table/utils";
-import type { ParamDefT, Ticker, WidgetT } from "~/components/types";
-import { getParsedWidgetData } from "~/components/Widgets";
-import { getChartWidgetData } from "~/components/Widgets/Chart";
+import type { ParamDefT, WidgetT } from "~/components/types";
+import type { WidgetId } from "~/components/Widgets";
 import {
   cleanSearchParams as createCleanUrl,
   convertHeadersToRecord as getHeadersAndUrlParams,
 } from "~/lib/api";
-import { sdkClient } from "~/lib/api/sdkFetcher";
-import type { FilterTypes } from "~/lib/api/sdkSchemas";
 import { getAiApiUrl } from "~/lib/constants";
-import { useTickersContext } from "~/lib/contexts/CachedTickers";
 import { getIframeWidget } from "~/lib/iframeWidgetRegistry";
 import { getConfig } from "~/lib/runtimeConfig";
 import { useAppStore } from "~/lib/state/app";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import {
   type ArtifactT,
-  type ChartArtifactT,
+  type Citation,
   type Copilot,
   type CopilotCommandResultT,
   CopilotDataSchema,
@@ -35,35 +29,27 @@ import {
   useCopilotStore,
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
-import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
+import {
+  type DashboardWidgetData,
+  useShallowCopilotDataStore,
+} from "~/lib/state/copilotData";
 import { useSharedAppStore } from "~/lib/state/sharedApp";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import type { QueryTickersProps } from "~/lib/state/tickers";
 import {
   type AddGenerativeWidgetInputArgumentsT,
-  type CopilotFunctionCallArgumentsT,
-  currentDateModifier,
   type DataSourceT,
   extractUUIDFromURL,
-  getJsonWidget,
-  getTickerParamName,
-  getWidgetDataSource,
   type ParamOptionQueryResultT,
   type ParamOptionQueryT,
   paramOptionQueryResult,
   type TaskRequest,
 } from "~/lib/utils";
-import { ONBOARDING_STORED_FILES } from "~/lib/utils/createTemplates";
-import {
-  buildChartWidget,
-  buildHtmlWidget,
-  buildNoteWidget,
-  buildTableWidget,
-  GENERATIVE_WIDGET_DEFAULT_GRID,
-} from "./buildWidget";
-import { toAgGridChartType } from "./createWidgetUtils";
+import { toError } from "~/lib/utils/utils";
+import { isTruthy, isTruthyRecord } from "~/lib/utils/values";
+import { buildHtmlWidget, buildNoteWidget } from "./buildWidget";
 import { useShallowAppWidgetsStore } from "./useGetAppWidgets";
 import { findTabMatch } from "./useManageNavigationBar";
+import { normalizeCitations } from "./utils";
 
 const aiCopilotAiEnhancementsFF =
   getConfig().copilot.enabled && getConfig().copilot.aiEnhancements;
@@ -87,8 +73,8 @@ function describeEndpoint(url: string): string {
 
 function getGenerativeWidgetCitations(
   config: AddGenerativeWidgetInputArgumentsT,
-): NonNullable<AddGenerativeWidgetInputArgumentsT["citations"]> {
-  return Array.isArray(config.citations) ? config.citations : [];
+): Citation[] {
+  return normalizeCitations(config.citations);
 }
 
 function getGenerativeWidgetArtifacts(
@@ -99,14 +85,7 @@ function getGenerativeWidgetArtifacts(
     .filter((artifact): artifact is ArtifactT => !!artifact);
 }
 
-const GENERATIVE_ARTIFACT_TYPES = [
-  "text",
-  "table",
-  "chart",
-  "html",
-  "snowflake_query",
-  "snowflake_python",
-] as const;
+const GENERATIVE_ARTIFACT_TYPES = ["text", "html"] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object";
@@ -120,8 +99,8 @@ function asNonEmptyString(value: unknown): string | undefined {
  * Converts an artifact payload from an add_generative_widget call into the
  * internal ArtifactT shape. Accepts two shapes: an already-normalized artifact
  * ({type, content}), forwarded as-is with uuid/name backfilled, and the raw
- * copilot wire format ({source_info, data_format, content}) where table/chart
- * content arrives as a JSON string. Returns null for anything else so malformed
+ * copilot wire format ({source_info, data_format, content}). Returns null for
+ * anything else (including artifact types Workspace does not render) so malformed
  * tool-call payloads are dropped instead of stored in widget storage.
  */
 function normalizeGenerativeWidgetArtifact(artifact: unknown): ArtifactT | null {
@@ -146,8 +125,10 @@ function normalizeGenerativeWidgetArtifact(artifact: unknown): ArtifactT | null 
   const type = GENERATIVE_ARTIFACT_TYPES.find((t) => t === dataFormat.parse_as);
   if (!type) return null;
 
-  const parsedContent = parseArtifactContent(artifact.content, type);
-  const metadata = isRecord(sourceInfo.metadata) ? sourceInfo.metadata : undefined;
+  const parsedContent =
+    typeof artifact.content === "string"
+      ? artifact.content
+      : JSON.stringify(artifact.content);
   const normalizedArtifact: Record<string, unknown> = {
     uuid: asNonEmptyString(sourceInfo.uuid) || name,
     name,
@@ -155,36 +136,11 @@ function normalizeGenerativeWidgetArtifact(artifact: unknown): ArtifactT | null 
     type,
     content: parsedContent,
   };
-  if (dataFormat.chart_params !== undefined) {
-    normalizedArtifact.chart_params = dataFormat.chart_params;
-  }
-  const queryDataSource = dataFormat.query_data_source || metadata?.query_data_source;
-  if (queryDataSource !== undefined) {
-    normalizedArtifact.query_data_source = queryDataSource;
-  }
   if (sourceInfo.metadata !== undefined) {
     normalizedArtifact.metadata = sourceInfo.metadata;
   }
 
   return normalizedArtifact as ArtifactT;
-}
-
-function parseArtifactContent(content: unknown, type: ArtifactT["type"]) {
-  if (type === "table" || type === "chart") {
-    const parsed = parseJsonContent(content);
-    return Array.isArray(parsed) ? parsed : [];
-  }
-
-  return typeof content === "string" ? content : JSON.stringify(content);
-}
-
-function parseJsonContent(content: unknown) {
-  if (typeof content !== "string") return content;
-  try {
-    return JSON.parse(content);
-  } catch {
-    return content;
-  }
 }
 
 async function readErrorBody(response: Response): Promise<string | null> {
@@ -285,7 +241,7 @@ export function useFunctionCall() {
 
   const getWidgetFromBackend = useCallback(
     (backendName: string, widgetId: string): WidgetT | null => {
-      const widget = getAppWidget(widgetId as WidgetT["widgetId"], backendName);
+      const widget = getAppWidget(widgetId as WidgetId, backendName);
       return widget ?? null;
     },
     [getAppWidget],
@@ -296,7 +252,6 @@ export function useFunctionCall() {
     selectedCopilot: s.selectedCopilot,
   }));
 
-  const queryTickers = useTickersContext((state) => state.queryTickers);
   const { checkWidgetSignature } = useShallowCopilotDataStore((s) => ({
     checkWidgetSignature: s.checkWidgetSignature,
   }));
@@ -329,8 +284,8 @@ export function useFunctionCall() {
     ): Promise<(CopilotDataT | CopilotFunctionCallError)[]> => {
       const finalResults: (CopilotDataT | CopilotFunctionCallError)[] = [];
       for (const dataSource of dataSources) {
-        if (dataSource.origin !== "OpenBB Hub") {
-          const { origin, id, input_args, ssm_request } = dataSource;
+        if (dataSource.origin !== "the backend") {
+          const { origin, id, input_args } = dataSource;
           const widgetUuid = dataSource.widget_uuid;
           // This ensures that we only get the data if the widget hasn't changed
           if (
@@ -339,7 +294,6 @@ export function useFunctionCall() {
               origin: origin,
               widgetId: id,
               args: input_args,
-              ssmRequest: ssm_request,
             })
           ) {
             try {
@@ -348,7 +302,7 @@ export function useFunctionCall() {
                 widgetUuid,
               );
               // Check if cached data is non-empty before using it
-              // SSRM widgets (Snowflake, etc.) may have empty cached data since they fetch on-demand
+              // SSRM widgets may have empty cached data since they fetch on-demand
               const cachedData = widgetData?.data;
               // SSRM widgets `data.rowData` is only on requests, for `widgetData.data` we have the
               // processed rowData that's meant to be used directly
@@ -378,22 +332,12 @@ export function useFunctionCall() {
             );
           }
 
-          let result: Promise<any> | DataUrl | null = null;
+          let result: unknown = null;
           switch (dataSource.origin) {
-            case "OpenBB Sandbox":
-              result = await getOpenbbSandboxWidgetsData(
-                dataSource,
-                getWidgetFromBackend,
-                queryTickers,
-              );
+            case "the backend":
+              result = await getPreSignedUrls(dataSource, getWidgetFromBackend);
               break;
-            case "OpenBB Hub":
-              result = await getOpenBBHubPreSignedUrls(
-                dataSource,
-                getWidgetFromBackend,
-              );
-              break;
-            case "OpenBB Workspace":
+            case "Workspace":
               result = await getWorkspaceWidgetsData(
                 dataSource,
                 getDashboardWidgetData,
@@ -411,12 +355,6 @@ export function useFunctionCall() {
           finalResults.push(convertToCopilotData(result));
         } catch (error) {
           console.error("Error fetching data", error);
-          if (posthog) {
-            posthog.capture("GET_WIDGET_DATA_ERROR", {
-              message: error.message,
-              stack: error.stack,
-            });
-          }
           finalResults.push(
             toFunctionCallError(
               error,
@@ -430,7 +368,6 @@ export function useFunctionCall() {
     [
       getWidgetFromBackend,
       getDashboardWidgetData,
-      queryTickers,
       checkWidgetSignature,
       toFunctionCallError,
     ],
@@ -443,30 +380,13 @@ export function useFunctionCall() {
       const finalResults: (CopilotDataT | CopilotFunctionCallError)[] = [];
       for (const paramOptionsQuery of paramOptionsQueries) {
         try {
-          let result: any | null = null;
-          switch (paramOptionsQuery.origin) {
-            case "OpenBB Sandbox":
-              result = await getWidgetsParamOptions(
-                paramOptionsQuery,
-                getWidgetFromBackend,
-              );
-              break;
-            default:
-              result = await getWidgetsParamOptions(
-                paramOptionsQuery,
-                getWidgetFromBackend,
-              );
-              break;
-          }
+          const result = await getWidgetsParamOptions(
+            paramOptionsQuery,
+            getWidgetFromBackend,
+          );
           finalResults.push(convertToCopilotData(result));
         } catch (error) {
           console.error("Error fetching param options", error);
-          if (posthog) {
-            posthog.capture("GET_PARAM_OPTIONS_ERROR", {
-              message: error.message,
-              stack: error.stack,
-            });
-          }
           finalResults.push(
             toFunctionCallError(
               error,
@@ -535,82 +455,36 @@ export function useFunctionCall() {
   );
 
   const addWidgetToDashboard = useCallback(
-    async (
-      dataSources: DataSourceT[],
-      copilotArgs?: CopilotFunctionCallArgumentsT,
-    ): Promise<CopilotCommandResultT[]> => {
+    async (dataSources: DataSourceT[]): Promise<CopilotCommandResultT[]> => {
       const finalResults: CopilotCommandResultT[] = [];
       for (const dataSource of dataSources) {
         try {
           const config: {
-            dataArgs?: Record<string, any>;
-            uiArgs?: Record<string, any>;
+            dataArgs?: Record<string, unknown>;
+            uiArgs?: Record<string, unknown>;
           } = {
             dataArgs: dataSource.input_args,
           };
 
           // Handle inner_tab assignment when a navigation bar exists
           const rawInnerTab = dataSource.input_args?.inner_tab;
-          if (rawInnerTab) {
+          if (typeof rawInnerTab === "string" && rawInnerTab) {
             const tabId = resolveInnerTabId(rawInnerTab);
             if (tabId) {
               config.uiArgs = { ...config.uiArgs, innerTab: tabId };
             }
           }
 
-          const shouldEnableChartView =
-            !!copilotArgs?.chart_params && copilotArgs?.widget_type !== "table";
-
-          if (shouldEnableChartView) {
-            config.uiArgs = {
-              ...config.uiArgs,
-              chartSettingsOpen: false,
-              chartView: {
-                enabled: true,
-                chartType: toAgGridChartType(copilotArgs?.chart_params?.chartType),
-              },
-            };
-          }
-
-          // Special handling for rich_note widgets to add content
-          // Handle both 'rich_note' and 'rich_note-*' patterns
-          const isRichNote =
-            dataSource.id === "rich_note" || dataSource.id?.startsWith("rich_note-");
-
-          if (isRichNote) {
-            // Use content from input_args if provided, otherwise create editable note
-            const content =
-              dataSource.input_args?.content ||
-              "# New Note\n\nClick to edit this note and add your content...";
-
-            config.uiArgs = {
-              ...config.uiArgs,
-              html: content,
-              gridData: {
-                w: GENERATIVE_WIDGET_DEFAULT_GRID.w,
-                h: GENERATIVE_WIDGET_DEFAULT_GRID.h,
-              },
-            };
-
-            // Use AI-generated name and description from backend if provided
-            if (dataSource.input_args?.name) {
-              config.uiArgs.name = dataSource.input_args.name;
-            }
-            if (dataSource.input_args?.description) {
-              config.uiArgs.description = dataSource.input_args.description;
-            }
-          } else {
-            const queryContent = dataSource.input_args?.query;
-            if (queryContent && aiEnhancementsEnabled) {
-              const aiInfo = await fetchWidgetInfo(JSON.stringify(queryContent));
-              if (aiInfo.title || aiInfo.description) {
-                config.uiArgs = config.uiArgs || {};
-                if (aiInfo.title) {
-                  config.uiArgs.name = aiInfo.title;
-                }
-                if (aiInfo.description) {
-                  config.uiArgs.description = aiInfo.description;
-                }
+          const queryContent = dataSource.input_args?.query;
+          if (queryContent && aiEnhancementsEnabled) {
+            const aiInfo = await fetchWidgetInfo(JSON.stringify(queryContent));
+            if (aiInfo.title || aiInfo.description) {
+              config.uiArgs = config.uiArgs || {};
+              if (aiInfo.title) {
+                config.uiArgs.name = aiInfo.title;
+              }
+              if (aiInfo.description) {
+                config.uiArgs.description = aiInfo.description;
               }
             }
           }
@@ -629,7 +503,7 @@ export function useFunctionCall() {
           console.error("Error creating widget", error);
           finalResults.push({
             status: "error",
-            message: `Error creating widget with id '${dataSource.id}': ${error.message}`,
+            message: `Error creating widget with id '${dataSource.id}': ${toError(error).message}`,
           });
         }
       }
@@ -646,32 +520,21 @@ export function useFunctionCall() {
         try {
           if (widgetUuid) {
             const config: {
-              dataArgs?: Record<string, any>;
-              uiArgs?: Record<string, any>;
+              dataArgs?: Record<string, unknown>;
+              uiArgs?: Record<string, unknown>;
             } = {
               dataArgs: dataSource.input_args,
             };
 
-            // Special handling for rich_note widget updates
+            // A note the Copilot wrote is a markdown widget that holds its own text
             const widget = useAppStore.getState().getWidgetById(widgetUuid);
+            const isNote = widget?.widgetId === "markdown" && !widget.endpoint?.url;
 
-            // Check if this is a rich_note widget (handle both 'rich_note' and 'rich_note-*' patterns)
-            const isRichNote =
-              widget?.widgetId === "rich_note" ||
-              widget?.widgetId?.startsWith("rich_note-");
-
-            if (isRichNote) {
-              // Initialize uiArgs if needed
-              if (!config.uiArgs) {
-                config.uiArgs = {};
-              }
-
-              // Convert markdown to HTML if content is provided
+            if (isNote) {
+              config.uiArgs = {};
               if (dataSource.input_args?.content) {
-                config.uiArgs.html = dataSource.input_args.content;
+                config.uiArgs.text = dataSource.input_args.content;
               }
-
-              // Always check for AI-generated name and description, regardless of content
               if (dataSource.input_args?.name) {
                 config.uiArgs.name = dataSource.input_args.name;
               }
@@ -690,7 +553,7 @@ export function useFunctionCall() {
           console.error("Error updating widget", error);
           finalResults.push({
             status: "error",
-            message: `Error updating widget with uuid '${widgetUuid}': ${error.message}`,
+            message: `Error updating widget with uuid '${widgetUuid}': ${toError(error).message}`,
           });
         }
       }
@@ -749,7 +612,7 @@ export function useFunctionCall() {
           console.error("Error finding agent", error);
           finalResults.push({
             status: "error",
-            message: `Error processing task with id '${task.id}': ${error.message}`,
+            message: `Error processing task with id '${task.id}': ${toError(error).message}`,
           });
         }
       }
@@ -763,7 +626,8 @@ export function useFunctionCall() {
       config: AddGenerativeWidgetInputArgumentsT,
       options: DashboardCommandOptions = {},
     ): Promise<CopilotCommandResultT[]> => {
-      const { widget_type, data, name, description, chart_params, inner_tab } = config;
+      const { widget_type, data, name, inner_tab } = config;
+      const description = config.description ?? undefined;
       const dashboardId = options.dashboardId || currentDashboardId;
       const dashboard = useAppStore.getState().items?.[dashboardId];
 
@@ -781,8 +645,6 @@ export function useFunctionCall() {
         console.log("[GenerativeWidget] Creating widget:", {
           type: widget_type,
           dataType: typeof data,
-          dataRows: Array.isArray(data) ? data.length : "N/A (string)",
-          chartParams: chart_params,
         });
       }
 
@@ -792,9 +654,6 @@ export function useFunctionCall() {
         let artifact: ArtifactT | null = null;
 
         if (widget_type === "note") {
-          if (typeof data !== "string") {
-            throw new Error("Note widget requires string data");
-          }
           const noteContent = data;
           const citations = getGenerativeWidgetCitations(config);
           const artifacts = getGenerativeWidgetArtifacts(config);
@@ -816,9 +675,6 @@ export function useFunctionCall() {
             metadata: { source: "generative_widget" },
           };
         } else if (widget_type === "html") {
-          if (typeof data !== "string") {
-            throw new Error("HTML widget requires string data");
-          }
           const htmlContent = data;
           newWidget = buildHtmlWidget(htmlContent, {
             uuid: widgetUuid,
@@ -835,78 +691,30 @@ export function useFunctionCall() {
             content: htmlContent,
             metadata: { source: "generative_widget" },
           };
-        } else if (widget_type === "chart") {
-          if (
-            !chart_params?.chartType ||
-            !chart_params.xKey ||
-            !(Array.isArray(chart_params.yKey) && chart_params.yKey.length > 0)
-          ) {
-            throw new Error(
-              "Chart widget requires chart_params with chartType, xKey, and a non-empty yKey",
-            );
-          }
-          if (!Array.isArray(data)) {
-            throw new Error("Chart widget requires array data");
-          }
-          const chartData = data as Record<string, unknown>[];
-          newWidget = buildChartWidget(chartData, {
-            uuid: widgetUuid,
-            name,
-            description,
-            chartType: chart_params.chartType,
-            xKey: chart_params.xKey,
-            yKey: chart_params.yKey,
-            angleKey: chart_params.angleKey,
-            calloutLabelKey: chart_params.calloutLabelKey,
-          });
-
-          // Create chart artifact for chat
-          artifact = {
-            uuid: widgetUuid,
-            name,
-            description,
-            type: "chart",
-            content: chartData,
-            chart_params: chart_params as ChartArtifactT["chart_params"],
-            metadata: { source: "generative_widget" },
-          };
         } else {
-          // Table
-          if (!Array.isArray(data)) {
-            throw new Error("Table widget requires array data");
-          }
-          const tableData = data as Record<string, unknown>[];
-          newWidget = buildTableWidget(tableData, {
-            uuid: widgetUuid,
-            name,
-            description,
-          });
-
-          // Create table artifact for chat
-          artifact = {
-            uuid: widgetUuid,
-            name,
-            description,
-            type: "table",
-            content: tableData,
-            metadata: { source: "generative_widget" },
-          };
+          throw new Error(
+            `Unsupported widget type '${widget_type}'. Supported types are note and html.`,
+          );
         }
 
         // Fetch AI-generated title/description before adding to dashboard
         try {
-          const widgetData = typeof data === "string" ? data : JSON.stringify(data);
-          const resp = await sdkClient.post(
-            `${getAiApiUrl()}/v1/generate/widget_info`,
-            {
+          const response = await fetch(`${getAiApiUrl()}/v1/generate/widget_info`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${userToken}`,
+            },
+            body: JSON.stringify({
               widget_generation_request: {
                 name,
                 description,
-                widget_data: widgetData,
+                widget_data: data,
               },
-            },
-          );
-          const aiInfo = resp.data;
+            }),
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const aiInfo = await response.json();
           if (aiInfo?.title) {
             newWidget = { ...newWidget, name: aiInfo.title };
           }
@@ -916,11 +724,6 @@ export function useFunctionCall() {
         } catch (e) {
           // Fallback to LLM-provided name/description
           console.warn("[GenerativeWidget] Failed to fetch AI widget info:", e);
-          if (posthog) {
-            posthog.capture("GENERATIVE_WIDGET_INFO_ERROR", {
-              message: e instanceof Error ? e.message : String(e),
-            });
-          }
         }
 
         // Resolve the placement tab. An explicit inner_tab wins; otherwise, when
@@ -974,7 +777,7 @@ export function useFunctionCall() {
         ];
       }
     },
-    [currentDashboardId, resolveInnerTabId],
+    [currentDashboardId, resolveInnerTabId, userToken],
   );
 
   return {
@@ -987,273 +790,25 @@ export function useFunctionCall() {
   };
 }
 
-async function getOpenbbSandboxWidgetsData(
-  dataSource: DataSourceT,
-  getWidgetFromBackend: (backendName: string, widgetId: string) => WidgetT | null,
-  queryTickers: (props: QueryTickersProps) => Promise<Record<string, Ticker>>,
-): Promise<any> {
-  let result: any | null = null;
-  let builtInWidget: WidgetT | undefined;
-  // This a temporary solution to handle financial statements widget
-  if (
-    ["balance_sheet", "income_statement", "cash_flow_statement"].includes(dataSource.id)
-  ) {
-    builtInWidget = getJsonWidget((dataSource.id as WidgetT["widgetId"])!);
-  } else {
-    builtInWidget = getWidgetFromBackend("OpenBB Sandbox", dataSource.id) ?? undefined;
-  }
-
-  if (!builtInWidget)
-    throw new CopilotError(
-      CopilotErrorType.NOT_FOUND,
-      `Widget with origin ${dataSource.origin} and id ${dataSource.id} not found`,
-    );
-
-  // TODO: Here instead of recreating the request a widget makes,
-  // we should just call a function that the widget uses to fetch data
-  // This is a temporary solution to handle Pyth Live Watchlist widget
-  if (builtInWidget.widgetId === "pyth_price_feeds") {
-    const response = await fetch(
-      "https://benchmarks.pyth.network/v1/price_differences/",
-    );
-    if (!response.ok) {
-      throw new CopilotError(
-        CopilotErrorType.GATEWAY_ERROR,
-        "The data source was unavailable. Is it connected and available to OpenBB Workspace?",
-      );
-    }
-    const data = await response.json();
-
-    const processedData = data.reduce((acc: any[], item: any) => {
-      try {
-        if (item?.sparkline?.length > 0) {
-          acc.push({
-            ...item,
-            price: item.sparkline[item.sparkline.length - 1],
-          });
-        }
-      } catch (error) {
-        console.error("Error processing price feed item:", error);
-      }
-      return acc;
-    }, []);
-
-    return processedData;
-  }
-
-  // Here we assume:
-  // 1. There is 1-1 mapping between platformDataFunctions and platform API endpoints
-  //      e.g. obb.equity.price.historical -> /equity/price/historical
-  // 2. The first element of platformDataFunction is the relevant endpoint
-  let resourceEndpoint = "";
-  if (builtInWidget.proEndpoint) {
-    resourceEndpoint = builtInWidget.proEndpoint.split(".").join("/");
-  } else if (
-    builtInWidget.platformDataFunction &&
-    builtInWidget.platformDataFunction.length > 0
-  ) {
-    resourceEndpoint = builtInWidget.platformDataFunction[0]
-      .split(".")
-      .slice(1)
-      .join("/");
-  }
-  if (!resourceEndpoint)
-    throw new CopilotError(
-      CopilotErrorType.NOT_FOUND,
-      "The data source was unavailable. Is it connected and available to OpenBB Workspace?",
-    );
-
-  let mainTicker: Ticker | undefined;
-  const tickerParam = getTickerParamName(builtInWidget);
-  const symbol = tickerParam
-    ? dataSource.input_args?.[tickerParam]?.toString()
-    : undefined;
-
-  const supportedAssetClasses = builtInWidget?.supportedAssetClasses;
-
-  if (tickerParam && symbol && !supportedAssetClasses?.includes("country")) {
-    const matchedTickers = await queryTickers({
-      tickers: symbol,
-      filter: supportedAssetClasses?.map((type) =>
-        type?.toLowerCase()?.replace("equity", "stock"),
-      ) as FilterTypes[],
-    });
-    mainTicker = matchedTickers[symbol];
-  }
-  const widgetSource = getWidgetDataSource({
-    ...builtInWidget,
-    data: {
-      ...(builtInWidget?.data || {}),
-      mainTicker,
-    },
-  });
-
-  let providerParams = {} as Record<string, any>;
-  if (widgetSource) {
-    providerParams = builtInWidget.proEndpoint
-      ? { provider: "pro", data_provider: widgetSource }
-      : { provider: widgetSource };
-
-    if (
-      builtInWidget?.widgetId === "company_profile" &&
-      mainTicker?.category === "etf"
-    ) {
-      resourceEndpoint = "etf/info";
-    }
-
-    if (builtInWidget?.widgetId === "key_metrics" && mainTicker) {
-      providerParams.category = mainTicker?.category;
-    }
-  }
-
-  const fixedParams = (builtInWidget?.inputs?.fixed || []).reduce((acc, curr) => {
-    // TODO: Find a way to remove fixed params, because they have no explicit type definition
-    // Checking for "$currentDate" in the name is a temporary solution
-    const value =
-      typeof curr.value === "string" && curr.value.includes("$currentDate")
-        ? currentDateModifier(curr.value)
-        : curr.value;
-    acc[curr.name] = value;
-    return acc;
-  }, providerParams);
-
-  const filteredParams = Object.fromEntries(
-    Object.entries({
-      ...fixedParams,
-      ...dataSource.input_args,
-    }).filter(([, value]) => value !== null && value !== "null"),
-  ) as Record<string, string>;
-
-  const newWidget = { ...builtInWidget };
-  newWidget.storage = { ...(newWidget.storage ?? {}), params: filteredParams };
-
-  const urlParams = new URLSearchParams(filteredParams);
-  const endpoint = `api/v1/${resourceEndpoint}?${urlParams.toString()}`;
-
-  try {
-    result = await sdkClient
-      .get(endpoint)
-      .then((res) => getParsedWidgetData(res.data, newWidget));
-  } catch (error) {
-    console.error("Error fetching data from OpenBB Sandbox", error);
-    switch (error.response?.status) {
-      case 404:
-        throw new CopilotError(
-          CopilotErrorType.GATEWAY_ERROR,
-          "The data source was unavailable. Is it connected and available to OpenBB Workspace?",
-        );
-      case 422:
-        throw new CopilotError(
-          CopilotErrorType.GATEWAY_ERROR,
-          `Fetching data from widget returned an error: ${error.response.data}`,
-        );
-      default:
-        throw error;
-    }
-  }
-
-  const selectedGroup = dataSource?.input_args?.selectedGroup as string;
-  if (
-    selectedGroup &&
-    ["financial_statements", "grouped_comparison"].some(
-      (g) => builtInWidget.widgetId === g,
-    )
-  ) {
-    result = result?.[selectedGroup] || result;
-  }
-
-  if (builtInWidget?.type === "chart") {
-    const plotResults = await getChartWidgetData(builtInWidget, result, symbol);
-    result = plotResults?.exportData;
-  }
-
-  return result;
-}
-
-const SSRM_BODY_KEYS = [
-  "query",
-  "startRow",
-  "endRow",
-  "rowGroupCols",
-  "valueCols",
-  "pivotCols",
-  "pivotMode",
-  "groupKeys",
-  "filterModel",
-  "sortModel",
-];
-
-function getRequest(
-  widget: WidgetT,
-  inputArgs: Record<string, any>,
-  ssmRequest?: Record<string, any>,
-): Request {
+function getRequest(widget: WidgetT, inputArgs: Record<string, unknown>): Request {
   const baseUrl = widget.endpoint;
   if (!baseUrl) throw new Error("Missing widget endpoint url.");
-  switch (widget.type) {
-    case "multi_file_viewer":
-    case "omni": {
-      const { headers, newParams: urlParams } = getHeadersAndUrlParams(
-        widget.endpointHeaders,
-      );
-      const url = createCleanUrl(baseUrl, urlParams);
-      const options = {
-        method: "POST",
-        headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify(inputArgs),
-      };
-      const request = new Request(url, options);
-      return request;
-    }
-    case "ssrm_advanced":
-    case "ssrm_table": {
-      const { headers, newParams } = getHeadersAndUrlParams(
-        widget.endpointHeaders,
-        inputArgs,
-      );
-      const urlParams = Object.fromEntries(
-        Object.entries(newParams).filter(([key]) => !SSRM_BODY_KEYS.includes(key)),
-      );
-
-      const url = createCleanUrl(baseUrl, urlParams);
-      if (ssmRequest && !("query" in ssmRequest)) {
-        ssmRequest.query = inputArgs.query;
-      }
-      const options = {
-        method: "POST",
-        headers: { ...headers, "Content-Type": "application/json" },
-        body: ssmRequest ? JSON.stringify(ssmRequest) : JSON.stringify(inputArgs),
-      };
-      const request = new Request(url, options);
-      return request;
-    }
-    default: {
-      const { headers, newParams: urlParams } = getHeadersAndUrlParams(
-        widget.endpointHeaders,
-        inputArgs,
-      );
-      const url = createCleanUrl(baseUrl, urlParams);
-      const request = new Request(url, { method: "GET", headers });
-      return request;
-    }
-  }
+  const { headers, newParams: urlParams } = getHeadersAndUrlParams(
+    widget.endpointHeaders,
+    inputArgs,
+  );
+  const url = createCleanUrl(baseUrl, urlParams);
+  return new Request(url, { method: "GET", headers });
 }
 
-async function postProcessData(data: any, widget: WidgetT): Promise<any> {
-  switch (widget.type) {
-    case "chart":
-      return await getChartWidgetData(widget, data).then((r) => r.exportData);
-    default:
-      return data;
-  }
-}
+type GetDashboardWidgetData = (widgetId: string) => DashboardWidgetData | undefined;
 
 export async function getCustomWidgetsData(
   dataSource: DataSourceT,
   getWidgetFromBackend: (backendName: string, widgetId: string) => WidgetT | null,
-  getDashboardWidgetData: (widgetId: string) => any,
-): Promise<any> {
-  let result: any = null;
+  getDashboardWidgetData: GetDashboardWidgetData,
+): Promise<unknown> {
+  let result: unknown = null;
   const context = `Fetching data for ${describeDataSource(dataSource)}`;
   const widgetUuid = dataSource.widget_uuid;
 
@@ -1281,15 +836,7 @@ export async function getCustomWidgetsData(
   }
 
   try {
-    // TODO: Remove this backward compatibility
-    if (customWidget.type === "multi_file_viewer")
-      return await backwardCompatMultiFileViewer(customWidget, dataSource);
-
-    const request = getRequest(
-      customWidget,
-      dataSource.input_args,
-      dataSource.ssm_request,
-    );
+    const request = getRequest(customWidget, dataSource.input_args);
     const response = await fetch(request);
     if (!response.ok) throw response;
     const requestResult = await parseResponseBody(response, customWidget.type);
@@ -1309,97 +856,15 @@ export async function getCustomWidgetsData(
     throw error;
   }
 
-  // When the caller explicitly requests raw data (e.g. the MCP bridge for chart
-  // widgets, per the `raw=true` convention), the backend already returns tabular
-  // rows. Skip the chart-figure export transform in postProcessData, which would
-  // otherwise feed those rows into a Plotly-figure parser and discard them
-  // (returning []). Non-raw requests keep their existing behavior.
-  const rawArg = dataSource.input_args?.raw;
-  if (rawArg === true || rawArg === "true") return result;
-
-  return postProcessData(result, customWidget);
+  return result;
 }
 
-async function backwardCompatMultiFileViewer(widget: WidgetT, dataSource: DataSourceT) {
-  let result: any = null;
-  let response: Response | Response[] = await fetch(
-    getRequest(widget, dataSource.input_args),
-  );
-
-  if (response.status === 405) {
-    const paramName =
-      widget.params?.find(
-        (p) => p.type === "endpoint" && p.roles?.includes("fileSelector"),
-      )?.paramName || "";
-
-    const filenames: string[] = dataSource.input_args[paramName] || [];
-    const { [paramName]: _, ...inputArgs } = dataSource.input_args;
-
-    const { headers, newParams: urlParams } = getHeadersAndUrlParams(
-      widget.endpointHeaders,
-      inputArgs,
-    );
-
-    response = await Promise.all(
-      filenames.map(async (filename) => {
-        const url = createCleanUrl(widget.endpoint, {
-          ...urlParams,
-          [paramName]: filename,
-        });
-        const request = new Request(url, { method: "GET", headers });
-        return fetch(request).catch(
-          () => ({ ok: true, json: async () => null }) as Response,
-        );
-      }),
-    );
-  }
-
-  const errorResponse = !Array.isArray(response) && response;
-  if (errorResponse && !errorResponse.ok) throw errorResponse;
-
-  if (Array.isArray(response)) {
-    response = (await Promise.all(response).then((results) => {
-      const data = Promise.all(
-        results.flatMap(async (res) => {
-          if (!res.ok) return null;
-          try {
-            return await res.json();
-          } catch {
-            console.error("Failed to parse response as JSON", res);
-            return null;
-          }
-        }),
-      ).then((v) => v.filter(Boolean));
-
-      return { json: async () => data };
-    })) as Response;
-  }
-
-  const requestResult = await parseResponseBody(response);
-  const dataKey = widget?.data?.dataKey;
-  if (dataKey) result = get(requestResult, dataKey, requestResult);
-  else result = requestResult;
-  return Array.isArray(result) ? result : [result];
-}
-
-async function getOpenBBHubPreSignedUrls(
+async function getPreSignedUrls(
   dataSource: DataSourceT,
   getWidgetFromBackend: (backendName: string, widgetId: string) => WidgetT | null,
 ): Promise<DataUrl> {
-  // Onboarding files
-  const onboardingFile = ONBOARDING_STORED_FILES[dataSource.id];
-  if (onboardingFile) {
-    const onBoardingFileUrl = import.meta.env.DEV
-      ? onboardingFile?.urlDev
-      : onboardingFile?.urlProd;
-    if (!onBoardingFileUrl) throw new Error("Failed to get url from onboarding file");
-    const uuid = extractUUIDFromURL(onBoardingFileUrl);
-    if (!uuid) throw new Error("Failed to get uuid from url");
-    return getFileReference(uuid);
-  }
-
   // Uploaded file widgets
-  const fileWidget = getWidgetFromBackend("OpenBB Hub", dataSource.id);
+  const fileWidget = getWidgetFromBackend("the backend", dataSource.id);
   if (fileWidget?.endpoint?.url) {
     const uuid = extractUUIDFromURL(fileWidget.endpoint.url);
     if (!uuid) throw new Error("Failed to get uuid from url");
@@ -1418,9 +883,9 @@ async function getOpenBBHubPreSignedUrls(
 
 async function getWorkspaceWidgetsData(
   dataSource: DataSourceT,
-  getDashboardWidgetData: (widgetId: string) => any,
+  getDashboardWidgetData: GetDashboardWidgetData,
   getWidgetFromBackend: (backendName: string, widgetId: string) => WidgetT | null,
-): Promise<any> {
+): Promise<unknown> {
   const widgetUuid = dataSource.widget_uuid;
 
   // Handle iframe sub-widget requests (composite key: parentUuid::iframe::subWidgetId)
@@ -1439,7 +904,7 @@ async function getWorkspaceWidgetsData(
   if (widgetUuid) {
     const widgetData = getDashboardWidgetData(widgetUuid);
     if (widgetData) return widgetData.data;
-    const widget = getWidgetFromBackend("OpenBB Workspace", dataSource.id);
+    const widget = getWidgetFromBackend("Workspace", dataSource.id);
     if (widget?.storage) {
       const { rowsData, html } = widget.storage;
       if (rowsData || html) return rowsData || html;
@@ -1514,20 +979,20 @@ export async function getWidgetsParamOptions(
   const optionsEndpoint = widgetParam.optionsEndpoint;
   if (!optionsEndpoint) throw new Error(`Endpoint not found for param ${paramName}`);
   const optionsEndpointParams = widgetParam.optionsParams || {};
-  const newOptionsEndpointParams = Object.entries(optionsEndpointParams).reduce(
-    (acc, [key, value]) => {
-      if (typeof value === "string" && value.startsWith("$")) {
-        const queryKey = value.slice(1);
-        acc[key] = paramOptionsQuery.options_endpoint_input_args[queryKey];
-      } else acc[key] = value;
-      return acc;
-    },
-    {},
-  ) as Record<string, any>;
+  const newOptionsEndpointParams = Object.entries(optionsEndpointParams).reduce<
+    Record<string, unknown>
+  >((acc, [key, value]) => {
+    if (typeof value === "string" && value.startsWith("$")) {
+      const queryKey = value.slice(1);
+      acc[key] = paramOptionsQuery.options_endpoint_input_args[queryKey];
+    } else acc[key] = value;
+    return acc;
+  }, {});
   const url = createCleanUrl(optionsEndpoint, newOptionsEndpointParams);
   const request = new Request(url, { method: "GET", headers: headers });
-  const response = await fetch(request).then((res) => res.json());
-  const optionsData = response.map((option: any) => {
+  const response: unknown = await fetch(request).then((res) => res.json());
+  if (!Array.isArray(response)) throw new Error("Failed to parse param options result");
+  const optionsData = response.map((option: unknown) => {
     if (typeof option === "string") return { label: option, value: option };
     return option;
   });
@@ -1555,16 +1020,17 @@ export async function getWidgetsParamOptions(
  * @param data - Raw widget data in any supported format
  * @returns Normalized CopilotDataT with items array and optional extra_citations
  */
-export function convertToCopilotData(data: any): CopilotDataT {
-  let items: any;
-  let extra_citations: any[] = [];
+export function convertToCopilotData(data: unknown): CopilotDataT {
+  let items: unknown;
+  let extra_citations: unknown = [];
 
   // Helper to check if an object is a single-field object with a string value
   // This handles SQL widgets that return a single column like HTML_CONTENT or TEXT_COLUMN
-  const isSingleStringField = (obj: any): obj is Record<string, string> => {
+  const isSingleStringField = (obj: unknown): obj is Record<string, string> => {
     if (typeof obj !== "object" || obj === null || Array.isArray(obj)) return false;
-    const keys = Object.keys(obj);
-    return keys.length === 1 && typeof obj[keys[0]] === "string";
+    const record = obj as Record<string, unknown>;
+    const keys = Object.keys(record);
+    return keys.length === 1 && typeof record[keys[0]] === "string";
   };
 
   // Helper to convert a single-field object to DataContent format
@@ -1580,7 +1046,7 @@ export function convertToCopilotData(data: any): CopilotDataT {
   };
 
   // Helper to process an array of items for single-string-field conversion
-  const processArrayForSingleStringFields = (arr: any[]) => {
+  const processArrayForSingleStringFields = (arr: unknown[]) => {
     if (arr.length > 0 && arr.every(isSingleStringField)) {
       return arr.map(toDataContent);
     }
@@ -1588,14 +1054,9 @@ export function convertToCopilotData(data: any): CopilotDataT {
   };
 
   // Extract the actual data from SSRM response format ({ rowData: [...], rowCount: n })
-  // This is common for Snowflake and other SQL backend widgets
-  let dataToProcess = data;
-  if (
-    data &&
-    typeof data === "object" &&
-    !Array.isArray(data) &&
-    Array.isArray(data.rowData)
-  ) {
+  // This is common for SQL backend widgets
+  let dataToProcess: unknown = data;
+  if (isTruthyRecord(data) && Array.isArray(data.rowData)) {
     dataToProcess = data.rowData;
   }
 
@@ -1614,7 +1075,10 @@ export function convertToCopilotData(data: any): CopilotDataT {
     // Example: [{ HTML_CONTENT: "<html>..." }] from a SELECT HTML_CONTENT query
     items = processArrayForSingleStringFields(dataToProcess);
   } else {
-    const { extra_citations: citations, ...rest } = dataToProcess || {};
+    const record: Record<string, unknown> = isTruthyRecord(dataToProcess)
+      ? dataToProcess
+      : {};
+    const { extra_citations: citations, ...rest } = record;
     extra_citations = citations || [];
 
     if (isSingleStringField(rest)) {

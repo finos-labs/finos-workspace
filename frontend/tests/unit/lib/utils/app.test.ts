@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { GridDataT as GridData, GridLayout, WidgetT } from "~/components/types";
 import {
   checkIfWidgetsHaveMainTickerAndAreTheSame,
   createRootFolder,
@@ -6,25 +7,26 @@ import {
   recursiveCleanKeys,
   updateWidgetGridLayout,
 } from "~/lib/utils/app";
+import { partial } from "../../mocks";
 
 describe("app utils", () => {
   describe("checkIfWidgetsHaveMainTickerAndAreTheSame", () => {
     it("returns correct flags for widgets with same ticker", () => {
-      const widgets = [
+      const widgets = partial<WidgetT[]>([
         { data: { mainTicker: { id: "AAPL", type: "stock" } } },
         { data: { mainTicker: { id: "AAPL", type: "stock" } } },
-      ] as any;
+      ]);
       const result = checkIfWidgetsHaveMainTickerAndAreTheSame(widgets);
       expect(result.someHaveMainTicker).toBe(true);
       expect(result.allTheSame).toBe(true);
-      expect(result.mainTicker.id).toBe("AAPL");
+      expect(result.mainTicker?.id).toBe("AAPL");
     });
 
     it("returns allTheSame false for different tickers", () => {
-      const widgets = [
+      const widgets = partial<WidgetT[]>([
         { data: { mainTicker: { id: "AAPL", type: "stock" } } },
         { data: { mainTicker: { id: "MSFT", type: "stock" } } },
-      ] as any;
+      ]);
       const result = checkIfWidgetsHaveMainTickerAndAreTheSame(widgets);
       expect(result.someHaveMainTicker).toBe(true);
       expect(result.allTheSame).toBe(false);
@@ -64,16 +66,13 @@ describe("app utils", () => {
           baz_undefined: "qux",
         },
       };
-      const cleaned = recursiveCleanKeys(data);
-      expect(cleaned.foo).toBe("bar");
-      expect(cleaned.nested.baz).toBe("qux");
-      expect(cleaned.foo_undefined).toBeUndefined();
+      expect(recursiveCleanKeys(data)).toEqual({ foo: "bar", nested: { baz: "qux" } });
     });
   });
 
   describe("updateWidgetGridLayout", () => {
     it("removes the empty-dashboard-cta placeholder when a widget is added to the tab", () => {
-      const gridLayout = {
+      const gridLayout = partial<GridLayout>({
         charts: [
           { i: "nav-bar", x: 0, y: 0, w: 40, h: 2, static: true },
           {
@@ -86,17 +85,19 @@ describe("app utils", () => {
             isDraggable: false,
           },
         ],
-      } as any;
+      });
 
       const result = updateWidgetGridLayout({
-        widget: { id: "chart-1", innerTab: "charts" } as any,
+        widget: partial({ id: "chart-1", innerTab: "charts" }),
         gridLayout,
         currentTab: "charts",
       });
 
       const chartsLayout = result.charts;
-      expect(chartsLayout.some((l) => l.i === "empty-dashboard-cta")).toBe(false);
-      expect(chartsLayout.some((l) => l.i === "chart-1")).toBe(true);
+      expect(chartsLayout.some((l: GridData) => l.i === "empty-dashboard-cta")).toBe(
+        false,
+      );
+      expect(chartsLayout.some((l: GridData) => l.i === "chart-1")).toBe(true);
     });
   });
 });

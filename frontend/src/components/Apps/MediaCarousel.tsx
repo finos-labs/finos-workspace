@@ -45,19 +45,6 @@ interface MediaCarouselProps {
   appName?: string;
 }
 
-/** @deprecated Use MediaCarousel instead */
-export function ScreenshotsCarousel({
-  screenshots,
-  className,
-  appName,
-}: {
-  screenshots: string[];
-  className?: string;
-  appName?: string;
-}) {
-  return <MediaCarousel items={screenshots} className={className} appName={appName} />;
-}
-
 const MediaSlide = memo(
   ({
     url,

@@ -25,14 +25,14 @@ export function setupMSW() {
   afterAll(() => server.close());
 }
 
-// Re-export useful items for tests
-export { server, http, HttpResponse } from "./server";
 export {
-  createMockHandler,
   createErrorHandler,
+  createMockHandler,
+  mockDashboardData,
+  mockFeatureFlags,
+  mockUsage,
   mockUser,
   mockValidateResponse,
-  mockDashboardData,
-  mockUsage,
-  mockFeatureFlags,
 } from "./handlers";
+// Re-export useful items for tests
+export { HttpResponse, http, server } from "./server";

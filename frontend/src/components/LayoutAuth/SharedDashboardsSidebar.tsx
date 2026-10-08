@@ -2,6 +2,7 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { deleteDashboardShare } from "~/api/dashboard.api";
+import type { Item } from "~/lib/state/app";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import { useShallowSharedAppStore, useSharedAppStore } from "~/lib/state/sharedApp";
 import { useShallowSidebarStore } from "~/lib/state/sidebar";
@@ -43,7 +44,7 @@ export default function SharedDashboardsSidebar() {
   );
 }
 
-export function SharedDashboardItem({ item }: { item: any }) {
+export function SharedDashboardItem({ item }: { item: Item }) {
   const { id } = useParams();
   const { user } = useShallowAuthStore((state) => ({
     user: state.user,
@@ -68,10 +69,10 @@ export function SharedDashboardItem({ item }: { item: any }) {
       <li
         key={item.index}
         className={cn(
-          "obb-navigation-item group relative w-full justify-between title-container flex-1",
+          "ws-navigation-item group relative w-full justify-between title-container flex-1",
           "h-8 max-h-8 @max-[100px]:w-8!",
           {
-            "obb-navigation-item-active": id === item.index && !item.isFolder,
+            "ws-navigation-item-active": id === item.index && !item.isFolder,
             hidden: collapsed && !item.isFolder,
           },
         )}
@@ -107,7 +108,7 @@ export function SharedDashboardItem({ item }: { item: any }) {
             {/*tabGroups.length > 0 && (
                 <span className="flex gap-1 overflow-x-auto pb-0.5">
                   {tabGroups.map((group) => (
-                    <span key={group.id} className={clsx("obb-tag")}>
+                    <span key={group.id} className={clsx("ws-tag")}>
                       {getGroupLabel(group)}
                     </span>
                   ))}
@@ -138,7 +139,7 @@ export function SharedDashboardItem({ item }: { item: any }) {
                   className={cn(
                     "z-20 radix-side-bottom:animate-slide-down radix-side-top:animate-slide-up",
                     "w-48",
-                    "obb-dropdown-container",
+                    "ws-dropdown-container",
                   )}
                 >
                   <div>
@@ -147,10 +148,11 @@ export function SharedDashboardItem({ item }: { item: any }) {
                         const sharedDashboard = useSharedAppStore
                           .getState()
                           .getDashboardById(item.index);
+                        if (!sharedDashboard) return;
                         const newId = duplicateDashboard(sharedDashboard);
                         setPendingNavigation(`/app/${newId}`);
                       }}
-                      className="obb-dropdown-item"
+                      className="ws-dropdown-item"
                     >
                       <span className="grow">Duplicate</span>
                     </DropdownMenuPrimitive.Item>
@@ -166,6 +168,7 @@ export function SharedDashboardItem({ item }: { item: any }) {
                           action: {
                             label: "Yes, delete",
                             onClick: async () => {
+                              if (!user) return;
                               await deleteDashboardShare(item.index, [user.email]);
                               setPendingNavigation("/app");
                             },
@@ -176,7 +179,7 @@ export function SharedDashboardItem({ item }: { item: any }) {
                           },
                         });
                       }}
-                      className="obb-dropdown-item"
+                      className="ws-dropdown-item"
                     >
                       <span className="grow">Delete</span>
                     </DropdownMenuPrimitive.Item>
@@ -190,7 +193,7 @@ export function SharedDashboardItem({ item }: { item: any }) {
                             e.stopPropagation();
                             toggleExportPopup();
                           }}
-                          className="obb-dropdown-item"
+                          className="ws-dropdown-item"
                         >
                           <span className="grow">Export PDF</span>
                         </DropdownMenuPrimitive.Item>
@@ -200,7 +203,7 @@ export function SharedDashboardItem({ item }: { item: any }) {
                             e.stopPropagation();
                             dispatchRefreshQuery();
                           }}
-                          className="obb-dropdown-item"
+                          className="ws-dropdown-item"
                         >
                           <span className="grow">Refresh data</span>
                         </DropdownMenuPrimitive.Item>
@@ -211,7 +214,7 @@ export function SharedDashboardItem({ item }: { item: any }) {
                           message="You need to be inside the dashboard to be able to use this feature."
                           position="right"
                         >
-                          <DropdownMenuPrimitive.Item className="obb-dropdown-item hover:bg-transparent! dark:hover:bg-transparent! opacity-50 cursor-not-allowed">
+                          <DropdownMenuPrimitive.Item className="ws-dropdown-item hover:bg-transparent! dark:hover:bg-transparent! opacity-50 cursor-not-allowed">
                             <span className="grow">Export PDF</span>
                           </DropdownMenuPrimitive.Item>
                         </Tooltip>
@@ -219,7 +222,7 @@ export function SharedDashboardItem({ item }: { item: any }) {
                           message="You need to be inside the dashboard to be able to use this feature."
                           position="right"
                         >
-                          <DropdownMenuPrimitive.Item className="obb-dropdown-item hover:bg-transparent! dark:hover:bg-transparent! opacity-50 cursor-not-allowed">
+                          <DropdownMenuPrimitive.Item className="ws-dropdown-item hover:bg-transparent! dark:hover:bg-transparent! opacity-50 cursor-not-allowed">
                             <span className="grow">Refresh data</span>
                           </DropdownMenuPrimitive.Item>
                         </Tooltip>
@@ -236,7 +239,7 @@ export function SharedDashboardItem({ item }: { item: any }) {
   );
 }
 
-function TooltipContent({ item }: { item: any }) {
+function TooltipContent({ item }: { item: Item }) {
   return (
     <div className="flex flex-col gap-0.5">
       <div>

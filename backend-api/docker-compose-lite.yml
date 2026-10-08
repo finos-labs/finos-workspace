@@ -25,7 +25,7 @@ services:
       REDIS_HOST: redis
       # Redirect DB + folder storage into a persistent volume so they survive
       # container rebuilds; .env.sqlite keeps the dev-friendly relative paths.
-      DB_PATH: /data/openbb.db
+      DB_PATH: /data/workspace.db
       FOLDER_STORAGE_PATH: /data/storage
     ports:
       - "8000:8000"

@@ -1,6 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
-import { usePostHog } from "posthog-js/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, useFormContext, useWatch } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -8,7 +7,7 @@ import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { getApiSources, postApiSource } from "~/api/auth.api";
-import { EndpointHeadersForm } from "~/components/DataConnectors/SingleWidget/EndpointHeadersForm";
+import { EndpointHeadersForm } from "~/components/DataConnectors/EndpointHeadersForm";
 import { Button } from "~/components/ds/atoms/Button";
 import { FormInput } from "~/components/ds/atoms/Input";
 import { FormSelect } from "~/components/ds/atoms/Select";
@@ -27,6 +26,7 @@ import {
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn, dispatchSaveState } from "~/lib/utils";
 import { createCustomTemplateTab } from "~/lib/utils/createTemplates";
+import { toError } from "~/lib/utils/utils";
 import { validateSource } from "~/lib/utils/validateBackend";
 import {
   formatBackendErrorMessage,
@@ -49,7 +49,7 @@ export const AppSchema = z.object({
     )
     .optional(),
   validateWidgets: z.string().default("false").optional(),
-  isOpenBBPlatform: z.boolean().default(false).optional(),
+  isPlatform: z.boolean().default(false).optional(),
 });
 
 export type AppForm = z.infer<typeof AppSchema>;
@@ -90,7 +90,6 @@ export default function ManageAppDialog() {
     }));
 
   const navigate = useNavigate();
-  const posthog = usePostHog();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { add, name, url, modeTitle } = useMemo(() => {
@@ -117,7 +116,7 @@ export default function ManageAppDialog() {
       url: url || "",
       endpointHeaders: [],
       validateWidgets: "false",
-      isOpenBBPlatform: false,
+      isPlatform: false,
     },
   });
 
@@ -129,7 +128,7 @@ export default function ManageAppDialog() {
       url: url || source?.url || "",
       endpointHeaders: source?.endpointHeaders || [],
       validateWidgets: "false",
-      isOpenBBPlatform: source?.isOpenBBPlatform,
+      isPlatform: source?.isPlatform ?? undefined,
     });
     dispatch({ isConnected: manageAppDialog.data?.status === "success" });
   }, [manageAppDialog.data]);
@@ -139,10 +138,17 @@ export default function ManageAppDialog() {
     const wasActive = manageAppDialog.data?.status === "success";
     const testFailed =
       state.errorMessage !== null || state.templateErrorMessage !== null;
-    const isEditMode = manageAppDialog.mode === "edit" && manageAppDialog.data?.id;
+    const editedSource = manageAppDialog.data;
+    const isEditMode = manageAppDialog.mode === "edit" && editedSource?.id;
 
-    if (isEditMode && wasActive && testFailed && state.hasTestedInSession) {
-      addApiSource({ ...manageAppDialog.data, status: "error" });
+    if (
+      editedSource &&
+      isEditMode &&
+      wasActive &&
+      testFailed &&
+      state.hasTestedInSession
+    ) {
+      addApiSource({ ...editedSource, status: "error" });
       toast.error("Backend marked as inactive", {
         description: "The connection test failed.",
       });
@@ -179,7 +185,11 @@ export default function ManageAppDialog() {
     (params: { name?: string; url?: string }) => {
       const { id, url, name } = { ...form.getValues(), ...params };
 
-      const generalError = checkExistingBackend({ name, url, id });
+      const generalError = checkExistingBackend({
+        name: name ?? "",
+        url: url ?? "",
+        id: id ?? "",
+      });
       for (const field of ["name", "url"] as const) {
         if (params[field] !== undefined) {
           if (!generalError?.[field]) return form.clearErrors(field);
@@ -214,7 +224,7 @@ export default function ManageAppDialog() {
           templateWarningMessage,
           totalFailed,
           templates,
-          isOpenBBPlatform,
+          isPlatform,
         } = await validateSource(source, validateWidgets === "true");
 
         const widgetsCount = Object.keys(widgets).length;
@@ -266,16 +276,17 @@ export default function ManageAppDialog() {
             url: cleanUrl,
             widgets,
             endpointHeaders,
-            isOpenBBPlatform,
+            isPlatform,
           },
         });
       } catch (err) {
+        const { message } = toError(err);
         newstate.errorMessage =
-          err?.message === "Failed to fetch"
+          message === "Failed to fetch"
             ? "Unknown error occurred, check your API console for more detailed error message"
-            : err.message;
+            : message;
       } finally {
-        dispatch({ loading: false, ...newstate });
+        dispatch({ ...newstate, loading: false });
       }
     },
     [],
@@ -286,12 +297,13 @@ export default function ManageAppDialog() {
     const { id, name: prevName } = manageAppDialog.data ?? {};
 
     // Use current form values if form is dirty, otherwise use cached backendToAdd
-    // Preserve backendOpenBBPlatform when using form values
+    // Preserve backendPlatform when using form values
     const source = form.formState.isDirty ? form.getValues() : state.backendToAdd;
-    source.url = source.url.trim().replace(/\/+$/, "").trim();
-    source.isOpenBBPlatform = state.backendToAdd?.isOpenBBPlatform;
+    if (!source) return;
 
-    const { name, url, endpointHeaders = [], isOpenBBPlatform } = source as Source;
+    const name = source.name ?? "";
+    const url = (source.url ?? "").trim().replace(/\/+$/, "").trim();
+    const endpointHeaders = source.endpointHeaders ?? [];
     const data = { name, url, endpointHeaders };
 
     const appId = id ?? uuidv4();
@@ -368,16 +380,6 @@ export default function ManageAppDialog() {
         });
       }
 
-      // Track backend addition in PostHog (only for new apps, not edits)
-      if (posthog && !id) {
-        posthog.capture("added_custom_backend", {
-          backend_name: name,
-          backend_url: url,
-          number_of_widgets: widgetsCount,
-          isOpenBBPlatform,
-        });
-      }
-
       setManageAppsDialogOpen(false);
       closeDialog();
     } catch (error) {
@@ -396,7 +398,6 @@ export default function ManageAppDialog() {
     form.formState.isDirty,
     form.getValues,
     postApiSource,
-    posthog,
   ]);
 
   const handleAddPair = useCallback(() => {
@@ -441,7 +442,7 @@ export default function ManageAppDialog() {
             render={({ field }) => (
               <FormInput
                 label="Name"
-                placeholder="OpenBB App"
+                placeholder="App"
                 {...field}
                 onChange={(name: string) => {
                   onFieldChange({ name });
@@ -568,7 +569,7 @@ export default function ManageAppDialog() {
                 !form.formState.isValid ||
                 state.loading ||
                 !(state.isSuccess || manageAppDialog.data?.id) ||
-                (manageAppDialog.data?.id &&
+                (!!manageAppDialog.data?.id &&
                   (form.formState.dirtyFields?.url
                     ? !state.isSuccess
                     : !(form.formState.isDirty && state.isConnected)))
@@ -600,7 +601,7 @@ export function TroubleshootMessage() {
   useEffect(() => {
     if (isOpen) {
       const duration = 300; // Scroll duration
-      let startTime = null;
+      let startTime: number | null = null;
       const element = document.getElementById("manage-app-form");
 
       const animateScroll = (timestamp: number) => {
@@ -684,7 +685,7 @@ export function TroubleshootMessage() {
                   Your backend may have CORS (Cross-Origin Resource Sharing)
                   restrictions. Configure your server to allow requests from{" "}
                   <code className="bg-general-bg-secondary px-1 py-0.5 rounded text-[11px]">
-                    https://pro.openbb.co
+                    {window.location.origin}
                   </code>{" "}
                   by adding the appropriate CORS headers.
                 </p>

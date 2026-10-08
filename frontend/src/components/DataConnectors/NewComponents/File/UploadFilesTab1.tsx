@@ -1,5 +1,4 @@
 import type { AxiosRequestConfig } from "axios";
-import Papa from "papaparse";
 import { useCallback, useEffect, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { useFormContext } from "react-hook-form";
@@ -25,17 +24,10 @@ import { cn, formatFileSize } from "~/lib/utils";
 import { type FileType, useFileContext } from "../../FileContext";
 
 export function getExtension(path: string): Extension {
-  const basename = path.split(/[\\/]/).pop();
+  const basename = path.split(/[\\/]/).pop() ?? "";
   const pos = basename.lastIndexOf(".");
   if (basename === "" || pos < 1) return "" as Extension;
   return basename.slice(pos + 1)?.toLowerCase() as Extension;
-}
-
-export function getLabel(path: string, count: string | number): string {
-  if (path === "None") {
-    return path;
-  }
-  return `${path} (${count})`;
 }
 
 const aiCopilotAiEnhancementsFF =
@@ -177,7 +169,7 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
         }
 
         apiClient
-          .post<PostUploadFileResponse>("pro/files", formData, config)
+          .post<PostUploadFileResponse>("app/files", formData, config)
           .then(async ({ data: uploadedFiles }) => {
             for (const file of uploadedFiles) {
               setValue("extension", file.extension, { shouldValidate: true });
@@ -209,7 +201,7 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
                       {
                         method: "POST",
                         headers: {
-                          Authorization: `Bearer ${user.token}`,
+                          Authorization: `Bearer ${user?.token}`,
                         },
                         body: formData,
                       },
@@ -289,37 +281,12 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
   );
 
   const checkIfValid = useCallback(
-    async (extension: Extension, file: File) => {
-      try {
-        if (extension === "csv") {
-          return new Promise<boolean>((resolve, reject) => {
-            const config = {
-              complete: () => resolve(true),
-              error: () => reject(false),
-              header: true,
-            } as Papa.ParseLocalConfig;
-
-            Papa.parse(file, config);
-          });
-        }
-        if (extension === "json") {
-          const data = await file.text();
-          JSON.parse(data);
-        }
-
-        return validExtension(extension);
-      } catch (e) {
-        console.error(e);
-        dispatch({ uploadProgress: null, message: "Unknown error occurred" });
-      }
-
-      return false;
-    },
-    [uploadFile, dispatch],
+    async (extension: Extension, _file: File) => validExtension(extension),
+    [],
   );
 
   const errorMessage = useCallback(() => {
-    const urlError = formState.errors?.url?.message.toString();
+    const urlError = formState.errors?.url?.message?.toString();
     const { message, uploadProgress } = state;
     if (message) {
       return message;
@@ -328,7 +295,7 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
       if (uploadProgress === 100) {
         return undefined;
       }
-      if (uploadProgress > 0) {
+      if (uploadProgress !== null && uploadProgress > 0) {
         return "Upload in progress";
       }
     }
@@ -348,12 +315,6 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
         ".docx",
       ],
       "application/pdf": [".pdf"],
-      "text/csv": [".csv"],
-      "image/png": [".png"],
-      "image/jpeg": [".jpg", ".jpeg"],
-      "image/gif": [".gif"],
-      "application/json": [".json"],
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
     },
     onDrop: async (acceptedFiles, fileRejections) => {
       if (abortControllerRef.current) {
@@ -400,7 +361,7 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
         const input = document.getElementById(
           "data-connector-upload",
         ) as HTMLInputElement;
-        if (input) input.value = null;
+        if (input) input.value = "";
       });
     },
   });

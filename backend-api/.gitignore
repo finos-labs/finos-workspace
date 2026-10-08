@@ -110,6 +110,9 @@ celerybeat.pid
 /backend/envs/.env.*
 !/backend/envs/.env.example
 !/backend/envs/.env.sqlite.example
+
+# The organization and administrator the first start creates (scripts.create_local_env)
+/backend/scripts/cfgs/*.toml
 /frontend/*.env
 .env.prod
 .venv
@@ -155,6 +158,8 @@ frontend/app/styles/app.css
 /public/build
 .env
 package-lock.json
+# The admin panel's image installs from its lockfile (npm ci).
+!/admin_frontend/package-lock.json
 backend/env.dev
 final.csv
 /test-results/

@@ -64,7 +64,7 @@ export default function RoleMembersCell({ role }: Props) {
             {displayUsers.map((user) => (
               <div
                 key={user.email}
-                className="obb-avatar-user"
+                className="ws-avatar-user"
                 style={{
                   backgroundColor: user.color,
                 }}
@@ -95,7 +95,7 @@ export default function RoleMembersCell({ role }: Props) {
                     className="flex items-center gap-2 body-xs-regular"
                   >
                     <div
-                      className="obb-avatar-user"
+                      className="ws-avatar-user"
                       style={{ backgroundColor: user.color }}
                     >
                       {user.initials}

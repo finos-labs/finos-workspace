@@ -5,6 +5,7 @@ import { ColorPicker } from "./ColorPicker";
 const meta = {
   title: "Molecules/ColorPicker",
   component: ColorPicker,
+  args: { value: "#000000", onChange: () => {} },
   tags: ["autodocs"],
   parameters: {
     semanticTokens: [

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import SettingsMenu from "~/components/ds/molecules/SettingsMenu";
+import { required } from "../../../mocks";
 
 describe("SettingsMenu Molecule", () => {
   it("renders with title and children", () => {
@@ -21,7 +22,7 @@ describe("SettingsMenu Molecule", () => {
       </SettingsMenu>,
     );
 
-    const titleContainer = screen.getByText("Collapsible").parentElement!;
+    const titleContainer = required(screen.getByText("Collapsible").parentElement);
 
     // Initial state: open
     expect(screen.getByText("Hidden Content")).toBeInTheDocument();

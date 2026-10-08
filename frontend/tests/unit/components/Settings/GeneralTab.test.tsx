@@ -1,12 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type React from "react";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
-import { mockConfig } from "../../../mocks/runtimeConfig";
-import GeneralTab from "~/components/Settings/GeneralTab";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { Tabs } from "~/components/ds/molecules/Tabs";
+import GeneralTab from "~/components/Settings/GeneralTab";
 import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowThemeStore } from "~/lib/state/theme";
+import { mockConfig } from "../../../mocks/runtimeConfig";
 
 vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: vi.fn(),
@@ -22,12 +22,11 @@ const mockUpdateDisplaySettings = vi.fn();
   theme: "light",
   aiEnhancements: false,
   fontSize: "medium",
-  defaultTicker: "AAPL",
   updateDisplaySettings: mockUpdateDisplaySettings,
 });
 
 (useShallowFeatureFlagsStore as Mock).mockReturnValue({
-  featureFlags: { tier: "pro" },
+  featureFlags: { tier: "full" },
 });
 
 describe("GeneralTab Component", () => {
@@ -50,7 +49,6 @@ describe("GeneralTab Component", () => {
     );
     expect(screen.getByText("Theme")).toBeInTheDocument();
     expect(screen.getByText("Font size")).toBeInTheDocument();
-    expect(screen.getByText("Default widget ticker")).toBeInTheDocument();
     expect(screen.getByText("AI enhancements (recommended)")).toBeInTheDocument();
   });
 

@@ -50,11 +50,6 @@ vi.mock("~/lib/utils", () => ({
   noop: () => {},
 }));
 
-vi.mock("~/lib/constants", async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>();
-  return { ...actual, inSnowflakeNativeApp: false };
-});
-
 vi.mock("~/components/ds/dialogs/BaseDialog", () => ({
   BaseDialog: ({ children, open }: { children: ReactNode; open?: boolean }) =>
     open ? <div data-testid="base-dialog">{children}</div> : null,
@@ -779,26 +774,7 @@ describe("SaveAppDialog", () => {
   });
 
   describe("image cover field visibility", () => {
-    it("hides image cover field when inSnowflakeNativeApp is true", async () => {
-      vi.doMock("~/lib/constants", () => ({
-        inSnowflakeNativeApp: true,
-        noop: () => {},
-      }));
-
-      wireThemeStore({ dashboardId: "dash-1" });
-      wireAppStore(() => makeDashboard());
-
-      // The mock is set at module level (false), so image cover IS shown in these tests.
-      // The snowflake-specific hide behavior is tested by checking the module-level mock.
-      render(<SaveAppDialog />);
-
-      // With default mock (inSnowflakeNativeApp: false), image cover is present.
-      expect(
-        screen.getByPlaceholderText("https://example.com/image.png"),
-      ).toBeInTheDocument();
-    });
-
-    it("shows image cover field when inSnowflakeNativeApp is false", () => {
+    it("shows the image cover field", () => {
       wireThemeStore({ dashboardId: "dash-1" });
       wireAppStore(() => makeDashboard());
       render(<SaveAppDialog />);

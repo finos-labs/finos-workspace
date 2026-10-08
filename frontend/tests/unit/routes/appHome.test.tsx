@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mockConfig } from "../../mocks/runtimeConfig";
 import MenuHomePage, { Card, DialogVideo } from "~/routes/appHome";
+import { mockConfig } from "../../mocks/runtimeConfig";
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
@@ -14,31 +14,8 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-vi.mock("~/components/LayoutAuth/WelcomeMessage", () => ({
-  default: ({
-    open,
-    onClose,
-  }: {
-    open: boolean;
-    onClose: () => void;
-    tier: string;
-    isHelpPage: boolean;
-  }) =>
-    open ? (
-      <div data-testid="welcome-message">
-        <button onClick={onClose}>Close</button>
-      </div>
-    ) : null,
-}));
-
 vi.mock("~/components/LayoutAuth/Skeleton/SettingsLayout", () => ({
-  SettingsLayout: ({
-    children,
-    title,
-  }: {
-    children: ReactNode;
-    title?: string;
-  }) => (
+  SettingsLayout: ({ children, title }: { children: ReactNode; title?: string }) => (
     <div data-testid="settings-layout">
       {title && <h1>{title}</h1>}
       {children}
@@ -76,6 +53,7 @@ describe("MenuHomePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockConfig.ui.showExternalDocLinks = true;
+    mockConfig.links.docsUrl = "https://docs.test/";
   });
 
   it("renders the Help and Documentation title", () => {
@@ -88,21 +66,8 @@ describe("MenuHomePage", () => {
     expect(screen.getByText("Help and Documentation")).toBeInTheDocument();
   });
 
-  it("renders the Interactive Walkthrough card", () => {
-    render(
-      <BrowserRouter>
-        <MenuHomePage />
-      </BrowserRouter>,
-    );
-
-    expect(screen.getByText("Interactive Walkthrough")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /start walkthrough/i }),
-    ).toBeInTheDocument();
-  });
-
-  it("shows welcome message when Start Walkthrough is clicked", async () => {
-    const user = userEvent.setup();
+  it("leaves out the documentation link when the deployment has no documentation site", () => {
+    mockConfig.links.docsUrl = "";
 
     render(
       <BrowserRouter>
@@ -110,25 +75,7 @@ describe("MenuHomePage", () => {
       </BrowserRouter>,
     );
 
-    await user.click(screen.getByRole("button", { name: /start walkthrough/i }));
-
-    expect(screen.getByTestId("welcome-message")).toBeInTheDocument();
-  });
-
-  it("closes welcome message when close button is clicked", async () => {
-    const user = userEvent.setup();
-
-    render(
-      <BrowserRouter>
-        <MenuHomePage />
-      </BrowserRouter>,
-    );
-
-    await user.click(screen.getByRole("button", { name: /start walkthrough/i }));
-    expect(screen.getByTestId("welcome-message")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /close/i }));
-    expect(screen.queryByTestId("welcome-message")).not.toBeInTheDocument();
+    expect(screen.queryByText("Workspace Documentation")).not.toBeInTheDocument();
   });
 
   it("renders documentation link when FF is enabled", () => {
@@ -156,7 +103,7 @@ describe("MenuHomePage", () => {
     );
 
     const docLink = screen.getByRole("link", { name: /read documentation/i });
-    expect(docLink).toHaveAttribute("href", "https://docs.openbb.co/workspace");
+    expect(docLink).toHaveAttribute("href", "https://docs.test/workspace");
     expect(docLink).toHaveAttribute("target", "_blank");
 
     const externalIcon = screen.getByTestId("icon-external-link-icon");

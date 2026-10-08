@@ -1,27 +1,10 @@
 import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-let mockInSnowflake = false;
-let mockOnPrem = false;
-
-vi.mock("~/lib/constants", async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>();
-  return {
-    ...actual,
-    get inSnowflakeNativeApp() {
-      return mockInSnowflake;
-    },
-  };
-});
-
-vi.mock("~/lib/onPremFeatureFlags", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("~/lib/onPremFeatureFlags")>();
-  return { ...actual, isOnPremDeployment: () => mockOnPrem };
-});
-
 import { useCanSubmitApp } from "~/lib/appSubmissionFlag";
 import type { FeatureFlags } from "~/lib/state/featureFlags";
 import { useFeatureFlagsStore } from "~/lib/state/featureFlags";
+import { mockConfig } from "../../mocks/runtimeConfig";
 
 function setCanSubmit(can_submit_marketplace: boolean | undefined) {
   // Only the field under test matters; the rest is irrelevant to the gate.
@@ -32,8 +15,7 @@ function setCanSubmit(can_submit_marketplace: boolean | undefined) {
 
 describe("useCanSubmitApp", () => {
   beforeEach(() => {
-    mockInSnowflake = false;
-    mockOnPrem = false;
+    mockConfig.urls.marketplace = "";
     useFeatureFlagsStore.setState({ featureFlags: null });
   });
 
@@ -58,16 +40,9 @@ describe("useCanSubmitApp", () => {
     expect(result.current).toBe(false);
   });
 
-  it("is false on-prem even when whitelisted", () => {
+  it("is false when apps are listed from a remote marketplace, even when whitelisted", () => {
     setCanSubmit(true);
-    mockOnPrem = true;
-    const { result } = renderHook(() => useCanSubmitApp());
-    expect(result.current).toBe(false);
-  });
-
-  it("is false in the Snowflake native app even when whitelisted", () => {
-    setCanSubmit(true);
-    mockInSnowflake = true;
+    mockConfig.urls.marketplace = "https://marketplace.test";
     const { result } = renderHook(() => useCanSubmitApp());
     expect(result.current).toBe(false);
   });

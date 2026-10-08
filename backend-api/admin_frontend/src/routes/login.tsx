@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, FormField, FormInput, FormSelect, useForm } from "@openbb/ui";
+import { FormField, FormInput, FormSelect } from "ui/Form";
+import { useForm } from "react-hook-form";
 import { ManagerForm } from "components/formItems";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -34,11 +35,11 @@ export default function Login(): JSX.Element {
 
   return (
     <div className="min-h-screen bg-surface-page">
-      <div className="obb-page-container flex justify-center pt-16">
+      <div className="ws-page-container flex justify-center pt-16">
         <div className="w-full max-w-2xl">
           <div className="mb-4">
-            <h1 className="obb-admin-title">Admin Sign In</h1>
-            <p className="obb-admin-subtitle">
+            <h1 className="ws-admin-title">Admin Sign In</h1>
+            <p className="ws-admin-subtitle">
               Use your admin credentials to manage entities, users, and entitlements.
             </p>
           </div>
@@ -57,7 +58,7 @@ export default function Login(): JSX.Element {
             return <FormInput type="password" label="Password" {...field} />;
           }}
         />
-            <Button className="obb-btn-blue mt-2">Sign In</Button>
+            <button type="submit" className="ws-btn-blue mt-2">Sign In</button>
       </ManagerForm>
         </div>
       </div>

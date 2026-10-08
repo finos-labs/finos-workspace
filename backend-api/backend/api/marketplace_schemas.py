@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from pydantic import (
-    AliasChoices,
     AliasPath,
     BeforeValidator,
     EmailStr,
@@ -268,10 +267,6 @@ class MarketplaceAppResponse(MCPServersMixin):
     version: str = "1"
     created_date: datetime | None = None
     updated_date: datetime | None = None
-    # Deprecated alias for `media` — still emitted so older frontend clients
-    # that read `screenshots` keep working. Remove after all consumers have
-    # switched to `media`.
-    screenshots: list[str] | None = Field(default_factory=list)
     is_built_in: bool = False
     is_development: Annotated[
         bool,
@@ -361,7 +356,7 @@ class CreateAppRequest(BaseModel):
 
     app_name: str = Field(
         ...,
-        description="App name shown in the marketplace and inside the Terminal. "
+        description="App name shown in the marketplace and inside the Workspace. "
         "Overrides whatever `name` the vendor ships in their apps.json.",
     )
     version: str = "1"
@@ -379,7 +374,7 @@ class CreateAppRequest(BaseModel):
     )
     thumbnail_url: str | None = Field(
         None,
-        description="Default app thumbnail shown in the marketplace and inside the Terminal. "
+        description="Default app thumbnail shown in the marketplace and inside the Workspace. "
         "Overrides `img` in the vendor's apps.json. URL or base64 data string.",
     )
     thumbnail_url_dark: str | None = Field(
@@ -396,23 +391,21 @@ class CreateAppRequest(BaseModel):
     )
     media: list[str] = Field(
         default_factory=list,
-        validation_alias=AliasChoices("media", "screenshots"),
         description=(
             "Image and/or video URLs shown in the app detail carousel. Frontend "
             "infers type from the file extension (.png/.jpg/.webp → image, "
-            ".mp4/.webm/.mov → video). Accepted under the legacy name "
-            "`screenshots` as well for backward compatibility."
+            ".mp4/.webm/.mov → video)."
         ),
     )
     api_key_url: str | None = Field(
         None,
         description=(
             "Optional endpoint we call to verify the API key a user enters on the "
-            "'Add API key' screen. If set, the Terminal POSTs the user-provided key to "
+            "'Add API key' screen. If set, the Workspace POSTs the user-provided key to "
             "this URL and expects a success/error response — this lets you fully "
             "control the verification flow and return a custom error message that the "
             "user sees in the modal.\n\n"
-            "If NOT set, the Terminal verifies the key by calling the first widget in "
+            "If NOT set, the Workspace verifies the key by calling the first widget in "
             "your widgets.json. In that case, make sure that widget returns a clear, "
             "user-facing error message when the key is invalid — it's what the user "
             "will see."
@@ -472,9 +465,7 @@ class UpdateVendorAppRequest(CreateVendorAppRequest):
     app_name: str | None = None
     version: str | None = None
     short_description: str | None = None
-    media: list[str] | None = Field(
-        None, validation_alias=AliasChoices("media", "screenshots")
-    )
+    media: list[str] | None = None
     backend_base_url: str | None = None
     is_built_in: bool | None = None
     auth_type: list[str] | None = None
@@ -602,8 +593,6 @@ class AdminAppResponse(MCPServersMixin):
     thumbnail_url_dark: str | None = None
     thumbnail_url_light: str | None = None
     media: list[str] = Field(default_factory=list, validation_alias="screenshots")
-    # Deprecated alias for `media` — still emitted for backward compat.
-    screenshots: list[str] = []
     api_key_url: str | None = None
     api_key_info_url: str | None = None
     more_information_url: str | None = None
@@ -660,7 +649,7 @@ class WhitelistEntryResponse(BaseModel):
 
 
 class WhitelistCreateRequest(BaseModel):
-    """Whitelist a developer by their OpenBB account email."""
+    """Whitelist a developer by their Workspace account email."""
 
     # 255 matches the EmailType(length=255) column the lookup runs against.
     email: EmailStr = Field(max_length=255)

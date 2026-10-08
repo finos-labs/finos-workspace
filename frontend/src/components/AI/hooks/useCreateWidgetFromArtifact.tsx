@@ -1,5 +1,4 @@
 import DOMPurify from "dompurify";
-import { usePostHog } from "posthog-js/react";
 import { useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -16,44 +15,24 @@ import { HTML_SANITIZE_CONFIG } from "~/lib/utils/sanitize";
 import { scrollToAndHighlightWidget } from "~/lib/utils/widgetHighlight";
 import type { WidgetJsonT, WidgetT } from "../../types";
 import {
-  applyChartViewToWidget,
-  buildChartColumnDefs,
   createConversationContextPayload,
   getFallbackName,
   removeCitationsFromText,
-  sanitizeTableContent,
 } from "./createWidgetUtils";
-import { useGetWidgetsStore } from "./useGetAppWidgets";
 
 const aiCopilotAiEnhancementsFF =
   getConfig().copilot.enabled && getConfig().copilot.aiEnhancements;
 
-export type CreateWidgetParams =
-  | {
-      widgetType: "text" | "ssrm_advanced";
-      content: string;
-      metadata?: {
-        uuid?: string;
-        name?: string;
-        description?: string;
-        [key: string]: any;
-      };
-    }
-  | {
-      widgetType: "html" | "run_code";
-      content: string;
-      metadata?: {
-        uuid?: string;
-        name?: string;
-        description?: string;
-        [key: string]: any;
-      };
-    }
-  | {
-      widgetType: "table" | "chart";
-      content: object[];
-      metadata: Record<string, unknown> | null;
-    };
+export type CreateWidgetParams = {
+  widgetType: "text" | "html";
+  content: string;
+  metadata?: {
+    uuid?: string;
+    name?: string;
+    description?: string;
+    [key: string]: unknown;
+  } | null;
+};
 
 async function handleCreateMetaDataWidget(widget: WidgetJsonT | WidgetT) {
   const widgetId = await createMetaDataWidget(widget);
@@ -66,7 +45,6 @@ export function useCreateWidgetFromArtifact() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const posthog = usePostHog();
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const userToken = useShallowAuthStore((s) => s.user?.token);
@@ -95,7 +73,9 @@ export function useCreateWidgetFromArtifact() {
     selectedWidgets: s.copilotWidgets.selectedWidgets,
   }));
 
-  const lastInnerTab = useShallowAppStore((state) => state?.getLastInnerTab(id));
+  const lastInnerTab = useShallowAppStore((state) =>
+    id ? state.getLastInnerTab(id) : undefined,
+  );
   const innerTab = useMemo(
     () => searchParams.get("tab") || lastInnerTab || "",
     [lastInnerTab, searchParams.get("tab")],
@@ -142,7 +122,7 @@ export function useCreateWidgetFromArtifact() {
         widget_generation_request: {
           name: name,
           description: description,
-          widget_data: widgetType !== "text" ? JSON.stringify(content) : content,
+          widget_data: content,
           metadata: rest ?? undefined,
           conversation_context: conversationContext,
         },
@@ -168,8 +148,10 @@ export function useCreateWidgetFromArtifact() {
   );
 
   const widgetCreation = useCallback(
-    async (widget: WidgetJsonT | WidgetT) => {
-      const newWidget = await handleCreateMetaDataWidget(widget);
+    async (widget: WidgetJsonT | WidgetT, { saveMetadata = true } = {}) => {
+      const newWidget = saveMetadata
+        ? await handleCreateMetaDataWidget(widget)
+        : widget;
       if (id) {
         const widgetUuid = await addWidget(id, newWidget);
         return { widgetUuid, widgetId: newWidget.widgetId };
@@ -195,8 +177,8 @@ export function useCreateWidgetFromArtifact() {
     async (
       params: CreateWidgetParams,
       widgetInfo: { name: string; description: string },
-    ): Promise<{ widgetUuid: string; widgetId: string } | null> => {
-      const { widgetType, content, metadata = {} } = params;
+    ): Promise<{ widgetUuid?: string; widgetId?: string } | null> => {
+      const { widgetType, content } = params;
       const { name: widgetName, description: widgetDescription } = widgetInfo;
 
       const widgetUuid = uuidv4();
@@ -212,155 +194,33 @@ export function useCreateWidgetFromArtifact() {
         external: false,
       } as WidgetJsonT;
 
-      const logEvent = { ...widgetInfo } as Record<string, any>;
+      if (widgetType === "text") {
+        const contentStr = typeof content === "string" ? content : "";
+        const text = removeCitationsFromText(contentStr);
 
-      try {
-        if (widgetType === "table" || widgetType === "chart") {
-          if (!Array.isArray(content)) {
-            throw new Error("Invalid data format for widget creation");
-          }
+        widget.widgetId = "markdown";
+        widget.type = "custom";
+        widget.storage = { text };
 
-          const sanitizedContent = sanitizeTableContent(content);
-
-          widget.widgetId = `copilot_table-${widgetUuid}`;
-          widget.data = {
-            table: {
-              showAll: true,
-              enableCharts: true,
-              chartView: { chartType: "line" },
-            },
-          };
-
-          if (widgetType === "table") {
-            const columns = sanitizedContent[0] ? Object.keys(sanitizedContent[0]) : [];
-            widget.storage = { rowsData: sanitizedContent, columns };
-            Object.assign(logEvent, { event_name: "created_copilot_table_widget" });
-            return await widgetCreation(widget);
-          }
-
-          if (widgetType === "chart") {
-            const chartMeta = metadata as Record<string, unknown> | null;
-            const { xKey, yKey, chartType, angleKey, calloutLabelKey } = (chartMeta ??
-              {}) as {
-              xKey?: string;
-              yKey?: string[];
-              chartType?: string;
-              angleKey?: string;
-              calloutLabelKey?: string;
-            };
-            const columnDefs = buildChartColumnDefs({
-              xKey,
-              yKey,
-              chartType,
-              angleKey,
-              calloutLabelKey,
-            });
-
-            Object.assign(
-              widget,
-              applyChartViewToWidget(widget, { enabled: true, chartType }),
-            );
-            widget.storage = {
-              ...widget.storage,
-              rowsData: sanitizedContent,
-              columnDefs,
-            };
-
-            Object.assign(logEvent, { event_name: "created_copilot_table_widget" });
-            return await widgetCreation(widget);
-          }
-        }
-
-        if (widgetType === "text") {
-          const contentStr = typeof content === "string" ? content : "";
-          const html = removeCitationsFromText(contentStr);
-
-          widget.widgetId = `rich_note-${widgetUuid}`;
-          widget.storage = { html };
-
-          Object.assign(logEvent, { event_name: "created_copilot_text_note" });
-
-          return await widgetCreation(widget);
-        }
-
-        if (widgetType === "ssrm_advanced") {
-          const query = typeof content === "string" ? content : "";
-          const sqlWidget = useGetWidgetsStore.getState().getSqlWidget();
-          if (!sqlWidget) throw new Error("SQL Builder widget not found");
-
-          const widgetConfig = { ...sqlWidget, storage: { params: { query } } };
-
-          const newWidget = {
-            ...widgetConfig,
-            id: widgetUuid,
-            name: widgetName,
-            description: widgetDescription,
-            widgetType: "widget_studio",
-            connectionType: "widgetMetadata",
-            innerTab,
-          } as WidgetT;
-
-          newWidget.widgetId = `widget_studio-${widgetUuid}`;
-
-          Object.assign(logEvent, {
-            event_name: "created_copilot_ssrm_advanced_widget",
-          });
-
-          return await widgetCreation(newWidget);
-        }
-
-        if (widgetType === "run_code") {
-          const { widgetId, sourceName } = metadata ?? {};
-          const runCodeWidget = useGetWidgetsStore
-            .getState()
-            .getAppWidget(widgetId, sourceName);
-          const prompt = typeof content === "string" ? content : "";
-          if (!runCodeWidget) throw new Error("Run Code widget not found");
-          const newWidget = {
-            ...runCodeWidget,
-            id: widgetUuid,
-            name: widgetName,
-            description: widgetDescription,
-            widgetType: "widget_studio",
-            connectionType: "widgetMetadata",
-            innerTab,
-            storage: { params: { prompt } },
-          } as WidgetT;
-
-          newWidget.widgetId = `widget_studio-${widgetUuid}`;
-
-          Object.assign(logEvent, {
-            event_name: "created_copilot_run_code_widget",
-          });
-
-          return await widgetCreation(newWidget);
-        }
-
-        if (widgetType === "html") {
-          const contentStr = typeof content === "string" ? content : "";
-
-          widget.widgetId = `html-${widgetUuid}`;
-          widget.storage = {
-            html: DOMPurify.sanitize(contentStr, {
-              ...HTML_SANITIZE_CONFIG,
-              WHOLE_DOCUMENT: true,
-            }),
-          };
-
-          Object.assign(logEvent, {
-            event_name: "created_copilot_html_widget",
-          });
-          return await widgetCreation(widget);
-        }
-        throw new Error("Invalid widget type");
-      } finally {
-        if (posthog && logEvent?.event_name) {
-          const { event_name, ...properties } = logEvent;
-          posthog.capture(event_name, properties);
-        }
+        return await widgetCreation(widget, { saveMetadata: false });
       }
+
+      if (widgetType === "html") {
+        const contentStr = typeof content === "string" ? content : "";
+
+        widget.widgetId = `html-${widgetUuid}`;
+        widget.storage = {
+          html: DOMPurify.sanitize(contentStr, {
+            ...HTML_SANITIZE_CONFIG,
+            WHOLE_DOCUMENT: true,
+          }),
+        };
+
+        return await widgetCreation(widget);
+      }
+      throw new Error("Invalid widget type");
     },
-    [id, innerTab, posthog, widgetCreation],
+    [id, innerTab, widgetCreation],
   );
 
   const createWidget = useCallback(
@@ -432,22 +292,25 @@ export function useCreateWidgetFromArtifact() {
               <div className="mb-2">{widgetDescription}</div>
             ) : undefined,
           style: { pointerEvents: "auto" },
-          cancel: {
-            label: "Edit metadata",
-            onClick: () => {
-              if (!(widgetUuid && widgetId)) return;
-              setCreateWidgetMetadataDialog({
-                mode: "update",
-                initialValues: {
-                  name: widgetName,
-                  description: widgetDescription,
-                },
-                widgetId,
-                widgetUuid,
-                dashboardId: id,
-              });
+          // Only a widget saved as metadata (HTML) has metadata to edit
+          ...(widgetType === "html" && {
+            cancel: {
+              label: "Edit metadata",
+              onClick: () => {
+                if (!(widgetUuid && widgetId)) return;
+                setCreateWidgetMetadataDialog({
+                  mode: "update",
+                  initialValues: {
+                    name: widgetName,
+                    description: widgetDescription,
+                  },
+                  widgetId,
+                  widgetUuid,
+                  dashboardId: id,
+                });
+              },
             },
-          },
+          }),
           ...(isFullscreen &&
             widgetUuid && {
               action: {
@@ -503,22 +366,24 @@ export function useCreateWidgetFromArtifact() {
             <div className="mb-2">{metadata.description}</div>
           ) : undefined,
           style: { pointerEvents: "auto" },
-          cancel: {
-            label: "Edit metadata",
-            onClick: () => {
-              if (!(widgetUuid && widgetId)) return;
-              setCreateWidgetMetadataDialog({
-                mode: "update",
-                initialValues: {
-                  name: metadata.name,
-                  description: metadata.description,
-                },
-                widgetId,
-                widgetUuid,
-                dashboardId: id,
-              });
+          ...(params.widgetType === "html" && {
+            cancel: {
+              label: "Edit metadata",
+              onClick: () => {
+                if (!(widgetUuid && widgetId)) return;
+                setCreateWidgetMetadataDialog({
+                  mode: "update",
+                  initialValues: {
+                    name: metadata.name,
+                    description: metadata.description,
+                  },
+                  widgetId,
+                  widgetUuid,
+                  dashboardId: id,
+                });
+              },
             },
-          },
+          }),
         });
       } catch (error) {
         const errorMessage =

@@ -2,9 +2,9 @@ import json
 import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeAlias, TypeVar
+from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID, uuid4
 
-import requests
 from fastapi.responses import JSONResponse
 from pydantic import (
     AliasGenerator,
@@ -25,17 +25,15 @@ from api.events.types import RoleAuditAction, RoleResourceType
 from utilities.config import BaseModel, settings
 
 if TYPE_CHECKING:
-    from api.models.tauri_models import CopilotChat, StoredFile
+    from api.models.workspace_models import CopilotChat, StoredFile
 
 
 StoredFileT = TypeVar("StoredFileT", bound="StoredFile")
 
 main_config = ConfigDict(extra="forbid", from_attributes=True)
-source_type = Literal["terminal", "hub", "sdk", "pro", "oauth-pro", "oauth-hub", "excel"]
+source_type = Literal["sdk", "app", "oauth-app", "excel"]
 MetaDataWidgetType = Literal[
     "iframe",
-    "rss_viewer",
-    "rich_note",
     "copilot_table",
     "youtube",
     "widget_studio",
@@ -45,7 +43,7 @@ MetaDataWidgetType = Literal[
 ]
 
 permissions_type = Literal["view", "comment"]  # "edit"
-UserSourceType = Literal["user", "invite", "takeover"]
+UserSourceType = Literal["user", "invite"]
 ExtensionType = Literal[
     "csv",
     "json",
@@ -63,29 +61,8 @@ ExtensionType = Literal[
     "doc",
     "html",
 ]
-ProgrammingExperience = Literal["no-experience", "basic", "intermediate-advanced"]
-DashboardTypes = Literal[
-    "charting",
-    "news",
-    "countryEconomics",
-    "calendars",
-    "equityAnalyst",
-    "equity",
-    "comparison",
-    "etfTemplate",
-    "onboarding",
-    "earnings",
-]
-WidgetTypes = Literal[
-    "etf_holdings",
-    "economic_calendar",
-    "earnings_trends",
-    "revenue_trends",
-    "etf_classification",
-    "etf_characteristics",
-]
 AccessType = Literal["no-access", "access", "full-access"]
-BundleNames = Literal["Default", "Equity Research", "Pro Trial", "On-Premise"]
+BundleNames = Literal["Default", "Equity Research", "On-Premise"]
 
 
 def is_bad_word(word: str) -> bool:
@@ -104,14 +81,11 @@ def username_check(username: str) -> None | str:
         )
 
     if is_bad_word(username.lower()):
-        return "This username violates OpenBB Guidelines"
+        return "This username violates Community Guidelines"
     return None
 
 
 def check_email(v: str) -> str:
-    # Chargebee has a 70 character limit on emails
-    if len(v) > 70:  # noqa: PLR2004
-        raise ValueError("Email must be 70 characters or less")
     if not base.check_email(v):
         raise ValueError("Invalid email")
     return v
@@ -289,10 +263,6 @@ AppRating: TypeAlias = Annotated[float | None, BeforeValidator(app_rating_to_ave
 NoneToStr: TypeAlias = Annotated[str | None, BeforeValidator(_none_to_empty_str)]
 
 
-class ValidateReturn(BaseModel):
-    authenticated: bool
-
-
 class SuccessReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     success: bool
 
@@ -318,7 +288,6 @@ class DashboardShareReturn(BaseModel):
     permissions: None | base.PermissionEnum
     first_name: None | str
     last_name: None | str
-    is_invite: bool
 
 
 class TotpGenerateReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
@@ -332,10 +301,6 @@ class ContentReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
 
 class MessageReturn(SuccessReturn, extra="ignore"):  # type: ignore[call-arg]
     message: str
-
-
-class ProfileUrlReturn(MessageReturn, extra="ignore"):  # type: ignore[call-arg]
-    profile_url: None | str = None
 
 
 class UrlReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
@@ -362,23 +327,16 @@ class CodeReturn(BaseModel):
     used: bool
 
 
-class RemainingCodes(BaseModel):
-    remaining: None | int
-
-
 class Token(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     username: None | str = None
     email: str
-    primary_usage: str
     access_token: str
     token_type: str
-    profile_url: None | str = None
     uuid: UUID
 
 
 class FullToken(Token, extra="ignore"):  # type: ignore[call-arg]
-    information_complete: Literal["bot", "complete", "incomplete"]
-    has_pro: bool
+    has_app: bool
 
 
 class TokenData(BaseModel, extra="forbid"):  # type: ignore[call-arg]
@@ -408,262 +366,19 @@ class Expiration(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     days: int
 
 
-class HubspotId(BaseModel):
-    id: int
-
-
-class Type(BaseModel):
-    associationCategory: str
-    associationTypeId: int
-
-
-class Association(BaseModel):
-    to: HubspotId
-    types: list[Type]
-
-    @classmethod
-    def default(cls, hubspot_id: int):
-        the_type = Type(associationCategory="HUBSPOT_DEFINED", associationTypeId=16)
-        the_id = HubspotId(id=hubspot_id)
-        return cls(to=the_id, types=[the_type])
-
-
-class BaseProperties(BaseModel):
-    subject: str
-    hs_pipeline_stage: int
-    hs_pipeline: int
-    ticket_email: None | str
-    content: str
-
-    def full_json_dump(self, hubspot_id: int):
-        new_data = Association.default(hubspot_id).model_dump()
-        start = {"properties": self.model_dump(), "associations": [new_data]}
-        return json.dumps(start)
-
-
-class Feedback(BaseProperties):
-    ticket_type: str
-    location_page: str
-    version: str
-
-
 class UUIDReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     uuid: UUID
 
 
-class ProEntitlements(BaseModel, extra="allow"):  # type: ignore[call-arg]
-    benzinga: Literal["Read", "Write", "None"] = "Read"
-    polygon: Literal["Read", "Write", "None"] = "Read"
-    intrinio: Literal["Read", "Write", "None"] = "Read"
-    fmp: Literal["Read", "Write", "None"] = "Read"
-    datarade: Literal["Read", "Write", "None"] = "Read"
-    veraset: Literal["Read", "Write", "None"] = "Read"
-    alphavantage: Literal["Read", "Write", "None"] = "Read"
-
-    @classmethod
-    def trial_values(cls) -> "ProEntitlements":
-        return cls(
-            benzinga="Read",
-            polygon="Read",
-            intrinio="Read",
-            fmp="Read",
-            datarade="Read",
-            veraset="Read",
-            alphavantage="Read",
-        )
-
-
-class ProKeys(BaseModel, extra="allow"):  # type: ignore[call-arg]
-    benzinga: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    polygon: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    intrinio: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    fmp: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    datarade: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    veraset: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    alphavantage: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    trading_economics: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-
-    def __hash__(self):
-        return hash((type(self),) + tuple(self.model_dump().items()))
-
-    def validate_keys(self) -> None | str:
-        for key in self.model_fields_set:
-            func_name = f"test_{key}"
-            if getattr(self, key) is None:
-                continue
-            if hasattr(self, func_name) and not getattr(self, func_name)():
-                return key
-        return None
-
-    def test_benzinga(self) -> bool:
-        url = "https://api.benzinga.com/api/v2.1/calendar/offerings"
-        response = requests.get(url, params={"token": self.benzinga}, timeout=10)
-        return response.status_code != 401  # noqa: PLR2004
-
-    def test_polygon(self) -> bool:
-        url = "https://api.polygon.io/v2/aggs/ticker/AAPL/range/1/day/2023-01-09/2023-01-09"
-        response = requests.get(url, params={"apiKey": self.polygon}, timeout=10)
-        return response.status_code != 401  # noqa: PLR2004
-
-    def test_intrinio(self) -> bool:
-        url = "https://api-v2.intrinio.com/securities/AAPL/prices/technicals/atr"
-        response = requests.get(url, params={"api_key": self.intrinio}, timeout=10)
-        return response.status_code != 401  # noqa: PLR2004
-
-    def test_fmp(self) -> bool:
-        url = "https://financialmodelingprep.com/api/v3/search"
-        response = requests.get(url, params={"apikey": self.fmp, "query": "AA"}, timeout=10)
-        return response.status_code != 401  # noqa: PLR2004
-
-    def test_alphavantage(self) -> bool:
-        "This does NOT work because AlphaVantage runs with bad keys just fine"
-        url = "https://www.alphavantage.co/query?interval=5min&apikey=demo"
-        params = {
-            "function": "TIME_SERIES_INTRADAY",
-            "symbol": "IBM",
-            "apikey": self.alphavantage,
-        }
-        response = requests.get(url, params=params, timeout=10)
-        return response.status_code != 401  # noqa: PLR2004
-
-    def test_trading_economics(self) -> bool:
-        url = "https://api.tradingeconomics.com/country/mexico"
-        response = requests.get(url, params={"c": self.trading_economics}, timeout=10)
-        return response.status_code not in {401, 500}  # noqa: PLR2004
-
-
-class ProInfoDeveloper(BaseModel, extra="allow"):  # type: ignore[call-arg]
-    primaryUsage: Annotated[
-        None | Literal["academic", "professional", "personal"],
-        BeforeValidator(blank_to_none),
-    ] = None
-    organization: None | str = None
-    role: None | str = None
-    programmingExperience: Annotated[None | ProgrammingExperience, BeforeValidator(blank_to_none)] = None
-    dataTypes: None | list[str] = None
-    otherDataType: None | str = None
-    organizationName: Annotated[None | str, BeforeValidator(blank_to_none)] = None
-    skipOnboarding: bool = False
-
-    def to_hubspot_properties(self) -> "HubspotProperties":
-        return HubspotProperties(
-            primary_usage=self.primaryUsage,
-            org_segment=self.organization,
-            role=self.role,
-            programming_experience=self.programmingExperience,
-            data_types=",".join(self.dataTypes),
-            other_data_types=self.otherDataType,
-            organization_name=self.organizationName,
-        )
-
-    def to_marketing(self) -> "UserMarketing":
-        return UserMarketing(
-            primary_usage=self.primaryUsage,
-            organization_segment=self.organization,
-            role=self.role,
-            programming_experience=self.programmingExperience,
-            data_types=",".join(self.dataTypes) if self.dataTypes else None,
-            other_data_types=self.otherDataType,
-            organization_name=self.organizationName,
-        )
-
-
-class DefaultTicker(BaseModel, extra="allow"):  # type: ignore[call-arg]
-    """Default ticker for the user"""
-
-    id_: str = Field(serialization_alias="id", alias="id")
-    symbol: str
-    category: str
-    type_: str = Field(serialization_alias="type", alias="type")
-    name: str
-    exchange: str
-    exchange_name: str | None = None
-    currency: str | None = None
-    industry: str | None = None
-    sector: str | None = None
-    country: str | None = None
-    cik: str | None = None
-    isin: str | None = None
-    cusip: str | None = None
-    has_options: bool | None = False
-
-    @classmethod
-    def default(cls) -> "DefaultTicker":
-        return cls(
-            id="AAPL",
-            symbol="AAPL",
-            ticker="AAPL",
-            name="Apple Inc.",
-            exchange="NASDAQ",
-            exchange_name="NASDAQ Global Select",
-            category="equity",
-            type="stock",
-            currency="USD",
-            industry="Consumer Electronics",
-            sector="Technology",
-            country="US",
-            cik="0000320193",
-            isin="US0378331005",
-            cusip="037833100",
-            has_options=True,
-        )
-
-
-class ProInfo(BaseModel, extra="allow"):  # type: ignore[call-arg]
-    """Deprecated. Retained only so historical alembic migrations remain importable."""
-
-
-class ProDisplaySettings(BaseModel, extra="allow"):  # type: ignore[call-arg]
-    decimalDigits: int = 2
+class UserDisplaySettings(BaseModel, extra="allow"):  # type: ignore[call-arg]
     theme: Literal["light", "dark"] | None = None
     showWidgetControls: bool = False
     virtualizeWidgets: bool = False
-    tablePagination: bool = False
     fontSize: Literal["small", "medium", "large"] = "medium"
-    defaultTicker: DefaultTicker | None = DefaultTicker.default()
     gridCorners: list[Literal["ne", "nw", "se", "sw"]] = ["se"]
     gridSnapping: Literal["off", "vertical"] = "vertical"
     quickAddButtonTransparent: bool = False
     lastVisitedPage: str | None = "/app/data-connectors"
-
-    @field_validator("defaultTicker", mode="before", check_fields=False)
-    @classmethod
-    def check_default_ticker(cls, value: dict[str, str] | str | None) -> DefaultTicker:
-        try:
-            while isinstance(value, str):
-                value = json.loads(value)
-            return DefaultTicker.model_validate(value)
-        except (json.JSONDecodeError, ValueError):
-            return DefaultTicker.default()
-
-
-class NudgeTriggerRecord(BaseModel, extra="allow"):
-    nudgeId: None | str = None
-    timestamp: None | datetime = None
-
-
-class ProZeroToHero(BaseModel, extra="allow"):  # type: ignore[call-arg]
-    grouping: None | datetime = None
-    table_charting: None | datetime = None
-    data_connectors: None | datetime = None
-    charting: None | datetime = None
-    group_sector_companies: None | datetime = None
-    analyst_walkthrough: None | datetime = None
-    developer_walkthrough: None | datetime = None
-    nudge_trigger_history: None | list[NudgeTriggerRecord] = None
-
-    @classmethod
-    def default(cls) -> "ProZeroToHero":
-        return cls(
-            grouping=None,
-            table_charting=None,
-            data_connectors=None,
-            charting=None,
-            group_sector_companies=None,
-            analyst_walkthrough=None,
-            developer_walkthrough=None,
-            nudge_trigger_history=None,
-        )
 
 
 class WidgetMetadata(BaseModel):
@@ -671,39 +386,6 @@ class WidgetMetadata(BaseModel):
     description: None | str = None
     category: None | str = None
     sub_category: None | str = None
-
-
-class CreateSingleWidget(WidgetMetadata, extra="forbid"):  # type: ignore[call-arg]
-    model_config = get_camel_config()
-    endpoint: str
-    name: str
-    grid_data: None | dict = None
-    data: None | dict = None
-    endpoint_headers: None | dict | list[dict] = None
-    source: None | list[str] | str = None
-    data_key: None | str = None
-
-    @field_validator("source", mode="before", check_fields=False)
-    @classmethod
-    def check_source(cls, value: None | str | list[str]) -> None | list[str]:
-        if value and isinstance(value, str):
-            return value.split(",")
-        return value
-
-
-class ReturnSingleWidget(CreateSingleWidget, extra="ignore"):  # type: ignore[call-arg]
-    model_config = get_camel_config(from_attributes=True)
-    uuid: UUID
-    widgetId: UUID = Field(serialization_alias="widgetId", alias="uuid")
-    created_date: datetime = Field(serialization_alias="createdDate", alias="created_date")
-    updated_date: datetime = Field(serialization_alias="updatedDate", alias="updated_date")
-
-    @field_validator("source", mode="before", check_fields=False)
-    @classmethod
-    def check_source(cls, value: None | str | list[str]) -> None | str:
-        if value and isinstance(value, list):
-            return ",".join(value)
-        return value
 
 
 class CreateFileWidget(WidgetMetadata, extra="forbid"):  # type: ignore[call-arg]
@@ -826,8 +508,6 @@ class EntityBase(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     country: str
     seats: int
     expiration_date: datetime
-    stripe_id: None | str = None
-    api_keys: ProKeys = ProKeys()
 
 
 class EntityPost(EntityBase):
@@ -846,8 +526,6 @@ class EntityReturn(BaseModel):
     country: None | str
     seats: None | int
     expiration_date: Annotated[None | str, BeforeValidator(datetime_to_string)]
-    stripe_id: None | str
-    api_keys: ProKeys = ProKeys()
 
 
 class EntityRelationshipCreate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
@@ -868,7 +546,6 @@ class EntityRelationshipReturn(EntityRelationshipCreate, extra="forbid"):  # typ
 
 
 class UserAdminUpdate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    pro_entitlements: None | ProEntitlements = None
     permissions_uuid: None | UUID = None
     billing_active: None | bool = None
 
@@ -877,7 +554,6 @@ class EntityMapCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", from_attributes=True)
     entity_uuid: UUID
     name: str
-    entitlements: ProEntitlements
 
 
 class EntityMapReturn(EntityMapCreate):
@@ -885,7 +561,6 @@ class EntityMapReturn(EntityMapCreate):
     uuid: UUID
     entity: EntityReturn
     name: str
-    entitlements: ProEntitlements
 
 
 class EntityInfoReturn(BaseModel):
@@ -899,7 +574,6 @@ class EntityUserReturn(BaseModel):
     uuid: UUID
     email: str
     permissions: EntityMapReturn | None = None
-    pro_trial_end: None | datetime = None
 
 
 class AddEntityReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
@@ -938,14 +612,14 @@ class DataBundle(BaseModel):
     model_config = ConfigDict(extra="allow", from_attributes=True)
 
     bundle_name: BundleNames
-    except_widgets: list[WidgetTypes] | None = None
-    except_dashboard_templates: list[DashboardTypes] | None = None
+    except_widgets: list[str] | None = None
+    except_dashboard_templates: list[str] | None = None
     except_team_collaboration: list[Literal["pdf_reports", "sharing"]] | None = None
     excel_add_in: bool
     data_export: bool
-    providers: list[Literal["fmp", "econdb", "benzinga"]] | None
-    dashboards_at_launch: list[DashboardTypes] | None
-    my_dashboards: list[DashboardTypes] | None
+    providers: list[str] | None
+    dashboards_at_launch: list[str] | None
+    my_dashboards: list[str] | None
     invite_your_colleagues: bool
     number_copilot_calls_day: int
     total_file_upload_size_gb: int
@@ -971,8 +645,9 @@ class DataBundle(BaseModel):
 class EntitlementBase(BaseModel):
     model_config = main_config
 
-    tier: Literal["pro", "terminal"] | None = None
+    tier: Literal["full", "basic"] | None = None
     number_copilot_calls_day: int = None
+    number_copilot_tokens_day: int | None = None
     total_file_upload_size_gb: int = None
     share_widgets: Literal["public", "private"] | None = None
     bring_your_own_data: bool = None
@@ -999,24 +674,31 @@ class EntitlementUsageBase(BaseModel):
 
     model_config = main_config
     number_copilot_calls_day_count: int = Field(..., json_schema_extra={"entitlement_match": "number_copilot_calls_day"})
+    number_copilot_tokens_day_count: int = Field(
+        0, json_schema_extra={"entitlement_match": "number_copilot_tokens_day"}
+    )
     total_file_upload_size_gb_count: float = Field(
         ..., json_schema_extra={"entitlement_match": "total_file_upload_size_gb"}
     )
 
 
 class EntitlementUsagePut(BaseModel):
+    """Usage reported by the service that serves the Copilot, never by users."""
+
     add_copilot_count: int | None = Field(0, ge=0)
     subtract_copilot_count: int | None = Field(0, ge=0)
     reset_copilot_count: bool | None = False
+    add_copilot_tokens: int | None = Field(0, ge=0)
 
 
 class EntitlementUsageGet(EntitlementUsageBase, extra="ignore"):  # type: ignore[call-arg]
     copilot_calls_limit: int | None = None
+    copilot_tokens_limit: int | None = None
     file_upload_size_limit: float | None = None
 
     @classmethod
     async def check_cache(cls, db, user) -> "EntitlementUsageGet":
-        from routers.pro.helpers import check_usage_cache  # noqa: PLC0415
+        from routers.app.helpers import check_usage_cache  # noqa: PLC0415
 
         return await check_usage_cache(db, user)
 
@@ -1027,13 +709,25 @@ class UsageLimitError(BaseModel):
     current_usage: int
 
     @classmethod
-    def limit_error(cls, usage: EntitlementUsageGet) -> JSONResponse:
+    def limit_error(cls, usage: EntitlementUsageGet, tokens: bool = False) -> JSONResponse:
+        if tokens:
+            message = (
+                "The daily token limit of "
+                f"{usage.copilot_tokens_limit} has been reached"
+            )
+            current_usage = usage.number_copilot_tokens_day_count
+        else:
+            message = (
+                "Cannot increment usage beyond the maximum limit of "
+                f"{usage.copilot_calls_limit}"
+            )
+            current_usage = usage.number_copilot_calls_day_count
         return JSONResponse(
             status_code=422,
             content={
                 "error": "Maximum usage limit reached",
-                "message": f"Cannot increment usage beyond the maximum limit of {usage.copilot_calls_limit}",
-                "current_usage": usage.number_copilot_calls_day_count,
+                "message": message,
+                "current_usage": current_usage,
             },
         )
 
@@ -1054,21 +748,19 @@ def default_chats() -> list["Chat"]:
 
 class DashboardCompleteWithContext(DashboardComplete):
     model_config = main_config
-    is_trial_entity: bool
     can_submit_marketplace: bool = False
     feature_entitlements: EntitlementGet | None = None
     usage: EntitlementUsageGet | None = None
     copilot_chats: list["ChatInfo | Chat"] | None = Field(default_factory=default_chats)
     questions_history: list[str] | None = None
     mcp_servers: list[dict] | None = Field(default_factory=list)
-    trading_view: "TVStateResponse | None" = None
-    pro_display_settings: ProDisplaySettings = ProDisplaySettings()
+    display_settings: UserDisplaySettings = UserDisplaySettings()
     entity_theme_settings: "EntityThemeSettings"
-    single_widgets: list[ReturnSingleWidget]
     file_widgets: list[ReturnFileWidget]
     user_apps: "UserAppsComplete"
     user_skills: list["SkillReturn"] | None = Field(default_factory=list)
     widget_metadata: list["WidgetMetadataResponse"] | None = None
+    copilot_access: "CopilotAccess | None" = None
 
 
 class DashboardSave(BaseModel):
@@ -1084,60 +776,19 @@ class UserEntityInfo(BaseModel):
     permission_name: str
 
 
-class ProUserReturn(BaseModel):
+class AppUserReturn(BaseModel):
     model_config = main_config
     expiration_date: datetime
-    entitlements: None | ProEntitlements
-    accepted_pro_tos: bool
     first_name: None | str = None
     last_name: None | str = None
-    pro_display_settings: ProDisplaySettings = ProDisplaySettings()
-    pro_zero_to_hero: ProZeroToHero = ProZeroToHero.default()
-    single_widgets: list[ReturnSingleWidget]
+    display_settings: UserDisplaySettings = UserDisplaySettings()
     file_widgets: list[ReturnFileWidget]
     api_sources: list[ReturnApiSource]
     username: None | str = None
     email: str
     uuid: UUID
-    primary_usage: None | str = None
     widget_metadata: list["WidgetMetadataResponse"] | None = None
     entity_info: UserEntityInfo | None = None
-
-
-class ProBackendReturn(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    expiration_date: datetime
-    api_keys: ProKeys
-    username: None | str = None
-    email: str
-    uuid: UUID
-    primary_usage: None | str = None
-
-
-class OpenaiPost(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    prompt: str
-
-
-class TimegptPost(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    fh: int = 30
-    y: dict[str, float]
-    freq: Literal["H", "D", "W", "M"] = "M"
-    clean_ex_first: bool = True
-    level: list[int] = [80, 95]
-    finetune_steps: int = 2
-
-
-class TimegptData(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    timestamp: list[datetime]
-    value: list[float]
-
-
-class TimegptReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    data: TimegptData
-    message: str
-    details: str
-    code: str
-    requestID: str
-    support: str
 
 
 class UserAdminReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
@@ -1150,152 +801,33 @@ class UserAdminReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     last_login: None | datetime = None
     last_active: None | datetime = None
     status: Literal["active", "pending", "revoked", "expired"] = "pending"
-    pro_entitlements: None | ProEntitlements = None
     permissions_uuid: UUID | None = None
     # Which table the information comes from, essential for properly implementing a delete function
     source: UserSourceType
-    # pro_trial_renewals is > 0 or pro_trial_extensions is True
-    renewed: bool = False
-
-
-class InviteEmail(BaseModel):
-    model_config = main_config
-    to_emails: list[EmailStr]
-
-
-class UserForgot(BaseModel):
-    model_config = main_config
-    email: Annotated[EmailStr, AfterValidator(check_email)]
-    redirect: Literal["pro", "hub"] = "hub"
-
-
-class UserReset(BaseModel):
-    model_config = main_config
-    password: Annotated[str, AfterValidator(check_password)]
-    token: str
-
-
-class HubspotProperties(BaseModel):
-    marketing_email: None | bool = None
-    academia_email: None | bool = None
-    bot_email: None | bool = None
-    pro_waitlist: None | bool = None
-    primary_use: None | str = None
-    wants_contacted: None | bool = None
-    newsletter_only: bool = False
-    is_verified: None | bool = None
-    pro_start_date: None | float = None
-    pro_trial_granted: None | bool = None
-    pro_trial_granted_date: None | str = None
-    is_paid_user: None | bool = None
-    is_admin: None | bool = None
-    trial_extended_0124: None | bool = None
-    firstname: None | str = None
-    lastname: None | str = None
-    org_name: None | str = None
-    org_segment: None | str = None
-    role: None | str = None
-    # Developer Onboarding
-    programming_experience: None | str = None
-    data_types: None | str = None
-    other_data_types: None | str = None
-
-
-class UserMarketing(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    model_config = main_config
-    # Tag-based booleans (Mailchimp tags)
-    email_academia: None | bool = None
-    email_bot: None | bool = None
-    email_newsletter: None | bool = None
-    email_prowaitlist: None | bool = None
-    # Profile / survey fields (Mailchimp merge fields)
-    first_name: None | str = None
-    last_name: None | str = None
-    primary_usage: None | str = None
-    organization_name: None | str = None
-    organization_segment: None | str = None
-    role: None | str = None
-    wants_contacted: None | bool = None
-    is_verified: None | bool = None
-    is_paid_user: None | bool = None
-    is_admin: None | bool = None
-    pro_start_date: None | float = None
-    pro_trial_granted: None | bool = None
-    pro_trial_granted_date: None | str = None
-    trial_extended: None | bool = None
-    # Onboarding survey
-    programming_experience: None | str = None
-    data_types: None | str = None
-    other_data_types: None | str = None
-
-    def hubspot_properties(self) -> HubspotProperties:
-        return HubspotProperties(
-            marketing_email=self.email_newsletter,
-            academia_email=self.email_academia,
-            bot_email=self.email_bot,
-            pro_waitlist=self.email_prowaitlist,
-            primary_use=self.primary_usage,
-            wants_contacted=self.wants_contacted,
-            is_verified=self.is_verified,
-            firstname=self.first_name,
-            lastname=self.last_name,
-            pro_start_date=self.pro_start_date,
-            pro_trial_granted=self.pro_trial_granted,
-            pro_trial_granted_date=self.pro_trial_granted_date,
-            is_paid_user=self.is_paid_user,
-            is_admin=self.is_admin,
-            trial_extended_0124=self.trial_extended,
-            org_name=self.organization_name,
-            org_segment=self.organization_segment,
-            programming_experience=self.programming_experience,
-            data_types=self.data_types,
-            other_data_types=self.other_data_types,
-        )
-
-    @classmethod
-    def from_hubspot(cls, hub_dict: dict) -> "UserMarketing":
-        email_academia = hub_dict.get("academia_email", False)
-        return cls(
-            email_academia=email_academia,
-            email_bot=hub_dict.get("bot_email", False),
-            email_newsletter=hub_dict.get("marketing_email", False),
-            email_prowaitlist=hub_dict.get("pro_waitlist", False),
-        )
-
-
-class UserCreate(UserMarketing):
-    model_config = main_config
-    email: Annotated[EmailStr, AfterValidator(check_email)]
-    password: Annotated[str, AfterValidator(check_password)]
-    username: Annotated[None | str, AfterValidator(check_username)] = None
-    referred_by: None | str = None
 
 
 class UserCreateAdmin(BaseModel):
     model_config = main_config
     email: Annotated[EmailStr, AfterValidator(check_email)]
-    permissions_uuid: UUID = settings.PRO_TRIAL_MAPPING
+    permissions_uuid: UUID
     first_name: None | str = None
     last_name: None | str = None
     message: None | str = Field(max_length=500, default=None)
     role: None | UUID = None
 
 
-class UserCreateProAdmin(BaseModel):
+class UserCreateAppAdmin(BaseModel):
     model_config = main_config
     email: Annotated[EmailStr, AfterValidator(check_email)]
-    permissions_uuid: UUID = settings.PRO_TRIAL_MAPPING
+    permissions_uuid: UUID
     first_name: None | str = None
     last_name: None | str = None
     message: None | str = Field(max_length=500, default=None)
-    newsletter: None | bool = False
-    hear_about_us: None | str = None
 
 
 class UserUpdateAdmin(BaseModel):
     model_config = main_config
     permissions_uuid: None | str = None
-    pro_trial_end: None | datetime = None
 
 
 class TotpToken(BaseModel, extra="forbid"):  # type: ignore[call-arg]
@@ -1318,11 +850,11 @@ class UserLogin(ExternalUserLogin):
     _bypass_password_check: bool = False
 
 
-class ProUserLogin(UserLogin):
+class AppUserLogin(UserLogin):
     version: None | str = None
 
 
-class OAuthLogin(ProUserLogin):
+class OAuthLogin(AppUserLogin):
     password: str | None = None
 
     def bypass_password_check(self):
@@ -1344,8 +876,6 @@ class UserUpdate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     new_password: Annotated[None | str, AfterValidator(check_password)] = None
     email: Annotated[None | EmailStr, AfterValidator(check_email)] = None
     username: Annotated[None | str, AfterValidator(check_username)] = None
-    primary_usage: None | str = None
-    wants_contacted: None | bool = None
 
     def validated_dict(self, password: str):
         """Converts the model into a dictionary, valid for updating the user model.
@@ -1379,10 +909,7 @@ class UserReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     referral_count: None | int = None
     email: str
     username: Annotated[None | str, AfterValidator(check_username)] = None
-    profile_url: None | str = None
     referral_code: str
-    primary_usage: None | str = None
-    information_complete: Literal["bot", "complete", "incomplete"]
 
 
 class UserReturnExpanded(UserReturn):
@@ -1410,12 +937,9 @@ class ShareUserAppList(ShareDashboardList):
     pass
 
 
-class RegisterProUser(BaseModel):
-    inviting_uuid: UUID
-    inviting_email: str
-    shared_user_app: None | UUID = None
-    shared_dashboard: None | UUID = None
-    shared_permissions: None | permissions_type = None
+class RegisterAppUser(BaseModel):
+    # None for a user who signs up through single sign-on: nobody invited them
+    inviting_uuid: None | UUID = None
 
 
 ForceInt = Annotated[int, BeforeValidator(int)]
@@ -1475,7 +999,7 @@ class ChatInfo(BaseModel):
                         "message": "This chat contains corrupted data and cannot be displayed.",
                     },
                     timestamp=int(datetime.now(UTC).timestamp() * 1000),
-                    copilotId="openbb-copilot",
+                    copilotId="default-copilot",
                 )
             ],
             lastOpened=int(datetime.now(UTC).timestamp() * 1000),
@@ -1489,16 +1013,6 @@ class ChatInfo(BaseModel):
 class Chat(ChatInfo):
     artifacts: list[dict] | None = Field(default_factory=list)
     messages: list[ChatMessage]
-
-    @classmethod
-    def from_db(cls, value: dict | None, uuid: UUID) -> "Chat":
-        if value is None:
-            return cls.corrupted(uuid)
-
-        value.pop("id_", None)
-        value.pop("id", None)
-        value.update({"uuid": uuid})
-        return cls.model_validate(value)
 
     @classmethod
     def from_row(cls, row: "CopilotChat", from_search: bool = False) -> "ChatInfo | Chat":
@@ -1570,28 +1084,78 @@ class MCPServers(BaseModel):
         return self.model_dump(by_alias=True).get("servers", [])
 
 
-class TVChartsState(BaseModel):
-    model_config = {"populate_by_name": True, "extra": "allow"}
-    charts: list[dict] | None = Field(default_factory=list)
-    studyTemplates: list[dict] | None = Field(default_factory=list)
-    drawingTemplates: list[dict] | None = Field(default_factory=list)
-    chartTemplates: list[dict] | None = Field(default_factory=list)
-    chartLayouts: dict[str, dict[str, Any]] | None = Field(default_factory=dict)
+def normalize_mcp_url(url: str) -> str:
+    """The form in which MCP server URLs are stored and compared: scheme and host in
+    lower case, no query, fragment or trailing slash."""
+    parsed = urlsplit(url.strip())
+    path = parsed.path.rstrip("/")
+    return urlunsplit((parsed.scheme.lower(), parsed.netloc.lower(), path, "", ""))
 
 
-class TVStateCreate(BaseModel):
-    charts_state: TVChartsState
-    settings: dict[str, Any]
+ALL_MCP_TOOLS = "*"
 
 
-class TVStateResponse(BaseModel):
-    model_config = {"from_attributes": True, "populate_by_name": True}
-    charts_state: TVChartsState | None = None
-    settings: dict[str, Any] | None = None
+class CopilotModelGrant(BaseModel):
+    """A model of a Copilot agent."""
+
+    model_config = main_config
+    agent_id: str = Field(min_length=1, max_length=255)
+    model_id: str = Field(min_length=1, max_length=255)
 
 
-class UserProSchema(BaseModel):
-    "A schema for the user pro"
+class McpGrant(BaseModel):
+    """An MCP server, or one of its tools (`*` for all of them)."""
+
+    model_config = main_config
+    server_url: str = Field(min_length=1, max_length=400)
+    tool_name: str = Field(default=ALL_MCP_TOOLS, min_length=1, max_length=200)
+
+    @field_validator("server_url")
+    @classmethod
+    def normalize_url(cls, value: str) -> str:
+        return normalize_mcp_url(value)
+
+
+class RoleCopilotAccess(BaseModel):
+    """The Copilot models and MCP tools that a role grants. Empty lists grant nothing and
+    leave the user's access to that kind unrestricted."""
+
+    model_config = main_config
+    models: list[CopilotModelGrant] = Field(default_factory=list)
+    mcp: list[McpGrant] = Field(default_factory=list)
+
+
+class CopilotAccess(RoleCopilotAccess):
+    """What a user may use: the union of what their roles grant."""
+
+    models_restricted: bool = False
+    mcp_restricted: bool = False
+
+
+class CopilotToolRef(BaseModel):
+    model_config = main_config
+    url: str
+    tool_name: str
+
+
+class CopilotAuthorize(BaseModel):
+    """A Copilot request, as the service that serves the Copilot is about to run it."""
+
+    model_config = main_config
+    agent_id: str | None = None
+    model: str | None = None
+    tools: list[CopilotToolRef] = Field(default_factory=list)
+
+
+class CopilotAuthorizeResult(BaseModel):
+    model_config = main_config
+    allowed: bool
+    denied_model: str | None = None
+    denied_tools: list[CopilotToolRef] = Field(default_factory=list)
+
+
+class AppUserSchema(BaseModel):
+    "A schema for the user of the app"
 
     model_config = {"from_attributes": True, "populate_by_name": True}
 
@@ -1602,10 +1166,6 @@ class UserProSchema(BaseModel):
     password: str
     latest_version: str | None = None
     permissions_uuid: None | UUID = None
-    pro_entitlements: ProEntitlements | None = None
-    pro_trial_end: None | datetime = None
-    pro_trial_renewals: None | int = None
-    pro_trial_extension: None | bool = None
     temporary_password: None | bool = None
     totp_secret: None | str = None
     totp_active: bool | None = None
@@ -1616,7 +1176,6 @@ class UserProSchema(BaseModel):
     name: str | None = None
     expiration_date: None | datetime = None
     role: str | None = None
-    welcome_screen: bool | None = None
     is_superuser: bool | None = None
     can_submit_marketplace: bool | None = None
 
@@ -1637,7 +1196,7 @@ class StoredFileSchema(BaseModel, extra="ignore"):  # type: ignore[call-arg]
             stored_file_uuid=self.uuid,
             original_file_name=self.original_file_name,
             extension=self.extension,
-            url=f"{settings.SELFURL}/pro/files/{self.uuid}.{self.extension}",
+            url=f"{settings.SELFURL}/app/files/{self.uuid}.{self.extension}",
             failed=self.failed,
         )
 
@@ -1727,7 +1286,6 @@ class UserAppShareReturn(BaseModel):
     permissions: None | base.PermissionEnum
     first_name: None | str
     last_name: None | str
-    is_invite: bool
 
 
 class UserAppsComplete(BaseModel):
@@ -1735,14 +1293,9 @@ class UserAppsComplete(BaseModel):
     owned: dict[UUID, UserAppReturn]
 
 
-class EnabledBundles(BaseModel):
-    enabled_bundles: list[str]
-    disabled_widgets: list[str] | None = None
-
-
 class EntitlementPost(BaseModel):
     model_config = main_config
-    tier: Literal["pro", "terminal"]
+    tier: Literal["full", "basic"]
 
 
 class EntitlementPut(EntitlementPost): ...  # type: ignore
@@ -1754,19 +1307,6 @@ class EntitlementPatch(EntitlementBase): ...  # type: ignore
 class ValidateAndSync(BaseModel):
     model_config = main_config
     feature_entitlements: EntitlementGet
-
-
-class TierPut(BaseModel):
-    model_config = main_config
-
-    tier: Literal["terminal"]
-
-
-class TierPutResponse(BaseModel):
-    model_config = main_config
-    entitlement: EntitlementGet
-    usage: EntitlementUsageGet
-    is_trial_entity: bool
 
 
 class SharedDashboardViewed(BaseModel):
@@ -1783,7 +1323,6 @@ class AuthData(BaseModel):
     model_config = main_config
 
     token: str | None = None
-    newsletter: bool | None = False
     version: None | str = None
 
 
@@ -1984,8 +1523,6 @@ class UserPermissions(BaseModel):
 
 class ThemeSettings(BaseModel):
     model_config = ConfigDict(extra="allow", from_attributes=True)
-    tableTheme: dict | None = None
-    chartTheme: dict | None = None
     appTheme: dict | None = None
 
 
@@ -1995,37 +1532,29 @@ class EntityThemeSettings(BaseModel):
     dark: ThemeSettings | None = None
 
 
-class ProToken(BaseModel, extra="ignore"):  # type: ignore[call-arg]
+class AppToken(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     uuid: UUID
     email: EmailStr
     access_token: str
     username: str | None
-    entitlements: ProEntitlements
     expiration_date: datetime
     temporary_password: bool
     force_2fa: bool
     entity_name: None | str
     entity_theme_settings: EntityThemeSettings
     role: None | str
-    is_trial_entity: bool
-    pro_trial_end: None | datetime
     show_changelog: bool
-    show_welcome_screen: bool | None = False
 
 
-class ProTokenWithContext(ProToken):
+class AppTokenWithContext(AppToken):
     copilot_chats: list["ChatInfo | Chat"] | None = None
     questions_history: list[str] | None = None
-    trading_view: TVStateResponse | None = None
     dash_sync: DashboardComplete | None = None
     user_apps: UserAppsComplete
     user_skills: list[SkillReturn] | None = None
-    user: ProUserReturn | None = None
+    user: AppUserReturn | None = None
     feature_entitlements: EntitlementGet | None = None
     can_submit_marketplace: bool = False
-    moved_to_developer: bool = False
-    enabled_widget_bundles: EnabledBundles | None = None
-    developer_onboarding_info: ProInfoDeveloper | None = None
     usage: EntitlementUsageGet | None = None
     custom_copilots: list[CustomCopilot] | None = None
     mcp_servers: list[MCPServer] | None = None

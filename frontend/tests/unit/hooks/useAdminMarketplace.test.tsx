@@ -19,8 +19,7 @@ const {
 }));
 
 vi.mock("~/api/adminMarketplace.api", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("~/api/adminMarketplace.api")>();
+  const actual = await importOriginal<typeof import("~/api/adminMarketplace.api")>();
   return {
     ...actual,
     transitionAdminApp: mockTransition,
@@ -121,7 +120,7 @@ describe("useAddWhitelist", () => {
     expect(mockShowNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         toastType: "error",
-        description: expect.stringContaining("create an OpenBB account"),
+        description: expect.stringContaining("create an Workspace account"),
       }),
     );
   });

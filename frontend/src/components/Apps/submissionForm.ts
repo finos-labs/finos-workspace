@@ -16,10 +16,7 @@ const optionalUrl = z
 /** Minimum number of gallery screenshots a listing must provide. */
 export const MIN_SCREENSHOTS = 2;
 
-/**
- * Fixed set of marketplace categories an app can be listed under. Mirrors the
- * categories on the public marketplace (payments.openbb.dev/marketplace/apps).
- */
+/** Fixed set of marketplace categories an app can be listed under. */
 export const APP_CATEGORIES = [
   "Sentiment",
   "Filings & Research",

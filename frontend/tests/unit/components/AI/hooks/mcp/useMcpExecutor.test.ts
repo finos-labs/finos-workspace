@@ -7,16 +7,9 @@
 
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CopilotErrorType } from "~/lib/state/copilot";
+import { type CopilotDataT, CopilotErrorType } from "~/lib/state/copilot";
 import type { McpConnection, McpServer } from "~/lib/state/mcpTools";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
-
-// Mock posthog
-vi.mock("posthog-js", () => ({
-  default: {
-    capture: vi.fn(),
-  },
-}));
 
 // Mock sonner toast
 vi.mock("sonner", () => ({
@@ -74,11 +67,13 @@ function setupStore(server: McpServer, connection?: McpConnection) {
  * The executor returns CopilotDataT[] where each item's content is a
  * JSON-stringified object with `error_type` and `content` fields.
  */
-function parseErrorPayload(result: any[]) {
+function parseErrorPayload(result: CopilotDataT[]) {
   expect(result).toHaveLength(1);
   const data = result[0];
   expect(data.items).toHaveLength(1);
-  return JSON.parse(data.items[0].content);
+  const [item] = data.items;
+  if (!("content" in item)) throw new Error("The result has no content");
+  return JSON.parse(item.content);
 }
 
 describe("useMcpExecutor", () => {
@@ -239,28 +234,6 @@ describe("useMcpExecutor", () => {
     });
   });
 
-  describe("error telemetry", () => {
-    it("should capture MCP_TOOL_EXECUTION_ERROR in posthog on error", async () => {
-      const posthog = await import("posthog-js");
-      const connection = createMockConnection({
-        callTool: vi.fn().mockRejectedValue(new Error("boom")),
-      });
-      setupStore(createMockServer(), connection);
-      const executeAgentTool = await getExecutor();
-
-      await executeAgentTool("server-1", "TestServer_some_tool", {});
-
-      expect(posthog.default.capture).toHaveBeenCalledWith(
-        "MCP_TOOL_EXECUTION_ERROR",
-        expect.objectContaining({
-          tool_name: "TestServer_some_tool",
-          server_id: "server-1",
-          error_message: "boom",
-        }),
-      );
-    });
-  });
-
   describe("invalid tool name format", () => {
     it("should throw when tool name has no underscore separator", async () => {
       const executeAgentTool = await getExecutor();
@@ -404,30 +377,6 @@ describe("useMcpExecutor", () => {
       expect(content).toContain("normal tool output");
       expect(content).not.toContain("isError");
     });
-
-    it("should still fire success telemetry for isError results (no throw)", async () => {
-      const posthog = await import("posthog-js");
-      const connection = createMockConnection({
-        callTool: vi.fn().mockResolvedValue({
-          isError: true,
-          content: [{ type: "text", text: "server-side failure" }],
-        }),
-      });
-      setupStore(createMockServer(), connection);
-      const executeAgentTool = await getExecutor();
-
-      await executeAgentTool("server-1", "TestServer_some_tool", {});
-
-      // With passthrough approach, the result is not thrown, so
-      // MCP_USE_MCP_SUCCESS fires (the call itself succeeded at transport level)
-      expect(posthog.default.capture).toHaveBeenCalledWith(
-        "MCP_USE_MCP_SUCCESS",
-        expect.objectContaining({
-          tool_name: "TestServer_some_tool",
-          server_id: "server-1",
-        }),
-      );
-    });
   });
 
   describe("successful tool execution", () => {
@@ -485,7 +434,7 @@ describe("useMcpExecutor", () => {
           source_info: expect.objectContaining({
             type: "widget",
             name: "Portfolio Iframe",
-            origin: "OpenBB Workspace",
+            origin: "Workspace",
             uuid: "iframe-widget-1",
             widget_id: "iframe-widget-1",
             description: "Returns current holdings",
@@ -504,23 +453,6 @@ describe("useMcpExecutor", () => {
           details: [{ "Account Id": "demo-account" }],
         }),
       ]);
-    });
-
-    it("should capture MCP_USE_MCP_SUCCESS in posthog on success", async () => {
-      const posthog = await import("posthog-js");
-      const connection = createMockConnection();
-      setupStore(createMockServer(), connection);
-      const executeAgentTool = await getExecutor();
-
-      await executeAgentTool("server-1", "TestServer_some_tool", {});
-
-      expect(posthog.default.capture).toHaveBeenCalledWith(
-        "MCP_USE_MCP_SUCCESS",
-        expect.objectContaining({
-          tool_name: "TestServer_some_tool",
-          server_id: "server-1",
-        }),
-      );
     });
   });
 });

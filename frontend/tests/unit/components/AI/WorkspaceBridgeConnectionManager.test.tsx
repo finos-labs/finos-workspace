@@ -24,12 +24,10 @@ const routeMock = vi.hoisted(() => ({
 
 vi.mock("~/lib/runtimeConfig", () => ({
   getConfig: () => ({
-    urls: { backend: "http://backend.test", ai: "", platform: "", database: "" },
+    urls: { backend: "http://backend.test", ai: "" },
     ui: { defaultTheme: "dark" },
     whiteLabel: {},
-    data: { packageDataEnabled: false, allowedDataVendors: [], allowedDbTypes: [] },
-    services: { cloudflareWorker: false },
-    copilot: { openbbCopilot: false },
+    copilot: { defaultCopilot: false },
   }),
 }));
 
@@ -192,7 +190,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
     } as AxiosResponse);
     useAuthStore.setState({
       user: {
-        email: "test@openbb.co",
+        email: "user@mail.test",
         username: "test",
         token: "session-token",
         entity_name: null,
@@ -232,7 +230,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
 
     await waitFor(() => {
       expect(apiClient.post).toHaveBeenCalledWith(
-        "/pro/workspace-mcp/bridge/session/start",
+        "/app/workspace-mcp/bridge/session/start",
         {
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
@@ -517,7 +515,7 @@ describe("WorkspaceBridgeConnectionManager", () => {
 
     await waitFor(() => {
       expect(apiClient.post).toHaveBeenLastCalledWith(
-        "/pro/workspace-mcp/bridge/session/start",
+        "/app/workspace-mcp/bridge/session/start",
         {
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-456",

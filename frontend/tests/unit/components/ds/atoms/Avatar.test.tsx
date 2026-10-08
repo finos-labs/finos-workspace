@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Avatar } from "~/components/ds/atoms/Avatar";
 
@@ -30,15 +31,21 @@ describe("Avatar", () => {
 });
 
 vi.mock("@radix-ui/react-avatar", () => ({
-  Root: ({ children, className }: any) => (
+  Root: ({ children, className }: { children?: ReactNode; className?: string }) => (
     <div data-testid="avatar-root" className={className}>
       {children}
     </div>
   ),
-  Image: ({ src, alt, className }: any) => (
-    <img src={src} alt={alt} className={className} />
-  ),
-  Fallback: ({ children, className }: any) => (
+  Image: ({
+    src,
+    alt,
+    className,
+  }: {
+    src?: string;
+    alt?: string;
+    className?: string;
+  }) => <img src={src} alt={alt} className={className} />,
+  Fallback: ({ children, className }: { children?: ReactNode; className?: string }) => (
     <div className={className}>{children}</div>
   ),
 }));

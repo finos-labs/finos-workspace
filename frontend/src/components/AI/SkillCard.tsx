@@ -81,7 +81,7 @@ export const SkillCard = memo(function SkillCard({
                 <button
                   type="button"
                   onClick={handleCopyContent}
-                  className="obb-small-navbar-btn"
+                  className="ws-small-navbar-btn"
                 >
                   <Icon id="clipboard-icon" className="size-3.5" />
                 </button>
@@ -92,7 +92,7 @@ export const SkillCard = memo(function SkillCard({
                   onClick={isDefault ? undefined : handleEdit}
                   disabled={isDefault}
                   className={cn(
-                    "obb-small-navbar-btn",
+                    "ws-small-navbar-btn",
                     isDefault && "opacity-40 cursor-not-allowed",
                   )}
                 >
@@ -103,7 +103,7 @@ export const SkillCard = memo(function SkillCard({
                 <button
                   type="button"
                   onClick={handleDelete}
-                  className="obb-small-navbar-btn"
+                  className="ws-small-navbar-btn"
                 >
                   <Icon id="trash-02" className="size-3.5" />
                 </button>

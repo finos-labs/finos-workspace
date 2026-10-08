@@ -20,10 +20,6 @@ vi.mock("~/components/AI/SkillsTab", () => ({
   SkillsTab: () => <div data-testid="skills-tab">SkillsTab content</div>,
 }));
 
-vi.mock("~/lib/constants", () => ({
-  inSnowflakeNativeApp: false,
-}));
-
 vi.mock("~/lib/utils", () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));

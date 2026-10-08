@@ -66,16 +66,16 @@ export default defineConfig(async ({ mode, command }) => {
           ...(ADDIN_NAME_SUFFIX
             ? [
                 {
-                  from: `id="CustomTab.Label" DefaultValue="OpenBB"`,
-                  to: `id="CustomTab.Label" DefaultValue="OpenBB ${ADDIN_NAME_SUFFIX}"`,
+                  from: `id="CustomTab.Label" DefaultValue="Workspace"`,
+                  to: `id="CustomTab.Label" DefaultValue="Workspace ${ADDIN_NAME_SUFFIX}"`,
                 },
                 {
-                  from: '<DisplayName DefaultValue="OpenBB Add-in for Excel',
-                  to: `<DisplayName DefaultValue="OpenBB Add-in for Excel ${ADDIN_NAME_SUFFIX}`,
+                  from: '<DisplayName DefaultValue="Workspace Add-in for Excel',
+                  to: `<DisplayName DefaultValue="Workspace Add-in for Excel ${ADDIN_NAME_SUFFIX}`,
                 },
                 {
-                  from: '<bt:String id="Functions.Namespace" DefaultValue="OBB" />',
-                  to: `<bt:String id="Functions.Namespace" DefaultValue="OBB${ADDIN_FUNCS_SUFFIX}" />`,
+                  from: '<bt:String id="Functions.Namespace" DefaultValue="WORKSPACE" />',
+                  to: `<bt:String id="Functions.Namespace" DefaultValue="WORKSPACE${ADDIN_FUNCS_SUFFIX}" />`,
                 }
               ]
             : []),

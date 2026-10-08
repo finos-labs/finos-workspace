@@ -4,7 +4,7 @@ import { SingleDatePicker } from "~/components/ui/SingleDatePicker";
 
 // Mock Calendar
 vi.mock("~/components/ui/Calendar", () => ({
-  Calendar: ({ onSelect }: any) => (
+  Calendar: ({ onSelect }: { onSelect: (date: Date) => void }) => (
     <div data-testid="mock-calendar">
       <button onClick={() => onSelect(new Date("2023-05-20"))}>Select date</button>
     </div>

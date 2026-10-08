@@ -22,7 +22,7 @@ export default function TOTPSetDialog({
   handleSubmit,
 }: {
   // Access token if this dialog should be shown, undefined to not show the dialog
-  open: undefined | string;
+  open: null | undefined | string;
   setOpen: (open: undefined | string) => void;
   onCancel: () => void;
   fromSettings?: boolean;
@@ -54,7 +54,7 @@ export default function TOTPSetDialog({
       const response = await fetch(`${getConfig().urls.backend}/totp/activate`, {
         method: "POST",
         body: JSON.stringify({ totp_token }),
-        headers: getHeaders(open),
+        headers: getHeaders(open ?? ""),
       });
       if (response.status === 200 && handleSubmit) await handleSubmit?.(totp_token);
 

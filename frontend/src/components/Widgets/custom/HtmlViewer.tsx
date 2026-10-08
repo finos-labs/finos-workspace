@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DraggableCard from "~/components/DraggableCard";
-import { getColumnDefs } from "~/components/General/Table/AgGridUtils";
-import { AgGridProvider, Table } from "~/components/General/Table/hooks";
-import { useWidgetParamsPositions } from "~/components/General/Table/NavBar/QueryParams";
-import { getTableData } from "~/components/General/Table/utils";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import { useWidgetContext } from "~/components/Widget.context";
+import { useWidgetParamsPositions } from "~/components/WidgetParams/QueryParams";
 import { useParamGroupBindings } from "~/components/Widgets/Helpers/useParamGroupBindings";
 import { type QueryOptions, useJsonData } from "~/lib/api";
 import { IFRAME_SRCDOC_SANDBOX_ATTRIBUTES } from "~/lib/constants";
@@ -14,13 +11,13 @@ import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn, triggerCustomEvent, useEventListener } from "~/lib/utils";
 import {
-  type OpenBBWidgetParamValue,
   parseIframeParamsMessage,
   stringifyParamValue,
   WIDGET_PARAM_MESSAGE_TYPES,
+  type WorkspaceWidgetParamValue,
 } from "~/types/iframeProtocol";
 
-const BRIDGE_TOKEN_FIELD = "openbbWidgetParamBridgeToken";
+const BRIDGE_TOKEN_FIELD = "widgetParamBridgeToken";
 const RAW_DATA_STALE_TIME = 0;
 
 function getWidgetParamBridgeToken(data: unknown) {
@@ -54,7 +51,7 @@ function injectWidgetParamBridge(html: string, token: string) {
 }
 
 function filterAllowedParams(
-  params: Record<string, OpenBBWidgetParamValue> | undefined,
+  params: Record<string, WorkspaceWidgetParamValue> | undefined,
   allowedParams: Set<string>,
 ) {
   return Object.fromEntries(
@@ -66,16 +63,16 @@ export default function HtmlViewer() {
   const allowJsExecution = getConfig().data.allowHtmlJsExecution;
   const { widget, widgetFromJSON, updateWidget } = useWidgetContext();
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const iframeBridgeTokenRef = useRef(`openbb-html-${crypto.randomUUID()}`);
+  const iframeBridgeTokenRef = useRef(`html-${crypto.randomUUID()}`);
   const iframeEventCleanupRef = useRef<(() => void) | null>(null);
-  const latestIframeParamsRef = useRef<Record<string, OpenBBWidgetParamValue>>({});
+  const latestIframeParamsRef = useRef<Record<string, WorkspaceWidgetParamValue>>({});
   const theme = useShallowThemeStore((s) => s.theme);
 
   // Static HTML mode: content stored directly in widget.storage.html (from copilot artifacts)
   const staticHtml: string | undefined = widget?.storage?.html;
   const isStaticMode = !!staticHtml;
 
-  const rawDataView: boolean = widget?.storage?.rawDataView;
+  const rawDataView = widget?.storage?.rawDataView ?? false;
   const hasRawFlag = widget?.raw;
 
   const setRawDataView = useCallback(
@@ -90,9 +87,9 @@ export default function HtmlViewer() {
     },
     [updateWidget],
   );
-  const [rawData, setRawData] = useState(null);
+  const [rawData, setRawData] = useState<unknown>(null);
 
-  const options = useMemo(() => {
+  const options = useMemo<QueryOptions<string>>(() => {
     const newParams = Object.fromEntries(
       Object.entries({
         ...(widget?.endpoint?.query ?? {}),
@@ -103,7 +100,7 @@ export default function HtmlViewer() {
     newParams.theme = theme;
 
     return {
-      url: widget.endpoint?.url,
+      url: widget.endpoint?.url ?? "",
       endpointHeaders: widget.endpoint?.headers ?? {},
       method: widget.endpoint?.method ?? "GET",
       params: newParams,
@@ -119,7 +116,7 @@ export default function HtmlViewer() {
             widget.refreshQuery ?? 0,
           ]
         : undefined,
-    } as QueryOptions;
+    };
   }, [
     widget.id,
     widget.runButton,
@@ -141,7 +138,7 @@ export default function HtmlViewer() {
   });
 
   const updateGroupedParams = useCallback(
-    (params: Record<string, OpenBBWidgetParamValue>) => {
+    (params: Record<string, WorkspaceWidgetParamValue>) => {
       updateGroupBindings(
         Object.fromEntries(
           Object.entries(params).map(([paramName, value]) => [
@@ -155,7 +152,7 @@ export default function HtmlViewer() {
   );
 
   const updateIframeParams = useCallback(
-    (params: Record<string, OpenBBWidgetParamValue>, refresh = false) => {
+    (params: Record<string, WorkspaceWidgetParamValue>, refresh = false) => {
       if (Object.keys(params).length === 0) return;
 
       updateWidget(
@@ -269,8 +266,8 @@ export default function HtmlViewer() {
     isLoading: htmlLoading,
     error: htmlError,
     dataUpdatedAt,
-  } = useJsonData(options, {
-    enabled: !(rawDataView || isStaticMode),
+  } = useJsonData<string>(options, {
+    enabled: !isStaticMode,
     staleTime: widget?.staleTime ?? 1000 * 60 * 15,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -278,25 +275,20 @@ export default function HtmlViewer() {
     retryDelay: 1000,
   });
 
-  const rawDataOptions = useMemo(() => {
-    if (!hasRawFlag) return options; // Return valid options even if not using raw
+  const rawDataOptions = useMemo<QueryOptions>(() => {
+    // The raw query is not run without the flag, but it still needs valid options.
+    const { queryKey: _queryKey, responseCb: _responseCb, ...baseOptions } = options;
+    if (!hasRawFlag) return baseOptions;
 
-    const baseOptions = { ...options };
-    baseOptions.params = {
-      ...baseOptions.params,
-      raw: true,
+    return {
+      ...baseOptions,
+      params: { ...baseOptions.params, raw: true },
+      asText: false, // Raw data should be JSON, not text
     };
-    baseOptions.asText = false; // Raw data should be JSON, not text
-    delete baseOptions.queryKey;
-
-    return baseOptions;
   }, [options, hasRawFlag]);
 
-  const {
-    isLoading: rawLoading,
-    data: rawDataResponse,
-    error: rawError,
-  } = useJsonData(rawDataOptions, {
+  // The raw data view sends `raw: true` to the backend; the widget keeps showing the HTML.
+  const { data: rawDataResponse } = useJsonData<unknown>(rawDataOptions, {
     enabled: (rawDataView && hasRawFlag) === true,
     staleTime: RAW_DATA_STALE_TIME,
     refetchOnWindowFocus: false,
@@ -306,9 +298,9 @@ export default function HtmlViewer() {
   });
 
   // In static mode, use the stored HTML directly; otherwise use fetched data
-  const data = isStaticMode ? staticHtml : rawDataView ? rawDataResponse : htmlData;
-  const isLoading = isStaticMode ? false : rawDataView ? rawLoading : htmlLoading;
-  const error = isStaticMode ? null : rawDataView ? rawError : htmlError;
+  const data = isStaticMode ? staticHtml : htmlData;
+  const isLoading = isStaticMode ? false : htmlLoading;
+  const error = isStaticMode ? null : htmlError;
   const iframeData = useMemo(
     () =>
       allowJsExecution && typeof data === "string"
@@ -319,7 +311,10 @@ export default function HtmlViewer() {
 
   useEffect(() => {
     if (rawDataResponse && hasRawFlag) {
-      const processedRawData = rawDataResponse?.results ?? rawDataResponse;
+      const processedRawData =
+        (typeof rawDataResponse === "object" && "results" in rawDataResponse
+          ? rawDataResponse.results
+          : undefined) ?? rawDataResponse;
       setRawData(processedRawData);
     } else if (!hasRawFlag) {
       setRawData(null);
@@ -342,28 +337,17 @@ export default function HtmlViewer() {
       <Tooltip message={`Switch to ${rawDataView ? "HTML" : "raw data"} view`}>
         <button
           onClick={() => setRawDataView(!rawDataView)}
-          className={cn("obb-small-navbar-btn", {
+          className={cn("ws-small-navbar-btn", {
             "bg-brand-main! text-white! hover:bg-brand-main!": !rawDataView,
           })}
           aria-label={`Switch to ${rawDataView ? "HTML" : "raw data"} view`}
           id="raw-data-toggle-button"
         >
-          <Icon id="plotly-icon" className="h-3.5 w-3.5" />
+          <Icon id="database-icon" className="h-3.5 w-3.5" />
         </button>
       </Tooltip>
     );
   }, [isStaticMode, hasRawFlag, rawDataView, setRawDataView]);
-
-  const tableNode = useMemo(() => {
-    if (!rawDataView) return null;
-    const rowData = getTableData(Array.isArray(rawData) ? rawData : [], widget);
-    const columnDefs = getColumnDefs(rowData, widget);
-    return (
-      <Table>
-        <AgGridProvider rowData={rowData} columnDefs={columnDefs} />
-      </Table>
-    );
-  }, [rawDataView, rawData, widget?.data?.table?.columnsDefs, widget?.data?.dataKey]);
 
   return (
     <DraggableCard
@@ -378,18 +362,16 @@ export default function HtmlViewer() {
       error={error || !data}
       errorMessage={widget?.external ? error?.message : "No results found"}
     >
-      {rawDataView && rawData
-        ? tableNode
-        : data && (
-            <iframe
-              ref={iframeRef}
-              srcDoc={iframeData}
-              className="w-full h-full border-0"
-              sandbox={allowJsExecution ? IFRAME_SRCDOC_SANDBOX_ATTRIBUTES : ""}
-              title={widget.name}
-              onLoad={attachIframeEventListeners}
-            />
-          )}
+      {data && (
+        <iframe
+          ref={iframeRef}
+          srcDoc={iframeData}
+          className="w-full h-full border-0"
+          sandbox={allowJsExecution ? IFRAME_SRCDOC_SANDBOX_ATTRIBUTES : ""}
+          title={widget.name}
+          onLoad={attachIframeEventListeners}
+        />
+      )}
     </DraggableCard>
   );
 }

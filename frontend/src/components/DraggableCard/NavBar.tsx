@@ -2,7 +2,6 @@ import { InfoCircledIcon } from "@radix-ui/react-icons";
 import dayjs from "dayjs";
 import { toPng } from "html-to-image";
 import { cloneDeep } from "lodash";
-import posthog from "posthog-js";
 import {
   forwardRef,
   isValidElement,
@@ -15,12 +14,10 @@ import {
   useMemo,
   useRef,
 } from "react";
-import { toast } from "sonner";
 import { useDebounceValue } from "usehooks-ts";
 import { useCopilotAvailable } from "~/components/AI/hooks/useCopilotAvailable";
 import useIsMobile from "~/hooks/useIsMobile";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { IMAGE_FILE_EXTENSIONS, inSnowflakeNativeApp } from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
 import { useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
@@ -29,12 +26,9 @@ import { useShallowThemeStore } from "~/lib/state/theme";
 import {
   cn,
   dispatchRunParams,
-  getCellOnClickParams,
   getCleanWidgetId,
   getWidgetDataSource,
   getWidgetInfo,
-  isOmniType,
-  isSSRMType,
   useEventListener,
 } from "~/lib/utils";
 import {
@@ -50,10 +44,10 @@ import {
 import { linkifyText } from "~/utils/linkifyText";
 import EllipsisDropdownMenu from "../EllipsisDropdown";
 import FunctionsDialog from "../FunctionsDialogDraggableCard";
-import { TOTAL_CELL_LIMIT } from "../General/Table/AgGrid";
 import Icon from "../Icon";
 import type { IconId } from "../Icon.types";
 import { MetadataDialog } from "../MetadataDialogDraggableCard";
+import type { EllipsisSettings } from "../MoveToDropDown/types";
 import { ParametersDialog } from "../ParametersDialogDraggableCard";
 import { SettingsDialog } from "../SettingsDialogDraggableCard";
 import Tooltip from "../Tooltip";
@@ -87,7 +81,7 @@ export type ExtraAction = {
   hide?: boolean;
   tooltipMessage?: string;
   disabled?: boolean;
-  showId?: string;
+  showId?: keyof EllipsisSettings;
 };
 
 export type ExtraActionT = ExtraAction & { children?: ExtraAction[] };
@@ -101,7 +95,7 @@ export interface NavBarProps {
   refreshButtonType?: "timer" | "run";
   title?: string;
   loading?: boolean;
-  lastUpdated?: number;
+  lastUpdated?: number | null;
   showClose?: boolean;
   showEllipsisMenu?: boolean;
   disableRetrievalForCopilot?: boolean;
@@ -132,7 +126,6 @@ export interface NavBarProps {
     showExport?: boolean;
     showMaximize?: boolean;
     showMove?: boolean;
-    showCopyToClipboard?: boolean;
     showMinimize?: boolean;
     overrideSettings?: boolean;
   };
@@ -152,7 +145,7 @@ export function timeUntilStale(updatedAt: number, staleTime?: number): number {
 
 export function RefreshButton(props: {
   runButton: boolean;
-  lastUpdated?: number;
+  lastUpdated?: number | null;
   disabled?: boolean;
 }) {
   const {
@@ -164,10 +157,10 @@ export function RefreshButton(props: {
   const { runButton, lastUpdated, disabled = false } = props;
 
   const [state, dispatch] = useStateReducer({
-    staleParams: widgetRef?.current?.storage?.ssrmDisabled,
+    staleParams: false,
     isStale: false,
     fromNow: lastUpdated && dayjs(lastUpdated).fromNow(),
-    showStalePulse: !(isOmniType(widgetType) || isSSRMType(widgetType)),
+    showStalePulse: true,
   });
   const hadError = !(lastUpdated || state.staleParams);
 
@@ -199,7 +192,7 @@ export function RefreshButton(props: {
 
   const onClick = useCallback(() => {
     if (runButton) {
-      dispatchRunParams(widgetUUid);
+      if (widgetUUid) dispatchRunParams(widgetUUid);
       if (!hadError) return;
     }
     updateWidget((prev) => ({ ...prev, refreshQuery: Date.now() }));
@@ -208,7 +201,7 @@ export function RefreshButton(props: {
   const tooltipMessage = useMemo(() => {
     const dataUpdateFooter = <DataUpdateTooltipFooter />;
 
-    // runButton takes precedence - used by OmniWidget and AgGridSSRMAdvanced
+    // runButton takes precedence
     if (runButton) {
       return (
         <div>
@@ -220,17 +213,6 @@ export function RefreshButton(props: {
               Last run: {dayjs(lastUpdated).format("MMM D, YYYY, h:mm A")}
             </div>
           ) : null}
-          {dataUpdateFooter}
-        </div>
-      );
-    }
-
-    if (isSSRMType(widgetType)) {
-      return (
-        <div>
-          <div className="flex items-center gap-1">
-            <span>Click to refresh the table</span>
-          </div>
           {dataUpdateFooter}
         </div>
       );
@@ -267,7 +249,7 @@ export function RefreshButton(props: {
     <Tooltip message={tooltipMessage} hide={isMobile}>
       {runButton ? (
         <button
-          className={cn("size-[18px] obb-small-navbar-btn", {
+          className={cn("size-[18px] ws-small-navbar-btn", {
             "opacity-40 cursor-not-allowed": disabled,
             "pulse-box-shadow": state.staleParams && state.showStalePulse,
           })}
@@ -277,7 +259,7 @@ export function RefreshButton(props: {
           <Icon id="play-square" className="size-3.5" />
         </button>
       ) : (
-        <button className="obb-small-navbar-btn" onClick={onClick} disabled={disabled}>
+        <button className="ws-small-navbar-btn" onClick={onClick} disabled={disabled}>
           <Icon
             id="timer-icon"
             className={cn("h-4 w-4", {
@@ -324,15 +306,19 @@ export function CopilotButton({ aiEnabled }: { aiEnabled?: boolean }) {
   const { addAction } = useShallowCopilotStore((s) => ({
     addAction: s.addAction,
   }));
-  const preventDragStart = useCallback((e) => e.stopPropagation(), []);
+  const preventDragStart = useCallback(
+    (e: { stopPropagation: () => void }) => e.stopPropagation(),
+    [],
+  );
 
   const selectWidget = useCallback(() => {
     const widget = widgetRef.current;
     if (widget?.id) {
-      const aiData = getDashboardWidgetData(widget?.id)?.data || [];
-      const columnCount = Object.keys(aiData?.[0] || {}).length;
+      const data = getDashboardWidgetData(widget?.id)?.data;
+      const aiData: unknown[] = Array.isArray(data) ? data : [];
+      const columnCount = Object.keys(aiData[0] ?? {}).length;
 
-      if (columnCount * aiData?.length > TOTAL_CELL_LIMIT)
+      if (columnCount * aiData.length > TOTAL_CELL_LIMIT)
         return showNotification({
           message: "Widget Data Too Large",
           description: `The widget data is too large to be used as context.
@@ -346,23 +332,6 @@ export function CopilotButton({ aiEnabled }: { aiEnabled?: boolean }) {
       } else {
         addAction(`Added widget ${widget.id} to explicit context`);
       }
-      if (posthog) {
-        const fileType =
-          widget?.connectionType === "file" && widget?.endpoint?.url?.split(".").pop();
-        const fileExtension = fileType ? `.${fileType}` : "";
-        let eventName = "added_widget_as_context";
-        if (fileExtension) {
-          if (fileExtension === ".pdf") eventName = "added_pdf_as_context";
-          else if (IMAGE_FILE_EXTENSIONS.includes(fileExtension))
-            eventName = "added_image_as_context";
-        }
-
-        posthog.capture(eventName, {
-          widget_name: widget?.widgetId,
-          widget_external: widget?.external,
-          widget_type: widget?.type,
-        });
-      }
     }
   }, [widgetRef, toggleSelectedWidget, getDashboardWidgetData, isSelected, addAction]);
 
@@ -370,7 +339,7 @@ export function CopilotButton({ aiEnabled }: { aiEnabled?: boolean }) {
     () => (
       <Tooltip message={tooltipMessage} hide={isMobile}>
         <button
-          className={cn("obb-small-navbar-btn", {
+          className={cn("ws-small-navbar-btn", {
             "pulse-box-shadow bg-brand-main! text-white": isSelected,
           })}
           onClick={selectWidget}
@@ -380,7 +349,7 @@ export function CopilotButton({ aiEnabled }: { aiEnabled?: boolean }) {
         >
           <Icon
             id={`message-plus${disabled ? "-square" : ""}`}
-            className={disabled && "text-light-300 dark:text-dark-300"}
+            className={disabled ? "text-light-300 dark:text-dark-300" : undefined}
           />
         </button>
       </Tooltip>
@@ -389,7 +358,7 @@ export function CopilotButton({ aiEnabled }: { aiEnabled?: boolean }) {
   );
 }
 
-const widgetDescriptionRegex = /database.*|snowflake.*|file-.*|rich_note/;
+const widgetDescriptionRegex = /file-.*/;
 
 const DefaultSettings = {
   showMetadata: true,
@@ -402,24 +371,16 @@ const DefaultSettings = {
   showMaximize: true,
   showMove: true,
   showSchema: true,
-  showCopyToClipboard: false,
 } as const;
 
-const ValidWidgetIds = [
-  "iframe",
-  "youtube",
-  "rich_note",
-  "rss_viewer",
-  "ag_grid_file",
-  "copilot_table",
-  "ag_chart",
-  "ag_chart_from_table",
-];
-const ValidConnectionTypes = ["single", "snowflake", "database"];
+const ValidWidgetIds = ["iframe", "file"];
+
+// Widget data larger than this many cells is not sent to the Copilot as context
+const TOTAL_CELL_LIMIT = 500_000;
 
 const showMinimizeWidgetFF = getConfig().ui.showMinimizeWidget;
 
-function onWidgetMinimized(isMinimized: boolean, widgetId: string) {
+function onWidgetMinimized(isMinimized: boolean, widgetId: string | undefined) {
   const elements = document.querySelectorAll(
     `[data-widget-id='${widgetId}'] .react-resizable-handler`,
   ) as NodeListOf<HTMLElement>;
@@ -433,7 +394,7 @@ const DataUpdateTooltipFooter = memo(
     lastUpdated,
     showDivider = true,
   }: {
-    lastUpdated?: number;
+    lastUpdated?: number | null;
     showDivider?: boolean;
   }) => {
     const schedule = useWidgetContext().widget?.dataUpdateDisplay;
@@ -570,7 +531,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
       shouldCollapseFromOverflow: false,
     });
 
-    const isMinimizedRef = useRef<boolean>(state.isMinimized);
+    const isMinimizedRef = useRef<boolean | undefined>(state.isMinimized);
 
     // Ref for overflow detection - measure the middle spacer
     const middleSpacerRef = useRef<HTMLDivElement>(null);
@@ -586,7 +547,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
         updateWidget((prev) => ({ ...prev, isMinimized: false }));
         dispatch({ isMinimized: false });
       }
-      onWidgetMinimized(state.isMinimized, widgetRef?.current?.id);
+      onWidgetMinimized(Boolean(state.isMinimized), widgetRef?.current?.id);
     }, [isResizing]);
 
     const { removeWidget, minimizeWidget } = useShallowAppStore((state) => ({
@@ -594,7 +555,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
       minimizeWidget: state.minimizeWidget,
     }));
 
-    const preventDragStart = useCallback((e) => {
+    const preventDragStart = useCallback((e: { stopPropagation: () => void }) => {
       e.stopPropagation();
     }, []);
 
@@ -672,33 +633,17 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
       useMemo(() => {
         const widget = widgetRef?.current;
         const widgetSource = getWidgetDataSource(widget)?.toString();
-        let source = widgetSource || widgetFromJSON?.source || widget?.source;
-
-        // For copilot_table widgets, clear the source to avoid showing "OpenBB Workspace" in top right
-        if (widget?.widgetId?.startsWith("copilot_table")) {
-          source = "";
-        }
+        const source = widgetSource || widgetFromJSON?.source || widget?.source;
 
         const description = widgetDescriptionRegex.test(widget?.widgetId || "")
           ? widget?.description
           : widgetFromJSON?.description || widget?.description || "";
 
-        let backend: string;
-        if (
-          widget?.widgetId?.startsWith("rich_note") ||
-          widget?.widgetId === "rss_viewer" ||
-          widget?.widgetId === "ag_grid_file" ||
-          widget?.widgetId?.startsWith("copilot_table") ||
-          widget?.widgetId === "iframe"
-        ) {
-          backend = "OpenBB Workspace";
-        } else {
-          backend = widget?.external
-            ? widget?.connectionType === "advanced-backend"
-              ? widget?.sourceName || "Unknown"
-              : "OpenBB API"
-            : "OpenBB Sandbox";
-        }
+        const backend = widget?.external
+          ? widget?.connectionType === "advanced-backend"
+            ? widget?.sourceName || "Unknown"
+            : "Workspace API"
+          : "Workspace";
 
         const category = widget?.category || widgetFromJSON?.category;
         const subCategory = widget?.subCategory || widgetFromJSON?.subCategory;
@@ -721,7 +666,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
       ]);
 
     const createdAt = widgetRef?.current?.storage?.createdAt;
-    const lastEdited = widgetRef?.current?.storage?.lastEdited;
 
     const handleSettingsModal = useCallback(
       (value: boolean) => {
@@ -738,54 +682,42 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
       [dispatch],
     );
 
-    const handleClose = useCallback(
-      (_e: any) => {
-        if (!widgetRef?.current?.id) return;
-        if (!activeDashboardId) return;
-        if (isShared) return;
+    const handleClose = useCallback(() => {
+      if (!widgetRef?.current?.id) return;
+      if (!activeDashboardId) return;
+      if (isShared) return;
 
-        const closeWidget = () => {
-          const widgetClone = cloneDeep(widgetRef.current);
+      const closeWidget = () => {
+        const widgetClone = cloneDeep(widgetRef.current);
 
-          onClose?.();
-          removeWidget(activeDashboardId, widgetRef?.current?.id);
+        onClose?.();
+        removeWidget(activeDashboardId, widgetRef?.current?.id);
 
-          showNotificationWithRememberMe({
-            id: `${NotificationId.WidgetRemoved}:${widgetClone.id}`,
-            message: "Widget Removed",
-            description:
-              "You can add the widget again by clicking on the plus icon on the bottom right corner of the screen.",
-            toastType: "info",
-            action: {
-              label: "Undo",
-              onClick: (dontShowAgain) => {
-                if (dontShowAgain) return;
-                // fixes validation issue with staleTime being 0
-                if (widgetClone.staleTime === 0) widgetClone.staleTime = undefined;
-
-                useAppStore.getState().addWidget(activeDashboardId, widgetClone);
-              },
-            },
-            cancel: {
-              label: "Close",
-              onClick: () => {},
-            },
-          });
-        };
-
-        const { chartSettingsOpen, chartView } = widgetRef?.current?.storage || {};
-        if (!(chartSettingsOpen && chartView?.enabled)) return closeWidget();
-
-        toast.warning("Chart settings are open", {
-          description: "Are you sure you want to close the widget?",
+        showNotificationWithRememberMe({
+          id: `${NotificationId.WidgetRemoved}:${widgetClone.id}`,
+          message: "Widget Removed",
+          description:
+            "You can add the widget again by clicking on the plus icon on the bottom right corner of the screen.",
+          toastType: "info",
           action: {
-            label: "Yes, Close",
-            onClick: closeWidget,
+            label: "Undo",
+            onClick: (dontShowAgain) => {
+              if (dontShowAgain) return;
+              // fixes validation issue with staleTime being 0
+              if (widgetClone.staleTime === 0) widgetClone.staleTime = undefined;
+
+              useAppStore.getState().addWidget(activeDashboardId, widgetClone);
+            },
+          },
+          cancel: {
+            label: "Close",
+            onClick: () => {},
           },
         });
-      },
-      [widgetRef, activeDashboardId, onClose],
-    );
+      };
+
+      closeWidget();
+    }, [widgetRef, activeDashboardId, onClose]);
 
     const settingsChildren = useMemo(
       () => settingsModalChildren,
@@ -795,20 +727,11 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
     const ellipsisSettings = useMemo(() => {
       const hasFunctions =
         !widgetRef?.current?.external &&
-        (widgetFromJSON?.excelDataFunction?.length > 0 ||
-          widgetFromJSON?.platformDataFunction?.length > 0);
-      const isOmniOrSSRMType =
-        isSSRMType(widgetFromJSON?.type) || isOmniType(widgetFromJSON?.type);
+        (widgetFromJSON?.excelDataFunction?.length ?? 0) > 0;
       const output = {
         ...settings,
-        showMetadata:
-          //settings?.showMetadata !== undefined &&
-          ValidWidgetIds.includes(cleanWidgetId) ||
-          isOmniOrSSRMType ||
-          // we enable metadata if its one of our widgets. this is a bit fragmented because in some
-          // places we add the connectionType to widgetId, and others we actually have the connectionType key,
-          // in the future we make sure we always have connectionType key
-          ValidConnectionTypes.includes(widgetRef?.current?.connectionType),
+        // we enable metadata if its one of our widgets
+        showMetadata: ValidWidgetIds.includes(cleanWidgetId),
         showSettings: settingsChildren === null ? false : settings.showSettings,
         showFunctions:
           settings?.showFunctions !== undefined && hasFunctions
@@ -817,9 +740,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
         showMinimize: shouldShowMinimizeButton,
       };
 
-      if (inSnowflakeNativeApp) {
-        output.showFunctions = false;
-      }
       return output;
     }, [
       Object.values(settings || {}),
@@ -844,7 +764,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                 const prevElementStyle = (element.cloneNode(true) as HTMLElement).style;
                 element.style.overflow = "hidden";
 
-                const prevChildrenStyles = [];
+                const prevChildrenStyles: string[] = [];
                 const children = element.querySelectorAll(
                   "*",
                 ) as NodeListOf<HTMLElement>;
@@ -865,7 +785,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                   .finally(() => {
                     element.style.overflow = prevElementStyle.overflow;
                     for (const child of children) {
-                      child.style.overflow = prevChildrenStyles.shift();
+                      child.style.overflow = prevChildrenStyles.shift() ?? "";
                     }
                   });
               }
@@ -879,10 +799,10 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
       const showLastUpdate =
         runButton ||
         Boolean(widget?.dataUpdateDisplay) ||
-        ![0, undefined].includes(lastUpdated);
+        (lastUpdated !== 0 && lastUpdated !== undefined);
       return {
         runButton,
-        showLastUpdate: showLastUpdate || isSSRMType(widgetFromJSON?.type),
+        showLastUpdate,
       };
     }, [refreshButtonType, lastUpdated, widgetRef, widgetFromJSON?.type]);
 
@@ -907,25 +827,22 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
 
     const elementBeforeTitle = useMemo(() => {
       if (props.elementBeforeTitle) return props.elementBeforeTitle;
-      if (!widgetFromJSON.external) return null;
-      const isOmniWidget = isOmniType(widgetFromJSON?.type);
+      if (!widgetFromJSON?.external) return null;
       const params = (widgetFromJSON?.params ?? []).filter(
         (p) =>
           p.type !== "form" &&
-          !(isOmniWidget && p.paramName === "prompt") &&
-          !(p.paramName === "query" && isSSRMType(widgetFromJSON?.type)) &&
           !(p.type === "endpoint" && p.roles?.includes("fileSelector")),
       );
 
       const paramGroups = widgetRef?.current?.paramGroups ?? {};
       const badgeParams = new Set(
-        getCellOnClickParams(widgetFromJSON).concat(
-          Object.keys(paramGroups).filter((groupId) => paramGroups[groupId]),
-        ),
+        Object.keys(paramGroups).filter((groupId) => paramGroups[groupId]),
       );
       const isBadgeParam = (param: (typeof params)[number]) =>
         badgeParams.has(param.paramName) ||
-        (param.type === "endpoint" && badgeParams.has(param.groupById));
+        (param.type === "endpoint" &&
+          param.groupById !== undefined &&
+          badgeParams.has(param.groupById));
       const row0ParamsRenderedBySharedRenderer =
         isValidElement<{ "data-widget-param-row"?: string }>(elementRightNextToTitle) &&
         elementRightNextToTitle.props?.["data-widget-param-row"] === "0";
@@ -933,7 +850,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
         ? params.filter((param) => !isBadgeParam(param))
         : params;
 
-      // Render one badge per hidden param that belongs to a group or cellOnClick groupBy target.
+      // Render one badge per hidden param that belongs to a group.
       const hiddenBadgeParams = paramsForFallback.filter(
         (p) => (p.row ?? 0) === 0 && !p.show && isBadgeParam(p),
       );
@@ -961,12 +878,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
       }
 
       return null;
-    }, [
-      widgetFromJSON.params,
-      widgetFromJSON?.data?.table?.columnsDefs,
-      elementRightNextToTitle,
-      props.elementBeforeTitle,
-    ]);
+    }, [widgetFromJSON?.params, elementRightNextToTitle, props.elementBeforeTitle]);
 
     const onMouseOver = useCallback(
       (controlsHovered: boolean) => () => dispatch({ controlsHovered }),
@@ -979,12 +891,8 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
     const shouldCollapse =
       showWidgetControlsEllipsis || state.shouldCollapseFromOverflow;
 
-    // Lock controls open when widget is selected or has an active control (chart view, editor)
-    const hasActiveControl =
-      isSelected ||
-      !!widgetRef?.current?.storage?.chartView?.enabled ||
-      !!widgetRef?.current?.storage?.isEditorExpanded;
-    const autoLocked = shouldCollapse && hasActiveControl;
+    // Lock controls open when the widget is selected
+    const autoLocked = shouldCollapse && isSelected;
     const controlsVisible =
       state.controlsHovered || state.controlsExpanded || controlsHovered || autoLocked;
 
@@ -1011,7 +919,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
               {showLastUpdate && (
                 <div className="flex-shrink-0">
                   <RefreshButton
-                    runButton={runButton}
+                    runButton={Boolean(runButton)}
                     lastUpdated={lastUpdated}
                     disabled={loading}
                   />
@@ -1076,25 +984,17 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                             </div>
                           )}
 
-                          {(createdAt || lastEdited) && (
+                          {createdAt && (
                             <div className="mt-2 text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90]">
-                              {createdAt && (
-                                <div>
-                                  Created:{" "}
-                                  {dayjs(createdAt).format("MMM D, YYYY, h:mm A")}
-                                </div>
-                              )}
-                              {lastEdited && (
-                                <div>
-                                  Last edited:{" "}
-                                  {dayjs(lastEdited).format("MMM D, YYYY, h:mm A")}
-                                </div>
-                              )}
+                              <div>
+                                Created:{" "}
+                                {dayjs(createdAt).format("MMM D, YYYY, h:mm A")}
+                              </div>
                             </div>
                           )}
                         </div>
                       ) : (
-                        <span>{linkifyText(description)}</span>
+                        <span>{linkifyText(description ?? "")}</span>
                       )
                     }
                   >
@@ -1169,7 +1069,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
               </div>
               {state.isFullscreen && (
                 <WidgetFullscreen
-                  widgetId={widgetRef?.current?.id}
+                  widgetId={widgetRef?.current?.id ?? ""}
                   open={state.isFullscreen}
                   setOpen={(value: boolean) => dispatch({ isFullscreen: value })}
                   header={
@@ -1196,7 +1096,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                 <SettingsDialog
                   open={state.settingsModal || openSettings}
                   setOpen={handleSettingsModal}
-                  title={name}
+                  title={name ?? ""}
                   children={settingsChildren}
                   showActionsSettings={showActionsSettings}
                   extraActions={extraActions}
@@ -1208,8 +1108,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                 <FunctionsDialog
                   open={state.functionsModal}
                   setOpen={(value: boolean) => dispatch({ functionsModal: value })}
-                  // @ts-expect-error - ignored for now
-                  title={name}
                 />
               )}
               {!isMobile && (
@@ -1248,7 +1146,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
               {!isMobile && shouldCollapse && (
                 <button
                   className={cn(
-                    "obb-small-navbar-btn flex items-center justify-center",
+                    "ws-small-navbar-btn flex items-center justify-center",
                     {
                       "bg-brand-main! hover:bg-brand-main!": state.controlsExpanded,
                     },
@@ -1290,10 +1188,9 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                     onClick={handleClose}
                     onMouseDown={preventDragStart} // Prevent dragging when this button is used
                     onTouchStart={preventDragStart} // For touch devices
-                    className={cn(
-                      "ignore-select-widget obb-small-navbar-btn relative",
-                      { "opacity-40 cursor-not-allowed": isShared },
-                    )}
+                    className={cn("ignore-select-widget ws-small-navbar-btn relative", {
+                      "opacity-40 cursor-not-allowed": isShared,
+                    })}
                   >
                     <Icon id="cross-icon" className="w-4 h-4" />
                   </button>

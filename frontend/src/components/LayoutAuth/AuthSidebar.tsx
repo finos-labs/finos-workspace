@@ -22,7 +22,6 @@ import { cn } from "~/lib/utils";
 import { groupVariants } from "../ds/atoms/Input";
 import FeatureLock from "../General/FeatureLock";
 import Sidebar from "../General/Sidebar";
-import SnowflakeHide from "../General/SnowflakeHide";
 import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import { usePanelsState } from "./AppLayout/hooks/usePanelsState";
@@ -58,7 +57,7 @@ const TABS_LINKS: Record<string, TabLinkProps[]> = {
       id: "connections",
       href: "/app/connections",
       label: "Connections",
-      icon: "terminal-browser",
+      icon: "window-browser",
     },
   ],
   library: [
@@ -161,7 +160,7 @@ function AuthSidebar({ isMobile }: { isMobile?: boolean }) {
               setInitialSelectedSearchTab("widgets");
               changeSearch(true);
             }}
-            className="obb-navigation-item mx-auto rounded border border-[#DCDCDC]
+            className="ws-navigation-item mx-auto rounded border border-[#DCDCDC]
             bg-white hover:bg-light-50 dark:border-[#303038]
             dark:bg-[#212126] dark:hover:bg-[#202025]"
           >
@@ -197,8 +196,8 @@ function TabLink(props: TabLinkProps) {
 
   const classNameCb = useCallback(
     (props: NavLinkRenderProps) =>
-      cn("obb-navigation-item @max-[100px]:h-8 @max-[100px]:w-8! ", {
-        "obb-navigation-item-active text-light-800 dark:text-light-100": props.isActive,
+      cn("ws-navigation-item @max-[100px]:h-8 @max-[100px]:w-8! ", {
+        "ws-navigation-item-active text-light-800 dark:text-light-100": props.isActive,
       }),
     [],
   );
@@ -277,11 +276,9 @@ function LinksNav() {
             <TabLink key={`auth-link-${link.id}`} {...link} />
           ))}
 
-          <SnowflakeHide>
-            {TABS_LINKS.connections.map((link) => (
-              <TabLink key={`auth-link-${link.id}`} {...link} />
-            ))}
-          </SnowflakeHide>
+          {TABS_LINKS.connections.map((link) => (
+            <TabLink key={`auth-link-${link.id}`} {...link} />
+          ))}
         </div>
 
         <SidebarSection className="mt-4" id="library" title="Library">
@@ -369,8 +366,8 @@ function useResizeObserver(
 }
 
 const calculateHeights = (
-  sidebarRef?: MutableRefObject<HTMLDivElement | null>,
-  dispatch?: StateDispatch<ResizeObserverState>,
+  sidebarRef: MutableRefObject<HTMLDivElement | null>,
+  dispatch: StateDispatch<ResizeObserverState>,
 ) => {
   const container = sidebarRef.current;
   if (!container) return;
@@ -380,7 +377,7 @@ const calculateHeights = (
   const sharedDashboardsSection = container.querySelector(
     '[data-section="shared-dashboards"]',
   );
-  const dividers = container.querySelectorAll(".obb-divider");
+  const dividers = container.querySelectorAll(".ws-divider");
 
   let totalDividerHeight = 0;
   dividers.forEach((divider) => {
@@ -496,7 +493,7 @@ type SharedDashboardsProps = {
 function SharedDashboards(props: SharedDashboardsProps) {
   const { maxHeight } = props;
   const hasSharedItems = useShallowSharedAppStore(
-    (state) => Object.keys(state.sharedItems).length > 0,
+    (state) => Object.keys(state.sharedItems ?? {}).length > 0,
   );
   const { expandedShared, expandedMyDashboards } = useShallowSidebarStore((state) => ({
     expandedShared: state.expandedShared,

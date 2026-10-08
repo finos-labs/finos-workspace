@@ -7,12 +7,12 @@ const mockState = vi.hoisted(() => {
     widget_id: "global_widget",
     name: "Global Widget",
     description: "Global widget description",
-    origin: "OpenBB Sandbox",
+    origin: "Sandbox",
     params: [],
   };
   const selectedCopilot = {
-    id: "openbb-copilot",
-    name: "OpenBB Copilot",
+    id: "default-copilot",
+    name: "Copilot",
     endpoints: { query: "https://ada.example/v1/query" },
     features: {
       "widget-global-search": true,
@@ -27,13 +27,11 @@ const mockState = vi.hoisted(() => {
     selectedCopilot,
     extraWidgetsEnabled: false,
     generativeUiEnabled: true,
-    temporaryWidgets: [] as any[],
+    temporaryWidgets: [] as CopilotWidget[],
   };
 });
 
-vi.mock("posthog-js", () => ({ default: { capture: vi.fn() } }));
 vi.mock("react-router-dom", () => ({ useParams: () => ({ id: "dashboard-1" }) }));
-vi.mock("~/components/AI/Artifact", () => ({ isSnowflakeArtifact: () => false }));
 vi.mock("~/components/AI/hooks/useGetCopilotRequestHeaders", () => ({
   useGetCopilotRequestHeaders: () => () => ({ Authorization: "Bearer token" }),
 }));
@@ -59,15 +57,11 @@ vi.mock("~/lib/constants", () => ({
   MAX_COPILOT_LINKS: 4,
 }));
 vi.mock("~/lib/state/auth", () => ({
-  useShallowAuthStore: (selector: (state: any) => any) =>
+  useShallowAuthStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ user: { token: "token" } }),
 }));
-vi.mock("~/lib/state/backendConnector", () => ({
-  useShallowBackendConnectorStore: (selector: (state: any) => any) =>
-    selector({ semanticViews: undefined }),
-}));
 vi.mock("~/lib/state/copilot", () => ({
-  useShallowCopilotStore: (selector: (state: any) => any) =>
+  useShallowCopilotStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       selectedCopilot: mockState.selectedCopilot,
       getCurrentChat: () => ({ id: "chat-1" }),
@@ -77,7 +71,7 @@ vi.mock("~/lib/state/copilot", () => ({
     }),
 }));
 vi.mock("~/lib/state/copilotData", () => ({
-  useShallowCopilotDataStore: (selector: (state: any) => any) =>
+  useShallowCopilotDataStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       widgetSubsetData: [],
       extraWidgetsEnabled: mockState.extraWidgetsEnabled,
@@ -98,14 +92,16 @@ vi.mock("~/lib/state/copilotData", () => ({
     }),
 }));
 vi.mock("~/lib/state/mcpTools", () => ({
-  useShallowMcpToolsStore: (selector: (state: any) => any) =>
+  useShallowMcpToolsStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       getEnabledToolsForAgent: vi.fn(async () => []),
       getEnabledToolCount: () => 0,
     }),
 }));
 vi.mock("~/lib/state/skillsLibrary", () => ({
-  useShallowSkillsLibraryStore: (selector: (state: any) => any) =>
+  useShallowSkillsLibraryStore: (
+    selector: (state: Record<string, unknown>) => unknown,
+  ) =>
     selector({
       getSkillsCatalog: () => [],
       getSkillBySlug: () => undefined,
@@ -115,6 +111,7 @@ vi.mock("~/lib/state/skillsLibrary", () => ({
 vi.mock("~/lib/utils", () => ({ extractUrlsFromText: () => [] }));
 
 import { useAiFetchRequestInit } from "~/components/AI/hooks/useAiFetchRequestInit";
+import type { CopilotWidget } from "~/lib/state/copilot";
 
 async function getPayloads() {
   const { result } = renderHook(() => useAiFetchRequestInit());
@@ -139,7 +136,7 @@ async function getPayloads() {
 // Chat attachments become temporary widgets without a `uuid` (only `widget_id`),
 // mirroring useGetCopilotWidgets' temporaryWidgets.
 const makeAttachmentWidget = (uuid: string, name: string) => ({
-  origin: "OpenBB Hub",
+  origin: "the backend",
   widget_id: `file-${uuid}`,
   name,
   description: name,

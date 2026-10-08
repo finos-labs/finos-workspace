@@ -78,7 +78,7 @@ export function RoleDialog(props: Props) {
   useEffect(() => {
     if (usersData.length === 0) return;
     const transformedUsers = usersData
-      .filter((user) => user.source !== "takeover" && user.permissions_uuid)
+      .filter((user) => user.permissions_uuid)
       .map((user) => ({
         name: user.fullName || `${user.first_name} ${user.last_name}`,
         email: user.email,
@@ -185,7 +185,7 @@ export function RoleDialog(props: Props) {
     setDeleteConfirmOpen(false);
   }, [deleteMutation.mutateAsync, initialData]);
 
-  const users = form.watch("users");
+  const users = form.watch("users") ?? [];
 
   // Track the AddUsersSelect dropdown's open state. Close intents fired while
   // the dropdown is open (or in the same event window where the dropdown is
@@ -379,7 +379,7 @@ export function RoleDialog(props: Props) {
                             >
                               <div className="flex items-center gap-2.5 flex-1">
                                 <div
-                                  className="obb-avatar-user"
+                                  className="ws-avatar-user"
                                   style={{
                                     backgroundColor: user.color,
                                   }}

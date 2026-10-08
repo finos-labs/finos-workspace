@@ -10,17 +10,8 @@ vi.mock("~/api/auth.api", () => ({
   validateUser: vi.fn(),
 }));
 
-// Mock react-router-dom's useNavigate
-const mockNavigate = vi.fn();
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
-
 import { validateUser } from "~/api/auth.api";
+import { partial } from "../mocks";
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <MemoryRouter>{children}</MemoryRouter>
@@ -35,7 +26,6 @@ describe("usePrivateRoute", () => {
     // Reset auth store to logged out state
     useAuthStore.setState({
       user: null,
-      needsOnboarding: false,
       logout: mockLogout,
     });
   });
@@ -75,13 +65,12 @@ describe("usePrivateRoute", () => {
     beforeEach(() => {
       useAuthStore.setState({
         user: mockUser,
-        needsOnboarding: false,
         logout: mockLogout,
       });
     });
 
     it("should call validateUser when shouldValidate is true", async () => {
-      (validateUser as any).mockResolvedValue({ success: true });
+      vi.mocked(validateUser).mockResolvedValue(partial({ success: true }));
 
       renderHook(() => usePrivateRoute(true), { wrapper });
 
@@ -97,7 +86,7 @@ describe("usePrivateRoute", () => {
     });
 
     it("should not logout when token is valid", async () => {
-      (validateUser as any).mockResolvedValue({ success: true });
+      vi.mocked(validateUser).mockResolvedValue(partial({ success: true }));
 
       renderHook(() => usePrivateRoute(true), { wrapper });
 
@@ -109,7 +98,7 @@ describe("usePrivateRoute", () => {
     });
 
     it("should logout when token is invalid", async () => {
-      (validateUser as any).mockResolvedValue({ success: false });
+      vi.mocked(validateUser).mockResolvedValue(partial({ success: false }));
 
       renderHook(() => usePrivateRoute(true), { wrapper });
 
@@ -118,24 +107,8 @@ describe("usePrivateRoute", () => {
       });
     });
 
-    it("should navigate to onboarding when needsOnboarding and token invalid", async () => {
-      useAuthStore.setState({
-        user: mockUser,
-        needsOnboarding: true,
-        logout: mockLogout,
-      });
-
-      (validateUser as any).mockResolvedValue({ success: false });
-
-      renderHook(() => usePrivateRoute(true), { wrapper });
-
-      await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith("/onboarding");
-      });
-    });
-
     it("should logout when validateUser throws error", async () => {
-      (validateUser as any).mockRejectedValue(new Error("Network error"));
+      vi.mocked(validateUser).mockRejectedValue(new Error("Network error"));
 
       renderHook(() => usePrivateRoute(true), { wrapper });
 
@@ -159,7 +132,7 @@ describe("usePrivateRoute", () => {
         logout: mockLogout,
       });
 
-      (validateUser as any).mockResolvedValue({ success: true });
+      vi.mocked(validateUser).mockResolvedValue(partial({ success: true }));
 
       renderHook(() => usePrivateRoute(), { wrapper });
 
@@ -171,7 +144,7 @@ describe("usePrivateRoute", () => {
 
   describe("effect dependencies", () => {
     it("should re-run effect when user changes", async () => {
-      (validateUser as any).mockResolvedValue({ success: true });
+      vi.mocked(validateUser).mockResolvedValue(partial({ success: true }));
 
       const { rerender } = renderHook(() => usePrivateRoute(true), { wrapper });
 

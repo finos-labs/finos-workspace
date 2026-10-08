@@ -3,12 +3,14 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mockConfig } from "../../mocks/runtimeConfig";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import Settings from "~/routes/settings";
+import type { DisplaySettings } from "~/types/auth.type";
+import { makeAuthUser, makeItem } from "../factories";
+import { partial, stubStoreState } from "../mocks";
 
 const mockSetSearchParams = vi.fn();
 
@@ -34,7 +36,7 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("usehooks-ts", () => ({
-  useUpdateEffect: (effect: () => void, deps: any[]) => {
+  useUpdateEffect: (_effect: () => void, _deps: unknown[]) => {
     // Simple implementation that calls effect when deps change
   },
 }));
@@ -74,14 +76,6 @@ vi.mock("~/components/Settings/WidgetTab", () => ({
   default: () => <div data-testid="widget-tab">Widget Tab Content</div>,
 }));
 
-vi.mock("~/components/Settings/InvitesTab", () => ({
-  default: () => <div data-testid="invites-tab">Invites Tab Content</div>,
-}));
-
-vi.mock("~/components/Settings/NewsletterTab", () => ({
-  default: () => <div data-testid="newsletter-tab">Newsletter Tab Content</div>,
-}));
-
 vi.mock("~/components/Settings/AdvancedTab", () => ({
   default: () => <div data-testid="advanced-tab">Advanced Tab Content</div>,
 }));
@@ -91,7 +85,7 @@ vi.mock("~/components/Settings/SecurityTab", () => ({
 }));
 
 vi.mock("~/lib/utils", () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
 
 vi.mock("~/components/LayoutAuth/Skeleton/SettingsLayout", () => ({
@@ -99,12 +93,16 @@ vi.mock("~/components/LayoutAuth/Skeleton/SettingsLayout", () => ({
     children,
     title,
     tabs,
-  }: { children: ReactNode; title?: string; tabs?: any[] }) => (
+  }: {
+    children: ReactNode;
+    title?: string;
+    tabs?: { id: string; label?: ReactNode; disabled?: boolean }[];
+  }) => (
     <div data-testid="settings-layout">
       {title && <h1>{title}</h1>}
       {tabs && (
         <div role="tablist">
-          {tabs.map((tab: any) => (
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               role="tab"
@@ -146,7 +144,11 @@ vi.mock("@radix-ui/react-tabs", () => ({
     disabled,
     value,
     ...props
-  }: { children: ReactNode; disabled?: boolean; value: string }) => (
+  }: {
+    children: ReactNode;
+    disabled?: boolean;
+    value: string;
+  }) => (
     <button role="tab" disabled={disabled} data-value={value} {...props}>
       {children}
     </button>
@@ -159,43 +161,29 @@ vi.mock("@radix-ui/react-tabs", () => ({
 }));
 
 const setupMocks = (
-  options: {
-    tier?: "pro" | "terminal" | "enterprise";
-    hasAdminAccess?: boolean;
-  } = {},
+  options: { tier?: "full" | "basic"; hasAdminAccess?: boolean } = {},
 ) => {
-  const { tier = "pro", hasAdminAccess = false } = options;
+  const { tier = "full", hasAdminAccess = false } = options;
 
-  (useShallowFeatureFlagsStore as any).mockImplementation((selector: any) =>
-    selector({
-      featureFlags: {
-        tier,
-        admin_access: hasAdminAccess,
-      },
-    }),
-  );
+  stubStoreState(useShallowFeatureFlagsStore, {
+    featureFlags: {
+      tier,
+      admin_access: hasAdminAccess,
+    },
+  });
 
-  (useShallowThemeStore as any).mockImplementation((selector: any) =>
-    selector({
-      getDisplaySettings: vi.fn(() => ({
-        theme: "dark",
-        defaultTicker: { symbol: "AAPL", name: "Apple Inc." },
-      })),
-    }),
-  );
+  stubStoreState(useShallowThemeStore, {
+    getDisplaySettings: vi.fn(() => partial<DisplaySettings>({ theme: "dark" })),
+  });
 
-  (useShallowAuthStore as any).mockImplementation((selector: any) =>
-    selector({
-      user: { token: "mock-token" },
-    }),
-  );
+  stubStoreState(useShallowAuthStore, {
+    user: makeAuthUser({ token: "mock-token" }),
+  });
 
-  (useShallowAppStore as any).mockImplementation((selector: any) =>
-    selector({
-      hasItems: true,
-      rootItem: { id: "root" },
-    }),
-  );
+  stubStoreState(useShallowAppStore, {
+    hasItems: true,
+    rootItem: makeItem({ index: "root" }),
+  });
 };
 
 const renderSettings = () => {
@@ -210,7 +198,6 @@ describe("Settings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupMocks();
-    mockConfig.ui.showInviteButton = true;
   });
 
   describe("Rendering", () => {
@@ -226,7 +213,7 @@ describe("Settings", () => {
       expect(screen.getByTestId("general-tab")).toBeInTheDocument();
     });
 
-    it("renders all core tabs for pro tier", () => {
+    it("renders all core tabs for full tier", () => {
       renderSettings();
 
       expect(screen.getByRole("tab", { name: /general/i })).toBeInTheDocument();
@@ -236,46 +223,16 @@ describe("Settings", () => {
       expect(screen.getByRole("tab", { name: /security/i })).toBeInTheDocument();
     });
 
-    it("renders Invites tab when invite button FF is enabled and user is not admin", () => {
-      setupMocks({ tier: "pro", hasAdminAccess: false });
-      renderSettings();
-
-      expect(screen.getByRole("tab", { name: /invites/i })).toBeInTheDocument();
-    });
-
-    it("does not render Invites tab when user has admin access", () => {
-      setupMocks({ tier: "pro", hasAdminAccess: true });
-      renderSettings();
-
-      expect(screen.queryByRole("tab", { name: /invites/i })).not.toBeInTheDocument();
-    });
-
-    it("renders Newsletter tab for free tier users", () => {
-      setupMocks({ tier: "terminal" });
-      renderSettings();
-
-      expect(screen.getByRole("tab", { name: /newsletter/i })).toBeInTheDocument();
-    });
-
-    it("does not render Newsletter tab for pro tier users", () => {
-      setupMocks({ tier: "pro" });
-      renderSettings();
-
-      expect(
-        screen.queryByRole("tab", { name: /newsletter/i }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("disables Security tab for non-pro tier users", () => {
-      setupMocks({ tier: "terminal" });
+    it("disables Security tab for non-full tier users", () => {
+      setupMocks({ tier: "basic" });
       renderSettings();
 
       const securityTab = screen.getByRole("tab", { name: /security/i });
       expect(securityTab).toBeDisabled();
     });
 
-    it("enables Security tab for pro tier users", () => {
-      setupMocks({ tier: "pro" });
+    it("enables Security tab for full tier users", () => {
+      setupMocks({ tier: "full" });
       renderSettings();
 
       const securityTab = screen.getByRole("tab", { name: /security/i });
@@ -317,8 +274,8 @@ describe("Settings", () => {
       expect(advancedTab).toBeInTheDocument();
     });
 
-    it("switches to Security tab when clicked (pro tier)", async () => {
-      setupMocks({ tier: "pro" });
+    it("switches to Security tab when clicked (full tier)", async () => {
+      setupMocks({ tier: "full" });
       const user = userEvent.setup();
       renderSettings();
 
@@ -330,7 +287,7 @@ describe("Settings", () => {
     });
 
     it("does not navigate to Security tab when disabled", async () => {
-      setupMocks({ tier: "terminal" });
+      setupMocks({ tier: "basic" });
       const user = userEvent.setup();
       renderSettings();
 
@@ -350,58 +307,26 @@ describe("Settings", () => {
   });
 
   describe("Feature Flag Combinations", () => {
-    it("renders correct tabs for pro tier without admin access", () => {
-      setupMocks({ tier: "pro", hasAdminAccess: false });
+    it("renders correct tabs for full tier without admin access", () => {
+      setupMocks({ tier: "full", hasAdminAccess: false });
       renderSettings();
 
       expect(screen.getByRole("tab", { name: /general/i })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /layout/i })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /widget/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /invites/i })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /advanced/i })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /security/i })).not.toBeDisabled();
     });
 
-    it("renders correct tabs for terminal tier with admin access", () => {
-      setupMocks({ tier: "terminal", hasAdminAccess: true });
+    it("renders correct tabs for basic tier with admin access", () => {
+      setupMocks({ tier: "basic", hasAdminAccess: true });
       renderSettings();
 
       expect(screen.getByRole("tab", { name: /general/i })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /layout/i })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /widget/i })).toBeInTheDocument();
-      expect(screen.queryByRole("tab", { name: /invites/i })).not.toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /newsletter/i })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /advanced/i })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /security/i })).toBeDisabled();
-    });
-
-    it("renders correct tabs for enterprise tier", () => {
-      setupMocks({ tier: "enterprise" as any, hasAdminAccess: false });
-      renderSettings();
-
-      expect(screen.getByRole("tab", { name: /general/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /layout/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /widget/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /invites/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /advanced/i })).toBeInTheDocument();
-    });
-  });
-
-  describe("Invite Button Feature Flag", () => {
-    it("does not show Invites tab when showInviteButton is false", () => {
-      mockConfig.ui.showInviteButton = false;
-      setupMocks({ tier: "pro", hasAdminAccess: true });
-      renderSettings();
-
-      expect(screen.queryByRole("tab", { name: /invites/i })).not.toBeInTheDocument();
-    });
-
-    it("shows Invites tab when showInviteButton is true and not admin", () => {
-      mockConfig.ui.showInviteButton = true;
-      setupMocks({ tier: "pro", hasAdminAccess: false });
-      renderSettings();
-
-      expect(screen.getByRole("tab", { name: /invites/i })).toBeInTheDocument();
     });
   });
 });

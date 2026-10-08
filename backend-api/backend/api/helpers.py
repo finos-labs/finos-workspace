@@ -2,27 +2,25 @@
 
 import asyncio
 import contextlib
-import pickle  # noqa: S403
 import warnings
 from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta
 from typing import Literal
-from uuid import UUID, uuid4
+from uuid import UUID
 
-import requests
 from fastapi import HTTPException
 from httpx import AsyncClient
 from loguru import logger
 from pydantic.networks import IPvAnyAddress
 from rq.timeouts import JobTimeoutException
-from sqlalchemy import case, func, insert, select, update
+from sqlalchemy import case, func, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import base, models, schemas, worker_tasks
 from api.database import AsyncWriteSessionLocal
 from api.models import DashboardItem, Entity, EntityType, PermissionsEntityMap, User
-from routers import pro_helpers
+from routers import app_helpers
 from utilities import rq_results
 from utilities.config import settings
 
@@ -90,7 +88,7 @@ def refresh_usage_cache(user_uuid: UUID) -> None:
 def handle_add_login(
     user_uuid: UUID,
     ip_address: None | IPvAnyAddress,
-    source: None | Literal["terminal", "hub", "sdk", "pro", "oauth-hub", "excel"],
+    source: None | Literal["sdk", "app", "oauth-app", "excel"],
 ) -> None:
     try:
         rq_results.rq_que.enqueue(
@@ -108,7 +106,7 @@ def handle_add_login(
 async def check_first_login(
     db: AsyncSession,
     user_uuid: UUID,
-    sources: list[Literal["pro", "oauth-pro", "excel"]] | None = None,
+    sources: list[Literal["app", "oauth-app", "excel"]] | None = None,
 ) -> bool:
     """Check if the user is logging in for the first time"""
     query = (
@@ -150,10 +148,6 @@ def get_user_query(email: str):
         User.password,
         User.confirmed,
         User.username,
-        User.primary_usage,
-        User.wants_contacted,
-        User.created_date,
-        User.has_profile_url,
         User.totp_secret,
         User.totp_active,
         User.permissions_uuid,
@@ -162,7 +156,7 @@ def get_user_query(email: str):
     return select(*to_select).where(target == email, User.deleted.is_(False))  # type: ignore
 
 
-def get_user_pro_query(email: str):
+def get_app_user_query(email: str):
     query = (
         select(
             User.email,
@@ -172,15 +166,10 @@ def get_user_pro_query(email: str):
             User.password,
             User.latest_version,
             User.permissions_uuid,
-            User.pro_entitlements,
-            User.pro_trial_end,
-            User.pro_trial_renewals,
-            User.pro_trial_extension,
             User.temporary_password,
             User.totp_secret,
             User.totp_active,
             User.billing_active,
-            User.welcome_screen,
             User.two_factor_auth,
             User.is_superuser,
             User.can_submit_marketplace,
@@ -203,28 +192,7 @@ def get_user_pro_query(email: str):
     return query.where(User.username == email).limit(1)
 
 
-def get_openbb_contributors() -> list[str]:
-    r = settings.get_redis_session("pro")
-    existing = r.get("OPENBB_CONTRIBUTORS")
-    if existing:
-        return pickle.loads(existing)  # noqa: S301
-    per_page = 100
-    base_url = f"https://api.github.com/repos/OpenBB-finance/OpenBBTerminal/contributors?per_page={per_page}"
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
-    final_result: list[str] = []
-    page = 1
-    while True:
-        response = requests.get(f"{base_url}&page={page}", headers=headers, timeout=10)
-        temp = [x["login"] for x in response.json()]
-        final_result.extend(temp)
-        if len(temp) < per_page:
-            break
-        page += 1
-    r.set("OPENBB_CONTRIBUTORS", pickle.dumps(final_result), ex=60 * 60 * 24)
-    return final_result
+DEFAULT_ENTITY_TYPE_CODE = "DEF"
 
 
 async def get_or_create_entity_type(db: AsyncSession, code: str) -> UUID:
@@ -235,7 +203,7 @@ async def get_or_create_entity_type(db: AsyncSession, code: str) -> UUID:
     if response:
         return response.uuid
     create_query = insert(EntityType).values(
-        code=code, active=True, permission_hierarchy=0, entity_type="Trial"
+        code=code, active=True, permission_hierarchy=0, entity_type="Default"
     )
     return (await db.execute(create_query)).inserted_primary_key[0]
 
@@ -266,28 +234,28 @@ async def create_developer_mapping():
         try:
             # Check if entity already exists
             check_query = (
-                select(Entity.uuid).where(Entity.name == "OpenBB Developer").limit(1)
+                select(Entity.uuid).where(Entity.name == "Developer").limit(1)
             )
             response = (await db.execute(check_query)).scalar_one_or_none()
             if response:
                 return
 
-            entity_type_uuid = await get_or_create_entity_type(db, "OBB")
-            entity_uuid = await get_or_create_entity(
-                db, entity_type_uuid, "OpenBB Developer"
+            entity_type_uuid = await get_or_create_entity_type(
+                db, DEFAULT_ENTITY_TYPE_CODE
             )
-            entitlements = schemas.ProEntitlements.trial_values()
+            entity_uuid = await get_or_create_entity(
+                db, entity_type_uuid, "Developer"
+            )
             create_mapping_q = insert(PermissionsEntityMap).values(
-                uuid=settings.PRO_DEVELOPER_MAPPING,
+                uuid=settings.DEVELOPER_MAPPING,
                 entity_uuid=entity_uuid,
                 name="Developer",
-                entitlements=entitlements,
             )
             await db.execute(create_mapping_q)
             await db.commit()
 
             # Add entity entitlements
-            await pro_helpers.insert_entity_entitlement(db, entity_uuid, "terminal")
+            await app_helpers.insert_entity_entitlement(db, entity_uuid, "basic")
 
         except IntegrityError as e:
             handle_duplicate_pk(e)
@@ -296,113 +264,6 @@ async def create_developer_mapping():
             if not settings.is_onprem():
                 logger.exception(e)
             await db.rollback()
-
-
-async def create_trial_mapping():
-    async with AsyncWriteSessionLocal.session() as db:
-        try:
-            # Check if the mapping already exists
-            check_query = select(PermissionsEntityMap.uuid).where(
-                PermissionsEntityMap.uuid == settings.PRO_TRIAL_MAPPING
-            )
-            response = (await db.execute(check_query)).first()
-            if response:
-                return
-            # If not, create the mapping
-            entity_type_uuid = await get_or_create_entity_type(db, "OBB")
-            entity_uuid = await get_or_create_entity(
-                db, entity_type_uuid, "OpenBB Trial"
-            )
-            entitlements = schemas.ProEntitlements.trial_values()
-            create_mapping_q = insert(PermissionsEntityMap).values(
-                uuid=settings.PRO_TRIAL_MAPPING,
-                entity_uuid=entity_uuid,
-                name="Trial",
-                entitlements=entitlements,
-            )
-            await db.execute(create_mapping_q)
-            await db.commit()
-        except IntegrityError as e:
-            handle_duplicate_pk(e)
-            await db.rollback()
-        except Exception as e:
-            if not settings.is_onprem():
-                logger.exception(e)
-            await db.rollback()
-
-
-async def create_trial_user():
-    async with AsyncWriteSessionLocal.session() as db:
-        try:
-            # Check if the user already exists
-            check_query = select(User.uuid).where(User.uuid == settings.PRO_TRIAL_USER)
-            response = (await db.execute(check_query)).first()
-            if response:
-                return
-            # If not, create the user
-            create_user_query = insert(User).values(
-                uuid=settings.PRO_TRIAL_USER,
-                email=settings.PRO_TRIAL_EMAIL,
-                password=uuid4().hex,
-                first_name="Entity",
-                last_name="Admin",
-                clean_email=base.clean_email(settings.PRO_TRIAL_EMAIL),
-            )
-            await db.execute(create_user_query)
-            await db.commit()
-        except IntegrityError as e:
-            handle_duplicate_pk(e)
-            await db.rollback()
-        except Exception as e:
-            if not settings.is_onprem():
-                logger.exception(e)
-            await db.rollback()
-
-
-async def init_trial_mappings():
-    """Create the trial and developer mappings if they don't exist"""
-    await create_trial_mapping()
-    await create_trial_user()
-    await create_developer_mapping()
-
-
-def email_is_public(email: str) -> bool:
-    email_domain = email.split("@")[1].lower().strip()
-    with open("api/public_emails.txt") as public_domains:
-        for domain in public_domains:
-            if email_domain == domain.replace("\n", "").strip():
-                return True
-    return False
-
-
-async def check_pro_trial(
-    db: AsyncSession, user: schemas.UserProSchema
-) -> None | datetime:
-    if user.permissions_uuid == settings.PRO_TRIAL_MAPPING:
-        if user.pro_trial_extension or user.pro_trial_end is None:
-            if user.pro_trial_end is None:
-                new_time = base.get_now() + timedelta(weeks=3)
-            else:
-                new_time = max(user.pro_trial_end, base.get_now())
-            if user.pro_trial_extension:
-                new_time += timedelta(weeks=1)
-            update_query = (
-                update(User)
-                .where(User.uuid == user.uuid)
-                .values(
-                    pro_trial_end=new_time,
-                    pro_trial_extension=False,
-                    pro_trial_renewals=user.pro_trial_renewals
-                    or 0 + int(user.pro_trial_extension or 0),
-                )
-            )
-            await db.execute(update_query)
-            await db.commit()
-            return new_time
-        elif base.get_now() > user.pro_trial_end:
-            raise HTTPException(status_code=400, detail="The trial is expired")
-
-    return user.pro_trial_end
 
 
 async def get_managed_users(db: AsyncSession, admin_result: UUID):
@@ -423,16 +284,10 @@ async def get_managed_users(db: AsyncSession, admin_result: UUID):
             User.email,
             User.billing_active,
             PermissionsEntityMap.name.label("role"),
-            User.pro_entitlements,
             latest_login_subquery.c.last_login,
             User.permissions_uuid,
             func.max(DashboardItem.updated_date).label("last_active"),
             case((User.confirmed.is_(True), "active"), else_="pending").label("status"),
-            case(
-                ((User.pro_trial_renewals or 0) > 0, True),  # type: ignore
-                (User.pro_trial_extension.is_(True), True),
-                else_=False,
-            ).label("renewed"),
         )
         .join(PermissionsEntityMap, User.permissions_uuid == PermissionsEntityMap.uuid)
         .join(
@@ -451,80 +306,43 @@ async def get_managed_users(db: AsyncSession, admin_result: UUID):
             User.email,
             User.billing_active,
             PermissionsEntityMap.name,
-            User.pro_entitlements,
             latest_login_subquery.c.last_login,
             User.permissions_uuid,
             User.confirmed,
-            User.pro_trial_renewals,
-            User.pro_trial_extension,
         )
     )
     return (await db.execute(query)).all()
 
 
-async def get_permissions_invite_users(db: AsyncSession, admin_result: UUID):
+async def get_invite_users(db: AsyncSession, admin_result: UUID):
     query = (
         select(
-            User.email,
-            User.uuid,
-            User.first_name,
-            User.last_name,
-            models.PermissionsEntityMap.name.label("role"),
-            models.PermissionsInvite.user_uuid.label("uuid"),
-            case(
-                (models.PermissionsInvite.revoked.is_(True), "revoked"),
-                (models.PermissionsInvite.expiration_date < base.get_now(), "expired"),
-                else_="pending",
-            ).label("status"),
-        )
-        .select_from(models.PermissionsInvite)
-        .join(
-            PermissionsEntityMap,
-            models.PermissionsInvite.permissions_uuid == PermissionsEntityMap.uuid,
-        )
-        .join(User, User.uuid == models.PermissionsInvite.user_uuid)
-        .where(
-            PermissionsEntityMap.entity_uuid == admin_result,
-            models.PermissionsInvite.accepted.is_(False),
-            models.PermissionsInvite.revoked.is_(False),
-            User.deleted.is_(False),
-        )
-    )
-    return (await db.execute(query)).all()
-
-
-async def get_pro_invite_users(db: AsyncSession, admin_result: UUID):
-    query = (
-        select(
-            models.UserProInvite.email,
+            models.UserInvite.email,
             PermissionsEntityMap.name.label("role"),
-            models.UserProInvite.data,
-            models.UserProInvite.uuid,
+            models.UserInvite.data,
+            models.UserInvite.uuid,
         )
-        .select_from(models.UserProInvite)
+        .select_from(models.UserInvite)
         .join(
             PermissionsEntityMap,
-            models.UserProInvite.permissions_uuid == PermissionsEntityMap.uuid,
+            models.UserInvite.permissions_uuid == PermissionsEntityMap.uuid,
         )
         .where(
             PermissionsEntityMap.entity_uuid == admin_result,
-            models.UserProInvite.used.is_(False),
+            models.UserInvite.used.is_(False),
         )
     )
     return (await db.execute(query)).all()
 
 
-def get_pro_session_expiration(
-    pro_trial_end: None | datetime, user: schemas.UserProSchema, remember: bool
+def get_app_session_expiration(
+    user: schemas.AppUserSchema, remember: bool
 ) -> timedelta:
-    if user.permissions_uuid == settings.PRO_DEVELOPER_MAPPING:
+    if user.permissions_uuid == settings.DEVELOPER_MAPPING:
         return timedelta(30 if remember else 7)
 
     now = base.get_now()
-    time_ds = [timedelta(30 if remember else 7), user.expiration_date - now]
-    if pro_trial_end and user.permissions_uuid == settings.PRO_TRIAL_MAPPING:
-        time_ds.append(pro_trial_end - now)
-    return min(time_ds)
+    return min(timedelta(30 if remember else 7), user.expiration_date - now)
 
 
 def get_httpx_client() -> AsyncClient:

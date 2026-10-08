@@ -11,8 +11,10 @@ import { useInitMentions } from "~/components/AI/hooks/useMentions";
 import type { HandleSubmitParams } from "~/components/AI/hooks/useStreaming";
 
 export type CopilotContextType = {
-  handleSubmitRef?: MutableRefObject<(params?: HandleSubmitParams) => void>;
-  stopSubmitRef?: MutableRefObject<() => void>;
+  handleSubmitRef: MutableRefObject<
+    ((params?: HandleSubmitParams) => void) | undefined
+  >;
+  stopSubmitRef: MutableRefObject<(() => void) | undefined>;
   commandRef: MutableRefObject<string>;
 };
 

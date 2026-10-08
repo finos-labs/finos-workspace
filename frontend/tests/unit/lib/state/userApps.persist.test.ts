@@ -2,10 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type UserAppReturn, useUserAppsStore } from "~/lib/state/userApps";
 import { getStorage } from "~/lib/utils/indexDB";
 
-vi.mock("~/components/DataConnectors/common/helpers", () => ({
-  patchSnowflakeWidgetsEndpoint: (widgets: unknown) => widgets,
-}));
-
 const STORAGE_KEY = "user-apps-storage";
 
 async function readPersisted(): Promise<{

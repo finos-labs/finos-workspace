@@ -23,9 +23,9 @@ export default function AddWidgetMenu() {
 
   const { sharedItems } = useSharedAppStore();
 
-  const isShared = useShallowAppStore((state) => state.isDashboardShared(id));
+  const isShared = useShallowAppStore((state) => !!id && state.isDashboardShared(id));
 
-  const notOwner = !!sharedItems?.[id];
+  const notOwner = !!(id && sharedItems?.[id]);
 
   const handleClickWidget = () => {
     setInitialSelectedSearchTab("widgets");
@@ -96,13 +96,10 @@ export default function AddWidgetMenu() {
             onCloseAutoFocus={(e) => e.preventDefault()}
             className="space-y-2"
           >
-            <DropdownMenuItem
-              className="obb-dropdown-item"
-              onSelect={handleClickWidget}
-            >
+            <DropdownMenuItem className="ws-dropdown-item" onSelect={handleClickWidget}>
               Add widget
             </DropdownMenuItem>
-            <DropdownMenuItem className="obb-dropdown-item" onSelect={handleClickData}>
+            <DropdownMenuItem className="ws-dropdown-item" onSelect={handleClickData}>
               Add data
             </DropdownMenuItem>
           </DropdownMenuContent>

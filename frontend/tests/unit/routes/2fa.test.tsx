@@ -9,10 +9,10 @@ describe("Setup2FA", () => {
     expect(screen.getByText(/set up two-factor authentication/i)).toBeInTheDocument();
   });
 
-  it("displays the OpenBB logo", () => {
+  it("displays the Workspace logo", () => {
     render(<Setup2FA />);
 
-    const logo = screen.getByAltText("OpenBB");
+    const logo = screen.getByAltText("Workspace");
     expect(logo).toBeInTheDocument();
     expect(logo).toHaveAttribute("src", "/assets/images/logo.svg");
   });

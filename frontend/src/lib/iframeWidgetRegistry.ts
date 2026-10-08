@@ -1,11 +1,14 @@
-import type { OpenBBDataMessage, OpenBBWidgetManifest } from "~/types/iframeProtocol";
+import type {
+  WorkspaceDataMessage,
+  WorkspaceWidgetManifest,
+} from "~/types/iframeProtocol";
 
 /**
  * In-memory registry of mounted Iframe widget instances, keyed by the parent
  * widget's UUID (`widget.id`).
  *
  * Each Iframe component registers itself once it has completed the
- * `openbb-connect` handshake with the embedded page, exposing imperative hooks
+ * `workspace-connect` handshake with the embedded page, exposing imperative hooks
  * that other parts of the app can call to interact with that specific iframe:
  *
  * - `manifest` — sub-widgets the iframe declared (used by the Copilot to
@@ -21,9 +24,9 @@ import type { OpenBBDataMessage, OpenBBWidgetManifest } from "~/types/iframeProt
  * have no way to find the right iframe by id.
  */
 export type IframeWidgetEntry = {
-  requestWidgetData: (widgetId: string) => Promise<OpenBBDataMessage>;
+  requestWidgetData: (widgetId: string) => Promise<WorkspaceDataMessage>;
   sendRefresh: () => void;
-  manifest: OpenBBWidgetManifest[];
+  manifest: WorkspaceWidgetManifest[];
 };
 
 const registry = new Map<string, IframeWidgetEntry>();

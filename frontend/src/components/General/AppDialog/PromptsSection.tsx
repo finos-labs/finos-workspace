@@ -31,7 +31,7 @@ export function PromptsSection({ form }: PromptsSectionProps) {
 
   const [isInputOpen, setIsInputOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const count = watchedPrompts.length;
   const isMax = count >= MAX_PROMPTS;

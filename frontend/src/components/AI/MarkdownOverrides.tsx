@@ -1,4 +1,10 @@
+import type { Grammar } from "@wooorm/starry-night";
+import type { Root } from "hast";
+import { toJsxRuntime } from "hast-util-to-jsx-runtime";
+import Markdown, { type MarkdownToJSX, RuleType } from "markdown-to-jsx";
 import {
+  type ComponentPropsWithoutRef,
+  isValidElement,
   memo,
   type ReactElement,
   type ReactNode,
@@ -6,19 +12,13 @@ import {
   useMemo,
   useState,
 } from "react";
-import { format } from "sql-formatter";
-
-import "./tritanopia-dark.css";
-import type { Grammar } from "@wooorm/starry-night/lib/types";
-import type { Root } from "hast";
-import { toJsxRuntime } from "hast-util-to-jsx-runtime";
-import Markdown, { type MarkdownToJSX, RuleType } from "markdown-to-jsx";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
+import { format } from "sql-formatter";
 import { useDebounceValue } from "usehooks-ts";
 import { type ArtifactT, useShallowCopilotStore } from "~/lib/state/copilot";
 import { cn } from "../ds/utils";
 import { InlineMath } from "../Tex";
-import Artifact, { isSnowflakeArtifact } from "./Artifact";
+import Artifact from "./Artifact";
 import { useExternalLinkAnchorProps } from "./ExternalLinkContext";
 import { useShallowStreamingStore } from "./hooks/useStreaming";
 import MessageTable from "./MessageTable";
@@ -94,8 +94,14 @@ function formatSqlIndentation(
   }
 }
 
+/** Whether a paragraph holds anything but text, which a `<p>` cannot hold in markdown that is not text. */
+export const hasObjectChild = (children: ReactNode) =>
+  Array.isArray(children) && children.some((child) => typeof child === "object");
+
+type CodeChildProps = { className?: string; children?: string | string[] };
+
 const AgentComponent = memo(
-  (props: any) => {
+  (props: { children?: ReactNode[] }) => {
     const agentId = props.children?.[0];
     if (!agentId) {
       console.warn("Agent component missing agentId");
@@ -107,14 +113,14 @@ const AgentComponent = memo(
 );
 
 const ArtifactComponent = memo(
-  (props: any) => {
+  (props: { className?: string; children?: ReactNode[] }) => {
     const getCurrentChatArtifact = useShallowCopilotStore(
       (state) => state.getCurrentChatArtifact,
     );
 
     const elementMemo = useMemo(() => {
       try {
-        let artifact: ArtifactT = null;
+        let artifact: ArtifactT | null | undefined = null;
         const className = props.className || "";
         if (className) {
           // This is the new way of getting artifactId
@@ -131,6 +137,7 @@ const ArtifactComponent = memo(
           // Leaving this here for backwards compatibility
           if (!props?.children || props?.children?.length === 0) return null;
           const artifactId = props.children[0];
+          if (typeof artifactId !== "string") return null;
           artifact = getCurrentChatArtifact(artifactId);
         }
         if (!artifact) return null;
@@ -139,7 +146,6 @@ const ArtifactComponent = memo(
           <Artifact key={artifact.uuid} artifact={artifact} inAiMessage={true} />
         );
 
-        if (isSnowflakeArtifact(artifact)) return element;
         return <div className="py-2">{element}</div>;
       } catch (error) {
         console.error("Failed to parse artifact data:", error);
@@ -192,7 +198,7 @@ function isSafeUrl(value: unknown, allowedProtocols: Set<string>) {
 
   try {
     const baseUrl =
-      typeof window === "undefined" ? "https://openbb.local" : window.location.href;
+      typeof window === "undefined" ? "https://workspace.local" : window.location.href;
     const url = new URL(href, baseUrl);
     return allowedProtocols.has(url.protocol);
   } catch {
@@ -208,7 +214,7 @@ function hasControlCharacters(value: string) {
   return false;
 }
 
-export function isSafeMarkdownImageSrc(src: unknown) {
+export function isSafeMarkdownImageSrc(src: unknown): src is string {
   if (typeof src !== "string") return false;
   const value = src.trim();
   // Keep base64 raster image support, but do not allow SVG/PDF data documents in chat.
@@ -217,7 +223,7 @@ export function isSafeMarkdownImageSrc(src: unknown) {
 }
 
 const LinkComponent = memo(
-  (props: any) => {
+  (props: ComponentPropsWithoutRef<"a">) => {
     const href = isSafeUrl(props.href, SAFE_LINK_PROTOCOLS) ? props.href : undefined;
     const anchorProps = useExternalLinkAnchorProps(href);
     if (!href) return <span>{props.children}</span>;
@@ -238,7 +244,7 @@ const LinkComponent = memo(
 );
 
 const ImageComponent = memo(
-  (props: any) => {
+  (props: ComponentPropsWithoutRef<"img">) => {
     const src = isSafeMarkdownImageSrc(props.src) ? props.src.trim() : undefined;
     if (!src) return props.alt ? <span>{props.alt}</span> : null;
 
@@ -256,8 +262,8 @@ const ImageComponent = memo(
 );
 
 const ParagraphComponent = memo(
-  (props: any) => {
-    if (props?.children?.some((child: any) => typeof child === "object")) {
+  (props: ComponentPropsWithoutRef<"p">) => {
+    if (hasObjectChild(props.children)) {
       return <div {...props} />;
     }
     return <p {...props} />;
@@ -321,13 +327,14 @@ const parseTableHTML = (code: string) => {
   });
 };
 
+const codeChildOf = (children: ReactNode): CodeChildProps | undefined =>
+  isValidElement<CodeChildProps>(children) ? children.props : undefined;
+
 export const PreCodeComponent = memo(
-  (props: any) => {
-    const child = props.children?.props;
+  (props: ComponentPropsWithoutRef<"pre">) => {
+    const child = codeChildOf(props.children);
     const code =
-      typeof child?.children === "string"
-        ? child?.children
-        : child?.children?.[0] || "";
+      typeof child?.children === "string" ? child.children : child?.children?.[0] || "";
 
     const validTable = useMemo(
       () =>
@@ -350,11 +357,11 @@ export const PreCodeComponent = memo(
   (p, n) =>
     p.className === n.className &&
     p.children === n.children &&
-    p.children?.props?.children === n.children?.props?.children,
+    codeChildOf(p.children)?.children === codeChildOf(n.children)?.children,
 );
 
 export const CodeComponent = memo(
-  (props: any) => {
+  (props: ComponentPropsWithoutRef<"code">) => {
     const className = props.className || "";
     const starryNight = useStarryNight();
     const isStreaming =
@@ -372,10 +379,15 @@ export const CodeComponent = memo(
     const children = useMemo(() => {
       if (!scope || !starryNight) return props.children;
 
+      const first: unknown = Array.isArray(props.children)
+        ? props.children[0]
+        : undefined;
       let code =
         typeof props.children === "string"
           ? props.children.replace(/\\_/g, "_")
-          : props.children?.[0] || "";
+          : typeof first === "string"
+            ? first
+            : "";
       if (lang === "sql" && !isStreaming) code = formatSqlIndentation(code);
 
       const hast = starryNight.highlight(code, scope);
@@ -406,7 +418,7 @@ export const CodeComponent = memo(
   (p, n) => p.className === n.className && p.children === n.children,
 );
 
-type RenderRuleT = MarkdownToJSX.Options["renderRule"];
+type RenderRuleT = NonNullable<MarkdownToJSX.Options["renderRule"]>;
 
 export const renderRule: RenderRuleT = (next, node, _renderChildren, state) => {
   if (node.type === RuleType.codeBlock) {
@@ -466,21 +478,3 @@ export const CodeMarkdownOptions = {
     pre: { component: PreCodeComponent },
   },
 };
-
-export const SQLMarkdown = memo(
-  (props: { content: string; className?: string }) => {
-    return (
-      <div
-        className={cn(
-          "w-full prose-sm text-xs! prose-p:my-1.5",
-          "prose dark:prose-invert max-w-none overflow-x-auto",
-          "prose-code:break-words prose-code:whitespace-pre-wrap",
-          props.className,
-        )}
-      >
-        <Markdown options={CodeMarkdownOptions}>{props.content}</Markdown>
-      </div>
-    );
-  },
-  (p, n) => p.content === n.content && p.className === n.className,
-);

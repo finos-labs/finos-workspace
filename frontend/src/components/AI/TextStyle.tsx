@@ -1,6 +1,5 @@
 import { memo, useMemo } from "react";
 import { useMcpToolSuggestions } from "~/components/AI/hooks/useMcpToolSuggestions";
-import { useSemanticViewSuggestions } from "~/components/AI/hooks/useSemanticViewSuggestions";
 import { useSkillSuggestions } from "~/components/AI/hooks/useSkillSuggestions";
 import Tooltip from "~/components/Tooltip";
 import type { Mention } from "~/lib/state/copilot";
@@ -25,7 +24,7 @@ type TextStyleProps = {
 };
 
 function getMentionsMap(mentions: Mention[]) {
-  return mentions.reduce((acc, mention) => {
+  return mentions.reduce<Record<string, Mention>>((acc, mention) => {
     const key = `${mention.trigger}${mention.name}`;
     acc[key] = mention;
     return acc;
@@ -37,7 +36,6 @@ function getSplitLines(
   mentionsMap: Record<string, Mention>,
   skillSlugs: Set<string>,
   mcpToolPatterns: Set<string>,
-  svFqnPatterns: Set<string>,
   unresolvedTokens: string[],
 ) {
   const lines = renderedContent.split("\n");
@@ -51,12 +49,9 @@ function getSplitLines(
       const skillPatterns = Array.from(skillSlugs);
       // Build MCP tool patterns
       const mcpPatterns = Array.from(mcpToolPatterns);
-      // Build semantic view patterns
-      const svPatterns = Array.from(svFqnPatterns);
       const allPatterns = [
         ...mentionKeys,
         ...skillPatterns,
-        ...svPatterns,
         ...mcpPatterns,
         ...unresolvedTokens,
       ].sort((a, b) => b.length - a.length);
@@ -85,7 +80,6 @@ function TextStyle(props: TextStyleProps) {
 
   const { skillOptions } = useSkillSuggestions();
   const { mcpToolOptions } = useMcpToolSuggestions();
-  const { svOptions } = useSemanticViewSuggestions();
 
   // Get skill slugs for highlighting
   const skillSlugs = useMemo(
@@ -96,11 +90,6 @@ function TextStyle(props: TextStyleProps) {
   const mcpToolPatterns = useMemo(
     () => new Set(mcpToolOptions.map((t) => t.slashText)),
     [mcpToolOptions],
-  );
-  // Get semantic view FQNs for highlighting
-  const svFqnPatterns = useMemo(
-    () => new Set(svOptions.map((s) => s.slashText)),
-    [svOptions],
   );
 
   // Mentions that can't be resolved in the current context stay in the text as
@@ -118,7 +107,6 @@ function TextStyle(props: TextStyleProps) {
       mentionsMap,
       skillSlugs,
       mcpToolPatterns,
-      svFqnPatterns,
       Array.from(unresolvedMentions.keys()),
     );
 
@@ -144,10 +132,7 @@ function TextStyle(props: TextStyleProps) {
             {line.map((part, index) => {
               const key = `${lineIndex}-${part}-${index}`;
               const mention = mentionsMap[part];
-              const isSlashCommand =
-                skillSlugs.has(part) ||
-                svFqnPatterns.has(part) ||
-                mcpToolPatterns.has(part);
+              const isSlashCommand = skillSlugs.has(part) || mcpToolPatterns.has(part);
 
               if (isValidUrl(part)) {
                 // In single-line previews the parent row is the click target;
@@ -268,7 +253,6 @@ function TextStyle(props: TextStyleProps) {
     mentions,
     skillSlugs,
     mcpToolPatterns,
-    svFqnPatterns,
     unresolvedMentions,
     overlay,
     singleLine,

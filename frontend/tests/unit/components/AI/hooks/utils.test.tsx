@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { WidgetT } from "~/components/types";
+import type { ParamDef, WidgetT } from "~/components/types";
 import type { WidgetSignature } from "~/lib/state/copilot";
 import type { DashboardWidgetData } from "~/lib/state/copilotData";
 
@@ -8,29 +8,27 @@ vi.mock("~/lib/utils/widgetParams", () => ({
   currentDateModifier: vi.fn((value) => value), // Default passthrough
 }));
 
-import * as utilsModule from "~/components/AI/hooks/utils";
 import {
   compareSignatures,
   createSignatureMap,
   detectQueryMismatch,
+  normalizeCitations,
 } from "~/components/AI/hooks/utils";
 // Import after mocking
 import { currentDateModifier } from "~/lib/utils/widgetParams";
+import { malformed, partial } from "../../../mocks";
 
 // Helper function to create test widgets with proper typing
 const createTestWidget = (overrides: Partial<WidgetT> = {}): WidgetT => ({
   id: "test-widget",
   name: "Test Widget",
-  type: "table",
-  widgetId: "test_widget" as any,
-  params: [] as any,
+  type: "html",
+  widgetId: "test_widget",
+  params: [],
   ...overrides,
 });
 
 const mockCurrentDateModifier = vi.mocked(currentDateModifier);
-
-// Spy on getWidgetOrigin function
-const mockGetWidgetOrigin = vi.spyOn(utilsModule, "getWidgetOrigin");
 
 describe("compareSignatures", () => {
   beforeEach(() => {
@@ -40,7 +38,7 @@ describe("compareSignatures", () => {
   describe("when both signatures are undefined or null", () => {
     it("should return false when sig1 is undefined", () => {
       const sig2: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "test-widget",
         args: { param1: "value1" },
       };
@@ -50,7 +48,7 @@ describe("compareSignatures", () => {
 
     it("should return false when sig2 is undefined", () => {
       const sig1: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "test-widget",
         args: { param1: "value1" },
       };
@@ -66,13 +64,13 @@ describe("compareSignatures", () => {
   describe("when comparing valid signatures", () => {
     it("should return true when all fields match exactly", () => {
       const sig1: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_price",
         args: { symbol: "AAPL", period: "1y" },
       };
 
       const sig2: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_price",
         args: { symbol: "AAPL", period: "1y" },
       };
@@ -82,13 +80,13 @@ describe("compareSignatures", () => {
 
     it("should return false when origin differs", () => {
       const sig1: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_price",
         args: { symbol: "AAPL" },
       };
 
       const sig2: WidgetSignature = {
-        origin: "OpenBB Workspace",
+        origin: "Workspace",
         widgetId: "equity_price",
         args: { symbol: "AAPL" },
       };
@@ -98,13 +96,13 @@ describe("compareSignatures", () => {
 
     it("should return false when widgetId differs", () => {
       const sig1: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_price",
         args: { symbol: "AAPL" },
       };
 
       const sig2: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_chart",
         args: { symbol: "AAPL" },
       };
@@ -130,13 +128,13 @@ describe("compareSignatures", () => {
 
     it("should return false when args differ", () => {
       const sig1: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_price",
         args: { symbol: "AAPL", period: "1y" },
       };
 
       const sig2: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_price",
         args: { symbol: "TSLA", period: "1y" },
       };
@@ -146,13 +144,13 @@ describe("compareSignatures", () => {
 
     it("should return false when args have different structure", () => {
       const sig1: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_price",
         args: { symbol: "AAPL" },
       };
 
       const sig2: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_price",
         args: { symbol: "AAPL", period: "1y" },
       };
@@ -171,13 +169,13 @@ describe("compareSignatures", () => {
       };
 
       const sig1: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "complex_widget",
         args: complexArgs,
       };
 
       const sig2: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "complex_widget",
         args: { ...complexArgs },
       };
@@ -187,7 +185,7 @@ describe("compareSignatures", () => {
 
     it("should detect differences in nested args objects", () => {
       const sig1: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "complex_widget",
         args: {
           symbol: "AAPL",
@@ -196,7 +194,7 @@ describe("compareSignatures", () => {
       };
 
       const sig2: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "complex_widget",
         args: {
           symbol: "AAPL",
@@ -209,13 +207,13 @@ describe("compareSignatures", () => {
 
     it("should handle empty args objects", () => {
       const sig1: WidgetSignature = {
-        origin: "OpenBB Workspace",
+        origin: "Workspace",
         widgetId: "simple_widget",
         args: {},
       };
 
       const sig2: WidgetSignature = {
-        origin: "OpenBB Workspace",
+        origin: "Workspace",
         widgetId: "simple_widget",
         args: {},
       };
@@ -232,7 +230,7 @@ describe("compareSignatures", () => {
       } as unknown as WidgetSignature;
 
       const sig2: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_price",
         args: { symbol: "AAPL" },
       };
@@ -242,13 +240,13 @@ describe("compareSignatures", () => {
 
     it("should fail comparison if widgetId is missing from sig2", () => {
       const sig1: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_price",
         args: { symbol: "AAPL" },
       };
 
       const sig2 = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         args: { symbol: "AAPL" },
       } as unknown as WidgetSignature;
 
@@ -261,13 +259,13 @@ describe("compareSignatures", () => {
       // This test ensures that if someone comments out the isEqual(sig1.args, sig2.args) line,
       // the test will fail, preventing the regression you experienced
       const sig1: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_price",
         args: { symbol: "AAPL", period: "1y" },
       };
 
       const sig2: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_price",
         args: { symbol: "TSLA", period: "6m" }, // Different args
       };
@@ -278,13 +276,13 @@ describe("compareSignatures", () => {
 
     it("should return true when all fields including args are identical", () => {
       const sig1: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_price",
         args: { symbol: "AAPL", period: "1y", limit: 100 },
       };
 
       const sig2: WidgetSignature = {
-        origin: "OpenBB Sandbox",
+        origin: "the backend",
         widgetId: "equity_price",
         args: { symbol: "AAPL", period: "1y", limit: 100 },
       };
@@ -298,7 +296,6 @@ describe("compareSignatures", () => {
 describe("createSignatureMap", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetWidgetOrigin.mockReturnValue("OpenBB Sandbox");
     mockCurrentDateModifier.mockImplementation((value) => value);
   });
 
@@ -311,18 +308,16 @@ describe("createSignatureMap", () => {
     const widgets = [
       createTestWidget({
         id: "widget-1",
-        widgetId: "equity_price" as any,
+        widgetId: "iframe",
       }),
     ];
-
-    mockGetWidgetOrigin.mockReturnValue("OpenBB Sandbox");
 
     const result = createSignatureMap(widgets, {});
 
     expect(result).toEqual({
       "widget-1": {
-        origin: "OpenBB Sandbox",
-        widgetId: "equity_price",
+        origin: "Workspace",
+        widgetId: "widget-1",
         args: {},
       },
     });
@@ -332,8 +327,8 @@ describe("createSignatureMap", () => {
     const widgets = [
       createTestWidget({
         id: "widget-1",
-        widgetId: "equity_price" as any,
-        params: [
+        widgetId: "equity_price",
+        params: partial<ParamDef[]>([
           {
             paramName: "symbol",
             value: "AAPL",
@@ -344,7 +339,7 @@ describe("createSignatureMap", () => {
             value: "1y",
             type: "text",
           },
-        ] as any,
+        ]),
       }),
     ];
 
@@ -354,8 +349,8 @@ describe("createSignatureMap", () => {
 
     expect(result).toEqual({
       "widget-1": {
-        origin: "OpenBB Sandbox",
-        widgetId: "equity_price",
+        origin: "Workspace",
+        widgetId: "widget-1",
         args: {
           symbol: "AAPL",
           period: "1y",
@@ -368,9 +363,9 @@ describe("createSignatureMap", () => {
     const widgets = [
       createTestWidget({
         id: "widget-1",
-        widgetId: "DTCC-fixed_income/treasury_volumes" as any,
-        external: true as any,
-        sourceName: "DTCC" as any,
+        widgetId: "DTCC-fixed_income/treasury_volumes",
+        external: true,
+        sourceName: "DTCC",
       }),
     ];
 
@@ -387,14 +382,14 @@ describe("createSignatureMap", () => {
     const widgets = [
       createTestWidget({
         id: "widget-1",
-        widgetId: "equity_price" as any,
-        params: [
+        widgetId: "equity_price",
+        params: partial<ParamDef[]>([
           {
             paramName: "symbol",
             value: "AAPL",
             type: "text",
           },
-        ] as any,
+        ]),
       }),
     ];
 
@@ -421,11 +416,11 @@ describe("createSignatureMap", () => {
     const widgets = [
       createTestWidget({
         id: "widget-1",
-        widgetId: "equity_price" as any,
-        params: [
+        widgetId: "equity_price",
+        params: partial<ParamDef[]>([
           {
             paramName: "start_date",
-            value: "today-30d",
+            value: "$currentDate-30d",
             type: "date",
           },
           {
@@ -433,7 +428,7 @@ describe("createSignatureMap", () => {
             value: "AAPL",
             type: "text",
           },
-        ] as any,
+        ]),
       }),
     ];
 
@@ -441,7 +436,7 @@ describe("createSignatureMap", () => {
 
     const result = createSignatureMap(widgets, {});
 
-    expect(mockCurrentDateModifier).toHaveBeenCalledWith("today-30d");
+    expect(mockCurrentDateModifier).toHaveBeenCalledWith("$currentDate-30d");
     expect(result["widget-1"].args).toEqual({
       start_date: "2024-01-01",
       symbol: "AAPL",
@@ -454,32 +449,28 @@ describe("createSignatureMap", () => {
         id: "workspace-widget",
         name: "Workspace Widget",
         type: "iframe",
-        widgetId: "iframe-123" as any,
+        widgetId: "iframe-123",
       }),
       createTestWidget({
-        id: "sandbox-widget",
-        name: "Sandbox Widget",
-        type: "table",
-        widgetId: "equity_price" as any,
+        id: "backend-widget",
+        name: "Backend Widget",
+        widgetId: "my_backend-equity_price",
+        external: true,
+        sourceName: "my_backend",
       }),
     ];
-
-    // Mock different origins for different widgets
-    mockGetWidgetOrigin
-      .mockReturnValueOnce("OpenBB Workspace")
-      .mockReturnValueOnce("OpenBB Sandbox");
 
     const result = createSignatureMap(widgets, {});
 
     expect(result).toEqual({
       "workspace-widget": {
-        origin: "OpenBB Workspace",
+        origin: "Workspace",
         widgetId: "workspace-widget", // Uses widget.id for Workspace widgets
         args: {},
       },
-      "sandbox-widget": {
-        origin: "OpenBB Sandbox",
-        widgetId: "equity_price", // Uses widget.widgetId for Sandbox widgets
+      "backend-widget": {
+        origin: "my_backend",
+        widgetId: "equity_price", // Uses the normalized widget.widgetId for backend widgets
         args: {},
       },
     });
@@ -489,8 +480,8 @@ describe("createSignatureMap", () => {
     const widgets = [
       createTestWidget({
         id: "widget-1",
-        widgetId: "equity_price" as any,
-        params: undefined as any,
+        widgetId: "equity_price",
+        params: malformed(undefined),
       }),
     ];
 
@@ -498,8 +489,8 @@ describe("createSignatureMap", () => {
 
     expect(result).toEqual({
       "widget-1": {
-        origin: "OpenBB Sandbox",
-        widgetId: "equity_price",
+        origin: "Workspace",
+        widgetId: "widget-1",
         args: {},
       },
     });
@@ -509,14 +500,14 @@ describe("createSignatureMap", () => {
     const widgets = [
       createTestWidget({
         id: "widget-1",
-        widgetId: "equity_price" as any,
-        params: [
+        widgetId: "equity_price",
+        params: partial<ParamDef[]>([
           {
             paramName: "symbol",
             value: "AAPL",
             type: "text",
           },
-        ] as any,
+        ]),
       }),
     ];
 
@@ -534,7 +525,9 @@ describe("createSignatureMap", () => {
     const widgets = [
       createTestWidget({
         id: "widget-1",
-        widgetId: undefined as any,
+        widgetId: malformed(undefined),
+        external: true,
+        sourceName: "my_backend",
       }),
     ];
 
@@ -548,7 +541,7 @@ describe("createSignatureMap", () => {
       const widgets = [
         createTestWidget({
           id: "widget-1",
-          widgetId: "test" as any,
+          widgetId: "test",
         }),
       ];
 
@@ -565,39 +558,36 @@ describe("createSignatureMap", () => {
         id: "workspace-1",
         name: "Workspace Widget",
         type: "iframe",
-        widgetId: "iframe-123" as any,
+        widgetId: "iframe-123",
       });
 
-      const sandboxWidget = createTestWidget({
-        id: "sandbox-1",
-        name: "Sandbox Widget",
-        type: "table",
-        widgetId: "equity_price" as any,
+      const backendWidget = createTestWidget({
+        id: "backend-1",
+        name: "Backend Widget",
+        widgetId: "equity_price",
+        external: true,
+        sourceName: "my_backend",
       });
 
-      mockGetWidgetOrigin
-        .mockReturnValueOnce("OpenBB Workspace")
-        .mockReturnValueOnce("OpenBB Sandbox");
-
-      const result = createSignatureMap([workspaceWidget, sandboxWidget], {});
+      const result = createSignatureMap([workspaceWidget, backendWidget], {});
 
       // Workspace widgets should use widget.id as widgetId
       expect(result["workspace-1"].widgetId).toBe("workspace-1");
 
       // Non-workspace widgets should use widget.widgetId
-      expect(result["sandbox-1"].widgetId).toBe("equity_price");
+      expect(result["backend-1"].widgetId).toBe("equity_price");
     });
 
     it("should ensure all parameters are processed and included in args", () => {
       const widgets = [
         createTestWidget({
           id: "widget-1",
-          widgetId: "complex_widget" as any,
-          params: [
+          widgetId: "complex_widget",
+          params: partial<ParamDef[]>([
             { paramName: "param1", value: "value1", type: "text" },
             { paramName: "param2", value: "value2", type: "text" },
-            { paramName: "date_param", value: "today", type: "date" },
-          ] as any,
+            { paramName: "date_param", value: "$currentDate+0d", type: "date" },
+          ]),
         }),
       ];
 
@@ -618,12 +608,12 @@ describe("createSignatureMap", () => {
       const widgets = [
         createTestWidget({
           id: "widget-1",
-          widgetId: "test_widget" as any,
-          params: [
-            { paramName: "start_date", value: "today-1y", type: "date" },
-            { paramName: "end_date", value: "today", type: "date" },
+          widgetId: "test_widget",
+          params: partial<ParamDef[]>([
+            { paramName: "start_date", value: "$currentDate-1y", type: "date" },
+            { paramName: "end_date", value: "$currentDate+0d", type: "date" },
             { paramName: "symbol", value: "AAPL", type: "text" },
-          ] as any,
+          ]),
         }),
       ];
 
@@ -633,8 +623,8 @@ describe("createSignatureMap", () => {
 
       const result = createSignatureMap(widgets, {});
 
-      expect(mockCurrentDateModifier).toHaveBeenCalledWith("today-1y");
-      expect(mockCurrentDateModifier).toHaveBeenCalledWith("today");
+      expect(mockCurrentDateModifier).toHaveBeenCalledWith("$currentDate-1y");
+      expect(mockCurrentDateModifier).toHaveBeenCalledWith("$currentDate+0d");
       expect(mockCurrentDateModifier).toHaveBeenCalledTimes(2);
 
       expect(result["widget-1"].args).toEqual({
@@ -669,5 +659,55 @@ describe("detectQueryMismatch", () => {
 
   it("returns false when citation query is empty string", () => {
     expect(detectQueryMismatch("", "SELECT 1")).toBe(false);
+  });
+});
+
+describe("normalizeCitations", () => {
+  const sourceInfo = { type: "widget", name: "Widget" };
+
+  it("passes through citations that have an id and a signature", () => {
+    const citations = [{ id: "cite-1", signature: "sig-1", source_info: sourceInfo }];
+
+    expect(normalizeCitations(citations)).toEqual(citations);
+  });
+
+  it("gives a citation without an id one", () => {
+    const [citation] = normalizeCitations([
+      { signature: "sig-1", source_info: sourceInfo },
+    ]);
+
+    expect(citation.id).toBeTruthy();
+    expect(citation.signature).toBe("sig-1");
+  });
+
+  it("gives a citation without a signature an empty one", () => {
+    const [citation] = normalizeCitations([{ id: "cite-1", source_info: sourceInfo }]);
+
+    expect(citation.id).toBe("cite-1");
+    expect(citation.signature).toBe("");
+  });
+
+  it("keeps the details and artifacts of a citation it completes", () => {
+    const [citation] = normalizeCitations([
+      {
+        id: "cite-1",
+        source_info: sourceInfo,
+        details: [{ extra: "data" }],
+        artifacts: [{ uuid: "a1", type: "text", content: "text" }],
+      },
+    ]);
+
+    expect(citation.details).toEqual([{ extra: "data" }]);
+    expect(citation.artifacts).toEqual([{ uuid: "a1", type: "text", content: "text" }]);
+  });
+
+  it("drops what names no source, as there is nothing to render", () => {
+    expect(normalizeCitations([{ id: "cite-1" }, null, "text"])).toEqual([]);
+  });
+
+  it("returns no citations for something that is not a list", () => {
+    expect(normalizeCitations(null)).toEqual([]);
+    expect(normalizeCitations(undefined)).toEqual([]);
+    expect(normalizeCitations("string")).toEqual([]);
   });
 });

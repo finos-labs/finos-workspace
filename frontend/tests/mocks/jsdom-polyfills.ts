@@ -19,16 +19,20 @@ global.URL.createObjectURL = vi.fn();
 
 // Promise.withResolvers - TC39 proposal, not yet in all environments
 if (!("withResolvers" in Promise)) {
-  (Promise as any).withResolvers = <T>() => {
-    let resolve!: (value: T | PromiseLike<T>) => void;
-    let reject!: (reason?: any) => void;
-    const promise = new Promise<T>((res, rej) => {
-      resolve = res;
-      reject = rej;
-    });
+  Object.defineProperty(Promise, "withResolvers", {
+    configurable: true,
+    writable: true,
+    value: <T>() => {
+      let resolve!: (value: T | PromiseLike<T>) => void;
+      let reject!: (reason?: unknown) => void;
+      const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
 
-    return { promise, resolve, reject };
-  };
+      return { promise, resolve, reject };
+    },
+  });
 }
 
 // Pointer capture methods - required by Radix UI components

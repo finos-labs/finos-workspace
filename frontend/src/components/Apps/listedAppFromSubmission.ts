@@ -22,7 +22,7 @@ export function submissionToListedApp(sub: MarketplaceSubmission): ListedApp {
     tagline: form.tagline || undefined,
     documentationUrl: form.documentationUrl || undefined,
     contactEmail: form.contactEmail || undefined,
-    screenshots: screenshots?.length ? screenshots : undefined,
+    media: screenshots?.length ? screenshots : undefined,
     vendorWebsiteUrl: form.vendorWebsiteUrl || undefined,
     vendorDescription: form.vendorDescription || undefined,
     vendorThumbnailUrl: form.vendorThumbnailUrl || undefined,

@@ -1,47 +1,33 @@
 # syntax=docker/dockerfile:1.6
 #
-# OpenBB Lite image.
+# Lite image.
 #
-# Bundles the FastAPI backend (Cython-compiled lite build), the frontend
+# Bundles the FastAPI backend (Cython-compiled lite build), the workspace
 # SPA (Vite runtime build), Redis, nginx, and supervisord into a single image.
-# Defaults to SQLite at /data/openbb.db so a `docker run -d -p 3000:3000` works
+# Defaults to SQLite at /data/workspace.db so a `docker run -d -p 3000:3000` works
 # without any -e flags. Override via standard backend env vars (DATABASE_TYPE,
 # DB_HOST, ...).
 #
 # Build context: this directory, with backend/ (from backend-api/backend) and
 # frontend/ assembled alongside the Dockerfile. See README.md / build-local.sh.
-#   docker build -f Dockerfile -t openbb/lite:latest .
+#   docker build -f Dockerfile -t <image> .
 #
 ###############################################
-# Frontend — build the SPA in runtime mode
+# Frontend — build the Workspace SPA in runtime mode
 ###############################################
 FROM node:22 AS frontend-build
 
-ARG OPENBB_IMAGE_VARIANT=lite
-
-ARG BUN_VERSION=1.4.2
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 
-RUN npm install -g bun@${BUN_VERSION}
+RUN npm install -g bun node-gyp
 
 WORKDIR /app
 COPY frontend/package.json frontend/bun.lock ./
 RUN bun install --frozen-lockfile
 
 COPY frontend/ ./
-# Keep the frontend's release version (bumped there on every release) — the
-# variant env COPY below replaces .env, so carry the value across instead of
-# hand-maintaining a drifting copy in this repo.
-RUN grep '^VITE_RELEASE_VERSION=' .env > /tmp/release-version.env
-COPY frontend.env ./frontend.lite.env
-COPY frontend.full.env ./frontend.full.env
-RUN case "$OPENBB_IMAGE_VARIANT" in \
-      lite|full) cp "./frontend.${OPENBB_IMAGE_VARIANT}.env" ./.env ;; \
-      *) echo "Unknown OPENBB_IMAGE_VARIANT=$OPENBB_IMAGE_VARIANT" >&2; exit 1 ;; \
-    esac
-RUN cat /tmp/release-version.env >> .env
-# The Lite env selects the frontend's strict in-repo lock profile; the Full env
-# deliberately leaves frontend runtime configuration unlocked.
+# The nginx of this image proxies /api to the backend, on the origin and port the user maps.
+ENV VITE_BACKEND_URL=/api
 RUN bun run build:runtime
 
 
@@ -132,8 +118,6 @@ RUN $VENV_PATH/bin/pip uninstall -y cython pip setuptools 2>/dev/null || true \
 ###############################################
 FROM python-base AS runtime
 
-ARG OPENBB_IMAGE_VARIANT=lite
-
 RUN apt-get update -y \
     && apt-get install --no-install-recommends -y \
        nginx redis-server gettext-base tini \
@@ -163,39 +147,37 @@ COPY --chown=appuser:appuser backend/alembic.ini ./
 COPY --chown=appuser:appuser backend/alembic ./alembic
 COPY --chown=appuser:appuser backend/scripts ./scripts
 
-# Workspace MCP package (imported by routers/pro/workspace_mcp via main.py).
+# Workspace MCP package (imported by routers/app/workspace_mcp via main.py).
 # Shipped as source — it carries markdown resources loaded with
 # importlib.resources, and is not part of the Cython compile stage. For a
 # production lite release it should be added to setup_compile.py and compiled
 # like api/routers/utilities.
 COPY --chown=appuser:appuser backend/workspace_mcp ./workspace_mcp
 
-# Frontend bundle.
+# Frontend bundle. The config.js that the build wrote, and the names of the variables that
+# set each of its settings, move aside: render-frontend-config writes config.js again at every
+# start, from these and from the environment.
 COPY --from=frontend-build /app/dist /usr/share/nginx/html
+RUN mkdir -p /usr/local/share/workspace \
+    && mv /usr/share/nginx/html/config.js /usr/share/nginx/html/config.env.json /usr/local/share/workspace/
 
 # Container config.
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY supervisord.conf /etc/supervisor/supervisord.conf
 COPY entrypoint.sh /entrypoint.sh
-COPY render-frontend-config.sh /usr/local/share/openbb/render-frontend-config.lite.sh
-COPY render-frontend-config.full.sh /usr/local/share/openbb/render-frontend-config.full.sh
-# Admin-login helper: `docker exec openbb credentials`
+COPY render_frontend_config.py /usr/local/bin/render-frontend-config
+# Admin-login helper: `docker exec workspace credentials`
 COPY credentials.sh /usr/local/bin/credentials
 
-# Account import helper: `docker exec openbb openbb-import /import/<file>.zip`
-COPY import.sh /usr/local/bin/openbb-import
-RUN case "$OPENBB_IMAGE_VARIANT" in \
-      lite|full) cp "/usr/local/share/openbb/render-frontend-config.${OPENBB_IMAGE_VARIANT}.sh" /usr/local/bin/render-frontend-config.sh ;; \
-      *) echo "Unknown OPENBB_IMAGE_VARIANT=$OPENBB_IMAGE_VARIANT" >&2; exit 1 ;; \
-    esac \
-    && chmod +x /entrypoint.sh /usr/local/bin/render-frontend-config.sh /usr/local/bin/credentials /usr/local/bin/openbb-import
+# Account import helper: `docker exec workspace workspace-import /import/<file>.zip`
+COPY import.sh /usr/local/bin/workspace-import
+RUN chmod +x /entrypoint.sh /usr/local/bin/render-frontend-config /usr/local/bin/credentials /usr/local/bin/workspace-import
 
 ENV PATH="$VENV_PATH/bin:$PATH" \
     LD_LIBRARY_PATH="$VENV_PATH/lib" \
-    OPENBB_IMAGE_VARIANT=${OPENBB_IMAGE_VARIANT} \
     PORT=3000 \
     DATABASE_TYPE=sqlite \
-    DB_PATH=/data/openbb.db \
+    DB_PATH=/data/workspace.db \
     FOLDER_STORAGE_PATH=/data/storage \
     REDIS_HOST=127.0.0.1 \
     REDIS_PORT=6379 \
@@ -203,15 +185,13 @@ ENV PATH="$VENV_PATH/bin:$PATH" \
     MODE=lite \
     DISABLE_CORS=1 \
     STORAGE_PROVIDER=folder \
-    EMAIL_PROVIDER=none \
-    HUBSPOT=0 \
     PROMETHEUS=0 \
     WORKERS=1 \
-    SUPPRESSED_API_ROUTERS='["bot", "terminal", "sdk", "run_tasks", "testing", "metrics"]' \
+    SUPPRESSED_API_ROUTERS='["sdk", "run_tasks"]' \
     SUPPRESSED_API_ROUTES='[]' \
     SELFURL=http://localhost:3000/api \
     FRONTENDURL=http://localhost:3000 \
-    PROURL=http://localhost:3000
+    APPURL=http://localhost:3000
 
 # /data holds SQLite, folder storage, and the redis dump. Created here with
 # appuser ownership so the first-mount of a named volume inherits it.
@@ -226,6 +206,6 @@ EXPOSE 3000
 VOLUME ["/data"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -fsS http://localhost:${PORT}/api/health || exit 1
+    CMD ["python", "-c", "import os, urllib.request; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '3000') + '/api/health', timeout=4)"]
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/entrypoint.sh"]

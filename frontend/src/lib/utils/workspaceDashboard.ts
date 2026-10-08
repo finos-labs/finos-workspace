@@ -103,19 +103,17 @@ export function getDashboardInfo(
   const ensureTab = (tabId: string | null | undefined) => {
     const storedTabId = normalizeStoredTabId(tabId);
     const serializedTabId = serializeDashboardTabId(storedTabId);
-    if (!tabsById.has(serializedTabId)) {
-      tabsById.set(serializedTabId, {
+    let tab = tabsById.get(serializedTabId);
+    if (!tab) {
+      tab = {
         tab_id: serializedTabId,
         tab_name: getTabDisplayName(serializedTabId, storedTabId, slugToName),
         widgets: [],
         layout: [],
-      });
+      };
+      tabsById.set(serializedTabId, tab);
     }
-    return {
-      storedTabId,
-      serializedTabId,
-      tab: tabsById.get(serializedTabId)!,
-    };
+    return { storedTabId, serializedTabId, tab };
   };
 
   for (const tab of navBarTabs) {
@@ -142,7 +140,11 @@ export function getDashboardInfo(
   for (const [tabId, entries] of Object.entries(gridLayout)) {
     const { tab } = ensureTab(tabId);
     tab.layout = entries
-      .filter((entry) => widgetsById.get(entry.i)?.widgetId !== "navigation_bar")
+      .filter(
+        (entry): entry is typeof entry & { i: string } =>
+          entry.i !== undefined &&
+          widgetsById.get(entry.i)?.widgetId !== "navigation_bar",
+      )
       .map((entry) => ({
         widget_uuid: entry.i,
         x: entry.x ?? 0,

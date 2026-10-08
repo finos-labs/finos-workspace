@@ -2,7 +2,7 @@ import asyncio
 from uuid import uuid4
 
 import pytest
-from routers.pro.workspace_mcp.schemas import BrowserSessionStartRequest
+from routers.app.workspace_mcp.schemas import BrowserSessionStartRequest
 
 
 class FakeSocket:
@@ -85,7 +85,7 @@ class FakeAsyncRedis:
 
 @pytest.mark.asyncio
 async def test_bridge_start_session_replaces_existing_user_session():
-    from routers.pro.workspace_mcp.bridge import (
+    from routers.app.workspace_mcp.bridge import (
         BridgeSessionManager,
         BrowserUnavailableError,
     )
@@ -116,7 +116,7 @@ async def test_bridge_start_session_replaces_existing_user_session():
 
 @pytest.mark.asyncio
 async def test_bridge_executes_connected_browser_command():
-    from routers.pro.workspace_mcp.bridge import BridgeSessionManager
+    from routers.app.workspace_mcp.bridge import BridgeSessionManager
 
     manager = BridgeSessionManager(redis_client=None, worker_id="test-worker")
     if manager.redis is None:
@@ -165,7 +165,7 @@ async def test_bridge_executes_connected_browser_command():
 
 @pytest.mark.asyncio
 async def test_bridge_command_without_browser_is_unavailable():
-    from routers.pro.workspace_mcp.bridge import (
+    from routers.app.workspace_mcp.bridge import (
         BridgeSessionManager,
         BrowserUnavailableError,
     )
@@ -178,7 +178,7 @@ async def test_bridge_command_without_browser_is_unavailable():
 
 @pytest.mark.asyncio
 async def test_disconnect_only_fails_that_users_pending_commands():
-    from routers.pro.workspace_mcp.bridge import BridgeSessionManager, ConnectedBrowser
+    from routers.app.workspace_mcp.bridge import BridgeSessionManager, ConnectedBrowser
 
     manager = BridgeSessionManager(redis_client=None, worker_id="test-worker")
 
@@ -224,7 +224,7 @@ async def test_disconnect_only_fails_that_users_pending_commands():
 
 @pytest.mark.asyncio
 async def test_completed_results_cache_is_bounded():
-    from routers.pro.workspace_mcp.bridge import BridgeSessionManager, ConnectedBrowser
+    from routers.app.workspace_mcp.bridge import BridgeSessionManager, ConnectedBrowser
 
     cap = 5
     manager = BridgeSessionManager(
@@ -273,7 +273,7 @@ async def test_ensure_started_pins_worker_id_to_pid():
     """
     import os
 
-    from routers.pro.workspace_mcp.bridge import BridgeSessionManager
+    from routers.app.workspace_mcp.bridge import BridgeSessionManager
 
     manager = BridgeSessionManager(redis_client=FakeAsyncRedis(), worker_id="shared")
     await manager.ensure_started()
@@ -287,7 +287,7 @@ async def test_ensure_started_pins_worker_id_to_pid():
 @pytest.mark.asyncio
 async def test_bridge_routes_command_across_processes_via_redis():
     """A command issued on one worker reaches a browser held by another worker over Redis."""
-    from routers.pro.workspace_mcp.bridge import BridgeSessionManager
+    from routers.app.workspace_mcp.bridge import BridgeSessionManager
 
     broker: dict = {"channels": {}, "store": {}}
     holder = BridgeSessionManager(

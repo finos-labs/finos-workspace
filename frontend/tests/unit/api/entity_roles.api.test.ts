@@ -12,6 +12,7 @@ import {
   putEntityRolePermissions,
 } from "~/api/entity_roles.api";
 import type { RoleT } from "~/components/AdminRoles/types";
+import { required } from "../mocks";
 
 vi.mock("~/api/api", () => ({
   apiClient: {
@@ -553,7 +554,7 @@ describe("Entity Roles API", () => {
         .calls[0][1] as EntityRolePermissions[];
       expect(callArgs).toHaveLength(1);
       expect(callArgs[0].templates).toHaveLength(1);
-      expect(callArgs[0].templates![0].prompts).toHaveLength(2);
+      expect(required(callArgs[0].templates)[0].prompts).toHaveLength(2);
     });
 
     it("should add no-access as default when access property is missing", async () => {

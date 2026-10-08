@@ -29,7 +29,6 @@ jest.mock("~/constants", () => {
   process.env = { ...process.env, ...env };
 
   return {
-    VITE_PLATFORM_URL: process.env.VITE_PLATFORM_URL,
     VITE_ADDIN_BASE_URL: process.env.VITE_ADDIN_BASE_URL,
     VERSION: `1.${packageJson.version}.test`,
   };

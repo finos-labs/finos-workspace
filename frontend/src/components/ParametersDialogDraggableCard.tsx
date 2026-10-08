@@ -174,7 +174,7 @@ function ParameterRow({
           <Tooltip message="Drag to reorder">
             <button
               tabIndex={-1}
-              className="obb-small-navbar-btn flex-shrink-0"
+              className="ws-small-navbar-btn flex-shrink-0"
               onPointerDown={(e) => controls.start(e)}
             >
               <Icon id="drag-handle" />

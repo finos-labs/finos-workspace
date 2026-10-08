@@ -9,13 +9,17 @@ import { useStateReducer } from "~/hooks/useStateReducer";
 import {
   type EntityThemeSettings,
   type ThemeSettings,
-  useTableChartThemesStore,
-} from "~/lib/state/tableChartThemes";
+  useEntityThemeStore,
+} from "~/lib/state/entityTheme";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn } from "~/lib/utils";
 import SettingsMenu from "../ds/molecules/SettingsMenu";
 import Icon from "../Icon";
-import { THEME_MODES, ThemeSettingsLayout } from "./ThemeSettingsLayout";
+import {
+  THEME_MODES,
+  type ThemeMode,
+  ThemeSettingsLayout,
+} from "./ThemeSettingsLayout";
 
 const DEFAULT_COLORS = [
   "#00AAFF", // blue
@@ -40,13 +44,11 @@ const THEME_DEFAULT: GroupingThemeState = {
   palette: DEFAULT_COLORS,
 };
 
-type GroupingSettingsState = {
-  light?: GroupingThemeState;
-  dark?: GroupingThemeState;
-  themeMode?: "light" | "dark";
+type GroupingSettingsState = Record<ThemeMode, GroupingThemeState> & {
+  themeMode: ThemeMode;
 };
 
-const STATE_DEFAULT: GroupingSettingsState = {
+const STATE_DEFAULT: Record<ThemeMode, GroupingThemeState> = {
   light: THEME_DEFAULT,
   dark: THEME_DEFAULT,
 };
@@ -67,7 +69,7 @@ function updateState(
 }
 
 function initializer(state: GroupingSettingsState): GroupingSettingsState {
-  const { light, dark } = useTableChartThemesStore.getState();
+  const { light, dark } = useEntityThemeStore.getState();
   const appThemes = { light: light?.appTheme, dark: dark?.appTheme };
   const updatedState = {} as Partial<GroupingSettingsState>;
   for (const mode of THEME_MODES) {
@@ -79,14 +81,14 @@ function initializer(state: GroupingSettingsState): GroupingSettingsState {
 export function GroupingSettings() {
   const theme = useShallowThemeStore((state) => state.theme);
   const [themesState, dispatch] = useStateReducer<GroupingSettingsState>(
-    { themeMode: theme },
+    { ...STATE_DEFAULT, themeMode: theme },
     initializer,
   );
 
-  const saveThemeSettings = useTableChartThemesStore((s) => s.saveThemeSettings);
+  const saveThemeSettings = useEntityThemeStore((s) => s.saveThemeSettings);
 
   useEffect(() => {
-    const unsub = useTableChartThemesStore.subscribe(
+    const unsub = useEntityThemeStore.subscribe(
       (state) => ({ light: state.light?.appTheme, dark: state.dark?.appTheme }),
       (current) => {
         const updatedState = {} as Partial<GroupingSettingsState>;

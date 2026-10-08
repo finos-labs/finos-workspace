@@ -1,20 +1,28 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import clsx from "clsx";
 import { Fragment, memo, useCallback, useMemo } from "react";
-import type { TreeItem } from "react-complex-tree";
 import { useNavigate, useParams } from "react-router-dom";
 import FeatureLock from "~/components/General/FeatureLock";
 import MoveTo from "~/components/LayoutAuth/DropdownSubs/MoveTo";
 import Tooltip from "~/components/Tooltip";
-import { inSnowflakeNativeApp } from "~/lib/constants";
-import { useShallowAppStore } from "~/lib/state/app";
+import { type SideBarItem, useShallowAppStore } from "~/lib/state/app";
 import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { dispatchSaveState } from "~/lib/utils";
 
+type PopupMenuItem = {
+  shortcut: string;
+  label: string;
+  color?: string;
+  action?: () => void;
+  locked?: boolean;
+  disabled?: boolean;
+  disabledTooltip?: string;
+};
+
 type DashboardPopupProps = {
-  item: TreeItem<any> & { index: string };
-  deleteItem: (item: TreeItem<any>) => void;
+  item: SideBarItem;
+  deleteItem: (item: SideBarItem) => void;
   depth: number;
   setOpen?: (value: boolean) => void;
 };
@@ -53,8 +61,8 @@ export function DashboardPopup(props: DashboardPopupProps) {
     getTabById: s.getTabById,
   }));
 
-  const isProTier = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.tier === "pro",
+  const isFullTier = useShallowFeatureFlagsStore(
+    (state) => state.featureFlags?.tier === "full",
   );
 
   const hasAdvancedBackendWidgets = useMemo(() => {
@@ -77,7 +85,7 @@ export function DashboardPopup(props: DashboardPopupProps) {
     setExportTemplatePopup(true);
   }, [getTabById, item.index, setExportTemplatePopup]);
 
-  const tabMenuItems = useMemo(
+  const tabMenuItems = useMemo<PopupMenuItem[]>(
     () => [
       {
         shortcut: "t",
@@ -111,7 +119,7 @@ export function DashboardPopup(props: DashboardPopupProps) {
         action: () => {
           setShareDashboardPopupId(item.index);
         },
-        locked: !isProTier,
+        locked: !isFullTier,
       },
       {
         shortcut: "t",
@@ -126,9 +134,9 @@ export function DashboardPopup(props: DashboardPopupProps) {
         label: "Export PDF",
         disabled: item.index !== id,
         action: toggleExportPopup,
-        locked: !isProTier,
+        locked: !isFullTier,
       },
-      ...(import.meta.env.VITE_EXCEL_ADD_IN_ENABLED === "true" && !inSnowflakeNativeApp
+      ...(import.meta.env.VITE_EXCEL_ADD_IN_ENABLED === "true"
         ? [
             {
               shortcut: "e",
@@ -137,47 +145,39 @@ export function DashboardPopup(props: DashboardPopupProps) {
                 setExcelExportItem(item);
                 setExcelExportPopup(true);
               },
-              locked: !isProTier,
+              locked: !isFullTier,
               disabled: !hasAdvancedBackendWidgets,
               disabledTooltip: "No Excel-compatible widgets found in this dashboard",
             },
           ]
         : []),
-      ...(inSnowflakeNativeApp
-        ? []
-        : [
-            {
-              shortcut: "t",
-              label: "Export apps.json",
-              action: handleExportTemplate,
-              disabled: !hasAdvancedBackendWidgets,
-              disabledTooltip: "No backend sources found in this dashboard",
-            },
-          ]),
       {
         shortcut: "t",
-        label: inSnowflakeNativeApp ? "Save App from Dashboard" : "Save App",
-        action: () => setGenerateAppDashboardId(item.index),
-        locked: !isProTier && !inSnowflakeNativeApp,
+        label: "Export apps.json",
+        action: handleExportTemplate,
+        disabled: !hasAdvancedBackendWidgets,
+        disabledTooltip: "No backend sources found in this dashboard",
       },
-      ...(inSnowflakeNativeApp
-        ? []
-        : [
-            {
-              shortcut: "t",
-              label: `${groupingVisible ? "Hide" : "Show"} grouping`,
-              action: () => {
-                setGroupingVisible(!groupingVisible);
-              },
-            },
-          ]),
+      {
+        shortcut: "t",
+        label: "Save App",
+        action: () => setGenerateAppDashboardId(item.index),
+        locked: !isFullTier,
+      },
+      {
+        shortcut: "t",
+        label: `${groupingVisible ? "Hide" : "Show"} grouping`,
+        action: () => {
+          setGroupingVisible(!groupingVisible);
+        },
+      },
     ],
     [
       deleteItem,
       duplicateTab,
       handleExportTemplate,
       id,
-      isProTier,
+      isFullTier,
       item,
       moveTabToFolder,
       navigate,
@@ -221,7 +221,7 @@ export function DashboardPopup(props: DashboardPopupProps) {
                   >
                     <DropdownMenuPrimitive.Item
                       onClick={(e) => e.stopPropagation()}
-                      className="obb-dropdown-item hover:bg-transparent! dark:hover:bg-transparent! opacity-50 cursor-not-allowed"
+                      className="ws-dropdown-item hover:bg-transparent! dark:hover:bg-transparent! opacity-50 cursor-not-allowed"
                     >
                       <span className={clsx("grow", color)}>{label}</span>
                     </DropdownMenuPrimitive.Item>
@@ -234,10 +234,10 @@ export function DashboardPopup(props: DashboardPopupProps) {
 
                       if (locked) return;
 
-                      actionCb();
+                      actionCb?.();
                       setOpen?.(false);
                     }}
-                    className="obb-dropdown-item"
+                    className="ws-dropdown-item"
                   >
                     <span className={clsx("grow", color)}>{label}</span>
                   </DropdownMenuPrimitive.Item>

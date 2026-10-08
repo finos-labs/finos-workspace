@@ -838,7 +838,7 @@ async def add_marketplace_whitelist(
     _=Depends(auth_helpers.get_current_superuser),
 ) -> WhitelistEntryResponse:
     """Whitelist a developer by email. Idempotent — re-adding returns the same
-    entry. 404 if no user with that email has an OpenBB account yet."""
+    entry. 404 if no user with that email has an Workspace account yet."""
     # `EmailStr` already guarantees exactly one "@", so clean_email cannot raise.
     cleaned = base.clean_email(body.email)
 
@@ -849,7 +849,7 @@ async def add_marketplace_whitelist(
     if not user:
         raise HTTPException(
             status_code=404,
-            detail="No user with that email — ask them to create an OpenBB account first",
+            detail="No user with that email — ask them to create an Workspace account first",
         )
 
     if not user.can_submit_marketplace:

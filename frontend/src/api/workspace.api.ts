@@ -1,24 +1,20 @@
 import type { Layout } from "react-grid-layout";
-import {
-  applyChartViewToWidget,
-  type ChartViewIntent,
-} from "~/components/AI/hooks/createWidgetUtils";
 import { useGetWidgetsStore } from "~/components/AI/hooks/useGetAppWidgets";
 import { getWidgetOrigin } from "~/components/AI/hooks/utils";
-import type { Ticker, WidgetT } from "~/components/types";
+import type { ParamDef, StoredParamValue, Ticker, WidgetT } from "~/components/types";
 import type { WidgetId } from "~/components/Widgets";
 import { useAppStore } from "~/lib/state/app";
 import { useCopilotDataStore } from "~/lib/state/copilotData";
-import { tickersStore } from "~/lib/state/tickers";
 import { triggerCustomEvent } from "~/lib/utils";
+import { isStoredParamValue } from "~/lib/utils/widgetParams";
 import {
   deserializeDashboardTabId,
   getDashboardInfo,
 } from "~/lib/utils/workspaceDashboard";
 
 type WidgetConfig = {
-  dataArgs?: Record<string, any>;
-  uiArgs?: Record<string, any>;
+  dataArgs?: Record<string, unknown>;
+  uiArgs?: Record<string, unknown>;
 };
 
 type DashboardConfig = {
@@ -281,18 +277,18 @@ async function createWidget(
 function readWidget(
   dashboardId: string,
   widgetUuid: string,
-): Record<string, any> | null {
+): Record<string, unknown> | null {
   const widget = getDashboardWidgetOrThrow(dashboardId, widgetUuid);
 
   const origin = getWidgetOrigin(widget as WidgetT);
   // Applied data_args are persisted onto storage.params by updateWidgetState (the
   // create/update path); the params[] array only carries schema defaults. Prefer
   // the stored value so read_widget reflects what was actually applied.
-  const storedParams = (widget.storage?.params ?? {}) as Record<string, any>;
-  const resolveParamValue = (param: any) =>
+  const storedParams = widget.storage?.params ?? {};
+  const resolveParamValue = (param: ParamDef) =>
     storedParams[param.paramName] ?? param.value;
 
-  const dataArgs: Record<string, any> = {};
+  const dataArgs: Record<string, unknown> = {};
   if (Array.isArray(widget.params)) {
     for (const param of widget.params) {
       const value = resolveParamValue(param);
@@ -302,7 +298,7 @@ function readWidget(
     }
   }
 
-  const result: Record<string, any> = {
+  const result: Record<string, unknown> = {
     origin,
     widget_id: widget.widgetId,
     name: widget.name,
@@ -310,7 +306,7 @@ function readWidget(
     inner_tab: widget.innerTab,
     data_args: dataArgs,
     params: Array.isArray(widget.params)
-      ? widget.params.map((p: any) => ({
+      ? widget.params.map((p) => ({
           param_name: p.paramName,
           label: p.label ?? p.paramName,
           type: p.type,
@@ -320,12 +316,14 @@ function readWidget(
       : [],
   };
 
-  // Include rendered data from copilot store if available. Generative notes
-  // never populate that store — their (sanitized) body lives in storage.html,
-  // so fall back to it or read_widget returns a note with no content.
+  // Include rendered data from copilot store if available. Generative widgets
+  // never populate that store — their (sanitized) body lives in storage, so fall
+  // back to it or read_widget returns a widget with no content.
   const widgetData = useCopilotDataStore.getState().getDashboardWidgetData(widgetUuid);
   if (widgetData?.data) {
     result.data = widgetData.data;
+  } else if (typeof widget.storage?.text === "string") {
+    result.data = widget.storage.text;
   } else if (typeof widget.storage?.html === "string") {
     result.data = widget.storage.html;
   }
@@ -354,23 +352,15 @@ async function updateWidget(
     const tickerValue = config.dataArgs?.[tickerParam.paramName];
     if (tickerValue && tickerValue !== "null") {
       const symbol = String(tickerValue);
-      const tickersObj = await tickersStore.getState().getOrQueryTickers(symbol);
-      const tickers = Object.values(tickersObj);
-      // Fix A: SDK widgets fetch by data.mainTicker.symbol (storage.params.symbol
-      // is filtered out of the request and the query key), so mainTicker MUST
-      // reflect the new symbol or the widget never refetches. When the lookup
-      // returns nothing (e.g. a transient /symbols failure), fall back to a
-      // minimal ticker from the raw value instead of leaving mainTicker stale.
-      mainTicker =
-        tickers?.length > 0
-          ? tickers[0]
-          : {
-              ...(widget.data?.mainTicker ?? {}),
-              id: symbol.replace(/[\^$]/g, ""),
-              symbol,
-              category: widget.data?.mainTicker?.category ?? "equity",
-              type: widget.data?.mainTicker?.type ?? "stock",
-            };
+      // Keep mainTicker in step with the new symbol so the widget's parameter group
+      // (and anything reading data.mainTicker) sees the change.
+      mainTicker = {
+        ...(widget.data?.mainTicker ?? {}),
+        id: symbol.replace(/[\^$]/g, ""),
+        symbol,
+        category: widget.data?.mainTicker?.category ?? "equity",
+        type: widget.data?.mainTicker?.type ?? "stock",
+      };
     }
   }
 
@@ -384,8 +374,6 @@ async function updateWidget(
     }
     return updatedWidget;
   };
-
-  const isNote = widget.type === "note" || widget.widgetId === "rich_note";
 
   // Fix B: persist the update directly to the store so widgets on inactive tabs
   // (not mounted, so no `updateWidget-` listener) still pick up the new ticker/
@@ -403,13 +391,12 @@ async function updateWidget(
     );
     return updatedWidget;
   };
-  triggerCustomEvent(`updateWidget-${widgetUuid}`, isNote ? persistedWidget : updateFn);
+  triggerCustomEvent(`updateWidget-${widgetUuid}`, updateFn);
 
   if (import.meta.env.DEV) {
     console.debug("[AI updateWidget]", {
       widgetUuid,
       widgetId: widget.widgetId,
-      isNote,
       newSymbol: mainTicker?.symbol,
       params: persistedWidget.storage?.params,
     });
@@ -478,8 +465,13 @@ function getWidgetDefinitionOrThrow(backendName: string, widgetId: string): Widg
 function computeWidgetParamUpdates(
   paramsDef: WidgetT["params"] | null | undefined,
   dataArgs: Record<string, unknown> | null | undefined,
-): { params: Record<string, unknown>; droppedKeys: string[] } {
-  const params: Record<string, unknown> = {};
+): {
+  params: Record<string, StoredParamValue>;
+  droppedKeys: string[];
+  invalidKeys: string[];
+} {
+  const params: Record<string, StoredParamValue> = {};
+  const invalidKeys: string[] = [];
   const defs = Array.isArray(paramsDef) ? paramsDef : [];
   const args = dataArgs ?? {};
 
@@ -493,12 +485,13 @@ function computeWidgetParamUpdates(
     // Only drop unset values; falsy values like false, 0, and "" are valid
     // param values and must be applied.
     if (paramValue !== undefined && paramValue !== null && paramValue !== "null") {
-      params[paramName] = paramValue;
+      if (isStoredParamValue(paramValue)) params[paramName] = paramValue;
+      else invalidKeys.push(paramName);
     }
   }
 
   const droppedKeys = Object.keys(args).filter((key) => !declared.has(key));
-  return { params, droppedKeys };
+  return { params, droppedKeys, invalidKeys };
 }
 
 /**
@@ -543,7 +536,7 @@ function updateWidgetState(widget: WidgetT, config: WidgetConfig): WidgetT {
     config.dataArgs,
   );
 
-  // Handle UI args for storage properties (like html content for rich_note)
+  // Handle UI args for storage properties (like the text of a markdown note)
   const uiUpdates = computeWidgetUiUpdates(config.uiArgs);
   const newStorage = uiUpdates.storage;
   const widgetName = uiUpdates.name ?? widget.name;
@@ -554,7 +547,6 @@ function updateWidgetState(widget: WidgetT, config: WidgetConfig): WidgetT {
   const {
     gridData: gridDataOverride,
     innerTab: innerTabOverride,
-    chartView: chartViewOverride,
     ...restStorage
   } = newStorage;
   const validGridData =
@@ -571,7 +563,7 @@ function updateWidgetState(widget: WidgetT, config: WidgetConfig): WidgetT {
       )
     : null;
 
-  let updatedWidget = {
+  return {
     ...widget,
     storage: {
       ...widget.storage,
@@ -589,17 +581,4 @@ function updateWidgetState(widget: WidgetT, config: WidgetConfig): WidgetT {
     description: widgetDescription,
     source: widgetSource,
   };
-
-  if (
-    chartViewOverride &&
-    typeof chartViewOverride === "object" &&
-    !Array.isArray(chartViewOverride)
-  ) {
-    updatedWidget = applyChartViewToWidget(
-      updatedWidget,
-      chartViewOverride as ChartViewIntent,
-    );
-  }
-
-  return updatedWidget;
 }

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   ResizableHandle,
@@ -7,17 +8,17 @@ import {
 } from "~/components/ui/Resizable";
 
 vi.mock("react-resizable-panels", () => ({
-  Panel: ({ children, className, ...props }: any) => (
+  Panel: ({ children, className, ...props }: ComponentProps<"div">) => (
     <div data-testid="panel" className={className} {...props}>
       {children}
     </div>
   ),
-  PanelGroup: ({ children, className, ...props }: any) => (
+  PanelGroup: ({ children, className, ...props }: ComponentProps<"div">) => (
     <div data-testid="panel-group" className={className} {...props}>
       {children}
     </div>
   ),
-  PanelResizeHandle: ({ children, className, ...props }: any) => (
+  PanelResizeHandle: ({ children, className, ...props }: ComponentProps<"div">) => (
     <div data-testid="panel-resize-handle" className={className} {...props}>
       {children}
     </div>
@@ -39,7 +40,7 @@ vi.mock("~/components/LayoutAuth/AppLayout/hooks/usePanelsState", () => ({
 }));
 
 vi.mock("~/components/Tooltip", () => ({
-  default: ({ children, message }: any) => (
+  default: ({ children, message }: { children?: ReactNode; message?: ReactNode }) => (
     <div data-testid="tooltip" data-message={message}>
       {children}
     </div>

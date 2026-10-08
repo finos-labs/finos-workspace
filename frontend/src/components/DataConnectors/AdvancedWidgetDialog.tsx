@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { usePostHog } from "posthog-js/react";
 import { useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -7,7 +6,7 @@ import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import { getApiSources, postApiSource } from "~/api/auth.api";
-import { EndpointHeadersForm } from "~/components/DataConnectors/SingleWidget/EndpointHeadersForm";
+import { EndpointHeadersForm } from "~/components/DataConnectors/EndpointHeadersForm";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import {
@@ -17,6 +16,7 @@ import {
 import { dispatchSaveState } from "~/lib/utils";
 import { handleConnectionAdded } from "~/lib/utils/dataConnectors";
 import { NotificationId, showNotificationWithRememberMe } from "~/lib/utils/toast";
+import { toError } from "~/lib/utils/utils";
 import { validateSource } from "~/lib/utils/validateBackend";
 import { formatZodErrorMessage } from "~/utils/zodErrors";
 import { TroubleshootMessage } from "../Apps/ManageAppDialog";
@@ -83,8 +83,6 @@ export default function AdvancedWidgetDialog() {
 
   const [state, dispatch] = useStateReducer<DialogState>(null, getInitialState);
 
-  const posthog = usePostHog();
-
   const form = useForm<AdvancedForm>({
     resolver: zodResolver(AdvancedSchema),
     defaultValues: {
@@ -100,7 +98,11 @@ export default function AdvancedWidgetDialog() {
     (params: { name?: string; url?: string }) => {
       const { id, url, name } = { ...form.getValues(), ...params };
 
-      const generalError = checkExistingBackend({ name, url, id });
+      const generalError = checkExistingBackend({
+        name: name ?? "",
+        url: url ?? "",
+        id: id ?? "",
+      });
       for (const field of ["name", "url"] as const) {
         if (params[field]) {
           if (!generalError?.[field]) return form.clearErrors(field);
@@ -131,7 +133,7 @@ export default function AdvancedWidgetDialog() {
           templateErrorMessage,
           totalFailed,
           templates,
-          isOpenBBPlatform,
+          isPlatform,
         } = await validateSource(source, validateWidgets === "true");
 
         const widgetsCount = Object.keys(widgets).length;
@@ -179,16 +181,16 @@ export default function AdvancedWidgetDialog() {
             url: cleanUrl,
             widgets,
             endpointHeaders,
-            isOpenBBPlatform,
+            isPlatform,
           },
         });
       } catch (err) {
         newstate.errorMessage =
-          err?.message === "Failed to fetch"
+          toError(err).message === "Failed to fetch"
             ? "Unknown error occurred, check your API console for more detailed error message"
-            : err.message;
+            : toError(err).message;
       } finally {
-        dispatch({ loading: false, ...newstate });
+        dispatch({ ...newstate, loading: false });
       }
     },
     [],
@@ -196,7 +198,8 @@ export default function AdvancedWidgetDialog() {
 
   const onAddBackend = useCallback(async () => {
     if (!state.backendToAdd) return;
-    const { name, url, endpointHeaders = [], isOpenBBPlatform } = state.backendToAdd;
+    const { name, url, endpointHeaders = [] } = state.backendToAdd;
+    if (!(name && url)) return;
     const backendId = id ?? uuidv4();
     const data = { name, url, endpointHeaders };
     const { status } = await postApiSource(backendId, data);
@@ -251,20 +254,11 @@ export default function AdvancedWidgetDialog() {
         },
       });
     }
-    if (posthog) {
-      posthog.capture("added_custom_backend", {
-        backend_name: name,
-        backend_url: url,
-        number_of_widgets: widgetsToAdd.length,
-        isOpenBBPlatform,
-      });
-    }
   }, [
     apiSource?.name,
     state.backendToAdd,
     id,
     updateApiSource,
-    posthog,
     dashboardId,
     pendingNavigate,
     setSearchParams,
@@ -295,7 +289,7 @@ export default function AdvancedWidgetDialog() {
               return (
                 <FormInput
                   label="Name"
-                  placeholder="OpenBB Platform"
+                  placeholder="Platform"
                   {...field}
                   onChange={(name: string) => {
                     onFieldChange({ name });
@@ -366,7 +360,7 @@ export default function AdvancedWidgetDialog() {
               title="Error"
               className="mt-2 mb-2 w-[560px] max-w-full"
             >
-              {formatZodErrorMessage(state.errorMessage, "!text-ds-text-body")}
+              {formatZodErrorMessage(state.errorMessage ?? "", "!text-ds-text-body")}
               {state.errorMessage?.includes("(Status: ") && state.isLocalhost && (
                 <TroubleshootMessage />
               )}
@@ -400,7 +394,7 @@ export default function AdvancedWidgetDialog() {
               !form.formState.isValid ||
               state.loading ||
               !(state.isSuccess || apiSource?.id) ||
-              (apiSource?.id &&
+              (!!apiSource?.id &&
                 (form.formState.dirtyFields?.url
                   ? !state.isSuccess
                   : !(form.formState.isDirty && state.isConnected)))

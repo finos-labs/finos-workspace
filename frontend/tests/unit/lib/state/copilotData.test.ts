@@ -14,13 +14,19 @@
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WidgetT } from "~/components/types";
-import { type DashboardWidgetData, useCopilotDataStore } from "~/lib/state/copilotData";
+import type { Copilot, CopilotWidget } from "~/lib/state/copilot";
+import {
+  type CopilotWidgets,
+  type DashboardWidgetData,
+  useCopilotDataStore,
+} from "~/lib/state/copilotData";
+import { malformed, partial } from "../../mocks";
 
 // Mock external dependencies
 vi.mock("~/components/AI/hooks/utils", () => ({
   compareSignatures: vi.fn((a, b) => JSON.stringify(a) === JSON.stringify(b)),
   createSignatureMap: vi.fn((widgets, data) => {
-    const map: Record<string, any> = {};
+    const map: Record<string, unknown> = {};
     if (widgets) {
       for (const widget of widgets) {
         map[widget.id] = { widgetId: widget.widgetId, data: data?.[widget.id] };
@@ -31,8 +37,8 @@ vi.mock("~/components/AI/hooks/utils", () => ({
 }));
 
 vi.mock("lodash.debounce", () => ({
-  default: (fn: any) => {
-    const debounced = (...args: any[]) => fn(...args);
+  default: (fn: (...args: unknown[]) => unknown) => {
+    const debounced = (...args: unknown[]) => fn(...args);
     debounced.cancel = vi.fn();
     return debounced;
   },
@@ -41,7 +47,7 @@ vi.mock("lodash.debounce", () => ({
 const createMockWidget = (overrides: Partial<WidgetT> = {}): WidgetT =>
   ({
     id: "widget-1",
-    widgetId: "chart",
+    widgetId: "html",
     name: "Chart Widget",
     innerTab: "overview",
     groupId: null,
@@ -82,7 +88,7 @@ describe("useCopilotDataStore", () => {
         selectedWidgetIDs: [],
         mentionTrackedWidgetUuids: new Set<string>(),
         preSelectedWidgetUuids: new Set<string>(),
-        widgetRuntimeState: new Map<string, any>(),
+        widgetRuntimeState: new Map(),
         extraWidgetsEnabled: false,
         generativeUiEnabled: false,
       });
@@ -117,7 +123,9 @@ describe("useCopilotDataStore", () => {
 
   describe("setCopilotWidgets", () => {
     it("should update copilot widgets partially", () => {
-      const selectedWidgets = [{ uuid: "1", name: "Widget 1" }] as any;
+      const selectedWidgets = partial<CopilotWidget[]>([
+        { uuid: "1", name: "Widget 1" },
+      ]);
 
       act(() => {
         useCopilotDataStore.getState().setCopilotWidgets({ selectedWidgets });
@@ -142,13 +150,13 @@ describe("useCopilotDataStore", () => {
     it("should merge with existing copilot widgets", () => {
       act(() => {
         useCopilotDataStore.getState().setCopilotWidgets({
-          selectedWidgets: [{ uuid: "1" }] as any,
+          selectedWidgets: partial<CopilotWidget[]>([{ uuid: "1" }]),
         });
       });
 
       act(() => {
         useCopilotDataStore.getState().setCopilotWidgets({
-          dashboardWidgets: [{ uuid: "2" }] as any,
+          dashboardWidgets: partial<CopilotWidget[]>([{ uuid: "2" }]),
         });
       });
 
@@ -161,8 +169,8 @@ describe("useCopilotDataStore", () => {
   describe("getCopilotWidgets", () => {
     it("should return all copilot widgets when no target agent", () => {
       const widgets = {
-        selectedWidgets: [{ uuid: "1" }] as any,
-        dashboardWidgets: [{ uuid: "2" }] as any,
+        selectedWidgets: partial<CopilotWidget[]>([{ uuid: "1" }]),
+        dashboardWidgets: partial<CopilotWidget[]>([{ uuid: "2" }]),
         allDashboardWidgets: [],
         temporaryWidgets: [],
         allWidgets: [],
@@ -178,24 +186,24 @@ describe("useCopilotDataStore", () => {
 
     it("should filter widgets based on agent features", () => {
       const widgets = {
-        selectedWidgets: [{ uuid: "1" }] as any,
-        dashboardWidgets: [{ uuid: "2" }] as any,
-        allDashboardWidgets: [{ uuid: "3" }] as any,
-        temporaryWidgets: [{ uuid: "4" }] as any,
-        allWidgets: [{ uuid: "5" }] as any,
+        selectedWidgets: partial<CopilotWidget[]>([{ uuid: "1" }]),
+        dashboardWidgets: partial<CopilotWidget[]>([{ uuid: "2" }]),
+        allDashboardWidgets: partial<CopilotWidget[]>([{ uuid: "3" }]),
+        temporaryWidgets: partial<CopilotWidget[]>([{ uuid: "4" }]),
+        allWidgets: partial<CopilotWidget[]>([{ uuid: "5" }]),
       };
 
       act(() => {
         useCopilotDataStore.setState({ copilotWidgets: widgets });
       });
 
-      const agent = {
+      const agent = partial<Copilot>({
         features: {
           "widget-dashboard-select": false,
           "file-upload": true,
           "widget-global-search": true,
         },
-      } as any;
+      });
 
       const result = useCopilotDataStore.getState().getCopilotWidgets(agent);
 
@@ -207,7 +215,7 @@ describe("useCopilotDataStore", () => {
     });
 
     it("should clear workspaceState.current_dashboard_info when widget-dashboard-select is disabled", () => {
-      const widgets = {
+      const widgets = partial<CopilotWidgets>({
         selectedWidgets: [],
         dashboardWidgets: [],
         allDashboardWidgets: [],
@@ -216,15 +224,15 @@ describe("useCopilotDataStore", () => {
         workspaceState: {
           current_dashboard_info: { id: "dashboard-1" },
         },
-      };
-
-      act(() => {
-        useCopilotDataStore.setState({ copilotWidgets: widgets as any });
       });
 
-      const agent = {
+      act(() => {
+        useCopilotDataStore.setState({ copilotWidgets: widgets });
+      });
+
+      const agent = partial<Copilot>({
         features: { "widget-dashboard-select": false },
-      } as any;
+      });
 
       const result = useCopilotDataStore.getState().getCopilotWidgets(agent);
       expect(result.workspaceState?.current_dashboard_info).toBeNull();
@@ -1108,18 +1116,20 @@ describe("useCopilotDataStore", () => {
         expect(
           useCopilotDataStore
             .getState()
-            .checkWidgetSignature("", { origin: "test", widgetId: "chart", args: {} }),
+            .checkWidgetSignature("", { origin: "test", widgetId: "html", args: {} }),
         ).toBe(false);
       });
 
       it("should return false when signature is falsy", () => {
         expect(
-          useCopilotDataStore.getState().checkWidgetSignature("widget-1", null as any),
+          useCopilotDataStore
+            .getState()
+            .checkWidgetSignature("widget-1", malformed(null)),
         ).toBe(false);
       });
 
       it("should compare signatures correctly", () => {
-        const signature = { origin: "test", widgetId: "chart", args: {} };
+        const signature = { origin: "test", widgetId: "html", args: {} };
 
         act(() => {
           useCopilotDataStore.setState({
@@ -1135,8 +1145,8 @@ describe("useCopilotDataStore", () => {
 
     describe("getWidgetFromSignature", () => {
       it("should find widget by signature", () => {
-        const widget = createMockWidget({ id: "widget-1", widgetId: "chart" });
-        const signature = { origin: "test", widgetId: "chart", args: {} };
+        const widget = createMockWidget({ id: "widget-1", widgetId: "html" });
+        const signature = { origin: "test", widgetId: "html", args: {} };
 
         act(() => {
           useCopilotDataStore.setState({

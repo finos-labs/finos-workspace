@@ -7,34 +7,21 @@ import { getMarketplaceBaseUrl, useListedApps } from "~/hooks/useListedApps";
 import { mockConfig } from "../../mocks/runtimeConfig";
 
 describe("getMarketplaceBaseUrl", () => {
-  const orig = {
-    isLite: mockConfig.ui.isLite,
-    backend: mockConfig.urls.backend,
-    ai: mockConfig.urls.ai,
-  };
-
   afterEach(() => {
-    mockConfig.ui.isLite = orig.isLite;
-    mockConfig.urls.backend = orig.backend;
-    mockConfig.urls.ai = orig.ai;
+    mockConfig.urls.marketplace = "";
   });
 
-  it("returns undefined when not in lite (falls back to configured backend)", () => {
-    mockConfig.ui.isLite = false;
+  it("is undefined without a remote marketplace (the configured backend is used)", () => {
     expect(getMarketplaceBaseUrl()).toBeUndefined();
   });
 
-  it("uses the OpenBB marketplace host in lite (regardless of configured URLs)", () => {
-    mockConfig.ui.isLite = true;
-    mockConfig.urls.backend = "https://some-onprem-host.example.com";
-    mockConfig.urls.ai = "https://ai.openbb.co";
-    expect(getMarketplaceBaseUrl()).toBe("https://backend.openbb.co");
+  it("is the remote marketplace when one is configured", () => {
+    mockConfig.urls.marketplace = "https://marketplace.test";
+    expect(getMarketplaceBaseUrl()).toBe("https://marketplace.test");
   });
 });
 
 describe("useListedApps marketplace request", () => {
-  const origIsLite = mockConfig.ui.isLite;
-
   function createWrapper() {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -49,12 +36,12 @@ describe("useListedApps marketplace request", () => {
   });
 
   afterEach(() => {
-    mockConfig.ui.isLite = origIsLite;
+    mockConfig.urls.marketplace = "";
     vi.mocked(apiClient.get).mockReset();
   });
 
-  it("requests the marketplace cross-origin without auth in lite", async () => {
-    mockConfig.ui.isLite = true;
+  it("requests a remote marketplace cross-origin without auth", async () => {
+    mockConfig.urls.marketplace = "https://marketplace.test";
 
     const { result } = renderHook(() => useListedApps(), {
       wrapper: createWrapper(),
@@ -62,14 +49,12 @@ describe("useListedApps marketplace request", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 3000 });
     expect(apiClient.get).toHaveBeenCalledWith("/marketplace/apps", {
-      baseURL: "https://backend.openbb.co",
+      baseURL: "https://marketplace.test",
       headers: { authorization: "" },
     });
   });
 
-  it("requests the configured backend with default (authed) config when not in lite", async () => {
-    mockConfig.ui.isLite = false;
-
+  it("requests the configured backend with default (authed) config without a remote marketplace", async () => {
     const { result } = renderHook(() => useListedApps(), {
       wrapper: createWrapper(),
     });

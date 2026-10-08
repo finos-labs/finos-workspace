@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import type { MutableRefObject } from "react";
 import { useDropzone } from "react-dropzone";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { CopilotDropzone } from "~/components/AI/CopilotDropzone";
 import useQueriesLeft from "~/components/AI/hooks/useQueriesLeft";
 import { useShallowStreamingStore } from "~/components/AI/hooks/useStreaming";
@@ -35,14 +35,11 @@ vi.mock("~/components/AI/DragFileHere", () => ({
   default: () => <div data-testid="drag-file-here">DragFileHere Component</div>,
 }));
 
-
-
 // Mock useRef and useEffect hooks
 vi.mock("react", async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = await importOriginal<typeof import("react")>();
   return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...(actual as any),
+    ...actual,
     useRef: () => ({ current: null }),
     useEffect: vi.fn(), // Don't execute useEffect callbacks to avoid async issues
   };
@@ -117,7 +114,6 @@ describe("CopilotDropzone Component", () => {
     mockUploadDocuments.mockReset();
     mockUploadDocuments.mockResolvedValue(undefined);
     (useUploadDocuments as Mock).mockReturnValue(mockUploadDocuments);
-
 
     // Mock getRootProps and getInputProps
     mockGetRootProps.mockReturnValue({

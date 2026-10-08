@@ -7,6 +7,7 @@ import { cn } from "~/components/ds/utils";
 import { HoverPopover } from "~/components/HoverPopover";
 import Icon from "~/components/Icon";
 import { PopoverContent } from "~/components/LayoutAuth/AppCard/PopoverContent";
+import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { openExternalUrl, safeExternalUrl } from "~/lib/utils/externalUrl";
 import { type ListedApp, mcpServerUsesTokenAuth } from "~/types/listedApps";
@@ -80,7 +81,7 @@ export const ListedAppDetailsContent = memo((props: ListedAppDetailsContentProps
     true,
   );
 
-  const contactEmail = app.contactEmail || "support@openbb.co";
+  const contactEmail = app.contactEmail || getConfig().contact.supportEmail;
 
   // Both URLs are vendor-authored and this view also renders unreviewed
   // submissions (admin Final Preview), so only http(s) links are followable.
@@ -158,7 +159,7 @@ export const ListedAppDetailsContent = memo((props: ListedAppDetailsContentProps
         >
           <div>
             <DetailRow label="Name">{app.vendorName}</DetailRow>
-            <DetailRow label="Email">{contactEmail}</DetailRow>
+            {contactEmail && <DetailRow label="Email">{contactEmail}</DetailRow>}
             {vendorHostname && (
               <DetailRow label="Website">
                 <button
@@ -318,11 +319,8 @@ export const ListedAppDetailsContent = memo((props: ListedAppDetailsContentProps
             </div>
           )}
 
-          {(app.media ?? app.screenshots)?.length ? (
-            <MediaCarousel
-              items={(app.media ?? app.screenshots) as string[]}
-              appName={app.appName}
-            />
+          {app.media?.length ? (
+            <MediaCarousel items={app.media} appName={app.appName} />
           ) : null}
         </SettingsMenu>
       </div>

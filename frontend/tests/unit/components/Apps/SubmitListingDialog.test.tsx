@@ -264,7 +264,7 @@ describe("SubmitListingDialog", () => {
   it("does not carry typed vendor values into the App Details inputs", async () => {
     renderDialog(existingTarget());
 
-    const companyName = screen.getByPlaceholderText("e.g. Alpha Vantage");
+    const companyName = screen.getByPlaceholderText("Name of your company");
     fireEvent.change(companyName, { target: { value: "ZZZ_TYPED_VENDOR" } });
 
     fireEvent.click(screen.getByRole("button", { name: /next/i }));
@@ -371,9 +371,7 @@ describe("SubmitListingDialog", () => {
         authEnabled: true,
         authMode: "custom",
         authAllowAnonymous: true,
-        authFields: [
-          { label: "API Key", key: "Authorization", prefix: "Bearer " },
-        ],
+        authFields: [{ label: "API Key", key: "Authorization", prefix: "Bearer " }],
       }),
     );
 
@@ -389,9 +387,7 @@ describe("SubmitListingDialog", () => {
         authEnabled: true,
         authMode: "custom",
         authAllowAnonymous: true,
-        authFields: [
-          { label: "API Key", key: "Authorization", prefix: "Bearer " },
-        ],
+        authFields: [{ label: "API Key", key: "Authorization", prefix: "Bearer " }],
       }),
     );
   });
@@ -402,9 +398,7 @@ describe("SubmitListingDialog", () => {
         authEnabled: true,
         authMode: "custom",
         authAllowAnonymous: true,
-        authFields: [
-          { label: "API Key", key: "Authorization", prefix: "Bearer " },
-        ],
+        authFields: [{ label: "API Key", key: "Authorization", prefix: "Bearer " }],
       }),
     );
     fireEvent.click(screen.getByRole("button", { name: /next/i }));

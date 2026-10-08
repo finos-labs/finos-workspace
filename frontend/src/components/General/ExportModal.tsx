@@ -1,6 +1,5 @@
 import { useIsFetching, useIsMutating } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { usePostHog } from "posthog-js/react";
 import { useCallback, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -44,8 +43,8 @@ type ExportState = {
 
 export default function ExportModal() {
   const { id } = useParams();
-  const tab = useShallowAppStore((state) => state.getTabById(id));
-  const sharedTab = useShallowSharedAppStore((state) => state?.sharedItems?.[id]);
+  const tab = useShallowAppStore((state) => state.getTabById(id ?? ""));
+  const sharedTab = useShallowSharedAppStore((state) => state?.sharedItems?.[id ?? ""]);
 
   const isShared = !!sharedTab;
   const currentDashboard = isShared ? sharedTab : tab;
@@ -103,8 +102,6 @@ export default function ExportModal() {
     (state) => state.clearSelectedWidgets,
   );
 
-  const posthog = usePostHog();
-
   const generateAndDownloadReport = useCallback(async () => {
     clearSelectedWidgets();
     setPendingExport(true);
@@ -138,10 +135,9 @@ export default function ExportModal() {
           setPendingExport(false);
           dispatch({ loading: false, exportProgress: null });
         },
-        id,
       );
     } else {
-      const element = await waitForGridLayout(3000, id);
+      const element = await waitForGridLayout(3000);
 
       await generateReportImage(
         checkIfLoadingData,
@@ -255,14 +251,6 @@ export default function ExportModal() {
           size="sm"
           loading={state.loading}
           onClick={async () => {
-            if (posthog) {
-              posthog.capture("user_exported_data_dash", {
-                export_type: state.exportType,
-                export_scope: state.exportScope,
-                dashboard: tab?.data?.name,
-              });
-            }
-
             if (!currentDashboard || currentDashboard?.data?.widgets?.length === 0) {
               toast.error("No widgets to export", {
                 description:

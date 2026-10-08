@@ -9,7 +9,8 @@ interface Props {
   setOpen: (open: boolean) => void;
   title: string;
   children?: ReactNode;
-  onSubmit?: () => any | Promise<boolean>;
+  /** Returning `false`, or a promise of it, keeps the dialog open. */
+  onSubmit?: () => unknown;
   extraActions?: ReactNode;
   showActionsSettings: boolean;
   className?: string;

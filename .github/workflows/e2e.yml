@@ -1,0 +1,74 @@
+name: End-to-end tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "backend-api/backend/**"
+      - "docker-compose.yml"
+      - ".github/workflows/e2e.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  playwright:
+    name: Playwright against the compose stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # A stack of its own: random secrets, and an administrator whose password only this
+      # run knows. The tests sign in as that administrator.
+      - name: Configure the stack
+        working-directory: backend-api/backend
+        run: |
+          EMAIL="e2e-admin@example.com"
+          python3 -m scripts.create_local_env --admin-email "$EMAIL" --entity-name "End-to-end"
+          PASSWORD="$(python3 -c "import tomllib; print(tomllib.load(open('scripts/cfgs/config.toml', 'rb'))['admins'][0]['password'])")"
+          echo "::add-mask::$PASSWORD"
+          echo "E2E_USER_EMAIL=$EMAIL" >> "$GITHUB_ENV"
+          echo "E2E_USER_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Build and start the stack
+        run: docker compose up -d --build
+
+      - name: Wait for the stack
+        run: |
+          for url in http://localhost:8000/health http://localhost:3000/ http://localhost:3001/; do
+            for _ in $(seq 1 60); do
+              curl -fsS -o /dev/null "$url" && break
+              sleep 5
+            done
+            curl -fsS -o /dev/null "$url"
+          done
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: |
+          bun install --frozen-lockfile
+          bunx playwright install --with-deps chromium
+
+      - name: Playwright tests
+        working-directory: frontend
+        run: bunx playwright test --project=chromium
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+
+      - name: Show the stack's logs
+        if: failure()
+        run: docker compose logs --no-color --tail=200
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v

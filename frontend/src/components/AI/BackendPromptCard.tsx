@@ -40,12 +40,12 @@ export const BackendPromptCard = memo(function BackendPromptCard({
         </button>
         <div className="flex shrink-0 items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
           <Tooltip message="Duplicate to My Prompts">
-            <button onClick={handleDuplicate} className="obb-small-navbar-btn">
+            <button onClick={handleDuplicate} className="ws-small-navbar-btn">
               <Icon id="copy-03" className="size-3.5" />
             </button>
           </Tooltip>
           <Tooltip message="Copy to clipboard">
-            <button onClick={handleCopy} className="obb-small-navbar-btn">
+            <button onClick={handleCopy} className="ws-small-navbar-btn">
               <Icon id="clipboard-icon" className="size-3.5" />
             </button>
           </Tooltip>

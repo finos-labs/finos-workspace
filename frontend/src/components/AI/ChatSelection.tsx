@@ -58,8 +58,8 @@ export default function ChatSelection() {
     }
 
     const aiPanelDiv = document.querySelector('[data-panel-id="right-panel"]');
-    const headerDiv = aiPanelDiv?.querySelector("[id='obb-copilot-header']");
-    const buttonDiv = headerDiv?.querySelector('[id="obb-copilot-header-buttons"]');
+    const headerDiv = aiPanelDiv?.querySelector("[id='ws-copilot-header']");
+    const buttonDiv = headerDiv?.querySelector('[id="ws-copilot-header-buttons"]');
 
     if (!(aiPanelDiv && headerDiv && buttonDiv)) {
       dispatch({ titleMaxWidth: 200 });
@@ -667,18 +667,18 @@ function EditChatDialog(props: { chat: ChatMatch; onClose: () => void }) {
         ref={inputRef}
         defaultValue={chat.label}
         key={`input-${chat.uuid}`}
-        className="obb-minimal-input-search !h-[34px] w-full my-4"
+        className="ws-minimal-input-search !h-[34px] w-full my-4"
       />
       <div
         className="mt-auto flex items-center justify-end gap-2.5"
         key={`footer-${chat.uuid}`}
       >
-        <DialogClose className="obb-btn-secondary-v2 px-3 py-1 font-medium md:w-fit">
+        <DialogClose className="ws-btn-secondary-v2 px-3 py-1 font-medium md:w-fit">
           Cancel
         </DialogClose>
         <button
           onClick={handleSubmit}
-          className="obb-btn-tertiary h-8 px-3 py-1 font-medium md:w-fit"
+          className="ws-btn-tertiary h-8 px-3 py-1 font-medium md:w-fit"
         >
           Update
         </button>

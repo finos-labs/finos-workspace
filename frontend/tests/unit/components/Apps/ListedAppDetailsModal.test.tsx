@@ -235,13 +235,9 @@ describe("ListedAppDetailsModal", () => {
       isBuiltIn: true,
       mcpServers: [{ name: "Demo", url: "https://example.com/mcp", authType: "token" }],
     });
-    expect(
-      screen.getByRole("button", { name: "Add API Keys" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add API Keys" })).toBeInTheDocument();
     // No separate MCP token button — everything lives in one dialog.
-    expect(
-      screen.queryByRole("button", { name: /MCP token/ }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /MCP token/ })).not.toBeInTheDocument();
   });
 
   it("omits the auth button for an OAuth MCP server with no API key", () => {
@@ -249,9 +245,7 @@ describe("ListedAppDetailsModal", () => {
       isBuiltIn: true,
       mcpServers: [{ name: "Demo", url: "https://example.com/mcp" }],
     });
-    expect(
-      screen.queryByRole("button", { name: /API Keys?/ }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /API Keys?/ })).not.toBeInTheDocument();
   });
 
   it("opens the auth dialog with the MCP token field when clicked", async () => {
@@ -270,9 +264,7 @@ describe("ListedAppDetailsModal", () => {
 
   it("renders a Share button in the header", () => {
     renderModal();
-    expect(
-      screen.getByRole("button", { name: "Copy share link" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy share link" })).toBeInTheDocument();
   });
 
   it("copies the marketplace deep link and toasts on Share click", async () => {
@@ -295,47 +287,5 @@ describe("ListedAppDetailsModal", () => {
     await waitFor(() =>
       expect(mockToast.success).toHaveBeenCalledWith("Link copied to clipboard"),
     );
-  });
-
-  describe("Contact CTA (lite)", () => {
-    it("shows Contact and hides Connect App / auth button when onContactVendor is provided", () => {
-      renderModal({}, { onContactVendor: vi.fn() });
-
-      expect(screen.getByRole("button", { name: "Contact" })).toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "Connect App" }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: /API key/i }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("clicking Contact calls onContactVendor", async () => {
-      const onContactVendor = vi.fn();
-      const user = userEvent.setup();
-      renderModal({}, { onContactVendor });
-
-      await user.click(screen.getByRole("button", { name: "Contact" }));
-
-      expect(onContactVendor).toHaveBeenCalledTimes(1);
-    });
-
-    it("does not show Contact for built-in apps", () => {
-      renderModal({ isBuiltIn: true }, { onContactVendor: vi.fn() });
-
-      expect(
-        screen.queryByRole("button", { name: "Contact" }),
-      ).not.toBeInTheDocument();
-      expect(screen.getByText("Included")).toBeInTheDocument();
-    });
-
-    it("does not show Contact when already subscribed", () => {
-      renderModal({}, { isSubscribed: true, onContactVendor: vi.fn() });
-
-      expect(
-        screen.queryByRole("button", { name: "Contact" }),
-      ).not.toBeInTheDocument();
-      expect(screen.getByText("Connected")).toBeInTheDocument();
-    });
   });
 });

@@ -33,7 +33,6 @@ from workspace_mcp.server._helpers import (
     data_source_payloads,
     has_layout_ui_args,
     invalid_request,
-    is_generative_only_widget,
     maybe_offload_result,
     param_options_payloads,
     require_widget_identifier,
@@ -108,17 +107,13 @@ def register(
             Field(
                 description=(
                     "Object of explicit parameter values for this data source. "
-                    "For chart widgets, include raw=true to fetch the underlying "
-                    "rows instead of the Plotly figure JSON; the figure is for "
-                    "the renderer, reasoning needs rows."
+                    "For html widgets that set raw, include raw=true to fetch the "
+                    "underlying rows instead of the HTML; the HTML is for the "
+                    "renderer, reasoning needs rows."
                 )
             ),
         ] = None,
         widget_uuid: WidgetUuid = None,
-        ssm_request: Annotated[
-            dict[str, Any] | None,
-            Field(description="Object payload for SSM-backed widgets."),
-        ] = None,
     ) -> ToolResponse:
         """Fetch widget data using the same browser-side path Ada uses."""
         return await run(
@@ -131,7 +126,6 @@ def register(
                             widget_id=widget_id,
                             data_args=data_args or {},
                             widget_uuid=widget_uuid,
-                            ssm_request=ssm_request,
                         )
                     ]
                 ),
@@ -149,9 +143,8 @@ def register(
             ),
             (
                 "Only the deterministic plain-create subset is returned: "
-                "generative-only note widgets such as rich_note and widgets that "
-                "still require runtime-only bootstrap are intentionally excluded; "
-                "use add_generative_widget for notes."
+                "widgets that still require runtime-only bootstrap are "
+                "intentionally excluded; use add_generative_widget for notes."
             ),
             (
                 "Without filters the entire catalog is returned, which can be "
@@ -208,10 +201,6 @@ def register(
             (
                 "If a param returns requires_options_lookup=true, call get_params_options "
                 "before using that param in create_widget or update_widget."
-            ),
-            (
-                "rich_note is generative-only; use add_generative_widget with "
-                "widget_type='note' instead."
             ),
         )
     )
@@ -323,7 +312,7 @@ def register(
         description=describe_tool(
             "Create one widget on a target dashboard.",
             "Use list_available_widgets and get_widget_schema first.",
-            "Do not use this for rich_note; use add_generative_widget with widget_type='note'.",
+            "Use add_generative_widget for text notes and HTML widgets.",
             (
                 "Pass dry_run=true to validate and preview effective_params "
                 "without changing the workspace."
@@ -370,12 +359,6 @@ def register(
                 "create_widget",
                 "create_widget requires origin from list_available_widgets and widget_id.",
                 details={"required": ["origin", "widget_id"]},
-            )
-        if is_generative_only_widget(widget_id):
-            return invalid_request(
-                "create_widget",
-                "create_widget does not support 'rich_note'. "
-                "Use add_generative_widget with widget_type='note' instead.",
             )
         return await run(
             CreateWidgetCommand(

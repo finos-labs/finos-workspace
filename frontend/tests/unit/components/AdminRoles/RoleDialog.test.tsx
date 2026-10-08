@@ -28,11 +28,9 @@ const usersData = [
     permissions_uuid: "perm-1",
     role: "User",
     billing_active: true,
-    pro_entitlements: {},
     status: "active",
     last_login: null,
     last_active: null,
-    renewed: false,
   },
 ];
 
@@ -60,7 +58,7 @@ vi.mock("@tanstack/react-query", async () => {
   );
   return {
     ...actual,
-    useMutation: vi.fn().mockImplementation((_opts: any) => {
+    useMutation: vi.fn().mockImplementation((_opts: unknown) => {
       const map: Record<string, Mock> = {
         // postEntityRole.name might be minified — match by mutationFn reference
         // We use the call-order trick below: each test sets up explicit asserts.

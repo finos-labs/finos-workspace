@@ -2,7 +2,6 @@
 
 import enum
 import html
-import json
 import random
 import re
 import string
@@ -13,7 +12,6 @@ from uuid import UUID
 
 import bcrypt
 import jwt
-from fastapi.encoders import jsonable_encoder
 
 from utilities import config, rq_results
 
@@ -211,14 +209,9 @@ def check_email(email: str) -> bool:
     return bool(re.match(pattern, email.lower()))
 
 
-def set_tpro_redis(key: UUID, value):
-    r = config.settings.get_redis_session("pro")
-    r.set(str(key), json.dumps(jsonable_encoder(value)))
-
-
 def remove_session_redis(key: UUID):
     r = config.settings.get_redis_session("sdk")
-    r.delete(f"pro:sessions:{key}")
+    r.delete(f"app:sessions:{key}")
 
 
 class PermissionEnum(enum.Enum):
@@ -264,7 +257,7 @@ def clean_email(email: str) -> str:
     return first_clean + "@" + second
 
 
-def create_url(path: str, base: str = config.settings.PROURL, **kwargs: str):
+def create_url(path: str, base: str = config.settings.APPURL, **kwargs: str):
     url = f"{base}/{path}"
     if kwargs:
         url += "?" + "&".join([f"{k}={quote(v)}" for k, v in kwargs.items()])

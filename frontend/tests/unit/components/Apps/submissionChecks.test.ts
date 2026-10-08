@@ -4,7 +4,10 @@ import {
   evaluateSubmissionChecks,
   type SubmissionCheckMeta,
 } from "~/components/Apps/submissionCheckUtils";
-import type { SubmissionCheck, SubmissionFormData } from "~/types/marketplaceSubmission";
+import type {
+  SubmissionCheck,
+  SubmissionFormData,
+} from "~/types/marketplaceSubmission";
 
 const validForm: SubmissionFormData = {
   appName: "Acme Options",
@@ -59,12 +62,18 @@ describe("evaluateSubmissionChecks", () => {
   });
 
   it("fails backend-reachable when the backend URL is missing", () => {
-    const checks = evaluateSubmissionChecks(validForm, { ...validMeta, backendUrl: "" });
+    const checks = evaluateSubmissionChecks(validForm, {
+      ...validMeta,
+      backendUrl: "",
+    });
     expect(byId(checks, "backend-reachable").status).toBe("failed");
   });
 
   it("fails has-widgets when the backend exposes no widgets", () => {
-    const checks = evaluateSubmissionChecks(validForm, { ...validMeta, widgetCount: 0 });
+    const checks = evaluateSubmissionChecks(validForm, {
+      ...validMeta,
+      widgetCount: 0,
+    });
     expect(byId(checks, "has-widgets").status).toBe("failed");
   });
 
@@ -100,7 +109,10 @@ describe("allChecksPassed", () => {
   });
 
   it("is false when any check failed", () => {
-    const checks = evaluateSubmissionChecks(validForm, { ...validMeta, widgetCount: 0 });
+    const checks = evaluateSubmissionChecks(validForm, {
+      ...validMeta,
+      widgetCount: 0,
+    });
     expect(allChecksPassed(checks)).toBe(false);
   });
 });

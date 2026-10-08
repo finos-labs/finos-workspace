@@ -6,23 +6,21 @@ import { useShallow } from "zustand/react/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
 import { deleteApiSource, unsubscribeListedApp } from "~/api/auth.api";
-import type { DatabaseT, DBType } from "~/api/dataConnectors";
 import ValidateApiSourceWorker from "~/apiSource.worker?worker";
 
 import {
   type CATEGORY_OPTIONS,
-  patchSnowflakeEndpoint,
-  patchSnowflakeSourceId,
   updateWidgetEndpoints,
 } from "~/components/DataConnectors/common/helpers";
 import type { GroupTypes, WidgetT } from "~/components/types";
 import type { WidgetId } from "~/components/Widgets";
 import type { ProcessedBackendT } from "~/hooks/useProcessBackendWidgets";
 import type { ProcessedTemplate, SharedPromptT } from "~/hooks/useSharedTemplates";
-import type { Selector, Widget } from "~/lib/state/app";
+import type { Selector } from "~/lib/state/app";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
 import { useSidebarStore } from "~/lib/state/sidebar";
 import { createIndexedDBStorage } from "~/lib/utils/indexDB";
+import type { InvalidItem } from "~/lib/utils/invalidItems";
 import { type ShowNotificationProps, showNotification } from "~/lib/utils/toast";
 import {
   getApiSourceWidgets,
@@ -32,11 +30,15 @@ import {
 import { addExtraHeaders } from "~/lib/utils/widgetParams";
 import type { MetaDataWidgetType } from "~/types/auth.type";
 import { mcpServerUsesTokenAuth } from "~/types/listedApps";
-import { formatZodErrorMessage, showUnrecognizedKeysToast } from "~/utils/zodErrors";
+import {
+  forgetInvalidItems,
+  formatZodErrorMessage,
+  showInvalidItemsToast,
+  showUnrecognizedKeysToast,
+} from "~/utils/zodErrors";
 import type { UnrecognizedKeysReport, WidgetsType } from "~/utils/zodForms";
-import { type Extension, inSnowflakeNativeApp } from "../constants";
+import type { Extension } from "../constants";
 import type { TabLayout } from "../templates";
-import type { WidgetVizType } from "../types/app";
 import { createParamDefs, dispatchSaveState, getJsonWidget } from "../utils";
 
 let validateApiSourceWorker: Worker | null = null;
@@ -82,7 +84,7 @@ export function autoRegisterMcpForSource(source: Source) {
 }
 
 // biome-ignore format: off
-export const ConnectionTypes= ["file", "single", "advanced-backend", "snowflake", "database", "widgetMetadata"] as const;
+export const ConnectionTypes= ["file", "single", "advanced-backend", "database", "widgetMetadata"] as const;
 
 export type ConnectionType = (typeof ConnectionTypes)[number];
 
@@ -95,7 +97,7 @@ export type WidgetMetadataItem = {
   storage?: {
     autoUpdateMetadataOnRun?: boolean;
     params?: Record<string, string>;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   category?: string | null;
   subCategory?: string | null;
@@ -107,22 +109,6 @@ export type WidgetMetadata = {
   description?: null | string;
   category?: null | (typeof CATEGORY_OPTIONS)[number];
   subCategory?: null | string;
-};
-
-export type SingleWidget = WidgetMetadata & {
-  id?: string;
-  uuid: string;
-  widgetId: string;
-  endpoint: string;
-  name: string;
-  gridData?: null | Widget["gridData"];
-  data?: null | Widget["data"];
-  endpointHeaders: null | { key: string; value: string }[];
-  source?: string | null;
-  type?: WidgetVizType;
-  // Backwards compatibility
-  defaultViz?: WidgetVizType;
-  dataKey?: null | string;
 };
 
 export type StoredFile = WidgetMetadata & {
@@ -175,17 +161,6 @@ export type BackendAgent = {
   name: string;
 };
 
-export interface SemanticView {
-  // FQN = Fully Qualified Name: DATABASE.SCHEMA.VIEW_NAME
-  fqn: string;
-  baseTable: string;
-  database: string;
-  schema: string;
-  viewName: string;
-  /** Comment or description about the semantic view. Optional. */
-  comment?: string;
-}
-
 export type VenderApp = {
   uuid: string;
   name: string;
@@ -228,28 +203,14 @@ export type Source = {
   isSharedSource?: boolean;
   createdDate?: string;
   updatedDate?: string;
-  // #TODO - implement for snowflake app ?
-  schemas?: {
-    [schemaName: string]: {
-      tableName: string;
-      database: string;
-      schema: string;
-      columns: { name: string; type: string }[];
-    };
-  };
-  semanticViews?: { [fqn: string]: SemanticView };
-  isOpenBBPlatform?: boolean | null;
+  isPlatform?: boolean | null;
   isEntityBackend?: boolean | null;
   hasApiKey?: boolean | null;
 };
 
 export type WidgetMetaDataT<T extends WidgetT["connectionType"]> = T extends "file"
   ? StoredFile
-  : T extends "single"
-    ? SingleWidget | undefined
-    : T extends DBType
-      ? DatabaseT<T>
-      : WidgetMetadataItem;
+  : WidgetMetadataItem;
 
 export function isMetadataType<T extends WidgetT["connectionType"]>(
   widget: WidgetT,
@@ -264,9 +225,9 @@ export function isMetadataType<T extends WidgetT["connectionType"]>(
 
 export function getTemplateWidgetsMetadata(
   template: BackendTemplate | ProcessedTemplate<SharedPromptT>,
-  backend: Source | ProcessedBackendT<false, SharedPromptT>,
+  backend: Source | ProcessedBackendT<SharedPromptT> | undefined,
 ) {
-  if (!template && !("access" in backend) && backend.vendorApp) {
+  if (!template && backend && !("access" in backend) && backend.vendorApp) {
     const app = backend.vendorApp;
     return {
       widgets: app.widgets || [],
@@ -292,13 +253,16 @@ export function getTemplateWidgetsMetadata(
     {} as Record<string, number>,
   );
 
-  const widgets = Object.values(backend.widgets || {})
-    .filter((w) => widgetCounts[w.widgetId] !== undefined && w.name)
+  const widgets = Object.values(backend?.widgets || {})
+    .filter(
+      (w) =>
+        w.widgetId !== undefined && widgetCounts[w.widgetId] !== undefined && w.name,
+    )
     .map((item) => ({
-      id: item?.widgetId,
-      name: item?.name,
-      description: item?.description ?? undefined,
-      count: widgetCounts[item.widgetId],
+      id: item.widgetId as string,
+      name: item.name,
+      description: item.description ?? undefined,
+      count: widgetCounts[item.widgetId as string],
     }));
 
   if (builtInWidgetIds.size > 0) {
@@ -325,30 +289,33 @@ export type ValidateBackend = {
   totalFailed: number;
   templates: BackendTemplate[];
   agents: BackendAgent[];
-  schemas?: Source["schemas"];
-  semanticViews?: Source["semanticViews"];
-  isOpenBBPlatform?: boolean | null;
+  isPlatform?: boolean | null;
+  /** IDs of widgets.json entries left out because this Workspace does not render their type */
+  unsupportedWidgets?: string[];
+  /** The widgets and apps that pass validation, whatever else is invalid */
+  validWidgets?: WidgetsType;
+  validTemplates?: BackendTemplate[];
+  /** Entries of widgets.json and apps.json that fail validation, each left out on its own */
+  invalidItems?: InvalidItem[];
+  /** What leaves nothing usable: widgets.json is not a map of widgets, or endpoints fail */
+  fatalErrorMessage?: string | null;
 };
 
 export interface BackendConnectorStore {
-  semanticViews?: Source["semanticViews"];
   widgetMetadata: WidgetMetadataItem[];
   setWidgetMetadata: (values: WidgetMetadataItem[]) => void;
-  getWidgetMetadataById: (id: string) => WidgetMetadataItem | undefined;
-  getSingleWidgetById: (id: string) => SingleWidget | undefined;
-  singleWidgets: SingleWidget[];
-  setSingleWidgets: (values: SingleWidget[]) => void;
+  getWidgetMetadataById: (id: string | undefined) => WidgetMetadataItem | undefined;
   hasApiSources: () => boolean;
   apiSources: Source[];
   isLoadingBackends: boolean;
   checkExistingBackend: (params: Record<"name" | "url" | "id", string>) => {
     name?: string;
     url?: string;
-  };
+  } | null;
   addApiSource: (source: Source) => Source;
   getApiSourceById: (id: string) => Source | undefined;
   deleteApiSource: (
-    source: Partial<Source> & { sourceId?: string; vendorAppUuid?: string },
+    source: Partial<Source> & { sourceId?: string },
     notify?: ShowNotificationProps,
   ) => Promise<boolean>;
   updateApiSources: (values: Source[], showToastOnError?: boolean) => Promise<boolean>;
@@ -368,10 +335,7 @@ export interface BackendConnectorStore {
   setStoredFiles: (values: StoredFile[]) => void;
   updateBackendConnector: (
     value: Partial<
-      Pick<
-        BackendConnectorStore,
-        "apiSources" | "singleWidgets" | "storedFiles" | "widgetMetadata"
-      >
+      Pick<BackendConnectorStore, "apiSources" | "storedFiles" | "widgetMetadata">
     >,
   ) => Promise<void>;
   getTemplatePrompts: (templateId: string) => string[];
@@ -384,7 +348,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
   subscribeWithSelector(
     persist(
       (set, get) => ({
-        semanticViews: {},
         queuedRefreshIds: [],
         updateQueuedRefreshId: (id, refresh = false) => {
           if (get().apiSources.length === 0) return;
@@ -424,14 +387,11 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
               source.templates?.find((t) => t.id === templateId)?.prompts ?? [],
           ),
         getWidgetMetadataById: (id) =>
-          get().widgetMetadata.find((item) => item.widgetId === id),
+          id ? get().widgetMetadata.find((item) => item.widgetId === id) : undefined,
         widgetMetadata: [],
-        getSingleWidgetById: (id) =>
-          get().singleWidgets.find((item) => item.widgetId === id),
         setWidgetMetadata: (widgetMetadata) => set({ widgetMetadata }),
         apiSources: [],
         isLoadingBackends: false,
-        singleWidgets: [],
         storedFiles: [],
         getApiSourceById: (id) =>
           get().apiSources.find(
@@ -469,7 +429,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
         hasApiSources: () => get().apiSources.length > 0,
         getStoredFileById: (id) => get().storedFiles.find((item) => item.id === id),
         setStoredFiles: (storedFiles) => set({ storedFiles }),
-        setSingleWidgets: (singleWidgets) => set({ singleWidgets }),
         refreshApiSourceById: async (sourceId, activeDashboardId) => {
           const apiSources = cloneDeep(get().apiSources);
 
@@ -499,27 +458,41 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
 
           return { success: true };
         },
-        updateApiSource: async (source, partial = false) => {
+        updateApiSource: async (
+          source:
+            | Source
+            | Partial<Pick<Source, "id" | "url" | "name" | "endpointHeaders">>,
+          partial?: boolean,
+        ) => {
           if (partial && !source.id) {
             throw new Error("Source ID is required for partial updates.");
           }
-          let {
-            widgets,
-            errorMessage,
-            templateErrorMessage,
-            templateWarningMessage,
-            unrecognizedKeysMessage,
-            templates,
-            schemas,
-            semanticViews,
-            agents,
-          } = await getApiSourceWidgets(source as Source);
+          const validated = await getApiSourceWidgets(source as Source);
+          let { widgets, templates, agents } = validated;
+          const { templateWarningMessage, unrecognizedKeysMessage, invalidItems } =
+            validated;
 
-          let updatedSource: Source;
-          const existingSource = get().getApiSourceById(source.id!) || ({} as Source);
+          // An invalid widget or app is skipped and reported, the backend still loads. Only a
+          // backend with nothing usable (unreachable, not a widgets.json) is an error.
+          const loadsWithInvalidItems = !!validated.validWidgets;
+          const errorMessage = loadsWithInvalidItems
+            ? validated.fatalErrorMessage || null
+            : validated.errorMessage;
+          const templateErrorMessage = loadsWithInvalidItems
+            ? null
+            : validated.templateErrorMessage;
+          if (loadsWithInvalidItems && !errorMessage) {
+            widgets = validated.validWidgets ?? widgets;
+            templates = validated.validTemplates ?? templates;
+          }
+
+          let updatedSource: Source | undefined;
+          const existingSource =
+            (source.id ? get().getApiSourceById(source.id) : undefined) ||
+            ({} as Source);
 
           if (!(errorMessage || templateErrorMessage)) {
-            const updatedWidgets = Object.entries(widgets).reduce(
+            const updatedWidgets = Object.entries(widgets).reduce<WidgetsType>(
               (acc, [key, widget]) => {
                 widget.params = createParamDefs(widget, source.url);
                 const subCategory = widget.sub_category ?? widget.subCategory;
@@ -540,8 +513,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
               ...source,
               widgets: updatedWidgets,
               templates,
-              schemas,
-              semanticViews,
               agents,
               status: "success",
             };
@@ -550,8 +521,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
               ...existingSource,
               ...source,
               agents,
-              schemas,
-              semanticViews,
               status: "error",
             };
             widgets = existingSource?.widgets || {};
@@ -576,8 +545,11 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
 
           const isPublishedMarketplaceApp =
             updatedSource?.vendorApp && !updatedSource.vendorApp?.isDevelopment;
-          if (unrecognizedKeysMessage && !isPublishedMarketplaceApp) {
+          if (updatedSource && unrecognizedKeysMessage && !isPublishedMarketplaceApp) {
             showUnrecognizedKeysToast(updatedSource, unrecognizedKeysMessage);
+          }
+          if (updatedSource && invalidItems && invalidItems.length > 0) {
+            showInvalidItemsToast(updatedSource, invalidItems, { force: true });
           }
 
           return {
@@ -586,10 +558,9 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
             templateErrorMessage,
             templateWarningMessage,
             unrecognizedKeysMessage,
+            invalidItems,
             templates,
             agents,
-            schemas,
-            semanticViews,
           };
         },
         addApiSource: (source: Source) => {
@@ -612,8 +583,7 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
           if (existingSource) Object.assign(existingSource, source);
           else apiSources.push(source);
 
-          const semanticViews = source.semanticViews;
-          set({ apiSources, ...(semanticViews ? { semanticViews } : {}) });
+          set({ apiSources });
 
           // Only fire on first connect, not on refresh. If the user removed the
           // MCP server manually, refreshing the backend must not bring it back.
@@ -632,22 +602,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
             {} as Record<string, Source>,
           );
 
-          if (!import.meta.env.DEV && inSnowflakeNativeApp) {
-            const locationHref =
-              typeof window !== "undefined" ? new URL(window.location.href) : undefined;
-            if (values.length > 1) {
-              values = await patchSnowflakeSourceId(
-                values,
-                get().widgetMetadata,
-                locationHref!,
-              );
-            }
-
-            for (const source of values) {
-              source.url = patchSnowflakeEndpoint(source.url, locationHref!);
-            }
-          }
-
           const apiSources = values.map((source) => {
             const { endpointHeaders = [] } = source;
             const curr = currentApiSources[source.id];
@@ -656,11 +610,9 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
               endpointHeaders,
               widgets: curr?.widgets || {},
               templates: curr?.templates || [],
-              schemas: curr?.schemas || undefined,
-              semanticViews: curr?.semanticViews || undefined,
               agents: curr?.agents || [],
               status: curr?.status || "pending",
-              hasApiKey: endpointHeaders.some(
+              hasApiKey: endpointHeaders?.some(
                 (h) =>
                   h.key.toLowerCase() === "authorization" &&
                   h.value.startsWith("Bearer "),
@@ -678,7 +630,7 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
             const data = event.data;
             let finalSources = data.apiSources;
 
-            const { semanticViews, toastErrors, unrecognizedKeysMessages } = data;
+            const { toastErrors, unrecognizedKeysMessages, invalidItems } = data;
 
             // Streaming partial: merge validated sources into existing
             // apiSources without disrupting the rest. Slow sources don't block
@@ -696,9 +648,10 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
               }
 
               const updatedMap = new Map(finalSources.map((s) => [s.id, s]));
-              const mergedSources = get().apiSources.map((s) =>
-                updatedMap.has(s.id) ? { ...s, ...updatedMap.get(s.id)! } : s,
-              );
+              const mergedSources = get().apiSources.map((s) => {
+                const updated = updatedMap.get(s.id);
+                return updated ? { ...s, ...updated } : s;
+              });
               finalSources = mergedSources;
             }
 
@@ -716,12 +669,27 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
               }
             }
 
+            // Skipped items are announced on every load, once per distinct problem, because
+            // otherwise they are silently missing. A refresh the user asked for announces again.
+            const withInvalidItems = new Set(
+              invalidItems.map(({ source }) => source.id),
+            );
+            if (!data.__partial) {
+              forgetInvalidItems(
+                finalSources
+                  .filter((s) => s.status === "success" && !withInvalidItems.has(s.id))
+                  .map((s) => s.id),
+              );
+            }
+            for (const { source, items } of invalidItems) {
+              showInvalidItemsToast(source, items, { force: showToastOnWarning });
+            }
+
             if (!data.__partial) saveState();
 
             set({
               isLoadingBackends: data.__partial,
               apiSources: finalSources,
-              ...(semanticViews ? { semanticViews } : {}),
             });
           };
 
@@ -774,9 +742,9 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
           set({ apiSources });
         },
         updateBackendConnector: async (params) => {
-          const { apiSources, singleWidgets, storedFiles, widgetMetadata } = params;
+          const { apiSources, storedFiles, widgetMetadata } = params;
           if (Array.isArray(apiSources)) get().updateApiSources(apiSources);
-          set({ singleWidgets, storedFiles, widgetMetadata });
+          set({ storedFiles, widgetMetadata });
         },
       }),
       {
@@ -798,8 +766,8 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
   shallow,
 );
 
-export function useShallowBackendConnectorStore<S extends BackendConnectorStore, T>(
-  selector: Selector<S, T>,
+export function useShallowBackendConnectorStore<T>(
+  selector: Selector<BackendConnectorStore, T>,
 ): T {
   return useBackendConnectorStore(useShallow(selector), (prev, next) =>
     isEqual(prev, next),

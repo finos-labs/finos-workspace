@@ -34,7 +34,7 @@ const createMockSkill = (
 vi.mock("~/lib/state/theme", () => ({
   useThemeStore: {
     getState: () => ({
-      removedSkillSlugs: ["openbb-html-report"],
+      removedSkillSlugs: ["html-report"],
     }),
     // Mock function to track calls to removeDefaultSkill
     removeDefaultSkill: vi.fn(),
@@ -166,10 +166,10 @@ describe("useSkillsLibraryStore", () => {
       });
 
       act(() => {
-        useSkillsLibraryStore.getState().setSkillDialogOpen(null);
+        useSkillsLibraryStore.getState().setSkillDialogOpen(false);
       });
 
-      expect(useSkillsLibraryStore.getState().skillDialogOpen).toBeNull();
+      expect(useSkillsLibraryStore.getState().skillDialogOpen).toBe(false);
     });
   });
 

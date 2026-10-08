@@ -13,7 +13,7 @@ export type SortOption = {
 
 export type FilterOption = {
   label: string;
-  value: "all" | "shared" | "user" | "listed" | "openbb";
+  value: "all" | "shared" | "user" | "listed";
 };
 
 export type AppsOptions = {

@@ -65,15 +65,17 @@ export function CopilotDropzone(props: CopilotDropzoneProps) {
       });
 
       setTimeout(() => {
-        messagesRef.current.scrollTop = messagesRef.current?.scrollHeight;
+        if (messagesRef.current) {
+          messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+        }
         const input = document.getElementById("file-upload") as HTMLInputElement;
-        if (input) input.value = null;
+        if (input) input.value = "";
       });
     },
   });
 
   // This fixes flickering when dragging files
-  const composeRefs = useComposeRefs(messagesRef, rootRef);
+  const composeRefs = useComposeRefs<HTMLElement>(messagesRef, rootRef);
   const childrenMemo = useMemo(() => children, [children]);
   useCopilotSetScrollY(messagesRef);
 
@@ -169,8 +171,8 @@ export const useCopilotScrollYStore = createWithEqualityFn<CopilotScrollYState>(
   ),
 );
 
-export function useShallowCopilotScrollYStore<S extends CopilotScrollYState, T>(
-  selector: Selector<S, T>,
+export function useShallowCopilotScrollYStore<T>(
+  selector: Selector<CopilotScrollYState, T>,
 ): T {
   return useCopilotScrollYStore(useShallow(selector), (prev, next) =>
     isEqual(prev, next),

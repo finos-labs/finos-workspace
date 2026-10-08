@@ -1,14 +1,22 @@
-import type { Entitlements } from "./user.type";
+export interface EntityType {
+  uuid: string;
+  entity_type: string;
+  code: string;
+  active: boolean;
+  permission_hierarchy: number;
+}
 
 export interface Entity {
   uuid: string;
   name: string;
-  company_type: string;
-  country: string;
-  email: string;
-  entity_type: any; // TODO
-  aum: number;
-  organization_size: string;
+  entity_type: EntityType;
+  email: string | null;
+  company_type: string | null;
+  country: string | null;
+  aum: number | null;
+  organization_size: string | null;
+  seats: number | null;
+  expiration_date: string | null;
 }
 
 export interface EntityMapItem {
@@ -17,7 +25,6 @@ export interface EntityMapItem {
   name: string;
   entity_uuid: string;
   entity: Entity;
-  entitlements: Entitlements;
 }
 
 export interface EntitySettings {

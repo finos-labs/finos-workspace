@@ -53,7 +53,7 @@ def _user(uuid, email, **kw):
 
 def _seed(session):
     session.add_all([
-        _user(TARGET_UUID, TARGET_EMAIL, first_name="Target", has_profile_url=True),
+        _user(TARGET_UUID, TARGET_EMAIL, first_name="Target"),
         _user(OTHER_UUID, OTHER_EMAIL, first_name="Other"),
     ])
 
@@ -88,16 +88,11 @@ def _seed(session):
             role=base.ChatMessageRole.human,
             content={"text": "my private question"},
         ),
-        models.CopilotChatOld(
-            uuid=uuid4(),
-            user_uuid=TARGET_UUID,
-            content={"messages": [{"content": "my older chat"}]},
-        ),
         models.StoredFile(
             uuid=uuid4(),
             creater_uuid=TARGET_UUID,
             s3_file_name="target-file.csv",
-            bucket="pro-file-storage-dev",
+            bucket="file-storage-dev",
             extension="csv",
             original_file_name="target.csv",
             size=16,
@@ -106,7 +101,7 @@ def _seed(session):
             uuid=uuid4(),
             creater_uuid=TARGET_UUID,
             s3_file_name="missing-file.csv",
-            bucket="pro-file-storage-dev",
+            bucket="file-storage-dev",
             extension="csv",
             original_file_name="gone.csv",
             size=99,
@@ -144,16 +139,11 @@ def _seed(session):
             role=base.ChatMessageRole.human,
             content={"text": "other-user-message"},
         ),
-        models.CopilotChatOld(
-            uuid=uuid4(),
-            user_uuid=OTHER_UUID,
-            content={"messages": [{"content": "other-user-old-chat"}]},
-        ),
         models.StoredFile(
             uuid=uuid4(),
             creater_uuid=OTHER_UUID,
             s3_file_name="other-file.csv",
-            bucket="pro-file-storage-dev",
+            bucket="file-storage-dev",
             extension="csv",
             original_file_name="other.csv",
             size=24,
@@ -184,8 +174,6 @@ def _patch_io(monkeypatch, seeded_db):
             yield session
 
     async def fake_get_file(bucket, key):
-        if key.startswith("profile-pictures/"):
-            return b"\x89PNG fake"
         return BLOBS.get(key)
 
     monkeypatch.setattr(exporter, "aget_read_db", fake_read_db)
@@ -234,8 +222,7 @@ async def test_no_other_users_data_appears_anywhere(archive):
         assert leak not in blob, f"leaked another user's data: {leak!r}"
 
 
-async def test_chat_history_is_exported_from_all_three_tables(archive):
-    """An account mid-migration has chats split across old and new tables."""
+async def test_chat_history_is_exported_from_both_chat_tables(archive):
     _, zf = archive
 
     assert [r["uuid"] for r in _rows(zf, "copilot_chat")] == [str(TARGET_CHAT)]
@@ -245,10 +232,6 @@ async def test_chat_history_is_exported_from_all_three_tables(archive):
     assert messages[0]["chat_uuid"] == str(TARGET_CHAT)
     assert messages[0]["content"] == {"text": "my private question"}
     assert messages[0]["role"] == "human"
-
-    old = _rows(zf, "copilot_chat_old")
-    assert len(old) == 1
-    assert old[0]["content"]["messages"][0]["content"] == "my older chat"
 
 
 async def test_only_the_targets_rows_are_exported(archive):
@@ -321,8 +304,7 @@ async def test_blobs_are_written_when_asked_for(archive_with_files):
 
     assert "files/target-file.csv" in names
     assert zf.read("files/target-file.csv") == BLOBS["target-file.csv"]
-    assert f"files/profile-pictures/{TARGET_UUID}.png" in names
-    assert result.files_written == 2  # one data file + the profile picture
+    assert result.files_written == 1
     assert result.files_skipped == 0
 
 
@@ -382,7 +364,7 @@ async def test_readme_warns_about_plaintext_credentials(archive):
     readme = zf.read("README.md").decode("utf-8")
 
     assert "unencrypted credentials" in readme
-    assert "openbb-import" in readme, "must tell them how to import"
+    assert "workspace-import" in readme, "must tell them how to import"
     assert "password is **not** carried over" in readme
 
 

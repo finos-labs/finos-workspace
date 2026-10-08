@@ -1,10 +1,10 @@
 import { useCallback, useEffect } from "react";
 import DraggableCard, { SetLoadingOnResize } from "~/components/DraggableCard";
+import { useWidgetParamsPositions } from "~/components/WidgetParams/QueryParams";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { useJsonData } from "~/lib/api";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { type FileResponse, handleFileResponse } from "~/lib/utils";
-import { useWidgetParamsPositions } from "../General/Table/NavBar/QueryParams";
 import { useWidgetContext } from "../Widget.context";
 import {
   type Highlight,
@@ -87,7 +87,7 @@ export default function PdfViewer() {
   const { renderRow0Params, renderBelowNavbarRows } = useWidgetParamsPositions();
 
   useEffect(() => {
-    const { pageScale } = state;
+    const { pageScale = { x: 1, y: 1 } } = state;
     const quoteBoundingBoxes = (currentQuoteBoundingBoxes ??
       []) as QuoteBoundingBox[][];
     const newHighlights = quoteBoundingBoxes

@@ -70,13 +70,23 @@ vi.mock("~/components/LayoutAuth/Search/useCopilotPrompt", () => ({
 }));
 
 vi.mock("~/components/LayoutAuth/Search/WidgetMenu", () => ({
-  default: ({ widgets, inputValue, onInputChange, inputRef }: any) => (
+  default: ({
+    widgets,
+    inputValue,
+    onInputChange,
+    inputRef,
+  }: {
+    widgets?: unknown;
+    inputValue?: unknown;
+    onInputChange?: unknown;
+    inputRef?: unknown;
+  }) => (
     <div data-testid="widget-menu">
       <input
         ref={inputRef}
         placeholder="Search for widgets"
         value={inputValue ?? ""}
-        onChange={(e: any) => onInputChange?.(e.target.value)}
+        onChange={(e) => onInputChange?.(e.target.value)}
       />
       <span data-testid="widget-count">{widgets?.length ?? 0}</span>
     </div>
@@ -100,7 +110,7 @@ const mockWidgets = [
     subCategory: "Charts",
     description: "A test widget",
     disabled: false,
-    source: "openbb",
+    source: "workspace",
   },
   {
     widgetId: "widget-2",
@@ -109,7 +119,7 @@ const mockWidgets = [
     subCategory: "Data",
     description: "Another test widget",
     disabled: false,
-    source: "openbb",
+    source: "workspace",
   },
   {
     widgetId: "widget-3",

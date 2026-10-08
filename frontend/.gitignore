@@ -35,10 +35,6 @@ dev-dist
 yarn.lock
 package-lock.json
 
-# Bundled binaries
-src-tauri/binaries/*
-!src-tauri/binaries/.gitkeep
-packaging/macOS/target/
 /test-results/
 /playwright-report/
 /blob-report/
@@ -56,3 +52,4 @@ ai_artifacts
 
 # Storybook
 storybook-static/
+

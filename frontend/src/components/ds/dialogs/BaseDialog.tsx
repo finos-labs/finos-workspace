@@ -15,6 +15,11 @@ export interface BaseDialogProps extends React.ComponentProps<typeof Dialog> {
   hasOverlay?: boolean;
 }
 
+/** A dialog whose owner always handles closing it. */
+export interface ClosableDialogProps extends BaseDialogProps {
+  onClose: () => void;
+}
+
 export interface BaseDialogElementProps extends BaseDialogProps {
   children?: ReactNode;
 }

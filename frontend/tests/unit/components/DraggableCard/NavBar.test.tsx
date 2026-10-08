@@ -1,10 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import NavBar from "~/components/DraggableCard/NavBar";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowThemeStore } from "~/lib/state/theme";
+import { malformed, partial, stubStoreState } from "../../mocks";
 
 // Mock the necessary hooks and components
 vi.mock("~/components/Widget.context", () => ({
@@ -19,24 +20,12 @@ vi.mock("~/lib/state/app", () => ({
   useAppStore: vi.fn(),
 }));
 
-vi.mock("~/components/General/Table/Chart/hooks/useChartOptions", () => ({
-  useChartBarFillQuickAction: vi.fn(() => ({
-    icon: "chart-icon",
-    id: "distinct-bar-colors",
-    label: "Distinct Bar Colors",
-    disabled: false,
-    tooltipMessage: "Distinct Bar Colors",
-    onClick: vi.fn(),
-  })),
-  useChartQuickActions: vi.fn(() => []),
-}));
-
 vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: vi.fn((selector) => {
     const state = {
       showWidgetControlsEllipsis: false,
       showMinimizeButton: true,
-      isResizingGridElement: null,
+      isResizingGridElement: undefined,
     };
     return typeof selector === "function" ? selector(state) : state;
   }),
@@ -57,7 +46,13 @@ vi.mock("~/lib/contexts/TabContext", () => ({
 }));
 
 vi.mock("~/components/Widgets/Helpers/GroupDropdown", () => ({
-  default: ({ children, paramDef }: any) => (
+  default: ({
+    children,
+    paramDef,
+  }: {
+    children?: ReactNode;
+    paramDef?: { paramName?: string; label?: string };
+  }) => (
     <div data-testid="group-dropdown" data-param-name={paramDef?.paramName}>
       {children ?? paramDef?.label ?? paramDef?.paramName}
     </div>
@@ -70,55 +65,46 @@ vi.mock("usehooks-ts", () => ({
 }));
 
 describe("NavBar - Hidden parameter badges", () => {
-  const mockUseWidgetContext = useWidgetContext as any;
+  const mockUseWidgetContext = vi.mocked(useWidgetContext);
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    global.ResizeObserver = class {
-      observe() {}
-      disconnect() {}
-      unobserve() {}
-    } as any;
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        disconnect() {}
+        unobserve() {}
+      },
+    );
 
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "volume-by-category",
-          widgetId: "volume_by_category",
-          name: "Volume by Category",
-          isMinimized: false,
-          paramGroups: {},
-        },
-      },
-      updateWidget: vi.fn(),
-      onWidgetMinimized: vi.fn(),
-      widgetFromJSON: {
-        external: true,
-        params: [
-          {
-            paramName: "selection",
-            type: "endpoint",
-            groupById: "selection-options",
-            label: "Category / Tag / Event",
-            show: false,
-          },
-        ],
-        data: {
-          table: {
-            columnsDefs: [
-              {
-                renderFn: "cellOnClick",
-                renderFnParams: {
-                  actionType: "groupBy",
-                  groupBy: { paramName: "selection" },
-                },
-              },
-            ],
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "volume-by-category",
+            widgetId: "volume_by_category",
+            name: "Volume by Category",
+            isMinimized: false,
+            paramGroups: { selection: "group-1" },
           },
         },
-      },
-    });
+        updateWidget: vi.fn(),
+        widgetFromJSON: {
+          external: true,
+          params: [
+            {
+              paramName: "selection",
+              type: "endpoint",
+              groupById: "selection-options",
+              label: "Category / Tag / Event",
+              show: false,
+            },
+          ],
+        },
+      }),
+    );
   });
 
   it("does not duplicate hidden badges already rendered by shared row params", () => {
@@ -150,7 +136,7 @@ describe("NavBar - Hidden parameter badges", () => {
 });
 
 describe("NavBar - Overflow Detection", () => {
-  const mockUseWidgetContext = useWidgetContext as any;
+  const mockUseWidgetContext = vi.mocked(useWidgetContext);
 
   // Mock ResizeObserver
   let resizeObserverCallback: ResizeObserverCallback | null = null;
@@ -164,13 +150,13 @@ describe("NavBar - Overflow Detection", () => {
       constructorSpy(callback);
       resizeObserverCallback = callback;
     }
-    observe(...args: any[]) {
+    observe(...args: unknown[]) {
       return observeSpy(...args);
     }
-    disconnect(...args: any[]) {
+    disconnect(...args: unknown[]) {
       return disconnectSpy(...args);
     }
-    unobserve(...args: any[]) {
+    unobserve(...args: unknown[]) {
       return unobserveSpy(...args);
     }
   }
@@ -182,28 +168,24 @@ describe("NavBar - Overflow Detection", () => {
     disconnectSpy = vi.fn();
     unobserveSpy = vi.fn();
 
-    global.ResizeObserver = MockResizeObserver as any;
+    global.ResizeObserver = partial(MockResizeObserver);
 
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "test-widget",
-          widgetId: "test-widget",
-          name: "Test Widget",
-          isMinimized: false,
-        },
-      },
-      updateWidget: vi.fn(),
-      onWidgetMinimized: vi.fn(),
-      widgetFromJSON: {
-        params: {},
-        data: {
-          table: {
-            columnsDefs: [],
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "test-widget",
+            widgetId: "test-widget",
+            name: "Test Widget",
+            isMinimized: false,
           },
         },
-      },
-    });
+        updateWidget: vi.fn(),
+        widgetFromJSON: {
+          params: [],
+        },
+      }),
+    );
   });
 
   it("should collapse controls when middle spacer width is <= 20px", async () => {
@@ -223,7 +205,7 @@ describe("NavBar - Overflow Detection", () => {
     // Trigger the ResizeObserver callback
     act(() => {
       if (resizeObserverCallback) {
-        resizeObserverCallback(
+        resizeObserverCallback?.(
           [{ target: middleSpacer } as ResizeObserverEntry],
           {} as ResizeObserver,
         );
@@ -252,7 +234,7 @@ describe("NavBar - Overflow Detection", () => {
 
     if (resizeObserverCallback) {
       act(() => {
-        resizeObserverCallback(
+        resizeObserverCallback?.(
           [{ target: middleSpacer } as ResizeObserverEntry],
           {} as ResizeObserver,
         );
@@ -273,7 +255,7 @@ describe("NavBar - Overflow Detection", () => {
 
     if (resizeObserverCallback) {
       act(() => {
-        resizeObserverCallback(
+        resizeObserverCallback?.(
           [{ target: middleSpacer } as ResizeObserverEntry],
           {} as ResizeObserver,
         );
@@ -302,7 +284,7 @@ describe("NavBar - Overflow Detection", () => {
 
     if (resizeObserverCallback) {
       act(() => {
-        resizeObserverCallback(
+        resizeObserverCallback?.(
           [{ target: middleSpacer } as ResizeObserverEntry],
           {} as ResizeObserver,
         );
@@ -322,7 +304,7 @@ describe("NavBar - Overflow Detection", () => {
 
     if (resizeObserverCallback) {
       act(() => {
-        resizeObserverCallback(
+        resizeObserverCallback?.(
           [{ target: middleSpacer } as ResizeObserverEntry],
           {} as ResizeObserver,
         );
@@ -351,7 +333,7 @@ describe("NavBar - Overflow Detection", () => {
 
     if (resizeObserverCallback) {
       act(() => {
-        resizeObserverCallback(
+        resizeObserverCallback?.(
           [{ target: middleSpacer } as ResizeObserverEntry],
           {} as ResizeObserver,
         );
@@ -371,7 +353,7 @@ describe("NavBar - Overflow Detection", () => {
 
     if (resizeObserverCallback) {
       act(() => {
-        resizeObserverCallback(
+        resizeObserverCallback?.(
           [{ target: middleSpacer } as ResizeObserverEntry],
           {} as ResizeObserver,
         );
@@ -390,13 +372,10 @@ describe("NavBar - Overflow Detection", () => {
     const { useShallowThemeStore } = await import("~/lib/state/theme");
 
     // Override the mock for this specific test
-    vi.mocked(useShallowThemeStore).mockImplementation((selector: any) => {
-      const state = {
-        showWidgetControlsEllipsis: true, // Setting is ON
-        showMinimizeButton: true,
-        isResizingGridElement: null,
-      };
-      return typeof selector === "function" ? selector(state) : state;
+    stubStoreState(useShallowThemeStore, {
+      showWidgetControlsEllipsis: true, // Setting is ON
+      showMinimizeButton: true,
+      isResizingGridElement: undefined,
     });
 
     render(<NavBar title="Test Widget" showEllipsisMenu={true} />);
@@ -432,83 +411,47 @@ describe("NavBar - Overflow Detection", () => {
 });
 
 describe("NavBar - Auto-locked controls for active widgets", () => {
-  const mockUseWidgetContext = useWidgetContext as any;
+  const mockUseWidgetContext = vi.mocked(useWidgetContext);
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    global.ResizeObserver = class {
-      observe() {}
-      disconnect() {}
-      unobserve() {}
-    } as any;
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        disconnect() {}
+        unobserve() {}
+      },
+    );
 
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "test-widget",
-          widgetId: "test-widget",
-          name: "Test Widget",
-          isMinimized: false,
+    mockUseWidgetContext.mockReturnValue(
+      partial({
+        widgetRef: {
+          current: {
+            id: "test-widget",
+            widgetId: "test-widget",
+            name: "Test Widget",
+            isMinimized: false,
+          },
         },
-      },
-      updateWidget: vi.fn(),
-      onWidgetMinimized: vi.fn(),
-      widgetFromJSON: {
-        params: {},
-        data: { table: { columnsDefs: [] } },
-      },
-    });
+        updateWidget: vi.fn(),
+        widgetFromJSON: { params: [] },
+      }),
+    );
   });
 
   function enableCollapse() {
-    vi.mocked(useShallowThemeStore).mockImplementation((selector: any) => {
-      const state = {
-        showWidgetControlsEllipsis: true,
-        showMinimizeButton: true,
-        isResizingGridElement: null,
-      };
-      return typeof selector === "function" ? selector(state) : state;
+    stubStoreState(useShallowThemeStore, {
+      showWidgetControlsEllipsis: true,
+      showMinimizeButton: true,
+      isResizingGridElement: undefined,
     });
   }
 
   it("should keep controls visible when widget is selected and collapse is enabled", () => {
     enableCollapse();
-    vi.mocked(useShallowCopilotDataStore).mockReturnValue(true as any);
-
-    render(<NavBar title="Test Widget" showEllipsisMenu={true} />);
-
-    expect(screen.getByTestId("_navbar-controls-left")).toHaveAttribute(
-      "data-collapsed",
-      "false",
-    );
-    expect(screen.getByTestId("_navbar-controls-right")).toHaveAttribute(
-      "data-collapsed",
-      "false",
-    );
-  });
-
-  it("should keep controls visible when chartView is enabled and collapse is enabled", () => {
-    enableCollapse();
-    vi.mocked(useShallowCopilotDataStore).mockReturnValue(false as any);
-
-    mockUseWidgetContext.mockReturnValue({
-      widgetRef: {
-        current: {
-          id: "test-widget",
-          widgetId: "test-widget",
-          name: "Test Widget",
-          isMinimized: false,
-          storage: { chartView: { enabled: true } },
-        },
-      },
-      updateWidget: vi.fn(),
-      onWidgetMinimized: vi.fn(),
-      widgetFromJSON: {
-        params: {},
-        data: { table: { columnsDefs: [] } },
-      },
-    });
+    vi.mocked(useShallowCopilotDataStore).mockReturnValue(malformed(true));
 
     render(<NavBar title="Test Widget" showEllipsisMenu={true} />);
 
@@ -524,7 +467,7 @@ describe("NavBar - Auto-locked controls for active widgets", () => {
 
   it("should collapse controls when no active control and collapse is enabled", () => {
     enableCollapse();
-    vi.mocked(useShallowCopilotDataStore).mockReturnValue(false as any);
+    vi.mocked(useShallowCopilotDataStore).mockReturnValue(malformed(false));
 
     render(<NavBar title="Test Widget" showEllipsisMenu={true} />);
 
@@ -540,7 +483,7 @@ describe("NavBar - Auto-locked controls for active widgets", () => {
 
   it("should not collapse controls when shouldCollapse is false regardless of active state", () => {
     // Default theme mock has showWidgetControlsEllipsis: false
-    vi.mocked(useShallowCopilotDataStore).mockReturnValue(true as any);
+    vi.mocked(useShallowCopilotDataStore).mockReturnValue(malformed(true));
 
     render(<NavBar title="Test Widget" showEllipsisMenu={true} />);
 

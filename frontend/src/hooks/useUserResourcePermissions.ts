@@ -12,9 +12,12 @@ import {
 import type { Extension } from "~/lib/constants";
 import { useShallowPermissionsStore } from "~/lib/state/permissions";
 
-export type UserResourcePermissionsT<T extends boolean = false> = {
-  backends: ProcessedBackendT<T>[];
-  files: FilePermissionsT[];
+/** A file that is shared with the user. */
+export type SharedFilePermissionsT = FilePermissionsT & { shared: true };
+
+export type UserResourcePermissionsT = {
+  backends: ProcessedBackendT[];
+  files: SharedFilePermissionsT[];
   prompts: PromptPermissionsT[];
 };
 export type RolePermissionsOptions = Omit<

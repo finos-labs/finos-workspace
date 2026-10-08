@@ -5,7 +5,7 @@ COMPOSE := docker compose
 s ?= backend
 
 .DEFAULT_GOAL := help
-.PHONY: help doctor up down reset logs ps shell restart emails
+.PHONY: help doctor up down reset logs ps shell restart
 
 help: ## List the commands
 	@grep -E '^[a-z]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  make %-8s %s\n", $$1, $$2}'
@@ -37,6 +37,3 @@ shell: ## Open a shell in a service (default: backend): make shell s=frontend
 
 restart: ## Restart a service (default: backend): make restart s=backend-worker
 	$(COMPOSE) restart $(s)
-
-emails: ## For each sign-up: the email address, activation link and temporary password
-	@./dev.sh emails

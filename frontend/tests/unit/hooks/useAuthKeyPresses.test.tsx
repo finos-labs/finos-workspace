@@ -1,11 +1,11 @@
 import { renderHook } from "@testing-library/react";
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock all external dependencies
 vi.mock("use-debounce", () => ({
-  useDebouncedCallback: (fn: any) => fn,
+  useDebouncedCallback: (fn: (...args: unknown[]) => unknown) => fn,
 }));
 
 vi.mock("~/api/dashboard.api", () => ({
@@ -91,7 +91,10 @@ describe("useAuthKeyPresses", () => {
     document.dispatchEvent(event);
   };
 
-  const simulateKeypressWithCode = (keyCode: number, options: Partial<KeyboardEvent> = {}) => {
+  const simulateKeypressWithCode = (
+    keyCode: number,
+    options: Partial<KeyboardEvent> = {},
+  ) => {
     const event = new KeyboardEvent("keydown", {
       keyCode,
       bubbles: true,
@@ -121,7 +124,7 @@ describe("useAuthKeyPresses", () => {
       global.AbortController = class {
         signal = {};
         abort = abortSpy;
-      } as any;
+      } as unknown as typeof AbortController;
 
       unmount();
 
@@ -141,7 +144,9 @@ describe("useAuthKeyPresses", () => {
 
       simulateKeypressWithCode(75, { metaKey: true }); // K = 75
 
-      expect(mockThemeStore.setInitialSelectedSearchTab).toHaveBeenCalledWith("widgets");
+      expect(mockThemeStore.setInitialSelectedSearchTab).toHaveBeenCalledWith(
+        "widgets",
+      );
       expect(mockThemeStore.toggleSearch).toHaveBeenCalled();
     });
 

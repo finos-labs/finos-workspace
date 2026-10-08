@@ -3,28 +3,24 @@ import { useMemo } from "react";
 import {
   deleteApiSource,
   deleteFileWidget,
-  deleteSingleWidget,
   deleteWidgetMetadata,
   getApiSources,
   getFileWidgets,
-  getSingleWidgets,
 } from "~/api/auth.api";
 import {
   deleteSourceWidgets,
   getCleanedCategory,
 } from "~/components/DataConnectors/common/helpers";
-import type { WidgetColumnDefT, WidgetT } from "~/components/types";
+import type { WidgetJsonT, WidgetT } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
 import type { WidgetId } from "~/components/Widgets";
-import { getConfig } from "~/lib/runtimeConfig";
+import { getFileWidgetType } from "~/lib/constants";
 import type { BackendConnectorStore, Source } from "~/lib/state/backendConnector";
 import { useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { createURLString } from "~/lib/utils";
-import WIDGET_BUNDLES from "~/lib/widget_bundles.json";
 import WIDGETS from "~/lib/widgets.json";
 import type { WidgetType } from "~/utils/zodForms";
 import type { Widget } from "../state/app";
-import { useAuthStore } from "../state/auth";
 import {
   CopilotDataItemSchema,
   type CopilotError,
@@ -32,95 +28,56 @@ import {
   type DataUrl,
   MultipleCopilotDataItemSchema,
 } from "../state/copilot";
-import { isExcludedWidgetId, useFeatureFlagsStore } from "../state/featureFlags";
-import type { WidgetVizType } from "../types/app";
+import { isExcludedWidgetId } from "../state/featureFlags";
 
-const dataPackageDataEnabledFF = getConfig().data.packageDataEnabled;
+/** The built-in widgets every entity can add (the widget search shows them under "All"). */
+export const CORE_WIDGET_IDS = ["navigation_bar", "iframe", "html"];
 
 // biome-ignore format: off
 export type WidgetsIds = Extract<keyof typeof WIDGETS, string> | `${string}-${number | string}`;
 
+/** The built-in widget catalog (`lib/widgets.json`), keyed by widget id. */
+const WIDGET_CATALOG = WIDGETS as unknown as Record<string, WidgetJsonT>;
+
+/** A widget of the built-in catalog (`lib/widgets.json`), if there is one with this id. */
+export function getCatalogWidget(
+  widgetId: string | undefined,
+): WidgetJsonT | undefined {
+  return widgetId ? WIDGET_CATALOG[widgetId] : undefined;
+}
+
 export function getJsonWidget(widget: WidgetId | Partial<Widget>): WidgetT | null {
   if (typeof widget === "string") {
-    widget = WIDGETS[widget] as Partial<Widget>;
-    if (!widget) return null;
+    const catalogWidget = WIDGET_CATALOG[widget];
+    if (!catalogWidget) return null;
+    widget = catalogWidget as Partial<Widget>;
   }
   const { id, widgetId } = widget;
-  return cloneDeep({ ...(WIDGETS[widgetId] ?? widget), id, widgetId } as WidgetT);
+  const fromCatalog = widgetId ? WIDGET_CATALOG[widgetId] : undefined;
+  return cloneDeep({ ...(fromCatalog ?? widget), id, widgetId } as WidgetT);
 }
 
-export function getSupportedAssetClasses(widgetId: WidgetsIds | string): string[] {
-  return cloneDeep(WIDGETS[widgetId]?.supportedAssetClasses ?? []);
+export function getSupportedAssetClasses(
+  widgetId: WidgetsIds | string | undefined,
+): string[] {
+  return cloneDeep((widgetId && WIDGET_CATALOG[widgetId]?.supportedAssetClasses) || []);
 }
 
+export function getWidgetsWithSupportedAssetClass(
+  assetClass: string,
+  onlyIds: true,
+): WidgetJsonT["widgetId"][];
+export function getWidgetsWithSupportedAssetClass(
+  assetClass: string,
+  onlyIds?: false,
+): WidgetJsonT[];
 export function getWidgetsWithSupportedAssetClass(assetClass: string, onlyIds = false) {
   return cloneDeep(
-    Object.values(WIDGETS as unknown as Record<WidgetsIds, Widget>)
+    Object.values(WIDGET_CATALOG)
       .filter((widget) => widget?.supportedAssetClasses?.includes(assetClass))
       .map((widget) => (onlyIds ? widget.widgetId : widget)),
   );
 }
-
-export function getJsonColDefs(widget: WidgetId | Partial<Widget>): WidgetColumnDefT[] {
-  if (typeof widget === "string") {
-    widget = WIDGETS[widget] as Partial<Widget> | {};
-  }
-  if (!widget) return [];
-
-  if (widget?.storage?.columnDefs?.length) {
-    return widget.storage.columnDefs;
-  }
-  const widgetFromJSON = getJsonWidget(widget);
-  return widget.external
-    ? widget?.data?.table?.columnsDefs
-    : widgetFromJSON?.data?.table?.columnsDefs;
-}
-
-/**
- * Reconciles a placed widget with the backend definition's current
- * `data.table.enableAdvanced`. Widget definitions are baked in at add-time, so
- * this is how a widgets.json edit reaches widgets already on a dashboard.
- * Only acts when the definition explicitly sets the flag AND its value differs
- * from the snapshot baked into `widget.data.table.enableAdvanced` — a user's
- * manual Advanced toggle (stored in `storage.enableAdvanced`) is preserved
- * while the definition is unchanged. Returns null when nothing needs updating.
- */
-export function syncEnableAdvancedFromDefinition(
-  widget: Widget,
-  definitionEnableAdvanced: boolean | undefined,
-): Widget | null {
-  if (definitionEnableAdvanced === undefined) return null;
-  if (widget?.data?.table?.enableAdvanced === definitionEnableAdvanced) return null;
-
-  return {
-    ...widget,
-    data: {
-      ...widget.data,
-      table: { ...widget.data?.table, enableAdvanced: definitionEnableAdvanced },
-    },
-    storage: { ...widget.storage, enableAdvanced: definitionEnableAdvanced },
-  };
-}
-
-export const US_EXCHANGES = [
-  "NYSE",
-  "AMEX",
-  "NASDAQ",
-  "Chicago Options",
-  "SNP",
-  "New York Stock Exchange",
-  "DJI",
-  "Cboe Indices",
-  "ISE",
-  "CBOE",
-] as string[];
-
-export const DEFAULT_TICKER_EXCHANGE = "NASDAQ";
-
-export const isSSRMType = (type?: WidgetVizType) =>
-  type === "ssrm_table" || type === "ssrm_advanced";
-
-export const isOmniType = (type?: WidgetVizType) => type === "omni";
 
 export function getWidgetSourceInfo(widget: Widget | null) {
   const widgetSource = getWidgetDataSource(widget as WidgetT);
@@ -141,39 +98,11 @@ export function getWidgetInfo(widget: Partial<WidgetT | WidgetType>) {
 export function getWidgetDataSource(widget: Partial<WidgetT> | null): string[] {
   if (!widget) return [];
 
-  // Handle copilot_table widgets - they should be treated as OpenBB Workspace widgets
-  if (widget.widgetId?.includes("copilot_table")) {
-    return ["OpenBB Workspace"];
-  }
-
-  const featureFlags = useFeatureFlagsStore.getState()?.featureFlags;
-  const isFreeTier = featureFlags?.tier === "terminal";
-  const supportedSources = featureFlags?.data_bundle_info?.providers ?? [];
-
-  // if (widget.widgetId === "company_profile") {
-  //   if (isFreeTier) return ["fmp"];
-
-  //   return widget?.data?.mainTicker?.category === "etf" ? ["intrinio"] : ["fmp"];
-  // }
-
-  // if (widget.widgetId === "financial_statements") {
-  //   if (isFreeTier) return ["fmp"];
-
-  //   return US_EXCHANGES.includes(
-  //     widget?.data?.mainTicker?.exchange ?? DEFAULT_TICKER_EXCHANGE,
-  //   )
-  //     ? ["intrinio"]
-  //     : ["fmp"];
-  // }
-
   const widgetFromJSON = getJsonWidget(widget);
 
   const source = (widget.external ? widget.source : widgetFromJSON?.source) ?? [];
 
-  return (Array.isArray(source) ? source : [source]).filter(
-    (s) =>
-      s && (widget?.external || !isFreeTier || supportedSources.includes(s as any)),
-  );
+  return (Array.isArray(source) ? source : [source]).filter(Boolean);
 }
 
 export function useWidgetDataSource(): string[] {
@@ -205,27 +134,28 @@ export function extractColumns(data: unknown): string[] | null {
   return columns.length > 0 ? columns : null;
 }
 
-export const WIDGETS_WITHOUT_DISABLED = Object.entries(WIDGETS).reduce(
-  (acc, [_key, value]: any) => {
-    const isCoreWidget = WIDGET_BUNDLES.openbb.widgets.includes(value.widgetId);
-    if (!value.disabled && (dataPackageDataEnabledFF || isCoreWidget)) {
-      value.external = false;
-      acc.push(value);
-    }
-    return acc;
-  },
-  [],
-);
+export const WIDGETS_WITHOUT_DISABLED = Object.values(WIDGET_CATALOG).reduce<
+  WidgetJsonT[]
+>((acc, value) => {
+  if (value && !value.disabled) {
+    value.external = false;
+    acc.push(value);
+  }
+  return acc;
+}, []);
 
 export function getAdvancedBackendChildren(id: string): string[] {
   const apiSources = useBackendConnectorStore.getState()?.apiSources ?? [];
   const filtered = apiSources.find((source) => source.id === id);
-  return Object.values(filtered?.widgets ?? {}).map((item) => item.widgetId);
+  return Object.values(filtered?.widgets ?? {})
+    .map((item) => item.widgetId)
+    .filter((widgetId): widgetId is string => widgetId !== undefined);
 }
 
 export function convertAdvancedBackend(source: Source): WidgetT[] {
-  return Object.keys(source.widgets ?? {}).map((widgetId) => {
-    const widget = source.widgets[widgetId];
+  const widgets = source.widgets ?? {};
+  return Object.keys(widgets).map((widgetId) => {
+    const widget = widgets[widgetId];
     const newWidget = {
       ...cloneDeep({ ...widget }),
       type: widget.type ?? widget.defaultViz,
@@ -238,24 +168,12 @@ export function convertAdvancedBackend(source: Source): WidgetT[] {
       connectionType: "advanced-backend",
     } as unknown as WidgetT;
 
-    if (widget.type === "live_grid" && widget.wsEndpoint) {
-      newWidget.wsEndpoint = createURLString(widget.wsEndpoint, source.url);
-    }
-
-    if (isSSRMType(widget.type)) {
-      newWidget.data = {
-        ...(widget.data ?? {}),
-        dataKey: "rowData",
-      } as WidgetT["data"];
-    }
-
     return newWidget;
   });
 }
 
 export const WIDGETS_CONNECTION_TYPES = [
   "individual" as const,
-  "single" as const,
   "backend" as const,
   "file" as const,
   "widgetMetadata" as const,
@@ -266,61 +184,35 @@ export function getAllWidgets(
   ignoreSourceId?: string,
   connectionTypes: WidgetConnectionTypes[] = WIDGETS_CONNECTION_TYPES,
 ): WidgetT[] {
-  const { apiSources, singleWidgets, storedFiles, widgetMetadata } =
+  const { apiSources, storedFiles, widgetMetadata } =
     useBackendConnectorStore.getState();
-  const { enabledBundles, disabledWidgets } = useAuthStore.getState();
-  const result = [];
+  const result: WidgetT[] = [];
 
   if (connectionTypes.includes("widgetMetadata")) {
     result.push(
-      ...widgetMetadata.map((widget) => ({
-        ...cloneDeep({ ...widget }),
-        connectionType: "widgetMetadata",
-        type: widget.widgetType,
-        widgetId: `${widget.widgetType}-${widget.widgetId}`,
-        category: getCleanedCategory(widget?.category),
-        subCategory: widget?.subCategory,
-        storage: {
-          ...(widget.storage ?? {}),
-        },
-      })),
+      ...widgetMetadata.map(
+        (widget) =>
+          ({
+            ...cloneDeep({ ...widget }),
+            connectionType: "widgetMetadata",
+            type: widget.widgetType,
+            widgetId: `${widget.widgetType}-${widget.widgetId}`,
+            category: getCleanedCategory(widget?.category),
+            subCategory: widget?.subCategory,
+            storage: {
+              ...(widget.storage ?? {}),
+            },
+          }) as unknown as WidgetT,
+      ),
     );
   }
 
   if (connectionTypes.includes("individual")) {
     result.push(
-      ...WIDGETS_WITHOUT_DISABLED.filter((widget) => {
-        // Check if the widget is in any of the enabled bundles
-        const isInEnabledBundle = enabledBundles.some((bundleId) =>
-          WIDGET_BUNDLES[bundleId]?.widgets?.includes(widget.widgetId),
-        );
-
-        // Check if the widget is not in the except_widgets list
-        const isNotExcepted = !isExcludedWidgetId(widget.widgetId);
-
-        return (
-          isInEnabledBundle &&
-          !disabledWidgets.includes(widget.widgetId) &&
-          isNotExcepted
-        );
-      }).map((widget) => cloneDeep({ ...widget })),
-    );
-  }
-  if (connectionTypes.includes("single")) {
-    result.push(
-      ...singleWidgets.map((widget) => {
-        return {
-          ...cloneDeep({ ...widget }),
-          type: widget.type ?? widget.defaultViz,
-          widgetType: "single",
-          sourceName: "API Endpoints",
-          external: true,
-          category: getCleanedCategory(widget?.category),
-          // @ts-expect-error
-          subCategory: widget?.subCategory ?? widget?.sub_category,
-          connectionType: "single",
-        };
-      }),
+      // Built-in widgets that the entity's data bundle does not exclude
+      ...WIDGETS_WITHOUT_DISABLED.filter(
+        (widget) => !isExcludedWidgetId(widget.widgetId),
+      ).map((widget) => cloneDeep({ ...widget }) as unknown as WidgetT),
     );
   }
   if (connectionTypes.includes("backend")) {
@@ -339,11 +231,11 @@ export function getAllWidgets(
       ...storedFiles.map((widget) => {
         return {
           ...cloneDeep({ ...widget }),
-          type: "table",
+          type: getFileWidgetType(widget.extension),
           external: true,
           category: widget?.category ?? "My Data",
-          // @ts-expect-error
-          subCategory: widget?.subCategory ?? widget?.sub_category,
+          subCategory:
+            widget?.subCategory ?? (widget as { sub_category?: string }).sub_category,
           widgetType: "file",
           endpoint: widget.url,
           widgetId: `file-${widget.id}`,
@@ -351,33 +243,12 @@ export function getAllWidgets(
           connectionType: "file",
           gridData: { w: 20, h: widget.extension === "pdf" ? 20 : 10 },
           extension: widget.extension,
-          data: {
-            dataKey: widget?.dataKey,
-            table: {
-              enableCharts: true,
-              chartView: {
-                chartType: "line" as const,
-              },
-            },
-          },
-        };
+          data: { dataKey: widget?.dataKey },
+        } as unknown as WidgetT;
       }),
     );
   }
   return cloneDeep([...result]);
-}
-
-export function groupParamOverride(
-  paramName: string,
-  widgetId: WidgetId,
-  invert = false,
-) {
-  if (widgetId === "analyst_estimates") {
-    const match = invert ? "fiscal_period" : "period";
-    const replace = invert ? "period" : "fiscal_period";
-    if (paramName === match) return replace;
-  }
-  return paramName;
 }
 
 /**
@@ -393,36 +264,13 @@ export function getCleanWidgetId(
 ) {
   if (connectionType === "advanced-backend") return widgetId;
   return widgetId
-    ?.replace(/_per_.*/, "_per")
-    ?.replace(/shared_file-.*/, "ag_grid_file")
-    ?.replace(/file-.*/, "ag_grid_file")
-    ?.replace(/company_news|global_news/, "news")
+    ?.replace(/shared_file-.*/, "file")
+    ?.replace(/file-.*/, "file")
     ?.replace(/iframe-.*/, "iframe")
-    ?.replace(/youtube-.*/, "youtube")
-    ?.replace(/rss_viewer-.*/, "rss_viewer")
-    ?.replace(/rich_note-.*/, "rich_note")
-    ?.replace(/copilot_table-.*/, "copilot_table")
-    ?.replace(/widget_studio-.*/, "widget_studio")
-    ?.replace(/ag_chart-.*/, "ag_chart")
-    ?.replace(/ag_chart_from_table-.*/, "ag_chart_from_table")
     ?.replace(/html-.*/, "html");
 }
 
-const WIDGET_ID_CLEANING = [
-  "iframe-",
-  "youtube-",
-  "shared_file-",
-  "file-",
-  "rss_viewer-",
-  "rich_note-",
-  "company_news-",
-  "global_news-",
-  "copilot_table-",
-  "ag_chart-",
-  "ag_chart_from_table-",
-  "widget_studio-",
-  "html-",
-];
+const WIDGET_ID_CLEANING = ["iframe-", "shared_file-", "file-", "html-"];
 
 const WIDGET_ID_CLEANING_REGEX = new RegExp(`^(${WIDGET_ID_CLEANING.join("|")})`);
 
@@ -456,29 +304,7 @@ export function processWidgetId(
   };
 }
 
-/**
- * Checks if a widget is a SQL/Python query code widget based on its params.
- * Returns true for SQL, Python, or undefined query language (backwards compat).
- */
-export function isQueryCodeWidget(params: WidgetT["params"] | undefined): boolean {
-  const queryLanguage = params?.find((p) => p.paramName === "query")?.language;
-  return !queryLanguage || queryLanguage === "sql" || queryLanguage === "python";
-}
-
-export const METADATA_WIDGETS = [
-  "websites",
-  "rss_feeds",
-  "notes",
-  "copilot_table",
-  "widget_studio",
-  "ag_chart",
-  "ag_chart_from_table",
-  "note", // we are adding note somewhere, we need to fix later
-  "website",
-  "rss",
-  "youtube",
-  "html",
-];
+export const METADATA_WIDGETS = ["websites", "website", "html"];
 
 /**
  * Handles the deletion of a widget based on its type and ID.
@@ -500,21 +326,15 @@ export async function handleWidgetDeletion({
   id: string;
   backendConnector: Pick<
     BackendConnectorStore,
-    "setSingleWidgets" | "updateApiSources" | "setStoredFiles" | "setWidgetMetadata"
+    "updateApiSources" | "setStoredFiles" | "setWidgetMetadata"
   >;
   deleteWidgets: (id: string) => void;
 }) {
-  if (type === "single") {
-    await deleteSingleWidget(id);
-    const result = await getSingleWidgets();
-    backendConnector.setSingleWidgets(result);
-    return deleteWidgets(id);
-  }
   if (type === "backend") {
     const { apiSources } = useBackendConnectorStore.getState();
     const source = apiSources.find((source) => source.id === id);
 
-    deleteSourceWidgets(source);
+    if (source) deleteSourceWidgets(source);
 
     await deleteApiSource(id);
     const result = await getApiSources();

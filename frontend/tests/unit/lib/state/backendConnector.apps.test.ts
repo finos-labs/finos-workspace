@@ -8,6 +8,7 @@ global.fetch = mockFetch;
 
 describe("validateBackend - apps.json endpoint behavior", () => {
   const mockSource: Source = {
+    id: "test-backend",
     url: "https://test-backend.com",
     name: "Test Backend",
     endpointHeaders: [
@@ -418,8 +419,7 @@ describe("validateBackend - apps.json endpoint behavior", () => {
         url: "https://mcp.example.com/sse",
       },
     ]);
-    // @ts-expect-error - mcp_servers should not exist on the resulting template
-    expect(result.templates[0].mcp_servers).toBeUndefined();
+    expect(result.templates[0]).not.toHaveProperty("mcp_servers");
   });
 
   it("should report unrecognized template keys from templates.json fallback with the correct label", async () => {

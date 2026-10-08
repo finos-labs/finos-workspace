@@ -46,16 +46,15 @@ export function useSkillSuggestions() {
 
       if (!searchTerm) return skillOptions;
 
-      return fuse
-        .search(searchTerm)
-        .map((result) => {
+      return (
+        fuse
+          .search(searchTerm)
           // Drop results that don't partially match the query if ends with a space
-          // "RSS F" -> ["RSS Feeds"]
-          // "RSS Feeds " -> []
-          if (query.length > result.item.slashText.length) return null;
-          return result.item;
-        })
-        .filter(Boolean);
+          // "Daily R" -> ["Daily Report"]
+          // "Daily Report " -> []
+          .filter((result) => query.length <= result.item.slashText.length)
+          .map((result) => result.item)
+      );
     },
     [skillOptions, fuse],
   );

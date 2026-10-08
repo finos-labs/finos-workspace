@@ -42,7 +42,6 @@ interface ListedAppCardProps {
   onUpdateListing?: () => void;
   /** Extra dropdown items for the owner card (e.g. dev-only review controls). */
   submissionDropdownItems?: AppCardDropdownItem[];
-  isLite?: boolean;
 }
 
 export function ListedAppCard({
@@ -56,7 +55,6 @@ export function ListedAppCard({
   onSubmitListing,
   onUpdateListing,
   submissionDropdownItems,
-  isLite,
 }: ListedAppCardProps) {
   const theme = useShallowThemeStore((state) => state.theme);
   const descriptionRef = useRef<HTMLDivElement>(null);
@@ -245,11 +243,11 @@ export function ListedAppCard({
           ) : (
             <>
               <Button
-                variant={isConnectedOrIncluded || isLite ? "outlined" : "secondary"}
+                variant={isConnectedOrIncluded ? "outlined" : "secondary"}
                 size="xs"
                 onClick={onOpenDetails}
               >
-                {isConnectedOrIncluded || isLite ? "View Details" : "Connect App"}
+                {isConnectedOrIncluded ? "View Details" : "Connect App"}
               </Button>
               {app.isBuiltIn ? (
                 <span className="flex items-center gap-1 text-xs font-normal text-tag-blue-label">

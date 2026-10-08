@@ -63,7 +63,9 @@ vi.mock("~/components/AI/CopilotContext", () => ({
 }));
 
 vi.mock("~/components/AI/ExternalLinkProvider", () => ({
-  ExternalLinkProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  ExternalLinkProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
 }));
 
 vi.mock("~/components/DraggableCard/SetLoadingOnResize", () => ({
@@ -94,7 +96,7 @@ describe("CopilotChat", () => {
     beforeEach(() => {
       (useShallowCopilotStore as Mock).mockImplementation((selector) => {
         return selector({
-          selectedCopilot: { id: "openbb-copilot", name: "OpenBB Copilot" },
+          selectedCopilot: { id: "default-copilot", name: "Copilot" },
           isFullscreen: false,
         });
       });
@@ -187,7 +189,7 @@ describe("CopilotChat", () => {
     it("applies fullscreen-specific styling when isFullscreen is true", () => {
       (useShallowCopilotStore as Mock).mockImplementation((selector) => {
         return selector({
-          selectedCopilot: { id: "openbb-copilot", name: "OpenBB Copilot" },
+          selectedCopilot: { id: "default-copilot", name: "Copilot" },
           isFullscreen: true,
         });
       });
@@ -201,7 +203,7 @@ describe("CopilotChat", () => {
     it("applies non-fullscreen styling when isFullscreen is false", () => {
       (useShallowCopilotStore as Mock).mockImplementation((selector) => {
         return selector({
-          selectedCopilot: { id: "openbb-copilot", name: "OpenBB Copilot" },
+          selectedCopilot: { id: "default-copilot", name: "Copilot" },
           isFullscreen: false,
         });
       });
@@ -215,7 +217,7 @@ describe("CopilotChat", () => {
     it("renders header outside the flex container in fullscreen mode", () => {
       (useShallowCopilotStore as Mock).mockImplementation((selector) => {
         return selector({
-          selectedCopilot: { id: "openbb-copilot", name: "OpenBB Copilot" },
+          selectedCopilot: { id: "default-copilot", name: "Copilot" },
           isFullscreen: true,
         });
       });
@@ -231,7 +233,7 @@ describe("CopilotChat", () => {
     beforeEach(() => {
       (useShallowCopilotStore as Mock).mockImplementation((selector) => {
         return selector({
-          selectedCopilot: { id: "openbb-copilot", name: "OpenBB Copilot" },
+          selectedCopilot: { id: "default-copilot", name: "Copilot" },
           isFullscreen: false,
         });
       });

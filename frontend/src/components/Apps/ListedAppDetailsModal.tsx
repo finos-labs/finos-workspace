@@ -42,7 +42,6 @@ interface ListedAppDetailsModalProps {
   onRate?: () => void;
   onPrev?: () => void;
   onNext?: () => void;
-  onContactVendor?: () => void;
 }
 
 export const ListedAppDetailsModal = memo((props: ListedAppDetailsModalProps) => {
@@ -61,7 +60,6 @@ export const ListedAppDetailsModal = memo((props: ListedAppDetailsModalProps) =>
     onRate,
     onPrev,
     onNext,
-    onContactVendor,
   } = props;
 
   const { requiresAuth, hasOptionalAuth, authButtonLabel } = useMemo(() => {
@@ -206,40 +204,27 @@ export const ListedAppDetailsModal = memo((props: ListedAppDetailsModalProps) =>
             Connected
           </span>
         ) : null}
-        {onContactVendor ? (
-          !isSubscribed &&
-          !app.isBuiltIn && (
-            <Button variant="primary" size="xs" onClick={onContactVendor}>
-              Contact
+        {showAuthButton && (
+          <Button variant="secondary" size="xs" onClick={handleAuthenticateClick}>
+            {hasSavedCredentials ? `Edit ${credentialLabel}` : `Add ${credentialLabel}`}
+          </Button>
+        )}
+        {!app.isBuiltIn && !isSubscribed && (
+          <Tooltip
+            message={`Add valid ${authButtonLabel.toLowerCase()} first.`}
+            position="bottom"
+            hide={!(requiresAuth && !hasSavedAuth)}
+          >
+            <Button
+              variant={requiresAuth && !hasSavedAuth ? "secondary" : "primary"}
+              size="xs"
+              loading={isSubscribing}
+              onClick={handleOnSubscribe}
+              disabled={requiresAuth && !hasSavedAuth}
+            >
+              Connect App
             </Button>
-          )
-        ) : (
-          <>
-            {showAuthButton && (
-              <Button variant="secondary" size="xs" onClick={handleAuthenticateClick}>
-                {hasSavedCredentials
-                  ? `Edit ${credentialLabel}`
-                  : `Add ${credentialLabel}`}
-              </Button>
-            )}
-            {!app.isBuiltIn && !isSubscribed && (
-              <Tooltip
-                message={`Add valid ${authButtonLabel.toLowerCase()} first.`}
-                position="bottom"
-                hide={!(requiresAuth && !hasSavedAuth)}
-              >
-                <Button
-                  variant={requiresAuth && !hasSavedAuth ? "secondary" : "primary"}
-                  size="xs"
-                  loading={isSubscribing}
-                  onClick={handleOnSubscribe}
-                  disabled={requiresAuth && !hasSavedAuth}
-                >
-                  Connect App
-                </Button>
-              </Tooltip>
-            )}
-          </>
+          </Tooltip>
         )}
         {dropdownItems.length > 0 && <AppCardDropdown items={dropdownItems} />}
       </div>
@@ -247,7 +232,6 @@ export const ListedAppDetailsModal = memo((props: ListedAppDetailsModalProps) =>
     [
       app.isBuiltIn,
       isSubscribed,
-      onContactVendor,
       showAuthButton,
       handleAuthenticateClick,
       hasSavedCredentials,

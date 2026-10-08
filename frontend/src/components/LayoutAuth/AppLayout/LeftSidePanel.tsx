@@ -39,11 +39,11 @@ export const LeftSidePanel = forwardRef((_, _ref) => {
 
   const leftPanelRef = useRef<ImperativePanelHandle>(null);
 
-  const toggleLeftSidebar = useCallbackRef((e = null) => {
-    if (leftPanelRef.current.isExpanded() && !e) {
+  const toggleLeftSidebar = useCallbackRef((e: unknown = null) => {
+    if (leftPanelRef.current?.isExpanded() && !e) {
       leftPanelRef.current.collapse();
     } else {
-      leftPanelRef.current.expand();
+      leftPanelRef.current?.expand();
     }
   });
 

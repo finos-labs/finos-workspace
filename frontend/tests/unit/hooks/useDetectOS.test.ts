@@ -80,8 +80,7 @@ describe("useDetectOS", () => {
   describe("legacy userAgent fallback", () => {
     it("should detect macOS via userAgent", () => {
       vi.stubGlobal("navigator", {
-        userAgent:
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
         maxTouchPoints: 0,
       });
 
@@ -92,8 +91,7 @@ describe("useDetectOS", () => {
 
     it("should detect Windows via userAgent", () => {
       vi.stubGlobal("navigator", {
-        userAgent:
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         maxTouchPoints: 0,
       });
 
@@ -127,8 +125,7 @@ describe("useDetectOS", () => {
 
     it("should detect iPad via userAgent", () => {
       vi.stubGlobal("navigator", {
-        userAgent:
-          "Mozilla/5.0 (iPad; CPU OS 14_6 like Mac OS X) AppleWebKit/605.1.15",
+        userAgent: "Mozilla/5.0 (iPad; CPU OS 14_6 like Mac OS X) AppleWebKit/605.1.15",
         maxTouchPoints: 5,
       });
 
@@ -152,8 +149,7 @@ describe("useDetectOS", () => {
 
     it("should detect Android via userAgent", () => {
       vi.stubGlobal("navigator", {
-        userAgent:
-          "Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36",
+        userAgent: "Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36",
         maxTouchPoints: 5,
       });
 

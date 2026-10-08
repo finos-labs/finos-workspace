@@ -1,4 +1,4 @@
-import type { EntityThemeSettings } from "~/lib/state/tableChartThemes";
+import type { EntityThemeSettings } from "~/lib/state/entityTheme";
 import type { EntityMapItem, EntitySettings } from "~/types/entity.type";
 import type { CreateUserDTO, User, UserSources } from "~/types/user.type";
 import { apiClient } from "./api";
@@ -53,7 +53,7 @@ export async function deleteMe() {
 
 export async function deleteUser(
   id: string,
-  source: UserSources,
+  source: UserSources | undefined,
   remove?: boolean,
 ): Promise<{ success: boolean } | undefined> {
   if (source === "user") {
@@ -72,10 +72,6 @@ export async function deleteUser(
     const { data } = await apiClient.delete<BaseResponse>(`/admin/register/${id}`);
     return data;
   }
-  if (source === "takeover") {
-    const { data } = await apiClient.post<BaseResponse>(`/admin/users/${id}/revoke`);
-    return data;
-  }
 }
 
 export async function resetUserPassword(id: string) {
@@ -88,11 +84,6 @@ export async function resetUserPassword(id: string) {
 
 export async function resetUser2FA(id: string) {
   const { data } = await apiClient.post<BaseResponse>(`/admin/reset-2fa/${id}`);
-  return data;
-}
-
-export async function extendTrialUser(id: string) {
-  const { data } = await apiClient.get<BaseResponse>(`/admin/extend-trial/${id}`);
   return data;
 }
 

@@ -34,7 +34,7 @@ export const SharedWithPopover = memo(({ sharedUsers, id }: SharedWithPopoverPro
       }
       content={
         <>
-          <p className="obb-uppercase-small-title mb-1.5 text-ds-text-caption pb-1.5 border-b border-surface-divider">
+          <p className="ws-uppercase-small-title mb-1.5 text-ds-text-caption pb-1.5 border-b border-surface-divider">
             Shared with
           </p>
           <div className="flex flex-col gap-1 max-h-[150px] overflow-y-auto">

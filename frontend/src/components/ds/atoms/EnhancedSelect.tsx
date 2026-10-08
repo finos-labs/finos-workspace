@@ -1,6 +1,7 @@
 import * as SelectPrimitive from "@radix-ui/react-select";
 import React from "react";
 import Icon from "~/components/Icon";
+import type { IconId } from "~/components/Icon.types";
 import Tooltip from "~/components/Tooltip";
 import { cn } from "~/lib/utils";
 import { SelectContent, SelectTrigger, SelectValue } from "./Select";
@@ -10,10 +11,10 @@ export interface EnhancedSelectOptionData {
   label: string;
   description?: string;
   subtitle?: string;
-  icon?: string;
+  icon?: IconId;
   disabled?: boolean;
   tooltip?: React.ReactNode;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   // Enhanced tooltip data
   tooltipData?: {
     title?: string;
@@ -383,7 +384,7 @@ export const EnhancedSelect = React.forwardRef<
             <div className="flex items-center min-w-0 w-full">
               {showSelectedIcon && selectedOption?.icon && (
                 <Icon
-                  id={selectedOption.icon as any}
+                  id={selectedOption.icon}
                   className="size-4 mr-2 text-ds-text-body flex-shrink-0"
                 />
               )}
@@ -424,7 +425,7 @@ export interface SimpleEnhancedSelectProps
     label: string;
     description?: string;
     subtitle?: string;
-    icon?: string;
+    icon?: IconId;
     disabled?: boolean;
   }>;
 }

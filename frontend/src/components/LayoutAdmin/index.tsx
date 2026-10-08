@@ -10,7 +10,6 @@ import type { ImperativePanelHandle } from "react-resizable-panels";
 import { Navigate, Outlet } from "react-router-dom";
 import { usePrivateRoute } from "~/hooks/usePrivateRoute";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { useAuthStore } from "~/lib/state/auth";
 import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../ui/Resizable";
@@ -77,7 +76,7 @@ function useHasAdminAccess() {
   const admin_access = useShallowFeatureFlagsStore(
     (state) => state.featureFlags?.admin_access,
   );
-  const { error, isLoading } = useQuery<any, AxiosError>({
+  const { error, isLoading } = useQuery<unknown, AxiosError>({
     queryKey: ["admin", "validate-access"],
     queryFn: validateAdminAccess,
     enabled: true,
@@ -107,7 +106,6 @@ export default function LayoutAdmin({ children }: { children?: ReactNode }) {
 
   usePanelEvents(leftPanelRef);
 
-  const needsOnboarding = useAuthStore((state) => state.needsOnboarding);
   const hasItems = useShallowAppStore((state) => state.hasItems || !!state.rootItem);
 
   const { hasAdminAccess, isLoading } = useHasAdminAccess();
@@ -121,7 +119,6 @@ export default function LayoutAdmin({ children }: { children?: ReactNode }) {
   }, [hasAdminAccess, isLoading]);
 
   if (!hasItems || isLoading) return <NoItems />;
-  if (needsOnboarding) return <Navigate to="/onboarding" />;
   if (!hasAdminAccess) return <Navigate to="/app" />;
   return (
     <ResizablePanelGroup

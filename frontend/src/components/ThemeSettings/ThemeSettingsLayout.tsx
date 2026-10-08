@@ -3,16 +3,17 @@ import { useCallback, useState } from "react";
 import { Button } from "~/components/ds/atoms/Button";
 import { Tabs, TabsList, TabsTrigger } from "~/components/ds/molecules/Tabs";
 
+export const THEME_MODES = ["light", "dark"] as const;
+export type ThemeMode = (typeof THEME_MODES)[number];
+
 interface ThemeSettingsLayoutProps {
   children: React.ReactNode;
   preview: React.ReactNode;
   onSave: () => Promise<void>;
   onReset: () => void;
-  selectedThemeMode?: "light" | "dark";
-  onThemeModeChange?: (mode: "light" | "dark") => void;
+  selectedThemeMode?: ThemeMode;
+  onThemeModeChange?: (mode: ThemeMode) => void;
 }
-
-export const THEME_MODES = ["light", "dark"] as const;
 
 export function ThemeSettingsLayout({
   children,
@@ -41,7 +42,7 @@ export function ThemeSettingsLayout({
         {onThemeModeChange && (
           <Tabs
             value={selectedThemeMode}
-            onValueChange={onThemeModeChange}
+            onValueChange={(mode) => onThemeModeChange(mode as ThemeMode)}
             variant="filled_secondary"
             className="w-full"
           >

@@ -19,14 +19,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy_utils import UUIDType
 
-from api import schemas
 from api.models.model_helpers import (
     AwareDateTime,
     Base,
     DateMixin,
     GzipJsonType,
-    ProEntitlementsType,
-    ProKeysType,
     UUIDMixin,
 )
 
@@ -82,12 +79,8 @@ class Entity(Base, UUIDMixin, DateMixin):
     aum: Mapped[None | int] = mapped_column(BigInteger, default=0)
     country: Mapped[None | str] = mapped_column(String(60))
     require_authenticator: Mapped[bool] = mapped_column(Boolean, default=False)
-    api_keys: Mapped[ProKeysType] = mapped_column(
-        ProKeysType, default=schemas.ProKeys()
-    )
     seats: Mapped[None | int] = mapped_column(Integer, default=1)
     expiration_date: Mapped[None | datetime] = mapped_column(AwareDateTime())
-    stripe_id: Mapped[None | str] = mapped_column(Text)
 
     async def get_all_children(self, db: AsyncSession) -> list["Entity"]:
         """Returns self, children, and children of children recursively"""
@@ -139,9 +132,6 @@ class PermissionsEntityMap(Base, UUIDMixin, DateMixin):
     )
     entity: Mapped["Entity"] = relationship(foreign_keys=[entity_uuid], lazy="selectin")
     name: Mapped[str] = mapped_column(String(100))
-    entitlements: Mapped[None | schemas.ProEntitlements] = mapped_column(
-        ProEntitlementsType
-    )
 
 
 class AuditEntityRolesPermissions(Base, UUIDMixin, DateMixin):
@@ -241,8 +231,48 @@ class RolePrompt(Base, UUIDMixin, DateMixin):
     access: Mapped[str] = mapped_column(String(100))
 
 
+class RoleCopilotModel(Base, UUIDMixin, DateMixin):
+    """A Copilot model that a role may use. A role with none leaves models unrestricted."""
+
+    __tablename__ = "role_copilot_model"
+    __table_args__ = (
+        UniqueConstraint(
+            "role_uuid", "agent_id", "model_id", name="uix_role_copilot_model"
+        ),
+    )
+
+    role_uuid: Mapped[UUID] = mapped_column(
+        ForeignKey("role.uuid", ondelete="CASCADE"), index=True
+    )
+    role: Mapped["Role"] = relationship(foreign_keys=[role_uuid])
+    agent_id: Mapped[str] = mapped_column(String(255))
+    model_id: Mapped[str] = mapped_column(String(255))
+
+
+class RoleMcpAccess(Base, UUIDMixin, DateMixin):
+    """An MCP server, or one tool of it, that a role may use.
+
+    ``tool_name`` is ``*`` for every tool of the server. A role with none leaves MCP
+    tools unrestricted.
+    """
+
+    __tablename__ = "role_mcp_access"
+    __table_args__ = (
+        UniqueConstraint(
+            "role_uuid", "server_url", "tool_name", name="uix_role_mcp_access"
+        ),
+    )
+
+    role_uuid: Mapped[UUID] = mapped_column(
+        ForeignKey("role.uuid", ondelete="CASCADE"), index=True
+    )
+    role: Mapped["Role"] = relationship(foreign_keys=[role_uuid])
+    server_url: Mapped[str] = mapped_column(String(400))
+    tool_name: Mapped[str] = mapped_column(String(200), default="*")
+
+
 class EntityThemeSettings(Base, UUIDMixin, DateMixin):
-    """Stores the theme settings for an entity, used by ag-grid"""
+    """Stores the theme settings for an entity"""
 
     __tablename__ = "entity_theme_settings"
 

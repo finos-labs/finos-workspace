@@ -3,7 +3,7 @@
 import os
 from dataclasses import dataclass
 
-ENV_PREFIX = "OPENBB_WORKSPACE_MCP_"
+ENV_PREFIX = "WORKSPACE_MCP_"
 
 RESULT_OFFLOAD_THRESHOLD_DEFAULT = 40000
 

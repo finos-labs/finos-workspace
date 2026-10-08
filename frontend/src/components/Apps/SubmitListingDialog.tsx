@@ -256,7 +256,7 @@ function successNotification(target: SubmissionTarget | null) {
     return {
       message: "Update submitted for review",
       description:
-        "The OpenBB team will review your changes. The live listing stays unchanged until approved.",
+        "The marketplace administrators will review your changes. The live listing stays unchanged until approved.",
     };
   }
   if (target?.kind === "existing") {
@@ -268,7 +268,7 @@ function successNotification(target: SubmissionTarget | null) {
   return {
     message: "Submitted for review",
     description:
-      "The OpenBB team will review your app. You can see the status in the Marketplace tab.",
+      "The marketplace administrators will review your app. You can see the status in the Marketplace tab.",
   };
 }
 
@@ -517,14 +517,14 @@ export function SubmitListingDialog({ target, onClose }: SubmitListingDialogProp
               <Field
                 name="vendorName"
                 label="Company Name"
-                placeholder="e.g. Alpha Vantage"
+                placeholder="Name of your company"
                 description="Your company's official name as it should appear on the marketplace listing."
               />
               <Field
                 name="vendorWebsiteUrl"
                 label="Website URL"
-                placeholder="https://yourcompany.com"
-                description="Your company's website. Displayed as a clickable link below your company name (e.g., https://yourcompany.com)."
+                placeholder="https://…"
+                description="Your company's website. Displayed as a clickable link below your company name (for example, your home page)."
               />
               <Field
                 name="vendorDescription"
@@ -549,18 +549,18 @@ export function SubmitListingDialog({ target, onClose }: SubmitListingDialogProp
               <Field
                 name="contactEmail"
                 label="Support contact email (optional)"
-                placeholder="support@yourcompany.com"
+                placeholder="Email address for user inquiries"
                 description="The email address displayed on your listing under 'Contact' for user inquiries and support."
               />
             </>
           ) : step === "app" ? (
             <>
               <StepIntro step="Step 2:">
-                Describe your app and how it works inside OpenBB Workspace. Our team
-                reviews every submission to ensure it meets our quality and data
-                standards: including your app description, screenshots, hosted URL, and
-                widget functionality. Once approved, your app will be automatically
-                published and available to all OpenBB users in the marketplace.
+                Describe your app and how it works inside Workspace. Our team reviews
+                every submission to ensure it meets our quality and data standards:
+                including your app description, screenshots, hosted URL, and widget
+                functionality. Once approved, your app will be automatically published
+                and available to all Workspace users in the marketplace.
               </StepIntro>
               <Field
                 name="appName"
@@ -605,7 +605,7 @@ export function SubmitListingDialog({ target, onClose }: SubmitListingDialogProp
               <Field
                 name="documentationUrl"
                 label="Documentation URL (optional)"
-                placeholder="https://docs.yourcompany.com"
+                placeholder="https://…"
                 description="Link to your app's documentation, shown as “Learn more”."
               />
               <SubmissionAuthSection />

@@ -21,7 +21,7 @@ export class BrowserOAuthClientProvider implements OAuthClientProvider {
   readonly clientName: string;
   readonly clientUri: string;
   readonly callbackUrl: string;
-  private popupFeatures: string;
+  private popupFeatures?: string;
   private preventAutoAuth?: boolean;
   readonly onPopupWindow:
     | ((url: string, features: string, window: Window | null) => void)
@@ -319,7 +319,7 @@ export class BrowserOAuthClientProvider implements OAuthClientProvider {
         const item = localStorage.getItem(key);
         if (item) {
           const state = JSON.parse(item) as Partial<StoredState>;
-          if (state.serverUrlHash === this.serverUrlHash && state?.expiry < now) {
+          if (state.serverUrlHash === this.serverUrlHash && (state.expiry ?? 0) < now) {
             keysToRemove.push(key);
           }
         }

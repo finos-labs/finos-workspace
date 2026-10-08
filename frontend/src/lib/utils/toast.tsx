@@ -54,7 +54,8 @@ export interface ShowNotificationProps {
 }
 
 interface WithRememberMeProps extends Omit<ShowNotificationProps, "withClose"> {
-  id: NotificationId | `${NotificationId}:${string}`;
+  /** Folders have no remember-me id, so their confirmation always shows. */
+  id?: NotificationId | `${NotificationId}:${string}`;
   rememberOptionLabel?: string;
   action?: {
     label: string;
@@ -76,14 +77,16 @@ export function showNotificationWithRememberMe(props: WithRememberMeProps) {
     toastType,
   } = props;
 
-  const toastId = id?.split?.(":")?.[0] as NotificationId;
+  const toastId = id?.split(":")[0] as NotificationId | undefined;
 
-  const toastDontShowAgain = useToastStore.getState().getToastDontShowAgain(toastId);
+  const toastDontShowAgain = toastId
+    ? useToastStore.getState().getToastDontShowAgain(toastId)
+    : undefined;
 
   if (toastDontShowAgain) {
     action.onClick(toastDontShowAgain);
   } else {
-    const toastFunction = toast[toastType] || toast.warning; // Default to warning if type is not valid
+    const toastFunction = (toastType && toast[toastType]) || toast.warning; // Default to warning if type is not valid
 
     toastFunction(message, {
       id,
@@ -100,9 +103,9 @@ export function showNotificationWithRememberMe(props: WithRememberMeProps) {
         ? {
             label: cancel.label,
             onClick: () => {
-              if (!id) return cancel.onClick();
+              if (!(id && toastId)) return cancel.onClick();
               const isChecked =
-                document.getElementById(id).getAttribute("data-state") === "checked";
+                document.getElementById(id)?.getAttribute("data-state") === "checked";
               if (isChecked) {
                 useToastStore.getState().setToastDontShowAgain(toastId, isChecked);
               }
@@ -113,9 +116,9 @@ export function showNotificationWithRememberMe(props: WithRememberMeProps) {
       action: {
         label: action.label,
         onClick: () => {
-          if (!id) return action.onClick();
+          if (!(id && toastId)) return action.onClick();
           const isChecked =
-            document.getElementById(id).getAttribute("data-state") === "checked";
+            document.getElementById(id)?.getAttribute("data-state") === "checked";
           if (isChecked) {
             useToastStore.getState().setToastDontShowAgain(toastId, isChecked);
           }
@@ -136,7 +139,7 @@ export function showNotification(props: ShowNotificationProps) {
     };
   }
 
-  const toastFunction = toast[toastType] || toast.warning; // Default to warning if type is not valid
+  const toastFunction = (toastType && toast[toastType]) || toast.warning; // Default to warning if type is not valid
 
   toastFunction(message, {
     id: id ?? message,

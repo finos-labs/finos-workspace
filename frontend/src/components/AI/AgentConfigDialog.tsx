@@ -1,5 +1,4 @@
 import { cloneDeep } from "lodash";
-import posthog from "posthog-js";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -17,7 +16,7 @@ import {
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import { cn, createURLString } from "~/lib/utils";
+import { cn } from "~/lib/utils";
 import { Button } from "../ds/atoms/Button";
 import { Input } from "../ds/atoms/Input";
 import { Label } from "../ds/atoms/Label";
@@ -32,11 +31,12 @@ import {
 import { ConnectionTestResult } from "../ds/molecules/ConnectionTestResult";
 import Avatar from "../General/Avatar";
 import Icon from "../Icon";
+import { resolveAgentEndpoints } from "./hooks/utils";
 
 async function validateApiKey(
   apiKey: string,
   endpoint: string,
-  data?: Record<string, any>,
+  data?: Record<string, unknown>,
 ): Promise<TestResult> {
   try {
     const response = await fetch(endpoint, {
@@ -51,7 +51,7 @@ async function validateApiKey(
     const responseText = await response.text();
 
     if (!response.ok) {
-      let responseData: Record<string, any>;
+      let responseData: { error?: { message?: string } };
       try {
         responseData = JSON.parse(responseText);
       } catch {
@@ -70,7 +70,10 @@ async function validateApiKey(
     if (error instanceof TypeError) {
       return { status: 500, message: "Validation failed." };
     }
-    return { status: 500, message: error.message };
+    return {
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
@@ -141,7 +144,7 @@ function CopilotApiKeyInput({
           message={
             state.testResult.status === 200
               ? "API key is valid!"
-              : state.testResult.message
+              : (state.testResult.message ?? "")
           }
           className="mt-2"
         />
@@ -190,10 +193,9 @@ function CopilotApiKeyDialog() {
         id: `copilot_api_key_${type}`,
         description:
           isCleared || !state.openaiApiKey
-            ? "OpenBB Copilot will now use the default API key."
-            : "OpenBB Copilot will now use this API key.",
+            ? "Copilot will now use the default API key."
+            : "Copilot will now use this API key.",
       });
-      posthog?.capture(`copilot_api_key_${type}`);
       onClose();
       debouncedUpdateSettings();
     },
@@ -299,12 +301,11 @@ export function AgentConfigDialog() {
         const holder = { ...holderToUpdate, ...partialHolder };
 
         // Ensure each agent has the latest headers and valid URLs
-        holder.copilots = (holder.copilots || []).map((agent) => {
-          for (const [key, value] of Object.entries(agent?.endpoints || {})) {
-            agent.endpoints[key] = createURLString(value, holder.url);
-          }
-          return { ...agent, headers: holder.headers || {} };
-        });
+        holder.copilots = (holder.copilots || []).map((agent) => ({
+          ...agent,
+          endpoints: resolveAgentEndpoints(agent.endpoints, holder.url),
+          headers: holder.headers || {},
+        }));
         await putCustomCopilot(holder);
         externalHolders[groupIndex] = holder;
         updateExternalCopilotHolders(externalHolders);
@@ -321,12 +322,12 @@ export function AgentConfigDialog() {
 
     return state.groups.reduce((acc, holder) => {
       const filteredGroup = holder.copilots?.filter((agent) => {
-        if (agent.id === "openbb-copilot") return false;
+        if (agent.id === "default-copilot") return false;
         if (!trimmedSearch) return true;
 
         return agent.name.toLowerCase().includes(searchLower);
       });
-      if (filteredGroup?.length > 0) {
+      if (filteredGroup?.length) {
         acc.push({ ...holder, copilots: filteredGroup });
       }
       return acc;
@@ -393,6 +394,7 @@ export function AgentConfigDialog() {
 
   const confirmDeleteGroup = useCallback(async () => {
     const groupToDelete = state.groupToDelete;
+    if (groupToDelete === null) return;
     const holderToDelete = externalCopilotHolders?.[groupToDelete];
     if (!holderToDelete) return;
 
@@ -452,7 +454,8 @@ export function AgentConfigDialog() {
 
   const handleSaveAuth = useCallback(
     async (authEditGroup: AgentConfigState["authEditGroup"]) => {
-      const holder = state.groups[authEditGroup?.index];
+      if (!authEditGroup) return;
+      const holder = state.groups[authEditGroup.index];
       if (!holder) return;
 
       // Check for duplicate keys before saving
@@ -720,7 +723,7 @@ function AgentDeleteConfirmDialog(props: {
 type AgentGroupItemProps = {
   holder: HolderGroup;
   groupIndex: number;
-  handleSaveRefresh: (groupIndex: number) => Promise<any>;
+  handleSaveRefresh: (groupIndex: number) => Promise<unknown>;
   handleAuthGroup: (groupIndex: number) => void;
   dispatch: StateDispatch<AgentConfigState>;
 };
@@ -882,7 +885,7 @@ type AgentAuthEditorProps = {
 const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
   const { authEditGroup, dispatch, handleSaveAuth } = props;
 
-  const inputRefs = useRef<Record<string, HTMLInputElement>>({});
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [editGroup, setEditGroup] = useState(authEditGroup);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -895,9 +898,8 @@ const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
         return { ...prev, headerPairs: newPairs };
       });
 
-      if (inputRefs.current[`${field}-${index}`]) {
-        inputRefs.current[`${field}-${index}`]!.value = value;
-      }
+      const input = inputRefs.current[`${field}-${index}`];
+      if (input) input.value = value;
     },
     [inputRefs],
   );
@@ -914,7 +916,7 @@ const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
   useEffect(() => {
     setEditGroup(authEditGroup);
     return () => {
-      inputRefs.current! = {};
+      inputRefs.current = {};
     };
   }, [authEditGroup]);
 
@@ -973,10 +975,14 @@ const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
                 </div>
                 <button
                   onClick={() => {
-                    setEditGroup((prev) => ({
-                      ...prev,
-                      headerPairs: prev.headerPairs.filter((_, i) => i !== index),
-                    }));
+                    setEditGroup((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            headerPairs: prev.headerPairs.filter((_, i) => i !== index),
+                          }
+                        : prev,
+                    );
                   }}
                   className="mt-6 p-1"
                 >
@@ -995,10 +1001,14 @@ const AgentAuthEditor = memo((props: AgentAuthEditorProps) => {
           variant="outlined"
           size="sm"
           onClick={() => {
-            setEditGroup((prev) => ({
-              ...prev,
-              headerPairs: [...prev.headerPairs, { key: "", value: "" }],
-            }));
+            setEditGroup((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    headerPairs: [...prev.headerPairs, { key: "", value: "" }],
+                  }
+                : prev,
+            );
           }}
         >
           + Add Authentication

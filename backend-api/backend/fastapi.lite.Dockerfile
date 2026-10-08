@@ -93,7 +93,7 @@ COPY --chown=appuser:appuser ./main.py ./
 COPY --chown=appuser:appuser ./alembic.ini ./
 COPY --chown=appuser:appuser ./alembic ./alembic
 COPY --chown=appuser:appuser ./scripts ./scripts
-# Workspace MCP package (imported by routers/pro/workspace_mcp). Shipped as source for now;
+# Workspace MCP package (imported by routers/app/workspace_mcp). Shipped as source for now;
 # for a production lite release it should be added to setup_compile.py and compiled like the rest.
 COPY --chown=appuser:appuser ./workspace_mcp ./workspace_mcp
 

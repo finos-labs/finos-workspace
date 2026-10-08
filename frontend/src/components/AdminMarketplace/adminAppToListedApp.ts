@@ -14,7 +14,7 @@ export function adminAppToListedApp(app: AdminApp): ListedApp {
   const widgetCount = app.widgets_count ?? 0;
   // Only the counts are available here, not the widget/prompt lists.
   const widgets = previewWidgets(widgetCount);
-  const media = app.media?.length ? app.media : app.screenshots;
+  const { media } = app;
   const promptsCount = app.prompts_count ?? 0;
 
   return {
@@ -33,7 +33,6 @@ export function adminAppToListedApp(app: AdminApp): ListedApp {
     widgets,
     totalWidgets: widgetCount,
     prompts: promptsCount > 0 ? previewPrompts(promptsCount) : undefined,
-    screenshots: media?.length ? media : undefined,
     media: media?.length ? media : undefined,
     isBuiltIn: app.is_built_in,
     authType: app.auth_type ?? undefined,

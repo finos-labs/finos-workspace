@@ -8,101 +8,22 @@
  * Usage:
  *   import { mockConfig } from "tests/mocks/runtimeConfig";
  *   // in beforeEach or per-test:
- *   mockConfig.data.packageDataEnabled = false;
+ *   mockConfig.ui.showChangelog = false;
  */
 import { vi } from "vitest";
+import { RuntimeConfigSchema } from "~/lib/runtimeConfigSchema";
 
-export const mockConfig = {
-  urls: {
-    backend: "http://localhost:3000",
-    ai: "http://localhost:3000/ai",
-    platform: "",
-    database: "",
-  },
-  authentication: {
-    allowEmailLogin: true,
-    allowRegistration: true,
-    allowForgotPassword: true,
-    identityProviders: [] as string[],
-    sendMicrosoftIdToken: false,
-    sendOktaIdToken: false,
-    sendUserEmailAsHeader: false,
-  },
-  authProviders: {
-    googleClientId: "",
-    azureClientId: "",
-    azureTenantId: "",
-    oktaClientId: "",
-    oktaDomain: "",
-  },
-  copilot: {
-    enabled: true,
-    openbbCopilot: true,
-    documentationLinks: true,
-    webSearch: true,
-    secFilings: false,
-    jinaAi: true,
-    aiEnhancements: true,
-    saveSkillFromChat: true,
-    showCustomKey: true,
-  },
-  ui: {
-    showCompanionMode: false,
-    showMinimizeWidget: true,
-    showChartGeneration: true,
-    showFeedbackButton: false,
-    showInviteButton: true,
-    showDemoRequestButton: false,
-    showEnterpriseTags: true,
-    showExternalDocLinks: true,
-    showHelpDocumentation: true,
-    showChangelog: true,
-    showOnboardingQuestions: true,
-    showTos: true,
-    showCopilotSwitcher: true,
-    showRemoveFromOrg: true,
-    defaultTheme: "dark" as const,
-    odpDownloadInstaller: true,
-    showSalesEmail: false,
-    isLite: false,
-    showMarketplace: true,
-  },
-  services: {
-    posthog: false,
-    hubspotForms: false,
-    email: true,
-    nixtla: true,
-    cloudflareWorker: true,
-  },
-  data: {
-    packageDataEnabled: true,
-    allowedDataVendors: [] as string[],
-    allowedDbTypes: [] as string[],
-    openDataPlatformInstallerEnabled: true,
-    allowHtmlJsExecution: false,
-  },
-  mcp: {
-    defaultServerEnabled: true,
-  },
-  analytics: {
-    posthogKey: "",
-    posthogUrl: "",
-  },
-  whiteLabel: {
-    name: "OpenBB Workspace",
-    shortName: "OpenBB",
-    loginImage: "/assets/images/openbb_lettering.svg",
-    loginImageDark: "/assets/images/openbb_lettering_light.svg",
-    leftSidebarLogo: "",
-    leftSidebarLogoDark: "",
-    favicon: "/favicon/favicon.ico",
-    description: "",
-    keywords: "",
-    mainColor: "#0088CC",
-    fontFamily: "Inter",
-    showFloatingThemePreview: false,
-  },
-};
+export const mockConfig = RuntimeConfigSchema.parse({
+  urls: { backend: "http://localhost:3000", ai: "http://localhost:3000/ai" },
+  authentication: {},
+  authProviders: {},
+  copilot: { enabled: true, saveSkillFromChat: true },
+  ui: {},
+  data: {},
+  links: {},
+  contact: {},
+  whiteLabel: {},
+});
 
 vi.mock("~/lib/runtimeConfig", () => ({
   getConfig: () => mockConfig,

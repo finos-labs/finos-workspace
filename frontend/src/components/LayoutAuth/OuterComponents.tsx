@@ -13,19 +13,15 @@ import ExportFolderDialog from "../General/ExportFolderDialog";
 import ExportModal from "../General/ExportModal";
 import ExportTemplatePopup from "../General/ExportTemplatePopup";
 import ExportWidgetModal from "../General/ExportWidgetModal";
+import InvalidItemsDialog from "../General/InvalidItemsDialog";
 import RenamePopup from "../General/RenamePopup";
 import { SaveAppDialog } from "../General/SaveAppDialog";
 import { ShareUserAppDialog } from "../General/SharedAppsDialog";
 import { ShareDashboardDialog } from "../General/SharedDashboardDialog";
-import TourGuide from "../InAppOnboarding/TourGuide";
-import WalkthroughGuide from "../InAppOnboarding/WalkthroughGuide";
 import ExcelExportDialog from "../LayoutAuth/DropdownSubs/ExcelExportDialog";
-import MarketingPopup from "./MarketingPopup";
-import OpenDataPlatformModal from "./OpenDataPlatformModal";
 import AddPromptDialog from "./PromptLibrary/AddPromptDialog";
 import SearchDialog from "./Search/SearchDialog";
 import ShortcutDialog from "./ShortcutDialog";
-import TOSDialog from "./TOSDialog";
 
 export default function OuterComponents() {
   const {
@@ -38,8 +34,6 @@ export default function OuterComponents() {
     shareUserAppsPopupId,
     excelExportPopup,
     exportFolderPopup,
-    openDataPlatformModalOpen,
-    setOpenDataPlatformModalOpen,
   } = useShallowThemeStore((state) => ({
     exportWidgetData: state.exportWidgetData,
     exportPopup: state.exportPopup,
@@ -50,18 +44,14 @@ export default function OuterComponents() {
     shareUserAppsPopupId: state.shareUserAppsPopupId,
     excelExportPopup: state.excelExportPopup,
     exportFolderPopup: state.exportFolderPopup,
-    openDataPlatformModalOpen: state.openDataPlatformModalOpen,
-    setOpenDataPlatformModalOpen: state.setOpenDataPlatformModalOpen,
   }));
 
   const isMobile = useMobile((s) => s.isMobile);
 
   return (
     <>
-      <TourGuide />
-      <WalkthroughGuide />
       <AddConnectionModal />
-      <MarketingPopup />
+      <InvalidItemsDialog />
       <AddPromptDialog />
       <AddSkillDialog />
       <ManageAppsDialog />
@@ -70,13 +60,6 @@ export default function OuterComponents() {
       <McpAuthPopup />
       {search && !isMobile && <SearchDialog />}
       {shortcutSidebarOpen && <ShortcutDialog />}
-      {openDataPlatformModalOpen && (
-        <OpenDataPlatformModal
-          open={openDataPlatformModalOpen}
-          onClose={() => setOpenDataPlatformModalOpen(false)}
-        />
-      )}
-      <TOSDialog />
       {exportPopup && <ExportModal />}
       {exportWidgetData && <ExportWidgetModal />}
       {renamePopup && <RenamePopup />}

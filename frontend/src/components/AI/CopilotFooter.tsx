@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useRef } from "react";
+import { type MouseEvent, useEffect, useMemo, useRef } from "react";
 import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
 import { FooterLink, UploadedFile } from "~/components/General/UploadedFile";
 import { useCallbackRef } from "~/hooks/useRefHooks";
-import { COPILOT_ACCEPTED_EXTENSIONS, getDefaultCopilot } from "~/lib/constants";
+import { COPILOT_ACCEPTED_EXTENSIONS } from "~/lib/constants";
 import { useCopilotContext } from "~/lib/contexts/CopilotChatContext";
 import { useMobile } from "~/lib/providers/MobileProvider";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { cn, extractUrlsFromText } from "~/lib/utils";
 import { Button } from "../ds/atoms/Button";
-import SnowflakeHide from "../General/SnowflakeHide";
 import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import CopilotSwitcher from "./CopilotSwitcher";
@@ -102,7 +101,7 @@ export default function CopilotFooter() {
     [dispatch],
   );
 
-  const onSendClick = useCallbackRef((e) => {
+  const onSendClick = useCallbackRef((e: MouseEvent) => {
     e.preventDefault();
     if (isPromptEmpty && !loading) return;
     if (hasPendingFiles && !loading) return;
@@ -111,7 +110,7 @@ export default function CopilotFooter() {
     handleSubmitRef.current?.({ question: prompt });
   });
 
-  const onEnhanceClick = useCallbackRef(async (e) => {
+  const onEnhanceClick = useCallbackRef(async (e: MouseEvent) => {
     e.preventDefault();
     if (loading || limitReached || isEnhancing) return;
 
@@ -128,9 +127,7 @@ export default function CopilotFooter() {
       <>
         <div className="flex p-1 items-center justify-end">
           <div className="flex gap-2 items-center w-full">
-            <SnowflakeHide render={<SnowflakeSwitcher />}>
-              <CopilotSwitcher />
-            </SnowflakeHide>
+            <CopilotSwitcher />
             <ModelPicker />
             <div className="flex shrink-0 gap-1 items-center">
               {isMobile && browserSupportsSpeechRecognition ? (
@@ -166,39 +163,37 @@ export default function CopilotFooter() {
                 promptSuggestionsMemo
               )}
 
-              <SnowflakeHide>
-                <Tooltip
-                  message={
-                    fileUploadFF
-                      ? `Attach files (${COPILOT_ACCEPTED_EXTENSIONS.filter(
-                          (e) => e !== ".markdown",
-                        )
-                          .map((e) => e.slice(1).toUpperCase())
-                          .join(", ")} supported)`
-                      : "File upload is not enabled for this copilot."
-                  }
-                >
-                  <div className="tooltip-wrapper">
-                    <button
-                      type="button"
-                      aria-label="Attach files"
-                      onClick={() => document.getElementById("file-upload")?.click()}
-                      disabled={!fileUploadFF || loading || limitReached}
-                      className={cn(
-                        "flex items-center justify-center w-8 h-8 rounded transition-colors duration-200 min-w-8",
-                        {
-                          "opacity-25 cursor-default":
-                            !fileUploadFF || loading || limitReached,
-                          "text-ds-text-body hover:bg-btn-ghost-bg-hover":
-                            fileUploadFF && !loading && !limitReached,
-                        },
-                      )}
-                    >
-                      <Icon id="attachment-icon" className="h-4 w-4 stroke-1" />
-                    </button>
-                  </div>
-                </Tooltip>
-              </SnowflakeHide>
+              <Tooltip
+                message={
+                  fileUploadFF
+                    ? `Attach files (${COPILOT_ACCEPTED_EXTENSIONS.filter(
+                        (e) => e !== ".markdown",
+                      )
+                        .map((e) => e.slice(1).toUpperCase())
+                        .join(", ")} supported)`
+                    : "File upload is not enabled for this copilot."
+                }
+              >
+                <div className="tooltip-wrapper">
+                  <button
+                    type="button"
+                    aria-label="Attach files"
+                    onClick={() => document.getElementById("file-upload")?.click()}
+                    disabled={!fileUploadFF || loading || limitReached}
+                    className={cn(
+                      "flex items-center justify-center w-8 h-8 rounded transition-colors duration-200 min-w-8",
+                      {
+                        "opacity-25 cursor-default":
+                          !fileUploadFF || loading || limitReached,
+                        "text-ds-text-body hover:bg-btn-ghost-bg-hover":
+                          fileUploadFF && !loading && !limitReached,
+                      },
+                    )}
+                  >
+                    <Icon id="attachment-icon" className="h-4 w-4 stroke-1" />
+                  </button>
+                </div>
+              </Tooltip>
               <Tooltip
                 message={isPromptEmpty ? "Generate prompt" : "Prompt enhancement"}
               >
@@ -295,26 +290,5 @@ export default function CopilotFooter() {
       </>
     ),
     [limitReached, textAreaMemo, buttonsMemo, fileLinksFooterMemo],
-  );
-}
-
-function SnowflakeSwitcher() {
-  return (
-    <div className="flex-1 min-w-0">
-      <div className="flex items-center text-xs gap-1 w-full min-w-0">
-        <span
-          className="flex items-center gap-1 rounded-full px-2 py-1 dark:bg-dark-750 bg-light-50
-          dark:text-light-200 text-light-750 min-w-0 max-w-full truncate"
-        >
-          <Icon
-            id="sparkles-icon"
-            className="h-4 w-4 dark:text-light-400 flex-shrink-0"
-          />
-          <span className="select-none truncate min-w-0">
-            {getDefaultCopilot().name}
-          </span>
-        </span>
-      </div>
-    </div>
   );
 }

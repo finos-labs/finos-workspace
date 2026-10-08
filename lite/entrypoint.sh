@@ -1,10 +1,10 @@
 #!/bin/bash
 # One-box entrypoint.
 #
-# Goal: `docker run -d -p 3000:3000 openbb/hub` works with zero -e flags.
-# Anything the user supplies via -e is preserved; everything else is generated
+# Goal: `docker run -d -p 3000:3000 -e WORKSPACE_ADMIN_EMAIL=<your-email> <image>` is all it
+# takes. Anything the user supplies via -e is preserved; everything else is generated
 # once per /data volume and persisted to /data/secrets.env so values stay
-# stable across container restarts and the JWT_SECRET / OPENBB_AUTH_TOKEN
+# stable across container restarts and the JWT_SECRET / WORKSPACE_AUTH_TOKEN
 # pair remains consistent.
 set -euo pipefail
 
@@ -22,44 +22,22 @@ chown -R appuser:appuser "$DATA_DIR"
 # Generate any value the user didn't pass via -e, store in /data/secrets.env,
 # then re-source so the rest of the entrypoint (and supervisord children) see
 # the resolved environment. PyJWT lives in the backend venv, so we use it for
-# the JWT_SECRET / OPENBB_AUTH_TOKEN pair.
+# the JWT_SECRET / WORKSPACE_AUTH_TOKEN pair.
 gen_hex() { python -c "import secrets; print(secrets.token_hex($1))"; }
 gen_b64() { python -c "import secrets; print(secrets.token_urlsafe($1))"; }
 
-# Password generator that satisfies the SPA's regex:
-#   min 8 chars, ≥1 upper, ≥1 lower, ≥1 digit, ≥1 special, no spaces.
-gen_password() {
-  python - <<'PY'
-import secrets, string
-specials = "!@#$%&*+?"
-alphabet = string.ascii_letters + string.digits + specials
-# Guarantee at least one of each required class, then fill to length and shuffle.
-required = [
-    secrets.choice(string.ascii_uppercase),
-    secrets.choice(string.ascii_lowercase),
-    secrets.choice(string.digits),
-    secrets.choice(specials),
-]
-filler = [secrets.choice(alphabet) for _ in range(12)]
-chars = required + filler
-secrets.SystemRandom().shuffle(chars)
-print("".join(chars))
-PY
-}
+# A password that the sign-in form accepts (the same generator that scripts.create_local_env uses).
+gen_password() { (cd /opt/code && python -c "from scripts.create_local_env import admin_password; print(admin_password())"); }
 
 # Defaults applied only if the variable is unset/empty.
 : "${JWT_SECRET:=}"
-: "${OPENBB_AUTH_TOKEN:=}"
-: "${OPENBB_AES_KEY:=}"
+: "${WORKSPACE_AUTH_TOKEN:=}"
+: "${WORKSPACE_AES_KEY:=}"
 : "${LOCAL_STORAGE_SECRET_KEY:=}"
-: "${OPENBB_ADMIN_EMAIL:=admin@openbb.co}"
-: "${OPENBB_ADMIN_PASSWORD:=}"
-: "${OPENBB_FRONTEND_USER_AGENT:=}"
-: "${OPENBB_AI_USER_AGENT:=}"
-: "${OPENBB_GEO_KEY:=}"
-: "${OPENBB_CHARGEBEE_SITE_KEY:=}"
-: "${OPENBB_CHARGEBEE_API_KEY:=}"
-: "${OKTA_DOMAIN:=test.okta.com}"
+: "${WORKSPACE_ADMIN_EMAIL:=}"
+: "${WORKSPACE_ENTITY_NAME:=Workspace}"
+: "${WORKSPACE_ADMIN_PASSWORD:=}"
+: "${WORKSPACE_FRONTEND_USER_AGENT:=}"
 
 if [[ -f "$SECRETS_FILE" ]]; then
   # Load only the vars the caller did NOT already set. Filters out comments
@@ -73,50 +51,47 @@ if [[ -f "$SECRETS_FILE" ]]; then
   done < "$SECRETS_FILE"
 fi
 
+# The administrator's address has no default: it is the account you sign in with.
+if [[ -z "$WORKSPACE_ADMIN_EMAIL" ]]; then
+  echo "[entrypoint] WORKSPACE_ADMIN_EMAIL is not set. Start the container with" >&2
+  echo "[entrypoint]   -e WORKSPACE_ADMIN_EMAIL=<the address of the first administrator>" >&2
+  exit 1
+fi
+
 # Generate anything still missing.
 [[ -z "$JWT_SECRET" ]]               && JWT_SECRET="$(gen_hex 48)"
-[[ -z "$OPENBB_AES_KEY" ]]           && OPENBB_AES_KEY="$(gen_hex 8)"  # 16-char hex
+[[ -z "$WORKSPACE_AES_KEY" ]]           && WORKSPACE_AES_KEY="$(gen_hex 8)"  # 16-char hex
 [[ -z "$LOCAL_STORAGE_SECRET_KEY" ]] && LOCAL_STORAGE_SECRET_KEY="$(gen_b64 24)"
-[[ -z "$OPENBB_ADMIN_PASSWORD" ]]    && OPENBB_ADMIN_PASSWORD="$(gen_password)"
-[[ -z "$OPENBB_FRONTEND_USER_AGENT" ]] && OPENBB_FRONTEND_USER_AGENT="$(gen_hex 8)"
-[[ -z "$OPENBB_AI_USER_AGENT" ]]       && OPENBB_AI_USER_AGENT="$(gen_hex 8)"
-[[ -z "$OPENBB_GEO_KEY" ]]             && OPENBB_GEO_KEY="$(gen_hex 8)"
-[[ -z "$OPENBB_CHARGEBEE_SITE_KEY" ]]  && OPENBB_CHARGEBEE_SITE_KEY="$(gen_hex 8)"
-[[ -z "$OPENBB_CHARGEBEE_API_KEY" ]]   && OPENBB_CHARGEBEE_API_KEY="$(gen_hex 8)"
+[[ -z "$WORKSPACE_ADMIN_PASSWORD" ]]    && WORKSPACE_ADMIN_PASSWORD="$(gen_password)"
+[[ -z "$WORKSPACE_FRONTEND_USER_AGENT" ]] && WORKSPACE_FRONTEND_USER_AGENT="$(gen_hex 8)"
 
-# OPENBB_AUTH_TOKEN must be a JWT signed with JWT_SECRET (HS256). The backend
-# decodes it on startup; mismatched secret => permanent 401s on /pro/* routes.
-if [[ -z "$OPENBB_AUTH_TOKEN" ]]; then
-  OPENBB_AUTH_TOKEN="$(JWT_SECRET="$JWT_SECRET" python -c "
+# WORKSPACE_AUTH_TOKEN must be a JWT signed with JWT_SECRET (HS256). The backend
+# decodes it on startup; mismatched secret => permanent 401s on /app/* routes.
+if [[ -z "$WORKSPACE_AUTH_TOKEN" ]]; then
+  WORKSPACE_AUTH_TOKEN="$(JWT_SECRET="$JWT_SECRET" python -c "
 import jwt, os
-print(jwt.encode({'sub': 'openbb'}, os.environ['JWT_SECRET'], algorithm='HS256'))
+print(jwt.encode({'sub': 'workspace'}, os.environ['JWT_SECRET'], algorithm='HS256'))
 ")"
 fi
 
-export JWT_SECRET OPENBB_AUTH_TOKEN OPENBB_AES_KEY LOCAL_STORAGE_SECRET_KEY
-export OPENBB_ADMIN_EMAIL OPENBB_ADMIN_PASSWORD
-export OPENBB_FRONTEND_USER_AGENT OPENBB_AI_USER_AGENT
-export OPENBB_GEO_KEY OPENBB_CHARGEBEE_SITE_KEY OPENBB_CHARGEBEE_API_KEY OKTA_DOMAIN
+export JWT_SECRET WORKSPACE_AUTH_TOKEN WORKSPACE_AES_KEY LOCAL_STORAGE_SECRET_KEY
+export WORKSPACE_ADMIN_EMAIL WORKSPACE_ADMIN_PASSWORD WORKSPACE_ENTITY_NAME
 
 # Persist (chmod 600). Generated values stay stable across restarts; the
 # admin password is included so the user can recover it after losing the
 # initial container logs.
 umask 077
 cat > "$SECRETS_FILE" <<EOF
-# Generated by openbb/lite on first start. Override any of these via
+# Generated on first start. Override any of these via
 # docker run -e ... — caller-supplied values always win.
 JWT_SECRET=$JWT_SECRET
-OPENBB_AUTH_TOKEN=$OPENBB_AUTH_TOKEN
-OPENBB_AES_KEY=$OPENBB_AES_KEY
+WORKSPACE_AUTH_TOKEN=$WORKSPACE_AUTH_TOKEN
+WORKSPACE_AES_KEY=$WORKSPACE_AES_KEY
 LOCAL_STORAGE_SECRET_KEY=$LOCAL_STORAGE_SECRET_KEY
-OPENBB_ADMIN_EMAIL=$OPENBB_ADMIN_EMAIL
-OPENBB_ADMIN_PASSWORD=$OPENBB_ADMIN_PASSWORD
-OPENBB_FRONTEND_USER_AGENT=$OPENBB_FRONTEND_USER_AGENT
-OPENBB_AI_USER_AGENT=$OPENBB_AI_USER_AGENT
-OPENBB_GEO_KEY=$OPENBB_GEO_KEY
-OPENBB_CHARGEBEE_SITE_KEY=$OPENBB_CHARGEBEE_SITE_KEY
-OPENBB_CHARGEBEE_API_KEY=$OPENBB_CHARGEBEE_API_KEY
-OKTA_DOMAIN=$OKTA_DOMAIN
+WORKSPACE_ADMIN_EMAIL=$WORKSPACE_ADMIN_EMAIL
+WORKSPACE_ADMIN_PASSWORD=$WORKSPACE_ADMIN_PASSWORD
+WORKSPACE_FRONTEND_USER_AGENT=$WORKSPACE_FRONTEND_USER_AGENT
+WORKSPACE_ENTITY_NAME=$WORKSPACE_ENTITY_NAME
 EOF
 chown appuser:appuser "$SECRETS_FILE"
 umask 022
@@ -124,7 +99,7 @@ umask 022
 ###############################################
 # 2. Render frontend runtime config + nginx conf.
 ###############################################
-/usr/local/bin/render-frontend-config.sh
+/usr/local/bin/render-frontend-config
 
 # nginx template substitution (only ${PORT} for now). Run manually instead of
 # relying on the official nginx image's docker-entrypoint because we are on
@@ -153,21 +128,11 @@ fi
 # Re-render the seed config.toml with our admin email/password so init_users
 # picks them up. init_users is idempotent (select-before-insert), so we run it
 # on every start.
-cat > /opt/code/scripts/cfgs/config.toml <<EOF
-[entity]
-name = "OpenBB Lite"
-seats = 10000
-aum = 1000
-company_type = "CORPORATION"
-organization_size = "SMALL"
-country = "DOM"
-
-[[admins]]
-email = "${OPENBB_ADMIN_EMAIL}"
-first_name = "Lite"
-last_name = "Admin"
-password = "${OPENBB_ADMIN_PASSWORD}"
-EOF
+(cd /opt/code && python -c "
+import os
+from scripts.create_local_env import seed_config
+print(seed_config(os.environ['WORKSPACE_ENTITY_NAME'], os.environ['WORKSPACE_ADMIN_EMAIL'], os.environ['WORKSPACE_ADMIN_PASSWORD'], seats=10000), end='')
+") > /opt/code/scripts/cfgs/config.toml
 chown -R appuser:appuser /opt/code/scripts/cfgs
 
 echo "[entrypoint] Running alembic migrations…"
@@ -192,11 +157,11 @@ chown appuser:appuser "$STATE_INITIALISED"
 print_summary() {
   cat <<EOF
 ================================================================
- OpenBB Lite is ${1} on port ${PORT}.
+ The Workspace is ${1} on port ${PORT}.
    URL:      http://localhost:${PORT}
-   Admin:    ${OPENBB_ADMIN_EMAIL}
-   Password: ${OPENBB_ADMIN_PASSWORD}
-   Print this again anytime with:  docker exec openbb credentials
+   Admin:    ${WORKSPACE_ADMIN_EMAIL}
+   Password: ${WORKSPACE_ADMIN_PASSWORD}
+   Print this again anytime with:  docker exec workspace credentials
 ================================================================
 EOF
 }

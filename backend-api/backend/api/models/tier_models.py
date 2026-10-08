@@ -3,6 +3,7 @@
 from uuid import UUID
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     Column,
@@ -16,12 +17,11 @@ from sqlalchemy_utils import UUIDType
 
 from api.models.model_helpers import Base, DateMixin, JSONType, UUIDMixin
 
-PRO_TIER_ID = 1
-TERMINAL_TIER_ID = 2
+FULL_TIER_ID = 1
+BASIC_TIER_ID = 2
 
 DATA_BUNDLE_DEFAULT = "Default"
 DATA_BUNDLE_EQUITY_RESEARCH = "Equity Research"
-DATA_BUNDLE_PRO_TRIAL = "Pro Trial"
 
 
 class Tier(Base, DateMixin):
@@ -31,8 +31,6 @@ class Tier(Base, DateMixin):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(20), nullable=False, unique=True)
-    has_trial = Column(Boolean, nullable=False, default=False)
-    trial_duration_days = Column(Integer, nullable=True)
 
 
 class TierDefaults(Base, UUIDMixin, DateMixin):
@@ -45,6 +43,7 @@ class TierDefaults(Base, UUIDMixin, DateMixin):
 
     name = Column(String(50), nullable=False, unique=True)
     number_copilot_calls_day = Column(Integer)
+    number_copilot_tokens_day = Column(BigInteger)
     total_file_upload_size_gb = Column(Integer)
     share_widgets = Column(String(20))
     data_bundle = Column(Boolean)
@@ -77,6 +76,7 @@ class EntityEntitlement(Base, UUIDMixin, DateMixin):
     tier = relationship("Tier")
 
     number_copilot_calls_day = Column(Integer)
+    number_copilot_tokens_day = Column(BigInteger)
     total_file_upload_size_gb = Column(Integer)
     share_widgets = Column(String(20))
     data_bundle = Column(Boolean)
@@ -115,6 +115,7 @@ class Entitlement(Base, UUIDMixin, DateMixin):
     tier = relationship("Tier")
 
     number_copilot_calls_day = Column(Integer)
+    number_copilot_tokens_day = Column(BigInteger)
     total_file_upload_size_gb = Column(Integer)
     share_widgets = Column(String(20))
     bring_your_own_data = Column(Boolean)
@@ -169,4 +170,5 @@ class EntitlementUsage(Base, UUIDMixin, DateMixin):
     user = relationship("User")
 
     number_copilot_calls_day_count = Column(Integer, nullable=False, default=0)
+    number_copilot_tokens_day_count = Column(BigInteger, nullable=False, default=0)
     total_file_upload_size_gb_count = Column(Float, nullable=False, default=0)

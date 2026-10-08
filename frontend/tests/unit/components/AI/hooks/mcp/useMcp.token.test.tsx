@@ -1,7 +1,7 @@
-import { renderHook, waitFor } from "@testing-library/react";
 import { auth } from "@modelcontextprotocol/sdk/client/auth.js";
+import { renderHook, waitFor } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-import { useMcp, type UseMcpOptionsT } from "~/components/AI/hooks/mcp/useMcp";
+import { type UseMcpOptionsT, useMcp } from "~/components/AI/hooks/mcp/useMcp";
 
 // --- SDK mocks: force client.connect to reject with a 401 ---------------------
 
@@ -73,13 +73,15 @@ const oauthOptions: UseMcpOptionsT = {
 
 beforeAll(() => {
   if (typeof globalThis.BroadcastChannel === "undefined") {
-    // @ts-expect-error minimal stub for jsdom
-    globalThis.BroadcastChannel = class {
-      addEventListener() {}
-      removeEventListener() {}
-      postMessage() {}
-      close() {}
-    };
+    vi.stubGlobal(
+      "BroadcastChannel",
+      class {
+        addEventListener() {}
+        removeEventListener() {}
+        postMessage() {}
+        close() {}
+      },
+    );
   }
 });
 

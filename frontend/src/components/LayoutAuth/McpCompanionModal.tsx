@@ -1,4 +1,3 @@
-import { usePostHog } from "posthog-js/react";
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { getWorkspaceMcpEndpoint } from "~/api/workspaceBridge.api";
@@ -16,8 +15,11 @@ import {
 } from "~/components/ds/dialogs/Dialog";
 import { Notice } from "~/components/ds/molecules/Notice";
 import SettingsMenu from "~/components/ds/molecules/SettingsMenu";
+import { docsUrl } from "~/lib/docsUrl";
 import { useShallowWorkspaceBridgeStore } from "~/lib/state/workspaceBridge";
 import { McpActiveTokens } from "./McpActiveTokens";
+
+const docsHref = docsUrl("agents/workspace-mcp-overview");
 
 export const McpCompanionModal = memo(() => {
   const { status, lastError, isModalOpen, setModalOpen, connect, disconnect } =
@@ -29,8 +31,6 @@ export const McpCompanionModal = memo(() => {
       connect: state.connect,
       disconnect: state.disconnect,
     }));
-
-  const posthog = usePostHog();
   const previousStatusRef = useRef(status);
   const endpoint = getWorkspaceMcpEndpoint();
 
@@ -40,13 +40,12 @@ export const McpCompanionModal = memo(() => {
     // Automatic reconnects recover silently — a flaky bridge would otherwise
     // spam a success toast on every recovery.
     if (status === "connected" && previousStatus === "attempting") {
-      posthog?.capture("connected_mcp_companion", { hosted: true });
       toast.success("Workspace MCP companion connected", {
         description: "Your agent can now access this session via MCP.",
       });
     }
     previousStatusRef.current = status;
-  }, [posthog, status]);
+  }, [status]);
 
   const view = useMemo(() => {
     const isConnected = status === "connected";
@@ -101,14 +100,16 @@ export const McpCompanionModal = memo(() => {
         <DialogDescription>
           Connect this Workspace session so an external MCP agent can reach it. Toggle
           the connection on, then create a token for your agent.{" "}
-          <a
-            href="https://docs.openbb.co/agents/workspace-mcp-overview"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-link-color hover:underline"
-          >
-            Learn how to get started
-          </a>
+          {docsHref && (
+            <a
+              href={docsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-link-color hover:underline"
+            >
+              Learn how to get started
+            </a>
+          )}
         </DialogDescription>
       </DialogHeader>
 

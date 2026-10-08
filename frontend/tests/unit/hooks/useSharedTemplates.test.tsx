@@ -11,9 +11,11 @@ vi.mock("~/lib/state/backendConnector", () => ({
   getTemplateWidgetsMetadata: vi.fn(),
 }));
 
+import type { ProcessedBackendT } from "~/hooks/useProcessBackendWidgets";
 import { useSharedTemplates } from "~/hooks/useSharedTemplates";
 import { useUserResourcePermissions } from "~/hooks/useUserResourcePermissions";
 import { getTemplateWidgetsMetadata } from "~/lib/state/backendConnector";
+import { type DeepPartial, malformed, partial } from "../mocks";
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -36,19 +38,23 @@ describe("useSharedTemplates", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    (getTemplateWidgetsMetadata as any).mockReturnValue({
-      widgets: [],
-      totalWidgets: 0,
-    });
+    vi.mocked(getTemplateWidgetsMetadata).mockReturnValue(
+      partial({
+        widgets: [],
+        totalWidgets: 0,
+      }),
+    );
   });
 
   describe("basic functionality", () => {
     it("should return undefined when no data available", () => {
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: undefined,
-        refetch: mockRefetch,
-        isLoading: true,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: undefined,
+          refetch: mockRefetch,
+          isLoading: true,
+        }),
+      );
 
       const { result } = renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
@@ -58,14 +64,14 @@ describe("useSharedTemplates", () => {
     });
 
     it("should transform backend templates into processed templates", () => {
-      const mockBackend = {
+      const mockBackend: DeepPartial<ProcessedBackendT> = {
         uuid: "backend-1",
         name: "Test Backend",
         url: "https://test.com",
         templates: [
           {
             templateId: "template-1",
-            id: "t1",
+            id: "custom-t1",
             name: "Test Template",
             description: "A test template",
             access: "access",
@@ -79,29 +85,33 @@ describe("useSharedTemplates", () => {
         ],
       };
 
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: {
-          backends: [mockBackend],
-          files: [],
-          prompts: [],
-        },
-        refetch: mockRefetch,
-        isSuccess: true,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: {
+            backends: [mockBackend],
+            files: [],
+            prompts: [],
+          },
+          refetch: mockRefetch,
+          isSuccess: true,
+        }),
+      );
 
-      (getTemplateWidgetsMetadata as any).mockReturnValue({
-        widgets: [{ name: "Widget 1" }],
-        totalWidgets: 3,
-      });
+      vi.mocked(getTemplateWidgetsMetadata).mockReturnValue(
+        partial({
+          widgets: [{ name: "Widget 1" }],
+          totalWidgets: 3,
+        }),
+      );
 
       const { result } = renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
       });
 
       expect(result.current.data).toHaveLength(1);
-      expect(result.current.data[0]).toEqual({
+      expect(result.current.data?.[0]).toEqual({
         templateId: "template-1",
-        id: "t1",
+        id: "custom-t1",
         name: "Test Template",
         description: "A test template",
         access: "access",
@@ -118,77 +128,85 @@ describe("useSharedTemplates", () => {
     });
 
     it("should flatten templates from multiple backends", () => {
-      const mockBackends = [
+      const mockBackends: DeepPartial<ProcessedBackendT>[] = [
         {
           uuid: "backend-1",
           templates: [
-            { templateId: "t1", id: "t1", name: "Template 1" },
-            { templateId: "t2", id: "t2", name: "Template 2" },
+            { templateId: "t1", id: "custom-t1", name: "Template 1" },
+            { templateId: "t2", id: "custom-t2", name: "Template 2" },
           ],
         },
         {
           uuid: "backend-2",
-          templates: [{ templateId: "t3", id: "t3", name: "Template 3" }],
+          templates: [{ templateId: "t3", id: "custom-t3", name: "Template 3" }],
         },
       ];
 
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: {
-          backends: mockBackends,
-          files: [],
-          prompts: [],
-        },
-        refetch: mockRefetch,
-        isSuccess: true,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: {
+            backends: mockBackends,
+            files: [],
+            prompts: [],
+          },
+          refetch: mockRefetch,
+          isSuccess: true,
+        }),
+      );
 
       const { result } = renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
       });
 
       expect(result.current.data).toHaveLength(3);
-      expect(result.current.data.map((t: any) => t.id)).toEqual(["t1", "t2", "t3"]);
+      expect(result.current.data?.map((t) => t.id)).toEqual([
+        "custom-t1",
+        "custom-t2",
+        "custom-t3",
+      ]);
     });
   });
 
   describe("prompt transformation", () => {
     it("should handle string prompts", () => {
-      const mockBackend = {
+      const mockBackend: DeepPartial<ProcessedBackendT> = {
         uuid: "backend-1",
         templates: [
           {
             templateId: "t1",
-            id: "t1",
+            id: "custom-t1",
             name: "Template",
-            prompts: ["Prompt 1", "Prompt 2"],
+            prompts: malformed(["Prompt 1", "Prompt 2"]),
           },
         ],
       };
 
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: {
-          backends: [mockBackend],
-          files: [],
-          prompts: [],
-        },
-        refetch: mockRefetch,
-        isSuccess: true,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: {
+            backends: [mockBackend],
+            files: [],
+            prompts: [],
+          },
+          refetch: mockRefetch,
+          isSuccess: true,
+        }),
+      );
 
       const { result } = renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
       });
 
-      expect(result.current.data[0].prompts).toEqual(["Prompt 1", "Prompt 2"]);
+      expect(result.current.data?.[0].prompts).toEqual(["Prompt 1", "Prompt 2"]);
     });
 
     it("should extract promptId from object prompts", () => {
-      const mockBackend = {
+      const mockBackend: DeepPartial<ProcessedBackendT> = {
         uuid: "backend-1",
         templates: [
           {
             templateId: "t1",
-            id: "t1",
+            id: "custom-t1",
             name: "Template",
             prompts: [
               { promptId: "prompt-1", access: "access" },
@@ -198,81 +216,90 @@ describe("useSharedTemplates", () => {
         ],
       };
 
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: {
-          backends: [mockBackend],
-          files: [],
-          prompts: [],
-        },
-        refetch: mockRefetch,
-        isSuccess: true,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: {
+            backends: [mockBackend],
+            files: [],
+            prompts: [],
+          },
+          refetch: mockRefetch,
+          isSuccess: true,
+        }),
+      );
 
       const { result } = renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
       });
 
-      expect(result.current.data[0].prompts).toEqual(["prompt-1", "prompt-2"]);
+      expect(result.current.data?.[0].prompts).toEqual(["prompt-1", "prompt-2"]);
     });
 
     it("should handle null/undefined prompts", () => {
-      const mockBackend = {
+      const mockBackend: DeepPartial<ProcessedBackendT> = {
         uuid: "backend-1",
         templates: [
           {
             templateId: "t1",
-            id: "t1",
+            id: "custom-t1",
             name: "Template",
-            prompts: null,
+            prompts: malformed(null),
           },
         ],
       };
 
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: {
-          backends: [mockBackend],
-          files: [],
-          prompts: [],
-        },
-        refetch: mockRefetch,
-        isSuccess: true,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: {
+            backends: [mockBackend],
+            files: [],
+            prompts: [],
+          },
+          refetch: mockRefetch,
+          isSuccess: true,
+        }),
+      );
 
       const { result } = renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
       });
 
-      expect(result.current.data[0].prompts).toEqual([]);
+      expect(result.current.data?.[0].prompts).toEqual([]);
     });
 
     it("should handle mixed prompt types", () => {
-      const mockBackend = {
+      const mockBackend: DeepPartial<ProcessedBackendT> = {
         uuid: "backend-1",
         templates: [
           {
             templateId: "t1",
-            id: "t1",
+            id: "custom-t1",
             name: "Template",
-            prompts: ["String prompt", { promptId: "object-prompt", access: "access" }],
+            prompts: malformed([
+              "String prompt",
+              { promptId: "object-prompt", access: "access" },
+            ]),
           },
         ],
       };
 
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: {
-          backends: [mockBackend],
-          files: [],
-          prompts: [],
-        },
-        refetch: mockRefetch,
-        isSuccess: true,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: {
+            backends: [mockBackend],
+            files: [],
+            prompts: [],
+          },
+          refetch: mockRefetch,
+          isSuccess: true,
+        }),
+      );
 
       const { result } = renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
       });
 
-      expect(result.current.data[0].prompts).toEqual([
+      expect(result.current.data?.[0].prompts).toEqual([
         "String prompt",
         "object-prompt",
       ]);
@@ -281,24 +308,26 @@ describe("useSharedTemplates", () => {
 
   describe("widget metadata", () => {
     it("should call getTemplateWidgetsMetadata for each template", () => {
-      const mockBackend = {
+      const mockBackend: DeepPartial<ProcessedBackendT> = {
         uuid: "backend-1",
         name: "Backend",
         templates: [
-          { templateId: "t1", id: "t1", name: "Template 1" },
-          { templateId: "t2", id: "t2", name: "Template 2" },
+          { templateId: "t1", id: "custom-t1", name: "Template 1" },
+          { templateId: "t2", id: "custom-t2", name: "Template 2" },
         ],
       };
 
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: {
-          backends: [mockBackend],
-          files: [],
-          prompts: [],
-        },
-        refetch: mockRefetch,
-        isSuccess: true,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: {
+            backends: [mockBackend],
+            files: [],
+            prompts: [],
+          },
+          refetch: mockRefetch,
+          isSuccess: true,
+        }),
+      );
 
       renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
@@ -306,90 +335,98 @@ describe("useSharedTemplates", () => {
 
       expect(getTemplateWidgetsMetadata).toHaveBeenCalledTimes(2);
       expect(getTemplateWidgetsMetadata).toHaveBeenCalledWith(
-        mockBackend.templates[0],
+        mockBackend.templates?.[0],
         mockBackend,
       );
       expect(getTemplateWidgetsMetadata).toHaveBeenCalledWith(
-        mockBackend.templates[1],
+        mockBackend.templates?.[1],
         mockBackend,
       );
     });
 
     it("should include widgets and totalWidgets in result", () => {
-      const mockBackend = {
+      const mockBackend: DeepPartial<ProcessedBackendT> = {
         uuid: "backend-1",
-        templates: [{ templateId: "t1", id: "t1", name: "Template" }],
+        templates: [{ templateId: "t1", id: "custom-t1", name: "Template" }],
       };
 
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: {
-          backends: [mockBackend],
-          files: [],
-          prompts: [],
-        },
-        refetch: mockRefetch,
-        isSuccess: true,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: {
+            backends: [mockBackend],
+            files: [],
+            prompts: [],
+          },
+          refetch: mockRefetch,
+          isSuccess: true,
+        }),
+      );
 
-      (getTemplateWidgetsMetadata as any).mockReturnValue({
-        widgets: [
-          { id: "w1", name: "Widget 1" },
-          { id: "w2", name: "Widget 2" },
-        ],
-        totalWidgets: 10,
-      });
+      vi.mocked(getTemplateWidgetsMetadata).mockReturnValue(
+        partial({
+          widgets: [
+            { id: "w1", name: "Widget 1" },
+            { id: "w2", name: "Widget 2" },
+          ],
+          totalWidgets: 10,
+        }),
+      );
 
       const { result } = renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
       });
 
-      expect(result.current.data[0].widgets).toEqual([
+      expect(result.current.data?.[0].widgets).toEqual([
         { id: "w1", name: "Widget 1" },
         { id: "w2", name: "Widget 2" },
       ]);
-      expect(result.current.data[0].totalWidgets).toBe(10);
+      expect(result.current.data?.[0].totalWidgets).toBe(10);
     });
   });
 
   describe("source association", () => {
     it("should associate each template with its source backend", () => {
-      const mockBackend1 = {
+      const mockBackend1: DeepPartial<ProcessedBackendT> = {
         uuid: "backend-1",
         name: "Backend 1",
-        templates: [{ templateId: "t1", id: "t1", name: "Template 1" }],
+        templates: [{ templateId: "t1", id: "custom-t1", name: "Template 1" }],
       };
 
-      const mockBackend2 = {
+      const mockBackend2: DeepPartial<ProcessedBackendT> = {
         uuid: "backend-2",
         name: "Backend 2",
-        templates: [{ templateId: "t2", id: "t2", name: "Template 2" }],
+        templates: [{ templateId: "t2", id: "custom-t2", name: "Template 2" }],
       };
 
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: {
-          backends: [mockBackend1, mockBackend2],
-          files: [],
-          prompts: [],
-        },
-        refetch: mockRefetch,
-        isSuccess: true,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: {
+            backends: [mockBackend1, mockBackend2],
+            files: [],
+            prompts: [],
+          },
+          refetch: mockRefetch,
+          isSuccess: true,
+        }),
+      );
 
       const { result } = renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
       });
 
-      expect(result.current.data[0].source).toBe(mockBackend1);
-      expect(result.current.data[1].source).toBe(mockBackend2);
+      expect(result.current.data?.[0].source).toBe(mockBackend1);
+      expect(result.current.data?.[1].source).toBe(mockBackend2);
     });
   });
 
   describe("options handling", () => {
     it("should pass options to useUserResourcePermissions", () => {
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: undefined,
-        refetch: mockRefetch,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: undefined,
+          refetch: mockRefetch,
+        }),
+      );
 
       renderHook(() => useSharedTemplates({ enabled: false }), {
         wrapper: createWrapper(),
@@ -405,10 +442,12 @@ describe("useSharedTemplates", () => {
     });
 
     it("should use default staleTime of 5 minutes", () => {
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: undefined,
-        refetch: mockRefetch,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: undefined,
+          refetch: mockRefetch,
+        }),
+      );
 
       renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
@@ -422,10 +461,12 @@ describe("useSharedTemplates", () => {
     });
 
     it("should disable refetchOnWindowFocus", () => {
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: undefined,
-        refetch: mockRefetch,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: undefined,
+          refetch: mockRefetch,
+        }),
+      );
 
       renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
@@ -441,11 +482,13 @@ describe("useSharedTemplates", () => {
 
   describe("return value", () => {
     it("should return refetch function from useUserResourcePermissions", () => {
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: undefined,
-        refetch: mockRefetch,
-        isLoading: false,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: undefined,
+          refetch: mockRefetch,
+          isLoading: false,
+        }),
+      );
 
       const { result } = renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
@@ -455,14 +498,16 @@ describe("useSharedTemplates", () => {
     });
 
     it("should spread additional query properties", () => {
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: { backends: [], files: [], prompts: [] },
-        refetch: mockRefetch,
-        isLoading: false,
-        isError: false,
-        isSuccess: true,
-        error: null,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: { backends: [], files: [], prompts: [] },
+          refetch: mockRefetch,
+          isLoading: false,
+          isError: false,
+          isSuccess: true,
+          error: null,
+        }),
+      );
 
       const { result } = renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
@@ -476,20 +521,22 @@ describe("useSharedTemplates", () => {
 
   describe("empty templates handling", () => {
     it("should handle backends with empty templates array", () => {
-      const mockBackend = {
+      const mockBackend: DeepPartial<ProcessedBackendT> = {
         uuid: "backend-1",
         templates: [],
       };
 
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: {
-          backends: [mockBackend],
-          files: [],
-          prompts: [],
-        },
-        refetch: mockRefetch,
-        isSuccess: true,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: {
+            backends: [mockBackend],
+            files: [],
+            prompts: [],
+          },
+          refetch: mockRefetch,
+          isSuccess: true,
+        }),
+      );
 
       const { result } = renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
@@ -499,20 +546,22 @@ describe("useSharedTemplates", () => {
     });
 
     it("should handle backends with undefined templates", () => {
-      const mockBackend = {
+      const mockBackend: DeepPartial<ProcessedBackendT> = {
         uuid: "backend-1",
         templates: undefined,
       };
 
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: {
-          backends: [mockBackend],
-          files: [],
-          prompts: [],
-        },
-        refetch: mockRefetch,
-        isSuccess: true,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: {
+            backends: [mockBackend],
+            files: [],
+            prompts: [],
+          },
+          refetch: mockRefetch,
+          isSuccess: true,
+        }),
+      );
 
       const { result } = renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
@@ -524,33 +573,35 @@ describe("useSharedTemplates", () => {
 
   describe("default description", () => {
     it("should use empty string for undefined description", () => {
-      const mockBackend = {
+      const mockBackend: DeepPartial<ProcessedBackendT> = {
         uuid: "backend-1",
         templates: [
           {
             templateId: "t1",
-            id: "t1",
+            id: "custom-t1",
             name: "Template",
             description: undefined,
           },
         ],
       };
 
-      (useUserResourcePermissions as any).mockReturnValue({
-        data: {
-          backends: [mockBackend],
-          files: [],
-          prompts: [],
-        },
-        refetch: mockRefetch,
-        isSuccess: true,
-      });
+      vi.mocked(useUserResourcePermissions).mockReturnValue(
+        partial({
+          data: {
+            backends: [mockBackend],
+            files: [],
+            prompts: [],
+          },
+          refetch: mockRefetch,
+          isSuccess: true,
+        }),
+      );
 
       const { result } = renderHook(() => useSharedTemplates(), {
         wrapper: createWrapper(),
       });
 
-      expect(result.current.data[0].description).toBe("");
+      expect(result.current.data?.[0].description).toBe("");
     });
   });
 });

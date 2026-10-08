@@ -16,12 +16,3 @@ vi.mock("~/components/Icon", () => ({
     });
   }),
 }));
-
-// SnowflakeHide - reads VITE_SNOWFLAKE_NATIVE_APP at module level;
-// default to showing children (non-snowflake mode) in tests
-vi.mock("~/components/General/SnowflakeHide", () => ({
-  default: vi.fn(({ children }) => {
-    const React = require("react");
-    return React.createElement(React.Fragment, null, children);
-  }),
-}));

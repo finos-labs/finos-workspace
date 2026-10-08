@@ -262,7 +262,10 @@ export function SaveAppDialog() {
     isFromDashboard && sourceAppId && userApps.some((app) => app.uuid === sourceAppId);
 
   const appOptions = useMemo(
-    () => userApps.map((app) => ({ value: app.uuid!, label: app.name })),
+    () =>
+      userApps.flatMap((app) =>
+        app.uuid ? [{ value: app.uuid, label: app.name }] : [],
+      ),
     [userApps],
   );
 

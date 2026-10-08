@@ -12,7 +12,7 @@ a column that changes type cannot silently start round-tripping wrong.
 Two behaviours worth knowing about:
 
 * ``EncryptedType`` values are written to the archive as plaintext. Hub and Lite
-  have different ``OPENBB_AES_KEY`` values, so ciphertext would be undecryptable
+  have different ``WORKSPACE_AES_KEY`` values, so ciphertext would be undecryptable
   at the destination. The ORM re-encrypts under the target's key on insert.
 * ``PasswordType`` is never encoded. Its ``process_bind_param`` bcrypt hashes on
   every write, so a hash round-tripped through the ORM would be double-hashed

@@ -37,7 +37,7 @@ const avatarVariants = cva(
 );
 
 export interface AvatarProps extends VariantProps<typeof avatarVariants> {
-  src: string;
+  src?: string;
   alt: string;
   fallback?: ReactNode;
   className?: string;
@@ -98,7 +98,7 @@ export const Avatar = memo((props: AvatarProps) => {
     imageClassName = "",
     fallback,
     headers,
-    cacheKey = src,
+    cacheKey = src ?? "",
   } = props;
 
   const { isBase64OrLocal, enabled, setError } = useShallowAvatarStore((state) => ({
@@ -114,7 +114,7 @@ export const Avatar = memo((props: AvatarProps) => {
 
   const queryOptions = useMemo<QueryOptions<string>>(
     () => ({
-      url: src,
+      url: src ?? "",
       endpointHeaders: headers,
       queryKey: [cacheKey],
       responseCb,
@@ -283,8 +283,7 @@ export const useAvatarStore = createWithEqualityFn<AvatarState>()(
         },
       }),
       {
-        version: 2,
-        name: "obb_image_load",
+        name: "workspace_image_load",
         storage: createJSONStorage(() => ({
           getItem: (name) => {
             const item = localStorage.getItem(name);
@@ -308,25 +307,12 @@ export const useAvatarStore = createWithEqualityFn<AvatarState>()(
             state.errors = filteredErrors;
           }
         },
-        migrate: (persistedState, version) => {
-          if (version < 2) {
-            const { errors = {} } = persistedState as AvatarState;
-            const now = Date.now();
-            for (const key in errors) {
-              errors[key] = now + 60 * 5 * 1000;
-            }
-            return { errors };
-          }
-          return persistedState;
-        },
       },
     ),
   ),
 );
 
-export function useShallowAvatarStore<S extends AvatarState, T>(
-  selector: Selector<S, T>,
-): T {
+export function useShallowAvatarStore<T>(selector: Selector<AvatarState, T>): T {
   return useAvatarStore(useShallow(selector), (prev, next) => isEqual(prev, next));
 }
 

@@ -12,11 +12,11 @@ services:
           - postgres
     environment:
       TZ: America/New_York
-      POSTGRES_USER: openbb_user
-      POSTGRES_PASSWORD: openbb_password_123
-      POSTGRES_DB: openbb_db
+      POSTGRES_USER: workspace_user
+      POSTGRES_PASSWORD: workspace_password_123
+      POSTGRES_DB: workspace_db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U openbb_user -d openbb_db"]
+      test: ["CMD-SHELL", "pg_isready -U workspace_user -d workspace_db"]
       interval: 5s
       timeout: 5s
       retries: 20

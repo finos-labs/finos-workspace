@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SkillsTab } from "~/components/AI/SkillsTab";
+import { required } from "../../mocks";
 
 // --- vi.hoisted mocks ---
 
@@ -375,7 +376,7 @@ describe("SkillsTab", () => {
       renderSkillsTab();
 
       const trashIcons = screen.getAllByTestId("icon-trash-02");
-      await user.click(trashIcons[0].closest("button")!);
+      await user.click(required(trashIcons[0].closest("button")));
 
       expect(screen.getByTestId("confirm-dialog")).toBeInTheDocument();
       expect(screen.getByText("Delete Skill")).toBeInTheDocument();
@@ -391,7 +392,7 @@ describe("SkillsTab", () => {
       renderSkillsTab();
 
       const trashIcons = screen.getAllByTestId("icon-trash-02");
-      await user.click(trashIcons[0].closest("button")!);
+      await user.click(required(trashIcons[0].closest("button")));
 
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
@@ -407,7 +408,7 @@ describe("SkillsTab", () => {
       renderSkillsTab();
 
       const trashIcons = screen.getAllByTestId("icon-trash-02");
-      await user.click(trashIcons[0].closest("button")!);
+      await user.click(required(trashIcons[0].closest("button")));
 
       expect(screen.getByTestId("confirm-dialog")).toBeInTheDocument();
 
@@ -424,7 +425,7 @@ describe("SkillsTab", () => {
       renderSkillsTab();
 
       const trashIcons = screen.getAllByTestId("icon-trash-02");
-      await user.click(trashIcons[2].closest("button")!);
+      await user.click(required(trashIcons[2].closest("button")));
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
       await waitFor(() => {
@@ -624,7 +625,7 @@ describe("SkillsTab", () => {
       renderSkillsTab();
 
       const editIcons = screen.getAllByTestId("icon-edit");
-      await user.click(editIcons[0].closest("button")!);
+      await user.click(required(editIcons[0].closest("button")));
 
       expect(mockSetSkillDialogOpen).toHaveBeenCalledWith("skill-1");
     });
@@ -634,7 +635,7 @@ describe("SkillsTab", () => {
       renderSkillsTab();
 
       const editIcons = screen.getAllByTestId("icon-edit");
-      await user.click(editIcons[1].closest("button")!);
+      await user.click(required(editIcons[1].closest("button")));
 
       expect(mockSetSkillDialogOpen).toHaveBeenCalledWith("skill-2");
     });
@@ -644,7 +645,7 @@ describe("SkillsTab", () => {
       renderSkillsTab();
 
       const editIcons = screen.getAllByTestId("icon-edit");
-      await user.click(editIcons[0].closest("button")!);
+      await user.click(required(editIcons[0].closest("button")));
 
       expect(screen.queryAllByTestId("markdown-content")).toHaveLength(0);
     });

@@ -1,45 +1,33 @@
-# Deploying the OpenBB Add-in for Excel On-Premise
+# Deploying the Workspace Add-in for Excel in an organization
 
-This documentation section provides guidelines for deploying the OpenBB Excel add-in in an on-premise environment, separated into steps for the OpenBB Add-in Developer and a guide for the Client Organization Administrator.
+The add-in is a static web application plus a `manifest.xml` that tells Excel where to load it from
+and how to show it. Deploying it takes two roles: the person who builds it, and the administrator of
+the Microsoft 365 organization who hosts and distributes it.
 
-## Guidelines for OpenBB Add-in Developer
+## Building (developer)
 
-The developer's primary task is to build and deliver the customized add-in package, including the front-end application and the manifest file, configured for the client's domain.
+| Step | Action | Details |
+| :-- | :-- | :-- |
+| 1 | Configure the environment | Copy `.env.example` to `.env`. Set `ADDIN_BASE_URL` and `VITE_ADDIN_BASE_URL` to the address where the organization will host the add-in, for example `https://addin.example.org`. The build writes `ADDIN_BASE_URL` into `manifest.xml`. |
+| 2 | Point it at the Workspace | Set `VITE_BACKEND_URL` to the address of the organization's Workspace backend. It is compiled into the bundle: the add-in signs in there. |
+| 3 | Set the identity of the add-in | Set `ADDIN_UUID` to a GUID that you generate for this deployment. Set `ADDIN_HELP_URL` and `VITE_HELP_URL` to the organization's documentation address. |
+| 4 | Build | `npm run build` creates the bundle and the manifest in `dist/`. |
+| 5 | Validate | `npm run validate` checks `dist/manifest.xml`. |
+| 6 | Hand over | Give the administrator the contents of `dist/`. |
 
-| Step                         | Action                                                        | Details                                                                                              |
-| :--------------------------- | :------------------------------------------------------------ | :--------------------------------------------------------------------------------------------------- |
-| **1. Configure Environment** | Update local environment variables (e.g., in an `.env` file). | The `ADDIN_BASE_URL` variable must be set to the domain where the client will host the application (e.g., `https://client-domain.com`). This URL is automatically replaced in the `manifest.xml` during the build. |
-| **2. Configure Backend URL** | Update the backend URL configuration.                         | The `VITE_BACKEND_URL` must point to the client's specific OpenBB instance/backend. This variable is hardwired into the application bundle at build time, as the add-in uses this to point to the services (e.g., for login). |
-| **3. Configure Add-in UUID** | Set a unique identifier for the add-in.                       | The `ADDIN_UUID` variable must be set to a unique UUID for the client's deployment. This identifier is used in the manifest.xml file. |
-| **4. Build the Application** | Run the build command to generate the production-ready files. | Execute `npm run build`. This command creates the static bundle and updates the `manifest.xml` in the `dist` folder with the new `ADDIN_BASE_URL` and other configuration variables. |
-| **5. Validate Manifest**     | Validate the generated manifest file.                         | Execute `npm run validate` to ensure the manifest.xml file is valid before delivery.                 |
-| **6. Package for Delivery**  | Prepare the built files for client transfer.                  | Deliver the contents of the `dist` folder (the build static bundle and the customized `manifest.xml`) to the client, typically as a `.zip` file. |
+## Hosting and distribution (administrator)
 
-## Guide for Client Organization Administrator
+**Prerequisites**
 
-The OpenBB Excel Add-in is an application that integrates directly into Microsoft Excel, providing users with access to data available in their OpenBB Workspace. It uses a custom ribbon interface and task pane.
+- A place to host the static bundle (HTML, JS and CSS files) under the address that was used in the build.
+- A Workspace deployment that users can sign in to. Their plan has to be the full tier.
 
-From a technical perspective the add-in consists of a static web application bundle and a manifest file that configures how Excel loads and displays the add-in.
+**Steps**
 
-The administrator's role is to host the application services and distribute the custom manifest within their Microsoft 365 environment.
+1. Host the contents of `dist/` at the address from the build.
+2. Open the Microsoft 365 admin center and go to **Integrated apps**.
+3. Choose **Upload custom apps** and upload `manifest.xml`.
+4. Choose the users or groups to deploy the add-in to.
 
-**Prerequisites.**
-
-- The client should have the infrastructure to host the OpenBB add-in for Excel application (minified static html/js/css bundle)
-- The client should have all necessary backend services (e.g., the OpenBB Workspace application) deployed on their own infrastructure.
-- The client should provide 2 URLs to the add-in developer:
-  - The URL for the resource where the Add-in will be served from
-  - The URL of the OpenBB Workspace backend
-- The add-in developer must provide a customized application bundle, including the `manifest.xml` file, configured with the client's hosted domain.
-
-**Deployment Steps.**
-
-1. **Obtain Customized Files:** Receive the customized application files (the built bundle and `manifest.xml`) from the OpenBB team.
-2. **Host the Application:** Host the application bundle (the front-end code) on the client's chosen domain. This domain should match the `ADDIN_BASE_URL` configured in the manifest.
-3. **Access Admin Center:** Log in to the organization's Microsoft 365 Admin Center.
-4. **Navigate to Integrated Apps:** Go to the section for **Integrated Apps** (or equivalent for managing custom add-ins).
-5. **Upload Custom App:** Select the option to **Upload Custom App**.
-6. **Upload Manifest:** Upload the customized `manifest.xml` file provided by OpenBB.
-7. **Deploy to Users:** Follow the prompts to deploy the add-in to the desired user groups or the entire organization.
-
-Once deployed - the custom manifest file instructs the client's Excel application to load the add-in from the client's hosted domain.
+Excel then loads the add-in from the hosted address. When a new version changes `manifest.xml` (a
+ribbon button or an icon, for example), upload the new manifest again.

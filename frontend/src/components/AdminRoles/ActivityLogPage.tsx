@@ -22,15 +22,16 @@ const MarkdownContent = lazy(() =>
   })),
 );
 
-const convertToMarkdown = (obj, level = 0) => {
+const convertToMarkdown = (obj: unknown, level = 0): string => {
   if (typeof obj !== "object" || obj === null) {
     return `${JSON.stringify(obj)}\n`;
   }
 
+  const record = obj as Record<string, unknown>;
   let markdown = "";
-  for (const key in obj) {
-    if (obj.hasOwnProperty(key)) {
-      const value = obj[key];
+  for (const key in record) {
+    if (Object.hasOwn(record, key)) {
+      const value = record[key];
       const indent = "  ".repeat(level);
 
       if (Array.isArray(value)) {

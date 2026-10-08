@@ -28,7 +28,7 @@ export function canEnable(status: AppStatus): boolean {
   return status === "disabled";
 }
 
-/** Remove works from any status except the terminal `removed`. */
+/** Remove works from any status except the final `removed`. */
 export function canRemove(status: AppStatus): boolean {
   return status !== "removed";
 }

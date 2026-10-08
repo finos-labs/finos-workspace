@@ -1,5 +1,5 @@
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
-import type { InputHTMLAttributes, MouseEvent } from "react";
+import type { FocusEventHandler, InputHTMLAttributes, MouseEvent } from "react";
 import { forwardRef } from "react";
 import { cn } from "../ds/utils";
 import Icon from "../Icon";
@@ -21,9 +21,14 @@ interface ICheckboxProps extends DefaultProps {
   onChange?: (e: boolean) => void;
   rightLabelOnClick?: (e: MouseEvent<HTMLLabelElement>) => void;
   checked?: boolean | "indeterminate";
+  onFocus?: FocusEventHandler<HTMLButtonElement>;
+  onBlur?: FocusEventHandler<HTMLButtonElement>;
 }
 export interface CheckboxProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, "onChange" | "checked">,
+  extends Omit<
+      InputHTMLAttributes<HTMLInputElement>,
+      "onChange" | "checked" | "onFocus" | "onBlur"
+    >,
     ICheckboxProps {}
 
 /** @deprecated use `~/components/ds/atoms/Checkbox` instead */
@@ -75,8 +80,8 @@ export const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>((props, ref
             }
           }}
           onCheckedChange={onChange}
-          onFocusCapture={onFocus as any}
-          onBlurCapture={onBlur as any}
+          onFocusCapture={onFocus}
+          onBlurCapture={onBlur}
           id={id}
           data-testid={id}
           name={id}

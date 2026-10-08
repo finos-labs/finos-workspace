@@ -38,13 +38,13 @@ async def test_mcp_resources_list_and_read_app_builder_index():
     index_resource = next(
         resource
         for resource in resources
-        if str(resource.uri) == "openbb://workspace/app-builder/index"
+        if str(resource.uri) == "workspace://app-builder/index"
     )
 
     assert index_resource.name == "App Builder Index"
     assert index_resource.mime_type == "text/markdown"
 
-    result = await server.read_resource("openbb://workspace/app-builder/index")
+    result = await server.read_resource("workspace://app-builder/index")
     content = result.contents[0]
 
     assert content.mime_type == "text/markdown"
@@ -66,7 +66,7 @@ async def test_app_builder_index_description_gates_on_explicit_build_request():
     index_resource = next(
         resource
         for resource in resources
-        if str(resource.uri) == "openbb://workspace/app-builder/index"
+        if str(resource.uri) == "workspace://app-builder/index"
     )
 
     assert "explicitly asked" in index_resource.description
@@ -80,5 +80,5 @@ async def test_mcp_prompts_list_and_get_workspace_tool_usage():
 
     messages = result.messages
     assert messages[0].content.text == SERVER_INSTRUCTIONS
-    assert "OpenBB Workspace browser session" in messages[0].content.text
+    assert "Workspace browser session" in messages[0].content.text
     assert messages[1].content.text == "No Workspace browser session context is currently available."

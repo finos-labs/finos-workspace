@@ -2,10 +2,3 @@ OpenBB Workspace
 Copyright 2026 OpenBB, Inc.
 
 This product includes software developed at OpenBB, Inc. (https://openbb.co/).
-
-Third-party components:
-
-- frontend/src/lib/charting_library/ contains the TradingView Advanced
-  Charts library, which is proprietary to TradingView, Inc. and is NOT
-  licensed under the Apache License 2.0. Its use is governed by TradingView's
-  own license agreement.

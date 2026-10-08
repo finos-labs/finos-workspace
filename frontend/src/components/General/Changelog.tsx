@@ -1,6 +1,6 @@
 import Markdown from "markdown-to-jsx";
 import type React from "react";
-import { Children, Fragment } from "react";
+import { Fragment } from "react";
 import { slugify } from "~/lib/utils/utils";
 import { Tag } from "../ds/atoms/Tag";
 import Icon from "../Icon";
@@ -84,43 +84,15 @@ export function H2(props: { children: React.ReactNode; slug?: string }) {
 export function H3(props: { children: React.ReactNode }) {
   const { children } = props;
   const headingColor =
-    tagColors[children.toString().replace("[PRO]", "").toLowerCase().trim()];
-  return (
-    <>
-      <Tag color={headingColor}>
-        {Children.map(children, (child) =>
-          typeof child === "string" ? child.replace("[PRO]", "") : child,
-        )}
-      </Tag>
-      {Children.toArray(children).some(
-        (child) => typeof child === "string" && child.includes("[PRO]"),
-      ) && <span className="ml-2 obb-tag font-normal">Enterprise</span>}
-    </>
-  );
+    tagColors[
+      (children?.toString() ?? "").toLowerCase().trim() as keyof typeof tagColors
+    ];
+  return <Tag color={headingColor}>{children}</Tag>;
 }
 
 export function H4(props: { children: React.ReactNode }) {
   const { children } = props;
-  return (
-    <h4 className="body-xs-bold">
-      {Children.map(children, (child, index) => (
-        <Fragment key={index}>
-          {typeof child === "string" ? (
-            child.includes("[PRO]") ? (
-              <span>
-                {child.replace("[PRO]", "")}
-                <span className="ml-2 obb-tag font-normal">Enterprise</span>
-              </span>
-            ) : (
-              child
-            )
-          ) : (
-            child
-          )}
-        </Fragment>
-      ))}
-    </h4>
-  );
+  return <h4 className="body-xs-bold">{children}</h4>;
 }
 
 export function UL(props: { children: React.ReactNode }) {
@@ -135,26 +107,7 @@ export function OL(props: { children: React.ReactNode }) {
 
 export function LI(props: { children: React.ReactNode }) {
   const { children } = props;
-  return (
-    <li className="space-y-1">
-      {Children.map(children, (child, index) => (
-        <Fragment key={index}>
-          {typeof child === "string" ? (
-            child.includes("[PRO]") ? (
-              <span>
-                {child.replace("[PRO]", "")}
-                <span className="ml-2 obb-tag">Enterprise</span>
-              </span>
-            ) : (
-              child
-            )
-          ) : (
-            child
-          )}
-        </Fragment>
-      ))}
-    </li>
-  );
+  return <li className="space-y-1">{children}</li>;
 }
 
 export function Article(props: { children: React.ReactNode }) {

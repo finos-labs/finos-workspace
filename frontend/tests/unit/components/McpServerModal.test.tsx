@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ManageMcpServer, McpServerModal } from "~/components/McpServerModal";
 import type { McpServer } from "~/lib/state/mcpTools";
+import { required } from "../mocks";
 
 // ----- shared mock state -----
 
@@ -105,7 +106,7 @@ vi.mock("~/components/ds/atoms/Input", () => ({
   ),
 }));
 
-vi.mock("~/components/DataConnectors/SingleWidget", () => ({
+vi.mock("~/components/DataConnectors/EndpointHeadersForm", () => ({
   EndpointHeadersForm: () => <div>Endpoint Headers</div>,
 }));
 
@@ -183,9 +184,7 @@ vi.mock("~/components/ds/molecules/SettingsMenu", () => ({
   }) => (
     <div data-testid="settings-menu">
       <div data-testid="settings-menu-title">{title}</div>
-      {rightElement && (
-        <div data-testid="settings-menu-right">{rightElement}</div>
-      )}
+      {rightElement && <div data-testid="settings-menu-right">{rightElement}</div>}
       <div data-testid="settings-menu-content">{children}</div>
     </div>
   ),
@@ -228,10 +227,7 @@ function makeConnection(
   };
 }
 
-function resetMockState(
-  servers: McpServer[] = [],
-  searchTerm = "",
-) {
+function resetMockState(servers: McpServer[] = [], searchTerm = "") {
   mockState = { addingServer: false, editServerId: null, searchTerm };
   mockDispatch = vi.fn();
   mockGetMCPConnection.mockReset();
@@ -258,7 +254,7 @@ describe("ManageMcpServer", () => {
 
     expect(
       screen.getByText(
-        "Connect OpenBB Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported).",
+        "Connect Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported).",
       ),
     ).toBeInTheDocument();
   });
@@ -345,7 +341,12 @@ describe("McpServerModal", () => {
 
   it("keeps a server visible when only a tool name matches the search term", () => {
     const servers = [
-      makeServer({ id: "s1", name: "Alpha Server", url: "https://alpha.example.com", tools: [] }),
+      makeServer({
+        id: "s1",
+        name: "Alpha Server",
+        url: "https://alpha.example.com",
+        tools: [],
+      }),
       makeServer({
         id: "s2",
         name: "Beta Server",
@@ -368,7 +369,12 @@ describe("McpServerModal", () => {
 
   it("shows 'No results found' when search matches nothing but servers exist", () => {
     const servers = [
-      makeServer({ id: "s1", name: "Alpha", url: "https://alpha.example.com", tools: [] }),
+      makeServer({
+        id: "s1",
+        name: "Alpha",
+        url: "https://alpha.example.com",
+        tools: [],
+      }),
     ];
     resetMockState(servers, "zzznomatch");
 
@@ -385,7 +391,11 @@ describe("McpServerModal", () => {
   });
 
   it("clicking edit button dispatches editServerId with server id", () => {
-    const server = makeServer({ id: "s1", name: "Alpha", url: "https://alpha.example.com" });
+    const server = makeServer({
+      id: "s1",
+      name: "Alpha",
+      url: "https://alpha.example.com",
+    });
     resetMockState([server]);
 
     mockGetMCPConnection.mockReturnValue(makeConnection());
@@ -401,7 +411,7 @@ describe("McpServerModal", () => {
       btn.querySelector("[data-icon='pencil-02']"),
     );
     expect(editButton).toBeTruthy();
-    fireEvent.click(editButton!);
+    fireEvent.click(required(editButton));
 
     expect(mockDispatch).toHaveBeenCalledWith(
       expect.objectContaining({ editServerId: "s1" }),
@@ -409,7 +419,11 @@ describe("McpServerModal", () => {
   });
 
   it("clicking delete button calls removeServer with server id", () => {
-    const server = makeServer({ id: "s1", name: "Alpha", url: "https://alpha.example.com" });
+    const server = makeServer({
+      id: "s1",
+      name: "Alpha",
+      url: "https://alpha.example.com",
+    });
     resetMockState([server]);
 
     mockGetMCPConnection.mockReturnValue(makeConnection());
@@ -418,15 +432,21 @@ describe("McpServerModal", () => {
     render(<McpServerModal onClose={vi.fn()} />);
 
     const rightPanel = screen.getByTestId("settings-menu-right");
-    const deleteButton = rightPanel.querySelector("[data-icon='trash-04']")?.closest("button");
+    const deleteButton = rightPanel
+      .querySelector("[data-icon='trash-04']")
+      ?.closest("button");
     expect(deleteButton).toBeTruthy();
-    fireEvent.click(deleteButton!);
+    fireEvent.click(required(deleteButton));
 
     expect(mockRemoveServer).toHaveBeenCalledWith("s1");
   });
 
   it("clicking Connect calls updateServer with enabled: true when server is disconnected", () => {
-    const server = makeServer({ id: "s1", name: "Alpha", url: "https://alpha.example.com" });
+    const server = makeServer({
+      id: "s1",
+      name: "Alpha",
+      url: "https://alpha.example.com",
+    });
     resetMockState([server]);
 
     mockGetMCPConnection.mockReturnValue(makeConnection("disconnected"));
@@ -441,7 +461,11 @@ describe("McpServerModal", () => {
   });
 
   it("clicking Disconnect calls updateServer with enabled: false when server is connected", () => {
-    const server = makeServer({ id: "s1", name: "Alpha", url: "https://alpha.example.com" });
+    const server = makeServer({
+      id: "s1",
+      name: "Alpha",
+      url: "https://alpha.example.com",
+    });
     resetMockState([server]);
 
     mockGetMCPConnection.mockReturnValue(makeConnection("ready"));
@@ -489,7 +513,9 @@ describe("ConnectionTools (via McpServerModal)", () => {
 
   it("shows 'No tools match your search' when search filters all tools but server still shows by name", () => {
     const toolsConnection = [{ name: "get_price", description: "Get asset price" }];
-    const serverTools = [{ id: "t1", name: "get_price", enabled: true, description: "Get asset price" }];
+    const serverTools = [
+      { id: "t1", name: "get_price", enabled: true, description: "Get asset price" },
+    ];
     const server = makeServer({
       id: "s1",
       name: "Alpha",
@@ -507,10 +533,7 @@ describe("ConnectionTools (via McpServerModal)", () => {
   });
 
   it("filters tools by name case-insensitively", () => {
-    const toolsConnection = [
-      { name: "get_PRICE" },
-      { name: "list_symbols" },
-    ];
+    const toolsConnection = [{ name: "get_PRICE" }, { name: "list_symbols" }];
     const serverTools = [
       { id: "t1", name: "get_PRICE", enabled: true },
       { id: "t2", name: "list_symbols", enabled: true },
@@ -540,7 +563,12 @@ describe("ConnectionTools (via McpServerModal)", () => {
     ];
     const serverTools = [
       { id: "t1", name: "get_price", enabled: true, description: "Fetches OHLCV data" },
-      { id: "t2", name: "list_symbols", enabled: true, description: "List available tickers" },
+      {
+        id: "t2",
+        name: "list_symbols",
+        enabled: true,
+        description: "List available tickers",
+      },
     ];
     const server = makeServer({
       id: "s1",
@@ -568,7 +596,12 @@ describe("ToolItem (via McpServerModal)", () => {
       { name: "get_price", description: "Returns the current price." },
     ];
     const serverTools = [
-      { id: "t1", name: "get_price", enabled: true, description: "Returns the current price." },
+      {
+        id: "t1",
+        name: "get_price",
+        enabled: true,
+        description: "Returns the current price.",
+      },
     ];
     const server = makeServer({
       id: "s1",
@@ -611,6 +644,8 @@ describe("ToolItem (via McpServerModal)", () => {
     render(<McpServerModal onClose={vi.fn()} />);
 
     expect(screen.getByText("list_symbols")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /list_symbols/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /list_symbols/ }),
+    ).not.toBeInTheDocument();
   });
 });

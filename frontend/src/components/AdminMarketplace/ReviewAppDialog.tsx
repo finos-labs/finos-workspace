@@ -92,12 +92,12 @@ function AuthFieldsValue({ fields }: { fields: MarketplaceAuthField[] | null }) 
           className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5"
         >
           <span className="text-ds-text-heading">{field.label}</span>
-          <code className="obb-code">{field.key}</code>
+          <code className="ws-code">{field.key}</code>
           {field.prefix && (
             <>
               <span className="text-ds-text-caption">prefix</span>
               {/* whitespace-pre so a load-bearing trailing space ("Bearer ") stays visible. */}
-              <code className="obb-code whitespace-pre">{field.prefix}</code>
+              <code className="ws-code whitespace-pre">{field.prefix}</code>
             </>
           )}
         </div>

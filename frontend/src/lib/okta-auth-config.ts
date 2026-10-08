@@ -1,5 +1,5 @@
 /*
- * Okta authentication configuration for OpenBB Terminal Pro.
+ * Okta authentication configuration for the Workspace.
  * Based on Okta Auth JS SDK: https://github.com/okta/okta-auth-js
  */
 
@@ -27,7 +27,15 @@ export function getOktaAuth(): OktaAuth | null {
           storage: "sessionStorage",
         },
       };
-      _oktaAuth = new OktaAuth(oktaAuthConfig);
+      try {
+        _oktaAuth = new OktaAuth(oktaAuthConfig);
+      } catch (error) {
+        // A malformed issuer leaves Okta sign-in out instead of breaking the login page
+        console.error(
+          "Okta sign-in is disabled: the Okta issuer URL is not valid.",
+          error,
+        );
+      }
     }
   }
   return _oktaAuth;

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AIAgentsTab } from "~/components/AI/AIAgentsTab";
 import type { ButtonProps } from "~/components/ds/atoms/Button";
 import type { InputProps } from "~/components/ds/atoms/Input";
+import { required } from "../../mocks";
 
 // Mock framer-motion so AnimatePresence exit animations complete synchronously in jsdom
 vi.mock("framer-motion", () => ({
@@ -52,7 +53,7 @@ const {
   mockSetSelectedCopilot: vi.fn(),
   mockUseShallowCopilotStore: vi.fn(),
   mockUseShallowThemeStore: vi.fn(),
-  mockRuntimeConfig: { copilot: { openbbCopilot: true } },
+  mockRuntimeConfig: { copilot: { defaultCopilot: true } },
 }));
 
 // --- Module mocks ---
@@ -129,16 +130,16 @@ vi.mock("~/lib/constants", async (importOriginal) => {
   return {
     ...actual,
     DEFAULT_COPILOT: {
-      id: "openbb-copilot",
-      name: "OpenBB Copilot",
+      id: "default-copilot",
+      name: "Copilot",
       description: "Default copilot",
       endpoints: {},
     },
     getDefaultCopilot: () => ({
-      id: "openbb-copilot",
-      name: "OpenBB Copilot",
-      description: "OpenBB Copilot is the default agent for OpenBB Workspace.",
-      image: "/assets/images/openbb.png",
+      id: "default-copilot",
+      name: "Copilot",
+      description: "Copilot is the default agent for Workspace.",
+      image: "/assets/images/brand.png",
     }),
   };
 });
@@ -430,7 +431,7 @@ const renderAIAgentsTab = () =>
 describe("AIAgentsTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRuntimeConfig.copilot.openbbCopilot = true;
+    mockRuntimeConfig.copilot.defaultCopilot = true;
     mockFetchAgentsData.mockResolvedValue([]);
     mockHasCopilotConflict.mockReturnValue(false);
     mockPutCustomCopilot.mockResolvedValue({});
@@ -483,16 +484,16 @@ describe("AIAgentsTab", () => {
   });
 
   describe("Empty State", () => {
-    it("shows OpenBB Copilot section instead of empty state when no holders exist and flag is true", () => {
+    it("shows Copilot section instead of empty state when no holders exist and flag is true", () => {
       setupEmptyMocks();
       renderAIAgentsTab();
 
       expect(screen.queryByText("No AI Agent added")).not.toBeInTheDocument();
-      expect(screen.getAllByText("OpenBB Copilot").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Copilot").length).toBeGreaterThanOrEqual(1);
     });
 
-    it("shows empty state when no holders exist and openbbCopilot flag is false", () => {
-      mockRuntimeConfig.copilot.openbbCopilot = false;
+    it("shows empty state when no holders exist and defaultCopilot flag is false", () => {
+      mockRuntimeConfig.copilot.defaultCopilot = false;
       setupEmptyMocks();
       renderAIAgentsTab();
 
@@ -500,7 +501,7 @@ describe("AIAgentsTab", () => {
       expect(
         screen.getByText("You haven't added any AI Agent yet."),
       ).toBeInTheDocument();
-      expect(screen.queryByText("OpenBB Copilot")).not.toBeInTheDocument();
+      expect(screen.queryByText("Copilot")).not.toBeInTheDocument();
     });
   });
 
@@ -657,7 +658,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const deleteWrapper = screen.getByTitle("Delete");
-      const deleteButton = deleteWrapper.querySelector("button")!;
+      const deleteButton = required(deleteWrapper.querySelector("button"));
       await user.click(deleteButton);
 
       await waitFor(() => {
@@ -676,7 +677,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const deleteWrapper = screen.getByTitle("Delete");
-      const deleteButton = deleteWrapper.querySelector("button")!;
+      const deleteButton = required(deleteWrapper.querySelector("button"));
       await user.click(deleteButton);
 
       await waitFor(() => {
@@ -695,7 +696,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const deleteWrapper = screen.getByTitle("Delete");
-      const deleteButton = deleteWrapper.querySelector("button")!;
+      const deleteButton = required(deleteWrapper.querySelector("button"));
       await user.click(deleteButton);
 
       await waitFor(() => {
@@ -714,7 +715,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const deleteWrapper = screen.getByTitle("Delete");
-      const deleteButton = deleteWrapper.querySelector("button")!;
+      const deleteButton = required(deleteWrapper.querySelector("button"));
       await user.click(deleteButton);
 
       await waitFor(() => {
@@ -736,7 +737,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const deleteWrapper = screen.getByTitle("Delete");
-      const deleteButton = deleteWrapper.querySelector("button")!;
+      const deleteButton = required(deleteWrapper.querySelector("button"));
       await user.click(deleteButton);
 
       await waitFor(() => {
@@ -758,7 +759,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const deleteWrapper = screen.getByTitle("Delete");
-      const deleteButton = deleteWrapper.querySelector("button")!;
+      const deleteButton = required(deleteWrapper.querySelector("button"));
       await user.click(deleteButton);
 
       await waitFor(() => {
@@ -769,7 +770,7 @@ describe("AIAgentsTab", () => {
 
       await waitFor(() => {
         expect(mockSetSelectedCopilot).toHaveBeenCalledWith(
-          expect.objectContaining({ id: "openbb-copilot" }),
+          expect.objectContaining({ id: "default-copilot" }),
         );
       });
     });
@@ -781,7 +782,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -796,7 +797,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -814,7 +815,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -834,7 +835,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -859,7 +860,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -870,7 +871,7 @@ describe("AIAgentsTab", () => {
       const initialCount = initialKeyLabels.length;
 
       const removeButtons = screen.getAllByTestId("icon-circled-cross-icon");
-      await user.click(removeButtons[0].closest("button")!);
+      await user.click(required(removeButtons[0].closest("button")));
 
       await waitFor(() => {
         const updatedKeyLabels = screen.getAllByText("Key");
@@ -885,7 +886,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -915,7 +916,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -938,7 +939,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -974,7 +975,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const editWrapper = screen.getByTitle("Edit Settings");
-      const editButton = editWrapper.querySelector("button")!;
+      const editButton = required(editWrapper.querySelector("button"));
       await user.click(editButton);
 
       await waitFor(() => {
@@ -1036,7 +1037,9 @@ describe("AIAgentsTab", () => {
       mockFetchAgentsData.mockResolvedValue([makeCopilot()]);
       renderAIAgentsTab();
 
-      const refreshAll = screen.getByTitle("Refresh agents").querySelector("button")!;
+      const refreshAll = required(
+        screen.getByTitle("Refresh agents").querySelector("button"),
+      );
       await user.click(refreshAll);
 
       await waitFor(() => {
@@ -1050,7 +1053,9 @@ describe("AIAgentsTab", () => {
       mockFetchAgentsData.mockResolvedValue([makeCopilot()]);
       renderAIAgentsTab();
 
-      const cardRefresh = screen.getAllByTitle("Refresh")[0].querySelector("button")!;
+      const cardRefresh = required(
+        screen.getAllByTitle("Refresh")[0].querySelector("button"),
+      );
       await user.click(cardRefresh);
 
       await waitFor(() => {
@@ -1063,11 +1068,11 @@ describe("AIAgentsTab", () => {
     });
   });
 
-  describe("Default Agent Section (OpenBB Copilot)", () => {
+  describe("Default Agent Section (Copilot)", () => {
     it("renders the default copilot card with name and Default tag", () => {
       renderAIAgentsTab();
 
-      expect(screen.getAllByText("OpenBB Copilot").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Copilot").length).toBeGreaterThanOrEqual(1);
       expect(screen.getByTestId("tag-grey")).toHaveTextContent("Default");
     });
 
@@ -1075,7 +1080,7 @@ describe("AIAgentsTab", () => {
       setupDefaultMocks(SINGLE_HOLDER);
       renderAIAgentsTab();
 
-      expect(screen.getAllByText("OpenBB Copilot").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Copilot").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("Test Agent").length).toBeGreaterThanOrEqual(1);
     });
 
@@ -1092,7 +1097,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       expect(
-        screen.getByText("OpenBB Copilot is the default agent for OpenBB Workspace."),
+        screen.getByText("Copilot is the default agent for Workspace."),
       ).toBeInTheDocument();
     });
 
@@ -1107,7 +1112,7 @@ describe("AIAgentsTab", () => {
       renderAIAgentsTab();
 
       const badge = screen.getByTestId("tag-grey");
-      const title = screen.getAllByText("OpenBB Copilot")[0];
+      const title = screen.getAllByText("Copilot")[0];
       expect(badge.parentElement).toBe(title.parentElement);
     });
   });

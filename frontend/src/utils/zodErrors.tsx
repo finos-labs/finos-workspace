@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { cn } from "~/components/ds/utils/cn";
+import { docsUrl } from "~/lib/docsUrl";
 import type { Source } from "~/lib/state/backendConnector";
+import { useInvalidItemsStore } from "~/lib/state/invalidItems";
+import { type InvalidItem, summarizeInvalidItems } from "~/lib/utils/invalidItems";
 import {
   formatUnrecognizedKeysAsText,
   type UnrecognizedKeysReport,
@@ -88,6 +91,7 @@ export function showUnrecognizedKeysToast(
   source: Partial<Source>,
   reports: UnrecognizedKeysReport[],
 ) {
+  const docsHref = docsUrl("workspace/developers/json-specs/widgets-json-reference");
   toast.warning(`Unrecognized fields: ${source.name}`, {
     id: `backend-unrecognized-keys-${source.id}`,
     descriptionClassName: "relative max-h-80 overflow-y-auto",
@@ -101,14 +105,18 @@ export function showUnrecognizedKeysToast(
     duration: 15000,
     action: (
       <div className="flex items-center justify-between w-full">
-        <a
-          href="https://docs.openbb.co/workspace/developers/json-specs/widgets-json-reference"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex text-xs underline"
-        >
-          View docs reference
-        </a>
+        {docsHref ? (
+          <a
+            href={docsHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex text-xs underline"
+          >
+            View docs reference
+          </a>
+        ) : (
+          <span />
+        )}
         <button
           id={`copy-unrecognized-keys-${source.id}`}
           className="flex toast-action-btn mt-2 h-6 px-2 py-[4.5px] rounded text-2xs! font-medium!"
@@ -122,6 +130,49 @@ export function showUnrecognizedKeysToast(
         </button>
       </div>
     ),
+  });
+}
+
+/** What was last announced per backend, so a re-sync of the same problem stays quiet. */
+const announcedInvalidItems = new Map<string, string>();
+
+const invalidItemsSignature = (items: InvalidItem[]) =>
+  items.map((item) => `${item.file}:${item.id}:${item.errors}`).join("\n");
+
+/** The backends are valid again (or gone): announce them again if they break again. */
+export function forgetInvalidItems(sourceIds: (string | undefined)[]) {
+  for (const id of sourceIds) if (id) announcedInvalidItems.delete(id);
+}
+
+/**
+ * Warns that widgets or apps of a backend were skipped because they are invalid. The toast
+ * says how many, and opens a dialog with what is wrong with each when it is clicked.
+ *
+ * A backend is announced once for the same problem, however often it is loaded again. Pass
+ * `force` when the user asked for it (a refresh or a new connection).
+ */
+export function showInvalidItemsToast(
+  source: Partial<Source>,
+  items: InvalidItem[],
+  { force = false }: { force?: boolean } = {},
+) {
+  if (items.length === 0) return;
+
+  const signature = invalidItemsSignature(items);
+  if (source.id) {
+    if (!force && announcedInvalidItems.get(source.id) === signature) return;
+    announcedInvalidItems.set(source.id, signature);
+  }
+
+  toast.warning(`Invalid items in ${source.name}`, {
+    id: `backend-invalid-items-${source.id}`,
+    description: summarizeInvalidItems(items),
+    duration: 20000,
+    action: {
+      label: "Inspect",
+      onClick: () =>
+        useInvalidItemsStore.getState().show(source.name ?? "backend", items),
+    },
   });
 }
 
@@ -143,8 +194,8 @@ export function formatBackendWarningMessage(
 }
 
 export function formatBackendErrorMessage(
-  errorMessage: string,
-  templateErrorMessage: string,
+  errorMessage: string | null,
+  templateErrorMessage: string | null,
   className?: string,
   errorClassName?: string,
 ): ReactNode {

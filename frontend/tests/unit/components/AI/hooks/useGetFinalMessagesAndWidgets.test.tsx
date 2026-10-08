@@ -12,7 +12,7 @@ const mockProcessMentions = vi.fn((content: string) => ({
 }));
 
 vi.mock("~/lib/state/copilot", () => ({
-  useShallowCopilotStore: (selector: (state: any) => any) =>
+  useShallowCopilotStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       getCurrentChat: mockGetCurrentChat,
       removeMessages: mockRemoveMessages,
@@ -20,7 +20,7 @@ vi.mock("~/lib/state/copilot", () => ({
 }));
 
 vi.mock("~/lib/state/copilotData", () => ({
-  useShallowCopilotDataStore: (selector: (state: any) => any) =>
+  useShallowCopilotDataStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       getDashboardWidgetData: mockGetDashboardWidgetData,
       getCopilotWidgets: mockGetCopilotWidgets,
@@ -70,7 +70,7 @@ describe("useGetFinalMessagesAndWidgets", () => {
           input_arguments: {
             data_sources: [
               {
-                origin: "OpenBB Hub",
+                origin: "the backend",
                 id: "file-widget-1",
                 widget_uuid: "widget-1",
                 input_args: {},
@@ -85,7 +85,9 @@ describe("useGetFinalMessagesAndWidgets", () => {
           ],
           extra_state: {
             copilot_function_call_arguments: {
-              widget_queries: [{ widget_uuid: "widget-1", query: "what's this about?" }],
+              widget_queries: [
+                { widget_uuid: "widget-1", query: "what's this about?" },
+              ],
             },
           },
         },
@@ -93,7 +95,7 @@ describe("useGetFinalMessagesAndWidgets", () => {
     });
   });
 
-  it("skips OpenBB Hub renewal for stale tool messages with error payloads", async () => {
+  it("skips renewal for stale tool messages with error payloads", async () => {
     const { result } = renderHook(() => useGetFinalMessagesAndWidgets());
 
     await expect(result.current()).resolves.toEqual({
@@ -104,7 +106,7 @@ describe("useGetFinalMessagesAndWidgets", () => {
           input_arguments: {
             data_sources: [
               {
-                origin: "OpenBB Hub",
+                origin: "the backend",
                 id: "file-widget-1",
                 widget_uuid: "widget-1",
                 input_args: {},
@@ -119,7 +121,9 @@ describe("useGetFinalMessagesAndWidgets", () => {
           ],
           extra_state: {
             copilot_function_call_arguments: {
-              widget_queries: [{ widget_uuid: "widget-1", query: "what's this about?" }],
+              widget_queries: [
+                { widget_uuid: "widget-1", query: "what's this about?" },
+              ],
             },
           },
         },
@@ -138,7 +142,7 @@ describe("useGetFinalMessagesAndWidgets", () => {
         {
           role: "human",
           content: "summarize this",
-          copilotId: "openbb-copilot",
+          copilotId: "default-copilot",
           timestamp: 123,
           files: [
             {

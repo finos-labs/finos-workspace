@@ -87,12 +87,9 @@ vi.mock("~/components/ds/dialogs/BaseDialog", () => ({
 
 vi.mock("~/components/ds/dialogs/Dialog", () => ({
   DialogDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
-  DialogFooter: ({
-    children,
-  }: {
-    children: ReactNode;
-    className?: string;
-  }) => <div data-testid="dialog-footer">{children}</div>,
+  DialogFooter: ({ children }: { children: ReactNode; className?: string }) => (
+    <div data-testid="dialog-footer">{children}</div>
+  ),
   DialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
 }));

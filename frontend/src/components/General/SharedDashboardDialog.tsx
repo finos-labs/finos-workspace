@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import posthog from "posthog-js";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import {
@@ -11,12 +10,9 @@ import {
 } from "~/api/dashboard.api";
 import Icon from "~/components/Icon";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { inSnowflakeNativeApp } from "~/lib/constants";
 import { useShallowAppStore, type Widget } from "~/lib/state/app";
-import { useShallowAuthStore } from "~/lib/state/auth";
 import { useShallowThemeStore, useThemeStore } from "~/lib/state/theme";
 import { getRandomUserListBackgroundByEmail } from "~/lib/utils";
-import { zodEmail } from "~/utils/zodForms";
 import { Button } from "../ds/atoms/Button";
 import { Input } from "../ds/atoms/Input";
 import { Select } from "../ds/atoms/Select";
@@ -48,8 +44,6 @@ export function ShareDashboard({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const user = useShallowAuthStore((state) => state.user);
-  const isTrialOrg = user.entity_name === "OpenBB Trial";
 
   const { setDashboardShared, getTabById } = useShallowAppStore((state) => ({
     setDashboardShared: state.setDashboardShared,
@@ -100,18 +94,18 @@ export function ShareDashboard({
 
   const { data: shareDataInfo } = useQuery<ShareData>({
     queryKey: ["dashboardShares", shareDashboardPopupId],
-    queryFn: () => getDashboardShares(shareDashboardPopupId),
+    queryFn: () => getDashboardShares(shareDashboardPopupId ?? ""),
     enabled: !!shareDashboardPopupId,
   }); // dashboard shared info e.g., users that this dashboard is shared with and their permissions and when it was shared
 
   const { data } = useQuery<ShareableUser>({
     queryKey: ["getDashboardShareUsers", shareDashboardPopupId],
-    queryFn: () => getDashboardShareUsers(shareDashboardPopupId),
+    queryFn: () => getDashboardShareUsers(shareDashboardPopupId ?? ""),
     enabled: !!shareDashboardPopupId,
   }); // users that can be shared with
 
   const tabHasBYODWidgets = useMemo(() => {
-    const tab = getTabById(shareDashboardPopupId);
+    const tab = getTabById(shareDashboardPopupId ?? "");
     return tab?.data?.widgets.some((widget) => widget.external);
   }, [shareDashboardPopupId]);
 
@@ -133,7 +127,7 @@ export function ShareDashboard({
         .filter(([_email, permissions]) => permissions !== "no-access")
         .map(([email]) => email);
 
-      setDashboardShared(shareDashboardPopupId, sharedEmails.length > 0);
+      setDashboardShared(shareDashboardPopupId ?? "", sharedEmails.length > 0);
       dispatch({ usersPermissions: initialCheckedState });
     }
   }, [data, shareDataInfo, shareDashboardPopupId]);
@@ -148,9 +142,6 @@ export function ShareDashboard({
   }, [queryClient, shareDashboardPopupId]);
 
   const showSaveChanges = useMemo(() => {
-    if (isTrialOrg) {
-      return true;
-    }
     // we need to compare the current state with the initial state to see if there are any changes
     return Object.entries(state.usersPermissions).some(([email, permissions]) => {
       const initialPermissions = shareDataInfo?.[email]?.permissions ?? "no-access";
@@ -179,34 +170,12 @@ export function ShareDashboard({
           }
           return acc;
         },
-        { sharedEmails: [], deletedEmails: [] },
+        { sharedEmails: [] as string[], deletedEmails: [] as string[] },
       );
 
       if (deletedEmails.length > 0) {
         // Delete the shares
         await deleteDashboardShare(shareDashboardPopupId, deletedEmails);
-        if (posthog) {
-          posthog.capture("deleted_a_shared_dashboard", {
-            hasCustomWidgets: tabHasBYODWidgets,
-            emails: deletedEmails,
-            dashboard: shareDashboardPopupId,
-          });
-        }
-      }
-
-      if (isTrialOrg && state.shareWithEmail) {
-        const emailToShareWith = zodEmail.safeParse(state.shareWithEmail);
-        if (emailToShareWith.success) {
-          sharedEmails.push(state.shareWithEmail);
-        }
-
-        if (sharedEmails.length === 0) {
-          toast.error("Invalid email format", {
-            description:
-              "Please enter a valid email address to share the dashboard with.",
-          });
-          return;
-        }
       }
 
       if (sharedEmails.length > 0) {
@@ -219,15 +188,8 @@ export function ShareDashboard({
           toast.error("Dashboard Share Failed", { description: data?.detail });
           return;
         }
-        if (posthog) {
-          posthog.capture("shared_a_dashboard", {
-            hasCustomWidgets: tabHasBYODWidgets,
-            emails: sharedEmails,
-            dashboard: shareDashboardPopupId,
-          });
-        }
       }
-      if (sharedEmails.length > 0 && tabHasBYODWidgets && !inSnowflakeNativeApp) {
+      if (sharedEmails.length > 0 && tabHasBYODWidgets) {
         toast.success("Dashboard shared permissions updated", {
           description:
             "Please note that shared users will not be able to view Data connectors widgets.",
@@ -246,8 +208,6 @@ export function ShareDashboard({
       dispatch({ isSaving: false });
     }
   }, [
-    state.shareWithEmail,
-    isTrialOrg,
     shareDashboardPopupId,
     tabHasBYODWidgets,
     state.usersPermissions,
@@ -262,8 +222,6 @@ export function ShareDashboard({
       ),
     [data, state.shareWithEmail],
   );
-
-  const showList = !isTrialOrg || users.length > 0;
 
   return (
     <BaseDialog
@@ -280,123 +238,121 @@ export function ShareDashboard({
           value={state.shareWithEmail}
           onChange={(shareWithEmail: string) => dispatch({ shareWithEmail })}
         />
-        {showList && (
-          <div className="space-y-2 bg-general-bg-secondary p-2.5 rounded">
-            <p className="body-xs-medium uppercase text-ds-text-caption tracking-wide mb-4">
-              {isTrialOrg ? "Shared with" : "Users from your organization"}
-            </p>
-            {users.length === 0 && (
-              <div className="text-left body-xs-regular text-ds-text-caption">
-                No users found with the email <strong>{state.shareWithEmail}</strong>
-              </div>
-            )}
-            <div className="space-y-2 overflow-y-auto max-h-[300px] xl:max-h-[400px] 2xl:max-h-[500px] p-0.5">
-              {users
-                .sort(
-                  // we need to sort by shared status and then by email. we need to use sharedDataInfo to see if the user is shared
-                  (a, b) => {
-                    const aShared = shareDataInfo?.[a[0]] ? 1 : 0;
-                    const bShared = shareDataInfo?.[b[0]] ? 1 : 0;
-                    if (aShared !== bShared) {
-                      return bShared - aShared; // Prioritize shared users
-                    }
-                    return a[0].localeCompare(b[0]); // Then sort by email
-                  },
-                )
-                .map(([email, data]) => {
-                  return (
-                    <div
-                      key={email ?? ""}
-                      className="flex gap-2 justify-between items-center"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span
-                          style={{
-                            backgroundColor: getRandomUserListBackgroundByEmail(email),
-                          }}
-                          className="w-6 h-6 rounded-full inline-flex justify-center items-center text-white"
-                        >
-                          <span>
-                            {data.first_name?.[0] ?? email[0].toUpperCase()}
-                            {data.last_name?.[0] ?? ""}
-                          </span>
-                        </span>
-                        <span className="flex flex-col items-start">
-                          <span className="body-xs-regular text-ds-text-heading -mb-1">
-                            {data.first_name} {data.last_name}
-                          </span>
-                          <span className="body-xs-regular text-ds-text-caption">
-                            {email}
-                          </span>
+        <div className="space-y-2 bg-general-bg-secondary p-2.5 rounded">
+          <p className="body-xs-medium uppercase text-ds-text-caption tracking-wide mb-4">
+            Users from your organization
+          </p>
+          {users.length === 0 && (
+            <div className="text-left body-xs-regular text-ds-text-caption">
+              No users found with the email <strong>{state.shareWithEmail}</strong>
+            </div>
+          )}
+          <div className="space-y-2 overflow-y-auto max-h-[300px] xl:max-h-[400px] 2xl:max-h-[500px] p-0.5">
+            {users
+              .sort(
+                // we need to sort by shared status and then by email. we need to use sharedDataInfo to see if the user is shared
+                (a, b) => {
+                  const aShared = shareDataInfo?.[a[0]] ? 1 : 0;
+                  const bShared = shareDataInfo?.[b[0]] ? 1 : 0;
+                  if (aShared !== bShared) {
+                    return bShared - aShared; // Prioritize shared users
+                  }
+                  return a[0].localeCompare(b[0]); // Then sort by email
+                },
+              )
+              .map(([email, data]) => {
+                return (
+                  <div
+                    key={email ?? ""}
+                    className="flex gap-2 justify-between items-center"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span
+                        style={{
+                          backgroundColor: getRandomUserListBackgroundByEmail(email),
+                        }}
+                        className="w-6 h-6 rounded-full inline-flex justify-center items-center text-white"
+                      >
+                        <span>
+                          {data.first_name?.[0] ?? email[0].toUpperCase()}
+                          {data.last_name?.[0] ?? ""}
                         </span>
                       </span>
-                      <div className="flex gap-2 items-center">
-                        {/*shareDataInfo?.[email]?.created_date && (
+                      <span className="flex flex-col items-start">
+                        <span className="body-xs-regular text-ds-text-heading -mb-1">
+                          {data.first_name} {data.last_name}
+                        </span>
+                        <span className="body-xs-regular text-ds-text-caption">
+                          {email}
+                        </span>
+                      </span>
+                    </span>
+                    <div className="flex gap-2 items-center">
+                      {/*shareDataInfo?.[email]?.created_date && (
+                    <Tooltip
+                      position="top"
+                      message={formatDate(
+                        new Date(shareDataInfo[email].created_date),
+                      )}
+                    >
+                      <span className="ws-tag w-fit">Already shared</span>
+                    </Tooltip>
+                  )*/}
+
+                      {/*<Checkbox
+                    className="w-5 h-5"
+                    name={email}
+                    checked={checkedUsers[email]}
+                    onCheckedChange={(isChecked) => {
+                      handleCheckboxChange(email, !!isChecked);
+                    }}
+                  />*/}
                       <Tooltip
                         position="top"
-                        message={formatDate(
-                          new Date(shareDataInfo[email].created_date),
-                        )}
+                        open={state.tooltipEmail === email}
+                        message={
+                          shareDataInfo?.[email]?.created_date
+                            ? `Shared on ${new Date(
+                                shareDataInfo[email].created_date,
+                              ).toLocaleDateString()}`
+                            : "No access to the dashboard"
+                        }
                       >
-                        <span className="obb-tag w-fit">Already shared</span>
-                      </Tooltip>
-                    )*/}
-
-                        {/*<Checkbox
-                      className="w-5 h-5"
-                      name={email}
-                      checked={checkedUsers[email]}
-                      onCheckedChange={(isChecked) => {
-                        handleCheckboxChange(email, !!isChecked);
-                      }}
-                    />*/}
-                        <Tooltip
-                          position="top"
-                          open={state.tooltipEmail === email}
-                          message={
-                            shareDataInfo?.[email]?.created_date
-                              ? `Shared on ${new Date(
-                                  shareDataInfo[email].created_date,
-                                ).toLocaleDateString()}`
-                              : "No access to the dashboard"
-                          }
+                        <span
+                          onPointerEnter={() => handleTooltipPointerEnter(email)}
+                          onPointerLeave={handleTooltipPointerLeave}
+                          onPointerDown={handleTooltipPointerLeave}
                         >
-                          <span
-                            onPointerEnter={() => handleTooltipPointerEnter(email)}
-                            onPointerLeave={handleTooltipPointerLeave}
-                            onPointerDown={handleTooltipPointerLeave}
-                          >
-                            <Select
-                              className="w-[120px]"
-                              options={[
-                                {
-                                  label: "No Access",
-                                  value: "no-access",
-                                },
-                                {
-                                  label: "View",
-                                  value: "view",
-                                },
-                              ]}
-                              value={state.usersPermissions[email] ?? "no-access"}
-                              onChange={(value: "view" | "edit" | "no-access") =>
-                                dispatch({
-                                  usersPermissions: (prev) => ({
-                                    ...prev,
-                                    [email]: value,
-                                  }),
-                                })
-                              }
-                            />
-                          </span>
-                        </Tooltip>
-                      </div>
+                          <Select
+                            className="w-[120px]"
+                            options={[
+                              {
+                                label: "No Access",
+                                value: "no-access",
+                              },
+                              {
+                                label: "View",
+                                value: "view",
+                              },
+                            ]}
+                            value={state.usersPermissions[email] ?? "no-access"}
+                            onChange={(value: "view" | "edit" | "no-access") =>
+                              dispatch({
+                                usersPermissions: (prev) => ({
+                                  ...prev,
+                                  [email]: value,
+                                }),
+                              })
+                            }
+                          />
+                        </span>
+                      </Tooltip>
                     </div>
-                  );
-                })}
-            </div>
+                  </div>
+                );
+              })}
           </div>
-        )}
+        </div>
 
         <div className="mt-2 flex items-center justify-end gap-2">
           <DialogClose asChild>
@@ -409,10 +365,10 @@ export function ShareDashboard({
             size="sm"
             disabled={!showSaveChanges}
             loading={state.isSaving}
-            loadingChildren={isTrialOrg ? "Sharing..." : "Saving..."}
+            loadingChildren="Saving..."
             onClick={() => onSubmit()}
           >
-            {isTrialOrg ? "Share" : "Save"}
+            Save
           </Button>
         </div>
       </div>
@@ -467,14 +423,15 @@ function getWarningMessages(widgets: Widget[]) {
   const headersRegex = /.*key.*|.*token.*|.*auth.*|.*secret.*|.*bearer.*|.*basic.*/;
 
   for (const widget of widgets) {
-    if (!connectionTypes.includes(widget?.connectionType)) continue;
+    if (!(widget?.connectionType && connectionTypes.includes(widget.connectionType)))
+      continue;
 
     warningMessages.type = true;
     const headersMessages = Object.keys(widget?.endpoint?.headers || {}).some(
       (header) => headersRegex.test(header),
     );
 
-    if (urlRegex.test(widget?.endpoint?.url) || headersMessages) {
+    if (urlRegex.test(widget?.endpoint?.url ?? "") || headersMessages) {
       warningMessages.api = true;
     }
   }
@@ -488,7 +445,7 @@ export function ShareDashboardDialog() {
   }));
 
   // Extract the condition for hasFileWidgets into a separate variable
-  const widgets = getTabById(shareDashboardPopupId)?.data?.widgets ?? [];
+  const widgets = getTabById(shareDashboardPopupId ?? "")?.data?.widgets ?? [];
 
   const warningMessages = getWarningMessages(widgets);
 

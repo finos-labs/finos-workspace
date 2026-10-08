@@ -18,9 +18,12 @@ import {
   dispatchUpdateWidget,
   triggerCustomEvent,
 } from "~/lib/utils";
+import { isTruthyRecord } from "~/lib/utils/values";
+import { isStoredParamValue } from "~/lib/utils/widgetParams";
 import { Button } from "../ds/atoms/Button";
 import Icon from "../Icon";
-import type { WidgetT } from "../types";
+import type { IconId } from "../Icon.types";
+import type { ParamDef, StoredParamValue, WidgetStorage, WidgetT } from "../types";
 import type { WidgetId } from "../Widgets";
 import { Artifact, Table } from ".";
 import { useExternalLinkAnchorProps } from "./ExternalLinkContext";
@@ -47,6 +50,13 @@ type CitationCta =
       variant?: "primary" | "secondary";
     };
 
+/** The page of a file a citation points to, which the backend sends as a number or a numeric string. */
+const toPageNumber = (value: unknown): number | undefined => {
+  if (value === null || value === undefined || value === "") return undefined;
+  const page = Number(value);
+  return Number.isFinite(page) ? page : undefined;
+};
+
 const WebCitationTable = ({ content }: { content: DetailT }) => {
   const entries = content ? Object.entries(content) : [];
   const linkEntry = entries.find(([key]) => key.toLowerCase() === "link");
@@ -66,7 +76,7 @@ const WebCitationTable = ({ content }: { content: DetailT }) => {
           href={String(linkEntry[1])}
           target="_blank"
           rel="noopener noreferrer"
-          className="obb-hyper-link break-words"
+          className="ws-hyper-link break-words"
           title={String(linkEntry[1])}
           {...anchorProps}
         >
@@ -93,7 +103,7 @@ type CitationProps = {
   content: CitationT;
 };
 
-const ICON_MAP = {
+const ICON_MAP: Record<string, IconId> = {
   "direct retrieval": "code-browser",
   findb: "database",
   widget: "layout-top",
@@ -102,20 +112,31 @@ const ICON_MAP = {
   artifact: "cube-01",
 };
 
+/** What a widget citation says of the widget it cites: its uuid and the arguments it was queried with. */
+function getWidgetCitationMetadata(content: CitationT) {
+  const metadata = content.source_info?.metadata;
+  const widgetUuid =
+    typeof metadata?.widget_uuid === "string" ? metadata.widget_uuid : undefined;
+  const inputArgs = isTruthyRecord(metadata?.input_args)
+    ? metadata.input_args
+    : undefined;
+  return { widgetUuid, inputArgs };
+}
+
 const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
   const { index, content } = props;
+  const { widgetUuid: sourceWidgetUuid, inputArgs: citationInputArgs } =
+    getWidgetCitationMetadata(content);
   const [isOpen, setIsOpen] = useState(false);
   const { id: currentDashboardId = "" } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const {
-    getWidgetRuntimeState,
     getWidgetsInCurrentDashboard,
     signaturesMap,
     getWidgetFromSignature,
     widgetsLastUpdated,
   } = useShallowCopilotDataStore((state) => ({
-    getWidgetRuntimeState: state.getWidgetRuntimeState,
     getWidgetsInCurrentDashboard: state.getWidgetsInCurrentDashboard,
     signaturesMap: state.signaturesMap,
     getWidgetFromSignature: state.getWidgetFromSignature,
@@ -157,7 +178,7 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
         }
         return acc;
       },
-      {} as Record<string, any>,
+      {} as Record<string, unknown>,
     );
     const citationSignature = {
       origin: sourceInfo?.widgetOrigin,
@@ -165,7 +186,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
       args: filteredArgs,
     };
 
-    const sourceWidgetUuid = content.source_info?.metadata?.widget_uuid;
     if (sourceWidgetUuid) {
       const directMatch = getWidgetsInCurrentDashboard(sourceWidgetUuid) as WidgetT;
       if (directMatch) {
@@ -174,7 +194,7 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
         if (
           compareSignatures(signaturesMap[directMatch.id], citationSignature) &&
           !detectQueryMismatch(
-            content.source_info?.metadata?.input_args?.query,
+            citationInputArgs?.query,
             directMatch.storage?.params?.query,
           )
         ) {
@@ -245,11 +265,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
       content.source_info?.uuid || undefined,
     ) as WidgetT;
 
-    // Multi file file viewer is a special case where we need to match by widgetId
-    if (currentDashboardWidget && currentDashboardWidget.type === "multi_file_viewer") {
-      return currentDashboardWidget;
-    }
-
     // If not found on current dashboard, search across all dashboards
     let crossDashboardWidget: WidgetT | null = null;
     if (!currentDashboardWidget && content.source_info?.uuid) {
@@ -269,9 +284,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
 
     if (widget && isIframeMcpCitation) return widget;
 
-    // Multi file file viewer is a special case where we need to match by widgetId
-    if (widget && widget.type === "multi_file_viewer") return widget;
-
     // Create signature for matching
     const randomUuid = uuidv4();
     const inputArgs = content.source_info?.metadata?.input_args || {};
@@ -282,7 +294,7 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
         }
         return acc;
       },
-      {} as Record<string, any>,
+      {} as Record<string, unknown>,
     );
 
     const signature = {
@@ -309,7 +321,7 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
   const widgetInfo = useShallowAppWidgetsStore((s) => {
     const { widgetId, widgetOrigin } = sourceInfo || {};
     const widget = s.getAppWidget(widgetId as WidgetId, widgetOrigin);
-    const symbol: string = content.source_info?.metadata?.input_args?.symbol;
+    const symbol = citationInputArgs?.symbol;
     const widgetToAdd = widget;
     return { widgetToAdd, symbol };
   });
@@ -438,10 +450,10 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
   const hasQueryMismatch = useMemo(
     () =>
       detectQueryMismatch(
-        content.source_info?.metadata?.input_args?.query,
+        citationInputArgs?.query,
         citationInfo.matchedWidget?.storage?.params?.query,
       ),
-    [content.source_info?.metadata?.input_args?.query, citationInfo.matchedWidget],
+    [citationInputArgs?.query, citationInfo.matchedWidget],
   );
 
   const onMouseEnter = useCallback(() => {
@@ -460,14 +472,10 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
   const handleGoToReference = useCallback(() => {
     const element = document.getElementById(citationInfo.elementIdToHighlight);
     dispatchUpdateWidget(citationInfo.elementIdToHighlight, (prev) => {
-      let storageUpdate = {} as WidgetT["storage"];
-      if (prev.type === "multi_file_viewer") {
-        storageUpdate = updateMultiFileStorage(prev, content, citationInfo.fileDetail);
-        if (!storageUpdate) return prev;
-      } else if (prev.connectionType === "file") {
+      let storageUpdate: WidgetStorage = {};
+      if (prev.connectionType === "file") {
         // For some reason the file viewer type is not set as file_viewer
-        const fileDetail = citationInfo.fileDetail;
-        const page = fileDetail ? fileDetail?.Page : null;
+        const page = toPageNumber(citationInfo.fileDetail?.Page);
         const currentQuoteBoundingBoxes = content.quote_bounding_boxes;
         const currentPage = page ?? currentQuoteBoundingBoxes?.[0]?.[0]?.page ?? 1;
         storageUpdate = {
@@ -476,7 +484,7 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
         };
       }
 
-      triggerCustomEvent(`updateQueryParams-${prev.id}`, storageUpdate?.params ?? {});
+      triggerCustomEvent(`updateQueryParams-${prev.id}`, storageUpdate.params ?? {});
       return {
         ...prev,
         storage: {
@@ -524,19 +532,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
           description: artifact.description,
         },
       });
-    } else if (artifact.type === "table" || artifact.type === "chart") {
-      dispatchCreate({
-        widgetType: artifact.type,
-        content: artifact.content as Record<string, any>[],
-        metadata: {
-          uuid: artifact.uuid,
-          name: artifact.name,
-          description: artifact.description,
-          ...(artifact.type === "chart" && artifact.chart_params
-            ? artifact.chart_params
-            : {}),
-        },
-      });
     } else {
       toast.error("Unsupported artifact type");
       return;
@@ -546,7 +541,7 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
   }, [content.source_info?.name, getCurrentChatArtifact, setClose]);
 
   const handleAddWidgetToDashboard = useCallback(async () => {
-    const inputArgs = content.source_info?.metadata?.input_args;
+    const inputArgs = citationInputArgs;
 
     // Use matched widget when it's cross-dashboard or when query differs (new SQL)
     const sourceWidget =
@@ -560,36 +555,33 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
       return;
     }
 
-    const newParams = sourceWidget.params;
-    let newStorage = sourceWidget?.storage || {};
-    if (sourceWidget.type === "multi_file_viewer") {
-      newStorage = updateMultiFileStorage(
-        sourceWidget,
-        content,
-        citationInfo.fileDetail,
-      );
-    } else {
-      newStorage.params = newStorage?.params || {};
-    }
+    const storedParams: Record<string, StoredParamValue> = {
+      ...sourceWidget.storage?.params,
+    };
+    const newStorage: WidgetStorage = { ...sourceWidget.storage, params: storedParams };
 
-    if (newParams && inputArgs) {
-      for (const param of newParams) {
-        const paramName = param.paramName;
-        const isDateParam = param.type === "date";
+    const newParams = inputArgs
+      ? sourceWidget.params?.map((param): ParamDef => {
+          const paramName = param.paramName;
+          const provided = inputArgs[paramName];
 
-        if (inputArgs[paramName] && inputArgs[paramName] !== "null") {
-          // Use provided value from citation input args
-          param.value = inputArgs[paramName];
-          newStorage.params[paramName] = inputArgs[paramName];
-        } else if (isDateParam) {
-          // Only apply date modifier if the widget param has a non-null default
-          if (param.value !== null && param.value !== undefined) {
-            newStorage.params[paramName] = currentDateModifier(param.value);
+          if (provided && provided !== "null" && isStoredParamValue(provided)) {
+            // Use provided value from citation input args
+            storedParams[paramName] = provided;
+            return { ...param, value: provided } as ParamDef;
           }
-          // Else leave unset to preserve empty date selection
-        }
-      }
-    }
+          // Only apply date modifier if the widget param has a non-null default,
+          // else leave unset to preserve empty date selection
+          if (
+            param.type === "date" &&
+            param.value !== null &&
+            param.value !== undefined
+          ) {
+            storedParams[paramName] = currentDateModifier(param.value);
+          }
+          return param;
+        })
+      : sourceWidget.params;
 
     const widget = {
       ...sourceWidget,
@@ -609,6 +601,7 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
 
     // Get the new widget ID from addWidgetToDashboard
     const newWidgetId = await addWidgetToDashboard(currentDashboardId, widget);
+    if (!newWidgetId) return;
 
     // Only show toast when in fullscreen mode since user can't see dashboard
     if (isFullscreen) {
@@ -744,8 +737,7 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
       }
       const hasPage = fileDetail?.Page;
       const hasQuoteBoundingBoxes = content.quote_bounding_boxes?.length;
-      const hasReference =
-        hasPage || hasQuoteBoundingBoxes || targetWidget?.type === "multi_file_viewer";
+      const hasReference = hasPage || hasQuoteBoundingBoxes;
 
       if (hasReference) {
         return [{ buttonLabel: "Go to reference", onClick: handleGoToReference }];
@@ -872,99 +864,7 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
       .map((detail) => {
         if (!detail) return null;
 
-        // For multi-file viewer widgets, restructure the citation display
-        let enhancedDetail = { ...detail };
-        const orderedDetail: Record<string, any> = {};
-
-        if (dashboardWidget?.type === "multi_file_viewer") {
-          const widgetParams = dashboardWidget.storage?.params || {};
-          const fileSelector = dashboardWidget.params?.find((p) =>
-            p.roles?.includes("fileSelector"),
-          )?.paramName;
-
-          // First: Add widget parameters with proper labels (only those visible in UI)
-          for (const param of dashboardWidget.params || []) {
-            if (param.show !== false && param.paramName !== fileSelector) {
-              let paramValue = widgetParams[param.paramName];
-
-              // Handle null/undefined values by finding the default option label
-              if (paramValue === null || paramValue === undefined) {
-                // Look for the default option in the parameter's options (option with no value property)
-                if (param.options && Array.isArray(param.options)) {
-                  const defaultOption = param.options.find(
-                    (option) =>
-                      !("value" in option) ||
-                      option.value === null ||
-                      option.value === undefined,
-                  );
-                  if (defaultOption?.label) {
-                    paramValue = defaultOption.label;
-                  }
-                } else if (param.value !== undefined) {
-                  // Fallback: use the parameter's default value if no options available
-                  paramValue = param.value;
-                }
-              }
-
-              // Only show parameters that have a value (including default option labels)
-              if (paramValue !== null && paramValue !== undefined) {
-                const displayLabel = param.label || param.paramName;
-
-                // Format the parameter value for better display
-                let displayValue = paramValue;
-                if (typeof paramValue === "string") {
-                  // Check if this is a default option label (which should be kept as-is)
-                  const isDefaultOptionLabel =
-                    param.options &&
-                    Array.isArray(param.options) &&
-                    param.options.some(
-                      (option) => option.label === paramValue && !("value" in option),
-                    );
-
-                  if (!isDefaultOptionLabel) {
-                    // Convert snake_case/kebab-case to Title Case for stored values
-                    displayValue = paramValue
-                      .replace(/[_-]/g, " ")
-                      .replace(/\b\w/g, (l) => l.toUpperCase());
-                  }
-                  // If it's a default option label, keep it as-is (e.g., "All Years", "All Documents")
-                }
-
-                orderedDetail[displayLabel] = displayValue;
-              }
-            }
-          }
-
-          // Second: Add filename with proper display name from fileOptions
-          if (enhancedDetail.Filename) {
-            // Try runtime state first (for current dashboard widgets)
-            const runtimeState = getWidgetRuntimeState(dashboardWidget.id);
-            let fileOptions = runtimeState?.fileOptions || [];
-
-            // If no runtime fileOptions, try cached fileOptions (for cross-dashboard widgets)
-            if (fileOptions.length === 0) {
-              fileOptions = dashboardWidget.storage?.cachedFileOptions || [];
-            }
-
-            const matchingOption = fileOptions.find((option: any) => {
-              // Extract filename from URL for comparison
-              const urlFilename = option.value.split("/").pop() || "";
-              return urlFilename === enhancedDetail.Filename;
-            });
-
-            orderedDetail.Filename =
-              matchingOption?.label ||
-              enhancedDetail.Filename.replace(".pdf", "").replace(/[_-]/g, " ");
-          }
-
-          // Third: Add Page if it exists
-          if (enhancedDetail.Page) {
-            orderedDetail.Page = enhancedDetail.Page;
-          }
-
-          // Use the ordered detail for multi-file viewer widgets
-          enhancedDetail = orderedDetail;
-        }
+        const enhancedDetail = { ...detail };
 
         // Filter out null/undefined values and unwanted fields from detail before rendering
         const filteredDetail = Object.entries(enhancedDetail).reduce(
@@ -1008,7 +908,7 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
             }
             return acc;
           },
-          {} as Record<string, any>,
+          {} as Record<string, unknown>,
         );
 
         // Drop details whose values were all filtered out
@@ -1016,8 +916,8 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
 
         return filteredDetail;
       })
-      .filter((detail): detail is Record<string, any> => detail !== null);
-  }, [content?.details, dashboardWidget, isIframeMcpCitation, getWidgetRuntimeState]);
+      .filter((detail): detail is Record<string, unknown> => detail !== null);
+  }, [content?.details, isIframeMcpCitation]);
 
   if (citationInfo?.citationIcon === undefined) return null;
 
@@ -1119,52 +1019,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
 });
 
 export default memo(Citation);
-
-function updateMultiFileStorage(
-  widget: WidgetT,
-  citation: CitationT,
-  detail: DetailT | undefined,
-): Record<string, unknown> | undefined {
-  const page = detail ? detail?.Page : null;
-  const currentQuoteBoundingBoxes = citation.quote_bounding_boxes;
-  const currentPage = page ?? currentQuoteBoundingBoxes?.[0]?.[0]?.page ?? 1;
-  const inputArgs = citation.source_info?.metadata?.input_args ?? {};
-
-  let fileSelector: string;
-  const restParamNames: string[] = [];
-
-  widget.params?.forEach((param) => {
-    if (param.roles?.includes("fileSelector")) {
-      fileSelector = param.paramName;
-    } else {
-      restParamNames.push(param.paramName);
-    }
-  });
-  if (!fileSelector) {
-    toast.error("Reference not found");
-    return widget.storage;
-  }
-  // In multi file viewer, the file selector is an array of filenames
-  const fileName = inputArgs[fileSelector][0];
-  const restParamValues: Record<string, unknown> = {};
-  restParamNames.forEach((paramName) => {
-    // Store values for rest params
-    restParamValues[paramName] = inputArgs[paramName];
-  });
-
-  return {
-    currentFileName: fileName,
-    [fileName]: {
-      ...(widget.storage?.[fileName] ?? {}),
-      page: currentPage,
-      quoteBoundingBoxes: currentQuoteBoundingBoxes,
-    },
-    params: {
-      ...(widget.storage?.params ?? {}),
-      ...restParamValues,
-    },
-  };
-}
 
 const scrollToElement = (element: HTMLElement | null) => {
   element?.scrollIntoView({

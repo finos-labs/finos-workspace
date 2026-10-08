@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PromptsTab } from "~/components/AI/PromptsTab";
+import { required } from "../../mocks";
 
 // --- vi.hoisted mocks ---
 
@@ -99,9 +100,9 @@ vi.mock("~/components/AI/TextStyle", () => ({
   ),
 }));
 
-vi.mock("~/components/General/Table/AgGridUtils", () => ({
+vi.mock("~/lib/utils/format", () => ({
   formatDate: (date: Date) => date.toISOString().split("T")[0],
-  isDate: (_value: any) => false,
+  isDate: (_value: unknown) => false,
 }));
 
 vi.mock("~/components/Icon", () => ({
@@ -482,7 +483,9 @@ describe("PromptsTab", () => {
       const accordionHeader = matches.find((el) => el.tagName === "P");
       expect(accordionHeader).toBeDefined();
       // Count is rendered inside the same <p> element
-      expect(accordionHeader!.textContent).toContain(`(${PERSONAL_PROMPTS.length})`);
+      expect(required(accordionHeader).textContent).toContain(
+        `(${PERSONAL_PROMPTS.length})`,
+      );
     });
 
     it("renders prompt cards for each personal prompt", async () => {
@@ -537,7 +540,7 @@ describe("PromptsTab", () => {
       const user = userEvent.setup();
       const editIcons = screen.getAllByTestId("icon-edit");
       // Click the first edit button (parent of the icon)
-      await user.click(editIcons[0].closest("button")!);
+      await user.click(required(editIcons[0].closest("button")));
 
       expect(mockSetEditingPromptId).toHaveBeenCalledWith("p-1");
       expect(mockSetAddPromptDialogOpen).toHaveBeenCalledWith(true);
@@ -551,7 +554,7 @@ describe("PromptsTab", () => {
 
       const user = userEvent.setup();
       const trashIcons = screen.getAllByTestId("icon-trash-02");
-      await user.click(trashIcons[0].closest("button")!);
+      await user.click(required(trashIcons[0].closest("button")));
 
       expect(screen.getByTestId("confirm-dialog")).toBeInTheDocument();
       expect(screen.getByText("Delete Prompt")).toBeInTheDocument();
@@ -566,7 +569,7 @@ describe("PromptsTab", () => {
 
       const user = userEvent.setup();
       const trashIcons = screen.getAllByTestId("icon-trash-02");
-      await user.click(trashIcons[0].closest("button")!);
+      await user.click(required(trashIcons[0].closest("button")));
 
       await user.click(screen.getByRole("button", { name: "Delete" }));
 
@@ -579,7 +582,7 @@ describe("PromptsTab", () => {
 
       const user = userEvent.setup();
       const trashIcons = screen.getAllByTestId("icon-trash-02");
-      await user.click(trashIcons[0].closest("button")!);
+      await user.click(required(trashIcons[0].closest("button")));
 
       await user.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -691,7 +694,7 @@ describe("PromptsTab", () => {
       const clipboardIcons = screen.getAllByTestId("icon-clipboard-icon");
       const btn = clipboardIcons[0].closest("button");
       expect(btn).toBeTruthy();
-      await user.click(btn!);
+      await user.click(required(btn));
 
       // Verify the toast was shown (clipboard writeText is called but we verify via toast)
       expect(mockToastSuccess).toHaveBeenCalledWith("Prompt copied to clipboard");
@@ -784,7 +787,7 @@ describe("PromptsTab", () => {
       const backendHeader = screen.getByText("Backend Prompts");
       expect(backendHeader).toBeInTheDocument();
       // Total backend prompts: 2 + 1 = 3 — count is inside the same <p> element
-      expect(backendHeader.closest("p")!.textContent).toContain("(3)");
+      expect(required(backendHeader.closest("p")).textContent).toContain("(3)");
     });
 
     it("shows lock icon indicating read-only backend prompts", async () => {
@@ -809,7 +812,7 @@ describe("PromptsTab", () => {
       const user = userEvent.setup();
       // Backend source accordion is collapsed by default — click to expand
       const sourceHeader = screen.getByText("Finance API");
-      await user.click(sourceHeader.closest("[class*='cursor-pointer']")!);
+      await user.click(required(sourceHeader.closest("[class*='cursor-pointer']")));
 
       // Now template names should be visible
       expect(screen.getByText("Market Analysis")).toBeInTheDocument();
@@ -839,7 +842,7 @@ describe("PromptsTab", () => {
       const user = userEvent.setup();
       const copyIcons = screen.getAllByTestId("icon-copy-03");
       // Click the first duplicate button (from backend prompts)
-      await user.click(copyIcons[0].closest("button")!);
+      await user.click(required(copyIcons[0].closest("button")));
 
       expect(mockAddPrompt).toHaveBeenCalledWith({
         prompt: expect.any(String),
@@ -886,7 +889,7 @@ describe("PromptsTab", () => {
       const duplicateTooltips = screen.getAllByTitle("Duplicate to My Prompts");
       // Click the last duplicate button (should be from shared prompts section)
       const lastDuplicate = duplicateTooltips[duplicateTooltips.length - 1];
-      await user.click(lastDuplicate.querySelector("button")!);
+      await user.click(required(lastDuplicate.querySelector("button")));
 
       expect(mockAddPrompt).toHaveBeenCalledWith({
         prompt: expect.any(String),
@@ -959,7 +962,7 @@ describe("PromptsTab", () => {
       const upButtons = screen.getAllByTestId("icon-square-arrow-up");
 
       // Click the second item's move-up button (index 1).
-      await user.click(upButtons[1].closest("button")!);
+      await user.click(required(upButtons[1].closest("button")));
 
       // Swap index 0 ("p-1") and index 1 ("p-2")
       const expectedSwapped = [
@@ -978,7 +981,7 @@ describe("PromptsTab", () => {
       const downButtons = screen.getAllByTestId("icon-square-arrow-down");
 
       // Click the first item's move-down button (index 0).
-      await user.click(downButtons[0].closest("button")!);
+      await user.click(required(downButtons[0].closest("button")));
 
       // Swap index 0 ("p-1") and index 1 ("p-2")
       const expectedSwapped = [

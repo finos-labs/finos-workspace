@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTemplatePrompts } from "~/hooks/useTemplatePrompts";
-import { inSnowflakeNativeApp } from "~/lib/constants";
 import { useCopilotContext } from "~/lib/contexts/CopilotChatContext";
+import { docsUrl } from "~/lib/docsUrl";
 import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
@@ -12,6 +12,8 @@ import Icon from "../Icon";
 import { useShallowStreamingStore } from "./hooks/useStreaming";
 import { dispatchCopilotCommand } from "./hooks/utils";
 import TextStyle from "./TextStyle";
+
+const copilotDocsHref = docsUrl("workspace/analysts/ai-features/copilot-basics");
 
 const aiCopilotDocumentationLinksFF = getConfig().copilot.documentationLinks;
 
@@ -32,7 +34,7 @@ export function CopilotWelcome() {
     }));
 
   const templateId = useShallowAppStore(
-    (s) => s?.getSideBarItem(currentDashboardId)?.data?.templateId,
+    (s) => s?.getSideBarItem(currentDashboardId ?? "")?.data?.templateId,
   );
 
   const templatePrompts = useTemplatePrompts(templateId ?? "");
@@ -85,7 +87,7 @@ export function CopilotWelcome() {
     <div className="flex flex-col items-center text-center w-full h-full overflow-y-auto py-6 max-md:py-3">
       <div className="min-w-0 max-md:w-full md:min-w-[306px] md:max-w-[50%] lg:max-w-[70%] xl:max-w-[75%] flex-shrink-0 px-6 max-md:px-3 my-auto">
         <div className="flex justify-center">
-          {selectedCopilot?.id === "openbb-copilot" ? (
+          {selectedCopilot?.id === "default-copilot" ? (
             <div
               className={cn(
                 "h-8 w-8",
@@ -101,7 +103,7 @@ export function CopilotWelcome() {
               className="w-16 h-16 rounded"
               variant="noVariant"
               src={selectedCopilot?.image}
-              alt={selectedCopilot?.name}
+              alt={selectedCopilot?.name ?? ""}
               fallback={
                 <div className="w-8 h-8 bg-general-bg-secondary rounded flex items-center justify-center">
                   <Icon id="user-icon" className="h-5 w-5 text-ds-text-body" />
@@ -199,39 +201,34 @@ export function CopilotWelcome() {
                 </div>
               </div>
 
-              {!inSnowflakeNativeApp && (
-                <div className="w-full">
-                  <div className="body-xs-semibold uppercase tracking-wider text-ds-text-caption mb-2 text-left text-2xs">
-                    Chat Settings
+              <div className="w-full">
+                <div className="body-xs-semibold uppercase tracking-wider text-ds-text-caption mb-2 text-left text-2xs">
+                  Chat Settings
+                </div>
+                <div className="flex flex-col gap-2.5 w-full">
+                  <div className="bg-general-bg-secondary rounded p-3 body-xs-regular text-ds-text-body text-start">
+                    Activate Global data{" "}
+                    <Icon
+                      id="layout-top"
+                      className="inline-block w-4 h-4 align-middle"
+                    />{" "}
+                    to retrieve data from any widget available in the library.
                   </div>
-                  <div className="flex flex-col gap-2.5 w-full">
-                    <div className="bg-general-bg-secondary rounded p-3 body-xs-regular text-ds-text-body text-start">
-                      Activate Global data{" "}
-                      <Icon
-                        id="layout-top"
-                        className="inline-block w-4 h-4 align-middle"
-                      />{" "}
-                      to retrieve data from any widget available in the library.
-                    </div>
-                    <div className="bg-general-bg-secondary rounded p-3 body-xs-regular text-ds-text-body text-start">
-                      Activate Generative UI{" "}
-                      <Icon
-                        id="zap-icon"
-                        className="inline-block w-4 h-4 align-middle"
-                      />{" "}
-                      that grants control of the dashboard by adding and modifying
-                      widgets.
-                    </div>
+                  <div className="bg-general-bg-secondary rounded p-3 body-xs-regular text-ds-text-body text-start">
+                    Activate Generative UI{" "}
+                    <Icon id="zap-icon" className="inline-block w-4 h-4 align-middle" />{" "}
+                    that grants control of the dashboard by adding and modifying
+                    widgets.
                   </div>
                 </div>
-              )}
+              </div>
 
-              {aiCopilotDocumentationLinksFF && (
+              {aiCopilotDocumentationLinksFF && copilotDocsHref && (
                 <p className="body-xs-regular text-ds-text-caption text-left">
                   For more information, see our{" "}
                   <a
                     className="text-link-color underline underline-offset-2"
-                    href="https://docs.openbb.co/workspace/analysts/ai-features/copilot-basics"
+                    href={copilotDocsHref}
                     target="_blank"
                     rel="noreferrer noopener"
                   >

@@ -1,13 +1,7 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import clsx from "clsx";
 import { toPng } from "html-to-image";
-import {
-  type Dispatch,
-  type ReactNode,
-  type SetStateAction,
-  useEffect,
-  useState,
-} from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import Icon from "./Icon";
 
 export default function WidgetFullscreen({
@@ -19,7 +13,7 @@ export default function WidgetFullscreen({
   widgetId: string;
   header: ReactNode;
   open: boolean;
-  setOpen: Dispatch<SetStateAction<boolean>>;
+  setOpen: (open: boolean) => void;
 }) {
   const [image, setImage] = useState<string | null>(null);
 
@@ -94,22 +88,6 @@ export default function WidgetFullscreen({
                 Loading...
               </div>
             )}
-            {/*Children.map(children, (child) => {
-                            if (isValidElement(child)) {
-                                if (child?.props?.className?.includes("min-h-[200px]")) {
-                                    // replace min-h-[200px] with min-h-[300px]
-                                    return cloneElement(child, {
-                                        // @ts-ignore
-                                        className: child.props.className.replace(
-                                            "min-h-[200px]",
-                                            "min-h-[600px]",
-                                        ),
-                                    });
-                                }
-                                return child;
-                            }
-                            return child;
-                        })*/}
           </div>
 
           <div className="flex mt-auto justify-between">

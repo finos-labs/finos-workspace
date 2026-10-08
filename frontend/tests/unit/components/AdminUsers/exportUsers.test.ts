@@ -12,13 +12,11 @@ const makeUser = (over: Partial<User> = {}): User => ({
   email: "alice@example.com",
   role: "",
   billing_active: true,
-  pro_entitlements: {} as User["pro_entitlements"],
   status: "active",
   last_login: "2026-01-01T10:00:00Z",
   last_active: "2026-02-01T10:00:00Z",
   permissions_uuid: "p1",
   source: "user" as User["source"],
-  renewed: false,
   ...over,
 });
 

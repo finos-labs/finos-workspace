@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   Drawer,
@@ -8,6 +9,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "~/components/ui/Drawer";
+import { partial } from "../../mocks";
 
 describe("Drawer", () => {
   it("renders trigger and opens content", async () => {
@@ -37,7 +39,7 @@ vi.mock("vaul", () => {
 
   return {
     Drawer: {
-      Root: ({ children }: any) => {
+      Root: ({ children }: { children?: ReactNode }) => {
         const [open, setOpen] = React.useState(false);
         return (
           <DrawerContext.Provider value={{ open, setOpen }}>
@@ -45,26 +47,34 @@ vi.mock("vaul", () => {
           </DrawerContext.Provider>
         );
       },
-      Trigger: ({ children, asChild }: any) => {
+      Trigger: ({ children, asChild }: { children?: ReactNode; asChild?: boolean }) => {
         const { setOpen } = React.useContext(DrawerContext);
         if (asChild && React.isValidElement(children)) {
-          return React.cloneElement(children as any, { onClick: () => setOpen(true) });
+          return React.cloneElement(partial(children), {
+            onClick: () => setOpen(true),
+          });
         }
         return <button onClick={() => setOpen(true)}>{children}</button>;
       },
-      Portal: ({ children }: any) => {
+      Portal: ({ children }: { children?: ReactNode }) => {
         const { open } = React.useContext(DrawerContext);
         return open ? <>{children}</> : null;
       },
       Overlay: () => <div data-testid="drawer-overlay" />,
-      Content: ({ children, className }: any) => (
+      Content: ({
+        children,
+        className,
+      }: {
+        children?: ReactNode;
+        className?: string;
+      }) => (
         <div data-testid="drawer-content" className={className}>
           {children}
         </div>
       ),
-      Title: ({ children }: any) => <h2>{children}</h2>,
-      Description: ({ children }: any) => <p>{children}</p>,
-      Close: ({ children }: any) => {
+      Title: ({ children }: { children?: ReactNode }) => <h2>{children}</h2>,
+      Description: ({ children }: { children?: ReactNode }) => <p>{children}</p>,
+      Close: ({ children }: { children?: ReactNode }) => {
         const { setOpen } = React.useContext(DrawerContext);
         return <button onClick={() => setOpen(false)}>{children}</button>;
       },

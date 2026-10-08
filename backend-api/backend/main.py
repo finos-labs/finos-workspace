@@ -1,36 +1,25 @@
 import platform
 from contextlib import asynccontextmanager, suppress
 from time import time
-from typing import Annotated
 from uuid import UUID
 
 import prometheus_client
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from fastapi_pagination import add_pagination
+from fastmcp.utilities.lifespan import combine_lifespans
 from loguru import logger
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from slowapi import _rate_limit_exceeded_handler  # noqa: PLC2701
 from slowapi.errors import RateLimitExceeded
-from sqlalchemy import Row, update
-from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.cors import CORSMiddleware
 
-from api import (
-    auth_helpers,
-    helpers,
-    hubspot,
-    schemas,
-    stripe_schemas,
-)
+from api import auth_helpers, helpers
 from api.context import session_token_ctx
-from api.database import aget_write_db
-from api.email import EmailService
 from api.events.role_permission_events import init_audit_listeners
-from api.models import Entity
 from api.rate_limit import LIMIT_DEFAULT, exempt_user_agent, limiter
 from api.worker_tasks import start_background_tasks
 from routers import (
@@ -39,12 +28,10 @@ from routers import (
     entity,
     marketplace,
     marketplace_developer,
-    metrics as metrics_router,
     run_tasks,
     sdk,
-    testing,
 )
-from routers.pro import (
+from routers.app import (
     dash,
     data_connectors,
     file_storage,
@@ -52,17 +39,8 @@ from routers.pro import (
     user_apps,
     workspace_mcp,
 )
-from routers.pro.workspace_mcp.asgi import create_workspace_mcp_asgi_app
-
-# Optional Lite Checkout module. Delete routers/stripe_lite.py for builds that
-# should not ship the Stripe webhook (e.g. on-prem customer deploys); the
-# server starts normally without it.
-try:
-    from routers import stripe_lite  # type: ignore[attr-defined]
-except ImportError:
-    stripe_lite = None
+from routers.app.workspace_mcp.asgi import create_workspace_mcp_asgi_app
 from utilities import config
-from utilities.feedback_providers import get_feedback_provider
 from utilities.runtime_metrics import start_runtime_metrics
 
 config.settings.setup_logging()
@@ -75,7 +53,7 @@ FASTAPI_KWARGS = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await helpers.init_trial_mappings()
+    await helpers.create_developer_mapping()
     await start_background_tasks()
     await init_audit_listeners()
     if config.settings.PROMETHEUS:
@@ -89,13 +67,13 @@ if config.settings.DISABLE_CORS:
 else:
     origins = config.settings.BACKEND_CORS_ORIGINS
 
-workspace_mcp_asgi_app = create_workspace_mcp_asgi_app(lifespan)
+workspace_mcp_asgi_app = create_workspace_mcp_asgi_app()
 
 app = FastAPI(
     redoc_url=None,
     docs_url=None,
     openapi_url=None,
-    lifespan=workspace_mcp_asgi_app.lifespan,
+    lifespan=combine_lifespans(lifespan, workspace_mcp_asgi_app.lifespan),
     generate_unique_id_function=lambda route: route.name,
 )
 
@@ -122,7 +100,6 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # ty
 
 routers = [
     auth.router,
-    metrics_router.router,
     sdk.router,
     index.router,
     data_connectors.router,
@@ -135,12 +112,7 @@ routers = [
     marketplace.router,
     marketplace_developer.router,
     run_tasks.router,
-    testing.router,
 ]
-if stripe_lite is not None and not config.settings.is_onprem():
-    # gate for making sure onprem doesnt get it - even with a misconfigure
-    logger.info("Stripe Lite router is enabled", exclude=True)
-    routers.append(stripe_lite.router)
 
 
 @app.exception_handler(Exception)
@@ -266,97 +238,12 @@ def nginx():
     return JSONResponse(content={"success": True}, status_code=200)
 
 
-@app.post("/invite-emails", response_model=schemas.SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
-def send_invite_emails(
-    request: Request,
-    invite: schemas.InviteEmail,
-    background_tasks: BackgroundTasks,
-    user: Annotated[Row, Depends(auth_helpers.GetCurrentUser(["email"]))],
-):
-    if not config.settings.HUBSPOT:
-        raise HTTPException(400, detail=hubspot.ERROR_MESSAGE)
-
-    background_tasks.add_task(
-        EmailService.send_invite_emails,
-        user.email,
-        invite.to_emails,
-    )
-    return {"success": True}
-
-
-@app.post("/feedback", response_model=schemas.SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
-async def post_feedback(
-    request: Request,
-    feedback: schemas.Feedback,
-    user: Annotated[Row, Depends(auth_helpers.GetCurrentUser(["email"]))],
-    db: Annotated[AsyncSession, Depends(aget_write_db)],
-):
-    provider = get_feedback_provider()
-    success, message = await provider.submit_feedback(feedback, user.email, db, None)
-
-    if success:
-        return JSONResponse(content={"success": True}, status_code=200)
-
-    # Return 400 with the error message from the provider or default HTTP error if it failed
-    if message == hubspot.ERROR_MESSAGE:
-        raise HTTPException(400, detail=message)
-
-    return JSONResponse(content={"success": False, "message": message}, status_code=400)
-
-
-@app.post("/stripe", response_model=schemas.SuccessReturn)
-async def stripe(
-    data: stripe_schemas.GeneralRequest,
-    db: Annotated[AsyncSession, Depends(aget_write_db)],
-):
-    if data.type == "invoice.sent":
-        invoice = data.to_invoice()
-        if invoice.due_date:
-            # We should consider setting to period_end if paid is true
-            # We should consider only updating if the new value is higher
-            update_query = (
-                update(Entity)
-                .where(Entity.stripe_id == invoice.customer)
-                .values(expiration_date=invoice.due_date)
-            )
-            response = await db.execute(update_query)
-            if response.rowcount == 0:
-                logger.info(f"Could not find id: {invoice.customer}")
-            await db.commit()
-    elif data.type == "invoice.paid":
-        invoice = data.to_invoice()
-        # We should consider only updating if the new value is higher
-        update_query = (
-            update(Entity)
-            .where(Entity.stripe_id == invoice.customer)
-            .values(expiration_date=invoice.lines.data[0].period.end)
-        )
-        response = await db.execute(update_query)
-        if response.rowcount == 0:
-            logger.error(f"Could not find id: {invoice.customer}")
-        await db.commit()
-    return {"success": True}
-
-
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
 
-    BLOCKED = [
-        "/pro/register",
-        "/pro/book-demo",
-        "/pro/log",
-        "/pro/create-user/{the_uuid}",
-        "/pro/create-account/{the_uuid}",
-        "/pro/extend-trial-email/{user_uuid}",
-        "/pro/check-install/{target}",
-        "/pro/check-update/{target}/{current_version}",
-    ]
-
     openapi_schema = get_openapi(
-        title="OpenBB Payments Backend",
+        title="Backend",
         version="1.0.0",
         servers=[
             {
@@ -367,9 +254,7 @@ def custom_openapi():
         routes=[
             route
             for route in app.routes
-            if hasattr(route, "path")
-            and route.path.startswith("/pro/")
-            and route.path not in BLOCKED
+            if hasattr(route, "path") and route.path.startswith("/app/")
         ],
     )
     app.openapi_schema = openapi_schema

@@ -6,20 +6,13 @@ import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 import {
   getFileWidgets,
-  getSingleWidgets,
   getWidgetMetadata,
   type PostFileWidget,
-  type PostSingleWidget,
   patchWidgetMetadata,
   postFileWidget,
-  postSingleWidget,
   postWidgetMetadata,
 } from "~/api/auth.api";
-import { useCallbackRef } from "~/hooks/useRefHooks";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { inSnowflakeNativeApp } from "~/lib/constants";
-import { getConfig } from "~/lib/runtimeConfig";
-import type SOURCES from "~/lib/sources.json";
 import { useShallowAppStore } from "~/lib/state/app";
 import {
   isMetadataType,
@@ -27,32 +20,16 @@ import {
   type WidgetMetadataItem,
 } from "~/lib/state/backendConnector";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
-import { useShallowThemeStore } from "~/lib/state/theme";
-import {
-  dispatchSaveState,
-  dispatchUpdateWidget,
-  isOmniType,
-  isSSRMType,
-  processWidgetId,
-  triggerCustomEvent,
-  useEventListener,
-} from "~/lib/utils";
-import { isQueryCodeWidget } from "~/lib/utils/widget";
+import { dispatchSaveState, dispatchUpdateWidget, processWidgetId } from "~/lib/utils";
 import type { MetaDataWidgetType } from "~/types/auth.type";
-import { handleWidgetMetadata, isDatabaseType } from "~/utils/dataConnectorsHelpers";
-import { useGetWidgetsStore } from "./AI/hooks/useGetAppWidgets";
+import { handleWidgetMetadata } from "~/utils/dataConnectorsHelpers";
 import { Button } from "./ds/atoms/Button";
-import { Checkbox } from "./ds/atoms/Checkbox";
 import { FormInput } from "./ds/atoms/Input";
 import { FormTextarea } from "./ds/atoms/TextArea";
 import { BaseDialog } from "./ds/dialogs/BaseDialog";
 import { DialogDescription, DialogFooter, DialogTitle } from "./ds/dialogs/Dialog";
 import { Form, FormField } from "./ds/molecules/Form";
-import Icon from "./Icon";
-import Tooltip from "./Tooltip";
-import type { WidgetT } from "./types";
 import { useWidgetContext } from "./Widget.context";
-export type SourceKey = keyof typeof SOURCES;
 
 interface Props {
   open: boolean;
@@ -72,12 +49,12 @@ export type MetadataForm = z.infer<typeof metadataSchema>;
 
 export function MetadataDialog(props: Props) {
   const { open, setOpen, className } = props;
-  const { setStoredFiles, setSingleWidgets, setWidgetMetadata } =
-    useShallowBackendConnectorStore((state) => ({
+  const { setStoredFiles, setWidgetMetadata } = useShallowBackendConnectorStore(
+    (state) => ({
       setStoredFiles: state.setStoredFiles,
       setWidgetMetadata: state.setWidgetMetadata,
-      setSingleWidgets: state.setSingleWidgets,
-    }));
+    }),
+  );
 
   const copilot = useShallowCopilotDataStore((state) => ({
     addDataOnDashboardWidget: state.addDataOnDashboardWidget,
@@ -90,10 +67,9 @@ export function MetadataDialog(props: Props) {
   }));
 
   const { widget, activeDashboardId, updateWidget } = useWidgetContext();
-  const aiEnhancements = useShallowThemeStore((state) => state.aiEnhancements);
 
   const widgetInfo = useMemo(
-    () => processWidgetId(widget.widgetId, widget.connectionType),
+    () => processWidgetId(widget.widgetId ?? "", widget.connectionType),
     [widget.widgetId, widget.connectionType],
   );
   const liveWidgetMetadata = useShallowBackendConnectorStore((state) =>
@@ -106,40 +82,7 @@ export function MetadataDialog(props: Props) {
     return handleWidgetMetadata<WidgetMetadataItem>(widget);
   }, [liveWidgetMetadata, widget.widgetId, widget.connectionType]);
 
-  const { isSsrmAdvancedWidget, isSqlOrPythonQuery, aiMetadataFeatureEnabled } =
-    useMemo(() => {
-      const copilotConfig = getConfig().copilot;
-      const aiMetadataFeatureEnabled =
-        copilotConfig.enabled && copilotConfig.aiEnhancements && aiEnhancements;
-      return {
-        isSsrmAdvancedWidget: widget.type === "ssrm_advanced",
-        isSqlOrPythonQuery: isQueryCodeWidget(widget.params),
-        aiMetadataFeatureEnabled,
-      };
-    }, [aiEnhancements, widget.params]);
-
-  const initialAutoUpdateMetadataOnRun = useMemo(() => {
-    if (!isSsrmAdvancedWidget) return false;
-
-    const widgetAutoUpdate = widget.storage?.autoUpdateMetadataOnRun;
-    const metadataAutoUpdate = metadata?.storage?.autoUpdateMetadataOnRun;
-
-    if (typeof widgetAutoUpdate === "boolean") return widgetAutoUpdate;
-    if (typeof metadataAutoUpdate === "boolean") return metadataAutoUpdate;
-
-    return aiMetadataFeatureEnabled;
-  }, [
-    aiMetadataFeatureEnabled,
-    isSsrmAdvancedWidget,
-    metadata?.storage?.autoUpdateMetadataOnRun,
-    widget.storage?.autoUpdateMetadataOnRun,
-  ]);
-
   const [state, dispatch] = useStateReducer({
-    isGeneratingMetadata: false,
-    isQueryStale: false,
-    pendingMetadataAfterRun: false,
-    autoUpdateMetadataOnRun: initialAutoUpdateMetadataOnRun,
     isLoading: false,
   });
 
@@ -174,142 +117,15 @@ export function MetadataDialog(props: Props) {
         subCategory: metadata?.subCategory ?? widget?.subCategory ?? "",
         source: sourceValue,
       });
-      dispatch({ autoUpdateMetadataOnRun: initialAutoUpdateMetadataOnRun });
-      // Request current staleness state from the widget
-      if (isSsrmAdvancedWidget) {
-        triggerCustomEvent(`requestStaleState-${widget.id}`, true);
-      }
     }
   }, [open]);
-
-  const handleRunMetadataNow = useCallbackRef(() => {
-    if (!isSsrmAdvancedWidget || state.isGeneratingMetadata) return;
-
-    if (!aiMetadataFeatureEnabled) {
-      toast.error("AI Enhancements Disabled", {
-        description: "AI Enhancements must be enabled to run metadata update.",
-      });
-      return;
-    }
-
-    if (!isSqlOrPythonQuery) {
-      toast.error("Unsupported Widget Type", {
-        description: "Metadata update is only available for SQL/Python query widgets.",
-      });
-      return;
-    }
-
-    dispatch({ isGeneratingMetadata: true });
-
-    if (state.isQueryStale) {
-      dispatch({ pendingMetadataAfterRun: true });
-      triggerCustomEvent(`runParams-${widget.id}`, true);
-      return;
-    }
-
-    const currentValues = form.getValues();
-    triggerCustomEvent(`runMetadataUpdate-${widget.id}`, {
-      runMetadataUpdate: true,
-      metadata: {
-        name: currentValues.name,
-        description: currentValues.description,
-        category: currentValues.category,
-        subCategory: currentValues.subCategory,
-        source: currentValues.source,
-      },
-    });
-  });
-
-  const handleAutoUpdateMetadataOnRunChange = useCallback(
-    (autoUpdateMetadataOnRun: boolean) => {
-      dispatch({ autoUpdateMetadataOnRun });
-
-      if (!isSsrmAdvancedWidget) return;
-
-      updateWidget((prev) => ({
-        ...prev,
-        storage: {
-          ...prev.storage,
-          autoUpdateMetadataOnRun,
-        },
-      }));
-    },
-    [isSsrmAdvancedWidget, updateWidget],
-  );
-
-  const handleMetadataUpdateComplete = useCallback(
-    (detail: any) => {
-      dispatch({ isGeneratingMetadata: false });
-      if (detail?.success && detail.metadata) {
-        form.setValue("name", detail.metadata.name || form.getValues("name"));
-        form.setValue(
-          "description",
-          detail.metadata.description || form.getValues("description"),
-        );
-        form.setValue(
-          "category",
-          detail.metadata.category || form.getValues("category"),
-        );
-        form.setValue(
-          "subCategory",
-          detail.metadata.subCategory || form.getValues("subCategory"),
-        );
-      }
-    },
-    [form.setValue, form.getValues],
-  );
-
-  const handleStaleParams = useCallbackRef((detail: any) => {
-    dispatch({ isQueryStale: Boolean(detail?.staleParams) });
-  });
-
-  const handleRunComplete = useCallbackRef((detail: any) => {
-    if (!state.pendingMetadataAfterRun) return;
-
-    if (!(detail?.requestSucceeded && detail?.hasData)) {
-      dispatch({ pendingMetadataAfterRun: false, isGeneratingMetadata: false });
-
-      if (detail?.requestSucceeded && detail?.hasData === false) {
-        toast.error("No Query Results", {
-          description:
-            "Metadata update skipped because the latest run returned no data.",
-        });
-      }
-      return;
-    }
-
-    dispatch({ pendingMetadataAfterRun: false });
-    triggerCustomEvent(`runMetadataUpdate-${widget.id}`, {
-      runMetadataUpdate: true,
-      metadata: {
-        name: form.getValues("name"),
-        description: form.getValues("description"),
-        category: form.getValues("category"),
-        subCategory: form.getValues("subCategory"),
-        source: form.getValues("source"),
-      },
-    });
-  });
-
-  useEventListener(`metadataUpdateComplete-${widget.id}`, handleMetadataUpdateComplete);
-  useEventListener(`staleParams-${widget.id}`, handleStaleParams);
-  useEventListener(`runComplete-${widget.id}`, handleRunComplete);
 
   const handleSubmit = useCallback(
     async (data: MetadataForm) => {
       dispatchSaveState();
       dispatch({ isLoading: true });
-      const autoUpdateMetadataOnRun = state.autoUpdateMetadataOnRun;
       try {
-        let updateOtherDashboardsWidgets = true; // we need this for when creating a metadata item from inside a dashboard. we cannot update all the other elements with widgetId because core widgets created from the search will have widgetId as iframe or rss_viewer or rich_note, so they would all be updated which is not what we want
-        let updateCurrentWidgetOnly = false;
-        const isDatabase = isDatabaseType(widget.connectionType);
-        const widgetStorage = isSsrmAdvancedWidget
-          ? {
-              ...(widget.storage || {}),
-              autoUpdateMetadataOnRun,
-            }
-          : widget.storage;
+        let updateOtherDashboardsWidgets = true; // we need this for when creating a metadata item from inside a dashboard. we cannot update all the other elements with widgetId because core widgets created from the search will have widgetId as iframe or html, so they would all be updated which is not what we want
         if (isMetadataType(widget, metadata, "file")) {
           // Handle file widget update
           const cleanData = {
@@ -333,29 +149,6 @@ export function MetadataDialog(props: Props) {
           // Update file widgets
           const fileWidgets = await getFileWidgets();
           setStoredFiles(fileWidgets);
-        } else if (isMetadataType(widget, metadata, "single")) {
-          const cleanData: PostSingleWidget = {
-            name: data.name,
-            description: data.description,
-            category: data.category as PostSingleWidget["category"],
-            subCategory: data.subCategory,
-            source: data.source,
-            endpoint: metadata?.endpoint,
-            gridData: metadata?.gridData,
-            data: metadata?.data,
-            endpointHeaders: metadata?.endpointHeaders,
-            dataKey: metadata?.dataKey,
-          };
-
-          const { status } = await postSingleWidget(widget.widgetId, cleanData);
-          if (status !== 200) {
-            toast.error("Something went wrong. Please try again.", {
-              description: "Unknown error",
-            });
-            return;
-          }
-          const result = await getSingleWidgets();
-          setSingleWidgets(result);
         } else {
           const widgetMetadata = {
             name: data.name,
@@ -363,13 +156,11 @@ export function MetadataDialog(props: Props) {
             category: data.category,
             subCategory: data.subCategory,
             source: data.source,
-            storage: widgetStorage,
+            storage: widget.storage,
           } as WidgetMetadataItem;
 
           if (metadata) {
             const result = await patchWidgetMetadata(widgetMetadata, widgetInfo.uuid);
-            updateCurrentWidgetOnly =
-              isSSRMType(widget.type) || isOmniType(widget.type);
             if (!result.success) {
               throw new Error("Failed to update widget metadata");
             }
@@ -378,42 +169,6 @@ export function MetadataDialog(props: Props) {
             widgetMetadata.subCategory = undefined;
             const id = uuidv4();
 
-            let widgetConfig: WidgetT | undefined;
-            const { getAppWidget, getSqlWidget, getRunCodeWidget } =
-              useGetWidgetsStore.getState();
-            if (isSSRMType(widget.type)) {
-              const sqlWidget = inSnowflakeNativeApp
-                ? getSqlWidget()
-                : getAppWidget(widget.widgetId, widget.sourceName);
-              if (!sqlWidget) throw new Error("SQL widget not found");
-              const query = widget.storage?.params?.query || "";
-              widgetConfig = {
-                ...sqlWidget,
-                storage: {
-                  params: { query },
-                  ...(isSsrmAdvancedWidget && { autoUpdateMetadataOnRun }),
-                },
-              };
-            } else if (isOmniType(widget.type)) {
-              const omniWidget = inSnowflakeNativeApp
-                ? getRunCodeWidget()
-                : getAppWidget(widget.widgetId, widget.sourceName);
-              if (!omniWidget) throw new Error("Omni widget not found");
-              const prompt = widget.storage?.params?.prompt || "";
-              widgetConfig = { ...omniWidget, storage: { params: { prompt } } };
-            }
-
-            if (widgetConfig) {
-              widgetInfo.cleanWidgetId = "widget_studio";
-              widgetMetadata.widgetConfig = {
-                ...widgetConfig,
-                id,
-                name: data.name,
-                description: data.description,
-                widgetType: "widget_studio",
-                connectionType: "widgetMetadata",
-              };
-            }
             // TODO: We should be getting the widgetType explicitly from the widget
             const widgetType = widgetInfo.cleanWidgetId as MetaDataWidgetType;
             const result = await postWidgetMetadata({
@@ -429,13 +184,7 @@ export function MetadataDialog(props: Props) {
               description: data.description,
               category: data.category,
               subCategory: data.subCategory,
-              source: data.source as any,
-              ...(isSsrmAdvancedWidget && {
-                storage: {
-                  ...prev.storage,
-                  autoUpdateMetadataOnRun,
-                },
-              }),
+              source: data.source,
             }));
             if (!result.success) {
               throw new Error("Failed to create widget metadata");
@@ -447,27 +196,13 @@ export function MetadataDialog(props: Props) {
 
         const updatedFields = {
           name: data.name,
-          ...(!isDatabase && {
-            description: data.description,
-          }),
+          description: data.description,
           category: data.category,
           subCategory: data.subCategory,
-          source: data.source as any,
+          source: data.source,
         };
 
-        if (updateCurrentWidgetOnly)
-          updateWidget((prev) => ({
-            ...prev,
-            ...updatedFields,
-            ...(isSsrmAdvancedWidget && {
-              storage: {
-                ...prev.storage,
-                autoUpdateMetadataOnRun,
-              },
-            }),
-          }));
-
-        if (updateOtherDashboardsWidgets && !updateCurrentWidgetOnly) {
+        if (updateOtherDashboardsWidgets) {
           const selectedWidgets = getWidgetsByAttribute("widgetId", widget.widgetId);
 
           for (const [dashId, widgets] of Object.entries(selectedWidgets)) {
@@ -475,12 +210,6 @@ export function MetadataDialog(props: Props) {
               const updatedWidget = {
                 ...w,
                 ...updatedFields,
-                ...(isSsrmAdvancedWidget && {
-                  storage: {
-                    ...w.storage,
-                    autoUpdateMetadataOnRun,
-                  },
-                }),
               };
 
               if (activeDashboardId === dashId && w.innerTab === widget.innerTab) {
@@ -522,10 +251,7 @@ export function MetadataDialog(props: Props) {
       getWidgetsByAttribute,
       storeUpdateWidget,
       metadata,
-      state.autoUpdateMetadataOnRun,
-      isSsrmAdvancedWidget,
       setStoredFiles,
-      setSingleWidgets,
       setWidgetMetadata,
       widget,
       setOpen,
@@ -543,8 +269,7 @@ export function MetadataDialog(props: Props) {
     >
       <DialogTitle>Edit widget metadata</DialogTitle>
       <DialogDescription>
-        By editing the metadata, you will help OpenBB Copilot to better understand your
-        widget.
+        By editing the metadata, you will help Copilot to better understand your widget.
       </DialogDescription>
       <Form {...form}>
         <form
@@ -552,61 +277,11 @@ export function MetadataDialog(props: Props) {
           className="flex flex-col overflow-hidden flex-1 min-h-0"
         >
           <div className="overflow-y-auto flex-1 min-h-0 flex flex-col gap-2 pr-1">
-            {isSsrmAdvancedWidget && aiMetadataFeatureEnabled && (
-              <div className="flex flex-col rounded-lg border border-general-border-primary overflow-hidden mb-2">
-                <div className="flex items-center justify-between gap-3 px-3 py-1.5 bg-general-bg-secondary">
-                  <span className="text-xs text-general-label-primary">
-                    Update metadata based on query
-                  </span>
-                  <Tooltip message="Generate new metadata">
-                    <Button
-                      variant="outlined"
-                      size="sm"
-                      type="button"
-                      disabled={
-                        !isSqlOrPythonQuery ||
-                        state.isLoading ||
-                        state.isGeneratingMetadata
-                      }
-                      onClick={handleRunMetadataNow}
-                      className="p-1.5"
-                      aria-label="Generate new metadata"
-                    >
-                      {state.isGeneratingMetadata ? (
-                        <Icon id="mdi-loading" className="size-4 animate-spin" />
-                      ) : (
-                        <Icon id="sparkles-icon" className="size-4" />
-                      )}
-                    </Button>
-                  </Tooltip>
-                </div>
-                <div className="px-3 py-1.5 bg-general-bg-tertiary">
-                  <Checkbox
-                    id="auto-update-metadata-on-run-dialog"
-                    label="Auto-update on run"
-                    checked={state.autoUpdateMetadataOnRun}
-                    disabled={!isSqlOrPythonQuery}
-                    onCheckedChange={handleAutoUpdateMetadataOnRunChange}
-                  />
-                  {!isSqlOrPythonQuery && (
-                    <p className="text-xs text-general-label-disabled mt-2">
-                      Automatic metadata updates are only supported for SQL/Python query
-                      widgets.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
             <FormField
               name="name"
               control={form.control}
               render={({ field }) => (
-                <FormInput
-                  label="Name"
-                  maxLength={50}
-                  disabled={state.isGeneratingMetadata}
-                  {...field}
-                />
+                <FormInput label="Name" maxLength={50} {...field} />
               )}
             />
             <FormField
@@ -620,7 +295,6 @@ export function MetadataDialog(props: Props) {
                       <span className="text-[#5A5961] italic"> (optional)</span>
                     </p>
                   }
-                  disabled={state.isGeneratingMetadata}
                   {...field}
                 />
               )}
@@ -636,7 +310,6 @@ export function MetadataDialog(props: Props) {
                       <span className="text-[#5A5961] italic"> (optional)</span>
                     </p>
                   }
-                  disabled={state.isGeneratingMetadata}
                   {...field}
                 />
               )}
@@ -651,7 +324,6 @@ export function MetadataDialog(props: Props) {
                       <span className="text-[#5A5961] italic"> (optional)</span>
                     </p>
                   }
-                  disabled={state.isGeneratingMetadata}
                   {...field}
                 />
               )}
@@ -666,7 +338,6 @@ export function MetadataDialog(props: Props) {
                       Source<span className="text-[#5A5961] italic"> (optional)</span>
                     </p>
                   }
-                  disabled={state.isGeneratingMetadata}
                   {...field}
                 />
               )}

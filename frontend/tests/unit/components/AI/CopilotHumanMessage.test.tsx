@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import CopilotHumanMessage from "~/components/AI/CopilotHumanMessage";
 import {
   StreamingStatus,
@@ -44,7 +44,15 @@ vi.mock("~/hooks/useRefHooks", () => ({
 }));
 
 vi.mock("~/components/AI/TextArea", () => ({
-  default: ({ prompt, setPrompt, handleSubmit }: any) => (
+  default: ({
+    prompt,
+    setPrompt,
+    handleSubmit,
+  }: {
+    prompt: string;
+    setPrompt: (prompt: string) => void;
+    handleSubmit: (prompt: string) => void;
+  }) => (
     <textarea
       data-testid="edit-text-area"
       value={prompt}
@@ -89,7 +97,7 @@ describe("CopilotHumanMessage", () => {
   const baseMessage: HumanMessage = {
     role: "human",
     content: "Hello, this is a test message",
-    copilotId: "openbb-copilot",
+    copilotId: "default-copilot",
     timestamp: 1705330200000,
   };
 

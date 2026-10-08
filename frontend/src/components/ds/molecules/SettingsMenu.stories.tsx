@@ -5,6 +5,7 @@ import SettingsMenu from "./SettingsMenu";
 const meta = {
   title: "Molecules/SettingsMenu",
   component: SettingsMenu,
+  args: { title: "Settings", children: null },
   tags: ["autodocs"],
   parameters: {
     semanticTokens: [

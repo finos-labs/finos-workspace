@@ -49,7 +49,7 @@ describe("dataConnectors utility functions", () => {
       return {
         id: "widget-1",
         name: "Test Widget",
-        widgetId: "test_widget" as any,
+        widgetId: "test_widget",
         type: "table",
         ...overrides,
       } as WidgetT;
@@ -307,12 +307,12 @@ describe("dataConnectors utility functions", () => {
 
       it("should handle widgets with WidgetJsonT type", () => {
         const jsonWidget: WidgetJsonT = {
-          widgetId: "test_widget" as any,
+          widgetId: "test_widget",
           name: "JSON Widget",
           description: "A test widget",
         } as WidgetJsonT;
 
-        handleConnectionAdded("dashboard-123", [jsonWidget as any], navigate);
+        handleConnectionAdded("dashboard-123", [jsonWidget], navigate);
 
         expect(mockAddWidget).toHaveBeenCalledWith("dashboard-123", jsonWidget);
       });

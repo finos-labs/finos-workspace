@@ -8,7 +8,7 @@ import { useShallowStreamingStore } from "./useStreaming";
 
 export default function useQueriesLeft(fromUsageInfo = false): {
   queriesLeft: number | null;
-  usage: Usage;
+  usage: Partial<Usage> | null;
 } {
   const openaiApiKey = useShallowAuthStore((s) => s.openaiApiKey);
   const selectedCopilot = useShallowCopilotStore((s) => s.selectedCopilot);
@@ -16,16 +16,28 @@ export default function useQueriesLeft(fromUsageInfo = false): {
 
   if (openaiApiKey) return { queriesLeft: null, usage };
 
-  // Only apply query limits to the default OpenBB copilot (Ada)
-  // openbb-copilot is the only copilot without a holderUuid
-  if ((!fromUsageInfo && selectedCopilot?.holderUuid) || !usage?.copilot_calls_limit)
-    return { queriesLeft: null, usage: {} as Usage };
+  // Only apply limits to the default copilot (Ada)
+  // default-copilot is the only copilot without a holderUuid
+  const callsLimit = usage?.copilot_calls_limit;
+  const tokensLimit = usage?.copilot_tokens_limit ?? null;
+  if (
+    !usage ||
+    (!fromUsageInfo && selectedCopilot?.holderUuid) ||
+    !(callsLimit || tokensLimit !== null)
+  )
+    return { queriesLeft: null, usage: {} };
+
+  // The token limit is checked before a query starts: once the day's tokens are used
+  // up, no query is left
+  const tokensUsedUp =
+    tokensLimit !== null && (usage.number_copilot_tokens_day_count ?? 0) >= tokensLimit;
 
   return {
-    queriesLeft: Math.max(
-      0,
-      usage.copilot_calls_limit - usage.number_copilot_calls_day_count,
-    ),
+    queriesLeft: tokensUsedUp
+      ? 0
+      : callsLimit
+        ? Math.max(0, callsLimit - usage.number_copilot_calls_day_count)
+        : null,
     usage,
   };
 }
@@ -41,7 +53,15 @@ export function QueryLimitReached() {
   const showWelcome = useShallowCopilotStore((s) => s.showWelcome);
 
   const messageMemo = useMemo(() => {
-    const { copilot_calls_limit, number_copilot_calls_day_count } = usage;
+    const {
+      copilot_calls_limit,
+      number_copilot_calls_day_count = 0,
+      copilot_tokens_limit,
+      number_copilot_tokens_day_count = 0,
+    } = usage ?? {};
+    const tokensUsedUp =
+      copilot_tokens_limit != null &&
+      number_copilot_tokens_day_count >= copilot_tokens_limit;
 
     return (
       <div className="_message-content">
@@ -49,12 +69,15 @@ export function QueryLimitReached() {
           <p className="text-[#DC2626] dark:text-[#EF4444] pt-1">
             <span className="text-medium font-bold">Daily Limit Reached </span>
             <span className="text-xs">
-              - {number_copilot_calls_day_count} of {copilot_calls_limit} queries used
+              {tokensUsedUp
+                ? `- ${number_copilot_tokens_day_count} of ${copilot_tokens_limit} tokens used`
+                : `- ${number_copilot_calls_day_count} of ${copilot_calls_limit} queries used`}
             </span>
           </p>
           <p className="pt-1 text-xs">
-            You've reached your daily limit of OpenBB Coplilot queries. Add your OpenAI
-            key or return tomorrow.
+            You've reached your daily limit of Copilot{" "}
+            {tokensUsedUp ? "tokens" : "queries"}. Add your OpenAI key or return
+            tomorrow.
           </p>
           <div className="py-2">
             <Button

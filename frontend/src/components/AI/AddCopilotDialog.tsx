@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import posthog from "posthog-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -12,10 +11,11 @@ import {
 } from "~/api/auth.api";
 import { convertHeadersToRecord } from "~/lib/api";
 import { AGENT_ENABLED_FEATURES, ALL_AI_FEATURES } from "~/lib/constants";
+import { docsUrl } from "~/lib/docsUrl";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { createURLString, uuidv4 } from "~/lib/utils";
-import { EndpointHeadersForm } from "../DataConnectors/SingleWidget";
+import { EndpointHeadersForm } from "../DataConnectors/EndpointHeadersForm";
 import { Button } from "../ds/atoms/Button";
 import { Input } from "../ds/atoms/Input";
 import { BaseDialog } from "../ds/dialogs/BaseDialog";
@@ -24,7 +24,6 @@ import { ConnectionTestResult } from "../ds/molecules/ConnectionTestResult";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -191,11 +190,6 @@ export function AddCopilotDialog() {
 
       const selectedCopilot = newHolder.copilots[0];
       setSelectedCopilot(selectedCopilot);
-      if (posthog) {
-        posthog.capture("added_custom_copilot", {
-          copilot_name: selectedCopilot.name,
-        });
-      }
 
       // Show success toast including enabled features summary
       try {
@@ -257,9 +251,10 @@ export function AddCopilotDialog() {
             parts.push(messages.join(" "));
           }
 
-          parts.push(
-            "See docs: https://docs.openbb.co/workspace/developers/json-specs/agents-json-reference`",
+          const agentsDocs = docsUrl(
+            "workspace/developers/json-specs/agents-json-reference",
           );
+          if (agentsDocs) parts.push(`See docs: ${agentsDocs}`);
           toast.warning("Custom feature not recognized", {
             description: parts.join(" \n"),
           });
@@ -287,7 +282,7 @@ export function AddCopilotDialog() {
       <DialogHeader>
         <DialogTitle>Add Agent</DialogTitle>
         <DialogDescription>
-          Build your own agent and add it to the OpenBB Workspace.
+          Build your own agent and add it to the Workspace.
         </DialogDescription>
       </DialogHeader>
       <Form {...form}>
@@ -301,18 +296,6 @@ export function AddCopilotDialog() {
                 <FormControl>
                   <Input placeholder="https://example.com" {...field} />
                 </FormControl>
-                <FormDescription className="text-2xs">
-                  Check{" "}
-                  <a
-                    href="https://github.com/OpenBB-finance/copilot-for-terminal-pro"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline font-bold hover:text-light-300"
-                  >
-                    this
-                  </a>{" "}
-                  open source repository with an example for more details.
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

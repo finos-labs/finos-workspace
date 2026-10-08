@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-import { usePostHog } from "posthog-js/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ds/atoms/Button";
@@ -24,8 +23,6 @@ export default function ExportWidgetModal() {
     `${formattedDateTime} - ${exportWidgetData?.widgetName} Widget`,
   );
 
-  const posthog = usePostHog();
-
   if (!exportWidgetData) return null;
 
   return (
@@ -49,7 +46,7 @@ export default function ExportWidgetModal() {
             <span className="w-16">Save as</span>
             <input
               id="save-as"
-              className="obb-small-input h-6"
+              className="ws-small-input h-6"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
@@ -89,13 +86,6 @@ export default function ExportWidgetModal() {
           </DialogClose>
           <Button
             onClick={() => {
-              if (posthog) {
-                posthog.capture("user_exported_data_widget", {
-                  widgetName: exportWidgetData.widgetName,
-                  widgetId: exportWidgetData.widgetId,
-                  selectedExportFormat: exportWidgetData.selectedExportFormat,
-                });
-              }
               toast.info("Widget export is being generated", {
                 description: "The file will be downloaded shortly",
               });
@@ -107,7 +97,7 @@ export default function ExportWidgetModal() {
               );
               if (item) {
                 setTimeout(() => {
-                  item.fn(slugify(title));
+                  item.fn?.(slugify(title));
                 }, 3000);
               }
             }}

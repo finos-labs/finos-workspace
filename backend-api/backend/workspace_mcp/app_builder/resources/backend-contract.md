@@ -1,18 +1,18 @@
 ---
 title: Backend Contract
-uri: openbb://workspace/contract/backend
-use_when: You need to understand what an OpenBB Workspace backend must expose, regardless of language or framework.
+uri: workspace://contract/backend
+use_when: You need to understand what an Workspace backend must expose, regardless of language or framework.
 language_specific: false
 related:
-  - openbb://workspace/specs/widgets-json
-  - openbb://workspace/specs/apps-json
-  - openbb://workspace/examples/generic-http/minimal
-  - openbb://workspace/examples/python-fastapi/minimal
+  - workspace://specs/widgets-json
+  - workspace://specs/apps-json
+  - workspace://examples/generic-http/minimal
+  - workspace://examples/python-fastapi/minimal
 ---
 
 # Backend Contract
 
-An OpenBB Workspace backend is an **HTTP service** that returns JSON. Workspace fetches metadata and data from your backend over HTTP; it does not import your code, run your runtime, or care which language you use.
+An Workspace backend is an **HTTP service** that returns JSON. Workspace fetches metadata and data from your backend over HTTP; it does not import your code, run your runtime, or care which language you use.
 
 Any framework that can serve JSON over HTTP works: FastAPI, Flask, Django, Express, Fastify, Hono, Spring, Actix, ASP.NET, Go's `net/http`, etc. The contract below is identical for all of them.
 
@@ -22,7 +22,7 @@ Any framework that can serve JSON over HTTP works: FastAPI, Flask, Django, Expre
 |--------|------|---------|-----------|
 | `GET`  | `/widgets.json` | JSON **object** keyed by widget id | Yes |
 | `GET`  | `/apps.json`    | JSON **array** of app templates    | Optional, but required for app templates |
-| `GET` (or `POST`) | One per widget | JSON shaped for that widget's `type` | One per widget referenced from `widgets.json` |
+| `GET` (or `POST`) | One per widget | The response that widget's `type` expects | One per widget referenced from `widgets.json` |
 
 The widget data endpoint URL is whatever each widget declares in `widgets.json` under `endpoint`. It can be any path on the same backend.
 
@@ -32,27 +32,19 @@ The shape Workspace expects is determined by the widget's `type`:
 
 | Widget `type` | Endpoint should return |
 |---------------|-------------------------|
-| `table`, `table_ssrm` | JSON array of row objects |
-| `chart` | Plotly figure JSON (or array of rows when `raw=true`) |
-| `metric` | JSON array of `{label, value, ...}` objects |
-| `markdown` | A markdown string |
-| `note` | A short text string |
-| `newsfeed` | JSON array of articles `{title, date, author, excerpt, body, ...}` |
-| `multi_file_viewer` | JSON describing the file collection |
-| `live_grid` | Initial rows JSON; live updates over WebSocket |
-| `advanced_charting`, `chart-highcharts` | The shape that widget type expects |
+| `markdown` | A markdown string (or JSON with the string at the widget's `data.dataKey`) |
+| `html` | An HTML document as text (and, when the widget sets `raw`, the underlying rows as JSON for `raw=true`) |
+| `newsfeed` | A JSON array of articles `{title, date, author, excerpt, body}` (or JSON with the array at the widget's `data.dataKey`); `body` is markdown |
+| `pdf` | The PDF (`application/pdf`), or JSON with a base64 `content` or a `url` |
+| `iframe` | Nothing: the widget's `endpoint` is the URL of the page to embed |
 
-See `openbb://workspace/specs/widget-types` for type guidance and `openbb://workspace/specs/widgets-json` for the metadata shape that wires endpoints to widget types.
+See `workspace://specs/widget-types` for type guidance and `workspace://specs/widgets-json` for the metadata shape that wires endpoints to widget types.
 
 ## CORS
 
-Workspace runs in a browser. Your backend MUST allow CORS from at least these origins:
+Workspace runs in a browser. Your backend MUST allow CORS from the origin the Workspace is served from: the address in the browser's address bar, for example `https://<your-workspace-host>`, and `http://localhost:1420` for a local development server.
 
-- `https://pro.openbb.co`
-- `https://pro.openbb.dev`
-- `http://localhost:1420` (Workspace desktop app, if used)
-
-Production browsers also block mixed content, so backends used from `https://pro.openbb.co` must serve over HTTPS. Local development over HTTP is fine for `http://localhost`.
+Production browsers also block mixed content, so a backend used from an HTTPS Workspace must serve over HTTPS. Local development over HTTP is fine for `http://localhost`.
 
 ## Authentication
 
@@ -68,8 +60,8 @@ Header-based auth is preferred — keys stay out of URLs and access logs. Worksp
 
 - `GET /` — A friendly root response. Helpful for sanity checks but not required.
 - `GET /thumbnails/{name}` — A simple way to serve app gallery SVG/PNG thumbnails referenced by `apps.json` `img`, `img_dark`, and `img_light`.
-- A `theme` query parameter — Widget endpoints often accept `theme=dark|light` so the response (e.g. a Plotly figure) matches the user's UI theme.
-- A `raw` query parameter — Chart endpoints often accept `raw=true` to return the underlying rows instead of the rendered figure, so AI agents and table conversions can work with the data.
+- A `theme` query parameter — Workspace sends `theme=dark|light` with `markdown` and `html` requests, so the response can match the user's UI theme.
+- A `raw` query parameter — Endpoints of `html` widgets that set `raw` can accept `raw=true` to return the underlying rows as JSON instead of the HTML, so AI agents can work with the data.
 
 ## Encoding
 
@@ -77,4 +69,4 @@ Always serve UTF-8. If your backend reads JSON files from disk to serve them, op
 
 ## Language and framework neutrality
 
-Nothing on this page is Python-specific. The fastest documented starter is FastAPI (see `openbb://workspace/examples/python-fastapi/minimal`), but `openbb://workspace/examples/generic-http/minimal` shows the same contract framework-neutrally. Pick whatever your project already uses.
+Nothing on this page is Python-specific. The fastest documented starter is FastAPI (see `workspace://examples/python-fastapi/minimal`), but `workspace://examples/generic-http/minimal` shows the same contract framework-neutrally. Pick whatever your project already uses.

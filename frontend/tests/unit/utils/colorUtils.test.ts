@@ -1,15 +1,16 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  hexToRgb,
-  rgbToHex,
   adjustBrightness,
-  createColorVariants,
   applyBrandColors,
   applyFontFamily,
   applyWhiteLabelMeta,
-  getRelativeLuminance,
+  createColorVariants,
   getContrastTextColor,
+  getRelativeLuminance,
+  hexToRgb,
+  rgbToHex,
 } from "~/utils/colorUtils";
+import { required } from "../mocks";
 
 describe("hexToRgb", () => {
   describe("valid 6-digit hex colors", () => {
@@ -326,8 +327,8 @@ describe("createColorVariants", () => {
       const mainRgb = hexToRgb(variants.main);
       const darkerRgb = hexToRgb(variants.darker);
 
-      expect(lighterRgb!.r).toBeGreaterThan(mainRgb!.r);
-      expect(darkerRgb!.r).toBeLessThan(mainRgb!.r);
+      expect(required(lighterRgb).r).toBeGreaterThan(required(mainRgb).r);
+      expect(required(darkerRgb).r).toBeLessThan(required(mainRgb).r);
     });
 
     it("should handle black color", () => {
@@ -390,24 +391,24 @@ describe("applyBrandColors", () => {
     expect(mockSetProperty).toHaveBeenCalledWith("--color-main-100", "#1a73e8");
     expect(mockSetProperty).toHaveBeenCalledWith(
       "--color-main-50",
-      expect.stringMatching(/^#[0-9a-f]{6}$/i)
+      expect.stringMatching(/^#[0-9a-f]{6}$/i),
     );
     expect(mockSetProperty).toHaveBeenCalledWith(
       "--color-main-200",
-      expect.stringMatching(/^#[0-9a-f]{6}$/i)
+      expect.stringMatching(/^#[0-9a-f]{6}$/i),
     );
     expect(mockSetProperty).toHaveBeenCalledWith(
       "--color-main-contrast",
-      "var(--color-light-100)"
+      "var(--color-light-100)",
     );
     expect(mockSetProperty).toHaveBeenCalledWith("--brand-main", "#1a73e8");
     expect(mockSetProperty).toHaveBeenCalledWith(
       "--brand-lighter",
-      expect.stringMatching(/^#[0-9a-f]{6}$/i)
+      expect.stringMatching(/^#[0-9a-f]{6}$/i),
     );
     expect(mockSetProperty).toHaveBeenCalledWith(
       "--brand-darker",
-      expect.stringMatching(/^#[0-9a-f]{6}$/i)
+      expect.stringMatching(/^#[0-9a-f]{6}$/i),
     );
   });
 
@@ -418,7 +419,10 @@ describe("applyBrandColors", () => {
     expect(mockSetProperty).toHaveBeenCalledWith("--color-main-100", "#808080");
     expect(mockSetProperty).toHaveBeenCalledWith("--color-main-50", "#a6a6a6");
     expect(mockSetProperty).toHaveBeenCalledWith("--color-main-200", "#5a5a5a");
-    expect(mockSetProperty).toHaveBeenCalledWith("--color-main-contrast", "var(--color-light-100)");
+    expect(mockSetProperty).toHaveBeenCalledWith(
+      "--color-main-contrast",
+      "var(--color-light-100)",
+    );
     expect(mockSetProperty).toHaveBeenCalledWith("--brand-main", "#808080");
     expect(mockSetProperty).toHaveBeenCalledWith("--brand-lighter", "#a6a6a6");
     expect(mockSetProperty).toHaveBeenCalledWith("--brand-darker", "#5a5a5a");
@@ -496,15 +500,11 @@ describe("applyFontFamily", () => {
     applyFontFamily("Inter, sans-serif");
 
     expect(mockSetProperty).toHaveBeenCalledTimes(1);
-    expect(mockSetProperty).toHaveBeenCalledWith(
-      "--font-family",
-      "Inter, sans-serif"
-    );
+    expect(mockSetProperty).toHaveBeenCalledWith("--font-family", "Inter, sans-serif");
   });
 
   it("should handle complex font stacks", () => {
-    const fontStack =
-      "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+    const fontStack = "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
     applyFontFamily(fontStack);
 
     expect(mockSetProperty).toHaveBeenCalledWith("--font-family", fontStack);
@@ -636,4 +636,3 @@ describe("applyWhiteLabelMeta", () => {
     expect(document.title).toBe("Original");
   });
 });
-

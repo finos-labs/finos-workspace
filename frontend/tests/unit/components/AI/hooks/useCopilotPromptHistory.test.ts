@@ -1,4 +1,5 @@
 import { renderHook } from "@testing-library/react";
+import type { MutableRefObject } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCopilotPromptHistory } from "~/components/AI/hooks/useCopilotPromptHistory";
 
@@ -25,7 +26,11 @@ function makeRef({
   value = "",
   selectionStart = 0,
   selectionEnd,
-}: { value?: string; selectionStart?: number; selectionEnd?: number } = {}) {
+}: {
+  value?: string;
+  selectionStart?: number;
+  selectionEnd?: number;
+} = {}) {
   return {
     current: {
       value,
@@ -33,7 +38,7 @@ function makeRef({
       selectionEnd: selectionEnd ?? selectionStart,
       setSelectionRange: vi.fn(),
     },
-  } as any;
+  } as unknown as MutableRefObject<HTMLTextAreaElement>;
 }
 
 function setup({
@@ -43,7 +48,7 @@ function setup({
 }: {
   questionsHistory?: string[];
   currentPrompt?: string;
-  ref?: any;
+  ref?: MutableRefObject<HTMLTextAreaElement>;
 } = {}) {
   const setPrompt = vi.fn();
   const setCompletion = vi.fn();
@@ -92,12 +97,7 @@ describe("useCopilotPromptHistory", () => {
     result.current.handleHistoryNavigation(makeKey("ArrowUp")); // a (oldest)
     result.current.handleHistoryNavigation(makeKey("ArrowDown")); // b
     result.current.handleHistoryNavigation(makeKey("ArrowDown")); // draft
-    expect(setPrompt.mock.calls.map((c) => c[0])).toEqual([
-      "b",
-      "a",
-      "b",
-      "my draft",
-    ]);
+    expect(setPrompt.mock.calls.map((c) => c[0])).toEqual(["b", "a", "b", "my draft"]);
   });
 
   it("ArrowDown does nothing when not navigating history", () => {

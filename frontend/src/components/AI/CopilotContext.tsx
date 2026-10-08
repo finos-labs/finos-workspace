@@ -1,4 +1,5 @@
 import {
+  isValidElement,
   memo,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
@@ -11,7 +12,6 @@ import {
 import { useParams } from "react-router-dom";
 import { fetchAgentsData } from "~/api/auth.api";
 import useIsMobile from "~/hooks/useIsMobile";
-import { inSnowflakeNativeApp } from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
 import {
   type Copilot,
@@ -22,6 +22,7 @@ import {
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { cn } from "~/lib/utils";
 import { showNotification } from "~/lib/utils/toast";
+import { someTruthy } from "~/lib/utils/values";
 import { HintLabel } from "../ds/atoms/HintLabel";
 import { Input } from "../ds/atoms/Input";
 import { Popover, PopoverTrigger } from "../ds/atoms/Popover";
@@ -33,14 +34,11 @@ import {
   SelectValue,
 } from "../ds/atoms/Select";
 import { Switch } from "../ds/atoms/Switch";
-import SnowflakeHide from "../General/SnowflakeHide";
-import { someTruthy } from "../General/Table/utils";
 import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import { useCopilotContextSuggestions } from "./hooks/useCopilotAddToContext";
 import { useGetCopilotRequestHeaders } from "./hooks/useGetCopilotRequestHeaders";
 import { McpToolsButton } from "./McpToolsButton";
-import { SemanticViewsButton } from "./SemanticViewsDropdown";
 
 export function CopilotContext() {
   const isMobile = useIsMobile();
@@ -74,10 +72,10 @@ export function CopilotContext() {
   // Settings dropdown state
   const [settingsPopoverOpen, setSettingsPopoverOpen] = useState(false);
 
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
-  const settingsButtonRef = useRef<HTMLButtonElement>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const {
     searchSuggestions,
@@ -108,21 +106,17 @@ export function CopilotContext() {
       try {
         const apiUrl = getConfig().urls.ai as string;
         const data = await fetchAgentsData({ url: apiUrl, headers }, ctrl.signal);
-        const ada = data.find((agent) => agent.id === "openbb_ada");
+        const ada = data.find((agent) => agent.id === "default_agent");
         if (!ada) return;
-        ada.id = "openbb-copilot"; // Ensure id matches default copilot id
+        ada.id = "default-copilot"; // Ensure id matches default copilot id
 
-        if (inSnowflakeNativeApp) {
-          const { "workspace-web-search": _, ...rest } = ada.features || {};
-          ada.features = rest;
-        }
         setSelectedCopilot?.({ ...selectedCopilot, ...ada });
       } catch (_) {
         // ignore
       }
     }
 
-    // openbb-copilot is the only copilot without a holderUuid
+    // default-copilot is the only copilot without a holderUuid
     if (!selectedCopilot?.holderUuid) hydrateDefaultAgentFeatures();
 
     return () => ctrl.abort();
@@ -164,7 +158,7 @@ export function CopilotContext() {
   const handleOnOpenChange = useCallback(
     (isOpen: boolean) => {
       if (!isOpen) {
-        searchSuggestions(null); // Clear search suggestions
+        searchSuggestions(""); // Clear search suggestions
         if (inputRef.current) inputRef.current.value = "";
       }
       setPopoverOpen(isOpen);
@@ -175,52 +169,43 @@ export function CopilotContext() {
   return (
     <div className="flex flex-wrap gap-2 items-start text-xs w-full">
       <div className="flex flex-wrap gap-2 text-xs w-full items-center">
-        <SnowflakeHide>
-          <Popover
-            open={settingsPopoverOpen}
-            onOpenChange={setSettingsPopoverOpen}
-            side="top"
-            align="start"
-            id="copilot-settings-dropdown"
-            className="w-80 z-50 overflow-hidden text-xs flex flex-col p-2.5"
-            content={<SettingsContent />}
-          >
-            <PopoverTrigger asChild={true}>
-              <Tooltip
-                message={
-                  enableSettings ? "Settings" : "No settings available for this copilot"
-                }
+        <Popover
+          open={settingsPopoverOpen}
+          onOpenChange={setSettingsPopoverOpen}
+          side="top"
+          align="start"
+          id="copilot-settings-dropdown"
+          className="w-80 z-50 overflow-hidden text-xs flex flex-col p-2.5"
+          content={<SettingsContent />}
+        >
+          <PopoverTrigger asChild={true}>
+            <Tooltip
+              message={
+                enableSettings ? "Settings" : "No settings available for this copilot"
+              }
+            >
+              <button
+                aria-label="Copilot settings"
+                ref={(el) => (settingsButtonRef.current = el)}
+                onClick={enableSettings ? handleSettingsButtonClick : undefined}
+                disabled={!enableSettings}
+                className={cn(
+                  "flex items-center justify-center w-8 h-8 rounded transition-colors duration-200 min-w-8",
+                  {
+                    "text-ds-text-body hover:bg-btn-ghost-bg-hover":
+                      !settingsPopoverOpen,
+                    "opacity-25 cursor-default": !enableSettings,
+                  },
+                )}
               >
-                <button
-                  aria-label="Copilot settings"
-                  ref={(el) => (settingsButtonRef.current = el)}
-                  onClick={enableSettings ? handleSettingsButtonClick : undefined}
-                  disabled={!enableSettings}
-                  className={cn(
-                    "flex items-center justify-center w-8 h-8 rounded transition-colors duration-200 min-w-8",
-                    {
-                      "text-ds-text-body hover:bg-btn-ghost-bg-hover":
-                        !settingsPopoverOpen,
-                      "opacity-25 cursor-default": !enableSettings,
-                    },
-                  )}
-                >
-                  <Icon id="settings-01" className="w-4 h-4" />
-                </button>
-              </Tooltip>
-            </PopoverTrigger>
-          </Popover>
-          <div className="h-8 w-px bg-surface-divider" />
+                <Icon id="settings-01" className="w-4 h-4" />
+              </button>
+            </Tooltip>
+          </PopoverTrigger>
+        </Popover>
+        <div className="h-8 w-px bg-surface-divider" />
 
-          <McpToolsButton />
-        </SnowflakeHide>
-
-        {inSnowflakeNativeApp && (
-          <>
-            <SemanticViewsButton />
-            <div className="h-8 w-px bg-surface-divider" />
-          </>
-        )}
+        <McpToolsButton />
 
         <Popover
           open={popoverOpen}
@@ -336,9 +321,15 @@ const SelectedWidgetBadges = memo(
         copilot.selectedWidgets
           .map((widget) => {
             if (!widget) return null;
-            const widgetTooltipElement = getRichWidgetTooltip(widget) as any;
-            const tooltipMessage = widgetTooltipElement?.props?.message;
-            const tooltipDisplay = widgetTooltipElement?.props?.children;
+            const widgetTooltipElement = getRichWidgetTooltip(widget);
+            const tooltipProps = isValidElement<{
+              message?: ReactNode;
+              children?: ReactNode;
+            }>(widgetTooltipElement)
+              ? widgetTooltipElement.props
+              : undefined;
+            const tooltipMessage = tooltipProps?.message;
+            const tooltipDisplay = tooltipProps?.children;
 
             const isMentionTracked = widget.uuid
               ? copilot.isMentionTrackedWidget(widget.uuid)
@@ -364,11 +355,14 @@ const SelectedWidgetBadges = memo(
                     },
                   )}
                   onMouseEnter={() => {
-                    const hoveredUpdate = { tabId: null, widgetUuid: null };
+                    const hoveredUpdate: {
+                      tabId: string | null;
+                      widgetUuid: string | null;
+                    } = { tabId: null, widgetUuid: null };
 
                     // Handle different highlighting for tabs vs widgets in context
                     if (widget.widget_id?.startsWith("tab_")) {
-                      hoveredUpdate.tabId = widget.metadata?.innerTabId;
+                      hoveredUpdate.tabId = widget.metadata?.innerTabId ?? null;
                     } else if (widget.uuid) {
                       hoveredUpdate.widgetUuid = widget.uuid;
                     }
@@ -579,7 +573,10 @@ function SettingsContent() {
   );
 }
 
-type FeatureMeta = Exclude<Copilot["features"][string], boolean | undefined>;
+type FeatureMeta = Exclude<
+  NonNullable<Copilot["features"]>[string],
+  boolean | undefined
+>;
 
 type CustomFeatureToggleProps = {
   featureKey: string;
@@ -805,14 +802,6 @@ const BuiltInFeatureToggles = memo(() => {
                       Try: "Using the financial statements of AAPL, create an HTML
                       report with a DCF analysis and add it to the dashboard"
                     </span>
-                    {/*Uncomment when add to docs <a
-                      href="https://docs.openbb.co/workspace/generative-ui"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-brand-main hover:underline mt-0.5"
-                    >
-                      See demo &rarr;
-                    </a>*/}
                   </div>
                 ) : (
                   "Generative UI is not enabled for this copilot"

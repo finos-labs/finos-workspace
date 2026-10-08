@@ -29,9 +29,8 @@ COMPILE_PACKAGES = ["api", "routers", "utilities"]
 # response models. Splitting those routers would let the handlers compile;
 # parked as a follow-up.
 EXCLUDE_FILES = {
-    "api/models/tauri_models.py",
+    "api/models/workspace_models.py",
     "routers/routers_helpers.py",
-    "routers/metrics.py",
 }
 
 
@@ -66,7 +65,7 @@ def build_extensions() -> list[Extension]:
 
 
 setup(
-    name="openbb_backend_compiled",
+    name="workspace_backend_compiled",
     ext_modules=cythonize(
         build_extensions(),
         compiler_directives={

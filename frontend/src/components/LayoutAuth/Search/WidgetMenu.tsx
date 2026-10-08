@@ -25,26 +25,18 @@ import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import type { WidgetT } from "~/components/types";
 import type { StateDispatch } from "~/hooks/useStateReducer";
-import { inSnowflakeNativeApp } from "~/lib/constants";
 import { useMobile } from "~/lib/providers/MobileProvider";
 import { useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import { useShallowTutorialStore } from "~/lib/state/tutorial";
 import { beautifySlug, cn, generateRandomName, getWidgetSourceInfo } from "~/lib/utils";
 import type { SearchDialogState, SearchTabId } from "./SearchDialog";
 import CopilotPromptBanner from "./useCopilotPrompt";
 
-export const connectorTypes = [
-  "backend",
-  "file",
-  "single",
-  "snowflake",
-  "database",
-  "copilot_table",
-];
-export type WidgetItem = Partial<Omit<WidgetT, "type">> & {
-  uniqueId?: string;
+export const connectorTypes = ["backend", "file"];
+export type WidgetItem = Omit<WidgetT, "type" | "id"> & {
+  id?: string;
+  uniqueId: string;
   imgUrl?: string;
   type?: string;
   extension?: string;
@@ -82,11 +74,11 @@ export const CreateCheckbox = memo(
     const handleFocus = useCallback(() => {
       document
         .getElementById(parentId)
-        .style.setProperty("background-color", isDarkMode ? "#303038" : "#CDCED0");
+        ?.style.setProperty("background-color", isDarkMode ? "#303038" : "#CDCED0");
     }, [parentId, isDarkMode]);
 
     const handleBlur = useCallback(() => {
-      document.getElementById(parentId).style.removeProperty("background-color");
+      document.getElementById(parentId)?.style.removeProperty("background-color");
     }, [parentId]);
 
     const handleRightLabelClick = useCallback(
@@ -363,7 +355,7 @@ const VirtualizedItemRenderer = memo(
     if (item.type === "divider") {
       return (
         <div className="pt-0.5 pb-2">
-          <div className="obb-divider" />
+          <div className="ws-divider" />
         </div>
       );
     }
@@ -543,7 +535,7 @@ const WidgetItem = memo(
                 subCategory={widgetItem.subCategory}
                 description={widgetItem.description}
                 imgUrl={widgetItem.imgUrl}
-                source={sourceName || widgetItem.sourceDatabase}
+                source={sourceName}
               />
             }
           >
@@ -558,23 +550,19 @@ const WidgetItem = memo(
                 {widgetItem.subCategory ? ` · ${widgetItem.subCategory}` : ""}
               </span>
             )}
-            {widgetItem.widgetType !== "copilot_table" && (
-              <span className="body-xs-regular min-w-0 max-w-full truncate whitespace-nowrap text-ds-text-caption capitalize sm:max-w-none">
-                {source}
-              </span>
-            )}
-            {connectorTypes.includes(widgetItem.widgetType) && (
+            <span className="body-xs-regular min-w-0 max-w-full truncate whitespace-nowrap text-ds-text-caption capitalize sm:max-w-none">
+              {source}
+            </span>
+            {connectorTypes.includes(widgetItem.widgetType ?? "") && (
               <span
                 className={cn(
-                  "obb-tag inline-block max-w-full truncate whitespace-nowrap align-middle capitalize sm:max-w-none sm:shrink-0",
+                  "ws-tag inline-block max-w-full truncate whitespace-nowrap align-middle capitalize sm:max-w-none sm:shrink-0",
                   widgetItem.extension && "uppercase",
                 )}
               >
                 {widgetItem.widgetType === "backend"
                   ? widgetItem.sourceName
-                  : widgetItem.widgetType === "copilot_table"
-                    ? "OpenBB Workspace"
-                    : widgetItem.extension || widgetItem.widgetType}
+                  : widgetItem.extension || widgetItem.widgetType}
               </span>
             )}
           </div>
@@ -586,11 +574,11 @@ const WidgetItem = memo(
 
 type WidgetMenuProps = {
   isFiltered: boolean;
-  widgets?: WidgetItem[];
+  widgets: WidgetItem[];
   globalSearch?: string;
   globalIndexRef: MutableRefObject<number>;
-  itemRefs?: MutableRefObject<(HTMLButtonElement | null)[]>;
-  onOpenChange?: (open: boolean) => void;
+  itemRefs: MutableRefObject<(HTMLButtonElement | null)[]>;
+  onOpenChange: (open: boolean) => void;
   allCategories: string[];
   state: SearchDialogState;
   dispatch: StateDispatch<SearchDialogState>;
@@ -649,13 +637,6 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
       ) as SearchTabId,
     }));
 
-  const { currentTutorial, goToStep, currentStep } = useShallowTutorialStore(
-    (state) => ({
-      currentTutorial: state.currentTutorial,
-      goToStep: state.goToStep,
-      currentStep: state.currentStep,
-    }),
-  );
   const { id: currentDashboardId } = useParams();
   const [searchParams] = useSearchParams();
   const { addWidgets, getTabById } = useShallowAppStore((state) => ({
@@ -664,7 +645,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
   }));
 
   const lastInnerTab = useShallowAppStore((state) =>
-    state?.getLastInnerTab(currentDashboardId),
+    currentDashboardId ? state.getLastInnerTab(currentDashboardId) : undefined,
   );
   const currentTab = useMemo(
     () => searchParams.get("tab") || lastInnerTab || "",
@@ -744,21 +725,12 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
     } else {
       toast.warning("Please select at least one widget to add.");
     }
-    if (currentTutorial === "grouping") {
-      if (currentStep === 4) {
-        setTimeout(() => {
-          goToStep(5);
-        }, 500);
-      }
-    }
     onOpenChange(false);
   }, [
     state.selectedWidgets,
-    currentTutorial,
     addWidgets,
     navigate,
     currentDashboardId,
-    goToStep,
     onOpenChange,
     isMobile,
     currentTab,
@@ -789,7 +761,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
     (checked: boolean, widgetItem: WidgetItem) => {
       let innerTab = currentTab;
       widgetItem.uniqueId = widgetItem.uniqueId.replace("-recent", "");
-      const tab = getTabById(currentDashboardId);
+      const tab = currentDashboardId ? getTabById(currentDashboardId) : undefined;
 
       if (checked && widgetItem.widgetId === "navigation_bar") {
         const navigationBarAlreadyExists = tab?.data?.widgets?.some(
@@ -825,10 +797,6 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
             data: {
               dataKey: widgetItem.dataKey,
               ...widgetItem.data,
-              table: {
-                ...widgetItem.data?.table,
-                transpose: Boolean(widgetItem.data?.table?.transpose),
-              },
             } as WidgetT["data"],
           };
 
@@ -841,19 +809,16 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
 
   const [expandedCategories, setExpandedCategories] = useLocalStorage(
     "expandedCategories",
-    uniqueCategories.reduce(
-      (acc, category) => {
-        acc[category.toLowerCase()] = true;
-        return acc;
-      },
-      {} as Record<string, boolean>,
-    ),
+    uniqueCategories.reduce<Record<string, boolean>>((acc, category) => {
+      acc[category.toLowerCase()] = true;
+      return acc;
+    }, {}),
   );
   const [expandedSubcategories, setExpandedSubcategories] = useLocalStorage(
     "expandedSubcategories",
     () => initialExpandedSubCategories({}, widgets),
   );
-  const [localExpanded, setLocalExpanded] = useState({});
+  const [localExpanded, setLocalExpanded] = useState<Record<string, boolean>>({});
   const [isRecentlyAddedExpanded, setIsRecentlyAddedExpanded] = useState(true);
   const enableLocalExpanded = state.selectedCategory !== "All" || isFiltered;
 
@@ -866,7 +831,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
       return;
 
     setExpandedCategories((prev) =>
-      uniqueCategories.reduce((acc, category) => {
+      uniqueCategories.reduce<Record<string, boolean>>((acc, category) => {
         const key = category.toLowerCase();
         acc[key] = prev[key] ?? true;
         return acc;
@@ -916,7 +881,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
         widget.category = widget.subCategory || widget.category;
         widget.subCategory = undefined;
       }
-      const category = widget.category?.toLowerCase();
+      const category = widget.category?.toLowerCase() ?? "";
       const subCategory = widget.subCategory?.toLowerCase();
       const subCatKey = `${category}-${subCategory}`;
 
@@ -952,10 +917,6 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
                 data: {
                   dataKey: w.dataKey,
                   ...w.data,
-                  table: {
-                    ...w.data?.table,
-                    transpose: Boolean(w.data?.table?.transpose),
-                  },
                 } as WidgetT["data"],
               }));
             return [...prev, ...toAdd];
@@ -985,10 +946,6 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
                 data: {
                   dataKey: w.dataKey,
                   ...w.data,
-                  table: {
-                    ...w.data?.table,
-                    transpose: Boolean(w.data?.table?.transpose),
-                  },
                 } as WidgetT["data"],
               }));
             return [...prev, ...toAdd];
@@ -1006,8 +963,8 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
   // Build flattened virtualized items list — decoupled from selection state for O(1) selection updates
   const virtualizedItems = useMemo(() => {
     const items: VirtualizedItem[] = [];
-    let currCategory: string | null = null;
-    let currSubCategory: string | null = null;
+    let currCategory = "";
+    let currSubCategory = "";
     let isFirstCategory = true;
     let widgetIndex = 0;
 
@@ -1108,7 +1065,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
 
         items.push({
           type: "subcategory",
-          category: widgetItem.category,
+          category: widgetItem.category ?? currCategory,
           subcategory: widgetItem.subCategory,
           isExpanded: isSubcategoryExpanded,
           totalCount: childWidgets.length,
@@ -1199,8 +1156,8 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
       const currentSelectedIds = selectedWidgetIdsRef.current;
       const isAnchorSelected = currentSelectedIds.has(cleanAnchorId);
 
-      const widgetsToAdd = [];
-      const widgetIdsToRemove = [];
+      const widgetsToAdd: WidgetItem[] = [];
+      const widgetIdsToRemove: string[] = [];
 
       for (const widget of widgetsInRange) {
         const isCurrentlySelected = currentSelectedIds.has(widget.cleanId);
@@ -1215,10 +1172,6 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
               data: {
                 dataKey: widget.dataKey,
                 ...widget.data,
-                table: {
-                  ...widget.data?.table,
-                  transpose: Boolean(widget.data?.table?.transpose),
-                },
               } as WidgetT["data"],
             });
           }
@@ -1247,24 +1200,8 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
     (checked: boolean, widgetItem: WidgetItem) => {
       dispatch({ anchorWidgetId: widgetItem.uniqueId });
       handleChange(checked, widgetItem);
-
-      if (
-        checked &&
-        currentTutorial === "grouping" &&
-        currentStep === 3 &&
-        state.selectedOption !== "external"
-      ) {
-        setTimeout(() => goToStep(4), 500);
-      }
     },
-    [
-      handleChange,
-      dispatch,
-      currentTutorial,
-      currentStep,
-      goToStep,
-      state.selectedOption,
-    ],
+    [handleChange, dispatch],
   );
 
   const multiSelectState = useMemo(
@@ -1472,7 +1409,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
                     onOpenChange={onOpenChange}
                   />
                 )}
-                {state.selectedOption === "external" && !inSnowflakeNativeApp && (
+                {state.selectedOption === "external" && (
                   <Button variant="outlined" size="sm" className="mt-2">
                     <Link to="/app/data-connectors" onClick={() => onOpenChange(false)}>
                       Add an external source

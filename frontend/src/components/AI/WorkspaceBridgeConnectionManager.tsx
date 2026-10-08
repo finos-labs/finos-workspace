@@ -90,8 +90,9 @@ const WorkspaceBridgeConnection = memo(() => {
   const connectSocket = useCallback(
     (websocketUrl: string) => {
       const client = socketRef.current;
+      if (!client) return;
 
-      if (client?.connected && client.connectionUrl === websocketUrl) {
+      if (client.connected && client.connectionUrl === websocketUrl) {
         client.abort();
         socketRef.current = client.init(onCommandRequest);
         return;
@@ -192,7 +193,7 @@ WorkspaceBridgeConnectionManager.displayName = "WorkspaceBridgeConnectionManager
  */
 export class WebSocketBridge {
   _ws: WebSocket | null = null;
-  _connectionString: string | URL;
+  _connectionString: string | URL | undefined;
 
   _abortController: AbortController | null = null;
   _lastSentSessionContext: BrowserSessionContext = {
@@ -225,7 +226,7 @@ export class WebSocketBridge {
     return this._ws;
   }
 
-  get connectionUrl(): string | URL {
+  get connectionUrl(): string | URL | undefined {
     return this._connectionString;
   }
 
@@ -246,7 +247,7 @@ export class WebSocketBridge {
   }
 
   get disconnecting(): boolean {
-    return this._abortController?.signal?.aborted;
+    return this._abortController?.signal?.aborted ?? false;
   }
 
   setReconnectAttempts(value: number) {
@@ -262,27 +263,32 @@ export class WebSocketBridge {
     // existing socket is only reusable while it is OPEN/CONNECTING on the
     // same URL. Anything else (including a same-URL reconnect after a drop)
     // must tear the old socket down and start a fresh one.
+    const existing = this._ws;
     const reusable =
-      this._ws !== null &&
-      this._ws.url === this._connectionString &&
+      existing !== null &&
+      existing.url === this._connectionString &&
       (this.connected || this.connecting);
 
-    if (!reusable) {
-      if (this._ws) {
-        this._ws.onopen = null;
-        this._ws.onclose = null;
-        this._ws.onerror = null;
+    let ws: WebSocket;
+    if (existing && reusable) {
+      ws = existing;
+    } else {
+      if (existing) {
+        existing.onopen = null;
+        existing.onclose = null;
+        existing.onerror = null;
         this.abort();
-        this._ws.close();
+        existing.close();
       }
       this._abortController = new AbortController();
-      this._ws = new WebSocket(this._connectionString);
+      ws = new WebSocket(this._connectionString);
+      this._ws = ws;
     }
     if (this._abortController?.signal?.aborted) {
       this._abortController = new AbortController();
     }
 
-    this._ws.onopen = () => {
+    ws.onopen = () => {
       // A successful open means the budget should restart from zero, so a
       // single longer outage cannot exhaust the attempts that earlier,
       // fully-recovered drops accumulated across the session.
@@ -290,12 +296,12 @@ export class WebSocketBridge {
       this.pingTimeout();
     };
 
-    this._ws.onclose = () => {
+    ws.onclose = () => {
       if (this.disconnecting) return;
       this.queueReconnect("Workspace MCP bridge connection closed.");
     };
 
-    this._ws.onerror = () => {
+    ws.onerror = () => {
       if (this.disconnecting) return;
       this.queueReconnect("Workspace MCP bridge connection error.");
     };
@@ -347,7 +353,7 @@ export class WebSocketBridge {
   }
 
   onMessageSync(onCommandRequest: (msg: ServerEvent, socket: this) => void): void {
-    this._ws.addEventListener(
+    this._ws?.addEventListener(
       "message",
       (e) => {
         try {

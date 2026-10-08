@@ -1,7 +1,12 @@
 import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
+import {
+  type Source,
+  useBackendConnectorStore,
+  type VenderApp,
+} from "~/lib/state/backendConnector";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
+import { partial } from "../../mocks";
 
 vi.mock("sonner", () => ({
   toast: {
@@ -32,6 +37,7 @@ function mockBackendResponsesWithUnrecognizedWidgetKey() {
             name: "Test Widget",
             description: "Widget for testing warning propagation",
             endpoint: "/test-widget",
+            type: "html",
             params: [],
             unsupported_widget_option: true,
           },
@@ -58,7 +64,6 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
       apiSources: [],
       isLoadingBackends: false,
       widgetMetadata: [],
-      singleWidgets: [],
       storedFiles: [],
       queuedRefreshIds: [],
     });
@@ -188,9 +193,7 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
                 name: "Custom App",
                 description: "App with MCP",
                 tabs: { main: { id: "main", name: "Main", layout: [] } },
-                mcpServers: [
-                  { name: "MCP1", url: "https://mcp.example.com/sse" },
-                ],
+                mcpServers: [{ name: "MCP1", url: "https://mcp.example.com/sse" }],
               },
             ]),
           headers: new Headers(),
@@ -230,11 +233,10 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
           name: "Marketplace Backend",
           url: "https://test-backend.com",
           endpointHeaders: [],
-          // @ts-expect-error
-          vendorApp: {
+          vendorApp: partial<VenderApp>({
             uuid: "listed-app-1",
             name: "Listed App 1",
-          },
+          }),
           hasApiKey: true,
         },
       ],

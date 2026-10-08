@@ -20,8 +20,7 @@ const { mockMediaQueryList } = vi.hoisted(() => {
 
 import { render, screen, waitFor } from "@testing-library/react";
 import ReactDOM from "react-dom";
-import { beforeEach, describe, expect, it } from "vitest";
-import { vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import Tooltip from "~/components/Tooltip";
 
 // Mock ReactDOM.createPortal to render the portal content directly

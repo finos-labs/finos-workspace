@@ -1,0 +1,174 @@
+# The whole Workspace: database, cache, API, background worker, web app and admin panel.
+#
+#   (cd backend-api/backend && python3 -m scripts.create_local_env --admin-email <your-email>)
+#   docker compose up --build
+#
+# Web app http://localhost:3000, admin panel http://localhost:3001, API http://localhost:8000.
+# The first start creates the organization and the administrator listed in
+# backend-api/backend/scripts/cfgs/config.toml.
+#
+# On Apple silicon build for the host's architecture: PLATFORM=linux/arm64 docker compose up --build
+name: workspace
+
+x-backend: &backend
+  env_file:
+    - ./backend-api/backend/envs/.env
+  environment:
+    DB_HOST: mysql
+    REDIS_HOST: redis
+    FOLDER_STORAGE_PATH: /opt/code/local_storage
+  networks:
+    - workspace
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    cap_add:
+      - SYS_NICE
+    environment:
+      TZ: America/New_York
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: workspace
+    command:
+      [
+        "mysqld",
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_unicode_ci",
+      ]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+    volumes:
+      - db:/var/lib/mysql
+    networks:
+      - workspace
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    command: redis-server --save 20 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - redis:/data
+    networks:
+      - workspace
+
+  # Applies the migrations and creates the organization and its administrator, then exits.
+  # user_create.json carries the ids that the API and the worker read at start.
+  init:
+    <<: *backend
+    build:
+      context: ./backend-api/backend
+      dockerfile: fastapi.Dockerfile
+      args:
+        PLATFORM: ${PLATFORM:-linux/amd64}
+    image: workspace-api:local
+    # Runs as root because the files mounted below belong to whoever checked the repository out
+    # (uid 1001 on a GitHub runner), and the image's own user, uid 1000, can neither write
+    # user_create.json nor read the seed config.toml (mode 600).
+    user: root
+    command:
+      - sh
+      - -c
+      - echo '{}' > user_create.json && alembic upgrade head && python -m scripts.init_users
+    restart: "no"
+    volumes:
+      - ./backend-api/backend/user_create.json:/opt/code/user_create.json
+      - ./backend-api/backend/scripts/cfgs:/opt/code/scripts/cfgs:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    # Built by `init`, which shares the image.
+    image: workspace-api:local
+    pull_policy: never
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend-api/backend/user_create.json:/opt/code/user_create.json:ro
+      - storage:/opt/code/local_storage
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=4)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *backend
+    build:
+      context: ./backend-api/backend
+      dockerfile: rqworker.Dockerfile
+      args:
+        PLATFORM: ${PLATFORM:-linux/amd64}
+    image: workspace-worker:local
+    restart: unless-stopped
+    volumes:
+      - ./backend-api/backend/user_create.json:/opt/code/user_create.json:ro
+      - storage:/opt/code/local_storage
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  # One image for every environment: the container writes config.js from these variables at start.
+  web:
+    build:
+      context: ./frontend
+      args:
+        PLATFORM: ${PLATFORM:-linux/amd64}
+    image: workspace-web:local
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: ${API_URL:-http://localhost:8000}
+      AI_API_URL: ${AI_API_URL:-}
+    ports:
+      - "3000:8080"
+    depends_on:
+      - api
+    networks:
+      - workspace
+
+  # The operator's admin panel: entities, entity types, relationships and permission maps.
+  admin:
+    build:
+      context: ./backend-api/admin_frontend
+      args:
+        VITE_API_URL: ${API_URL:-http://localhost:8000}
+    image: workspace-admin:local
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    depends_on:
+      - api
+    networks:
+      - workspace
+
+networks:
+  workspace:
+
+volumes:
+  db:
+  redis:
+  storage:

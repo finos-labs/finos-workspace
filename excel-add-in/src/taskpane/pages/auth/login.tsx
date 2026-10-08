@@ -1,16 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Alert,
-  Button,
-  Checkbox,
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  Input,
-} from "@openbb/ui";
 import { AxiosError } from "axios";
-import posthog from "posthog-js";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -19,6 +8,16 @@ import * as backend from "~/backend/auth.api";
 
 import { useAuthStore } from "~/store/auth";
 import Layout from "~/taskpane/components/layout.tsx";
+import { Alert } from "~/ui/Alert";
+import { Button } from "~/ui/Button";
+import {
+  Checkbox,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  Input,
+} from "~/ui/Form";
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -55,13 +54,7 @@ export default function Page() {
   async function handleSubmit(values: TForm) {
     try {
       const user = await backend.login(values.email, values.password, values.remember);
-      if (user && user.uuid) {
-        posthog.identify(user.uuid, {
-          name: user.username,
-          email: user.email,
-        });
-      }
-      if (user.feature_entitlements?.tier === "pro") {
+      if (user.feature_entitlements?.tier === "full") {
         authStore.login(
           user.uuid,
           user.email,
@@ -76,28 +69,16 @@ export default function Page() {
         setAlert({
           title: "Access denied",
           message:
-            "Pro tier access required to sign in. Please contact sales@openbb.co for more information.",
-        });
-        posthog.capture("login_failed_tier", {
-          tier: user.feature_entitlements?.tier,
+            "Full tier access is required to sign in. Ask the administrator of your Workspace.",
         });
       }
     } catch (error) {
-      posthog.capture("login_failed", {
-        error_message: error.message,
-        error_stack: error.stack,
-      });
       if (error instanceof AxiosError) {
         if (error.response && error.response.status) {
           const { message } = error;
           const { status } = error.response;
           console.log(error, message, status);
-          if (status === 400) {
-            setAlert({
-              title: "Trial expired",
-              message: "Please contact sales@openbb.co for an extension",
-            });
-          } else if (status === 401) {
+          if (status === 401) {
             setAlert({
               title: "Credentials are incorrect",
               message: "Enter a valid email and password",
@@ -105,7 +86,7 @@ export default function Page() {
           } else if (status === 402) {
             setAlert({
               title: "Access denied",
-              message: "OpenBB Pro access required to sign in",
+              message: "Full tier access is required to sign in",
             });
           } else {
             setAlert({ title: "Something went wrong" });

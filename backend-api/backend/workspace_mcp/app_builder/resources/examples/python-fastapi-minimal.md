@@ -1,20 +1,20 @@
 ---
 title: Minimal Backend (Python + FastAPI)
-uri: openbb://workspace/examples/python-fastapi/minimal
-use_when: You are starting a new Python backend for OpenBB Workspace and want the recommended starter shape.
+uri: workspace://examples/python-fastapi/minimal
+use_when: You are starting a new Python backend for Workspace and want the recommended starter shape.
 language_specific: true
 related:
-  - openbb://workspace/contract/backend
-  - openbb://workspace/specs/widgets-json
-  - openbb://workspace/specs/apps-json
-  - openbb://workspace/examples/generic-http/minimal
+  - workspace://contract/backend
+  - workspace://specs/widgets-json
+  - workspace://specs/apps-json
+  - workspace://examples/generic-http/minimal
 ---
 
 # Minimal Backend — Python + FastAPI
 
-> This is an **implementation example**, not a platform requirement. Workspace is language-agnostic. If your project already uses a different framework, use that. See `openbb://workspace/examples/generic-http/minimal` for the framework-neutral shape.
+> This is an **implementation example**, not a platform requirement. Workspace is language-agnostic. If your project already uses a different framework, use that. See `workspace://examples/generic-http/minimal` for the framework-neutral shape.
 
-FastAPI is the recommended Python starter because most current OpenBB examples are written against it.
+FastAPI is the recommended Python starter because most current Workspace examples are written against it.
 
 ## Project shape
 
@@ -31,18 +31,17 @@ my-backend/
 ```python
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pathlib import Path
 import json
 
 app = FastAPI()
 
-# Required CORS origins for OpenBB Workspace
+# CORS: allow the origin your Workspace is served from, and the local development server
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://pro.openbb.co",
-        "https://pro.openbb.dev",
+        "https://<your-workspace-host>",
         "http://localhost:1420",
     ],
     allow_credentials=True,
@@ -65,20 +64,16 @@ def get_apps():
     with open(APPS_FILE, encoding="utf-8") as f:
         return JSONResponse(content=json.load(f))
 
-@app.get("/prices")
-def prices(symbol: str = Query("AAPL")):
+@app.get("/summary", response_class=PlainTextResponse)
+def summary(team: str = Query("platform")):
     # Replace with a real data source.
-    return [
-        {"date": "2025-04-25", "price": 207.12},
-        {"date": "2025-04-28", "price": 210.04},
-        {"date": "2025-04-29", "price": 211.78},
-    ]
+    return f"## {team.title()}: week 17\n\n- Shipped the new importer.\n- Two incidents, both resolved within the hour.\n"
 
-@app.get("/symbols")
-def symbols():
+@app.get("/teams")
+def teams():
     return [
-        {"label": "Apple",     "value": "AAPL"},
-        {"label": "Microsoft", "value": "MSFT"},
+        {"label": "Platform", "value": "platform"},
+        {"label": "Support",  "value": "support"},
     ]
 ```
 
@@ -86,24 +81,16 @@ def symbols():
 
 ```json
 {
-  "stock_prices": {
-    "name": "Stock Prices",
-    "description": "Latest closing prices",
-    "type": "table",
-    "endpoint": "/prices",
+  "weekly_summary": {
+    "name": "Weekly Summary",
+    "description": "The week's activity for one team, as written commentary",
+    "type": "markdown",
+    "endpoint": "/summary",
     "gridData": { "w": 20, "h": 12 },
     "params": [
-      { "paramName": "symbol", "type": "endpoint", "label": "Symbol",
-        "description": "Choose a ticker", "optionsEndpoint": "/symbols", "value": "AAPL" }
-    ],
-    "data": {
-      "table": {
-        "columnsDefs": [
-          { "field": "date",  "headerName": "Date",  "cellDataType": "dateString" },
-          { "field": "price", "headerName": "Price", "cellDataType": "number", "formatterFn": "none" }
-        ]
-      }
-    }
+      { "paramName": "team", "type": "endpoint", "label": "Team",
+        "description": "Team to summarize", "optionsEndpoint": "/teams", "value": "platform" }
+    ]
   }
 }
 ```
@@ -113,15 +100,15 @@ def symbols():
 ```json
 [
   {
-    "name": "Prices",
-    "description": "Daily closing prices",
+    "name": "Team Summary",
+    "description": "Weekly summary of a team",
     "img": "", "img_dark": "", "img_light": "",
     "allowCustomization": true,
     "tabs": {
       "": {
         "id": "", "name": "",
         "layout": [
-          { "i": "stock_prices", "x": 0, "y": 0, "w": 40, "h": 12, "groups": ["Group 1"] }
+          { "i": "weekly_summary", "x": 0, "y": 0, "w": 40, "h": 12, "groups": ["Group 1"] }
         ]
       }
     },
@@ -129,9 +116,9 @@ def symbols():
       {
         "name": "Group 1",
         "type": "endpointParam",
-        "paramName": "symbol",
-        "widgetIds": ["stock_prices"],
-        "defaultValue": "AAPL"
+        "paramName": "team",
+        "widgetIds": ["weekly_summary"],
+        "defaultValue": "platform"
       }
     ],
     "prompts": []
@@ -150,6 +137,6 @@ Then in Workspace: Settings → Data Connectors → Connect Backend → `http://
 ## Notes specific to Python
 
 - **Always pass `encoding="utf-8"` to `open()`.** Defaults to OS locale. cp1252 on Windows will mangle non-ASCII characters silently.
-- **No Plotly chart titles.** When a widget is `type: "chart"`, the widget header already shows the title. Setting `fig.update_layout(title="...")` doubles up.
-- **Support `raw=True` on chart endpoints.** Return the underlying rows when `raw=True` is passed so AI agents and table conversions can consume the data.
+- **No title inside the content.** The widget header already shows `name`; a heading that repeats it doubles up.
+- **Support `raw=True` on `html` endpoints.** When the widget sets `"raw": true`, return the underlying rows as JSON when `raw=true` is passed, so AI agents can consume the data.
 - **Reasonable runButton.** Default to `runButton: false` (or omit). Only set `true` for endpoints that take >5 s.

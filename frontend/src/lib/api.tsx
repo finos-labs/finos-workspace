@@ -8,49 +8,49 @@ import { useAuthStore, useShallowAuthStore } from "./state/auth";
 import { useShallowBackendConnectorStore } from "./state/backendConnector";
 import { useShallowPermissionsStore } from "./state/permissions";
 import { resolveCronRefetchInterval } from "./utils/cronSchedule";
+import { toError } from "./utils/utils";
 
 export {
   cleanSearchParams,
   convertHeadersToRecord,
 } from "~/lib/utils/widgetParams";
 
-// File widgets persist the absolute URL the backend minted at upload time
-// (built from the backend's SELFURL, which still points at payments.openbb.*)
-const LEGACY_FILE_URL_ORIGIN =
-  /^https:\/\/payments\.openbb\.(co|dev)(?=\/pro\/files\/)/;
-
 function isBackendOrigin(url: string) {
-  return (
-    url?.includes(getConfig().urls.backend) || LEGACY_FILE_URL_ORIGIN?.test(url || "")
-  );
+  return url?.includes(getConfig().urls.backend);
 }
+
+/** What a failed request's JSON body may carry. */
+type ApiErrorBody = {
+  warnings?: string[];
+  detail?: unknown;
+  message?: unknown;
+  error?: unknown;
+  error_kind?: string;
+  status?: number;
+};
 
 export type TResponseCb<TData> = (
   data: Response,
   resolve: (data: TData | Promise<TData>) => void,
-  reject: (reason?: any) => void,
+  reject: (reason?: unknown) => void,
 ) => Promise<void>;
 
-export interface QueryOptions<TQueryFnData = any | any[]> {
+export interface QueryOptions<TQueryFnData = unknown> {
   url: string;
   endpointHeaders?: Record<string, string>;
-  params?: { [key: string]: any };
+  params?: { [key: string]: unknown };
   method?: "GET" | "POST";
   body?: object; // If the body is sent it is a POST request, otherwise it is a GET request
   asText?: boolean; // If asText is true, the response will be returned as text instead of JSON
   responseCb?: TResponseCb<TQueryFnData>; // Custom resolve callback to handle the response before resolving the promise
   addBearerToken?: boolean; // Adds User Bearer token to the request Authorization header
-  queryKey?: any[];
+  queryKey?: unknown[];
   onError?: (error: Error) => void;
   ignoreRefresh?: boolean;
-  /** @deprecated - use endpointHeaders instead */
-  headers?: never;
-  /** @deprecated - use method instead */
-  endpointMethod?: never;
 }
 
 export function useJsonData<
-  TQueryFnData = any | any[],
+  TQueryFnData = unknown,
   TError = Error,
   TData = TQueryFnData,
   T extends QueryOptions<TQueryFnData> = QueryOptions<TQueryFnData>,
@@ -77,7 +77,6 @@ export function useJsonData<
   const {
     widget: {
       id: uuId,
-      type: widgetType,
       external,
       refreshQuery,
       staleTime,
@@ -93,7 +92,7 @@ export function useJsonData<
   // Check if the widget has permission before making the API call
   const hasAccess = useShallowPermissionsStore((state) =>
     isSharedWidget
-      ? state.hasAccess(sourceId, widgetId.replace(`${sourceName}-`, ""))
+      ? state.hasAccess(sourceId ?? "", (widgetId ?? "").replace(`${sourceName}-`, ""))
       : true,
   );
   const removedApp = url === "" && external && sourceName;
@@ -109,7 +108,7 @@ export function useJsonData<
         try {
           await responseCb(response, resolve, reject);
         } catch (error) {
-          onError?.(error);
+          onError?.(toError(error));
           reject(error);
         }
         return;
@@ -129,7 +128,7 @@ export function useJsonData<
 
         resolve(data);
       } catch (error) {
-        onError?.(error);
+        onError?.(toError(error));
         reject(error);
       }
     },
@@ -147,7 +146,6 @@ export function useJsonData<
     method,
     body ? JSON.stringify(body) : "",
     headerKeys ? JSON.stringify(headerKeys) : "",
-    ...(widgetType === "ssrm_advanced" ? [uuId] : []),
     ...(ignoreRefresh ? [] : [refreshQuery ?? 0]),
     hasAccess,
   ];
@@ -172,7 +170,7 @@ export function useJsonData<
           .then(async (r) => {
             const noContent = r.status === 204;
             if (!r.ok || noContent) {
-              let error: any;
+              let error: ApiErrorBody | undefined;
 
               try {
                 error = await r.json();
@@ -204,7 +202,7 @@ export function useJsonData<
             resolveCallback(r, resolve, reject);
           })
           .catch((error) => {
-            onError?.(error);
+            onError?.(toError(error));
             reject(error);
           });
       }),
@@ -239,7 +237,7 @@ export function fetchWithToken(
 }
 
 export function useMultipleQueries<
-  TQueryFnData = any | any[],
+  TQueryFnData = unknown,
   TError = Error,
   TData = TQueryFnData,
 >(
@@ -269,12 +267,16 @@ export function useMultipleQueries<
     const { headers, newParams } = convertHeadersToRecord(endpointHeaders, params);
     const withAuth = addBearerToken && isBackendOrigin(url);
 
-    const resolveCallback = async (response, resolve, reject) => {
+    const resolveCallback = async (
+      response: Response,
+      resolve: (data: TQueryFnData | Promise<TQueryFnData>) => void,
+      reject: (reason?: unknown) => void,
+    ) => {
       if (responseCb) {
         try {
           await responseCb(response, resolve, reject);
         } catch (error) {
-          onError?.(error);
+          onError?.(toError(error));
           reject(error);
         }
         return;
@@ -311,7 +313,7 @@ export function useMultipleQueries<
             .then(async (r) => {
               const noContent = r.status === 204;
               if (!r.ok || noContent) {
-                let error: any;
+                let error: ApiErrorBody | undefined;
 
                 try {
                   error = await r.json();

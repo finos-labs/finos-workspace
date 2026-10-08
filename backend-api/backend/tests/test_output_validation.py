@@ -56,7 +56,6 @@ class TestUserOutputValidation:
         assert "confirmed" in data
         assert "created_date" in data
         assert "referral_code" in data
-        assert "information_complete" in data
 
     @pytest.mark.asyncio
     async def test_user_created_date_format(self, auth_client):
@@ -92,7 +91,7 @@ class TestLoginOutputValidation:
         assert response.status_code == 200
         data = response.json()
         # User endpoint should return user info
-        assert data.get("email") == "testrunner@openbb.co"
+        assert data.get("email") == "testrunner@example.com"
         assert data.get("confirmed") is True
 
     @pytest.mark.asyncio
@@ -117,7 +116,7 @@ class TestErrorResponseValidation:
     async def test_404_error_format(self, auth_client):
         """404 errors should have consistent format"""
         fake_uuid = str(uuid4())
-        response = await auth_client.get(f"/pro/dashboard/{fake_uuid}")
+        response = await auth_client.get(f"/app/dashboard/{fake_uuid}")
         if response.status_code == 404:
             assert "Not Found" in response.text
 
@@ -181,7 +180,7 @@ class TestListOutputValidation:
     @pytest.mark.asyncio
     async def test_dashboard_list_no_other_users_data(self, auth_client):
         """Dashboard list should only contain current user's data"""
-        response = await auth_client.get("/pro/dashboards")
+        response = await auth_client.get("/app/dashboards")
         if response.status_code == 200:
             data = response.json()
             # All items should belong to current user (verified by no other emails)
@@ -195,7 +194,7 @@ class TestListOutputValidation:
     @pytest.mark.asyncio
     async def test_widgets_list_proper_format(self, auth_client):
         """Widgets list should have proper format"""
-        response = await auth_client.get("/pro/widgets")
+        response = await auth_client.get("/app/widgets")
         if response.status_code == 200:
             data = response.json()
             assert isinstance(data, (list, dict))
@@ -251,7 +250,7 @@ class TestSensitiveDataLeakPrevention:
     @pytest.mark.asyncio
     async def test_no_aws_credentials_in_response(self, auth_client):
         """Responses should never contain AWS credentials"""
-        endpoints = ["/auth/user", "/pro/dashboards", "/pro/widgets"]
+        endpoints = ["/auth/user", "/app/dashboards", "/app/widgets"]
         for endpoint in endpoints:
             response = await auth_client.get(endpoint)
             if response.status_code == 200:

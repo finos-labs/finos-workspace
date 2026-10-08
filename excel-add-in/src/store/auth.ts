@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { OPENBB_SANDBOX_BACKEND } from "~/backend";
 import { updateRibbon } from "~/commands/common.commands";
 
 import { Backend, User, UserProfile } from "~/types/user.types";
@@ -53,9 +52,7 @@ export const useAuthStore = create<AuthStore>()(
       },
       getBackends() {
         const user = get().user;
-        const apiSources = user?.profile?.api_sources || [];
-        const customBackends = [OPENBB_SANDBOX_BACKEND, ...apiSources];
-        return customBackends;
+        return user?.profile?.api_sources || [];
       }
     }),
     {

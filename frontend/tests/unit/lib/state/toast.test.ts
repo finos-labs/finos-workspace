@@ -137,7 +137,9 @@ describe("useToastStore", () => {
       });
 
       const newState = useToastStore.getState();
-      expect(newState.toasts[NotificationId.DeleteDashboard]?.dontShowAgain).toBe(false);
+      expect(newState.toasts[NotificationId.DeleteDashboard]?.dontShowAgain).toBe(
+        false,
+      );
       expect(newState.toasts[NotificationId.WidgetRemoved]?.dontShowAgain).toBe(true);
     });
   });
@@ -189,15 +191,9 @@ describe("useToastStore", () => {
   describe("edge cases", () => {
     it("should handle setting same value multiple times", () => {
       act(() => {
-        useToastStore
-          .getState()
-          .setToastDontShowAgain(NotificationId.DeleteTab, true);
-        useToastStore
-          .getState()
-          .setToastDontShowAgain(NotificationId.DeleteTab, true);
-        useToastStore
-          .getState()
-          .setToastDontShowAgain(NotificationId.DeleteTab, true);
+        useToastStore.getState().setToastDontShowAgain(NotificationId.DeleteTab, true);
+        useToastStore.getState().setToastDontShowAgain(NotificationId.DeleteTab, true);
+        useToastStore.getState().setToastDontShowAgain(NotificationId.DeleteTab, true);
       });
 
       expect(

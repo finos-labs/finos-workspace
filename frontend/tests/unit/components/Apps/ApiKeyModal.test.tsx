@@ -25,20 +25,26 @@ vi.mock("~/components/ds/atoms/Button", () => ({
 }));
 
 vi.mock("~/components/ds/atoms/Input", () => ({
-  Input: forwardRef<HTMLInputElement, any>(
-    ({ label, value, onChange, placeholder }, ref) => (
-      <label>
-        <span>{label}</span>
-        <input
-          ref={ref}
-          aria-label={label}
-          value={value}
-          placeholder={placeholder}
-          onChange={(e) => onChange?.(e.target.value)}
-        />
-      </label>
-    ),
-  ),
+  Input: forwardRef<
+    HTMLInputElement,
+    {
+      label?: string;
+      value?: string;
+      placeholder?: string;
+      onChange?: (value: string) => void;
+    }
+  >(({ label, value, onChange, placeholder }, ref) => (
+    <label>
+      <span>{label}</span>
+      <input
+        ref={ref}
+        aria-label={label}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
+    </label>
+  )),
 }));
 
 vi.mock("~/components/ds/dialogs/Dialog", () => ({
@@ -57,6 +63,7 @@ const app: ListedApp = {
   backendUrl: "https://example.com",
   thumbnail: "",
   authType: ["api_key"],
+  widgets: [],
 };
 
 describe("ApiKeyModal", () => {
@@ -114,7 +121,9 @@ describe("ApiKeyModal", () => {
         hasSavedAuth={false}
         isOpen={true}
         onClose={vi.fn()}
-        onSave={vi.fn<(_: ListedAppAuthValue[]) => Promise<{ success: boolean }>>().mockResolvedValue({ success: true })}
+        onSave={vi
+          .fn<(_: ListedAppAuthValue[]) => Promise<{ success: boolean }>>()
+          .mockResolvedValue({ success: true })}
         onRemove={vi.fn()}
       />,
     );

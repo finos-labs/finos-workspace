@@ -37,17 +37,17 @@ describe("CreateFolderPopup Component", () => {
   const mockCreateFolder = vi.fn();
 
   beforeEach(() => {
-    (useShallowThemeStore as any).mockImplementation(() => ({
+    vi.mocked(useShallowThemeStore).mockImplementation(() => ({
       createFolderPopup: true,
       createFolderParentId: "parentId",
       setCreateFolderPopup: mockSetCreateFolderPopup,
     }));
 
-    (useShallowAppStore as any).mockImplementation(() => ({
+    vi.mocked(useShallowAppStore).mockImplementation(() => ({
       createFolder: mockCreateFolder,
     }));
 
-    (validateFolderName as any).mockImplementation(() => true);
+    vi.mocked(validateFolderName).mockImplementation(() => true);
   });
 
   it("renders with default props", () => {
@@ -72,7 +72,7 @@ describe("CreateFolderPopup Component", () => {
   });
 
   it("handles invalid folder name", async () => {
-    (validateFolderName as any).mockImplementation(() => false);
+    vi.mocked(validateFolderName).mockImplementation(() => false);
 
     render(<CreateFolderPopup />);
 

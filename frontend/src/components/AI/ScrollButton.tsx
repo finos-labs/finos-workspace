@@ -140,7 +140,7 @@ export function ScrollButton(props: ScrollButtonProps) {
     !(loading || showWelcome) &&
     streamedData === "" &&
     showScrollButton &&
-    messagesRef.current?.scrollHeight > messagesRef.current?.clientHeight;
+    (messagesRef.current?.scrollHeight ?? 0) > (messagesRef.current?.clientHeight ?? 0);
 
   return shouldShowButton && buttonMemo;
 }

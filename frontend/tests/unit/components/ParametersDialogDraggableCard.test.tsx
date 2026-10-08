@@ -2,23 +2,21 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ParametersDialog } from "~/components/ParametersDialogDraggableCard";
-import type { ParamDef, WidgetT } from "~/components/types";
+import type { ParamDef, WidgetContextType, WidgetT } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
-import { createTestWidget } from "../helpers";
+import { makeWidget, makeWidgetContext } from "../factories";
 
 const mockUpdateWidget = vi.fn();
 const mockSetOpen = vi.fn();
 
-const createMockWidgetContext = (widget: Partial<WidgetT> = {}) => ({
-  widget: widget as WidgetT,
-  widgetFromJSON: undefined,
-  updateWidget: mockUpdateWidget,
-  widgetRef: { current: widget as WidgetT },
-  activeDashboardId: "test-dashboard",
-  isShared: false,
-  uuid: "test-uuid",
-  getWidget: () => widget as WidgetT,
-});
+const createMockWidgetContext = (
+  widget: Partial<WidgetT> = {},
+  overrides: Partial<WidgetContextType> = {},
+) =>
+  makeWidgetContext(makeWidget(widget), {
+    updateWidget: mockUpdateWidget,
+    ...overrides,
+  });
 
 vi.mock("~/components/Widget.context", () => ({
   useWidgetContext: vi.fn(() => createMockWidgetContext()),
@@ -33,7 +31,7 @@ describe("ParametersDialog", () => {
 
   describe("Rendering", () => {
     it("should render dialog when open is true", () => {
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params: [
           { type: "text", paramName: "param1", value: "value1", label: "Parameter 1" },
@@ -48,7 +46,7 @@ describe("ParametersDialog", () => {
     });
 
     it("should not render when open is false", () => {
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params: [
           { type: "text", paramName: "param1", value: "value1", label: "Parameter 1" },
@@ -72,7 +70,7 @@ describe("ParametersDialog", () => {
         { type: "text", paramName: "param3", value: "value3", label: "Parameter 3" },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -91,7 +89,7 @@ describe("ParametersDialog", () => {
         { type: "text", paramName: "my_param", value: "value1" },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -104,7 +102,7 @@ describe("ParametersDialog", () => {
     });
 
     it("should render Save and Cancel buttons", () => {
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params: [
           { type: "text", paramName: "param1", value: "value1", label: "Parameter 1" },
@@ -120,7 +118,7 @@ describe("ParametersDialog", () => {
     });
 
     it("should return null when widget has no params", () => {
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params: [],
       });
@@ -165,7 +163,7 @@ describe("ParametersDialog", () => {
         { type: "text", paramName: "param3", value: "value3", label: "Param 3" }, // undefined show should default to true
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -193,7 +191,7 @@ describe("ParametersDialog", () => {
         },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -231,7 +229,7 @@ describe("ParametersDialog", () => {
         },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -271,7 +269,7 @@ describe("ParametersDialog", () => {
         },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -309,7 +307,7 @@ describe("ParametersDialog", () => {
         { type: "text", paramName: "param1", value: "value1", label: "Param 1" },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -339,7 +337,7 @@ describe("ParametersDialog", () => {
         },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -379,7 +377,7 @@ describe("ParametersDialog", () => {
         },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -416,7 +414,7 @@ describe("ParametersDialog", () => {
         },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });
@@ -459,13 +457,13 @@ describe("ParametersDialog", () => {
         { type: "text", paramName: "param1", value: "value1", label: "From JSON" },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
       });
 
       useWidgetContextMock.mockReturnValue({
         ...createMockWidgetContext(widget),
-        widgetFromJSON: { params } as any,
+        widgetFromJSON: { params },
       });
 
       render(<ParametersDialog open={true} setOpen={mockSetOpen} />);
@@ -482,14 +480,14 @@ describe("ParametersDialog", () => {
         { type: "text", paramName: "param1", value: "value1", label: "From JSON" },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params: widgetParams,
       });
 
       useWidgetContextMock.mockReturnValue({
         ...createMockWidgetContext(widget),
-        widgetFromJSON: { params: jsonParams } as any,
+        widgetFromJSON: { params: jsonParams },
       });
 
       render(<ParametersDialog open={true} setOpen={mockSetOpen} />);
@@ -506,7 +504,7 @@ describe("ParametersDialog", () => {
         { type: "text", paramName: "param2", value: "value2", label: "Param 2" },
       ];
 
-      const widget = createTestWidget({
+      const widget = makeWidget({
         id: "test-widget",
         params,
       });

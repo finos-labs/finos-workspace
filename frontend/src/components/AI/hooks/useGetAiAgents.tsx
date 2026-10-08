@@ -7,7 +7,7 @@ import {
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
 
-const aiCopilotOpenBBCopilotFF = getConfig().copilot.openbbCopilot;
+const aiCopilotDefaultCopilotFF = getConfig().copilot.defaultCopilot;
 
 // Flattens the enabled external copilot holders into a flat agent list. Guarded so
 // undefined holders (e.g. loosely-mocked stores in tests) don't throw.
@@ -26,10 +26,10 @@ export default function useGetAiAgents(): Copilot[] {
 
   const aiAgentsMemo = useMemo(
     () => [
-      ...(aiCopilotOpenBBCopilotFF ? [getDefaultCopilot()] : []),
+      ...(aiCopilotDefaultCopilotFF ? [getDefaultCopilot()] : []),
       ...selectExternalCopilots(externalCopilotHolders),
     ],
-    [externalCopilotHolders, aiCopilotOpenBBCopilotFF],
+    [externalCopilotHolders, aiCopilotDefaultCopilotFF],
   );
 
   return aiAgentsMemo;

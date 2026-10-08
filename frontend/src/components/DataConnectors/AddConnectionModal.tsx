@@ -1,19 +1,14 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import type { ReactNode } from "react";
 import { ExtensionOptions } from "~/lib/constants";
-import { useTutorialStore } from "~/lib/state/tutorial";
 import { cn } from "~/lib/utils";
 import { BaseDialog } from "../ds/dialogs/BaseDialog";
 import { DialogDescription, DialogTitle } from "../ds/dialogs/Dialog";
 import Icon from "../Icon";
 import type { IconId } from "../Icon.types";
-import SingleApiEndpointContent from "./NewComponents/ApiEndpoint/Content";
 import BackendContent from "./NewComponents/Backend/Content";
-import CopilotTableContent from "./NewComponents/CopilotTables/Content";
 import FileContent from "./NewComponents/File/Content";
-import RSSContent from "./NewComponents/RSS/Content";
 import WebsiteContent from "./NewComponents/Website/Content";
-import YouTubeContent from "./NewComponents/YouTube/Content";
 import { type DcTabT, useDataConnectorContext } from "./Providers/DataConnectorContext";
 
 function MenuTab({
@@ -38,7 +33,7 @@ function MenuTab({
         value && `_button_${value}`,
       )}
     >
-      {showIcon && (
+      {showIcon && icon && (
         <Icon id={icon} className="size-4 text-brand-main dark:text-brand-lighter" />
       )}
       {label || value}
@@ -48,10 +43,7 @@ function MenuTab({
 
 const dataTypes = [
   { id: "file", label: "File", icon: "file-attachment-01" },
-  { id: "single", label: "Endpoint", icon: "layout-top" },
   { id: "website", label: "Iframe", icon: "globe-01" },
-  { id: "youtube", label: "YouTube", icon: "transcript-icon" },
-  { id: "rss", label: "RSS / Atom Feed", icon: "rss-01" },
 ] as const;
 
 export const DataConnectionTabs = ({
@@ -62,18 +54,12 @@ export const DataConnectionTabs = ({
   showIcons?: boolean;
 }) => {
   const { dcTab, setTab, mode } = useDataConnectorContext();
-  const { currentTutorial, currentStep, goToStep } = useTutorialStore();
 
   return (
     <TabsPrimitive.Root
-      defaultValue={dcTab === "snowflake" ? "database" : dcTab}
-      value={dcTab === "snowflake" ? "database" : dcTab}
-      onValueChange={(value: DcTabT) => {
-        if (currentTutorial === "data_connectors" && currentStep === 2) {
-          setTimeout(() => goToStep(3), 500);
-        }
-        setTab(value);
-      }}
+      defaultValue={dcTab}
+      value={dcTab}
+      onValueChange={(value) => setTab(value as DcTabT)}
       orientation="horizontal"
       className="flex h-full bg-tab-group-bg rounded border  border-secondary/20 only-sm:flex-col"
     >
@@ -87,10 +73,8 @@ export const DataConnectionTabs = ({
                 icon="grid-01"
                 showIcon={showIcons}
               />
-              <div className="obb-divider my-2 only-sm:hidden" />
-              <p className="obb-uppercase-small-title ml-1 only-sm:hidden">
-                My Widgets
-              </p>
+              <div className="ws-divider my-2 only-sm:hidden" />
+              <p className="ws-uppercase-small-title ml-1 only-sm:hidden">My Widgets</p>
             </>
           )}
           {dataTypes.map(({ id, label, icon }) => (
@@ -113,17 +97,6 @@ export const DataConnectionTabs = ({
       >
         <FileContent />
       </Content>
-      <Content
-        value="single"
-        title="Endpoint"
-        description={
-          mode === "edit"
-            ? "API Endpoint"
-            : "Instantly create a table widget from an endpoint. Suitable for a single endpoint. Requires JSON output and CORS-enabled APIs."
-        }
-      >
-        <SingleApiEndpointContent />
-      </Content>
       {showAppsSection && (
         <Content
           value="backend"
@@ -133,40 +106,12 @@ export const DataConnectionTabs = ({
           <BackendContent />
         </Content>
       )}
-      {/* <Content
-          value="database"
-          title={mode === "edit" ? "Database" : "Database Integrations"}
-          description="Connect to various database systems like SQLite, Snowflake, MySQL, and PostgreSQL to query and visualize your data."
-        >
-          <DatabaseContent />
-        </Content> */}
       <Content
         value="website"
         title="Iframe"
-        description="Add any embeddable iframe URL (e.g. Streamlit or Plotly dashboards) to your workspace."
+        description="Add any embeddable iframe URL (e.g. a Streamlit app) to your workspace."
       >
         <WebsiteContent />
-      </Content>
-      <Content
-        value="youtube"
-        title="YouTube"
-        description="Add any YouTube video link."
-      >
-        <YouTubeContent />
-      </Content>
-      <Content
-        value="rss"
-        title="RSS / Atom Feed"
-        description="Add any RSS or Atom feed to your workspace."
-      >
-        <RSSContent />
-      </Content>
-      <Content
-        value="copilot_table"
-        title="Copilot Table"
-        description="Add a Copilot Table to your workspace."
-      >
-        <CopilotTableContent />
       </Content>
     </TabsPrimitive.Root>
   );
@@ -194,7 +139,7 @@ const AddConnectionModal = () => {
             : `Edit Data — ${dcTab}`}
       </DialogTitle>
       <DialogDescription className="sr-only">
-        Add data connections to OpenBB
+        Add data connections to Workspace
       </DialogDescription>
       <div className="h-[calc(100%-30px)]">
         <DataConnectionTabs />

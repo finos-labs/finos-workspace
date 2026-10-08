@@ -239,7 +239,7 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
       forceExtraInfo = false,
       listWidth = "100%",
       popupWidth,
-      className = "obb-parameter",
+      className = "ws-parameter",
       onOpenChange: onOpenChangeProp,
     } = props;
 
@@ -249,10 +249,15 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
 
     const isMulti = useMemo(() => isMultiSelect(selected), [selected]);
 
-    const [state, dispatch] = useStateReducer({
+    const [state, dispatch] = useStateReducer<{
+      input: string;
+      selected: ValueType | ValueType[] | undefined;
+      pending: number | null;
+      open: boolean;
+    }>({
       input: "",
       selected,
-      pending: null as number | null,
+      pending: null,
       open: false,
     });
 
@@ -312,7 +317,7 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
 
     useEffect(() => {
       if (state.pending) {
-        debouncedonSelect(state.selected);
+        debouncedonSelect(state.selected ?? "");
         if (!isMulti) dispatch({ open: false });
       }
     }, [state.pending]);
@@ -320,9 +325,8 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
     const { filterValues, hasExtra } = useMemo(() => {
       let newValues = values.map((v) => ({
         ...v,
-        selected: isMulti
-          ? // @ts-ignore
-            selected.includes(v.value)
+        selected: Array.isArray(selected)
+          ? selected.includes(v.value)
           : selected === v.value,
       }));
 
@@ -358,13 +362,12 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
     const localSelected = state.pending ? state.selected : selected;
 
     const selectedLabel = useMemo(() => {
-      if (!isMulti) {
+      if (!Array.isArray(localSelected)) {
         const selectedValue = values.find((v) => v.value === localSelected);
         return selectedValue?.label || label;
       }
 
       // For multi-select, show count or all selected labels
-      // @ts-expect-error
       const selectedValues = values.filter((v) => localSelected.includes(v.value));
       if (selectedValues.length > 1) return `${label} (${selectedValues.length})`;
 
@@ -428,7 +431,7 @@ export const AdvancedSelect = forwardRef<HTMLInputElement, AdvancedSelectProps>(
               width: popupWidth ? `${popupWidth}px` : "fit-content",
             }}
             className={cn(
-              "obb-dropdown-container",
+              "ws-dropdown-container",
               "z-60 inline-flex h-full flex-col items-start justify-start gap-4 rounded",
               "max-h-[400px] overflow-y-auto overflow-x-hidden",
               contentClassName,

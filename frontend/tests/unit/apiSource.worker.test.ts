@@ -47,7 +47,10 @@ function okResult(): ValidateBackend {
     widgets: {},
     templates: [],
     agents: [],
-  } as ValidateBackend;
+    errorMessage: null,
+    templateErrorMessage: null,
+    totalFailed: 0,
+  };
 }
 
 type WorkerHandler = (e: MessageEvent) => Promise<void>;

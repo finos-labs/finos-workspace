@@ -95,7 +95,8 @@ export async function onMcpAuthorization(queryParams: URLSearchParams) {
 
     // --- Instantiate Provider ---
     console.log(`${logPrefix} Re-instantiating provider for server: ${serverUrl}`);
-    provider = new BrowserOAuthClientProvider(serverUrl, providerOptions);
+    const oauthProvider = new BrowserOAuthClientProvider(serverUrl, providerOptions);
+    provider = oauthProvider;
 
     // --- Call SDK Auth Function ---
     console.log(`${logPrefix} Calling SDK auth() to exchange code...`);
@@ -105,7 +106,7 @@ export async function onMcpAuthorization(queryParams: URLSearchParams) {
     // 3. Call exchangeAuthorization()
     // 4. Use provider.saveTokens() on success
     const getAuthResult = async (withProxy = false) => {
-      const authResult = await auth(provider, {
+      const authResult = await auth(oauthProvider, {
         serverUrl,
         authorizationCode: code,
         fetchFn: withProxy ? fetchMcpProxyCb : undefined,

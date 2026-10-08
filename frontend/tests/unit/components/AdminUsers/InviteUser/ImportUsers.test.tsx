@@ -1,20 +1,25 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { inviteUser } from "~/api/admin.api";
 import ImportUsers from "~/components/AdminUsers/InviteUser/ImportUsers";
 import { Tabs } from "~/components/ds/molecules/Tabs";
 
 vi.mock("~/components/ds/dialogs/Dialog", () => ({
-  Dialog: ({ children }: any) => <div>{children}</div>,
-  DialogContent: ({ children }: any) => <div>{children}</div>,
-  DialogHeader: ({ children }: any) => <div>{children}</div>,
-  DialogTitle: ({ children }: any) => <div>{children}</div>,
-  DialogFooter: ({ children, className }: any) => (
-    <div className={className}>{children}</div>
-  ),
-  DialogClose: ({ children }: any) => <div>{children}</div>,
-  DialogTrigger: ({ children }: any) => <div>{children}</div>,
+  Dialog: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DialogContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DialogHeader: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DialogFooter: ({
+    children,
+    className,
+  }: {
+    children?: ReactNode;
+    className?: string;
+  }) => <div className={className}>{children}</div>,
+  DialogClose: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DialogTrigger: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("sonner", () => ({
@@ -52,7 +57,7 @@ describe("ImportUsers Component", () => {
 
   it("handles file selection and parsing correctly", async () => {
     const Papa = (await import("papaparse")).default;
-    (Papa.parse as Mock).mockImplementation((file, options) => {
+    (Papa.parse as Mock).mockImplementation((_file, options) => {
       if (options.complete) {
         options.complete({
           data: [
@@ -92,7 +97,7 @@ describe("ImportUsers Component", () => {
 
   it("invites multiple users successfully", async () => {
     const Papa = (await import("papaparse")).default;
-    (Papa.parse as Mock).mockImplementation((file, options) => {
+    (Papa.parse as Mock).mockImplementation((_file, options) => {
       if (options.complete) {
         options.complete({
           data: [
@@ -141,7 +146,7 @@ describe("ImportUsers Component", () => {
   it("shows error when CSV is invalid", async () => {
     // Re-mock Papa.parse for this specific test
     const Papa = (await import("papaparse")).default;
-    (Papa.parse as Mock).mockImplementationOnce((file, options) => {
+    (Papa.parse as Mock).mockImplementationOnce((_file, options) => {
       if (options.complete) {
         options.complete({
           data: [],
@@ -170,7 +175,7 @@ describe("ImportUsers Component", () => {
 
   it("handles partial user invitation", async () => {
     const Papa = (await import("papaparse")).default;
-    (Papa.parse as Mock).mockImplementationOnce((file, options) => {
+    (Papa.parse as Mock).mockImplementationOnce((_file, options) => {
       if (options.complete) {
         options.complete({
           data: [

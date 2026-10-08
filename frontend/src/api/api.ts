@@ -56,7 +56,7 @@ apiClient.interceptors.response.use(
     if (
       response?.status === 401 &&
       user?.token &&
-      !error.config.url?.includes("/pro/logout")
+      !error.config?.url?.includes("/app/logout")
     ) {
       logout();
     }

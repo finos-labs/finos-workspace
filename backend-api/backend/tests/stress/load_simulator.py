@@ -1,8 +1,8 @@
 """Multi-user Workspace MCP load simulator against the LIVE local stack (http://localhost:8001).
 
 Spins up N simulated users that concurrently:
-  * GET  /pro/dash/validate-and-sync      ("validate and sync" — heavy DB read)
-  * POST /pro/dash/sync                    (save a dashboard — DB write, round-trips real content)
+  * GET  /app/dash/validate-and-sync      ("validate and sync" — heavy DB read)
+  * POST /app/dash/sync                    (save a dashboard — DB write, round-trips real content)
   * POST /mcp  get_workspace_snapshot      (command through the MCP bridge -> browser WS)
   * POST /mcp  update_widget_layout        ("move things around" through the bridge)
 
@@ -36,8 +36,8 @@ import aiohttp
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:8001")
 USERS = int(os.environ.get("USERS", "12"))
 DURATION = float(os.environ.get("DURATION", "30"))
-ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@openbb.co")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "asdQWE123!")
+ADMIN_EMAIL = os.environ["ADMIN_EMAIL"]
+ADMIN_PASSWORD = os.environ["ADMIN_PASSWORD"]
 THINK_MIN = float(os.environ.get("THINK_MIN", "0.2"))
 THINK_MAX = float(os.environ.get("THINK_MAX", "1.0"))
 RAMP = float(
@@ -50,14 +50,14 @@ MCP_USERS = int(os.environ.get("MCP_USERS", "0"))
 API_MCP = os.environ.get("API_MCP", "1") != "0"
 MCP_ACTIONS = {"mcp_snapshot", "mcp_move"}
 SAMPLE_INTERVAL = float(os.environ.get("SAMPLE_INTERVAL", "0.25"))
-# Must contain OPENBB_FRONTEND_USER_AGENT to be exempt from rate limiting. This dev stack
+# Must contain WORKSPACE_FRONTEND_USER_AGENT to be exempt from rate limiting. This dev stack
 # sets it to "test" in envs/.env (the config default is "colinlovedrust"). Override if yours differs.
 UA = f"{os.environ.get('FRONTEND_UA', 'test')}-loadsim"
 
 # Action mix (weights). Tune to taste.
 ACTIONS = [
     ("validate_and_sync", 4),
-    ("sync_save", 6),  # POST /pro/dash/sync — the big "how we save", called often
+    ("sync_save", 6),  # POST /app/dash/sync — the big "how we save", called often
     ("api_source", 2),
     ("apps", 2),
     ("shared", 2),
@@ -69,11 +69,11 @@ ACTIONS = [
 
 # Authenticated GET reads (Bearer access_token). action -> path.
 GET_PATHS = {
-    "validate_and_sync": "/pro/dash/validate-and-sync",
-    "api_source": "/pro/data-connectors/api-source",
-    "apps": "/pro/user-apps/sync",
-    "shared": "/pro/dash/sync/shared",
-    "resource_permissions": "/pro/resource-permissions",
+    "validate_and_sync": "/app/dash/validate-and-sync",
+    "api_source": "/app/data-connectors/api-source",
+    "apps": "/app/user-apps/sync",
+    "shared": "/app/dash/sync/shared",
+    "resource_permissions": "/app/resource-permissions",
 }
 
 # Anchored to line start (re.M) so the `# HELP/# TYPE` comment lines are never matched.
@@ -112,7 +112,7 @@ class Stats:
 
 async def login(session: aiohttp.ClientSession) -> str:
     async with session.post(
-        f"{BASE_URL}/pro/login",
+        f"{BASE_URL}/app/login",
         json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD, "remember": False},
     ) as resp:
         body = await resp.json()
@@ -123,7 +123,7 @@ async def login(session: aiohttp.ClientSession) -> str:
 
 async def create_mcp_token(session: aiohttp.ClientSession, access_token: str) -> str:
     async with session.post(
-        f"{BASE_URL}/pro/workspace-mcp/tokens",
+        f"{BASE_URL}/app/workspace-mcp/tokens",
         headers={"Authorization": f"Bearer {access_token}"},
         json={"name": "loadsim"},
     ) as resp:
@@ -137,7 +137,7 @@ async def fetch_dashboards(
     session: aiohttp.ClientSession, access_token: str
 ) -> list[tuple[str, dict]]:
     async with session.get(
-        f"{BASE_URL}/pro/dash/sync",
+        f"{BASE_URL}/app/dash/sync",
         headers={"Authorization": f"Bearer {access_token}", "User-Agent": UA},
     ) as resp:
         body = await resp.json()
@@ -154,7 +154,7 @@ async def provision_user_dashboards(
 
     async def create(u: str):
         async with session.post(
-            f"{BASE_URL}/pro/dash/sync",
+            f"{BASE_URL}/app/dash/sync",
             headers=auth,
             json={"items": {u: {"content": base_content, "name": f"loadsim-{u[:8]}"}}},
         ) as r:
@@ -170,7 +170,7 @@ async def cleanup_dashboards(
 ):
     auth = {"Authorization": f"Bearer {access_token}", "User-Agent": UA}
     async with session.post(
-        f"{BASE_URL}/pro/dash/sync",
+        f"{BASE_URL}/app/dash/sync",
         headers=auth,
         json={"items": {u: "DELETE" for u in uuids}},
     ) as r:
@@ -182,7 +182,7 @@ async def start_bridge_browser(
 ):
     """Open a bridge session + WebSocket and auto-answer command_requests like the Workspace UI."""
     async with session.post(
-        f"{BASE_URL}/pro/workspace-mcp/bridge/session/start",
+        f"{BASE_URL}/app/workspace-mcp/bridge/session/start",
         headers={"Authorization": f"Bearer {access_token}"},
         json={"client_name": "workspace-ui"},
     ) as resp:
@@ -313,7 +313,7 @@ async def user_loop(
                     ok = r.status == 200
             elif action == "sync_save":
                 async with session.post(
-                    f"{BASE_URL}/pro/dash/sync",
+                    f"{BASE_URL}/app/dash/sync",
                     headers=auth,
                     json={"items": {save_uuid: {"content": save_content}}},
                 ) as r:
@@ -322,7 +322,7 @@ async def user_loop(
                     ok = r.status == 200
             elif action == "display_settings":
                 async with session.post(
-                    f"{BASE_URL}/pro/display-settings",
+                    f"{BASE_URL}/app/display-settings",
                     headers=auth,
                     json={"theme": "dark"},
                 ) as r:

@@ -9,7 +9,9 @@
 
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
+import type { PermissionsT } from "~/api/user_roles.api";
 import { usePermissionsStore } from "~/lib/state/permissions";
+import { partial } from "../../mocks";
 
 describe("usePermissionsStore", () => {
   beforeEach(() => {
@@ -39,7 +41,7 @@ describe("usePermissionsStore", () => {
 
   describe("setPermissions", () => {
     it("should set permissions", () => {
-      const newPermissions = {
+      const newPermissions = partial<PermissionsT>({
         backends: [
           {
             uuid: "backend-1",
@@ -48,10 +50,9 @@ describe("usePermissionsStore", () => {
         ],
         files: [{ uuid: "file-1", access: "access" as const }],
         prompts: [],
-      };
+      });
 
       act(() => {
-        // @ts-expect-error - ignored for now
         usePermissionsStore.getState().setPermissions(newPermissions);
       });
 
@@ -59,7 +60,7 @@ describe("usePermissionsStore", () => {
     });
 
     it("should replace existing permissions", () => {
-      const initialPermissions = {
+      const initialPermissions = partial<PermissionsT>({
         backends: [
           {
             uuid: "backend-1",
@@ -68,9 +69,9 @@ describe("usePermissionsStore", () => {
         ],
         files: [],
         prompts: [],
-      };
+      });
 
-      const newPermissions = {
+      const newPermissions = partial<PermissionsT>({
         backends: [
           {
             uuid: "backend-2",
@@ -79,15 +80,13 @@ describe("usePermissionsStore", () => {
         ],
         files: [{ uuid: "file-2", access: "access" as const }],
         prompts: [],
-      };
+      });
 
       act(() => {
-        // @ts-expect-error - ignored for now
         usePermissionsStore.getState().setPermissions(initialPermissions);
       });
 
       act(() => {
-        // @ts-expect-error - ignored for now
         usePermissionsStore.getState().setPermissions(newPermissions);
       });
 
@@ -99,17 +98,18 @@ describe("usePermissionsStore", () => {
     describe("backend widgets", () => {
       it("should return true when widget has access", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [
-              // @ts-expect-error - ignored for now
-              {
-                uuid: "backend-1",
-                widgets: [{ widgetId: "widget-1", access: "access" }],
-              },
-            ],
-            files: [],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [
+                {
+                  uuid: "backend-1",
+                  widgets: [{ widgetId: "widget-1", access: "access" }],
+                },
+              ],
+              files: [],
+              prompts: [],
+            }),
+          );
         });
 
         expect(usePermissionsStore.getState().hasAccess("backend-1", "widget-1")).toBe(
@@ -119,17 +119,18 @@ describe("usePermissionsStore", () => {
 
       it("should return false when widget does not have access", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [
-              // @ts-expect-error - ignored for now
-              {
-                uuid: "backend-1",
-                widgets: [{ widgetId: "widget-1", access: "no-access" }],
-              },
-            ],
-            files: [],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [
+                {
+                  uuid: "backend-1",
+                  widgets: [{ widgetId: "widget-1", access: "no-access" }],
+                },
+              ],
+              files: [],
+              prompts: [],
+            }),
+          );
         });
 
         expect(usePermissionsStore.getState().hasAccess("backend-1", "widget-1")).toBe(
@@ -139,17 +140,18 @@ describe("usePermissionsStore", () => {
 
       it("should return false when widget is not in backend", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [
-              // @ts-expect-error - ignored for now
-              {
-                uuid: "backend-1",
-                widgets: [{ widgetId: "widget-1", access: "access" }],
-              },
-            ],
-            files: [],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [
+                {
+                  uuid: "backend-1",
+                  widgets: [{ widgetId: "widget-1", access: "access" }],
+                },
+              ],
+              files: [],
+              prompts: [],
+            }),
+          );
         });
 
         expect(usePermissionsStore.getState().hasAccess("backend-1", "widget-2")).toBe(
@@ -159,17 +161,18 @@ describe("usePermissionsStore", () => {
 
       it("should return false when backend is not found", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [
-              // @ts-expect-error - ignored for now
-              {
-                uuid: "backend-1",
-                widgets: [{ widgetId: "widget-1", access: "access" }],
-              },
-            ],
-            files: [],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [
+                {
+                  uuid: "backend-1",
+                  widgets: [{ widgetId: "widget-1", access: "access" }],
+                },
+              ],
+              files: [],
+              prompts: [],
+            }),
+          );
         });
 
         expect(usePermissionsStore.getState().hasAccess("backend-2", "widget-1")).toBe(
@@ -181,12 +184,13 @@ describe("usePermissionsStore", () => {
     describe("file permissions", () => {
       it("should return true when file has access", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [],
-            // @ts-expect-error - ignored for now
-            files: [{ uuid: "file-1", access: "access" }],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [],
+              files: [{ uuid: "file-1", access: "access" }],
+              prompts: [],
+            }),
+          );
         });
 
         // For files, widgetId is not used, only sourceId matters
@@ -195,12 +199,13 @@ describe("usePermissionsStore", () => {
 
       it("should return false when file does not have access", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [],
-            // @ts-expect-error - ignored for now
-            files: [{ uuid: "file-1", access: "no-access" }],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [],
+              files: [{ uuid: "file-1", access: "no-access" }],
+              prompts: [],
+            }),
+          );
         });
 
         expect(usePermissionsStore.getState().hasAccess("file-1", "")).toBe(false);
@@ -208,18 +213,18 @@ describe("usePermissionsStore", () => {
 
       it("should check file permissions when backend not found", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [
-              // @ts-expect-error - ignored for now
-              {
-                uuid: "backend-1",
-                widgets: [],
-              },
-            ],
-            // @ts-expect-error - ignored for now
-            files: [{ uuid: "file-1", access: "access" }],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [
+                {
+                  uuid: "backend-1",
+                  widgets: [],
+                },
+              ],
+              files: [{ uuid: "file-1", access: "access" }],
+              prompts: [],
+            }),
+          );
         });
 
         expect(usePermissionsStore.getState().hasAccess("file-1", "widget-1")).toBe(
@@ -231,17 +236,18 @@ describe("usePermissionsStore", () => {
     describe("edge cases", () => {
       it("should return false when sourceId is empty", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [
-              // @ts-expect-error - ignored for now
-              {
-                uuid: "backend-1",
-                widgets: [{ widgetId: "widget-1", access: "access" }],
-              },
-            ],
-            files: [],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [
+                {
+                  uuid: "backend-1",
+                  widgets: [{ widgetId: "widget-1", access: "access" }],
+                },
+              ],
+              files: [],
+              prompts: [],
+            }),
+          );
         });
 
         expect(usePermissionsStore.getState().hasAccess("", "widget-1")).toBe(false);
@@ -249,22 +255,22 @@ describe("usePermissionsStore", () => {
 
       it("should handle multiple backends", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [
-              // @ts-expect-error - ignored for now
-              {
-                uuid: "backend-1",
-                widgets: [{ widgetId: "widget-1", access: "access" }],
-              },
-              // @ts-expect-error - ignored for now
-              {
-                uuid: "backend-2",
-                widgets: [{ widgetId: "widget-2", access: "no-access" }],
-              },
-            ],
-            files: [],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [
+                {
+                  uuid: "backend-1",
+                  widgets: [{ widgetId: "widget-1", access: "access" }],
+                },
+                {
+                  uuid: "backend-2",
+                  widgets: [{ widgetId: "widget-2", access: "no-access" }],
+                },
+              ],
+              files: [],
+              prompts: [],
+            }),
+          );
         });
 
         expect(usePermissionsStore.getState().hasAccess("backend-1", "widget-1")).toBe(
@@ -281,17 +287,18 @@ describe("usePermissionsStore", () => {
     describe("backend widgets", () => {
       it("should return true when widget has access", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [
-              // @ts-expect-error - ignored for now
-              {
-                uuid: "backend-1",
-                widgets: [{ widgetId: "widget-1", access: "access" }],
-              },
-            ],
-            files: [],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [
+                {
+                  uuid: "backend-1",
+                  widgets: [{ widgetId: "widget-1", access: "access" }],
+                },
+              ],
+              files: [],
+              prompts: [],
+            }),
+          );
         });
 
         expect(
@@ -301,17 +308,18 @@ describe("usePermissionsStore", () => {
 
       it("should return false when widget does not have access", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [
-              // @ts-expect-error - ignored for now
-              {
-                uuid: "backend-1",
-                widgets: [{ widgetId: "widget-1", access: "no-access" }],
-              },
-            ],
-            files: [],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [
+                {
+                  uuid: "backend-1",
+                  widgets: [{ widgetId: "widget-1", access: "no-access" }],
+                },
+              ],
+              files: [],
+              prompts: [],
+            }),
+          );
         });
 
         expect(
@@ -321,17 +329,18 @@ describe("usePermissionsStore", () => {
 
       it("should return undefined when widget is not found", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [
-              // @ts-expect-error - ignored for now
-              {
-                uuid: "backend-1",
-                widgets: [{ widgetId: "widget-1", access: "access" }],
-              },
-            ],
-            files: [],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [
+                {
+                  uuid: "backend-1",
+                  widgets: [{ widgetId: "widget-1", access: "access" }],
+                },
+              ],
+              files: [],
+              prompts: [],
+            }),
+          );
         });
 
         // Returns undefined for widget?.access === "access" when widget is undefined
@@ -344,12 +353,13 @@ describe("usePermissionsStore", () => {
     describe("file permissions", () => {
       it("should return true when file has access", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [],
-            // @ts-expect-error - ignored for now
-            files: [{ uuid: "file-1", access: "access" }],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [],
+              files: [{ uuid: "file-1", access: "access" }],
+              prompts: [],
+            }),
+          );
         });
 
         expect(usePermissionsStore.getState().isSharedWidget("file-1", "")).toBe(true);
@@ -357,12 +367,13 @@ describe("usePermissionsStore", () => {
 
       it("should return false when file does not have access", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [],
-            // @ts-expect-error - ignored for now
-            files: [{ uuid: "file-1", access: "no-access" }],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [],
+              files: [{ uuid: "file-1", access: "no-access" }],
+              prompts: [],
+            }),
+          );
         });
 
         expect(usePermissionsStore.getState().isSharedWidget("file-1", "")).toBe(false);
@@ -372,11 +383,13 @@ describe("usePermissionsStore", () => {
     describe("not found cases", () => {
       it("should return false when backend not found", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [],
-            files: [],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [],
+              files: [],
+              prompts: [],
+            }),
+          );
         });
 
         expect(
@@ -386,18 +399,18 @@ describe("usePermissionsStore", () => {
 
       it("should return false when neither backend nor file found", () => {
         act(() => {
-          usePermissionsStore.getState().setPermissions({
-            backends: [
-              // @ts-expect-error - ignored for now
-              {
-                uuid: "backend-1",
-                widgets: [],
-              },
-            ],
-            // @ts-expect-error - ignored for now
-            files: [{ uuid: "file-1", access: "access" }],
-            prompts: [],
-          });
+          usePermissionsStore.getState().setPermissions(
+            partial<PermissionsT>({
+              backends: [
+                {
+                  uuid: "backend-1",
+                  widgets: [],
+                },
+              ],
+              files: [{ uuid: "file-1", access: "access" }],
+              prompts: [],
+            }),
+          );
         });
 
         expect(
@@ -410,31 +423,29 @@ describe("usePermissionsStore", () => {
   describe("complex permission scenarios", () => {
     it("should handle mixed permissions correctly", () => {
       act(() => {
-        usePermissionsStore.getState().setPermissions({
-          backends: [
-            // @ts-expect-error - ignored for now
-            {
-              uuid: "backend-1",
-              widgets: [
-                { widgetId: "widget-1", access: "access" },
-                { widgetId: "widget-2", access: "no-access" },
-                { widgetId: "widget-3", access: "access" },
-              ],
-            },
-            // @ts-expect-error - ignored for now
-            {
-              uuid: "backend-2",
-              widgets: [{ widgetId: "widget-4", access: "access" }],
-            },
-          ],
-          files: [
-            // @ts-expect-error - ignored for now
-            { uuid: "file-1", access: "access" },
-            // @ts-expect-error - ignored for now
-            { uuid: "file-2", access: "no-access" },
-          ],
-          prompts: [],
-        });
+        usePermissionsStore.getState().setPermissions(
+          partial<PermissionsT>({
+            backends: [
+              {
+                uuid: "backend-1",
+                widgets: [
+                  { widgetId: "widget-1", access: "access" },
+                  { widgetId: "widget-2", access: "no-access" },
+                  { widgetId: "widget-3", access: "access" },
+                ],
+              },
+              {
+                uuid: "backend-2",
+                widgets: [{ widgetId: "widget-4", access: "access" }],
+              },
+            ],
+            files: [
+              { uuid: "file-1", access: "access" },
+              { uuid: "file-2", access: "no-access" },
+            ],
+            prompts: [],
+          }),
+        );
       });
 
       // Backend 1 widgets

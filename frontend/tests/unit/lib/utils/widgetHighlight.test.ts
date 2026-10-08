@@ -15,7 +15,6 @@ describe("widgetHighlight utils", () => {
     element.id = widgetId;
     document.body.appendChild(element);
 
-    // @ts-ignore
     element.scrollIntoView = vi.fn();
 
     // Mock RAF

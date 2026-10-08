@@ -47,8 +47,6 @@ export interface AdminApp {
   thumbnail_url_dark: string | null;
   thumbnail_url_light: string | null;
   media: string[];
-  /** Deprecated alias for `media`, still emitted by the backend. */
-  screenshots: string[];
   api_key_url: string | null;
   api_key_info_url: string | null;
   more_information_url: string | null;

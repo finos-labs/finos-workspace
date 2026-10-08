@@ -56,7 +56,7 @@ vi.mock("./Changelog", () => ({
       content: "Change 1\nChange 2",
     },
   ],
-  Changelog: ({ chunks }: { chunks: any[] }) => (
+  Changelog: ({ chunks }: { chunks: { slug: string; content: string }[] }) => (
     <div data-testid="changelog-content">
       {chunks.map((chunk) => (
         <div key={chunk.slug}>{chunk.content}</div>
@@ -65,7 +65,7 @@ vi.mock("./Changelog", () => ({
   ),
 }));
 
-vi.mock("~/lib/utils", async (importOriginal) => {
+vi.mock("~/lib/utils", async (_importOriginal) => {
   return {
     slugify: vi.fn().mockReturnValue("slugified-string"),
     getWidgetsWithSupportedAssetClass: vi.fn().mockReturnValue([]),
@@ -120,9 +120,7 @@ describe("ChangelogDialog", () => {
   it("has accessible description", () => {
     render(<ChangelogDialog open={true} onClose={vi.fn()} />);
 
-    const description = screen.getByText(
-      "View the changelog for the OpenBB Workspace.",
-    );
+    const description = screen.getByText("View the changelog for the Workspace.");
     expect(description).toHaveClass("sr-only");
   });
 

@@ -1,11 +1,11 @@
 #!/bin/bash
-# OpenBB Admin CLI - Full Workflow Test Script
+# Admin CLI - Full Workflow Test Script
 # Tests: create entity, add users, update, and cleanup
 
 set -e  # Exit on error
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ADMIN_CLI="py $SCRIPT_DIR/openbb-admin"
+ADMIN_CLI="py $SCRIPT_DIR/workspace-admin"
 
 # Colors for output
 RED='\033[0;31m'

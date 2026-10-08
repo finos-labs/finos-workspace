@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Select } from "~/components/ds/atoms/Select";
 
@@ -73,7 +74,13 @@ vi.mock("@radix-ui/react-select", () => {
       value,
       open: controlledOpen,
       onOpenChange,
-    }: any) => {
+    }: {
+      children?: ReactNode;
+      onValueChange: (value: string) => void;
+      value?: string;
+      open?: boolean;
+      onOpenChange: (open: boolean) => void;
+    }) => {
       const [internalOpen, setInternalOpen] = React.useState(false);
       const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
       const setOpen = onOpenChange || setInternalOpen;
@@ -83,7 +90,13 @@ vi.mock("@radix-ui/react-select", () => {
         </SelectContext.Provider>
       );
     },
-    Trigger: ({ children, className }: any) => {
+    Trigger: ({
+      children,
+      className,
+    }: {
+      children?: ReactNode;
+      className?: string;
+    }) => {
       const { setOpen } = React.useContext(SelectContext);
       return (
         <button onClick={() => setOpen(true)} className={className}>
@@ -91,21 +104,37 @@ vi.mock("@radix-ui/react-select", () => {
         </button>
       );
     },
-    Value: ({ placeholder }: any) => {
+    Value: ({ placeholder }: { placeholder?: string }) => {
       const { value } = React.useContext(SelectContext);
       return <span>{value || placeholder}</span>;
     },
-    Portal: ({ children }: any) => {
+    Portal: ({ children }: { children?: ReactNode }) => {
       const { open } = React.useContext(SelectContext);
       return open ? <>{children}</> : null;
     },
-    Content: ({ children, className }: any) => (
-      <div className={className}>{children}</div>
-    ),
-    Viewport: ({ children, className }: any) => (
-      <div className={className}>{children}</div>
-    ),
-    Item: ({ children, value, className }: any) => {
+    Content: ({
+      children,
+      className,
+    }: {
+      children?: ReactNode;
+      className?: string;
+    }) => <div className={className}>{children}</div>,
+    Viewport: ({
+      children,
+      className,
+    }: {
+      children?: ReactNode;
+      className?: string;
+    }) => <div className={className}>{children}</div>,
+    Item: ({
+      children,
+      value,
+      className,
+    }: {
+      children?: ReactNode;
+      value?: string;
+      className?: string;
+    }) => {
       const { onValueChange, setOpen } = React.useContext(SelectContext);
       return (
         <div
@@ -119,15 +148,15 @@ vi.mock("@radix-ui/react-select", () => {
         </div>
       );
     },
-    ItemText: ({ children }: any) => <span>{children}</span>,
-    Indicator: ({ children }: any) => <div>{children}</div>,
-    Group: ({ children }: any) => <div>{children}</div>,
-    Label: ({ children, className }: any) => (
+    ItemText: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+    Indicator: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Group: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Label: ({ children, className }: { children?: ReactNode; className?: string }) => (
       <div className={className}>{children}</div>
     ),
-    Icon: ({ children }: any) => <div>{children}</div>,
-    ItemIndicator: ({ children }: any) => <div>{children}</div>,
-    Separator: ({ className }: any) => <div className={className} />,
+    Icon: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    ItemIndicator: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Separator: ({ className }: { className?: string }) => <div className={className} />,
     ScrollUpButton: () => null,
     ScrollDownButton: () => null,
   };
@@ -143,12 +172,12 @@ vi.mock("./DropdownMenu", () => ({
 }));
 
 vi.mock("./Label", () => ({
-  Label: ({ children }: any) => <div>{children}</div>,
-  Message: ({ children }: any) => <div>{children}</div>,
+  Label: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Message: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("../molecules/Form", () => ({
-  FormItem: ({ children }: any) => <div>{children}</div>,
-  FormLabel: ({ children }: any) => <label>{children}</label>,
-  FormMessage: ({ children }: any) => <div>{children}</div>,
+  FormItem: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  FormLabel: ({ children }: { children?: ReactNode }) => <label>{children}</label>,
+  FormMessage: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));

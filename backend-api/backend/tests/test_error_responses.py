@@ -27,7 +27,7 @@ class TestErrorResponseFormat401:
     @pytest.mark.asyncio
     async def test_401_contains_detail_field(self, client):
         """401 responses should contain 'detail' field"""
-        response = await client.get("/pro/user")
+        response = await client.get("/app/user")
         assert response.status_code in {401, 403}
 
         data = response.json()
@@ -37,7 +37,7 @@ class TestErrorResponseFormat401:
     @pytest.mark.asyncio
     async def test_401_does_not_leak_internal_paths(self, client):
         """401 responses should not expose internal file paths"""
-        response = await client.get("/pro/user")
+        response = await client.get("/app/user")
 
         response_text = response.text.lower()
         # Should not contain internal paths
@@ -104,7 +104,7 @@ class TestErrorResponseFormat422:
     async def test_422_for_invalid_email_format(self, client):
         """Invalid email should return 422 with helpful message"""
         response = await client.post(
-            "/register",
+            "/login",
             json={"email": "not-an-email", "password": "ValidPassword123!"},
         )
         assert response.status_code == 422
@@ -118,7 +118,7 @@ class TestErrorResponseFormat422:
     async def test_422_for_invalid_password(self, client):
         """Invalid password should return 422 with helpful message"""
         response = await client.post(
-            "/register",
+            "/login",
             json={"email": "valid@test.com", "password": "short"},
         )
         assert response.status_code == 422
@@ -133,7 +133,7 @@ class TestErrorResponseSecurity:
         # Try various bad inputs
         endpoints = [
             ("/login", {"email": "test", "password": "x" * 10000}),
-            ("/register", {"email": "x" * 100, "password": "x"}),
+            ("/login", {"email": "x" * 100, "password": "x"}),
         ]
 
         for endpoint, payload in endpoints:
@@ -207,23 +207,6 @@ class TestRateLimitingBehavior:
             assert code in valid_codes
 
     @pytest.mark.asyncio
-    async def test_forgot_password_rate_limit_exists(self, client):
-        """Forgot password should have rate limiting (10/hour)"""
-        # Make multiple rapid requests
-        responses = []
-        for i in range(5):
-            response = await client.post(
-                "/forgot-password",
-                json={"email": f"ratelimit_{i}@test.com"},
-            )
-            responses.append(response.status_code)
-
-        # Should all succeed (under limit) or hit rate limit
-        valid_codes = {200, 400, 429}
-        for code in responses:
-            assert code in valid_codes
-
-    @pytest.mark.asyncio
     async def test_rate_limit_returns_429(self, client):
         """Rate limiting should return 429 status code"""
         # This is a behavioral test - we can't easily trigger rate limit
@@ -278,7 +261,7 @@ class TestAuthenticatedErrorResponses:
     async def test_authenticated_404_format(self, auth_client):
         """404 on authenticated endpoint should have proper format"""
         test_uuid = str(uuid4())
-        response = await auth_client.get(f"/pro/dash/{test_uuid}/versions")
+        response = await auth_client.get(f"/app/dash/{test_uuid}/versions")
 
         if response.status_code == 404:
             data = response.json()
@@ -288,7 +271,7 @@ class TestAuthenticatedErrorResponses:
     async def test_authenticated_422_format(self, auth_client):
         """422 on authenticated endpoint should have proper format"""
         response = await auth_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={"dashboards": [{"invalid": "data"}]},
         )
 

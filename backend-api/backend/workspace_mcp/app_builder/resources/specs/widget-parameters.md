@@ -1,12 +1,12 @@
 ---
 title: Widget Parameters
-uri: openbb://workspace/specs/widget-parameters
+uri: workspace://specs/widget-parameters
 use_when: You are defining widget params (text, number, boolean, date, endpoint dropdowns) and need the right type and option-source choice.
 language_specific: false
 related:
-  - openbb://workspace/specs/widgets-json
-  - openbb://workspace/specs/apps-json
-  - openbb://workspace/specs/widget-types
+  - workspace://specs/widgets-json
+  - workspace://specs/apps-json
+  - workspace://specs/widget-types
 ---
 
 # Widget Parameters
@@ -24,7 +24,7 @@ Every param object should have:
 | `label` | Yes | Display label in the param panel. |
 | `description` | Yes (in practice) | Tooltip help shown on hover. Don't omit. |
 | `value` | Usually | Default value. |
-| `show` | Optional | When `false`, the param is hidden in the UI but still sent — used for cellOnClick patterns. |
+| `show` | Optional | When `false`, the param is hidden in the UI but still sent — used when a group or another widget supplies the value. |
 | `multiSelect` | Optional | For dropdowns that allow selecting multiple values. Use a comma-separated default string unless the app's existing convention uses an array. |
 | `optionsEndpoint` | When `type: "endpoint"` | Backend path that returns the options list. |
 | `optionsParams` | Optional | Dependent options — e.g. `{ "country": "$country" }` re-fetches when the named param changes. |
@@ -41,7 +41,7 @@ Pick the right type before defaulting to `text` with options. Wrong type → clu
 | Free-form text (search query) | `text` (no `options`) | `text` with curated options |
 | Date or date range | `date` with `$currentDate` modifiers | `text` with hardcoded date strings |
 | Curated short list (3–6 fixed values) | `text` with `options` | OK — this is the intended use |
-| Symbol / ticker picker | `endpoint` with `optionsEndpoint` | `text` (forces user to type ticker) |
+| A choice among values the backend knows (teams, accounts, regions) | `endpoint` with `optionsEndpoint` | `text` (forces the user to type the exact value) |
 | Dropdown that depends on another param | `endpoint` with `optionsParams: {key: "$other"}` | static `text` options |
 
 ## Type examples
@@ -63,8 +63,8 @@ Pick the right type before defaulting to `text` with options. Wrong type → clu
 ### `boolean`
 
 ```json
-{ "paramName": "include_extended", "type": "boolean", "label": "Include Extended Hours",
-  "description": "Include pre/post-market data", "value": false }
+{ "paramName": "include_archived", "type": "boolean", "label": "Include Archived",
+  "description": "Include items that have been archived", "value": false }
 ```
 
 ### `date`
@@ -79,21 +79,21 @@ Date modifiers: `$currentDate`, `$currentDate-1d`, `$currentDate-1w`, `$currentD
 ### Static dropdown — `text` with `options`
 
 ```json
-{ "paramName": "interval", "type": "text", "label": "Interval",
-  "description": "Bar size", "value": "1d",
+{ "paramName": "granularity", "type": "text", "label": "Granularity",
+  "description": "How the period is divided", "value": "day",
   "options": [
-    { "label": "1 Day",   "value": "1d" },
-    { "label": "1 Week",  "value": "1w" },
-    { "label": "1 Month", "value": "1m" }
+    { "label": "Day",   "value": "day" },
+    { "label": "Week",  "value": "week" },
+    { "label": "Month", "value": "month" }
   ] }
 ```
 
 ### Dynamic dropdown — `endpoint`
 
 ```json
-{ "paramName": "symbol", "type": "endpoint", "label": "Select Symbol",
-  "description": "Choose a ticker",
-  "optionsEndpoint": "/symbols" }
+{ "paramName": "team", "type": "endpoint", "label": "Select Team",
+  "description": "Choose a team",
+  "optionsEndpoint": "/teams" }
 ```
 
 The `optionsEndpoint` should return an array of `{ label, value }` objects.
@@ -130,19 +130,17 @@ Prefer real individual choices over fake aggregate choices:
 
 When the user changes the `country` param, the `city` dropdown re-fetches with `?country=...` appended.
 
-## Hidden params for click-through navigation
+## Hidden params
 
-When a table column drives a synchronized param via `renderFn: "cellOnClick"`, the receiving widget often needs a *hidden* param entry so the value flows in without showing a duplicate dropdown:
+A param with `"show": false` is not shown but is still sent to the endpoint. Use it for a value that a parameter group or another widget supplies, so the widget does not offer a second control for the same thing:
 
 ```json
-{ "paramName": "symbol", "type": "endpoint", "label": "Symbol",
-  "optionsEndpoint": "/search_tickers", "value": "AAPL", "show": false }
+{ "paramName": "team", "type": "endpoint", "label": "Team",
+  "optionsEndpoint": "/teams", "value": "platform", "show": false }
 ```
-
-The rule: a widget that *receives* a synchronized param AND has its own column emitting `cellOnClick` for that same param must use `show: false` on the param. Otherwise both controls compete and the click stops propagating reliably. Pure-emitter widgets (no matching param of their own) need no entry at all.
 
 ## What this spec does not cover
 
-- The widget-level shape that contains `params` — see `openbb://workspace/specs/widgets-json`.
-- App-level `groups[].type` choice (`param` vs `endpointParam` vs `ticker`) — see `openbb://workspace/specs/apps-json`.
-- Click-through layout wiring — see `openbb://workspace/specs/layout-grid`.
+- The widget-level shape that contains `params` — see `workspace://specs/widgets-json`.
+- App-level `groups[].type` choice (`param` vs `endpointParam` vs `ticker`) — see `workspace://specs/apps-json`.
+- Layout wiring and parameter groups — see `workspace://specs/layout-grid`.

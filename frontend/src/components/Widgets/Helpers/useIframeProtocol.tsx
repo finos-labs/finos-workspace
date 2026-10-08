@@ -6,17 +6,17 @@ import { getConfig } from "~/lib/runtimeConfig";
 import { convertHeadersToRecord } from "~/lib/utils/widgetParams";
 import {
   isWidgetParamMessageType,
-  type OpenBBAuthMessage,
-  OpenBBConnectMessageSchema,
-  type OpenBBDataMessage,
-  OpenBBDataMessageSchema,
-  OpenBBErrorMessageSchema,
-  type OpenBBParamDef,
-  type OpenBBParamsUpdateMessage,
-  type OpenBBRequestMessage,
-  type OpenBBWidgetManifest,
   parseIframeParamsMessage,
   stringifyParamValue,
+  type WorkspaceAuthMessage,
+  WorkspaceConnectMessageSchema,
+  type WorkspaceDataMessage,
+  WorkspaceDataMessageSchema,
+  WorkspaceErrorMessageSchema,
+  type WorkspaceParamDef,
+  type WorkspaceParamsUpdateMessage,
+  type WorkspaceRequestMessage,
+  type WorkspaceWidgetManifest,
 } from "~/types/iframeProtocol";
 
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -36,15 +36,15 @@ const getIframeOrigin = (iframeRef: React.RefObject<HTMLIFrameElement | null>) =
 };
 
 type PendingRequest = {
-  resolve: (msg: OpenBBDataMessage) => void;
+  resolve: (msg: WorkspaceDataMessage) => void;
   reject: (err: Error) => void;
 };
 
 export function useIframeProtocol(params: UseIframeProtocolOptions) {
   const { iframeRef, onAiData, onParamsUpdate } = params;
   const [state, dispatch] = useStateReducer({
-    manifest: null as OpenBBWidgetManifest[] | null,
-    paramDefs: null as OpenBBParamDef[] | null,
+    manifest: null as WorkspaceWidgetManifest[] | null,
+    paramDefs: null as WorkspaceParamDef[] | null,
   });
   const authHeaders = useWidgetContext()?.widget?.endpoint?.headers;
 
@@ -76,13 +76,13 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
       const { data } = event;
       if (!data?.type) return;
 
-      const isOpenBBMessage =
-        data.type === "openbb-connect" ||
-        data.type === "openbb-data" ||
-        data.type === "openbb-error" ||
+      const isWorkspaceMessage =
+        data.type === "workspace-connect" ||
+        data.type === "workspace-data" ||
+        data.type === "workspace-error" ||
         data.type === "aiData" ||
         isWidgetParamMessageType(data.type);
-      if (!isOpenBBMessage) return;
+      if (!isWorkspaceMessage) return;
 
       const fromIframe = isFromIframe(event);
 
@@ -94,11 +94,11 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
 
       if (!fromIframe) return;
 
-      if (data.type === "openbb-connect") {
-        const parsed = OpenBBConnectMessageSchema.safeParse(data);
+      if (data.type === "workspace-connect") {
+        const parsed = WorkspaceConnectMessageSchema.safeParse(data);
         if (!parsed.success) {
           console.warn(
-            "[iframe-protocol] invalid openbb-connect message — check your widget manifest.",
+            "[iframe-protocol] invalid workspace-connect message — check your widget manifest.",
             parsed.error.issues,
           );
           return;
@@ -125,18 +125,18 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
         const { headers } = convertHeadersToRecord(authHeaders);
         const iframeOrigin = getIframeOrigin(iframeRef);
         if (Object.keys(headers).length > 0 && event.origin === iframeOrigin) {
-          const message: OpenBBAuthMessage = { type: "openbb-auth", headers };
+          const message: WorkspaceAuthMessage = { type: "workspace-auth", headers };
           (event.source as Window).postMessage(message, event.origin);
-          console.debug("[iframe-protocol] sent openbb-auth to", event.origin);
+          console.debug("[iframe-protocol] sent workspace-auth to", event.origin);
         }
         return;
       }
 
-      if (data.type === "openbb-data") {
-        const parsed = OpenBBDataMessageSchema.safeParse(data);
+      if (data.type === "workspace-data") {
+        const parsed = WorkspaceDataMessageSchema.safeParse(data);
         if (!parsed.success) {
           console.warn(
-            "[iframe-protocol] invalid openbb-data message — check your data response shape.",
+            "[iframe-protocol] invalid workspace-data message — check your data response shape.",
             parsed.error.issues,
           );
           return;
@@ -151,11 +151,11 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
         return;
       }
 
-      if (data.type === "openbb-error") {
-        const parsed = OpenBBErrorMessageSchema.safeParse(data);
+      if (data.type === "workspace-error") {
+        const parsed = WorkspaceErrorMessageSchema.safeParse(data);
         if (!parsed.success) {
           console.warn(
-            "[iframe-protocol] invalid openbb-error message.",
+            "[iframe-protocol] invalid workspace-error message.",
             parsed.error.issues,
           );
           return;
@@ -222,7 +222,7 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
   }, [handleMessage, bridgeSourceRef, bridgeOriginRef]);
 
   const requestWidgetData = useCallback(
-    (widgetId: string): Promise<OpenBBDataMessage> => {
+    (widgetId: string): Promise<WorkspaceDataMessage> => {
       return new Promise((resolve, reject) => {
         // Prefer the stored bridge source (handles nested iframes)
         const target = bridgeSourceRef.current ?? iframeRef.current?.contentWindow;
@@ -233,13 +233,13 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
 
         pendingRequestsRef.current.set(widgetId, { resolve, reject });
 
-        const message: OpenBBRequestMessage = {
-          type: "openbb-request",
+        const message: WorkspaceRequestMessage = {
+          type: "workspace-request",
           widgetId,
         };
         (target as Window).postMessage(message, bridgeOriginRef.current);
 
-        console.debug("[iframe-protocol] sent openbb-request for:", widgetId);
+        console.debug("[iframe-protocol] sent workspace-request for:", widgetId);
 
         setTimeout(() => {
           const pending = pendingRequestsRef.current.get(widgetId);
@@ -258,12 +258,12 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
       const target = bridgeSourceRef.current ?? iframeRef.current?.contentWindow;
       if (!target) return;
 
-      const message: OpenBBParamsUpdateMessage = {
-        type: "openbb-params-update",
+      const message: WorkspaceParamsUpdateMessage = {
+        type: "workspace-params-update",
         params,
       };
       (target as Window).postMessage(message, bridgeOriginRef.current);
-      console.debug("[iframe-protocol] sent openbb-params-update", params);
+      console.debug("[iframe-protocol] sent workspace-params-update", params);
     },
     [iframeRef, bridgeSourceRef, bridgeOriginRef],
   );

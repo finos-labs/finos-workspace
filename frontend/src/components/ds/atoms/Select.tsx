@@ -102,7 +102,10 @@ const SelectScrollDownButton = React.forwardRef<
 SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
 
 export interface SelectContentProps
-  extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>,
+  extends Omit<
+      React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>,
+      "position"
+    >,
     VariantProps<typeof SelectContentVariants> {
   viewportClassName?: string;
 }
@@ -115,7 +118,7 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(SelectContentVariants({ position }), "space-y-0 p-0", className)}
-      position={position}
+      position={position ?? undefined}
       {...props}
     >
       <SelectScrollUpButton />
@@ -218,7 +221,7 @@ export interface SelectProps<T extends string = string>
   forceLight?: boolean;
 }
 /** Plain select component, can be used in form or outside it */
-const Select = React.forwardRef<
+const SelectBase = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Root>,
   SelectProps
 >((props, ref) => {
@@ -287,22 +290,20 @@ const Select = React.forwardRef<
       </SelectContent>
     </SelectRoot>
   );
-}) as <T extends string = string>(
+});
+
+SelectBase.displayName = "Select";
+
+const Select = SelectBase as <T extends string = string>(
   props: SelectProps<T> & { ref?: React.ForwardedRef<HTMLInputElement> },
 ) => React.ReactElement;
-
-// @ts-expect-error
-Select.displayName = "Select";
 
 /* Form */
 
 type FormSelectProps = Omit<SelectProps, "error">;
 
 /** Select field used inside <Form> only. */
-const FormSelect = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Root>,
-  FormSelectProps
->((props, ref) => {
+const FormSelect = React.forwardRef<HTMLInputElement, FormSelectProps>((props, ref) => {
   const { label, message, ...rest } = props;
 
   return (

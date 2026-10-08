@@ -9,17 +9,19 @@ import {
   createWidgetInitParams,
   currentDateModifier,
 } from "~/lib/utils/widgetParams";
+import { malformed, partial } from "../../mocks";
+
+type CreateParamDefsInput = Parameters<typeof createParamDefs>[0];
 
 describe("Widget Params Utility Functions", () => {
   describe("createParamDefs", () => {
     it("should create param definitions from widget params", () => {
-      const widget = {
+      const widget = partial<CreateParamDefsInput>({
         params: [
           { paramName: "symbol", type: "text", value: "AAPL" },
           { paramName: "period", type: "text", value: "annual" },
         ],
-      };
-      // @ts-expect-error - ignored for now
+      });
       const result = createParamDefs(widget);
       expect(result).toHaveLength(2);
       expect(result[0].paramName).toBe("symbol");
@@ -27,7 +29,7 @@ describe("Widget Params Utility Functions", () => {
     });
 
     it("should handle endpoint type params with backendURL", () => {
-      const widget = {
+      const widget = partial<CreateParamDefsInput>({
         params: [
           {
             paramName: "endpoint_param",
@@ -35,17 +37,16 @@ describe("Widget Params Utility Functions", () => {
             optionsEndpoint: "/api/options",
           },
         ],
-      };
-      // @ts-expect-error - ignored for now
+      });
       const result = createParamDefs(widget, "https://example.com");
-      // @ts-expect-error - ignored for now
-      expect(result[0].optionsEndpoint).toBe("https://example.com/api/options");
-      // @ts-expect-error - ignored for now
-      expect(result[0].groupById).toBe("options");
+      expect(result[0]).toMatchObject({
+        optionsEndpoint: "https://example.com/api/options",
+      });
+      expect(result[0]).toMatchObject({ groupById: "options" });
     });
 
     it("should handle form type params", () => {
-      const widget = {
+      const widget = partial<CreateParamDefsInput>({
         params: [
           {
             type: "form",
@@ -53,18 +54,16 @@ describe("Widget Params Utility Functions", () => {
             inputParams: [{ paramName: "field1", type: "text" }],
           },
         ],
-      };
-      // @ts-expect-error - ignored for now
+      });
       const result = createParamDefs(widget, "https://example.com");
-      // @ts-expect-error - ignored for now
-      expect(result[0].endpoint).toBe("https://example.com/submit");
+      expect(result[0]).toMatchObject({ endpoint: "https://example.com/submit" });
     });
 
     it("should return empty array for non-array params (preprocess coerces to [])", () => {
       const widget = {
         params: "invalid_params",
       };
-      const result = createParamDefs(widget as any);
+      const result = createParamDefs(malformed(widget));
       // ParamsSchema preprocess converts non-arrays to []
       expect(result).toEqual([]);
     });
@@ -77,7 +76,7 @@ describe("Widget Params Utility Functions", () => {
 
     it("should handle widget without params", () => {
       const widget = {};
-      const result = createParamDefs(widget as any);
+      const result = createParamDefs(malformed(widget));
       expect(result).toEqual([]);
     });
   });
@@ -92,8 +91,8 @@ describe("Widget Params Utility Functions", () => {
     });
 
     it("should create endpoint from URL object", () => {
-      const urlObj = { url: "https://api.example.com/data", method: "POST" };
-      const result = createWidgetEndpoint(urlObj as any);
+      const urlObj = { url: "https://api.example.com/data", method: "POST" } as const;
+      const result = createWidgetEndpoint(urlObj);
       expect(result.url).toBe("https://api.example.com/data");
       expect(result.method).toBe("GET");
     });
@@ -122,7 +121,7 @@ describe("Widget Params Utility Functions", () => {
 
     it("should default location to headers", () => {
       const result = createWidgetEndpoint("https://api.example.com/data", [
-        { key: "X-Custom", value: "value" } as any,
+        partial({ key: "X-Custom", value: "value" }),
       ]);
       expect(result.headers?.["X-Custom"]).toBe("value");
     });
@@ -201,15 +200,15 @@ describe("Widget Params Utility Functions", () => {
     });
 
     it("should handle undefined/null", () => {
-      expect(cleanURL(undefined as any)).toBe(undefined);
-      expect(cleanURL(null as any)).toBe(undefined);
+      expect(cleanURL(malformed(undefined))).toBe(undefined);
+      expect(cleanURL(malformed(null))).toBe(undefined);
     });
   });
 
   describe("createURLString", () => {
     it("should combine base URL and endpoint", () => {
-      expect(createURLString("widget.json", "https://example.com/openbb")).toBe(
-        "https://example.com/openbb/widget.json",
+      expect(createURLString("widget.json", "https://example.com/widgets")).toBe(
+        "https://example.com/widgets/widget.json",
       );
     });
 

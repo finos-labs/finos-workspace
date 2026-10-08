@@ -1,13 +1,19 @@
 name: Deploy to dev
 
 # A push to develop builds the changed app and pushes the image to ECR as
-# dev-<commit>. Then .github/scripts/pin-dev-tags.sh sets that tag in
-# FINOS/dev/apps/values.yaml in workspace-infra and pushes it to main, where the
-# Apps workflow deploys it to finos-dev. The job waits for that deploy. If it
-# fails, helm has already put the previous release back, and the script sets
-# the tag in values.yaml back too, so the file always matches the cluster.
+# dev-<commit>. Then .github/scripts/pin-dev-tags.sh sets that tag in the dev
+# values file of the infrastructure repository and pushes it to main, where that
+# repository's Apps workflow deploys it to the dev cluster. The job waits for
+# that deploy. If it fails, helm has already put the previous release back, and
+# the script sets the tag in the values file back too, so the file always
+# matches the cluster.
 #
-# Pushing to workspace-infra uses a GitHub App installed on that repository
+# Repository variables: AWS_REGION, AWS_IMAGE_PUSH_ROLE_ARN (the role that may
+# push to ECR), ECR_REGISTRY (<account>.dkr.ecr.<region>.amazonaws.com),
+# INFRA_REPO (<owner>/<infrastructure repository>), DEV_VALUES_FILE (the dev
+# values file in that repository) and INFRA_APP_ID.
+#
+# Pushing to the infrastructure repository uses a GitHub App installed on it
 # with contents write and actions read: INFRA_APP_ID (variable) and
 # INFRA_APP_PRIVATE_KEY (secret).
 on:
@@ -25,10 +31,10 @@ permissions:
   id-token: write
 
 env:
-  AWS_REGION: us-east-1
-  ECR_REGISTRY: 149911392452.dkr.ecr.us-east-1.amazonaws.com
-  INFRA_REPO: openbq-org/workspace-infra
-  VALUES_FILE: FINOS/dev/apps/values.yaml
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  INFRA_REPO: ${{ vars.INFRA_REPO }}
+  VALUES_FILE: ${{ vars.DEV_VALUES_FILE }}
 
 jobs:
   changes:
@@ -88,18 +94,24 @@ jobs:
             fi
           done
 
-      - name: Get a token for workspace-infra
+      - name: Name the infrastructure repository
+        id: infra
+        run: |
+          echo "owner=${INFRA_REPO%%/*}" >> "$GITHUB_OUTPUT"
+          echo "name=${INFRA_REPO#*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Get a token for the infrastructure repository
         id: infra-token
         uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ vars.INFRA_APP_ID }}
           private-key: ${{ secrets.INFRA_APP_PRIVATE_KEY }}
-          owner: openbq-org
-          repositories: workspace-infra
+          owner: ${{ steps.infra.outputs.owner }}
+          repositories: ${{ steps.infra.outputs.name }}
           permission-contents: write
           permission-actions: read
 
-      - name: Pin the tag in workspace-infra and wait for the deploy
+      - name: Pin the tag in the infrastructure repository and wait for the deploy
         env:
           GH_TOKEN: ${{ steps.infra-token.outputs.token }}
         run: >-
@@ -143,18 +155,24 @@ jobs:
             exit 1
           fi
 
-      - name: Get a token for workspace-infra
+      - name: Name the infrastructure repository
+        id: infra
+        run: |
+          echo "owner=${INFRA_REPO%%/*}" >> "$GITHUB_OUTPUT"
+          echo "name=${INFRA_REPO#*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Get a token for the infrastructure repository
         id: infra-token
         uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ vars.INFRA_APP_ID }}
           private-key: ${{ secrets.INFRA_APP_PRIVATE_KEY }}
-          owner: openbq-org
-          repositories: workspace-infra
+          owner: ${{ steps.infra.outputs.owner }}
+          repositories: ${{ steps.infra.outputs.name }}
           permission-contents: write
           permission-actions: read
 
-      - name: Pin the tag in workspace-infra and wait for the deploy
+      - name: Pin the tag in the infrastructure repository and wait for the deploy
         env:
           GH_TOKEN: ${{ steps.infra-token.outputs.token }}
         run: >-

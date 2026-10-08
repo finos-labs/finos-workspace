@@ -1,6 +1,6 @@
 # Testing Guide
 
-This document outlines the testing strategy, conventions, and best practices for the OpenBB Workspace project.
+This document outlines the testing strategy, conventions, and best practices for the Workspace project.
 
 ## Table of Contents
 
@@ -60,8 +60,8 @@ tests/
 │   ├── lib/utils/           # Utility function tests
 │   └── routes/              # Route/page component tests
 ├── e2e/                     # End-to-end tests (Playwright)
-│   ├── helpers.ts           # Shared E2E utilities
-│   ├── mock_data/           # E2E mock data
+│   ├── helpers.ts           # Shared E2E utilities (the account, signing in)
+│   ├── global.setup.ts      # Signs in once and saves the session
 │   └── *.spec.ts            # E2E test files
 └── mocks/                   # MSW mock handlers
     ├── handlers.ts          # API request handlers
@@ -124,7 +124,15 @@ bun run test:integration
 
 ### E2E Tests
 
+The tests run against a running stack and sign in as an account that exists there. Start the
+whole stack from the repository root (`docker compose up --build`, see the root README) and name
+the administrator it created, from `backend-api/backend/scripts/cfgs/config.toml`:
+
 ```bash
+export E2E_USER_EMAIL=<the administrator's email>
+export E2E_USER_PASSWORD=<their password>
+# E2E_BASE_URL defaults to http://localhost:3000
+
 # Run all E2E tests
 bun run test:e2e
 
@@ -138,7 +146,11 @@ bunx playwright test tests/e2e/auth.spec.ts
 bunx playwright codegen tests/e2e
 ```
 
-> **Local Development**: Uncomment `export const proUrl = "http://localhost:1420";` in `/tests/e2e/helpers.ts` when running E2E tests locally.
+The entity-type test adds a row each run (entity types cannot be deleted), so run the suite against a stack you can throw away; `docker compose down -v` clears it.
+
+The `setup` project signs in once and keeps the session in `playwright/.auth/user.json`; the
+other projects start from it. `.github/workflows/e2e.yml` runs the same tests in CI against a
+stack of its own, with an administrator whose password is generated for the run.
 
 ### Storybook Accessibility Tests
 
@@ -399,22 +411,22 @@ The `handlers.ts` file is organized by API domain:
 
 ```typescript
 // ============ Auth Endpoints ============
-http.post(`${BASE_URL}/pro/login`, ...)
-http.get(`${BASE_URL}/pro/validate`, ...)
-http.post(`${BASE_URL}/pro/logout`, ...)
+http.post(`${BASE_URL}/app/login`, ...)
+http.get(`${BASE_URL}/app/validate`, ...)
+http.post(`${BASE_URL}/app/logout`, ...)
 
 // ============ Dashboard Endpoints ============
-http.get(`${BASE_URL}/pro/dash/sync`, ...)
-http.post(`${BASE_URL}/pro/dash/sync`, ...)
+http.get(`${BASE_URL}/app/dash/sync`, ...)
+http.post(`${BASE_URL}/app/dash/sync`, ...)
 
 // ============ Usage & Tier Endpoints ============
-http.get(`${BASE_URL}/pro/usage`, ...)
+http.get(`${BASE_URL}/app/usage`, ...)
 
 // ============ Data Connector Endpoints ============
-http.get(`${BASE_URL}/pro/data-connectors/api-source`, ...)
+http.get(`${BASE_URL}/app/data-connectors/api-source`, ...)
 
 // ============ Copilot Endpoints ============
-http.get(`${BASE_URL}/pro/copilot-chats`, ...)
+http.get(`${BASE_URL}/app/copilot-chats`, ...)
 
 // ============ Passthrough Handlers ============
 http.all("https://test-backend.com/*", () => passthrough())
@@ -444,7 +456,7 @@ server.use(customHandler);
 **1. Conditional responses based on request body:**
 
 ```typescript
-http.post(`${BASE_URL}/pro/login`, async ({ request }) => {
+http.post(`${BASE_URL}/app/login`, async ({ request }) => {
   const body = await request.json();
 
   if (body.email === "invalid@example.com") {
@@ -462,7 +474,7 @@ http.post(`${BASE_URL}/pro/login`, async ({ request }) => {
 **2. Conditional responses based on auth header:**
 
 ```typescript
-http.get(`${BASE_URL}/pro/validate`, ({ request }) => {
+http.get(`${BASE_URL}/app/validate`, ({ request }) => {
   const authHeader = request.headers.get("Authorization");
 
   if (!authHeader || authHeader === "Bearer invalid-token") {
@@ -476,7 +488,7 @@ http.get(`${BASE_URL}/pro/validate`, ({ request }) => {
 **3. Dynamic route parameters:**
 
 ```typescript
-http.get(`${BASE_URL}/pro/files/:fileUuid/presigned-url`, ({ params }) => {
+http.get(`${BASE_URL}/app/files/:fileUuid/presigned-url`, ({ params }) => {
   const { fileUuid } = params;
   return HttpResponse.json({
     pre_signed_url: `https://storage.example.com/${fileUuid}`,
@@ -499,10 +511,10 @@ http.all("http://localhost/*", () => passthrough()),
 import { createMockHandler, createErrorHandler } from "~/tests/mocks/handlers";
 
 // Quick success response
-const handler = createMockHandler("get", "/pro/data", { items: [] });
+const handler = createMockHandler("get", "/app/data", { items: [] });
 
 // Quick error response
-const errorHandler = createErrorHandler("get", "/pro/data", "Server error", 500);
+const errorHandler = createErrorHandler("get", "/app/data", "Server error", 500);
 ```
 
 ### Overriding Handlers in Tests
@@ -516,7 +528,7 @@ describe("MyComponent", () => {
   it("handles API error", async () => {
     // Override default handler for this test only
     server.use(
-      http.get(`${BASE_URL}/pro/usage`, () => {
+      http.get(`${BASE_URL}/app/usage`, () => {
         return HttpResponse.json({ detail: "Rate limited" }, { status: 429 });
       })
     );
@@ -532,7 +544,7 @@ describe("MyComponent", () => {
 When adding new API endpoints:
 
 1. Add the handler to the appropriate section in `handlers.ts`
-2. Follow the existing naming pattern: `http.{method}(\`${BASE_URL}/pro/{endpoint}\`, ...)`
+2. Follow the existing naming pattern: `http.{method}(\`${BASE_URL}/app/{endpoint}\`, ...)`
 3. Include error scenarios for common cases (401, 404, 500)
 4. Add mock data constants if needed for reuse
 5. Document any special behavior in comments

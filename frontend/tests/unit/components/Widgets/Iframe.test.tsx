@@ -1,30 +1,42 @@
 import { screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { useIframeProtocol as UseIframeProtocol } from "~/components/Widgets/Helpers/useIframeProtocol";
 import Iframe from "~/components/Widgets/Iframe";
+import type { Group } from "~/lib/state/app";
 import { useThemeStore } from "~/lib/state/theme";
+import { makeEndpointParamGroup } from "../../factories";
+import { partial } from "../../mocks";
 import { renderWidget } from "./WidgetTestWrapper";
 
+type IframeProtocol = ReturnType<typeof UseIframeProtocol>;
+
 const iframeProtocolMock = vi.hoisted(() => ({
+  // Only what the Iframe widget reads of the protocol
   state: {
     manifest: [],
     paramDefs: null,
     requestWidgetData: vi.fn(),
     sendParamsUpdate: vi.fn(),
-  } as any,
+  } as unknown as IframeProtocol,
 }));
 
 const appStoreMock = vi.hoisted(() => ({
-  getWidgetGroups: vi.fn((..._args) => []),
+  getWidgetGroups: vi.fn<(tabId: string, widgetId: string | undefined) => Group[]>(
+    () => [],
+  ),
   updateGroup: vi.fn(),
 }));
 
 const sharedAppStoreMock = vi.hoisted(() => ({
-  getWidgetGroups: vi.fn((..._args) => []),
+  getWidgetGroups: vi.fn<(tabId: string, widgetId: string | undefined) => Group[]>(
+    () => [],
+  ),
 }));
 
 const queryParamsMock = vi.hoisted(() => ({
-  renderRow0Params: null as any,
-  renderBelowNavbarRows: null as any,
+  renderRow0Params: null as ReactNode,
+  renderBelowNavbarRows: null as ReactNode,
 }));
 
 vi.mock("~/components/DraggableCard", () => ({
@@ -34,7 +46,13 @@ vi.mock("~/components/DraggableCard", () => ({
     elementNextToTitle,
     elementBelowNavbar,
     extraNavbarElements,
-  }: any) => (
+  }: {
+    children?: ReactNode;
+    elementRightNextToTitle?: ReactNode;
+    elementNextToTitle?: ReactNode;
+    elementBelowNavbar?: ReactNode;
+    extraNavbarElements?: ReactNode;
+  }) => (
     <div data-testid="draggable-card">
       {elementRightNextToTitle}
       {elementNextToTitle}
@@ -46,7 +64,13 @@ vi.mock("~/components/DraggableCard", () => ({
 }));
 
 vi.mock("~/components/General/SearchResultsNotFound", () => ({
-  default: ({ firstMessage, children }: any) => (
+  default: ({
+    firstMessage,
+    children,
+  }: {
+    firstMessage?: ReactNode;
+    children?: ReactNode;
+  }) => (
     <div data-testid="search-not-found">
       <span>{firstMessage}</span>
       {children}
@@ -55,7 +79,7 @@ vi.mock("~/components/General/SearchResultsNotFound", () => ({
 }));
 
 vi.mock("~/components/ds/dialogs/BaseDialog", () => ({
-  BaseDialog: ({ children, open }: any) =>
+  BaseDialog: ({ children, open }: { children?: ReactNode; open?: boolean }) =>
     open ? <div data-testid="url-dialog">{children}</div> : null,
 }));
 
@@ -67,31 +91,30 @@ vi.mock("~/lib/providers/MobileProvider", () => ({
 }));
 
 vi.mock("~/lib/state/app", () => ({
-  useShallowAppStore: (selector: any) =>
+  useShallowAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       items: {},
-      getWidgetGroups: vi.fn((...args) => {
-        const [tabId] = args;
+      getWidgetGroups: vi.fn((tabId: string, widgetId: string | undefined) => {
         if (tabId === "shared-tab") {
-          return sharedAppStoreMock.getWidgetGroups(...args);
+          return sharedAppStoreMock.getWidgetGroups(tabId, widgetId);
         }
-        return appStoreMock.getWidgetGroups(...args);
+        return appStoreMock.getWidgetGroups(tabId, widgetId);
       }),
       updateGroup: appStoreMock.updateGroup,
     }),
 }));
 
 vi.mock("~/lib/state/sharedApp", () => ({
-  useShallowSharedAppStore: (selector: any) =>
+  useShallowSharedAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       getWidgetGroups: sharedAppStoreMock.getWidgetGroups,
     }),
 }));
 
 vi.mock("~/components/Widgets/Helpers/IframeParamControls", () => ({
-  IframeParamControls: ({ paramDefs }: any) => (
+  IframeParamControls: ({ paramDefs }: { paramDefs: { paramName: string }[] }) => (
     <div data-testid="iframe-param-controls">
-      {paramDefs.map((param: any) => (
+      {paramDefs.map((param) => (
         <span key={param.paramName}>{param.paramName}</span>
       ))}
     </div>
@@ -102,7 +125,7 @@ vi.mock("~/components/Widgets/Helpers/useIframeProtocol", () => ({
   useIframeProtocol: () => iframeProtocolMock.state,
 }));
 
-vi.mock("~/components/General/Table/NavBar/QueryParams", () => ({
+vi.mock("~/components/WidgetParams/QueryParams", () => ({
   useWidgetParamsPositions: () => queryParamsMock,
 }));
 
@@ -165,11 +188,11 @@ describe("Iframe Widget", () => {
   it("displays URL in button when URL is set", () => {
     renderWidget(<Iframe />, {
       widgetOverrides: {
-        storage: { html: "https://openbb.co", scale: 1.0 },
+        storage: { html: "https://site.test", scale: 1.0 },
       },
     });
 
-    expect(screen.getByText("https://openbb.co")).toBeInTheDocument();
+    expect(screen.getByText("https://site.test")).toBeInTheDocument();
   });
 
   it("shows zoom controls when URL is provided", () => {
@@ -183,7 +206,9 @@ describe("Iframe Widget", () => {
   });
 
   it("hides iframe protocol params that are hidden by the widget manifest", () => {
-    iframeProtocolMock.state.manifest = [{ widgetId: "browse_markets" }];
+    iframeProtocolMock.state.manifest = [
+      { widgetId: "browse_markets", name: "Browse Markets", dataType: "markdown" },
+    ];
     iframeProtocolMock.state.paramDefs = [
       {
         paramName: "event_ticker",
@@ -242,7 +267,9 @@ describe("Iframe Widget", () => {
   });
 
   it("does not duplicate iframe protocol params already owned by widget params", () => {
-    iframeProtocolMock.state.manifest = [{ widgetId: "browse_markets" }];
+    iframeProtocolMock.state.manifest = [
+      { widgetId: "browse_markets", name: "Browse Markets", dataType: "markdown" },
+    ];
     iframeProtocolMock.state.paramDefs = [
       {
         paramName: "selection",
@@ -280,12 +307,11 @@ describe("Iframe Widget", () => {
 
   it("uses grouped params in the iframe URL even when widget storage is stale", () => {
     appStoreMock.getWidgetGroups.mockReturnValue([
-      {
+      makeEndpointParamGroup({
         id: "selection-group",
-        type: "endpointParam",
         groupById: "selection-options",
         value: "Sports",
-      },
+      }),
     ]);
 
     renderWidget(<Iframe />, {
@@ -317,12 +343,11 @@ describe("Iframe Widget", () => {
 
   it("uses grouped params in the iframe URL when widget params are row-grouped", () => {
     appStoreMock.getWidgetGroups.mockReturnValue([
-      {
+      makeEndpointParamGroup({
         id: "selection-group",
-        type: "endpointParam",
         groupById: "selection-options",
         value: "Sports",
-      },
+      }),
     ]);
 
     renderWidget(<Iframe />, {
@@ -333,7 +358,7 @@ describe("Iframe Widget", () => {
           scale: 1.0,
           params: { selection: "All" },
         },
-        params: [
+        params: partial([
           {
             paramName: "selection",
             type: "endpoint",
@@ -341,7 +366,7 @@ describe("Iframe Widget", () => {
             value: "All",
             show: true,
           },
-        ] as any,
+        ]),
       },
     });
 
@@ -354,12 +379,11 @@ describe("Iframe Widget", () => {
 
   it("uses shared grouped params in the iframe URL", () => {
     sharedAppStoreMock.getWidgetGroups.mockReturnValue([
-      {
+      makeEndpointParamGroup({
         id: "selection-group",
-        type: "endpointParam",
         groupById: "selection-options",
         value: "Crypto",
-      },
+      }),
     ]);
 
     renderWidget(<Iframe />, {

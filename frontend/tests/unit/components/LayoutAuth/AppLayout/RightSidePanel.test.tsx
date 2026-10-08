@@ -36,7 +36,7 @@ vi.mock("~/components/AI/hooks/useStreaming", () => ({
   useStreamingStore: { getState: () => ({ dispatch: vi.fn() }) },
 }));
 
-vi.mock("~/components/General/Table/hooks/utils", () => ({
+vi.mock("~/hooks/useIsFirstRender", () => ({
   useIsFirstRender: () => false,
 }));
 

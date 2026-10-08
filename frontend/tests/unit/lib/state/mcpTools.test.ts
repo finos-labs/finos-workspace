@@ -12,11 +12,17 @@ import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { postMCPServers } from "~/api/auth.api";
 import {
+  type AgentToolConfig,
   dedupeIframeServersByUrl,
   type McpConnection,
   type McpServer,
   useMcpToolsStore,
 } from "~/lib/state/mcpTools";
+
+/** The default an agent tool declares for one of its arguments. */
+const defaultOf = (tool: AgentToolConfig, argument: string) =>
+  (tool.input_schema?.properties?.[argument] as { default?: unknown } | undefined)
+    ?.default;
 
 // Mock the API calls
 vi.mock("~/api/auth.api", () => ({
@@ -1023,6 +1029,7 @@ describe("useMcpToolsStore", () => {
         {
           server_id: "server-1",
           name: "Regular_tool-1",
+          tool_name: "tool-1",
           description: undefined,
           url: "https://test.example.com",
           input_schema: undefined,
@@ -1030,6 +1037,7 @@ describe("useMcpToolsStore", () => {
         {
           server_id: "iframe-server-1",
           name: "Widget_iframe-tool-1",
+          tool_name: "iframe-tool-1",
           description: "",
           url: "https://test.example.com",
           input_schema: undefined,
@@ -1075,6 +1083,7 @@ describe("useMcpToolsStore", () => {
         {
           server_id: "iframe-server-1",
           name: "Widget_iframe-tool-1",
+          tool_name: "iframe-tool-1",
           description: "",
           url: "https://widget.example.com/mcp",
           input_schema: undefined,
@@ -1127,8 +1136,8 @@ describe("useMcpToolsStore", () => {
       const tools = await useMcpToolsStore.getState().getEnabledToolsForAgent();
 
       expect(tools).toHaveLength(1);
-      expect(tools[0].input_schema.properties.symbol.default).toBe("A");
-      expect(tools[0].input_schema.properties.interval.default).toBe("1d");
+      expect(defaultOf(tools[0], "symbol")).toBe("A");
+      expect(defaultOf(tools[0], "interval")).toBe("1d");
       expect(tools[0].description).toContain("currently viewing");
       expect(tools[0].description).toContain("symbol=A, interval=1d");
       expect(tools[0].description).not.toContain("multiple copies");
@@ -1181,9 +1190,9 @@ describe("useMcpToolsStore", () => {
       expect(tools).toHaveLength(1);
       expect(tools[0].server_id).toBe("iframe-server-1");
       // Diverging key must not silently inherit the first copy's value
-      expect(tools[0].input_schema.properties.symbol.default).toBeUndefined();
+      expect(defaultOf(tools[0], "symbol")).toBeUndefined();
       // Agreeing key keeps its default
-      expect(tools[0].input_schema.properties.interval.default).toBe("1d");
+      expect(defaultOf(tools[0], "interval")).toBe("1d");
       expect(tools[0].description).toContain("multiple copies");
       expect(tools[0].description).toContain("symbol=A / B");
       expect(tools[0].description).toContain("interval=1d");
@@ -1245,6 +1254,7 @@ describe("useMcpToolsStore", () => {
         {
           server_id: "iframe-server-1",
           name: "Widget_iframe-tool-2",
+          tool_name: "iframe-tool-2",
           description: "",
           url: "https://test.example.com",
           input_schema: undefined,

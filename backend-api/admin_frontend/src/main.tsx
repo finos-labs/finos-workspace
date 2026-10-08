@@ -4,7 +4,6 @@ import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import { Toaster } from 'sonner';
 import ProtectedRoute from "./components/protectedRoute";
 import "./index.css";
-import AddInstaller from "./routes/addInstaller";
 import Docs from "./routes/docs";
 import Login from "./routes/login";
 import ManageEntities from "./routes/manageEntities";
@@ -20,7 +19,6 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <ManageEntities /> },
       { path: "/docs", element: <Docs /> },
-      { path: "/addInstaller", element: <AddInstaller /> },
       { path: "/manageEntities", element: <ManageEntities /> },
     ],
   },

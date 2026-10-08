@@ -3,7 +3,7 @@ name: Backend Docker Images (ECR)
 # Builds the API and worker images when backend-api changes. Pull requests build
 # them to check the Dockerfiles; a tag like backend-v1.1.0 pushes them to ECR as
 # 1.1.0. Deploying a pushed image is a change to the environment's values file in
-# workspace-infra.
+# the infrastructure repository.
 on:
   pull_request:
     branches:
@@ -68,7 +68,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
-          aws-region: us-east-1
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to Amazon ECR
         if: github.ref_type == 'tag'

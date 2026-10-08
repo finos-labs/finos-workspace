@@ -1,10 +1,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import CopilotAIMessage from "~/components/AI/CopilotAIMessage";
 import { useShallowStreamingStore } from "~/components/AI/hooks/useStreaming";
 import type { AIMessage, Citation } from "~/lib/state/copilot";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
+import { makeMessageGroup } from "../../factories";
 
 const markdownMockState = vi.hoisted(() => ({
   RuleType: {
@@ -29,12 +31,28 @@ vi.mock("~/components/AI/hooks/useStreaming", () => ({
 }));
 
 vi.mock("usehooks-ts", () => ({
-  useLocalStorage: vi.fn((_key: string, defaultValue: any) => [defaultValue, vi.fn()]),
+  useLocalStorage: vi.fn(<T,>(_key: string, defaultValue: T) => [
+    defaultValue,
+    vi.fn(),
+  ]),
 }));
 
 vi.mock("markdown-to-jsx", () => ({
   RuleType: markdownMockState.RuleType,
-  default: ({ children, options }: { children: string; options?: any }) => {
+  default: ({
+    children,
+    options,
+  }: {
+    children: string;
+    options?: {
+      renderRule?: (
+        next: () => ReactNode,
+        node: { type: unknown; text: string },
+        renderChildren: () => ReactNode,
+        state: { key: number },
+      ) => ReactNode;
+    };
+  }) => {
     const renderedContent = options?.renderRule
       ? options.renderRule(
           () => children,
@@ -86,7 +104,7 @@ describe("CopilotAIMessage", () => {
   const baseMessage: AIMessage = {
     role: "ai",
     content: "This is a test AI response.",
-    copilotId: "openbb-copilot",
+    copilotId: "default-copilot",
     timestamp: 1705330200000,
     citations: [],
   };
@@ -282,7 +300,7 @@ describe("CopilotAIMessage", () => {
 
   describe("hover interactions", () => {
     it("triggers datetime display on mouse enter when groups available", () => {
-      const allGroups = [{ id: "group-1" }, { id: "group-2" }];
+      const allGroups = [makeMessageGroup(), makeMessageGroup()];
 
       const { container } = render(
         <CopilotAIMessage
@@ -420,7 +438,7 @@ describe("CopilotAIMessage", () => {
         <CopilotAIMessage message={baseMessage} isLastGroup={false} />,
       );
 
-      const divider = container.querySelector(".obb-divider");
+      const divider = container.querySelector(".ws-divider");
       expect(divider).toBeInTheDocument();
     });
 

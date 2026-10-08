@@ -5,8 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import RenamePopup from "~/components/General/RenamePopup";
 import { useAppStore } from "~/lib/state/app";
 import { useShallowAuthStore } from "~/lib/state/auth";
-import { useShallowThemeStore } from "~/lib/state/theme";
-import { useThemeStore } from "~/lib/state/theme";
+import { useShallowThemeStore, useThemeStore } from "~/lib/state/theme";
 
 vi.mock("sonner", () => ({
   toast: {

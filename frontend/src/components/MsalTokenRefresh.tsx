@@ -18,7 +18,7 @@ export default function MsalTokenRefresh({ children }: { children: ReactNode }) 
     // backend email for sessions that predate setActiveAccount being set
     const currentAccount =
       instance.getActiveAccount() ??
-      accounts.find((acc) => acc.username.toLowerCase() === user.email.toLowerCase());
+      accounts.find((acc) => acc.username.toLowerCase() === user?.email.toLowerCase());
     if (!currentAccount) return microsoftIdToken ? logout() : null;
 
     const tokenRequest = {
@@ -31,11 +31,12 @@ export default function MsalTokenRefresh({ children }: { children: ReactNode }) 
     try {
       const res = await instance.acquireTokenSilent(tokenRequest);
       // Keeps the active-account pointer fresh, and adopts accounts matched
-      // via the email fallback so legacy sessions self-heal
+      // via the email fallback
       instance.setActiveAccount(res.account);
       useAuthStore.setState({ microsoftIdToken: res?.idToken });
-      // @ts-expect-error
-      const expiresIn = res.idTokenClaims.exp * 1000 - Date.now();
+      const exp = (res.idTokenClaims as { exp?: number } | undefined)?.exp;
+      if (typeof exp !== "number") return;
+      const expiresIn = exp * 1000 - Date.now();
 
       // Set a timeout to refresh the token 10% before it expires
       setTimeout(() => setRefreshTick((prev) => prev + 1), expiresIn * 0.9);

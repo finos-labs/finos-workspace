@@ -8,7 +8,9 @@ import { useShallow } from "zustand/react/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
 import { postMCPServers } from "~/api/auth.api";
 import { clearMcpAuthStorageForServer } from "~/components/AI/hooks/mcp/browser-provider";
+import { isRecord } from "~/components/AI/utils/mcpToolSchema";
 import type { Selector } from "./app";
+import { getCopilotAccess, isMcpToolAllowed } from "./copilotAccess";
 
 // Connection states that indicate a pending/in-progress connection
 export const PENDING_CONNECTION_STATES = [
@@ -18,13 +20,22 @@ export const PENDING_CONNECTION_STATES = [
   "authenticating",
 ] as const;
 
+/** The JSON Schema of the arguments of a tool, as its MCP server describes them. */
+export type McpInputSchema = {
+  type?: string;
+  properties?: Record<string, unknown>;
+  required?: string[];
+  [key: string]: unknown;
+};
+
 // Type for AI agent tool configuration
 export interface AgentToolConfig {
   server_id: string;
   name: string; // Format: "serverName_toolName"
+  tool_name: string; // The tool's own name on the server
   description?: string;
   url: string;
-  input_schema?: any;
+  input_schema?: McpInputSchema;
 }
 
 export interface McpTool {
@@ -32,7 +43,7 @@ export interface McpTool {
   name: string;
   description?: string;
   enabled: boolean;
-  inputSchema?: any; // Preserve input schema from MCP server
+  inputSchema?: McpInputSchema; // Preserve input schema from MCP server
   annotations?: ToolAnnotations;
   lastExecuted?: number;
   executionCount?: number;
@@ -75,7 +86,7 @@ interface McpToolsState {
   getMCPConnection: (serverId: string) => McpConnection | undefined;
   updateMCPConnectionRegistry: (
     serverId: string,
-    connection: McpConnection,
+    connection: McpConnection | undefined,
     remove?: boolean,
   ) => void;
   getServerById: (serverId: string) => McpServer | undefined;
@@ -93,7 +104,7 @@ interface McpToolsState {
   getEnabledToolCount: () => number;
   getEnabledToolsForAgent: () => Promise<AgentToolConfig[]>;
   saveMCPServers: () => Promise<void>;
-  debouncedSaveServers: () => Promise<void>;
+  debouncedSaveServers: () => Promise<void> | undefined;
   updateServers: (servers: McpServer[]) => void;
   removeVendorAppServer: (vendorAppUuid: string) => void;
   removeSourceServer: (sourceId: string) => void;
@@ -439,6 +450,7 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
 
     getEnabledToolCount: () => {
       const { servers, getMCPConnection } = get();
+      const access = getCopilotAccess();
       const seenIframeUrls = new Set<string>();
       return servers.reduce((count, server) => {
         const connection = getMCPConnection(server.id);
@@ -452,7 +464,9 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         }
 
         if (!(isConnected && server.toolsEnabled)) return count;
-        for (const tool of server.tools) if (tool.enabled) count += 1;
+        for (const tool of server.tools) {
+          if (tool.enabled && isMcpToolAllowed(access, server.url, tool.id)) count += 1;
+        }
         return count;
       }, 0);
     },
@@ -540,20 +554,19 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
               if (!tool.enabled) continue;
               let schema = tool.inputSchema;
               if (agreedParams.length > 0 && schema?.properties) {
-                schema = structuredClone(schema);
+                const properties = structuredClone(schema.properties);
                 for (const [key, val] of agreedParams) {
-                  if (schema.properties[key]) {
-                    schema.properties[key] = {
-                      ...schema.properties[key],
-                      default: val,
-                    };
-                  }
+                  const property = properties[key];
+                  if (isRecord(property))
+                    properties[key] = { ...property, default: val };
                 }
+                schema = { ...schema, properties };
               }
 
               pushEnabledTool({
                 server_id: server.id,
                 name: `${server.name}_${tool.id}`,
+                tool_name: tool.id,
                 description: (tool.description || "") + paramSuffix,
                 url: server.url,
                 input_schema: schema,
@@ -568,7 +581,7 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         connection?.retry?.();
 
         // wait till state is finished connecting/loading
-        while (connection.state === "connecting" || connection.state === "loading") {
+        while (connection?.state === "connecting" || connection?.state === "loading") {
           connection = getMCPConnection(server.id);
 
           await new Promise((resolve) => setTimeout(resolve, 300));
@@ -579,6 +592,7 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
             pushEnabledTool({
               server_id: server.id,
               name: `${server.name}_${tool.id}`,
+              tool_name: tool.id,
               description: tool.description,
               url: server.url,
               input_schema: tool.inputSchema,
@@ -587,7 +601,11 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         }
       }
 
-      return enabledTools;
+      // Only the tools the user's roles grant go to the agent
+      const access = getCopilotAccess();
+      return enabledTools.filter((tool) =>
+        isMcpToolAllowed(access, tool.url, tool.tool_name),
+      );
     },
     removeVendorAppServer: (vendorAppUuid) => {
       removeServersBy(get, set, (s) => s.vendorAppUuid === vendorAppUuid);
@@ -625,8 +643,6 @@ function removeServersBy(
 }
 
 // Shallow selector hook for better performance
-export function useShallowMcpToolsStore<S extends McpToolsState, T>(
-  selector: Selector<S, T>,
-): T {
+export function useShallowMcpToolsStore<T>(selector: Selector<McpToolsState, T>): T {
   return useMcpToolsStore(useShallow(selector), (prev, next) => isEqual(prev, next));
 }

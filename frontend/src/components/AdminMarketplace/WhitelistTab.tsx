@@ -16,7 +16,7 @@ import {
 import { RenderNoData } from "~/routes/admin";
 
 const ACTION_BTN =
-  "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 obb-small-navbar-btn rounded flex items-center justify-center";
+  "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center";
 
 const getRowId = (entry: WhitelistEntry) => entry.uuid;
 
@@ -84,14 +84,14 @@ export function WhitelistTab() {
   return (
     <div className="p-6 flex flex-col flex-1 h-[calc(100vh-72px)]">
       <p className="text-ds-text-caption body-xs-regular">
-        The developer must already have an OpenBB account. Once whitelisted, they can
+        The developer must already have an Workspace account. Once whitelisted, they can
         list apps to the marketplace from their Workspace.
       </p>
       <div className="flex items-end gap-2.5 mt-4">
         <Input
           size="xs"
           className="min-w-[280px] h-8 [&_input]:h-8"
-          placeholder="developer@example.com"
+          placeholder="Email address of the developer"
           value={email}
           onChange={setEmail}
           onKeyDown={(e) => {

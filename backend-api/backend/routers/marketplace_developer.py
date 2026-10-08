@@ -14,7 +14,6 @@ from sqlalchemy.orm import selectinload
 
 from api import auth_helpers, base
 from api.database import aget_read_db, aget_write_db
-from api.email.mailchimp import send_email
 from api.marketplace_helpers import verify_vendor_app
 from api.marketplace_schemas import (
     AdminAppResponse,
@@ -25,16 +24,15 @@ from api.marketplace_schemas import (
     VerificationResult,
 )
 from api.models import Vendor, VendorApp
+from api.notifications import notify_admins
 from routers.marketplace import (
     apply_vendor_fields,
     create_app_for_vendor,
     update_vendor_app,
 )
+from utilities.config import settings
 
 router = APIRouter(tags=["marketplace-developer"])
-
-MAX_DEVELOPER_APPS = 5
-REVIEW_EMAIL = "apps@openbb.co"
 
 
 async def require_submit_eligibility(
@@ -55,7 +53,7 @@ async def require_submit_eligibility(
         raise HTTPException(
             status_code=403,
             detail="Marketplace submissions are limited to whitelisted developers. "
-            "Contact OpenBB to be added.",
+            "Contact Workspace to be added.",
         )
     return user
 
@@ -82,11 +80,12 @@ async def developer_create_app(
         VendorApp.status != base.AppStatus.removed,
     )
     count = (await db.execute(count_query)).scalar() or 0
-    if count >= MAX_DEVELOPER_APPS:
+    max_apps = settings.MARKETPLACE_MAX_DEVELOPER_APPS
+    if count >= max_apps:
         raise HTTPException(
             status_code=409,
             detail=f"You already have {count} app(s). "
-            f"Maximum is {MAX_DEVELOPER_APPS}. Delete an existing app first.",
+            f"Maximum is {max_apps}. Delete an existing app first.",
         )
 
     # Upsert vendor by name — developers can only edit vendors they own
@@ -251,7 +250,7 @@ async def developer_verify_app(
 def _format_submission_email(
     app: VendorApp, submitter_email: str, message: str | None
 ) -> tuple[str, str]:
-    """Build (subject, text) for the review-request email."""
+    """Build (subject, text) for the review-request notification."""
     subject = f"[Marketplace review] {app.vendor.name} — {app.name}"
     app_json = AdminAppResponse.model_validate(app).model_dump_json(indent=2)
     text = (
@@ -269,7 +268,11 @@ async def developer_submit_for_review(
     user: Annotated[Row, Depends(require_submit_eligibility)],
     message: Annotated[str | None, Body(embed=True)] = None,
 ):
-    """Email a review request to the marketplace reviewers. Does not write to DB."""
+    """Notify the administrators that a listing awaits review. Does not write to DB.
+
+    The listing is already pending (status `submitted`) in the admin marketplace; the
+    notification only tells the reviewers. Fails with 502 only when a configured notifier fails.
+    """
     query = (
         select(VendorApp)
         .options(selectinload(VendorApp.vendor))
@@ -281,15 +284,21 @@ async def developer_submit_for_review(
         raise HTTPException(status_code=404, detail="App not found")
 
     subject, text = _format_submission_email(app, user.email, message)
-    sent = send_email(
-        to_email=REVIEW_EMAIL,
-        from_email="no-reply@openbb.co",
-        subject=subject,
-        text=text,
+    sent = await notify_admins(
+        "marketplace.listing.submitted",
+        subject,
+        text,
+        {
+            "app_uuid": str(app.uuid),
+            "app_name": app.name,
+            "vendor_name": app.vendor.name,
+            "submitter_email": user.email,
+            "message": message,
+        },
     )
-    if not sent:
+    if sent is False:
         raise HTTPException(
-            status_code=502, detail="Failed to send review request email"
+            status_code=502, detail="Failed to send review request notification"
         )
     return {"detail": "App submitted for review"}
 

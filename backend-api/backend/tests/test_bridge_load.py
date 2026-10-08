@@ -30,7 +30,7 @@ import time
 from uuid import uuid4
 
 import pytest
-from routers.pro.workspace_mcp.bridge import BridgeSessionManager
+from routers.app.workspace_mcp.bridge import BridgeSessionManager
 from test_workspace_mcp_bridge import FakeAsyncRedis
 
 HOLDER_WORKER = "holder"

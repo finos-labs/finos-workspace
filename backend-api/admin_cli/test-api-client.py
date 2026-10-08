@@ -1,5 +1,5 @@
 """
-OpenBB Admin API Client - Full Workflow Test Script
+Admin API Client - Full Workflow Test Script
 Tests the HubAPIClient class directly as a Python library.
 
 This mirrors test-workflow.sh but uses the client class programmatically
@@ -9,7 +9,7 @@ Usage:
     python test-api-client.py
 
     # Or with environment variables:
-    OPENBB_BASE_URL=http://localhost:8000 ADMIN_EMAIL=admin@example.com python test-api-client.py
+    WORKSPACE_BASE_URL=http://localhost:8000 ADMIN_EMAIL=admin@example.com python test-api-client.py
 """
 
 import getpass
@@ -20,7 +20,7 @@ from pathlib import Path
 
 # Import HubAPIClient and APIError from the CLI file
 # We need to extract just the classes, not run main()
-cli_path = Path(__file__).parent / "openbb-admin"
+cli_path = Path(__file__).parent / "workspace-admin"
 cli_source = cli_path.read_text()
 
 # Extract everything up to the CLI command handlers (line ~540)
@@ -30,11 +30,11 @@ if import_end == -1:
     import_end = cli_source.find("# COMMAND HANDLERS")
 if import_end == -1:
     # Fallback: just don't run main by setting __name__
-    exec(  # noqa: S102 -- loads classes from the extensionless openbb-admin CLI script
-        compile(cli_source, cli_path, "exec"), {"__name__": "openbb_admin_module"}
+    exec(  # noqa: S102 -- loads classes from the extensionless workspace-admin CLI script
+        compile(cli_source, cli_path, "exec"), {"__name__": "workspace_admin_module"}
     )
 else:
-    exec(  # noqa: S102 -- loads classes from the extensionless openbb-admin CLI script
+    exec(  # noqa: S102 -- loads classes from the extensionless workspace-admin CLI script
         compile(cli_source[:import_end], cli_path, "exec")
     )
 
@@ -58,7 +58,9 @@ def log_error(msg: str) -> None:
 
 
 def main():
-    base_url = os.getenv("OPENBB_BASE_URL", "https://payments.openbb.dev")
+    base_url = os.getenv("WORKSPACE_BASE_URL")
+    if not base_url:
+        sys.exit("Set WORKSPACE_BASE_URL to the backend URL, e.g. http://localhost:8000")
     timestamp = int(time.time())
 
     # =========================================================================

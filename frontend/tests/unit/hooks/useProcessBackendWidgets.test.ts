@@ -2,7 +2,13 @@ import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BackendPermissionsT } from "~/api/user_roles.api";
 import { useProcessBackendWidgets } from "~/hooks/useProcessBackendWidgets";
-import type { BackendTemplate, ValidateBackend } from "~/lib/state/backendConnector";
+import type {
+  BackendTemplate,
+  Source,
+  ValidateBackend,
+} from "~/lib/state/backendConnector";
+import type { WidgetType } from "~/utils/zodForms";
+import { type DeepPartial, malformed } from "../mocks";
 
 // Mock getApiSourceWidgets from backendConnector
 const mockGetApiSourceWidgets = vi.fn();
@@ -43,28 +49,22 @@ vi.mock("~/lib/state/permissions", () => ({
 }));
 
 // Mock createSourceWidget
-const mockCreateSourceWidget = vi.fn((widget, source, hasAccess) => ({
-  ...widget,
-  id: "created-widget-id",
-  sourceId: source.id,
-  sourceName: source.name,
-  isSharedWidget: source.isSharedSource,
-  disabled: !hasAccess,
-}));
+const mockCreateSourceWidget = vi.fn(
+  (widget: object, source: Source, hasAccess: boolean) => ({
+    ...widget,
+    id: "created-widget-id",
+    sourceId: source.id,
+    sourceName: source.name,
+    isSharedWidget: source.isSharedSource,
+    disabled: !hasAccess,
+  }),
+);
 vi.mock("~/components/DataConnectors/common/helpers", () => ({
-  // @ts-expect-error - ignored for now
-  createSourceWidget: (...args: unknown[]) => mockCreateSourceWidget(...args),
+  createSourceWidget: (widget: object, source: Source, hasAccess: boolean) =>
+    mockCreateSourceWidget(widget, source, hasAccess),
 }));
 
 // Mock someTruthy
-vi.mock("~/components/General/Table/utils", () => ({
-  someTruthy: (...args: unknown[]) =>
-    args.some((arg) => {
-      if (Array.isArray(arg)) return arg.length > 0;
-      if (typeof arg === "object" && arg !== null) return Object.keys(arg).length > 0;
-      return Boolean(arg);
-    }),
-}));
 
 // Mock cleanURL
 vi.mock("~/lib/utils/widgetParams", () => ({
@@ -101,19 +101,19 @@ function createMockBackend(
 }
 
 // Helper to create mock widgets from backend
-function createMockWidgets(): Record<string, any> {
+function createMockWidgets(): Record<string, DeepPartial<WidgetType>> {
   return {
     "widget-1": {
       widgetId: "widget-1",
       name: "Widget One",
       endpoint: "/api/widget1",
-      type: "table",
+      type: "markdown",
     },
     "widget-2": {
       widgetId: "widget-2",
       name: "Widget Two",
       endpoint: "/api/widget2",
-      type: "chart",
+      type: "html",
     },
   };
 }
@@ -465,7 +465,7 @@ describe("useProcessBackendWidgets", () => {
     it("should fall back to template.prompts when backend.templates prompts is undefined", async () => {
       const mockBackend = createMockBackend({
         templates: [
-          { templateId: "template-1", access: "access", prompts: undefined as any },
+          { templateId: "template-1", access: "access", prompts: malformed(undefined) },
         ],
       });
 

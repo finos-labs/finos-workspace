@@ -13,7 +13,12 @@ import { useAppStore } from "../state/app";
  */
 export function handleConnectionAdded<
   T extends WidgetT | WidgetType | WidgetJsonT = WidgetT,
->(dashboardId: string, widgets: T[], navigate: (path: string) => void, isEdit = false) {
+>(
+  dashboardId: string | undefined,
+  widgets: T[],
+  navigate: (path: string) => void,
+  isEdit = false,
+) {
   const widgetCount = widgets.length;
 
   let description = `The widget${widgetCount > 1 ? "s have" : " has"} been added to the widget menu (accessible via Ctrl + K).`;

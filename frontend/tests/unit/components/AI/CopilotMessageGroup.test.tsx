@@ -2,7 +2,12 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FollowUpSuggestions } from "~/components/AI/FollowUpSuggestions";
 import { createMessageGroups } from "~/components/AI/utils/createMessageGroups";
-import type { AIMessage, HumanMessage, Message, SystemMessage } from "~/lib/state/copilot";
+import type {
+  AIMessage,
+  HumanMessage,
+  Message,
+  SystemMessage,
+} from "~/lib/state/copilot";
 
 const { submitMock, streamingState } = vi.hoisted(() => ({
   submitMock: vi.fn(),
@@ -30,19 +35,15 @@ const sysMsg = (
 ): SystemMessage => ({
   role: "system",
   content: { eventType: "INFO", message },
-  copilotId: "openbb-copilot",
+  copilotId: "default-copilot",
   timestamp,
   orchestrationModeEnabled,
 });
 
-const aiMsg = (
-  content: string,
-  suggestions?: string[],
-  timestamp = 1,
-): AIMessage => ({
+const aiMsg = (content: string, suggestions?: string[], timestamp = 1): AIMessage => ({
   role: "ai",
   content,
-  copilotId: "openbb-copilot",
+  copilotId: "default-copilot",
   timestamp,
   suggestions,
 });

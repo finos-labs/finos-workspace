@@ -1,166 +1,102 @@
-# OpenBB Workspace
+# Workspace
 
-OpenBB Workspace is a React + TypeScript web application for financial data visualization and analysis.
+The web application of Workspace: dashboards of widgets that read from the data backends a deployment connects, with a Copilot beside them. It is a React and TypeScript single-page app that talks to the Workspace backend (`backend-api/backend` in this repository).
 
-## Tech Stack
+## Tech stack
 
-- **Framework**: React 18 + TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS + Radix UI
-- **State Management**: Zustand + React Query (TanStack Query)
-- **Routing**: React Router v6
-- **Testing**: Vitest + Playwright + MSW
-- **Linting/Formatting**: Biome
+- **Framework**: React 18, TypeScript
+- **Build tool**: Vite
+- **Styling**: Tailwind CSS, Radix UI
+- **State**: Zustand, React Query (TanStack Query)
+- **Routing**: React Router
+- **Forms**: React Hook Form, Zod
+- **Testing**: Vitest, Playwright, MSW
+- **Linting and formatting**: Biome
 
-## Project Structure
+## Project structure
 
 ```text
 src/
-├── api/                    # API client functions
+├── api/                    # Calls to the backend
 ├── components/             # React components by domain
-│   ├── AI/                 # AI/Copilot features
-│   ├── Auth/               # Authentication
-│   ├── Charting/           # TradingView integration
-│   ├── DataConnectors/     # External data sources
-│   ├── ds/                 # Design system (atoms, molecules)
-│   ├── General/            # Shared UI components
-│   ├── Icons/              # SVG icon components
-│   ├── LayoutAuth/         # Authenticated layout
+│   ├── AI/                 # The Copilot
+│   ├── Admin*/             # Administration: users, roles, entities, marketplace
+│   ├── DataConnectors/     # Connections to data backends
+│   ├── ds/                 # Design system (atoms, molecules, dialogs)
+│   ├── General/            # Shared UI
+│   ├── LayoutAuth/         # The signed-in layout
 │   ├── Settings/           # User settings
 │   └── Widgets/            # Dashboard widgets
-├── hooks/                  # Custom React hooks
+├── hooks/                  # Custom hooks
 ├── lib/                    # Utilities and business logic
 │   ├── contexts/           # React contexts
-│   ├── providers/          # Context providers
 │   ├── state/              # Zustand stores
-│   └── types/              # TypeScript types
-├── routes/                 # Page components
-├── types/                  # Global types
+│   └── runtimeConfig*.ts   # Configuration
+├── routes/                 # Pages
+├── types/                  # Shared types
 └── utils/                  # Utility functions
 
 tests/
-├── unit/                   # Vitest unit tests
-├── e2e/                    # Playwright E2E tests
-└── mocks/                  # MSW mock handlers
+├── unit/                   # Vitest
+├── e2e/                    # Playwright, against a running stack
+└── mocks/                  # MSW handlers and shared mocks
 ```
-
-## Documentation
-
-| Document | Purpose |
-|----------|---------|
-| [TESTING.md](./TESTING.md) | Testing guide, TDD workflow, patterns |
-| [REVIEW.md](./REVIEW.md) | PR review checklist |
-| [CLAUDE.md](./CLAUDE.md) | Claude Code agent rules |
 
 ## Getting started
 
-To get started with the web application follow the steps below.
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/en/download/)
-- If you are contributing code: Add [Biome](https://marketplace.visualstudio.com/items?itemName=biomejs.biome) VSCode extension.
-- [Bun](https://bun.sh/)
-
-### Installation
+You need [Bun](https://bun.sh/) and [Node.js](https://nodejs.org/). If you contribute code, add the [Biome](https://marketplace.visualstudio.com/items?itemName=biomejs.biome) extension to your editor.
 
 ```bash
 bun install
+bun run dev
 ```
 
-### Building and running
+The app starts on `http://localhost:1420` and talks to the backend named by `VITE_BACKEND_URL` in `.env` (`http://localhost:8000` unless you change it). The root `docker-compose.yml` starts the whole stack, including this app on `http://localhost:3000`.
 
-**Note:** Use this if you are testing the application. If you are developing the application use the development section below.
+## Configuration
+
+Every setting, and its default, is defined in `src/lib/runtimeConfigSchema.ts`; `.env` lists them as `VITE_*` variables with a comment each. Settings that name a deployment's own services (the AI service, a remote marketplace, the documentation site, a support address, the identity providers' client IDs) are empty by default, and the parts of the interface that depend on one are hidden until it is set.
 
 ```bash
-bun run build
+bun run build            # builds with the settings from .env baked in
+bun run build:runtime    # also writes dist/config.js
+bun run preview          # serves the build on http://localhost:4173
 ```
+
+A runtime build loads `dist/config.js` before the app. Edit that file, or mount your own over it, to change a deployment's settings without rebuilding.
+
+### Docker image
+
+The `Dockerfile` builds the runtime build once, so one image runs in every environment. When the container starts, `render-frontend-config.sh` writes `config.js` from environment variables, for example `BACKEND_URL` and `AI_API_URL`; a setting whose variable is not set keeps its default. nginx serves the app on port 8080 as an unprivileged user.
 
 ```bash
-bun run preview
+docker build -t workspace-frontend .
+docker run --rm -p 3000:8080 -e BACKEND_URL=http://localhost:8000 workspace-frontend
 ```
 
-This will start the web application on `http://localhost:4173`.
-
-## Development
-
-To start the web application:
-
-```bash
-bun run dev # or yarn dev, pnpm dev, npm dev
-```
-
-This will start the web application in development mode on `http://localhost:1420`.
-
-### Adding Icons
-
-Workflow to add icons to the project:
-
-1. Get the SVG source:
-
-   - Option A: Export the icon from Figma - Right click on the icon and copy the SVG
-   - Option B: Get the icon from [icones.js.org](https://icones.js.org/)
-
-2. Convert the SVG to a sprite symbol:
-
-   - [https://sprite-your-svgs.vercel.app/](https://sprite-your-svgs.vercel.app/) is recommended
-   - Paste the SVG into the app
-   - Choose an icon slug (e.g., 'bar-chart' for a bar chart icon). you need to make sure the slug is unique (see `app/components/sprite.svg` for existing slugs)
-   - Click convert to optimize the SVG and create a symbol
-   - Copy the generated symbol
-
-3. Add to sprite file:
-
-   - Open `app/components/sprite.svg`
-   - Paste the generated symbol from step 2 inside the `<svg>` tag
-
-4. Run the script to update the `Icon` type:
-
-   - `bun run update-icons`
-
-5. Use the icon:
-
-   - Use the component with the slug name you chose:
-
-   ```jsx
-   <Icon id="bar-chart" className="w-4 h-4" />
-   ```
-
-This approach keeps icons optimized and easy to manage while maintaining a single sprite file for better performance.
-
-## Special things to remember
-
-- We overrode data-tooltip-delay in the TV files in the lib and assets folder - if grabbing new version need to do this again - 1.5s is too long
-- TV classnames may also change, so every time we update TV we need to check the classnames match our selectors
-- Custom class names prefixed with underscore (e.g., `_copy-chart-data-button`) are used to mark HTML elements for easy identification in selectors and testing. The underscore prefix indicates these are developer-defined classes rather than framework or library classes.
+`render-frontend-config.sh` has one line per setting in `src/lib/runtimeConfigSchema.ts`, with the variable that sets it and its type (`string`, `bool`, `list`, `theme` or `json`). Adding or removing a setting in the schema means changing that table too: `bun scripts/check-runtime-config.ts`, which the image build runs, fails when the two disagree.
 
 ## Testing
 
-We follow a **Test-Driven Development (TDD)** approach. See [TESTING.md](./TESTING.md) for the complete testing guide including patterns, examples, and best practices.
-
-### Quick Reference
-
 ```bash
-# Unit tests (Vitest)
-bun run test:unit                    # Run all unit tests
-bun run test:unit -- --coverage      # Run with coverage report
-bunx vitest tests/unit                # Run in watch mode
-
-# Integration tests
-bun run test:integration
-
-# E2E tests (Playwright)
-bun run test:e2e                     # Run all E2E tests
-bunx playwright test tests/e2e --ui   # Run with interactive UI
+bun run test:unit                    # all unit tests
+bun run test:unit -- --coverage      # with a coverage report
+bun run typecheck                    # tsc --noEmit
+bun run test:e2e                     # Playwright, against a running stack
+bunx playwright test tests/e2e --ui  # Playwright with its interactive UI
 ```
 
-### Test Structure
+The end-to-end tests sign in to a running stack with an account that exists there; `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` name it, and `E2E_BASE_URL` (default `http://localhost:3000`) and `E2E_ADMIN_URL` (default `http://localhost:3001`) say where the stack is. [TESTING.md](./TESTING.md) has the details, along with the testing guide: patterns, mocking, and coverage.
 
-```text
-tests/
-├── unit/          # Unit tests (components, hooks, utils)
-├── e2e/           # End-to-end tests (Playwright)
-└── mocks/         # MSW mock handlers for API mocking
-```
+## Adding icons
 
-> For detailed information on writing tests, mocking patterns, TDD workflow, and coverage requirements, see [TESTING.md](./TESTING.md).
+All icons live in one sprite, `public/assets/icons/sprite.svg`.
+
+1. Get the SVG, for example from Figma or [icones.js.org](https://icones.js.org/).
+2. Convert it to a `<symbol>` with an `id` that no other symbol uses (see the sprite for the existing ones), and paste it inside the `<svg>` of the sprite.
+3. Run `bun run update-icons` to update the `Icon` type.
+4. Use it with `<Icon id="your-id" className="w-4 h-4" />`.
+
+## Conventions
+
+Custom class names prefixed with an underscore (for example `_elements-left-navbar`) mark HTML elements for selectors and tests. The prefix tells them apart from the classes of frameworks and libraries.

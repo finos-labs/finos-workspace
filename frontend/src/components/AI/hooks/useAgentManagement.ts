@@ -15,7 +15,7 @@ import {
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import { createURLString } from "~/lib/utils/widgetParams";
+import { resolveAgentEndpoints } from "./utils";
 
 export type HolderGroup = ExternalCopilotHolder & {
   changed?: boolean;
@@ -123,12 +123,11 @@ export function useAgentManagement() {
           ...partialHolder,
           enabled: partialHolder.enabled ?? holderToUpdate.enabled ?? true,
         };
-        holder.copilots = (holder.copilots || []).map((agent) => {
-          for (const [key, value] of Object.entries(agent?.endpoints || {})) {
-            agent.endpoints[key] = createURLString(value, holder.url);
-          }
-          return { ...agent, headers: holder.headers || {} };
-        });
+        holder.copilots = (holder.copilots || []).map((agent) => ({
+          ...agent,
+          endpoints: resolveAgentEndpoints(agent.endpoints, holder.url),
+          headers: holder.headers || {},
+        }));
         await putCustomCopilot(holder);
         externalHolders[idx] = holder;
         store.updateExternalCopilotHolders(externalHolders);
@@ -296,9 +295,7 @@ export function useAgentManagement() {
    * URL/headers, and persists the update.
    */
   const handleSaveEdit = useCallback(
-    async (editGroupData: AgentManagementState["editGroup"] & { url: string }) => {
-      if (!editGroupData) return;
-
+    async (editGroupData: NonNullable<AgentManagementState["editGroup"]>) => {
       const { uuid: holderUuid, headerPairs, url } = editGroupData;
       const filteredPairs = headerPairs.filter((p) => p.key.trim());
       const allKeys = filteredPairs.map((p) => p.key);

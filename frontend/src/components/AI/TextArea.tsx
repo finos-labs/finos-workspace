@@ -48,23 +48,27 @@ export type TextAreaProps = {
   setCompletion?: (value: string) => void;
 };
 
-const COMPLETION_KEY = {
+const COMPLETION_KEY: Partial<
+  Record<TextAreaProps["type"], "completion" | "editMessageCompletion">
+> = {
   footer: "completion",
   editMessage: "editMessageCompletion",
 };
 
 const TextArea = (props: TextAreaProps) => {
   const isMobile = useIsMobile();
+  const completionKey = COMPLETION_KEY[props.type];
   const { limitReached, loading, completion, setCompletion } = useShallowStreamingStore(
     (s) => ({
       limitReached: s.limitReached,
       loading: s.loading,
-      completion: s?.[COMPLETION_KEY[props.type]] ?? props.completion,
+      completion: completionKey
+        ? (s[completionKey] ?? props.completion)
+        : props.completion,
       setCompletion: (value: string) => {
         if (props.setCompletion) return props.setCompletion?.(value);
 
-        if (COMPLETION_KEY[props.type])
-          s.dispatch?.({ [COMPLETION_KEY[props.type]]: value });
+        if (completionKey) s.dispatch({ [completionKey]: value });
       },
     }),
   );
@@ -112,7 +116,7 @@ const TextArea = (props: TextAreaProps) => {
   const enhancedHandleSubmit = useCallback(
     async (question: string) => {
       // First send the question with full context (including mention-tracked tabs/widgets)
-      handleSubmitRef.current({ question });
+      handleSubmitRef.current?.({ question });
 
       // After the message has been handed off, clean up temporary context in a micro-task
       setTimeout(() => {
@@ -127,7 +131,7 @@ const TextArea = (props: TextAreaProps) => {
           // 2. Its `widget_id` follows the `tab_` naming convention (fallback for edge-cases
           //    where the `tabWidgets` array may not have been set).
           const isTabWidget =
-            widget?.metadata?.tabWidgets?.length > 0 ||
+            (widget?.metadata?.tabWidgets?.length ?? 0) > 0 ||
             widget?.widget_id?.startsWith("tab_");
 
           // Only remove widgets that were NOT already selected before being mentioned
@@ -176,8 +180,10 @@ const TextArea = (props: TextAreaProps) => {
   const { trigger, processMentions, restoreMentions } = useMentions();
 
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const suggestionsRef = useRef<HTMLDivElement>(null);
-  const onSuggestionClickRef = useRef<(suggestion: HierarchicalMention) => void>(null);
+  const suggestionsRef = useRef<HTMLDivElement | null>(null);
+  const onSuggestionClickRef = useRef<
+    ((suggestion: HierarchicalMention) => void) | null
+  >(null);
 
   const [state, dispatch] = useStateReducer({
     cursorPosition: 0,
@@ -216,7 +222,9 @@ const TextArea = (props: TextAreaProps) => {
 
   // Unified slash command suggestions state (skills + MCP tools)
   const { searchSlashCommands, hasItems: hasSlashItems } = useSlashCommandSuggestions();
-  const [slashSuggestions, setSlashSuggestions] = useState<SlashCommandItems>(null);
+  const [slashSuggestions, setSlashSuggestions] = useState<SlashCommandItems | null>(
+    null,
+  );
   const slashSuggestionsRef = useRef<HTMLDivElement>(null);
 
   const isSuggestionsOpen = suggestions.length > 0;
@@ -291,7 +299,7 @@ const TextArea = (props: TextAreaProps) => {
       else if (textBeforeCursor.includes(trigger) && !isLikelyEmail())
         newSuggestions = searchSuggestions(textBeforeCursor.substring(start));
 
-      if (newSuggestions.length === 0) searchSuggestions(null);
+      if (newSuggestions.length === 0) searchSuggestions("");
 
       // Handle "/" triggers - unified slash command dropdown (skills + MCP tools)
       const slashStart = textBeforeCursor.lastIndexOf(MCP_TOOL_TRIGGER);
@@ -371,7 +379,7 @@ const TextArea = (props: TextAreaProps) => {
           // so it persists while typing.
           if (mention.group === "all" && mention.content?.widget_id) {
             const selected = copilotData.selectedWidgets?.find(
-              (w) => w.widget_id === mention.content.widget_id,
+              (w) => w.widget_id === mention.content?.widget_id,
             );
             if (selected?.uuid) currentTrackedUuids.add(selected.uuid);
           }
@@ -395,7 +403,7 @@ const TextArea = (props: TextAreaProps) => {
         // 2. Its `widget_id` follows the `tab_` naming convention (fallback for edge-cases
         //    where the `tabWidgets` array may not have been set).
         const isTabWidget =
-          widget?.metadata.tabWidgets?.length > 0 ||
+          (widget?.metadata?.tabWidgets?.length ?? 0) > 0 ||
           widget?.widget_id?.startsWith("tab_");
 
         if (isTabWidget) {
@@ -513,7 +521,7 @@ const TextArea = (props: TextAreaProps) => {
     textAreaRef.current?.focus();
     queueMicrotask(() => {
       const newCursorPos = slashStart + insertValue.length;
-      textAreaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      textAreaRef.current?.setSelectionRange(newCursorPos, newCursorPos);
     });
   });
 
@@ -521,10 +529,9 @@ const TextArea = (props: TextAreaProps) => {
     (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
       if (e.shiftKey) return;
       // Handle unified slash command suggestions keyboard navigation
-      const { skills, mcpTools, semanticViews, hasSuggestions } =
-        slashSuggestions ?? {};
+      const { skills = [], mcpTools = [], hasSuggestions } = slashSuggestions ?? {};
       if (hasSuggestions) {
-        const suggestions = [...skills, ...mcpTools, ...semanticViews];
+        const suggestions = [...skills, ...mcpTools];
         const currentSlashIndex = getSelectionIndex(true);
         const currentIndex = currentSlashIndex % suggestions?.length;
         const arrLength = suggestions.length;
@@ -648,7 +655,7 @@ const TextArea = (props: TextAreaProps) => {
   const slashSuggestionsMemo = useMemo(() => {
     if (!slashSuggestions?.hasSuggestions) return null;
 
-    const { skills, mcpTools, semanticViews } = slashSuggestions;
+    const { skills, mcpTools } = slashSuggestions;
 
     // Build a flat index counter so keyboard nav works across sections
     let flatIndex = 0;
@@ -704,25 +711,6 @@ const TextArea = (props: TextAreaProps) => {
               })}
             </>
           )}
-          {semanticViews.length > 0 && (
-            <>
-              <div className="px-1 py-1 text-2xs font-semibold text-ds-text-caption uppercase tracking-wide">
-                Semantic Views
-              </div>
-              {semanticViews.map((item) => {
-                const idx = flatIndex++;
-                return (
-                  <SlashSuggestionItem
-                    key={`slash-sv-${item.fqn}`}
-                    item={item}
-                    index={idx}
-                    onSelect={handleSlashSelection}
-                    isMobile={isMobile}
-                  />
-                );
-              })}
-            </>
-          )}
         </div>
       </div>
     );
@@ -758,7 +746,7 @@ const TextArea = (props: TextAreaProps) => {
       {slashSuggestionsMemo}
       <TextCompletion
         renderedPrompt={renderedPrompt}
-        completion={completion}
+        completion={completion ?? ""}
         processMentions={processMentions}
       />
     </div>
@@ -809,7 +797,7 @@ const getCursorOffset = (
   }
 
   // Create cached elements only once
-  if (!cachedGhostDiv) {
+  if (!(cachedGhostDiv && cachedGhostSpan)) {
     cachedGhostDiv = document.createElement("div");
     cachedGhostSpan = document.createElement("span");
 

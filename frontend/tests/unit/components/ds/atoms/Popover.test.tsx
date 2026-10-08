@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { ForwardedRef, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Popover } from "~/components/ds/atoms/Popover";
 
@@ -38,7 +39,15 @@ vi.mock("@radix-ui/react-popover", () => {
   const PopoverContext = React.createContext({ open: false, setOpen: () => {} });
 
   return {
-    Root: ({ children, open: controlledOpen, onOpenChange }: any) => {
+    Root: ({
+      children,
+      open: controlledOpen,
+      onOpenChange,
+    }: {
+      children?: ReactNode;
+      open?: boolean;
+      onOpenChange: (open: boolean) => void;
+    }) => {
       const [internalOpen, setInternalOpen] = React.useState(false);
       const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
       const setOpen = onOpenChange || setInternalOpen;
@@ -48,21 +57,26 @@ vi.mock("@radix-ui/react-popover", () => {
         </PopoverContext.Provider>
       );
     },
-    Trigger: ({ children, asChild }: any) => {
+    Trigger: ({ children, asChild }: { children?: ReactNode; asChild?: boolean }) => {
       const { setOpen } = React.useContext(PopoverContext);
       return <div onClick={() => setOpen(true)}>{children}</div>;
     },
-    Portal: ({ children }: any) => {
+    Portal: ({ children }: { children?: ReactNode }) => {
       const { open } = React.useContext(PopoverContext);
       return open ? <>{children}</> : null;
     },
-    Content: React.forwardRef(({ children, className }: any, ref: any) => (
-      <div ref={ref} className={className}>
-        {children}
-      </div>
-    )),
+    Content: React.forwardRef(
+      (
+        { children, className }: { children?: ReactNode; className?: string },
+        ref: ForwardedRef<HTMLDivElement>,
+      ) => (
+        <div ref={ref} className={className}>
+          {children}
+        </div>
+      ),
+    ),
     Arrow: () => <div data-testid="popover-arrow" />,
-    Close: ({ children }: any) => <button>{children}</button>,
+    Close: ({ children }: { children?: ReactNode }) => <button>{children}</button>,
   };
 });
 
@@ -71,5 +85,5 @@ vi.mock("./DropdownMenu", () => ({
 }));
 
 vi.mock("../utils", () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));

@@ -1,5 +1,5 @@
 import { Reorder } from "framer-motion";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { type MouseEvent, useCallback, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { useTabHighlight } from "~/components/AI/contexts/TabHighlightContext";
@@ -7,6 +7,7 @@ import { Button } from "~/components/ds/atoms/Button";
 import { Input } from "~/components/ds/atoms/Input";
 import { BaseDialog } from "~/components/ds/dialogs/BaseDialog";
 import { DialogFooter, DialogTitle } from "~/components/ds/dialogs/Dialog";
+import type { WidgetT } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { type InnerTab, useShallowAppStore } from "~/lib/state/app";
@@ -26,11 +27,12 @@ import {
 import Icon from "../../Icon";
 import Tooltip from "../../Tooltip";
 
-const countWidgetsPerTab = (widgets: any[]) => {
-  const count = {};
+const countWidgetsPerTab = (widgets: WidgetT[]) => {
+  const count: Record<string, number> = {};
   for (const widget of widgets) {
     if (widget.widgetId !== "navigation_bar") {
       const tabId = widget.innerTab;
+      if (tabId === undefined) continue;
       if (!count[tabId]) {
         count[tabId] = 0;
       }
@@ -91,8 +93,8 @@ export default function NavigationBar() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleClose = useCallback(
-    (e: any) => {
-      const isLastTab = typeof e === "boolean" && e;
+    (arg: boolean | MouseEvent) => {
+      const isLastTab = arg === true;
       const widget = widgetRef.current;
       if (!widget?.id) return;
       if (!activeDashboardId) return;
@@ -126,7 +128,7 @@ export default function NavigationBar() {
   useEffect(() => {
     if (!state.open) {
       const tabs = Object.fromEntries(
-        widget?.storage?.tabs?.map((tab: any) => [uuidv4(), tab]) || [],
+        widget?.storage?.tabs?.map((tab) => [uuidv4(), tab] as const) || [],
       );
       const tabsInStorage = Object.fromEntries(
         Object.entries(tabs).filter(
@@ -171,7 +173,7 @@ export default function NavigationBar() {
       return;
     }
 
-    const newCurrentTabId = innerTabs[currentTab]?.newId;
+    const newCurrentTabId = currentTab ? innerTabs[currentTab]?.newId : undefined;
     const newTabs = updatedTabs.newTabs.map((tab) => ({
       id: innerTabs[tab.id]?.newId || tab.id,
       name: tab.name,
@@ -281,7 +283,7 @@ export default function NavigationBar() {
                 className="flex gap-2 items-center w-full"
               >
                 <Tooltip message="Drag to reorder">
-                  <button tabIndex={-1} className="obb-small-navbar-btn">
+                  <button tabIndex={-1} className="ws-small-navbar-btn">
                     <Icon id="drag-handle" />
                   </button>
                 </Tooltip>
@@ -452,7 +454,7 @@ export default function NavigationBar() {
         </DialogFooter>
       </BaseDialog>
       <div className="group/widget flex overflow-auto h-full relative dark:bg-[#151518] bg-white shadow-xs rounded gap-3 text-sm p-2.5">
-        {widget?.storage?.tabs.map((tab) => {
+        {widget?.storage?.tabs?.map((tab) => {
           const isCurrentTab = currentTab === tab.id;
           const isHighlighted = hoveredWidgetTabId === tab.id;
 
@@ -487,7 +489,7 @@ export default function NavigationBar() {
           )}
         >
           <button
-            className={cn("obb-small-navbar-btn", {
+            className={cn("ws-small-navbar-btn", {
               "opacity-40 cursor-not-allowed": isShared,
             })}
             disabled={isShared}
@@ -509,7 +511,7 @@ export default function NavigationBar() {
             <button
               disabled={isShared}
               onClick={handleClose}
-              className={cn("obb-small-navbar-btn", {
+              className={cn("ws-small-navbar-btn", {
                 "opacity-40 cursor-not-allowed": isShared,
               })}
             >

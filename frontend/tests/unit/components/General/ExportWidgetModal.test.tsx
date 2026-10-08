@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { usePostHog } from "posthog-js/react";
 import { toast } from "sonner";
 import { afterEach, describe, expect, it, type Mock, vi } from "vitest";
 import ExportWidgetModal from "~/components/General/ExportWidgetModal";
@@ -23,10 +22,6 @@ vi.mock("~/lib/state/theme", () => ({
 
 vi.mock("~/lib/utils", () => ({
   slugify: vi.fn((value: string) => value),
-}));
-
-vi.mock("posthog-js/react", () => ({
-  usePostHog: vi.fn(),
 }));
 
 vi.mock("sonner", () => ({
@@ -56,12 +51,6 @@ describe("ExportWidgetModal", () => {
       },
       setExportWidgetData: vi.fn(),
     });
-
-    // Mock posthog
-    const mockCapture = vi.fn();
-    (usePostHog as Mock).mockReturnValue({
-      capture: mockCapture,
-    });
   });
 
   afterEach(() => {
@@ -84,17 +73,12 @@ describe("ExportWidgetModal", () => {
   it("calls the export function when the Export button is clicked", () => {
     vi.useFakeTimers();
     const { exportWidgetData, setExportWidgetData } = useThemeStore();
+    if (!exportWidgetData) throw new Error("The test expects widget data to export");
     const exportFn = exportWidgetData.possibleExportFormats[0].fn;
     render(<ExportWidgetModal />);
     const exportButton = screen.getByRole("button", { name: /export/i });
 
     fireEvent.click(exportButton);
-
-    expect(usePostHog().capture).toHaveBeenCalledWith("user_exported_data_widget", {
-      widgetName: exportWidgetData.widgetName,
-      widgetId: exportWidgetData.widgetId,
-      selectedExportFormat: exportWidgetData.selectedExportFormat,
-    });
 
     expect(toast.info).toHaveBeenCalledWith("Widget export is being generated", {
       description: "The file will be downloaded shortly",
@@ -103,7 +87,7 @@ describe("ExportWidgetModal", () => {
     vi.runAllTimers();
 
     const selectedFormat = exportWidgetData.possibleExportFormats.find(
-      (format: any) => format.value === exportWidgetData.selectedExportFormat,
+      (format) => format.value === exportWidgetData.selectedExportFormat,
     );
     expect(selectedFormat?.fn).toHaveBeenCalled();
 

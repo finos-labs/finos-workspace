@@ -74,13 +74,13 @@ async def client(db_session, apply_migrations):
 
 
 @pytest.fixture(scope="function")
-async def pro_client(client):
-    """Client with service JWT header for /pro endpoints only."""
+async def app_client(client):
+    """Client with service JWT header for /app endpoints only."""
     import jwt
 
     payload = {
-        "sub": "pro",
-        "iss": "openbb-hub",
+        "sub": "app",
+        "iss": "workspace",
         "exp": datetime.now(UTC) + timedelta(hours=1),
     }
 
@@ -88,7 +88,7 @@ async def pro_client(client):
 
     client.headers.update(
         {
-            "X-OpenBB-Authorization": f"Bearer {service_jwt}",
+            "X-Workspace-Authorization": f"Bearer {service_jwt}",
             "Origin": "http://test",
         }
     )

@@ -28,11 +28,12 @@ const TeX: FC<TeXProps> = ({
 
   useEffect(() => {
     setErrorElement(null);
-    if (!(content && renderElementRef.current)) return;
+    const element = renderElementRef.current;
+    if (!(content && element)) return;
 
-    renderElementRef.current.innerHTML = "";
+    element.innerHTML = "";
     try {
-      KaTeX.render(content, renderElementRef.current!, {
+      KaTeX.render(content, element, {
         displayMode: !!block,
         errorColor,
         throwOnError: !!renderError,
@@ -44,7 +45,7 @@ const TeX: FC<TeXProps> = ({
         if (renderError) {
           setErrorElement(renderError(error));
         } else {
-          renderElementRef.current!.innerHTML = error.message;
+          element.innerHTML = error.message;
         }
       } else {
         throw error;

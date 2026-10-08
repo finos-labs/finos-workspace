@@ -388,42 +388,4 @@ describe("ListedAppCard", () => {
       expect(screen.queryByText("New")).not.toBeInTheDocument();
     });
   });
-
-  describe("Lite mode (browse-only)", () => {
-    it("shows View Details instead of Connect App when isLite and not subscribed", () => {
-      render(
-        <ListedAppCard
-          app={baseApp}
-          isSubscribed={false}
-          onOpenDetails={vi.fn()}
-          isLite
-        />,
-      );
-
-      expect(
-        screen.getByRole("button", { name: "View Details" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "Connect App" }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("clicking View Details in lite calls onOpenDetails", async () => {
-      const onOpenDetails = vi.fn();
-      const user = userEvent.setup();
-
-      render(
-        <ListedAppCard
-          app={baseApp}
-          isSubscribed={false}
-          onOpenDetails={onOpenDetails}
-          isLite
-        />,
-      );
-
-      await user.click(screen.getByRole("button", { name: "View Details" }));
-
-      expect(onOpenDetails).toHaveBeenCalledTimes(1);
-    });
-  });
 });

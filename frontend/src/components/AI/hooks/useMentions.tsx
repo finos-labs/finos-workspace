@@ -1,7 +1,6 @@
 import Fuse from "fuse.js";
 import { useCallback, useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { BLOCKED_WIDGET_IDS } from "~/lib/constants";
 import { type InnerTab, type Item, useShallowAppStore } from "~/lib/state/app";
 import {
   type CopilotWidget,
@@ -86,8 +85,7 @@ function getCurrentDashboardTabOptions(currentDashboard: Item | null) {
       (w) =>
         w.innerTab === innerTabId &&
         !w?.disableRetrievalForCopilot &&
-        w.widgetId !== "navigation_bar" &&
-        !(BLOCKED_WIDGET_IDS.has(w.widgetId) && !w.external),
+        w.widgetId !== "navigation_bar",
     );
 
     // Convert dashboard widgets to CopilotWidget format for metadata
@@ -112,7 +110,7 @@ function getCurrentDashboardTabOptions(currentDashboard: Item | null) {
     const tabInfo = tabStorage.find((tab) => tab.id === innerTabId);
     const tabDisplayName = tabInfo?.name || innerTabId;
 
-    // Get widget IDs for this tab (for backward compatibility)
+    // Widget IDs for this tab
     const widgetIds = tabDashboardWidgets.map((w) => w.id);
 
     tabOptions.push({
@@ -192,15 +190,14 @@ export function useMentions() {
 
       try {
         const mentionPattern = new RegExp(`\\${trigger}\\[(.*?)\\]`, "g");
-        result = result.replace(mentionPattern, (fullMatch, mentionContent) => {
-          const mentionObject = mentionContent.split(",").reduce(
-            (acc, pair) => {
-              const [key, value] = pair.split(":").map((item: string) => item.trim());
+        result = result.replace(mentionPattern, (fullMatch, mentionContent: string) => {
+          const mentionObject = mentionContent
+            .split(",")
+            .reduce<Record<string, string>>((acc, pair) => {
+              const [key, value] = pair.split(":").map((item) => item.trim());
               if (key && value) acc[key] = value;
               return acc;
-            },
-            {} as Record<string, string>,
-          );
+            }, {});
 
           const mention = getMention(mentionObject.id);
           if (mention) {
@@ -213,9 +210,9 @@ export function useMentions() {
           if (!tabIdRegex.test(mentionObject.id)) return fullMatch;
 
           const match = mentionObject.id.match(tabIdRegex);
-          const { tabId, innerTabId } = match?.groups || {};
+          const { tabId = "", innerTabId } = match?.groups || {};
 
-          const tabOptions = getCurrentDashboardTabOptions(getTabById(tabId));
+          const tabOptions = getCurrentDashboardTabOptions(getTabById(tabId) ?? null);
           const tabMention = tabOptions.find(
             (option) => option.content?.metadata?.innerTabId === innerTabId,
           );
@@ -304,8 +301,8 @@ export function useMentions() {
           .search(sequence)
           .map((result) => {
             // Drop results that don't partially match the sequence if ends with a space
-            // "RSS F" -> ["RSS Feeds"]
-            // "RSS Feeds " -> []
+            // "Daily R" -> ["Daily Report"]
+            // "Daily Report " -> []
             if (sequence.length > result.item.name.length) return null;
             return result.item;
           })
@@ -350,7 +347,9 @@ export function useInitMentions() {
 
   const { getTabById, lastInnerTab } = useShallowAppStore((state) => ({
     getTabById: state.getTabById,
-    lastInnerTab: state.getLastInnerTab(currentDashboardId),
+    lastInnerTab: currentDashboardId
+      ? state.getLastInnerTab(currentDashboardId)
+      : undefined,
   }));
 
   const currentInnerTab = useMemo(
@@ -375,7 +374,9 @@ export function useInitMentions() {
   const setOptionsMap = useShallowMentionsStore((state) => state.setOptionsMap);
 
   useEffect(() => {
-    const currentDashboard = currentDashboardId ? getTabById(currentDashboardId) : null;
+    const currentDashboard = currentDashboardId
+      ? (getTabById(currentDashboardId) ?? null)
+      : null;
 
     setOptionsMap(
       getOptionsMap(

@@ -23,12 +23,15 @@ type NavBarContext = {
   existingNavBar: WidgetT | undefined;
 };
 
+/** The navigation bar an operation works on, or what to tell the AI is wrong with the operation. */
+type NavBarCheck = { error: CopilotCommandResultT[] } | { navBar: WidgetT };
+
 type DashboardCommandOptions = {
   dashboardId?: string | null;
 };
 
 function handleCreateNavBar(
-  args: { tabs?: { name?: string }[] },
+  args: { tabs: { name: string }[] },
   ctx: NavBarContext,
 ): CopilotCommandResultT[] | null {
   if (ctx.existingNavBar) {
@@ -67,69 +70,80 @@ function handleCreateNavBar(
 }
 
 function handleAddTabs(
-  args: { tabs?: { name?: string }[] },
+  args: { tabs: { name: string }[] },
   ctx: NavBarContext,
-): CopilotCommandResultT[] | null {
-  if (!ctx.existingNavBar) {
-    return [
-      {
-        status: "error",
-        message: "No navigation bar found. Use 'create' to create one first.",
-      },
-    ];
+): NavBarCheck {
+  const { existingNavBar: navBar } = ctx;
+  if (!navBar) {
+    return {
+      error: [
+        {
+          status: "error",
+          message: "No navigation bar found. Use 'create' to create one first.",
+        },
+      ],
+    };
   }
   if (args.tabs.length === 0) {
-    return [{ status: "error", message: "No tabs specified to add." }];
+    return { error: [{ status: "error", message: "No tabs specified to add." }] };
   }
 
-  const existingTabs: InnerTab[] = ctx.existingNavBar.storage?.tabs || [];
+  const existingTabs: InnerTab[] = navBar.storage?.tabs || [];
   const existingIds = new Set(existingTabs.map((t) => t.id));
 
   for (const t of args.tabs) {
     const id = slugify(t.name);
     if (existingIds.has(id)) {
-      return [{ status: "error", message: `Tab "${t.name}" already exists.` }];
+      return {
+        error: [{ status: "error", message: `Tab "${t.name}" already exists.` }],
+      };
     }
     existingIds.add(id);
   }
 
-  return null;
+  return { navBar };
 }
 
 function handleRemoveTabs(
-  args: { tabs?: { name?: string }[] },
+  args: { tabs: { name: string }[] },
   ctx: NavBarContext,
-): CopilotCommandResultT[] | null {
-  if (!ctx.existingNavBar) {
-    return [
-      {
-        status: "error",
-        message: "No navigation bar found on this dashboard.",
-      },
-    ];
+): NavBarCheck {
+  const { existingNavBar: navBar } = ctx;
+  if (!navBar) {
+    return {
+      error: [
+        {
+          status: "error",
+          message: "No navigation bar found on this dashboard.",
+        },
+      ],
+    };
   }
   if (args.tabs.length === 0) {
-    return [{ status: "error", message: "No tabs specified to remove." }];
+    return { error: [{ status: "error", message: "No tabs specified to remove." }] };
   }
-  return null;
+  return { navBar };
 }
 
 function handleRenameTabs(
-  args: { rename_map?: Record<string, string> },
+  args: { rename_map: Record<string, string> },
   ctx: NavBarContext,
-): CopilotCommandResultT[] | null {
-  if (!ctx.existingNavBar) {
-    return [
-      {
-        status: "error",
-        message: "No navigation bar found on this dashboard.",
-      },
-    ];
+): NavBarCheck {
+  const { existingNavBar: navBar } = ctx;
+  if (!navBar) {
+    return {
+      error: [
+        {
+          status: "error",
+          message: "No navigation bar found on this dashboard.",
+        },
+      ],
+    };
   }
   if (Object.keys(args.rename_map).length === 0) {
-    return [{ status: "error", message: "No rename_map provided." }];
+    return { error: [{ status: "error", message: "No rename_map provided." }] };
   }
-  return null;
+  return { navBar };
 }
 
 export function useManageNavigationBar() {
@@ -196,10 +210,10 @@ export function useManageNavigationBar() {
         }
 
         case "add_tabs": {
-          const error = handleAddTabs(args, ctx);
-          if (error) return error;
+          const checked = handleAddTabs(args, ctx);
+          if ("error" in checked) return checked.error;
 
-          const navBar = existingNavBar!;
+          const { navBar } = checked;
           const existingTabs: InnerTab[] = navBar.storage?.tabs || [];
           const newTabs: InnerTab[] = args.tabs.map((t) => ({
             id: slugify(t.name),
@@ -229,10 +243,10 @@ export function useManageNavigationBar() {
         }
 
         case "remove_tabs": {
-          const error = handleRemoveTabs(args, ctx);
-          if (error) return error;
+          const checked = handleRemoveTabs(args, ctx);
+          if ("error" in checked) return checked.error;
 
-          const navBar = existingNavBar!;
+          const { navBar } = checked;
           const existingTabs: InnerTab[] = navBar.storage?.tabs || [];
 
           const matchedIds = new Set<string>();
@@ -301,10 +315,10 @@ export function useManageNavigationBar() {
         }
 
         case "rename_tabs": {
-          const error = handleRenameTabs(args, ctx);
-          if (error) return error;
+          const checked = handleRenameTabs(args, ctx);
+          if ("error" in checked) return checked.error;
 
-          const navBar = existingNavBar!;
+          const { navBar } = checked;
           const existingTabs: InnerTab[] = navBar.storage?.tabs || [];
           const innerTabs: InnerTabsT = {};
 
@@ -383,11 +397,11 @@ export function useManageNavigationBar() {
         }
 
         default:
+          // The arguments come from the AI, which may name an operation there is none of
           return [
             {
               status: "error",
-              // @ts-expect-error -- Ignore --
-              message: `Unknown operation: ${args.operation}`,
+              message: `Unknown operation: ${(args as { operation?: unknown }).operation}`,
             },
           ];
       }

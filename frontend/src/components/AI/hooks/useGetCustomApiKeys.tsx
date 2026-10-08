@@ -7,7 +7,7 @@ export function useGetCustomApiKeys() {
   const selectedCopilot = useShallowCopilotStore((s) => s.selectedCopilot);
 
   const getCustomApiKeys = useCallback(() => {
-    if (openaiApiKey && selectedCopilot?.id === "openbb-copilot") {
+    if (openaiApiKey && selectedCopilot?.id === "default-copilot") {
       return { openai_api_key: openaiApiKey };
     }
     return undefined;

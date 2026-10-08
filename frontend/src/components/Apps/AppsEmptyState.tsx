@@ -67,7 +67,7 @@ export default function AppsEmptyState() {
         />
         <FeatureCard
           title="Share Apps"
-          description="Any App you create can be shared with other users across the OpenBB Workspace."
+          description="Any App you create can be shared with other users across the Workspace."
           imageSrc="/assets/images/apps/share.png"
           imageAlt="Share apps preview"
           iconId="share-07"

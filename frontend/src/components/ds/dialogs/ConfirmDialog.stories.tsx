@@ -6,6 +6,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 const meta = {
   title: "Dialogs/ConfirmDialog",
   component: ConfirmDialog,
+  args: { title: "Confirm", onConfirm: () => {}, open: false, onClose: () => {} },
   tags: ["autodocs"],
   parameters: {
     semanticTokens: [
@@ -50,6 +51,7 @@ const InteractiveDialog = ({
 };
 
 export const Default: Story = {
+  args: meta.args,
   render: () => (
     <InteractiveDialog
       title="Confirm action"
@@ -59,6 +61,7 @@ export const Default: Story = {
 };
 
 export const DeleteConfirmation: Story = {
+  args: meta.args,
   render: () => {
     const [open, setOpen] = useState(false);
     return (
@@ -84,6 +87,7 @@ export const DeleteConfirmation: Story = {
 };
 
 export const WithTrigger: Story = {
+  args: meta.args,
   render: () => (
     <ConfirmDialog
       trigger={

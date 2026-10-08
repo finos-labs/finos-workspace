@@ -1,14 +1,11 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { validateUser } from "~/api/auth.api";
 import { useShallowAuthStore } from "~/lib/state/auth";
 
 export function usePrivateRoute(shouldValidate = true) {
-  const navigate = useNavigate();
-  const { user, logout, needsOnboarding } = useShallowAuthStore((state) => ({
+  const { user, logout } = useShallowAuthStore((state) => ({
     user: state.user,
     logout: state.logout,
-    needsOnboarding: state.needsOnboarding,
   }));
 
   useEffect(() => {
@@ -24,11 +21,7 @@ export function usePrivateRoute(shouldValidate = true) {
         .then((data) => {
           if (!data.success) {
             console.info("🚫 Token is invalid, redirecting to auth page");
-            if (needsOnboarding) {
-              navigate("/onboarding");
-            } else {
-              logout();
-            }
+            logout();
           }
         })
         .catch((err) => {
@@ -36,5 +29,5 @@ export function usePrivateRoute(shouldValidate = true) {
           logout();
         });
     }
-  }, [user, shouldValidate, logout, needsOnboarding, navigate]);
+  }, [user, shouldValidate, logout]);
 }

@@ -16,13 +16,13 @@ export default function NoItems() {
                 ? leftSidebarLogoDark
                 : leftSidebarLogo
             }
-            alt={name || "OpenBB"}
+            alt={name || "Workspace"}
           />
         ) : (
           <img
-            className="w-[200px] object-cover opacity-50"
-            src={`/assets/images/loading-bb-${theme === "dark" ? "white" : "dark"}.gif`}
-            alt="OpenBB"
+            className="w-[200px] object-contain opacity-50"
+            src={`/assets/images/loading-${theme === "dark" ? "white" : "dark"}.svg`}
+            alt="Workspace"
           />
         )}
         <p className="subtitle-sm-bold mt-2 text-light-300 dark:text-dark-700">

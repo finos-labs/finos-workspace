@@ -9,9 +9,9 @@ import type { PermissionItem } from "./types";
 
 const accessStyle = {
   "no-access":
-    "obb-tag whitespace-nowrap body-xs-regular bg-tag-orange-bg text-tag-orange-label",
+    "ws-tag whitespace-nowrap body-xs-regular bg-tag-orange-bg text-tag-orange-label",
   access:
-    "obb-tag whitespace-nowrap body-xs-regular bg-tag-green-bg text-tag-green-label",
+    "ws-tag whitespace-nowrap body-xs-regular bg-tag-green-bg text-tag-green-label",
 };
 
 const PERMISSION_OPTIONS = [
@@ -40,7 +40,8 @@ export function PermissionItemRow({
 }: PermissionItemRowProps) {
   const validTemplates = item.status === "error" ? [] : item.templates;
   const validWidgets = item.status === "error" ? [] : item.widgets;
-  const hasNestedItems = validWidgets?.length > 0 || validTemplates?.length > 0;
+  const hasNestedItems =
+    (validWidgets?.length ?? 0) > 0 || (validTemplates?.length ?? 0) > 0;
   const isChildItem = item.parentUuid !== undefined;
   const itemAccess = item.access ?? "no-access";
   const parentNoAccess = isChildItem
@@ -62,7 +63,7 @@ export function PermissionItemRow({
     [item.widgets, searchTerm],
   );
 
-  const noResults = filteredWidgets?.length === 0 && item.widgets?.length > 0;
+  const noResults = filteredWidgets?.length === 0 && (item.widgets?.length ?? 0) > 0;
 
   const isOpen = useMemo(() => {
     if (localOpen !== null) return localOpen;
@@ -126,7 +127,7 @@ export function PermissionItemRow({
             </Tooltip>
             {showResourceTag && resourceTag && (
               <Tooltip className="max-w-[300px]" message={resourceTag}>
-                <span className="obb-tag truncate max-w-[280px] text-xs flex-shrink-0">
+                <span className="ws-tag truncate max-w-[280px] text-xs flex-shrink-0">
                   {resourceTag}
                 </span>
               </Tooltip>

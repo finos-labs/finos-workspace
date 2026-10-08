@@ -2,9 +2,9 @@ import { CalendarIcon } from "@radix-ui/react-icons";
 import * as Popover from "@radix-ui/react-popover";
 import { useMemo, useState } from "react";
 import type { DateRange } from "react-day-picker";
+import { formatDate } from "~/lib/utils/format";
 import { Button } from "../ds/atoms/Button";
 import { cn } from "../ds/utils";
-import { formatDate } from "../General/Table/AgGridUtils";
 import { Calendar } from "../ui/Calendar";
 
 interface RangeDatePickerProps {
@@ -48,7 +48,7 @@ export const RangeDatePicker = ({ onRangeSelect }: RangeDatePickerProps) => {
           className={cn(
             "radix-side-top:animate-slide-up radix-side-bottom:animate-slide-down",
             "z-10 text-xs p-0",
-            "obb-dropdown-container _dropdown-container",
+            "ws-dropdown-container _dropdown-container",
           )}
         >
           <Calendar

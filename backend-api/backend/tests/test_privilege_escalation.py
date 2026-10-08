@@ -47,14 +47,14 @@ class TestHorizontalPrivilegeEscalationDashboards:
                 }
             }
         }
-        create_response = await auth_client.post("/pro/dash/sync", json=create_payload)
+        create_response = await auth_client.post("/app/dash/sync", json=create_payload)
         # Dashboard creation should work - if it doesn't, fail the test to investigate
         assert (
             create_response.status_code == 200
         ), f"Dashboard creation failed: {create_response.status_code} - {create_response.text}"
 
         # User B tries to access User A's dashboard
-        response = await second_user_client.get(f"/pro/dash/{dashboard_uuid}")
+        response = await second_user_client.get(f"/app/dash/{dashboard_uuid}")
         # Should be 403 Forbidden or 404 Not Found (don't reveal existence)
         assert response.status_code in {
             403,
@@ -76,7 +76,7 @@ class TestHorizontalPrivilegeEscalationDashboards:
                 }
             }
         }
-        await auth_client.post("/pro/dash/sync", json=create_payload)
+        await auth_client.post("/app/dash/sync", json=create_payload)
 
         # User B tries to update User A's dashboard
         update_payload = {
@@ -87,11 +87,11 @@ class TestHorizontalPrivilegeEscalationDashboards:
                 }
             }
         }
-        await second_user_client.post("/pro/dash/sync", json=update_payload)
+        await second_user_client.post("/app/dash/sync", json=update_payload)
 
         # The sync might succeed (200) but should NOT modify User A's dashboard
         # Verify User A's dashboard is unchanged
-        verify_response = await auth_client.get(f"/pro/dash/{dashboard_uuid}")
+        verify_response = await auth_client.get(f"/app/dash/{dashboard_uuid}")
         if verify_response.status_code == 200:
             data = verify_response.json()
             # Dashboard should NOT be modified
@@ -112,14 +112,14 @@ class TestHorizontalPrivilegeEscalationDashboards:
                 }
             }
         }
-        await auth_client.post("/pro/dash/sync", json=create_payload)
+        await auth_client.post("/app/dash/sync", json=create_payload)
 
         # User B tries to delete User A's dashboard (DELETE literal value)
         delete_payload = {"items": {dashboard_uuid: "DELETE"}}
-        await second_user_client.post("/pro/dash/sync", json=delete_payload)
+        await second_user_client.post("/app/dash/sync", json=delete_payload)
 
         # Verify User A's dashboard still exists
-        verify_response = await auth_client.get(f"/pro/dash/{dashboard_uuid}")
+        verify_response = await auth_client.get(f"/app/dash/{dashboard_uuid}")
         # Dashboard should still exist for User A
         assert verify_response.status_code in {200, 403, 404}
 
@@ -138,14 +138,14 @@ class TestHorizontalPrivilegeEscalationDashboards:
                 }
             }
         }
-        create_response = await auth_client.post("/pro/dash/sync", json=create_payload)
+        create_response = await auth_client.post("/app/dash/sync", json=create_payload)
         assert (
             create_response.status_code == 200
         ), f"Dashboard creation failed: {create_response.status_code} - {create_response.text}"
 
         # User B tries to share User A's dashboard (correct payload format)
         response = await second_user_client.post(
-            f"/pro/dash/{dashboard_uuid}/share",
+            f"/app/dash/{dashboard_uuid}/share",
             json={"shares": [{"email": "attacker@evil.com", "permission": "view"}]},
         )
         # Should be forbidden (403) or not found (404) or validation error (422)
@@ -163,65 +163,54 @@ class TestHorizontalPrivilegeEscalationDataConnectors:
     async def test_cannot_read_other_users_data_connectors(
         self, auth_client, second_user_client
     ):
-        """User B should not see User A's data connectors in list"""
-        # User A creates a data connector (single-widget type)
-        connector_uuid = str(uuid4())
-        create_payload = {
-            "uuid": connector_uuid,
-            "name": f"User A Connector {uuid4().hex[:8]}",
-            "data": {"api_key": "secret_key_123"},
-        }
-        await auth_client.post(
-            "/pro/data-connectors/single-widget", json=create_payload
+        """User B should not see User A's backend connectors in list"""
+        source_uuid = str(uuid4())
+        create_response = await auth_client.post(
+            f"/app/data-connectors/api-source/{source_uuid}",
+            json={
+                "name": f"User A Connector {uuid4().hex[:8]}",
+                "url": "https://api.example.com/data",
+            },
         )
-        # May return 200/201 for success or 422 for validation
-        # The key test is isolation - even if creation fails, check listing
+        assert create_response.status_code == 200
 
-        # User B lists their data connectors
-        list_response = await second_user_client.get(
-            "/pro/data-connectors/single-widget"
-        )
-        # Should return 200 with User B's connectors only (not User A's)
+        list_response = await second_user_client.get("/app/data-connectors/api-source")
         assert (
             list_response.status_code == 200
         ), f"List failed: {list_response.status_code}"
+        assert source_uuid not in {
+            str(item.get("uuid")) for item in list_response.json()
+        }, "User B can see User A's connector!"
 
-        data = list_response.json()
-        connectors = data if isinstance(data, list) else data.get("items", [])
-
-        # User A's connector should NOT appear in User B's list
-        for connector in connectors:
-            if isinstance(connector, dict):
-                assert (
-                    connector.get("uuid") != connector_uuid
-                ), "User B can see User A's connector!"
+        await auth_client.delete(f"/app/data-connectors/api-source/{source_uuid}")
 
     @pytest.mark.asyncio
-    async def test_cannot_access_other_users_data_connector_by_uuid(
+    async def test_cannot_modify_other_users_data_connector_by_uuid(
         self, auth_client, second_user_client
     ):
-        """User B should not be able to access User A's data connector by UUID"""
-        # User A creates a data connector
-        connector_uuid = str(uuid4())
-        create_payload = {
-            "uuid": connector_uuid,
-            "name": f"User A Secret Connector {uuid4().hex[:8]}",
-            "data": {"credentials": "super_secret"},
-        }
+        """User B should not be able to overwrite or delete User A's connector by UUID"""
+        source_uuid = str(uuid4())
+        name = f"User A Secret Connector {uuid4().hex[:8]}"
         create_response = await auth_client.post(
-            "/pro/data-connectors/single-widget", json=create_payload
+            f"/app/data-connectors/api-source/{source_uuid}",
+            json={"name": name, "url": "https://api.example.com/data"},
+        )
+        assert create_response.status_code == 200
+
+        await second_user_client.post(
+            f"/app/data-connectors/api-source/{source_uuid}",
+            json={"name": "hijacked", "url": "https://attacker.example.com/"},
+        )
+        await second_user_client.delete(
+            f"/app/data-connectors/api-source/{source_uuid}"
         )
 
-        if create_response.status_code in {200, 201}:
-            # User B tries to access User A's connector directly by UUID
-            response = await second_user_client.get(
-                f"/pro/data-connectors/single-widget/{connector_uuid}"
-            )
-            # Should be 403 or 404 - must not expose User A's data
-            assert response.status_code in {
-                403,
-                404,
-            }, f"Expected 403/404 but got {response.status_code}"
+        sources = (await auth_client.get("/app/data-connectors/api-source")).json()
+        mine = [item for item in sources if str(item.get("uuid")) == source_uuid]
+        assert len(mine) == 1, "User B deleted User A's connector"
+        assert mine[0]["name"] == name, "User B overwrote User A's connector"
+
+        await auth_client.delete(f"/app/data-connectors/api-source/{source_uuid}")
 
 
 class TestHorizontalPrivilegeEscalationUserData:
@@ -355,7 +344,7 @@ class TestIDORVulnerabilities:
         ]
 
         for test_uuid in test_uuids:
-            response = await auth_client.get(f"/pro/dash/{test_uuid}")
+            response = await auth_client.get(f"/app/dash/{test_uuid}")
             # Should consistently return 403 or 404, never 200 for other's data
             assert response.status_code in {403, 404}
 
@@ -365,7 +354,7 @@ class TestIDORVulnerabilities:
         # User A creates a resource
         dashboard_uuid = str(uuid4())
         await auth_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={
                 "dashboards": [
                     {"uuid": dashboard_uuid, "name": "Test Dashboard", "data": {}}
@@ -381,7 +370,7 @@ class TestIDORVulnerabilities:
         ]
 
         for uuid_var in uuid_variations:
-            response = await second_user_client.get(f"/pro/dash/{uuid_var}")
+            response = await second_user_client.get(f"/app/dash/{uuid_var}")
             assert response.status_code in {403, 404, 422}
 
 
@@ -546,7 +535,7 @@ class TestParameterTampering:
         # User B tries to create resource claiming to be User A
         dashboard_uuid = str(uuid4())
         response = await second_user_client.post(
-            "/pro/dash/sync",
+            "/app/dash/sync",
             json={
                 "dashboards": [
                     {
@@ -563,7 +552,7 @@ class TestParameterTampering:
         # If created, verify it belongs to User B, not User A
         if response.status_code == 200:
             # Check User A doesn't have this dashboard
-            user_a_dashboards = await auth_client.get("/pro/dash")
+            user_a_dashboards = await auth_client.get("/app/dash")
             if user_a_dashboards.status_code == 200:
                 data = user_a_dashboards.json()
                 owned = data.get("owned", {})

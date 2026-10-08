@@ -1,5 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type Item, type Items, useAppStore } from "~/lib/state/app";
+import {
+  type AppState,
+  type Group,
+  type Item,
+  type Items,
+  type SideBarItems,
+  useAppStore,
+} from "~/lib/state/app";
+import {
+  appItems,
+  makeTabData,
+  makeTicker,
+  makeTickerGroup,
+  makeWidget,
+} from "../../factories";
+import { malformed, partial, required } from "../../mocks";
+
+/** What it takes to add a tab. */
+type NewTab = Parameters<AppState["addTab"]>[0];
 
 const sharedAppMocks = vi.hoisted(() => {
   const state = {
@@ -22,29 +40,10 @@ vi.mock("~/api/dashboard.api", () => ({
   postDashboards: vi.fn().mockResolvedValue({}),
 }));
 
-vi.mock("~/lib/widget_bundles.json", () => ({
-  default: {
-    openbb: {
-      name: "OpenBB",
-      enabled_by_default: true,
-      widgets: ["widget1", "widget2", "equity_profile"],
-    },
-  },
-}));
-
 vi.mock("~/lib/state/auth", () => ({
   useAuthStore: {
     getState: () => ({
       logout: vi.fn(),
-    }),
-  },
-}));
-
-vi.mock("~/lib/state/charting", () => ({
-  useChartingStore: {
-    getState: () => ({
-      removeWidgetData: vi.fn(),
-      removeTabWidgetsData: vi.fn(),
     }),
   },
 }));
@@ -88,39 +87,8 @@ vi.mock("~/lib/state/sidebar", () => ({
   },
 }));
 
-vi.mock("~/lib/state/theme", () => ({
-  useThemeStore: {
-    getState: () => ({
-      defaultTicker: {
-        symbol: "AAPL",
-        id: "AAPL",
-        name: "Apple Inc",
-        category: "equity",
-      },
-    }),
-  },
-}));
-
-vi.mock("~/lib/state/tickers", () => ({
-  tickersStore: {
-    getState: () => ({
-      getOrQueryTickers: vi.fn().mockResolvedValue({}),
-    }),
-  },
-}));
-
-vi.mock("~/lib/onPremFeatureFlags", () => ({
-  getAllowedDataVendors: () => [],
-  getAllowedDBTypes: () => [],
+vi.mock("~/lib/identityProviders", () => ({
   getEnabledIdentityProviders: () => [],
-  getShowDemoRequestButton: () => false,
-  isOnPremDeployment: () => false,
-}));
-
-vi.mock("posthog-js", () => ({
-  default: {
-    capture: vi.fn(),
-  },
 }));
 
 vi.mock("sonner", () => ({
@@ -154,26 +122,25 @@ const createTestItems = (): Items => {
       isFolder: true,
       isRoot: true,
       children: [tabId, folderId],
-      data: { name: "root" },
+      data: makeTabData({ name: "root" }),
     },
     [tabId]: {
       index: tabId,
       parentId: rootId,
       isFolder: false,
+      children: [],
       data: {
         name: "Test Tab",
         templateId: "custom",
         widgets: [
-          {
+          makeWidget({
             id: "widget-1",
-            // @ts-expect-error - ignored for now
             widgetId: "equity_profile",
             name: "Equity Profile",
             innerTab: "overview",
             groupId: null,
-            // @ts-expect-error - ignored for now
-            data: { mainTicker: { symbol: "AAPL", id: "AAPL" } },
-          },
+            data: { mainTicker: makeTicker() },
+          }),
         ],
         gridLayout: {
           overview: [{ i: "widget-1", x: 0, y: 0, w: 4, h: 4 }],
@@ -189,7 +156,7 @@ const createTestItems = (): Items => {
       parentId: rootId,
       isFolder: true,
       children: [],
-      data: { name: "Test Folder" },
+      data: makeTabData({ name: "Test Folder" }),
     },
   };
 };
@@ -231,7 +198,7 @@ describe("useAppStore", () => {
     });
 
     it("should return undefined when items is null", () => {
-      useAppStore.setState({ items: null as any });
+      useAppStore.setState({ items: malformed(null) });
 
       const tab = useAppStore.getState().getTabById("tab-1");
 
@@ -271,7 +238,7 @@ describe("useAppStore", () => {
             isFolder: true,
             isRoot: true,
             children: [],
-            data: { name: "root" },
+            data: makeTabData({ name: "root" }),
           },
         },
       });
@@ -289,6 +256,7 @@ describe("useAppStore", () => {
       const nestedTabId = "nested-tab";
       items["nested-tab"] = {
         index: nestedTabId,
+        children: [],
         parentId: "folder-1",
         isFolder: false,
         data: {
@@ -350,7 +318,7 @@ describe("useAppStore", () => {
     });
 
     it("should return empty object when no items", () => {
-      useAppStore.setState({ items: null as any });
+      useAppStore.setState({ items: malformed(null) });
 
       const widgets = useAppStore
         .getState()
@@ -406,7 +374,7 @@ describe("useAppStore", () => {
     });
 
     it("should return true for shared dashboard", () => {
-      const items = useAppStore.getState().items;
+      const items = appItems();
       items["tab-1"].isShared = true;
       useAppStore.setState({ items });
 
@@ -420,7 +388,7 @@ describe("useAppStore", () => {
     it("should set dashboard as shared", () => {
       useAppStore.getState().setDashboardShared("tab-1", true);
 
-      const items = useAppStore.getState().items;
+      const items = appItems();
       expect(items["tab-1"].isShared).toBe(true);
     });
 
@@ -428,7 +396,7 @@ describe("useAppStore", () => {
       useAppStore.getState().setDashboardShared("tab-1", true);
       useAppStore.getState().setDashboardShared("tab-1", false);
 
-      const items = useAppStore.getState().items;
+      const items = appItems();
       expect(items["tab-1"].isShared).toBe(false);
     });
 
@@ -490,12 +458,12 @@ describe("useAppStore", () => {
         index: "new-folder",
         isFolder: true,
         children: [],
-        data: { name: "New Folder" },
+        data: makeTabData({ name: "New Folder" }),
       };
 
       useAppStore.getState().createFolder(newFolder);
 
-      const folder = useAppStore.getState().items["new-folder"];
+      const folder = appItems()["new-folder"];
       expect(folder).toBeDefined();
       expect(folder.data?.name).toBe("New Folder");
       expect(folder.parentId).toBe("root-id");
@@ -506,12 +474,12 @@ describe("useAppStore", () => {
         index: "nested-folder",
         isFolder: true,
         children: [],
-        data: { name: "Nested Folder" },
+        data: makeTabData({ name: "Nested Folder" }),
       };
 
       useAppStore.getState().createFolder(newFolder, "folder-1");
 
-      const folder = useAppStore.getState().items["nested-folder"];
+      const folder = appItems()["nested-folder"];
       expect(folder).toBeDefined();
       expect(folder.parentId).toBe("folder-1");
     });
@@ -521,12 +489,12 @@ describe("useAppStore", () => {
         index: "new-folder-2",
         isFolder: true,
         children: [],
-        data: { name: "New Folder 2" },
+        data: makeTabData({ name: "New Folder 2" }),
       };
 
       useAppStore.getState().createFolder(newFolder);
 
-      const root = useAppStore.getState().items["root-id"];
+      const root = appItems()["root-id"];
       expect(root.children).toContain("new-folder-2");
     });
   });
@@ -535,7 +503,7 @@ describe("useAppStore", () => {
     it("should delete a folder", () => {
       useAppStore.getState().deleteFolder("folder-1");
 
-      const folder = useAppStore.getState().items["folder-1"];
+      const folder = appItems()["folder-1"];
       expect(folder).toBeUndefined();
     });
 
@@ -558,16 +526,16 @@ describe("useAppStore", () => {
   describe("updateOnlyItems", () => {
     it("should update items without affecting cloud state", () => {
       const newItems = createTestItems();
-      newItems["tab-1"].data!.name = "Modified Tab";
+      required(newItems["tab-1"].data).name = "Modified Tab";
 
       useAppStore.getState().updateOnlyItems(newItems);
 
-      expect(useAppStore.getState().items["tab-1"].data?.name).toBe("Modified Tab");
+      expect(appItems()["tab-1"].data?.name).toBe("Modified Tab");
     });
 
     it("should not update when items is null/undefined", () => {
       const itemsBefore = useAppStore.getState().items;
-      useAppStore.getState().updateOnlyItems(null as any);
+      useAppStore.getState().updateOnlyItems(malformed(null));
 
       expect(useAppStore.getState().items).toBe(itemsBefore);
     });
@@ -591,7 +559,7 @@ describe("useAppStore", () => {
       const cloudItems = JSON.parse(JSON.stringify(items));
 
       // Modify local items
-      items["tab-1"].data!.name = "Modified Name";
+      required(items["tab-1"].data).name = "Modified Name";
 
       useAppStore.setState({
         items,
@@ -626,7 +594,7 @@ describe("useAppStore", () => {
   describe("getWidgetsFromGroup", () => {
     it("should return widgets from a specific group", () => {
       const items = createTestItems();
-      items["tab-1"].data!.widgets![0].groupId = "group-1";
+      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
       useAppStore.setState({ items });
 
       const widgets = useAppStore.getState().getWidgetsFromGroup("group-1", "tab-1");
@@ -645,15 +613,12 @@ describe("useAppStore", () => {
 
   describe("addGroup", () => {
     it("should add a group to a tab", () => {
-      const group = {
+      const group = makeTickerGroup({
         id: "new-group",
-        type: "ticker" as const,
         name: "Test Group",
         color: "#ff0000",
-        value: { symbol: "AAPL", id: "AAPL" },
-      };
+      });
 
-      // @ts-expect-error - ignored for now
       useAppStore.getState().addGroup("tab-1", group);
 
       const tab = useAppStore.getState().getTabById("tab-1");
@@ -662,12 +627,12 @@ describe("useAppStore", () => {
     });
 
     it("should generate id if not provided", () => {
-      const group = {
-        type: "ticker" as const,
+      const group = partial<Group>({
+        type: "ticker",
         name: "Test Group",
         color: "#ff0000",
         value: { symbol: "AAPL", id: "AAPL" },
-      } as any;
+      });
 
       useAppStore.getState().addGroup("tab-1", group);
 
@@ -681,15 +646,14 @@ describe("useAppStore", () => {
     it("should delete a group from a tab", () => {
       // First add a group
       const items = createTestItems();
-      items["tab-1"].data!.groups = [
-        // @ts-expect-error - ignored for now
-        {
+      required(items["tab-1"].data).groups = [
+        partial<Group>({
           id: "group-1",
           type: "ticker",
           name: "Group 1",
           color: "#ff0000",
           value: null,
-        },
+        }),
       ];
       useAppStore.setState({ items });
 
@@ -701,17 +665,16 @@ describe("useAppStore", () => {
 
     it("should remove group references from widgets", () => {
       const items = createTestItems();
-      items["tab-1"].data!.groups = [
-        // @ts-expect-error - ignored for now
-        {
+      required(items["tab-1"].data).groups = [
+        partial<Group>({
           id: "group-1",
           type: "ticker",
           name: "Group 1",
           color: "#ff0000",
           value: null,
-        },
+        }),
       ];
-      items["tab-1"].data!.widgets![0].groupId = "group-1";
+      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
       useAppStore.setState({ items });
 
       useAppStore.getState().deleteGroup("tab-1", "group-1");
@@ -724,17 +687,16 @@ describe("useAppStore", () => {
   describe("getWidgetGroup", () => {
     it("should return the group for a widget", () => {
       const items = createTestItems();
-      items["tab-1"].data!.groups = [
-        // @ts-expect-error - ignored for now
-        {
+      required(items["tab-1"].data).groups = [
+        partial<Group>({
           id: "group-1",
           type: "ticker",
           name: "Group 1",
           color: "#ff0000",
           value: null,
-        },
+        }),
       ];
-      items["tab-1"].data!.widgets![0].groupId = "group-1";
+      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
       useAppStore.setState({ items });
 
       const group = useAppStore.getState().getWidgetGroup("tab-1", "widget-1");
@@ -753,25 +715,23 @@ describe("useAppStore", () => {
   describe("getAllTabActiveGroups", () => {
     it("should return groups that have associated widgets", () => {
       const items = createTestItems();
-      items["tab-1"].data!.groups = [
-        // @ts-expect-error - ignored for now
-        {
+      required(items["tab-1"].data).groups = [
+        partial<Group>({
           id: "group-1",
           type: "ticker",
           name: "Active Group",
           color: "#ff0000",
           value: null,
-        },
-        // @ts-expect-error - ignored for now
-        {
+        }),
+        partial<Group>({
           id: "group-2",
           type: "ticker",
           name: "Inactive Group",
           color: "#00ff00",
           value: null,
-        },
+        }),
       ];
-      items["tab-1"].data!.widgets![0].groupId = "group-1";
+      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
       useAppStore.setState({ items });
 
       const activeGroups = useAppStore.getState().getAllTabActiveGroups("tab-1");
@@ -811,16 +771,19 @@ describe("useAppStore", () => {
     it("should return all folders in a flat list", () => {
       // Set up sidebar items
       const items = createTestItems();
-      const sideBarItems = Object.entries(items).reduce((acc, [key, item]) => {
-        acc[key] = {
-          ...item,
-          data: {
-            name: item.data?.name,
-            type: item.data?.templateId ? "custom" : undefined,
-          },
-        };
-        return acc;
-      }, {} as any);
+      const sideBarItems = Object.entries(items).reduce<SideBarItems>(
+        (acc, [key, item]) => {
+          acc[key] = {
+            ...item,
+            data: {
+              name: item.data?.name,
+              type: item.data?.templateId ? "custom" : undefined,
+            },
+          };
+          return acc;
+        },
+        {},
+      );
 
       useAppStore.setState({
         items,
@@ -838,7 +801,7 @@ describe("useAppStore", () => {
   describe("updateItemsStoredInCloud", () => {
     it("should update cloud-stored items", () => {
       const newItems = createTestItems();
-      newItems["tab-1"].data!.name = "Cloud Updated";
+      required(newItems["tab-1"].data).name = "Cloud Updated";
 
       useAppStore.getState().updateItemsStoredInCloud(newItems);
 
@@ -867,28 +830,26 @@ describe("useAppStore", () => {
     });
 
     it("should increment numberOfChanges", () => {
-      const changesBefore =
-        useAppStore.getState().items["tab-1"].data?.numberOfChanges ?? 0;
+      const changesBefore = appItems()["tab-1"].data?.numberOfChanges ?? 0;
 
       useAppStore.getState().removeWidget("tab-1", "widget-1");
 
-      const changesAfter = useAppStore.getState().items["tab-1"].data?.numberOfChanges;
+      const changesAfter = appItems()["tab-1"].data?.numberOfChanges;
       expect(changesAfter).toBe(changesBefore + 1);
     });
 
     it("should remove orphaned group when last widget in group is removed", () => {
       const items = createTestItems();
-      items["tab-1"].data!.groups = [
-        // @ts-expect-error - ignored for now
-        {
+      required(items["tab-1"].data).groups = [
+        partial<Group>({
           id: "group-1",
           type: "ticker",
           name: "Group 1",
           color: "#ff0000",
           value: null,
-        },
+        }),
       ];
-      items["tab-1"].data!.widgets![0].groupId = "group-1";
+      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
       useAppStore.setState({ items });
 
       useAppStore.getState().removeWidget("tab-1", "widget-1");
@@ -909,7 +870,7 @@ describe("useAppStore", () => {
         data: { mainTicker: { symbol: "MSFT", id: "MSFT" } },
       };
 
-      useAppStore.getState().updateWidget("tab-1", updatedWidget as any);
+      useAppStore.getState().updateWidget("tab-1", partial(updatedWidget));
 
       const widget = useAppStore.getState().getTabWidgetById("tab-1", "widget-1");
       expect(widget?.name).toBe("Updated Widget Name");
@@ -924,176 +885,8 @@ describe("useAppStore", () => {
       };
 
       expect(() => {
-        useAppStore.getState().updateWidget("non-existent", updatedWidget as any);
+        useAppStore.getState().updateWidget("non-existent", partial(updatedWidget));
       }).not.toThrow();
-    });
-
-    it("should not publish cellOnClick endpoint widget saves back to the shared group", () => {
-      const items = createTestItems();
-      items["tab-1"].data!.groups = [
-        {
-          id: "selection-group",
-          name: "Group 1",
-          type: "endpointParam",
-          color: "#000000",
-          groupById: "selection-options",
-          value: "All",
-        } as any,
-      ];
-      items["tab-1"].data!.widgets = [
-        {
-          id: "volume-widget",
-          widgetId: "volume_by_category",
-          external: true,
-          name: "Volume by Category",
-          paramGroups: { "selection-options": "selection-group" },
-          storage: { params: { selection: "All" } },
-          params: [
-            {
-              type: "endpoint",
-              paramName: "selection",
-              groupById: "selection-options",
-              value: "All",
-              show: true,
-            },
-          ],
-          data: {
-            table: {
-              columnsDefs: [
-                {
-                  field: "label",
-                  renderFn: "cellOnClick",
-                  renderFnParams: {
-                    actionType: "groupBy",
-                    groupBy: { paramName: "selection", valueField: "selection" },
-                  },
-                },
-              ],
-            },
-          },
-        } as any,
-      ];
-      useAppStore.setState({ items });
-
-      useAppStore.getState().updateWidget("tab-1", {
-        ...items["tab-1"].data!.widgets![0],
-        storage: { params: { selection: "Sports" } },
-      } as any);
-
-      const tab = useAppStore.getState().getTabById("tab-1");
-      expect(tab?.data?.groups?.[0].value).toBe("All");
-    });
-
-    it("should not overwrite cellOnClick endpoint groups with undefined widget values", () => {
-      const items = createTestItems();
-      items["tab-1"].data!.groups = [
-        {
-          id: "selection-group",
-          name: "Group 1",
-          type: "endpointParam",
-          color: "#000000",
-          groupById: "selection-options",
-          value: "Sports",
-        } as any,
-      ];
-      items["tab-1"].data!.widgets = [
-        {
-          id: "volume-widget",
-          widgetId: "volume_by_category",
-          external: true,
-          name: "Volume by Category",
-          paramGroups: { "selection-options": "selection-group" },
-          storage: { params: { selection: "Sports" } },
-          params: [
-            {
-              type: "endpoint",
-              paramName: "selection",
-              groupById: "selection-options",
-              value: "All",
-              show: true,
-            },
-          ],
-          data: {
-            table: {
-              columnsDefs: [
-                {
-                  field: "label",
-                  renderFn: "cellOnClick",
-                  renderFnParams: {
-                    actionType: "groupBy",
-                    groupBy: { paramName: "selection", valueField: "selection" },
-                  },
-                },
-              ],
-            },
-          },
-        } as any,
-      ];
-      useAppStore.setState({ items });
-
-      useAppStore.getState().updateWidget("tab-1", {
-        ...items["tab-1"].data!.widgets![0],
-        storage: { params: { selection: undefined } },
-      } as any);
-
-      const tab = useAppStore.getState().getTabById("tab-1");
-      expect(tab?.data?.groups?.[0].value).toBe("Sports");
-    });
-
-    it("should not revert cellOnClick endpoint groups from stale widget values", () => {
-      const items = createTestItems();
-      items["tab-1"].data!.groups = [
-        {
-          id: "selection-group",
-          name: "Group 1",
-          type: "endpointParam",
-          color: "#000000",
-          groupById: "selection-options",
-          value: "Sports",
-        } as any,
-      ];
-      items["tab-1"].data!.widgets = [
-        {
-          id: "volume-widget",
-          widgetId: "volume_by_category",
-          external: true,
-          name: "Volume by Category",
-          paramGroups: { "selection-options": "selection-group" },
-          storage: { params: { selection: "All" } },
-          params: [
-            {
-              type: "endpoint",
-              paramName: "selection",
-              groupById: "selection-options",
-              value: "All",
-              show: true,
-            },
-          ],
-          data: {
-            table: {
-              columnsDefs: [
-                {
-                  field: "label",
-                  renderFn: "cellOnClick",
-                  renderFnParams: {
-                    actionType: "groupBy",
-                    groupBy: { paramName: "selection", valueField: "selection" },
-                  },
-                },
-              ],
-            },
-          },
-        } as any,
-      ];
-      useAppStore.setState({ items });
-
-      useAppStore.getState().updateWidget("tab-1", {
-        ...items["tab-1"].data!.widgets![0],
-        storage: { params: { selection: "All" } },
-      } as any);
-
-      const tab = useAppStore.getState().getTabById("tab-1");
-      expect(tab?.data?.groups?.[0].value).toBe("Sports");
     });
   });
 
@@ -1118,26 +911,23 @@ describe("useAppStore", () => {
   describe("setWidgetGroupId", () => {
     it("should assign a group to a widget", () => {
       const items = createTestItems();
-      items["tab-1"].data!.groups = [
-        // @ts-expect-error - ignored for now
-        {
+      required(items["tab-1"].data).groups = [
+        partial<Group>({
           id: "group-1",
           type: "ticker",
           name: "Group 1",
           color: "#ff0000",
           value: null,
-        },
+        }),
       ];
       useAppStore.setState({ items });
 
-      const group = {
+      const group = makeTickerGroup({
         id: "group-1",
-        type: "ticker" as const,
         name: "Group 1",
         color: "#ff0000",
         value: null,
-      };
-      // @ts-expect-error - ignored for now
+      });
       useAppStore.getState().setWidgetGroupId("tab-1", "widget-1", group, false);
 
       const widget = useAppStore.getState().getTabWidgetById("tab-1", "widget-1");
@@ -1146,27 +936,24 @@ describe("useAppStore", () => {
 
     it("should remove group from widget when remove is true", () => {
       const items = createTestItems();
-      items["tab-1"].data!.groups = [
-        // @ts-expect-error - ignored for now
-        {
+      required(items["tab-1"].data).groups = [
+        partial<Group>({
           id: "group-1",
           type: "ticker",
           name: "Group 1",
           color: "#ff0000",
           value: null,
-        },
+        }),
       ];
-      items["tab-1"].data!.widgets![0].groupId = "group-1";
+      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
       useAppStore.setState({ items });
 
-      const group = {
+      const group = makeTickerGroup({
         id: "group-1",
-        type: "ticker" as const,
         name: "Group 1",
         color: "#ff0000",
         value: null,
-      };
-      // @ts-expect-error - ignored for now
+      });
       useAppStore.getState().setWidgetGroupId("tab-1", "widget-1", group, true);
 
       const widget = useAppStore.getState().getTabWidgetById("tab-1", "widget-1");
@@ -1177,26 +964,26 @@ describe("useAppStore", () => {
   describe("getWidgetGroups", () => {
     it("should return all groups for a widget", () => {
       const items = createTestItems();
-      items["tab-1"].data!.groups = [
-        // @ts-expect-error - ignored for now
-        {
+      required(items["tab-1"].data).groups = [
+        partial<Group>({
           id: "group-1",
           type: "ticker",
           name: "Group 1",
           color: "#ff0000",
           value: null,
-        },
-        // @ts-expect-error - ignored for now
-        {
+        }),
+        partial<Group>({
           id: "group-2",
           type: "param",
           name: "Group 2",
           color: "#00ff00",
           value: "test",
-        },
+        }),
       ];
-      items["tab-1"].data!.widgets![0].groupId = "group-1";
-      items["tab-1"].data!.widgets![0].paramGroups = { someParam: "group-2" };
+      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
+      required(required(items["tab-1"].data).widgets)[0].paramGroups = {
+        someParam: "group-2",
+      };
       useAppStore.setState({ items });
 
       const groups = useAppStore.getState().getWidgetGroups("tab-1", "widget-1");
@@ -1217,6 +1004,7 @@ describe("useAppStore", () => {
       // Add another tab
       items["tab-2"] = {
         index: "tab-2",
+        children: [],
         parentId: "root-id",
         isFolder: false,
         data: {
@@ -1239,26 +1027,23 @@ describe("useAppStore", () => {
   describe("updateGroup", () => {
     it("should update an existing group", () => {
       const items = createTestItems();
-      items["tab-1"].data!.groups = [
-        // @ts-expect-error - ignored for now
-        {
+      required(items["tab-1"].data).groups = [
+        partial<Group>({
           id: "group-1",
           type: "ticker",
           name: "Original Name",
           color: "#ff0000",
           value: null,
-        },
+        }),
       ];
       useAppStore.setState({ items });
 
-      const updatedGroup = {
+      const updatedGroup = makeTickerGroup({
         id: "group-1",
-        type: "ticker" as const,
         name: "Updated Name",
         color: "#00ff00",
         value: null,
-      };
-      // @ts-expect-error - ignored for now
+      });
       useAppStore.getState().updateGroup("tab-1", "group-1", updatedGroup);
 
       const tab = useAppStore.getState().getTabById("tab-1");
@@ -1269,7 +1054,7 @@ describe("useAppStore", () => {
     it("should update a group on a shared dashboard", () => {
       const sharedDashboard = createTestItems()["tab-1"];
       sharedDashboard.index = "shared-tab";
-      sharedDashboard.data!.groups = [
+      required(sharedDashboard.data).groups = [
         {
           id: "group-1",
           type: "endpointParam",
@@ -1281,14 +1066,11 @@ describe("useAppStore", () => {
       ];
       sharedAppMocks.sharedDashboard = sharedDashboard;
 
-      const updatedGroup = {
-        ...sharedDashboard.data!.groups[0],
+      const updatedGroup = partial<Group>({
+        ...sharedDashboard.data.groups[0],
         value: "Crypto",
-      };
-      useAppStore
-        .getState()
-        // @ts-expect-error
-        .updateGroup("shared-tab", "group-1", updatedGroup, false);
+      });
+      useAppStore.getState().updateGroup("shared-tab", "group-1", updatedGroup, false);
 
       expect(sharedAppMocks.updateSharedDashboard).toHaveBeenCalledWith(
         "shared-tab",
@@ -1309,16 +1091,19 @@ describe("useAppStore", () => {
   describe("getSideBarItem", () => {
     it("should return sidebar item by id", () => {
       const items = createTestItems();
-      const sideBarItems = Object.entries(items).reduce((acc, [key, item]) => {
-        acc[key] = {
-          ...item,
-          data: {
-            name: item.data?.name,
-            type: item.data?.templateId ? "custom" : undefined,
-          },
-        };
-        return acc;
-      }, {} as any);
+      const sideBarItems = Object.entries(items).reduce<SideBarItems>(
+        (acc, [key, item]) => {
+          acc[key] = {
+            ...item,
+            data: {
+              name: item.data?.name,
+              type: item.data?.templateId ? "custom" : undefined,
+            },
+          };
+          return acc;
+        },
+        {},
+      );
 
       useAppStore.setState({ sideBarItems });
 
@@ -1336,7 +1121,7 @@ describe("useAppStore", () => {
       const tab = useAppStore.getState().getTabById("tab-1");
       expect(tab?.parentId).toBe("folder-1");
 
-      const folder = useAppStore.getState().items["folder-1"];
+      const folder = appItems()["folder-1"];
       expect(folder.children).toContain("tab-1");
     });
 
@@ -1361,21 +1146,21 @@ describe("useAppStore", () => {
         parentId: "folder-1",
         isFolder: true,
         children: [],
-        data: { name: "Nested Folder" },
+        data: makeTabData({ name: "Nested Folder" }),
       };
       items["folder-1"].children = ["nested-folder"];
       useAppStore.setState({ items });
 
       useAppStore.getState().moveFolderToFolder("nested-folder", "root", "");
 
-      const folder = useAppStore.getState().items["nested-folder"];
+      const folder = appItems()["nested-folder"];
       expect(folder.parentId).toBe("root-id");
     });
   });
 
   describe("addTab", () => {
     it("should add a new tab to root", () => {
-      const newTab = {
+      const newTab: NewTab = {
         index: "new-tab-id",
         data: {
           name: "New Dashboard",
@@ -1386,7 +1171,6 @@ describe("useAppStore", () => {
         },
       };
 
-      // @ts-expect-error - ignored for now
       useAppStore.getState().addTab(newTab);
 
       const tab = useAppStore.getState().getTabById("new-tab-id");
@@ -1407,7 +1191,7 @@ describe("useAppStore", () => {
 
       useAppStore.getState().addTab(newTab);
 
-      const root = useAppStore.getState().items["root-id"];
+      const root = appItems()["root-id"];
       expect(root.children).toContain("new-tab-id");
     });
 
@@ -1428,7 +1212,7 @@ describe("useAppStore", () => {
       const tab = useAppStore.getState().getTabById("new-tab-in-folder");
       expect(tab?.parentId).toBe("folder-1");
 
-      const folder = useAppStore.getState().items["folder-1"];
+      const folder = appItems()["folder-1"];
       expect(folder.children).toContain("new-tab-in-folder");
     });
 
@@ -1452,14 +1236,14 @@ describe("useAppStore", () => {
     });
 
     it("should generate UUID if index not provided", () => {
-      const newTab = {
+      const newTab = partial<NewTab>({
         data: {
           name: "Auto ID Tab",
           widgets: [],
           gridLayout: {},
           groups: [],
         },
-      } as any;
+      });
 
       useAppStore.getState().addTab(newTab);
 
@@ -1489,7 +1273,7 @@ describe("useAppStore", () => {
         },
       };
 
-      useAppStore.getState().addTab(newTab as any);
+      useAppStore.getState().addTab(partial(newTab));
 
       const tab = useAppStore.getState().getTabById("tab-with-widgets");
       expect(tab?.data?.widgets).toHaveLength(1);
@@ -1508,7 +1292,7 @@ describe("useAppStore", () => {
         },
       };
 
-      useAppStore.getState().addTab(updatedTab as any);
+      useAppStore.getState().addTab(partial(updatedTab));
 
       const tab = useAppStore.getState().getTabById("tab-1");
       expect(tab?.data?.name).toBe("Updated Tab Name");
@@ -1539,7 +1323,7 @@ describe("useAppStore", () => {
 
       useAppStore.getState().removeTab("tab-1", mockNavigate);
 
-      const root = useAppStore.getState().items["root-id"];
+      const root = appItems()["root-id"];
       expect(root.children).not.toContain("tab-1");
     });
 
@@ -1557,14 +1341,14 @@ describe("useAppStore", () => {
       const newTabId = useAppStore.getState().duplicateTab("tab-1");
 
       expect(newTabId).toBeDefined();
-      const newTab = useAppStore.getState().getTabById(newTabId!);
+      const newTab = useAppStore.getState().getTabById(required(newTabId));
       expect(newTab).toBeDefined();
     });
 
     it("should append (copy) to name", () => {
       const newTabId = useAppStore.getState().duplicateTab("tab-1");
 
-      const newTab = useAppStore.getState().getTabById(newTabId!);
+      const newTab = useAppStore.getState().getTabById(required(newTabId));
       expect(newTab?.data?.name).toBe("Test Tab (copy)");
     });
 
@@ -1572,7 +1356,7 @@ describe("useAppStore", () => {
       const newTabId = useAppStore.getState().duplicateTab("tab-1");
 
       const originalTab = useAppStore.getState().getTabById("tab-1");
-      const newTab = useAppStore.getState().getTabById(newTabId!);
+      const newTab = useAppStore.getState().getTabById(required(newTabId));
 
       expect(newTab?.data?.widgets).toHaveLength(
         originalTab?.data?.widgets?.length || 0,
@@ -1590,29 +1374,28 @@ describe("useAppStore", () => {
     it("should add duplicated tab to root's children", () => {
       const newTabId = useAppStore.getState().duplicateTab("tab-1");
 
-      const root = useAppStore.getState().items["root-id"];
+      const root = appItems()["root-id"];
       expect(root.children).toContain(newTabId);
     });
 
     it("should duplicate groups with new IDs", () => {
       // Setup tab with a group
       const items = createTestItems();
-      items["tab-1"].data!.groups = [
-        // @ts-expect-error - ignored for now
-        {
+      required(items["tab-1"].data).groups = [
+        partial<Group>({
           id: "group-1",
           type: "ticker",
           name: "Test Group",
           color: "#ff0000",
           value: null,
-        },
+        }),
       ];
-      items["tab-1"].data!.widgets![0].groupId = "group-1";
+      required(required(items["tab-1"].data).widgets)[0].groupId = "group-1";
       useAppStore.setState({ items });
 
       const newTabId = useAppStore.getState().duplicateTab("tab-1");
 
-      const newTab = useAppStore.getState().getTabById(newTabId!);
+      const newTab = useAppStore.getState().getTabById(required(newTabId));
       expect(newTab?.data?.groups).toHaveLength(1);
       expect(newTab?.data?.groups?.[0].id).not.toBe("group-1");
     });
@@ -1624,14 +1407,14 @@ describe("useAppStore", () => {
 
       const newTabId = useAppStore.getState().duplicateTab("tab-1");
 
-      const newTab = useAppStore.getState().items[newTabId!];
+      const newTab = appItems()[required(newTabId)];
       expect(newTab.isShared).toBeUndefined();
     });
 
     it("should set parentId to root", () => {
       const newTabId = useAppStore.getState().duplicateTab("tab-1");
 
-      const newTab = useAppStore.getState().getTabById(newTabId!);
+      const newTab = useAppStore.getState().getTabById(required(newTabId));
       expect(newTab?.parentId).toBe("root-id");
     });
 
@@ -1643,12 +1426,12 @@ describe("useAppStore", () => {
 
     it("should reset numberOfChanges to 0", () => {
       const items = createTestItems();
-      items["tab-1"].data!.numberOfChanges = 10;
+      required(items["tab-1"].data).numberOfChanges = 10;
       useAppStore.setState({ items });
 
       const newTabId = useAppStore.getState().duplicateTab("tab-1");
 
-      const newTab = useAppStore.getState().getTabById(newTabId!);
+      const newTab = useAppStore.getState().getTabById(required(newTabId));
       expect(newTab?.data?.numberOfChanges).toBe(0);
     });
   });
@@ -1661,7 +1444,7 @@ describe("useAppStore", () => {
         innerTab: "overview",
       };
 
-      const widgetId = await useAppStore.getState().addWidget("tab-1", widget as any);
+      const widgetId = await useAppStore.getState().addWidget("tab-1", partial(widget));
 
       expect(widgetId).toBeDefined();
       const tab = useAppStore.getState().getTabById("tab-1");
@@ -1674,7 +1457,7 @@ describe("useAppStore", () => {
         name: "Auto ID Widget",
       };
 
-      const widgetId = await useAppStore.getState().addWidget("tab-1", widget as any);
+      const widgetId = await useAppStore.getState().addWidget("tab-1", partial(widget));
 
       expect(widgetId).toBeDefined();
       expect(widgetId?.length).toBeGreaterThan(0);
@@ -1687,7 +1470,7 @@ describe("useAppStore", () => {
         innerTab: "overview",
       };
 
-      const widgetId = await useAppStore.getState().addWidget("tab-1", widget as any);
+      const widgetId = await useAppStore.getState().addWidget("tab-1", partial(widget));
 
       const tab = useAppStore.getState().getTabById("tab-1");
       const gridItem = tab?.data?.gridLayout?.overview?.find((g) => g.i === widgetId);
@@ -1695,22 +1478,27 @@ describe("useAppStore", () => {
     });
 
     it("should increment numberOfChanges", async () => {
-      const changesBefore =
-        useAppStore.getState().items["tab-1"].data?.numberOfChanges ?? 0;
+      const changesBefore = appItems()["tab-1"].data?.numberOfChanges ?? 0;
 
-      await useAppStore.getState().addWidget("tab-1", {
-        widgetId: "equity_profile",
-        name: "Test",
-      } as any);
+      await useAppStore.getState().addWidget(
+        "tab-1",
+        partial({
+          widgetId: "equity_profile",
+          name: "Test",
+        }),
+      );
 
-      const changesAfter = useAppStore.getState().items["tab-1"].data?.numberOfChanges;
+      const changesAfter = appItems()["tab-1"].data?.numberOfChanges;
       expect(changesAfter).toBe(changesBefore + 1);
     });
 
     it("should return undefined for non-existent tab", async () => {
-      const result = await useAppStore.getState().addWidget("non-existent", {
-        widgetId: "test",
-      } as any);
+      const result = await useAppStore.getState().addWidget(
+        "non-existent",
+        partial({
+          widgetId: "test",
+        }),
+      );
 
       expect(result).toBeUndefined();
     });
@@ -1723,7 +1511,7 @@ describe("useAppStore", () => {
         { widgetId: "equity_profile", name: "Widget 2" },
       ];
 
-      await useAppStore.getState().addWidgets("tab-1", widgets as any);
+      await useAppStore.getState().addWidgets("tab-1", partial(widgets));
 
       const tab = useAppStore.getState().getTabById("tab-1");
       expect(tab?.data?.widgets?.length).toBe(3); // 1 original + 2 new
@@ -1735,7 +1523,7 @@ describe("useAppStore", () => {
         { widgetId: "equity_profile", name: "Widget 2" },
       ];
 
-      const lastId = await useAppStore.getState().addWidgets("tab-1", widgets as any);
+      const lastId = await useAppStore.getState().addWidgets("tab-1", partial(widgets));
 
       const tab = useAppStore.getState().getTabById("tab-1");
       const lastWidget = tab?.data?.widgets?.find((w) => w.id === lastId);
@@ -1745,12 +1533,12 @@ describe("useAppStore", () => {
 
   describe("createTabInsideFolder", () => {
     it("should create a tab inside a folder", () => {
-      const tab = {
+      const tab = partial<Item>({
         index: "folder-tab",
         data: {
           name: "Folder Tab",
         },
-      } as any;
+      });
 
       useAppStore.getState().createTabInsideFolder("folder-1", tab);
 
@@ -1760,10 +1548,10 @@ describe("useAppStore", () => {
     });
 
     it("should not create tab if folder doesn't exist", () => {
-      const tab = {
+      const tab = partial<Item>({
         index: "orphan-tab",
-        data: { name: "Orphan" },
-      } as any;
+        data: makeTabData({ name: "Orphan" }),
+      });
 
       useAppStore.getState().createTabInsideFolder("non-existent-folder", tab);
 

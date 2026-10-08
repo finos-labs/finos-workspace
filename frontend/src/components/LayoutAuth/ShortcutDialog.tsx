@@ -72,11 +72,11 @@ export default function ShortcutDialog() {
           ...(copilotAvailable
             ? [
                 {
-                  title: "Toggle OpenBB Copilot",
+                  title: "Toggle Copilot",
                   shortcut: "⌘ + L",
                 },
                 {
-                  title: "Maximize/Minimize OpenBB Copilot",
+                  title: "Maximize/Minimize Copilot",
                   shortcut: "⌘ + U",
                 },
               ]
@@ -100,7 +100,7 @@ export default function ShortcutDialog() {
   );
 
   const getShortcutKey = useCallback(
-    (shortcut) => {
+    (shortcut: string) => {
       return os === "macos"
         ? shortcut
         : shortcut.replace("⌘", "Ctrl").replace("⌥", "Alt");
@@ -116,7 +116,7 @@ export default function ShortcutDialog() {
     >
       <DialogTitle>Shortcuts</DialogTitle>
       <DialogDescription className="sr-only">
-        Use the following shortcuts to navigate and interact with the OpenBB Workspace.
+        Use the following shortcuts to navigate and interact with the Workspace.
       </DialogDescription>
       <RadioGroup
         className="flex gap-4 items-center my-0"
@@ -140,7 +140,7 @@ export default function ShortcutDialog() {
               {group.items.map((item) => (
                 <li key={item.title} className="flex items-center justify-between">
                   <span className="dark:text-light-100">{item.title}</span>
-                  <kbd className="obb-code px-1 py-0 dark:bg-dark-400">
+                  <kbd className="ws-code px-1 py-0 dark:bg-dark-400">
                     {getShortcutKey(item.shortcut)}
                   </kbd>
                 </li>

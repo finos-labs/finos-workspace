@@ -60,9 +60,8 @@ export function useGetFinalMessagesAndWidgets() {
         );
         const widget_queries = data?.copilot_function_call_arguments?.widget_queries;
 
-        return (widget_uuids ?? widget_queries ?? []).map(
-          (uuidOrQuery: any) => uuidOrQuery?.widget_uuid ?? uuidOrQuery,
-        ) as string[];
+        const uuids = widget_uuids ?? widget_queries?.map((q) => q.widget_uuid) ?? [];
+        return uuids.filter((uuid): uuid is string => !!uuid);
       };
 
       const renewExpiredDataSources = async (message: ToolMessage) => {
@@ -72,7 +71,7 @@ export function useGetFinalMessagesAndWidgets() {
           const BUFFER = 5 * 60 * 1000; // 5 minutes
           await Promise.all(
             dataSources.map(async (dataSource, i) => {
-              if (dataSource.origin === "OpenBB Hub") {
+              if (dataSource.origin === "the backend") {
                 const data = message.data?.[i] as CopilotDataT | undefined;
                 if (!Array.isArray(data?.items)) return;
                 const renewalPromises = data.items.map(async (item) => {
@@ -116,15 +115,15 @@ export function useGetFinalMessagesAndWidgets() {
         return result;
       };
 
-      const checkToolMessage = (message: Message) => {
+      const checkToolMessage = (message: Message | undefined) => {
         // For the built-in copilot, widget data tool messages are redundant (data is
         // read from the store), so we drop them unless extra_state carries metadata.
         // Iframe sub-widget data is fetched on-demand via the bridge and is NOT stored
         // in the dashboard widget store, so those tool messages must be preserved.
         if (message?.role !== "tool") return !message;
-        const hasIframeSubWidgets = (
-          message.input_arguments as any
-        )?.data_sources?.some((ds: any) => ds?.id?.includes("::iframe::"));
+        const hasIframeSubWidgets = message.input_arguments?.data_sources?.some(
+          (ds: { id?: string }) => ds.id?.includes("::iframe::"),
+        );
         return (
           !targetAgent &&
           !hasIframeSubWidgets &&

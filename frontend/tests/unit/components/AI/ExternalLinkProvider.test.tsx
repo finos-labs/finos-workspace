@@ -17,7 +17,8 @@ vi.mock("~/lib/state/app", async (importOriginal) => {
   const actual = await importOriginal<typeof import("~/lib/state/app")>();
   return {
     ...actual,
-    useShallowAppStore: (selector: any) => selector({ addWidget: h.addWidget }),
+    useShallowAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
+      selector({ addWidget: h.addWidget }),
   };
 });
 
@@ -108,7 +109,9 @@ describe("useExternalLinkAnchorProps", () => {
 
   it("returns an onClick handler within a provider", () => {
     const { result } = renderHook(() => useExternalLinkAnchorProps(URL), {
-      wrapper: ({ children }) => <ExternalLinkProvider>{children}</ExternalLinkProvider>,
+      wrapper: ({ children }) => (
+        <ExternalLinkProvider>{children}</ExternalLinkProvider>
+      ),
     });
     expect(result.current).toEqual({ onClick: expect.any(Function) });
   });

@@ -1,9 +1,15 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAutoHeightInput } from "~/components/ui/hooks/useAutoHeightInput";
+import { partial } from "../../../mocks";
 
 describe("useAutoHeightInput", () => {
-  let mockElement: any;
+  let mockElement: {
+    style: { height: string };
+    offsetWidth: number;
+    scrollHeight: number;
+    value: string;
+  };
 
   beforeEach(() => {
     mockElement = {
@@ -22,7 +28,7 @@ describe("useAutoHeightInput", () => {
 
   it("adjusts height based on scrollHeight", () => {
     const ref = { current: mockElement };
-    renderHook(() => useAutoHeightInput(ref as any, { offset: 2 }));
+    renderHook(() => useAutoHeightInput(partial(ref), { offset: 2 }));
 
     // Reset to auto, then scrollHeight + offset
     expect(mockElement.style.height).toBe("52px");
@@ -31,7 +37,7 @@ describe("useAutoHeightInput", () => {
   it("skips if offsetWidth is 0", () => {
     mockElement.offsetWidth = 0;
     const ref = { current: mockElement };
-    renderHook(() => useAutoHeightInput(ref as any));
+    renderHook(() => useAutoHeightInput(partial(ref)));
 
     expect(mockElement.style.height).toBe("");
   });
@@ -50,7 +56,7 @@ describe("useAutoHeightInput", () => {
     });
 
     renderHook(() =>
-      useAutoHeightInput(ref as any, { textContent: "some text", offset: 0 }),
+      useAutoHeightInput(partial(ref), { textContent: "some text", offset: 0 }),
     );
 
     // Max of scrollHeight(50) and contentHeight(100)

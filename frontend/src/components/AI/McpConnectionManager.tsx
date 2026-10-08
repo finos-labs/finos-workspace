@@ -1,23 +1,29 @@
 import { memo, useEffect, useMemo } from "react";
-import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
+import { type McpServer, useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import { type UseMcpOptionsT, useMcp } from "./hooks/mcp/useMcp";
 
 const callbackUrl = `${window.location.origin}/oauth/callback`;
 
+type McpConnectionServer = Pick<
+  McpServer,
+  | "enabled"
+  | "url"
+  | "clientName"
+  | "autoReconnect"
+  | "customHeaders"
+  | "isLocal"
+  | "authType"
+  | "id"
+> & { serverName: string };
+
 // Individual connection component that persists outside the modal
 const McpConnection = memo(({ serverId }: { serverId: string }) => {
-  const { addToolsToServer, updateMCPConnectionRegistry, updateServer } =
-    useShallowMcpToolsStore((s) => ({
-      addToolsToServer: s.addToolsToServer,
-      updateMCPConnectionRegistry: s.updateMCPConnectionRegistry,
-      updateServer: s.updateServer,
-    }));
-
-  const server = useShallowMcpToolsStore((s) => {
+  const server = useShallowMcpToolsStore((s): McpConnectionServer | null => {
     const server = s.getServerById(serverId);
+    if (!server) return null;
 
     return {
-      serverName: server?.name || "Unknown MCP Server",
+      serverName: server.name || "Unknown MCP Server",
       enabled: server.enabled,
       url: server.url,
       clientName: server.clientName,
@@ -29,11 +35,22 @@ const McpConnection = memo(({ serverId }: { serverId: string }) => {
     };
   });
 
+  return server ? <McpServerConnection server={server} /> : null;
+});
+
+const McpServerConnection = memo(({ server }: { server: McpConnectionServer }) => {
+  const { addToolsToServer, updateMCPConnectionRegistry, updateServer } =
+    useShallowMcpToolsStore((s) => ({
+      addToolsToServer: s.addToolsToServer,
+      updateMCPConnectionRegistry: s.updateMCPConnectionRegistry,
+      updateServer: s.updateServer,
+    }));
+
   const mcpConfig = useMemo<UseMcpOptionsT>(() => {
     return {
       url: server.url,
       serverId: server.id,
-      clientName: server.clientName || "OpenBB Workspace",
+      clientName: server.clientName || "Workspace",
       serverName: server.serverName,
       callbackUrl,
       clientUri: window.location.origin,
@@ -53,7 +70,6 @@ const McpConnection = memo(({ serverId }: { serverId: string }) => {
 
   // Register connection in global registry when ready
   useEffect(() => {
-    if (!server) return;
     updateMCPConnectionRegistry(server.id, {
       callTool,
       state,

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Prints the admin login for this container:
-#   docker exec openbb credentials
+#   docker exec workspace credentials
 set -euo pipefail
 
 SECRETS_FILE="${DATA_DIR:-/data}/secrets.env"
@@ -11,8 +11,8 @@ if [[ ! -f "$SECRETS_FILE" ]]; then
   exit 1
 fi
 
-email="$(grep -m1 '^OPENBB_ADMIN_EMAIL=' "$SECRETS_FILE" | cut -d= -f2-)"
-password="$(grep -m1 '^OPENBB_ADMIN_PASSWORD=' "$SECRETS_FILE" | cut -d= -f2-)"
+email="$(grep -m1 '^WORKSPACE_ADMIN_EMAIL=' "$SECRETS_FILE" | cut -d= -f2-)"
+password="$(grep -m1 '^WORKSPACE_ADMIN_PASSWORD=' "$SECRETS_FILE" | cut -d= -f2-)"
 
 cat <<EOF
  URL:      http://localhost:${PORT:-3000}

@@ -21,7 +21,7 @@ export function DataConnectorProvider({
       value: boolean,
       options?: {
         dcTab: DcTabT;
-        mode: "create" | "edit";
+        mode: "create" | "edit" | "add-widget";
         id?: string;
         widgetId?: string;
       },
@@ -79,7 +79,7 @@ export function DataConnectorProvider({
   const valueMemo = useMemo(
     () => ({
       open: searchParams.get("modal") === "data-connectors",
-      mode: (searchParams.get("mode") as "create" | "edit") || "create",
+      mode: (searchParams.get("mode") as "create" | "edit" | "add-widget") || "create",
       dcTab: (searchParams.get("dcTab") as DcTabT) || "file",
       id: searchParams.get("id") || "",
       widgetId: searchParams.get("widgetId") || "",

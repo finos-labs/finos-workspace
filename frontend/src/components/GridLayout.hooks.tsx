@@ -1,5 +1,4 @@
 import type { AxiosRequestConfig } from "axios";
-import Papa from "papaparse";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { Link, useParams } from "react-router-dom";
@@ -16,6 +15,7 @@ import {
   AI_SUPPORTED_FILE_TYPES,
   type Extension,
   ExtensionOptions,
+  getFileWidgetType,
   MAX_FILE_SIZE,
   validExtension,
 } from "~/lib/constants";
@@ -94,7 +94,7 @@ export function useDragAndDropFiles(locked: boolean) {
         }
 
         const res = await apiClient
-          .post<PostUploadFileResponse>("pro/files", formData, config)
+          .post<PostUploadFileResponse>("app/files", formData, config)
           .then(async ({ data: uploadedFiles }) => {
             for (const file of uploadedFiles) {
               const widgetInfo = {
@@ -155,7 +155,7 @@ export function useDragAndDropFiles(locked: boolean) {
                 const { status } = await postFileWidget(
                   finalId,
                   cleanData,
-                  abortController.signal,
+                  abortController?.signal,
                 );
                 if (status !== 200) {
                   console.error("Error posting file widget metadata");
@@ -187,7 +187,7 @@ export function useDragAndDropFiles(locked: boolean) {
               const widgetToAdd = {
                 id: finalId,
                 endpoint: file.url,
-                type: "table" as const,
+                type: getFileWidgetType(file.extension),
                 external: true,
                 category: "Others",
                 subCategory: "",
@@ -196,15 +196,12 @@ export function useDragAndDropFiles(locked: boolean) {
                 description: widgetInfo.description,
                 name: widgetInfo.name,
                 gridData: { w: 20, h: file.extension === "pdf" ? 20 : 10 },
-                data: {
-                  dataKey: "",
-                  table: { enableCharts: true },
-                },
+                data: { dataKey: "" },
                 source: "",
                 connectionType: "file" as const,
               } as WidgetJsonT;
 
-              await addWidget(id, widgetToAdd);
+              if (id) await addWidget(id, widgetToAdd);
             }
 
             return { success: true };
@@ -281,7 +278,7 @@ export function useDragAndDropFiles(locked: boolean) {
                   target="_blank"
                   rel="noopener noreferrer"
                   to="/app/widgets"
-                  className="obb-hyper-link"
+                  className="ws-hyper-link"
                 >
                   Widgets Library
                 </Link>{" "}
@@ -305,7 +302,7 @@ export function useDragAndDropFiles(locked: boolean) {
                   target="_blank"
                   rel="noopener noreferrer"
                   to="/app/widgets"
-                  className="obb-hyper-link"
+                  className="ws-hyper-link"
                 >
                   Widgets Library
                 </Link>{" "}
@@ -333,32 +330,10 @@ export function useDragAndDropFiles(locked: boolean) {
     [uploadFiles],
   );
 
-  const checkIfValid = useCallback(async (extension: Extension, file: File) => {
-    try {
-      if (extension === "csv") {
-        return new Promise<boolean>((resolve, reject) => {
-          const config = {
-            complete: () => resolve(true),
-            error: () => reject(false),
-            header: true,
-          } as Papa.ParseLocalConfig;
-
-          Papa.parse(file, config);
-        });
-      }
-      if (extension === "json") {
-        const data = await file.text();
-        JSON.parse(data);
-      }
-
-      return validExtension(extension);
-    } catch (e) {
-      console.error(e);
-      toast.error("Unknown error occurred");
-    }
-
-    return false;
-  }, []);
+  const checkIfValid = useCallback(
+    async (extension: Extension, _file: File) => validExtension(extension),
+    [],
+  );
 
   const prepareFiles = useCallback(
     async (acceptedFiles: File[]) => {
@@ -439,12 +414,6 @@ export function useDragAndDropFiles(locked: boolean) {
         ".docx",
       ],
       "text/html": [".html"],
-      "text/csv": [".csv"],
-      "application/json": [".json"],
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-      "image/png": [".png"],
-      "image/jpeg": [".jpg", ".jpeg"],
-      "image/gif": [".gif"],
     },
     onDrop: async (acceptedFiles, fileRejections) => {
       const fileToLarge = fileRejections

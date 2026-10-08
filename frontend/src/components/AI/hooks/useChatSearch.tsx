@@ -145,7 +145,7 @@ export function useChatSearch(deferredInput: string) {
   const filteredChats = useMemo(() => {
     if (enabled && !data) return [];
     if (!enabled) return allChats;
-    const { searchQuery, results = [] } = data || {};
+    const { searchQuery = "", results = [] } = data || {};
 
     const fuseResults = new Fuse(results, fuseOptions).search(searchQuery);
 
@@ -154,7 +154,9 @@ export function useChatSearch(deferredInput: string) {
       const matchedInTitle = result.matches?.some((m) => m.key === "label");
       if (matchedInTitle) return chat;
 
-      const matchValues = result.matches?.map((m) => m.value);
+      const matchValues = result.matches
+        ?.map((m) => m.value)
+        .filter((value): value is string => value !== undefined);
       return {
         ...chat,
         matchedMessage: findMatchedMessageSnippet(

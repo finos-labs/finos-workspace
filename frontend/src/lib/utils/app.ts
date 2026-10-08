@@ -1,34 +1,29 @@
 import cloneDeep from "lodash/cloneDeep";
-import isEqualWith from "lodash/isEqualWith";
 import isEqual from "lodash.isequal";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
-import type { SecurityType } from "~/components/Charting/constants";
-import { isTableWidgetType } from "~/components/DataConnectors/WidgetsBuilder/utils";
-import { convertToReadableLabel } from "~/components/General/Table/AgGridUtils";
-import { getStateKey } from "~/components/General/Table/hooks/useUpdateColumnState";
-import { getNewQuery, isTruthy } from "~/components/General/Table/utils";
 import type {
   GridData,
   GridLayout,
   GroupTypeT,
+  NewWidget,
   ParamDef,
   ParamDefT,
+  StoredParamValue,
   Ticker,
   WidgetT as Widget,
   WidgetJsonT,
   WidgetT,
 } from "~/components/types";
-import { getConfig } from "~/lib/runtimeConfig";
+import { convertToReadableLabel } from "~/lib/utils/format";
 import { formatZodIssues } from "~/lib/utils/validateBackend";
-import { INDICES } from "~/seeds/randomSeed";
+import { isTruthy } from "~/lib/utils/values";
 import { formatZodErrorMessage } from "~/utils/zodErrors";
 import type { AppState, Group, InnerTab, Item, Items } from "../state/app";
 import {
   type ConnectionType,
   useBackendConnectorStore,
 } from "../state/backendConnector";
-import { useChartingStore } from "../state/charting";
 import { useCopilotDataStore } from "../state/copilotData";
 import { DEFAULT_TICKERS } from "../types";
 import {
@@ -36,19 +31,13 @@ import {
   InternalWidgetSchema,
   isWidgetVizType,
 } from "../types/app";
-import { ONBOARDING_STORED_FILES } from "./createTemplates";
 import {
   ensureArray,
   extractUUIDFromURL,
   generateGroupingColor,
   generateRandomName,
 } from "./utils";
-import {
-  getJsonWidget,
-  getSupportedAssetClasses,
-  groupParamOverride,
-  isSSRMType,
-} from "./widget";
+import { getJsonWidget, getSupportedAssetClasses } from "./widget";
 import {
   cleanSearchParams,
   convertHeadersToRecord,
@@ -56,8 +45,6 @@ import {
   createWidgetEndpoint,
   createWidgetInitParams,
 } from "./widgetParams";
-
-const servicesCloudflareWorkerFF = getConfig().services.cloudflareWorker;
 
 export function checkIfWidgetsHaveMainTickerAndAreTheSame(widgets: Widget[]) {
   let mainTicker: Ticker | undefined;
@@ -85,7 +72,7 @@ export function checkIfWidgetsHaveMainTickerAndAreTheSame(widgets: Widget[]) {
   };
 }
 
-export function createTab(addTab) {
+export function createTab(addTab: AppState["addTab"]) {
   const id = uuidv4();
   addTab({
     index: id,
@@ -107,7 +94,7 @@ export function createRootFolder(): Item {
     isFolder: true,
     isRoot: true,
     children: [],
-    data: { name: "root" },
+    data: { name: "root", widgets: [], groups: [] },
   };
 }
 
@@ -147,7 +134,8 @@ export function removeDuplicateNavBarWidgets(item: Item) {
   }
 
   // Make sure the innerTab of the nav bar widget is valid
-  if (!gridLayout[navBarWidgets[0].innerTab]) {
+  const navBarInnerTab = navBarWidgets[0].innerTab;
+  if (navBarInnerTab === undefined || !gridLayout[navBarInnerTab]) {
     navBarWidgets[0].innerTab = tabs?.[0]?.id || "";
   }
 
@@ -164,7 +152,9 @@ export function removeDuplicateNavBarWidgets(item: Item) {
       });
 
       const newValue = value.filter(
-        (item) => !restIds.includes(item.i) && item.i !== "empty-dashboard-cta",
+        (item) =>
+          !(item.i !== undefined && restIds.includes(item.i)) &&
+          item.i !== "empty-dashboard-cta",
       );
       if (newValue.length === 1) newValue.push(emptyDash);
 
@@ -175,9 +165,13 @@ export function removeDuplicateNavBarWidgets(item: Item) {
   return item;
 }
 
-function getConnectionType(widgetId: string, sourceName?: string): ConnectionType {
-  if (["snowflake", "database", "file"].includes(widgetId?.split("-")[0])) {
-    return widgetId?.split("-")[0] as ConnectionType;
+function getConnectionType(
+  widgetId: string | undefined,
+  sourceName?: string,
+): ConnectionType {
+  const prefix = widgetId?.split("-")[0];
+  if (prefix === "database" || prefix === "file") {
+    return prefix;
   }
 
   if (sourceName) {
@@ -187,17 +181,19 @@ function getConnectionType(widgetId: string, sourceName?: string): ConnectionTyp
   return "single";
 }
 
-export function recursiveCleanKeys(data: any) {
+/** Strips "_undefined" from the keys of an object and everything nested in it, in place. */
+export function recursiveCleanKeys<T>(data: T): T {
   if (Array.isArray(data) || !(typeof data === "object" && isTruthy(data))) return data;
 
-  for (const key in data) {
+  const record = data as Record<string, unknown>;
+  for (const key in record) {
     let cleanedKey = key;
     if (key.includes("_undefined")) {
       cleanedKey = key.replace(/_undefined/g, "");
-      data[cleanedKey] = data[key];
-      delete data[key];
+      record[cleanedKey] = record[key];
+      delete record[key];
     }
-    data[cleanedKey] = recursiveCleanKeys(data[cleanedKey]);
+    record[cleanedKey] = recursiveCleanKeys(record[cleanedKey]);
   }
   return data;
 }
@@ -228,7 +224,7 @@ export function getValidItems(items: Items) {
       if (hasWidgets) {
         items[child].data.widgets = items[child].data.widgets.map((widget) => {
           // makes sure internal widgets have most up-to-date params
-          const params = createParamDefs(getJsonWidget(widget));
+          const params = createParamDefs(getJsonWidget(widget) ?? {});
           if (
             !Array.isArray(widget?.params) ||
             (!widget?.external && params?.length > 0)
@@ -237,42 +233,6 @@ export function getValidItems(items: Items) {
           }
 
           widget.storage = recursiveCleanKeys(widget.storage);
-          for (const key of ["columnState", "filterModel"]) {
-            if (widget?.data?.table?.[key])
-              widget.data.table[key] = recursiveCleanKeys(widget.data.table[key]);
-          }
-
-          if (widget?.data?.table?.columnsDefs?.length > 0) {
-            widget.data.table.columnsDefs = widget.data.table.columnsDefs.map((col) => {
-              if (typeof col.renderFn === "string") {
-                // @ts-expect-error
-                col.renderFn = col.renderFn.split(",");
-              }
-              return col;
-            });
-          }
-
-          if (
-            typeof widget?.data?.wsRowIdColumn === "string" &&
-            !Array.isArray(widget?.data?.wsRowIdColumns)
-          ) {
-            const { wsRowIdColumn, ...rest } = widget.data;
-            rest.wsRowIdColumns = [wsRowIdColumn];
-            widget.data = rest;
-          }
-
-          // makes sure onboarding widgets have the current dev/prod url
-          if (items[child]?.data?.templateId === "onboarding") {
-            if (ONBOARDING_STORED_FILES?.[widget?.widgetId]) {
-              const { urlDev, urlProd } = ONBOARDING_STORED_FILES[widget.widgetId];
-              widget.endpoint = {
-                ...widget.endpoint,
-                url: import.meta.env.DEV ? urlDev : urlProd,
-              };
-            }
-
-            return widget;
-          }
 
           if (widget?.external && !widget?.connectionType) {
             const connectionType = getConnectionType(
@@ -301,18 +261,21 @@ export function getValidItems(items: Items) {
           !items[child]?.data?.gridLayout ||
           Array.isArray(items[child]?.data?.gridLayout)
         ) {
-          const gridLayout = items[child]?.data?.widgets?.reduce((acc, widget) => {
-            if (!widget?.gridData) return acc;
-            const key = widget.innerTab || "";
+          const gridLayout = items[child]?.data?.widgets?.reduce<GridLayout>(
+            (acc, widget) => {
+              if (!widget?.gridData) return acc;
+              const key = widget.innerTab || "";
 
-            if (!acc[key]) {
-              acc[key] = [];
-            }
+              if (!acc[key]) {
+                acc[key] = [];
+              }
 
-            acc[key].push(widget.gridData);
+              acc[key].push(widget.gridData);
 
-            return acc;
-          }, {});
+              return acc;
+            },
+            {},
+          );
 
           items[child].data.gridLayout = gridLayout;
         }
@@ -320,19 +283,6 @@ export function getValidItems(items: Items) {
         items[child].data.storedFileUUIDs = getStoredFileUUIDs(childWidgets);
 
         removeDuplicateNavBarWidgets(items[child]);
-      }
-
-      if (items[child]?.data?.groups?.length > 0) {
-        items[child].data.groups = items[child].data.groups.map((g) => {
-          // @ts-expect-error
-          const { ticker, ...group } = g;
-
-          if (ticker?.symbol && !group?.value) {
-            group.value = ticker;
-            group.type = "ticker";
-          }
-          return group;
-        });
       }
 
       if (items[child]?.data?.name && !items[child]?.isFolder) {
@@ -395,7 +345,6 @@ export function deleteItem(itemId: string, items: Items): string[] {
 
   if (itemToDelete?.data?.widgets?.length) {
     const uuids = itemToDelete?.data?.widgets?.map((widget) => widget.id);
-    useChartingStore.getState().removeTabWidgetsData(uuids);
     useCopilotDataStore.getState()?.removeTabWidgetsData(uuids);
   }
 
@@ -434,11 +383,6 @@ export function deleteItemFn(items: Items, id: string) {
 }
 
 export function unlinkItemFn(items: Items, id: string) {
-  if (items[id]?.data?.widgets?.length)
-    useChartingStore
-      .getState()
-      .removeTabWidgetsData(items[id]?.data?.widgets?.map((widget) => widget.id));
-
   return Object.fromEntries(
     Object.entries(cloneDeep({ ...items })).map(([itemId, item]) => {
       if (item.isFolder) {
@@ -516,7 +460,11 @@ export function duplicateTabItem(item: Item, rootId?: string, rename = true): It
         const newId = uuidv4();
 
         // Only update gridLayout if the widget exists in it
-        if (gridLayout[w.innerTab]?.[gridDataIndex]) {
+        if (
+          w.innerTab !== undefined &&
+          gridDataIndex !== undefined &&
+          gridLayout[w.innerTab]?.[gridDataIndex]
+        ) {
           gridLayout[w.innerTab][gridDataIndex].i = newId;
         }
 
@@ -607,7 +555,9 @@ export function needsGroupValueUpdate(widget: Widget, group: Group) {
   if (group?.type === "endpointParam") {
     const paramDef = getEndpointParamDef(getEndpointParams(widget), group?.groupById);
     const paramName = paramDef?.paramName;
-    return widget?.storage?.params?.[paramName] !== group.value;
+    const current =
+      paramName === undefined ? undefined : widget?.storage?.params?.[paramName];
+    return current !== group.value;
   }
 
   if (group?.type === "ticker" && group?.value?.symbol) {
@@ -654,7 +604,7 @@ export function updateWidgetGroupValues(widget: Widget, groups: Group[]): Widget
       }
 
       if (group?.type === "ticker" && group?.value?.symbol) {
-        w.data.mainTicker = group?.value;
+        w.data = { ...w.data, mainTicker: group.value };
 
         const tickerParam = getTickerParamName(w);
 
@@ -662,51 +612,19 @@ export function updateWidgetGroupValues(widget: Widget, groups: Group[]): Widget
           ...(w.storage ?? {}),
           params: {
             ...(w.storage?.params ?? {}),
-            [tickerParam]: group?.value.symbol,
+            ...(tickerParam ? { [tickerParam]: group.value.symbol } : {}),
           },
         };
 
-        if (["watchlist", "grouped_comparisons"].some((id) => id === w.widgetId)) {
-          const secondaryTickers = [group?.value, ...(w?.data?.secondaryTickers || [])];
-
-          const tickers = Object.values(
-            Object.fromEntries(secondaryTickers.map((t) => [t.symbol, t])),
-          );
-
-          w.storage.params.symbol = tickers.map((ticker) => ticker.symbol).join(",");
-        }
         return w;
       }
 
       if (isValidParamOption(w, group)) {
-        let paramName = group.groupById;
-
-        if (!widget?.external && group.groupById === "period") {
-          paramName = groupParamOverride(group.groupById, w.widgetId);
-          const isStatements = w.widgetId === "financial_statements";
-
-          if (isStatements && !["annual", "quarter"].includes(group.value)) return w;
-
-          if (w?.storage?.selectedGroup && isStatements) {
-            const selectedGroup = w?.storage?.selectedGroup;
-            w.storage[selectedGroup] = {
-              ...(w.storage?.[selectedGroup] || {}),
-              period: group.value,
-            };
-          }
-
-          w.storage = {
-            ...w.storage,
-            period: group.value,
-          };
-        }
-
         w.storage = {
           ...w.storage,
           params: {
             ...w.storage?.params,
             [group.groupById]: group.value,
-            [paramName]: group.value,
           },
         };
 
@@ -722,8 +640,8 @@ export function updateWidgetGroupValues(widget: Widget, groups: Group[]): Widget
 export function addToWidgetParamGroups(
   wParamGroups: Widget["paramGroups"],
   group: GroupTypeT<"param" | "endpointParam">,
-): Widget["paramGroups"] {
-  if (group?.id === undefined) return wParamGroups;
+): NonNullable<Widget["paramGroups"]> {
+  if (group?.id === undefined) return wParamGroups ?? {};
 
   const paramGroups = {
     ...(wParamGroups ?? {}),
@@ -732,8 +650,8 @@ export function addToWidgetParamGroups(
   return paramGroups;
 }
 
-export function updateWidgetGroupValue(widget: Widget, group: Group) {
-  return updateWidgetGroupValues(widget, [group]);
+export function updateWidgetGroupValue(widget: Widget, group: Group | null) {
+  return updateWidgetGroupValues(widget, group ? [group] : []);
 }
 
 export function getGroupLabel(group: Group) {
@@ -741,7 +659,7 @@ export function getGroupLabel(group: Group) {
   return group?.value;
 }
 
-export function getGroupInfo(group: Group, paramDef?: ParamDef) {
+export function getGroupInfo(group: Group | null, paramDef?: ParamDef) {
   const output = { valueLabel: "", paramLabel: paramDef?.label || paramDef?.paramName };
   if (!group) return output;
 
@@ -763,7 +681,7 @@ export function getGroupInfo(group: Group, paramDef?: ParamDef) {
 export function getEndpointParamRequestArgs(
   widget: Widget,
   param: ParamDefT<"endpoint">,
-  currentParams: Record<string, any>,
+  currentParams: Record<string, unknown>,
 ) {
   const { headers, newParams } = convertHeadersToRecord(widget.endpoint?.headers ?? {});
 
@@ -775,27 +693,18 @@ export function getEndpointParamRequestArgs(
 
   const url = cleanSearchParams(param.optionsEndpoint, newParams);
   const reqInit = { headers } as RequestInit;
-  if (param.query) {
-    const query = getNewQuery(param.query, currentParams);
-    reqInit.method = "POST";
-    reqInit.headers = { "Content-Type": "application/json", ...headers };
-    reqInit.body = JSON.stringify({ query });
-  }
 
   return { url, reqInit };
 }
 
 export function getEndpointParams(widget: Partial<Widget>): ParamDefT<"endpoint">[] {
-  const params = [
-    ...createParamDefs({ params: widget?.params ?? [] }),
-    ...createParamDefs({ params: widget?.storage?.sqlParamDefs ?? [] }),
-  ];
+  const params = createParamDefs({ params: widget?.params ?? [] });
   return params.filter(
     (param): param is ParamDefT<"endpoint"> => param?.type === "endpoint",
   );
 }
 
-export function getEndpointParamDef(params: ParamDef[], paramId: string) {
+export function getEndpointParamDef(params: ParamDef[], paramId: string | undefined) {
   return params?.find(
     (param): param is ParamDefT<"endpoint"> =>
       param.type === "endpoint" &&
@@ -803,7 +712,7 @@ export function getEndpointParamDef(params: ParamDef[], paramId: string) {
   );
 }
 
-export function getEndpointParamName(params: ParamDef[], paramId: string) {
+export function getEndpointParamName(params: ParamDef[], paramId: string | undefined) {
   const param = params?.find(
     (param) =>
       param.type === "endpoint" &&
@@ -812,13 +721,36 @@ export function getEndpointParamName(params: ParamDef[], paramId: string) {
   return param?.paramName;
 }
 
-export function getWidgetGroupValue(widget: Widget, group: Group) {
+/**
+ * What a group groups, for a label: the param it came from when a template made it, else
+ * the type of the group, and "country" for the tickers that are countries.
+ */
+export function getGroupKindLabel(group: Group): string {
+  if (group.type === "ticker" && group.value?.category === "country") return "country";
+  return "paramName" in group && typeof group.paramName === "string"
+    ? group.paramName
+    : group.type;
+}
+
+export function getWidgetGroupValue(
+  widget: Widget,
+  group: GroupTypeT<"ticker">,
+): Ticker | null | undefined;
+export function getWidgetGroupValue(
+  widget: Widget,
+  group: GroupTypeT<"param" | "endpointParam">,
+): StoredParamValue | undefined;
+export function getWidgetGroupValue(
+  widget: Widget,
+  group: Group | undefined,
+): Ticker | StoredParamValue | undefined;
+export function getWidgetGroupValue(widget: Widget, group: Group | undefined) {
   if (group?.id === undefined) return null;
 
   if (group?.type === "endpointParam") {
     const params = getEndpointParams(widget);
     const paramName = getEndpointParamName(params, group?.groupById);
-    return widget?.storage?.params?.[paramName];
+    return paramName === undefined ? undefined : widget?.storage?.params?.[paramName];
   }
 
   if (group?.type === "ticker") {
@@ -872,10 +804,13 @@ const _getSelectedEndpointParamOptionValues = (options: unknown[]): string[] => 
     .filter((value): value is string => !!value);
 };
 
-const _getEndpointGroupValues = (value: EndpointParamGroup["value"]): string[] => {
+const _getEndpointGroupValues = (value: StoredParamValue | undefined): string[] => {
   if (Array.isArray(value)) {
     return value
-      .filter((item) => item !== undefined && item !== null && item !== "")
+      .filter(
+        (item): item is string | number | boolean =>
+          item !== undefined && item !== null && item !== "",
+      )
       .map((item) => item.toString());
   }
   if (value === undefined || value === null || value === "") return [];
@@ -927,7 +862,7 @@ function _getEndpointParamRequestCacheKey(url: string, reqInit: RequestInit) {
 async function _fetchEndpointParamOptions(
   widget: Widget,
   param: ParamDefT<"endpoint">,
-  currentParams: Record<string, any>,
+  currentParams: Record<string, unknown>,
   requestCache?: EndpointParamOptionsRequestCache,
 ) {
   if (!param.optionsEndpoint) return [];
@@ -942,7 +877,6 @@ async function _fetchEndpointParamOptions(
     if (!response.ok) return [];
 
     const data = await response.json();
-    if (param.query) return data?.rowData ?? [];
     return Array.isArray(data) ? data : [];
   })().catch((error) => {
     requestCache?.delete(cacheKey);
@@ -1080,13 +1014,104 @@ export async function updateDependentEndpointParamGroups(
   await updateDependentsForGroup(sourceGroup);
 }
 
+/**
+ * The endpoint params of a widget whose options depend on `paramName` (`optionsParams` with
+ * `$paramName`) and that are not in a group. The ones in a group follow their group, see
+ * `updateDependentEndpointParamGroups`.
+ */
+export function getUngroupedDependentEndpointParams(
+  widget: Partial<Widget>,
+  paramName: string,
+) {
+  return getEndpointParams(widget).filter(
+    (param) =>
+      _endpointParamDependsOn(param, paramName) &&
+      (param.groupById === undefined || !widget.paramGroups?.[param.groupById]),
+  );
+}
+
+/** Whether the options of an endpoint param are those of another param's value. */
+export function endpointParamDependsOnAnotherParam(param: ParamDefT<"endpoint">) {
+  return Object.values(param.optionsParams ?? {}).some(
+    (value) => typeof value === "string" && value.startsWith("$"),
+  );
+}
+
+/**
+ * What an endpoint param takes when it holds a value that its options do not offer, as when
+ * it was saved with another provider: the option the backend marks as selected, else nothing.
+ * `undefined` when the value is fine or there is none.
+ */
+export function getOfferedEndpointParamValue(
+  param: ParamDefT<"endpoint">,
+  options: unknown[],
+  current: StoredParamValue | undefined,
+): string | string[] | undefined {
+  const values = _getEndpointGroupValues(current);
+  if (values.length === 0) return undefined;
+
+  const offered = _getEndpointParamOptionValues(options);
+  if (values.some((value) => offered.has(value))) return undefined;
+
+  const selected = _getSelectedEndpointParamOptionValues(options);
+  return param.multiSelect ? selected : (selected[0] ?? "");
+}
+
+/**
+ * Once a param of a widget changed, the value each endpoint param that depends on it has to
+ * take: a value that is not among the options of the new value (a feed of another provider)
+ * is replaced by the option the backend marks as selected, or cleared when there is none.
+ * Returns only the params that change.
+ */
+export async function getDependentEndpointParamValues(
+  widget: Widget,
+  changedParamName: string,
+  params: Record<string, StoredParamValue>,
+): Promise<Record<string, StoredParamValue>> {
+  const updates: Record<string, StoredParamValue> = {};
+  const requestCache: EndpointParamOptionsRequestCache = new Map();
+  const visited = new Set<string>();
+
+  const visit = async (
+    paramName: string,
+    current: Record<string, StoredParamValue>,
+  ) => {
+    if (visited.has(paramName)) return;
+    visited.add(paramName);
+
+    for (const dependent of getUngroupedDependentEndpointParams(widget, paramName)) {
+      const options = await _fetchEndpointParamOptions(
+        widget,
+        dependent,
+        { ...current, [dependent.paramName]: "" },
+        requestCache,
+      );
+
+      const values = _getEndpointGroupValues(current[dependent.paramName]);
+      if (values.some((value) => _getEndpointParamOptionValues(options).has(value))) {
+        continue;
+      }
+
+      const selected = _getSelectedEndpointParamOptionValues(options);
+      if (values.length === 0 && selected.length === 0) continue;
+
+      const next = dependent.multiSelect ? selected : (selected[0] ?? "");
+      updates[dependent.paramName] = next;
+      await visit(dependent.paramName, { ...current, [dependent.paramName]: next });
+    }
+  };
+
+  await visit(changedParamName, params);
+  return updates;
+}
+
 export function isValidParamOption(
   widget: Widget,
   group: Group,
 ): group is GroupTypeT<"param"> {
   if (group?.type === "param" && group?.groupById) {
     const groupValue = group?.value?.toString();
-    const paramName = groupParamOverride(group.groupById, widget.widgetId);
+    const paramName = group.groupById;
     const options = createParamDefs({ params: widget?.params ?? [] }).find(
       (param) => param.paramName === paramName,
     )?.options;
@@ -1106,40 +1131,16 @@ export function getTickerParamName(widget: Partial<Widget | WidgetJsonT>) {
   return param?.paramName || (isEconomyGroup ? "country" : null);
 }
 
-export function getCellOnClickParams(
-  widget: Partial<Widget>,
-  includeForceUpdate = true,
-) {
-  return (widget?.data?.table?.columnsDefs || [])
-    .filter(
-      (col) =>
-        col?.renderFn?.includes("cellOnClick") &&
-        col?.renderFnParams?.actionType === "groupBy" &&
-        (includeForceUpdate || !col?.renderFnParams?.groupBy?.forceUpdate),
-    )
-    .map((col) => col?.renderFnParams?.groupBy?.paramName)
-    .filter(Boolean);
-}
-
 export function getEndpointParamGroupByIds(widget: Partial<Widget>) {
-  return getEndpointParams(widget as Widget)?.reduce((acc, p) => {
-    acc[p.groupById] = p?.paramName;
-    return acc;
-  }, {});
+  return getEndpointParams(widget as Widget)?.reduce<Record<string, string>>(
+    (acc, p) => {
+      if (p.groupById !== undefined) acc[p.groupById] = p?.paramName;
+      return acc;
+    },
+    {},
+  );
 }
 
-function customizer(value: any, other: any, indexOrKey: string | undefined) {
-  // ignore stateKey when comparing widgets for changes
-  if (indexOrKey === "storage") {
-    const stateKey = getStateKey(value, value?.isPivotMode);
-    const otherStateKey = getStateKey(other, other?.isPivotMode);
-    if (stateKey === otherStateKey) {
-      const { [stateKey]: _, ...restStorage } = value || {};
-      const { [otherStateKey]: __, ...restOtherStorage } = other || {};
-      return isEqual(restStorage, restOtherStorage);
-    }
-  }
-}
 export function updateWidgetInItem(item: Item, widget: Widget) {
   const newItem = { ...item };
 
@@ -1148,7 +1149,7 @@ export function updateWidgetInItem(item: Item, widget: Widget) {
     newItem.data.widgets = newItem.data.widgets.map((w) => {
       if (w.id !== widget.id) return w;
 
-      hasChanges = !w.isNew && !isEqualWith(w, widget, customizer);
+      hasChanges = !w.isNew && !isEqual(w, widget);
       const { isNew, ...updatedWidget } = { ...w, ...widget };
       return updatedWidget;
     });
@@ -1161,51 +1162,6 @@ export function updateWidgetInItem(item: Item, widget: Widget) {
     }
   }
   return newItem;
-}
-
-export function removeWidgetAndReposition(
-  widgets: Widget[],
-  widgetId: string,
-  tabCols = 40,
-) {
-  // Find the index of the widget to remove
-  const indexToRemove = widgets.findIndex((widget) => widget.id === widgetId);
-
-  if (indexToRemove === -1) {
-    // Widget not found, return the original list
-    return widgets;
-  }
-
-  // Remove the widget from the list
-  const newWidgets = [...widgets];
-  newWidgets.splice(indexToRemove, 1);
-
-  // Sort widgets based on their y position
-  newWidgets.sort((a, b) => a.gridData.y - b.gridData.y);
-
-  let currentY = 0;
-
-  // Iterate through each widget and update its position
-  for (const widget of newWidgets) {
-    if (widget.gridData.y > currentY) {
-      // Update widget position if there's a gap
-      widget.gridData.x = 0;
-      widget.gridData.y = currentY;
-    }
-
-    // Check if there's space to the right for the widget
-    if (widget.gridData.x + widget.gridData.w <= tabCols) {
-      currentY = widget.gridData.y;
-      widget.gridData.x = currentY + widget.gridData.h;
-    } else {
-      // If not enough space, move to the next row
-      currentY += 1;
-      widget.gridData.x = 0;
-      widget.gridData.y = currentY;
-    }
-  }
-
-  return newWidgets;
 }
 
 export function getGridData(
@@ -1253,21 +1209,22 @@ export function getGridData(
     gridData.maxH = Math.max(widgetGridData.maxH, widgetGridData.minH || 0);
   }
 
-  gridData.w = Math.max(gridData.minW, gridData.w);
-  gridData.h = isMinimized ? gridData.h : Math.max(gridData.minH, gridData.h);
+  gridData.w = Math.max(gridData.minW ?? 0, gridData.w ?? 0);
+  gridData.h = isMinimized ? gridData.h : Math.max(gridData.minH ?? 0, gridData.h ?? 0);
 
   if (lastWidgetGridData) {
     const {
-      w: lastWidgetCols,
-      h: lastWidgetRows,
-      x: lastWidgetX,
+      w: lastWidgetCols = 0,
+      h: lastWidgetRows = 0,
+      x: lastWidgetX = 0,
       y: lastWidgetY,
     } = lastWidgetGridData;
 
-    const ensuredValidY = Number.isFinite(lastWidgetY) ? lastWidgetY : 0;
+    const ensuredValidY =
+      lastWidgetY !== undefined && Number.isFinite(lastWidgetY) ? lastWidgetY : 0;
 
     // Check if there's enough space to the right of the last widget
-    if (lastWidgetX + lastWidgetCols + widgetGridData.w <= tabCols) {
+    if (lastWidgetX + lastWidgetCols + (widgetGridData.w ?? 0) <= tabCols) {
       gridData.x = lastWidgetX + lastWidgetCols;
       gridData.y = ensuredValidY;
     } else {
@@ -1280,7 +1237,7 @@ export function getGridData(
   return gridData;
 }
 
-export function getInnerTabsGridLayout(gridLayout: GridLayout) {
+export function getInnerTabsGridLayout(gridLayout: GridLayout | undefined) {
   return Object.fromEntries(
     Object.entries(gridLayout ?? {}).filter(([key, value]) =>
       [key !== "", value?.length > 0].every(Boolean),
@@ -1294,7 +1251,7 @@ export function getInnerTabsGridLayout(gridLayout: GridLayout) {
  * navigation that leaves the URL unchanged.
  */
 export function resolveInnerTabParams(props: {
-  gridLayout: GridLayout;
+  gridLayout: GridLayout | undefined;
   currentTab: string;
   lastInnerTab: string | undefined;
   searchParams: URLSearchParams;
@@ -1373,14 +1330,16 @@ export function updateWidgetGridLayout(params: UpdateWidgetGridLayoutParams) {
   );
 
   const lastWidget =
-    currentTabLayout?.reduce(
+    currentTabLayout?.reduce<GridData>(
       (prev, current) => {
         if (prev.i === "empty-dashboard-cta") return current;
         if (current.i === "empty-dashboard-cta") return prev;
-        return prev.y > current.y
+        const [prevX, prevY] = [prev.x ?? 0, prev.y ?? 0];
+        const [currentX, currentY] = [current.x ?? 0, current.y ?? 0];
+        return prevY > currentY
           ? prev
-          : prev.y === current.y
-            ? prev.x > current.x
+          : prevY === currentY
+            ? prevX > currentX
               ? prev
               : current
             : current;
@@ -1416,7 +1375,7 @@ export function updateWidgetGridLayout(params: UpdateWidgetGridLayoutParams) {
 }
 
 type MainTickerByCategoryParams = {
-  widget?: (Widget | WidgetJsonT) & { dependsOn?: string[] };
+  widget?: (NewWidget | WidgetJsonT) & { dependsOn?: string[] };
   defaultTicker?: Ticker;
   defaultCategory?: Ticker["category"];
 };
@@ -1437,7 +1396,7 @@ export function MainTickerByCategory(props: MainTickerByCategoryParams): Ticker 
         defaultTicker?.category,
       ];
 
-  const tickerCategories = {
+  const tickerCategories: Record<string, Ticker> = {
     etf: DEFAULT_TICKERS.SPY,
     equity: DEFAULT_TICKERS.AAPL,
     stock: DEFAULT_TICKERS.AAPL,
@@ -1450,20 +1409,23 @@ export function MainTickerByCategory(props: MainTickerByCategoryParams): Ticker 
     return widget?.data?.mainTicker || defaultTicker;
   }
 
+  const categoryTicker = (category: string | undefined) =>
+    category === undefined ? undefined : tickerCategories[category];
+
   return (
     supportedTypes
       .map(
         (assetClass) =>
-          tickerCategories?.[widget?.defaultAssetClass] ||
-          tickerCategories?.[assetClass] ||
-          tickerCategories?.[defaultCategory],
+          categoryTicker(widget?.defaultAssetClass) ||
+          categoryTicker(assetClass) ||
+          categoryTicker(defaultCategory),
       )
       .find((ticker) => ticker) || tickerCategories.all
   );
 }
 
 export function getWidgetData(params: {
-  widget: (WidgetT | WidgetJsonT) & { dependsOn?: string[] };
+  widget: (NewWidget | WidgetJsonT) & { dependsOn?: string[] };
   defaultTicker?: Ticker;
 }): Widget {
   const { widget, defaultTicker = DEFAULT_TICKERS.AAPL } = params;
@@ -1476,55 +1438,14 @@ export function getWidgetData(params: {
 
   const tickerParam = getTickerParamName(widget);
 
-  if (widget.widgetId === "clock" && !widget.storage?.content) {
-    widget.storage = {
-      ...widget.storage,
-      timezones: ["America/New_York"],
-    };
-  }
-
-  if (widget.widgetId === "xml_viewer" && !widget.data?.html) {
-    const prompt = window.prompt("Enter URL");
-    widget.data = {
-      ...widget.data,
-      html: servicesCloudflareWorkerFF ? `https://openbbrss.com/${prompt}` : prompt,
-    };
-  }
-
-  // if (widget.widgetId === "rss_viewer" && !widget?.storage?.feeds?.length) {
-  //   widget.storage = {
-  //     ...widget.storage,
-  //     feeds: RSS_FEEDS,
-  //   };
-  // }
-
-  // @ts-expect-error
-  if (!widget.external && widget.widgetId === "html_widget") {
-    const prompt = window.prompt("Enter HTML");
-    widget.data = {
-      ...widget.data,
-      html: prompt || "<h1>Enter HTML</h1>",
-    };
-  }
-
-  if (widget.widgetId === "rich_note") {
-    widget.storage = {
-      ...widget.storage,
-      html: widget.storage?.html || widget.data?.html || "",
-      hideControls: widget.data?.hideControls,
-    };
-  }
-
   if (widget?.params?.length > 0) {
     const initialParams = createWidgetInitParams(widget, mainTicker);
 
     widget.storage = { ...widget.storage, params: initialParams };
   }
 
-  // TODO: refactor this to be more generic, for example if widget.single or widget.multiple
-  // const IGNORE_MAIN_TICKER_IDS = ["currency_snapshot"];
   if (
-    !(widget.data?.mainTicker || widget.widgetId === "currency_snapshot") &&
+    !widget.data?.mainTicker &&
     widget.dependsOn?.includes("mainTicker") &&
     tickerParam
   ) {
@@ -1538,144 +1459,11 @@ export function getWidgetData(params: {
     };
   }
 
-  if (widget?.endpoint || widget?.sdkFunc) {
-    widget.data = {
-      ...widget.data,
-      table: {
-        ...widget.data?.table,
-        transpose: widget?.data?.table?.transpose,
-      },
-    };
-  }
-
-  if (widget.type === "table" && widget.data?.table?.enableCharts === undefined) {
-    widget.data = {
-      ...widget.data,
-      table: {
-        ...widget.data?.table,
-        enableCharts: true,
-      },
-    };
-  }
-  const chartView = widget?.data?.table?.chartView;
-  const storageChartView = widget.storage?.chartView;
-  const needsChartView =
-    widget?.external && isTableWidgetType(widget.type ?? widget.defaultViz);
-  const shouldHydrateChartView =
-    (chartView !== undefined || needsChartView) &&
-    chartView?.enabled !== false &&
-    (storageChartView === undefined ||
-      storageChartView.enabled === undefined ||
-      storageChartView.chartType === undefined);
-
-  if (shouldHydrateChartView) {
-    widget.storage = {
-      ...widget.storage,
-      chartSettingsOpen: widget.storage?.chartSettingsOpen ?? false,
-      chartView: {
-        ...storageChartView,
-        enabled: storageChartView?.enabled ?? Boolean(chartView?.enabled),
-        chartType: storageChartView?.chartType || chartView?.chartType || "line",
-      },
-    };
-
-    for (const key of ["chartMiniChartEnabled", "chartNavigatorEnabled"]) {
-      if (chartView?.[key]) widget.storage[key] = true;
-    }
-
-    if (chartView?.ignoreCellRange) {
-      widget.storage = {
-        ...widget.storage,
-        ignoreCellRange: true,
-      };
-    }
-  }
-
   if (widget.dataKey) {
     widget.data = {
       ...widget.data,
       dataKey: widget.dataKey,
     };
-  }
-
-  if (widget.data?.table?.transpose) {
-    widget.storage = {
-      ...widget.storage,
-      transpose: true,
-    };
-  }
-
-  if (widget.widgetId === "financial_statements") {
-    widget.storage = {
-      selectedGroup: "income_statement",
-      balance_sheet: {
-        period: "annual",
-        transpose: true,
-      },
-      income_statement: {
-        period: "annual",
-        transpose: true,
-      },
-      cash_flow_statement: {
-        period: "annual",
-        transpose: true,
-      },
-      ...widget.storage,
-    };
-    widget.storage = {
-      ...widget.storage,
-      params: { symbol: mainTicker.symbol, period: "annual" },
-    };
-  }
-
-  if (widget.widgetId === "grouped_comparison") {
-    if (!widget.data?.mainTicker) {
-      widget.data = {
-        ...widget.data,
-        mainTicker: mainTicker,
-      };
-    }
-    widget.storage = { ...widget.storage, params: { symbol: mainTicker.symbol } };
-  }
-
-  // @ts-expect-error
-  if (widget.widgetId === "watchlist" || widget.widgetId === "peers_list") {
-    if (!widget.data?.secondaryTickers) {
-      const secondaryTickers = {
-        [mainTicker.symbol]: mainTicker,
-        AAPL: DEFAULT_TICKERS.AAPL,
-        MSFT: DEFAULT_TICKERS.MSFT,
-        NVDA: DEFAULT_TICKERS.NVDA,
-      };
-
-      widget.data = {
-        ...widget.data,
-        mainTicker: mainTicker,
-        secondaryTickers: Object.values(secondaryTickers) as Ticker[],
-      };
-      widget.storage = {
-        ...widget.storage,
-        params: { symbol: Object.keys(secondaryTickers).join(",") },
-      };
-    }
-  }
-  if (widget.widgetId === "market_indices") {
-    widget.storage = {
-      ...widget.storage,
-      storage: INDICES as SecurityType[],
-    };
-  }
-
-  if (
-    (widget.widgetId === "ticker_information" ||
-      (widget.widgetId === "charting" && !widget?.endpoint)) &&
-    !widget.data?.mainTicker
-  ) {
-    widget.data = {
-      ...widget.data,
-      mainTicker: mainTicker,
-    };
-    widget.storage = { ...widget.storage, params: { symbol: mainTicker.symbol } };
   }
 
   if (widget.widgetId === "navigation_bar") {
@@ -1695,34 +1483,15 @@ export function getWidgetData(params: {
     };
   }
 
-  if (widget.type === "advanced_charting") {
-    widget.data = {
-      ...widget.data,
-      mainTicker: {
-        symbol: widget.data?.defaultSymbol,
-        type: "stock",
-        category: "crypto",
-        id: widget.data?.defaultSymbol,
-      },
-    };
-  }
-
   if (
     widget.dependsOn?.includes("mainTicker") &&
+    tickerParam &&
     !widget?.storage?.params?.[tickerParam]
   ) {
     widget.data = { ...widget.data, mainTicker };
-    widget.storage.params[tickerParam] = mainTicker.symbol;
-  }
-
-  if (["revenue_per_geography", "revenue_per_bus_line"].includes(widget.widgetId)) {
     widget.storage = {
-      period: "annual",
-      params: {
-        period: "annual",
-        ...(widget.storage?.params || {}),
-      },
       ...widget.storage,
+      params: { ...widget.storage?.params, [tickerParam]: mainTicker.symbol },
     };
   }
 
@@ -1758,42 +1527,20 @@ export function getWidgetData(params: {
     finalWidgetData.type = widget.defaultViz;
   }
 
-  if (finalWidgetData.type === "file_viewer" && widget?.fileEndpoint) {
-    finalWidgetData.fileEndpoint = widget.fileEndpoint;
-  }
-
-  const isSSRMWidget = isSSRMType(widget.type);
-  if (widget.data?.table?.enableAdvanced !== undefined || isSSRMWidget) {
-    finalWidgetData.storage = {
-      ...finalWidgetData.storage,
-      // An explicit false in the widget definition wins over the SSRM default
-      enableAdvanced: widget.data?.table?.enableAdvanced ?? true,
-      ...(widget.type === "ssrm_advanced" ? { ssrmDisabled: true } : {}),
-    };
-  }
-
-  if (widget.data?.table?.enableFormulas) {
-    finalWidgetData.storage = {
-      ...finalWidgetData.storage,
-      enableFormulas: true,
-    };
-  }
-
   if (widget.external) {
     const optionalSourceKeys = [
       "source",
       "sourceId",
       "sourceName",
       "connectionType",
-      "sourceDatabase",
       "isSharedWidget",
       "category",
       "subCategory",
       "raw",
-    ];
+    ] as const;
     for (const key of optionalSourceKeys) {
       if (widget[key]) {
-        finalWidgetData[key] = widget[key];
+        Object.assign(finalWidgetData, { [key]: widget[key] });
       }
     }
     if (widget.endpoint) {
@@ -1803,18 +1550,12 @@ export function getWidgetData(params: {
       );
     }
 
-    if (widget.type === "ssrm_advanced" || widget.type === "omni") {
-      for (const key of ["schemaName"]) {
-        if (widget[key]) {
-          finalWidgetData[key] = widget[key];
-        }
-      }
-    }
-
     const uniqueParam = widget?.params?.find((param) => param.type === "ticker");
 
     if (uniqueParam?.type === "ticker") {
-      finalWidgetData.storage.params[uniqueParam.paramName] = mainTicker.symbol;
+      if (finalWidgetData.storage?.params) {
+        finalWidgetData.storage.params[uniqueParam.paramName] = mainTicker.symbol;
+      }
       finalWidgetData.data = {
         ...finalWidgetData.data,
         mainTicker,
@@ -1822,16 +1563,8 @@ export function getWidgetData(params: {
     }
 
     if (
-      widget.type === "live_grid" &&
-      (widget.wsEndpoint || widget?.data?.wsRowIdColumns || widget?.data?.wsRowIdColumn)
-    ) {
-      finalWidgetData.wsEndpoint = widget.wsEndpoint;
-      const { wsRowIdColumns, wsRowIdColumn } = widget.data || {};
-      Object.assign(finalWidgetData.data, { wsRowIdColumns, wsRowIdColumn });
-    }
-
-    if (
       widget.connectionType === "advanced-backend" &&
+      widget.widgetId !== undefined &&
       getJsonWidget(widget.widgetId) !== null
     ) {
       finalWidgetData.widgetId = `${widget.sourceName}-${widget.widgetId}`;
@@ -1841,57 +1574,14 @@ export function getWidgetData(params: {
   }
 
   if (!widget.external) {
-    if (widget.data?.mainTicker?.[tickerParam]) {
+    const mainTickerFields: Record<string, unknown> | undefined =
+      widget.data?.mainTicker;
+    if (tickerParam && mainTickerFields?.[tickerParam]) {
       finalWidgetData.data = {
         ...finalWidgetData.data,
-        mainTicker: widget.data.mainTicker,
+        mainTicker: widget.data?.mainTicker,
       };
     }
-    if (widget.data?.secondaryTickers) {
-      finalWidgetData.data = {
-        ...finalWidgetData.data,
-        secondaryTickers: widget.data.secondaryTickers,
-      };
-    }
-
-    if (Array.isArray(widget?.data?.table?.period)) {
-      finalWidgetData.storage = {
-        period: widget.data.table.period[0],
-        ...finalWidgetData.storage,
-        params: {
-          period: widget.data.table.period[0],
-          ...finalWidgetData.storage?.params,
-        },
-      };
-    }
-  }
-
-  if (finalWidgetData.widgetId === "currency_snapshot") {
-    finalWidgetData.storage = {
-      ...finalWidgetData.storage,
-      params: {
-        base: ["USD", "EUR"],
-        counter_currencies: ["USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD"],
-        symbol: [
-          "USDUSD",
-          "USDEUR",
-          "USDGBP",
-          "USDJPY",
-          "USDCHF",
-          "USDCAD",
-          "USDAUD",
-          "USDNZD",
-          "EURUSD",
-          "EUREUR",
-          "EURGBP",
-          "EURJPY",
-          "EURCHF",
-          "EURCAD",
-          "EURAUD",
-          "EURNZD",
-        ],
-      },
-    };
   }
 
   const result = finalWidgetData.external
@@ -1915,24 +1605,10 @@ export function getWidgetData(params: {
   throw new Error(result.error.message);
 }
 
-function determineTabsForWidget(equityTemplate, widgetKey) {
-  const tabs = equityTemplate.tabs;
-  const tabsWidgetBelongsTo = [];
-
-  for (const tabId in tabs) {
-    if (tabs[tabId].widgetKeys.includes(widgetKey)) {
-      // Use tabId if you want to return the IDs, or tabs[tabId].name if you want to return the names.
-      tabsWidgetBelongsTo.push(tabId);
-    }
-  }
-
-  return tabsWidgetBelongsTo;
-}
-
 export const diffItemsWithRemote = (currentState: Items, remoteState: Items | null) => {
   if (!remoteState) return currentState;
   if (!currentState) throw new Error("Current state is empty");
-  const diff = {};
+  const diff: Record<string, Item | "DELETE"> = {};
 
   // Iterate over each item in the current state
   for (const [key, value] of Object.entries(currentState)) {

@@ -36,17 +36,6 @@ vi.mock("~/lib/state/featureFlags", () => ({
   useShallowFeatureFlagsStore: vi.fn(() => true),
 }));
 
-vi.mock("~/components/General/Table/Chart/hooks/useChartOptions", () => ({
-  useChartBarFillQuickAction: vi.fn(() => null),
-  useChartQuickActions: vi.fn(() => []),
-}));
-
-vi.mock("posthog-js/react", () => ({
-  usePostHog: vi.fn(() => ({
-    capture: vi.fn(),
-  })),
-}));
-
 vi.mock("~/components/MoveToDropDown", () => ({
   MoveToTabsDropdownMenu: () => <div data-testid="move-to-tabs">Move</div>,
 }));

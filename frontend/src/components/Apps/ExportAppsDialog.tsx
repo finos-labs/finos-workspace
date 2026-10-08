@@ -5,7 +5,7 @@ import { z } from "zod";
 import AdminDialogFooter from "~/components/AdminUsers/common/AdminDialogFooter";
 import { FormInput } from "../ds/atoms/Input";
 import { RadioGroup, RadioGroupItem } from "../ds/atoms/RadioGroup";
-import { BaseDialog, type BaseDialogProps } from "../ds/dialogs/BaseDialog";
+import { BaseDialog, type ClosableDialogProps } from "../ds/dialogs/BaseDialog";
 import { DialogHeader, DialogTitle } from "../ds/dialogs/Dialog";
 import {
   Form,
@@ -24,7 +24,7 @@ const formSchema = z.object({
 
 type TForm = z.infer<typeof formSchema>;
 
-interface Props extends BaseDialogProps {
+interface Props extends ClosableDialogProps {
   /** All currently-displayed (filtered) rows — exported when nothing is selected. */
   rows: App[];
   selectedRows: App[];
@@ -76,7 +76,7 @@ export default function ExportAppsDialog(props: Props) {
               name="fileName"
               control={form.control}
               render={({ field }) => (
-                <FormInput placeholder="openbb_pro_apps" label="Save as" {...field} />
+                <FormInput placeholder="workspace_apps" label="Save as" {...field} />
               )}
             />
 

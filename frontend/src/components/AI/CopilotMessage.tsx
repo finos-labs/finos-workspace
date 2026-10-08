@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Message } from "~/lib/state/copilot";
+import type { Message, MessageGroup } from "~/lib/state/copilot";
 import { CopilotAIMessage, CopilotHumanMessage, CopilotSystemMessage } from ".";
 
 type CopilotMessageProps = {
@@ -7,7 +7,7 @@ type CopilotMessageProps = {
   isLastGroup: boolean;
   showIcon: boolean;
   currentGroupId?: string;
-  allGroups?: any[];
+  allGroups?: MessageGroup[];
   groupIndex?: number;
   isPartOfStepByStepGroup?: boolean;
 };

@@ -50,7 +50,7 @@ export function SkillsTab() {
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
-    if (isDefaultSkill(state.deleteSkillId)) {
+    if (state.deleteSkillId && isDefaultSkill(state.deleteSkillId)) {
       removeDefaultSkill(state.deleteSkillId);
       dispatch({ deleteSkillId: null });
       return toast.success("Skill deleted");

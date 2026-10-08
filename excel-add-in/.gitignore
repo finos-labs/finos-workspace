@@ -38,6 +38,8 @@ src/functions/generator/__pycache__
 *.min.js
 *.min.css
 *.d.ts
+# Types for import.meta.env and import.meta.glob; tsc needs them.
+!src/vite-env.d.ts
 
 # OS files
 Thumbs.db

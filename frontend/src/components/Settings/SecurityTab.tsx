@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { getUser2FA, putUser2FA } from "~/api/auth.api";
+import { getErrorResponse } from "~/api/errors";
 import { Checkbox } from "~/components/Forms/Checkbox";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
@@ -12,11 +13,11 @@ import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { NotificationId, showNotificationWithRememberMe } from "~/lib/utils/toast";
 import TOTPSetDialog from "../Auth/TOTPSetDialog";
 import { Button } from "../ds/atoms/Button";
-import { BaseDialog, type BaseDialogProps } from "../ds/dialogs/BaseDialog";
+import { BaseDialog, type ClosableDialogProps } from "../ds/dialogs/BaseDialog";
 import { DialogClose, DialogFooter, DialogTitle } from "../ds/dialogs/Dialog";
 import FeatureLock from "../General/FeatureLock";
 
-interface Props extends BaseDialogProps {
+interface Props extends ClosableDialogProps {
   onConfirm: (token?: string) => void;
   checked: boolean;
 }
@@ -46,7 +47,7 @@ const User2FADialog = (props: Props) => {
         });
       }
     } catch (error) {
-      console.error(error.response?.data);
+      console.error(getErrorResponse(error).data);
       if (error instanceof AxiosError) {
         toast.error("Error enabling 2FA", {
           description: error.response?.data?.detail || error.message,
@@ -149,8 +150,8 @@ const SecurityTab = () => {
     totpQRCode: null,
   });
 
-  const isProTier = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.tier === "pro",
+  const isFullTier = useShallowFeatureFlagsStore(
+    (state) => state.featureFlags?.tier === "full",
   );
 
   useEffect(() => {
@@ -169,7 +170,7 @@ const SecurityTab = () => {
         toastType: "info",
       });
     } catch (error) {
-      console.error(error.response?.data);
+      console.error(getErrorResponse(error).data);
       if (error instanceof AxiosError) {
         toast.error("Error cancelling 2FA setup", {
           description: error.response?.data?.detail || error.message,
@@ -197,7 +198,7 @@ const SecurityTab = () => {
       />
       <TOTPSetDialog
         open={state.totpQRCode}
-        setOpen={(totpQRCode: string | null) => dispatch({ totpQRCode })}
+        setOpen={(totpQRCode) => dispatch({ totpQRCode: totpQRCode ?? null })}
         onCancel={handleTOTPCancel}
         fromSettings={true}
       />
@@ -221,7 +222,7 @@ const SecurityTab = () => {
           </p>
 
           <div className="flex flex-col gap-3">
-            <FeatureLock isLocked={!isProTier}>
+            <FeatureLock isLocked={!isFullTier}>
               <div className="flex items-center gap-3">
                 <TwoFactorToggle
                   is2FAEnabled={state.is2FAEnabled}

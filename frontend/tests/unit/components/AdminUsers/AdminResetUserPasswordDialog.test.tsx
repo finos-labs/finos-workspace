@@ -1,10 +1,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { resetUserPassword } from "~/api/admin.api";
 import AdminResetUserPasswordDialog from "~/components/AdminUsers/AdminResetUserPasswordDialog";
 import { showNotification } from "~/lib/utils/toast";
+import { makeUser } from "../../factories";
 
 // Define mockNavigate at the top level
 const mockNavigate = vi.fn();
@@ -51,10 +52,7 @@ Object.assign(navigator, {
 });
 
 describe("AdminResetUserPasswordDialog", () => {
-  const mockUser = {
-    uuid: "123",
-    email: "test@example.com",
-  };
+  const mockUser = makeUser({ uuid: "123", email: "test@example.com" });
 
   const defaultProps = {
     open: true,

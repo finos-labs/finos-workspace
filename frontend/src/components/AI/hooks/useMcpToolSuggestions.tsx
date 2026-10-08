@@ -1,5 +1,6 @@
 import Fuse from "fuse.js";
 import { useCallback, useMemo } from "react";
+import { isMcpToolAllowed, useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import {
   dedupeIframeServersByUrl,
   useShallowMcpToolsStore,
@@ -34,6 +35,8 @@ export function useMcpToolSuggestions() {
       .join("|"),
   }));
 
+  const access = useCopilotAccessStore((s) => s.access);
+
   const mcpToolOptions = useMemo((): McpToolSuggestion[] => {
     const tools: McpToolSuggestion[] = [];
 
@@ -50,7 +53,7 @@ export function useMcpToolSuggestions() {
       if (!server.toolsEnabled) continue;
 
       for (const tool of server.tools) {
-        if (tool.enabled) {
+        if (tool.enabled && isMcpToolAllowed(access, server.url, tool.id)) {
           tools.push({
             type: "mcpTool",
             id: `${server.id}_${tool.id}`,
@@ -70,7 +73,7 @@ export function useMcpToolSuggestions() {
     }
 
     return tools;
-  }, [servers, getMCPConnection, connSignature]);
+  }, [servers, getMCPConnection, connSignature, access]);
 
   const fuse = useMemo(
     () =>
@@ -90,16 +93,15 @@ export function useMcpToolSuggestions() {
 
       if (!searchTerm) return mcpToolOptions;
 
-      return fuse
-        .search(searchTerm)
-        .map((result) => {
+      return (
+        fuse
+          .search(searchTerm)
           // Drop results that don't partially match the query if ends with a space
-          // "RSS F" -> ["RSS Feeds"]
-          // "RSS Feeds " -> []
-          if (query.length > result.item.slashText.length) return null;
-          return result.item;
-        })
-        .filter(Boolean);
+          // "Daily R" -> ["Daily Report"]
+          // "Daily Report " -> []
+          .filter((result) => query.length <= result.item.slashText.length)
+          .map((result) => result.item)
+      );
     },
     [mcpToolOptions, fuse],
   );

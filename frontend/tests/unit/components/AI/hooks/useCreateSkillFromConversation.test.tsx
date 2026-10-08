@@ -38,7 +38,7 @@ vi.mock("~/lib/state/auth", () => ({
 vi.mock("~/lib/state/theme", () => ({
   useThemeStore: {
     getState: () => ({
-      removedSkillSlugs: ["openbb-html-report", "snowflake-html-report"],
+      removedSkillSlugs: ["html-report"],
       removeDefaultSkill: vi.fn(),
     }),
   },
@@ -87,7 +87,7 @@ const makeSkill = (overrides: Partial<Skill> = {}): Skill => ({
 });
 
 const mockChat: Chat = {
-  id: "chat-1",
+  uuid: "chat-1",
   createdAt: CHAT_CREATED_AT,
   label: "Test chat",
   lastOpened: CHAT_CREATED_AT,
@@ -96,26 +96,26 @@ const mockChat: Chat = {
       role: "human",
       content: "How do I analyze earnings?",
       timestamp: 1,
-      copilotId: "openbb-copilot",
+      copilotId: "default-copilot",
     },
     {
       role: "ai",
       content: "Start with the income statement.",
       timestamp: 2,
-      copilotId: "openbb-copilot",
+      copilotId: "default-copilot",
     },
     {
       role: "ai",
       content: "hidden reasoning",
       timestamp: 3,
-      copilotId: "openbb-copilot",
+      copilotId: "default-copilot",
       isHidden: true,
     },
     {
       role: "tool",
       data: [],
       timestamp: 4,
-      copilotId: "openbb-copilot",
+      copilotId: "default-copilot",
       function: "get_widget_data",
       input_arguments: { data_sources: [] },
       extra_state: {},

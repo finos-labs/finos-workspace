@@ -7,8 +7,9 @@ import type { Selector } from "./app";
 
 /* example of what is returned from backend on /login
 feature_entitlements: {
-    "tier": "pro",
+    "tier": "full",
     "number_copilot_calls_day": 100,
+    "number_copilot_tokens_day": null,
     "total_file_upload_size_gb": 50,
     "share_widgets": "private",
     "bring_your_own_data": true,
@@ -19,8 +20,7 @@ feature_entitlements: {
     "data_add_ons_redistribution": true,
     "bundle_name": null,
     "data_bundle_info": null
-},
-is_trial_entity: true
+}
 */
 
 export type FeatureFlags = {
@@ -32,47 +32,32 @@ export type FeatureFlags = {
   data_bundle_info: DataBundle | null;
   excel_add_in: boolean;
   number_copilot_calls_day: number;
+  number_copilot_tokens_day: number | null; // null: no token limit
   share_widgets: "private" | "public";
   support: boolean;
-  tier: "pro" | "terminal";
+  tier: "full" | "basic";
   total_file_upload_size_gb: number;
-  is_trial: boolean;
   can_submit_marketplace: boolean; // developer may submit marketplace apps
 };
 
-export type DashboardTypes = "charting" | "equity" | "onboarding";
-
-export type OldDashboardTypes =
-  | "charting"
-  | "equityAnalyst"
-  | "equity"
-  | "comparison"
-  | "etfTemplate"
-  | "onboarding"
-  | "earnings";
-
-export type WidgetTypes =
-  | "etf_holdings"
-  | "earnings_trends"
-  | "revenue_trends"
-  | "etf_classification"
-  | "etf_characteristics";
-
-export function isExcludedWidgetId(widgetId: any): boolean {
+export function isExcludedWidgetId(widgetId: string | undefined): boolean {
   const featureFlags = useFeatureFlagsStore.getState().featureFlags;
-  return featureFlags?.data_bundle_info?.except_widgets?.includes(widgetId);
+  return (
+    widgetId !== undefined &&
+    (featureFlags?.data_bundle_info?.except_widgets?.includes(widgetId) ?? false)
+  );
 }
 
 export type DataBundle = {
-  bundle_name: "Default" | "Equity Research" | "Pro Trial";
-  except_widgets: WidgetTypes[] | null;
-  except_dashboard_templates: DashboardTypes[] | null;
+  bundle_name: "Default" | "Equity Research";
+  except_widgets: string[] | null;
+  except_dashboard_templates: string[] | null;
   except_team_collaboration: ("pdf_reports" | "sharing")[] | null;
   excel_add_in: boolean;
   data_export: boolean;
-  providers: ("fmp" | "econdb" | "benzinga")[] | null;
-  dashboards_at_launch: DashboardTypes[] | null;
-  my_dashboards: DashboardTypes[] | null;
+  providers: string[] | null;
+  dashboards_at_launch: string[] | null;
+  my_dashboards: string[] | null;
   invite_your_colleagues: boolean;
   number_copilot_calls_day: number;
   total_file_upload_size_gb: number;
@@ -80,8 +65,10 @@ export type DataBundle = {
 
 export type Usage = {
   number_copilot_calls_day_count: number;
+  number_copilot_tokens_day_count: number;
   total_file_upload_size_gb_count: number;
   copilot_calls_limit: number;
+  copilot_tokens_limit: number | null; // null: no token limit
   file_upload_size_limit: number;
 };
 
@@ -94,22 +81,23 @@ type FeatureFlagsState = {
     flags: Partial<FeatureFlags>,
     usage: Partial<Usage>,
   ) => void;
-  setFeatureFlagsAndUsage: (flags: FeatureFlags, usage: Usage) => void;
+  setFeatureFlagsAndUsage: (flags: FeatureFlags, usage: Usage | null) => void;
 };
 
 export const useFeatureFlagsStore = createWithEqualityFn<FeatureFlagsState>()(
   subscribeWithSelector((set) => ({
     featureFlags: null,
     usage: null,
-    setUsage: (usage) => set((state) => ({ usage: { ...state.usage, ...usage } })),
+    setUsage: (usage) =>
+      set((state) => ({ usage: { ...state.usage, ...usage } as Usage })),
     setFeatureFlags: (flags) =>
       set((state) => ({
-        featureFlags: { ...state.featureFlags, ...flags },
+        featureFlags: { ...state.featureFlags, ...flags } as FeatureFlags,
       })),
     updateFeatureFlagsAndUsage: (flags, usage) =>
       set((state) => ({
-        featureFlags: { ...state.featureFlags, ...flags },
-        usage: { ...state.usage, ...usage },
+        featureFlags: { ...state.featureFlags, ...flags } as FeatureFlags,
+        usage: { ...state.usage, ...usage } as Usage,
       })),
     setFeatureFlagsAndUsage: (flags, usage) =>
       set(() => ({
@@ -120,8 +108,8 @@ export const useFeatureFlagsStore = createWithEqualityFn<FeatureFlagsState>()(
   shallow,
 );
 
-export function useShallowFeatureFlagsStore<S extends FeatureFlagsState, T>(
-  selector: Selector<S, T>,
+export function useShallowFeatureFlagsStore<T>(
+  selector: Selector<FeatureFlagsState, T>,
 ): T {
   return useFeatureFlagsStore(useShallow(selector), (prev, next) =>
     isEqual(prev, next),

@@ -1,10 +1,11 @@
+import type { ComponentProps } from "react";
 import type { User } from "~/types/user.type";
 import { Tag } from "../ds/atoms/Tag";
 
-const statusColors = {
+const statusColors: Partial<Record<string, ComponentProps<typeof Tag>["color"]>> = {
   pending: "warning",
   verified: "success",
-} as const;
+};
 
 interface Props {
   value: User["status"];

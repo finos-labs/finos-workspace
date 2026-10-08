@@ -9,13 +9,11 @@ import {
   useState,
 } from "react";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { BLOCKED_WIDGET_IDS } from "~/lib/constants";
 import { useTabContext } from "~/lib/contexts/TabContext";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowPermissionsStore } from "~/lib/state/permissions";
-import { isSSRMType } from "~/lib/utils";
 import { useEventListener } from "~/lib/utils/utils";
 import { Button } from "../ds/atoms/Button";
 import { cn } from "../ds/utils";
@@ -27,12 +25,12 @@ import Navbar, { type NavBarProps } from "./NavBar";
 import { LoadingElement } from "./SetLoadingOnResize";
 
 export interface DraggableCardProps extends NavBarProps {
-  aiData?: any;
+  aiData?: unknown;
   lastUpdated?: number | null;
   children: ReactNode;
   extraClassName?: string;
   rootClassName?: string;
-  error?: any;
+  error?: unknown;
   errorMessage?: string;
   widgetIdFallback?: string;
   showTitle?: boolean;
@@ -51,7 +49,7 @@ function PermissionsMask({
 }: {
   isSharedResource?: boolean;
   isBlocked?: boolean;
-  onAccessError?: (message: string) => void;
+  onAccessError?: (message: string | null) => void;
   onAccessCheck: (hasAccess: boolean) => void;
 }) {
   const { sourceId, widgetId, external, endpoint, sourceName } =
@@ -64,8 +62,6 @@ function PermissionsMask({
     }
     return widgetId;
   }, [widgetId, sourceName]);
-
-  const isWidgetIdBlocked = widgetId && BLOCKED_WIDGET_IDS.has(widgetId) && !external;
 
   const hasAccess = useShallowPermissionsStore((state) => state.hasAccess);
   const checkAccess = useCallback(() => {
@@ -82,7 +78,7 @@ function PermissionsMask({
 
   useEffect(() => {
     // Check if widget is blocked first, regardless of shared status
-    if (isBlocked || isWidgetIdBlocked) {
+    if (isBlocked) {
       onAccessCheck(false);
       onAccessError?.("This widget is deprecated and cannot be used.");
       return;
@@ -97,12 +93,11 @@ function PermissionsMask({
       return;
     }
     setTimeout(checkAccess, 500);
-  }, [isSharedResource, removedApp, isBlocked, isWidgetIdBlocked]);
+  }, [isSharedResource, removedApp, isBlocked]);
 
   if (
     removedApp ||
     isBlocked ||
-    isWidgetIdBlocked ||
     (isSharedResource &&
       sourceId &&
       cleanedWidgetId &&
@@ -277,13 +272,6 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
             errorMessage={
               state.accessError || (!isLoading && error ? errorMessage : null)
             }
-            displayBlock={
-              isShared &&
-              widgetRef?.current.external &&
-              !["single", "advanced-backend", "file"].includes(
-                widgetRef?.current?.connectionType,
-              )
-            }
             failingUrl={failingUrl}
             widgetId={widgetRef?.current?.widgetId}
           >
@@ -339,8 +327,7 @@ function useStaledDataOverlay() {
   const [addedOverlay, setAddedOverlay] = useState(false);
 
   useEventListener(`staleParams-${id}`, ({ staleParams }) => {
-    const widgetType = widgetRef?.current?.type;
-    if (!runButton || isSSRMType(widgetType) || widgetType === "omni") return;
+    if (!runButton) return;
 
     const element = document.getElementById(`widget-content-${id}`);
 

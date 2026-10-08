@@ -1,31 +1,28 @@
-import posthog from "posthog-js";
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { deleteUserAppShare, syncUserApps } from "~/api/auth.api";
-import { areTruthy } from "~/components/General/Table/utils";
 import type { WidgetJsonT } from "~/components/types";
 import { useShallowAuthStore } from "~/lib/state/auth";
-import { TEMPLATES } from "~/lib/templates";
 import { duplicateTabItem } from "~/lib/utils";
 import {
   createCustomTemplateTab,
   getUntouchedAppTabInfo,
-  OPENBB_ONBOARDING_WIDGETS,
 } from "~/lib/utils/createTemplates";
 import { showNotification } from "~/lib/utils/toast";
+import { areTruthy } from "~/lib/utils/values";
 import type { ListedAppMcpServer } from "~/types/listedApps";
 import { useShallowAppStore } from "../lib/state/app";
 import {
+  type BackendTemplate,
   getTemplateWidgetsMetadata,
   type Source,
   useShallowBackendConnectorStore,
 } from "../lib/state/backendConnector";
 import { type SharedUser, useShallowUserAppsStore } from "../lib/state/userApps";
-import { useAvailableTemplates } from "./useAvailableTemplates";
 import { useSharedTemplates } from "./useSharedTemplates";
 
-export type TemplateType = "openbb" | "user" | "shared" | "listed" | "generated";
+export type TemplateType = "user" | "shared" | "listed" | "generated";
 
 export interface UnifiedTemplate {
   id: string;
@@ -57,7 +54,6 @@ export interface UnifiedTemplate {
 
 export function useAllTemplates(isLoadingApiSources = false) {
   const userEmail = useShallowAuthStore((state) => state.user?.email || "");
-  const availableTemplates = useAvailableTemplates();
   const { data: sharedTemplatesData = [] } = useSharedTemplates({
     enabled: !isLoadingApiSources,
   });
@@ -79,19 +75,6 @@ export function useAllTemplates(isLoadingApiSources = false) {
   const { id: currentDashboard } = useParams();
 
   const allTemplates = useMemo<UnifiedTemplate[]>(() => {
-    const openbbTemplates = availableTemplates.map((template) => {
-      const templateData = TEMPLATES[template.id] || {};
-      if (template.id === "onboarding")
-        templateData.widgets = OPENBB_ONBOARDING_WIDGETS;
-
-      return {
-        ...template,
-        type: "openbb" as const,
-        widgets: (templateData?.widgets || []) as WidgetJsonT[],
-        prompts: (templateData?.prompts || []) as string[],
-      };
-    });
-
     const sharedTemplateIds = new Set(
       sharedTemplatesData.map((template) => template.id),
     );
@@ -111,7 +94,7 @@ export function useAllTemplates(isLoadingApiSources = false) {
           isListedApp && !areTruthy(source.templates, source.widgets);
         if (listedAppDisconnected) {
           // If this is a Listed App without templates, create a template from the vendorApp data
-          const listedAppTemplate: Source["templates"][number] = {
+          const listedAppTemplate: BackendTemplate = {
             name: vendorApp?.name || source.name,
             description: vendorApp?.shortDescription || "",
             prompts: vendorApp?.prompts || [],
@@ -147,7 +130,7 @@ export function useAllTemplates(isLoadingApiSources = false) {
             onClick: () => {
               if (listedAppDisconnected) {
                 console.warn("[ListedApp] App not connected debug:", {
-                  appName: vendorApp.name,
+                  appName: vendorApp?.name,
                   appBackendUrl: source.url,
                   existingSource: source,
                   allApiSources: apiSources.map((s) => ({
@@ -164,16 +147,6 @@ export function useAllTemplates(isLoadingApiSources = false) {
                 });
               }
 
-              if (posthog) {
-                posthog.capture("app_opened", {
-                  app_id: isListedApp ? appUuid : template.id,
-                  app_name: isListedApp
-                    ? vendorApp?.name || source.name
-                    : template.name,
-                  app_type: isListedApp ? "listed" : "user",
-                  vendor_name: vendorApp?.vendorName,
-                });
-              }
               createCustomTemplateTab({
                 addTab,
                 navigate,
@@ -192,7 +165,7 @@ export function useAllTemplates(isLoadingApiSources = false) {
     const userTemplateIds = new Set(userTemplates.map((template) => template.id));
 
     const sharedTemplates = sharedTemplatesData
-      .filter((template) => !userTemplateIds.has(template.id))
+      .filter((template) => !(template.id && userTemplateIds.has(template.id)))
       .map((template) => {
         const { widgets, totalWidgets } = getTemplateWidgetsMetadata(
           template,
@@ -212,13 +185,7 @@ export function useAllTemplates(isLoadingApiSources = false) {
           img_light: template.img_light,
           createdBy: template.createdBy,
           onClick: () => {
-            if (posthog) {
-              posthog.capture("app_opened", {
-                app_id: template.templateId,
-                app_name: template.name,
-                app_type: "shared",
-              });
-            }
+            if (!template.source) return;
             createCustomTemplateTab({
               addTab,
               navigate,
@@ -272,14 +239,6 @@ export function useAllTemplates(isLoadingApiSources = false) {
           creator: app.creator,
           sharedWith: app.sharedWith,
           onClick: () => {
-            if (posthog) {
-              posthog.capture("app_opened", {
-                app_id: app.uuid,
-                app_name: app.name,
-                app_type: "generated",
-              });
-            }
-
             const templateId = `custom-${app.uuid}` as const;
             const { tabName, navigateTo } = getUntouchedAppTabInfo(
               templateId,
@@ -301,7 +260,15 @@ export function useAllTemplates(isLoadingApiSources = false) {
             } as const;
 
             // Directly create a new tab with the user-generated app data
-            const newTab = duplicateTabItem({ data: tabData }, undefined, false);
+            const newTab = duplicateTabItem(
+              {
+                index: "",
+                children: [],
+                data: { ...tabData, name: tabName ?? app.name },
+              },
+              undefined,
+              false,
+            );
             const index = newTab.index;
 
             addTab(newTab, true);
@@ -316,9 +283,10 @@ export function useAllTemplates(isLoadingApiSources = false) {
             }
           },
           onDelete: async () => {
-            if (app.creator) return await removeUserApp(app.uuid!);
+            if (!app.uuid) throw new Error("The app has no uuid");
+            if (app.creator) return await removeUserApp(app.uuid);
             if (userEmail) {
-              const data = await deleteUserAppShare(app.uuid!, [userEmail]);
+              const data = await deleteUserAppShare(app.uuid, [userEmail]);
               if (!data?.success)
                 throw new Error(data?.detail || "Failed to delete app share");
 
@@ -343,10 +311,8 @@ export function useAllTemplates(isLoadingApiSources = false) {
       ...sharedTemplates,
       ...userTemplates,
       ...generatedAppTemplates,
-      ...openbbTemplates,
     ] as UnifiedTemplate[];
   }, [
-    availableTemplates,
     apiSources,
     sharedTemplatesData,
     userGeneratedApps,

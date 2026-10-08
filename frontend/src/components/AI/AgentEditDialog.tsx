@@ -24,7 +24,7 @@ export function AgentEditDialog({
     headerPairs: { key: string; value: string }[];
   };
   onClose: () => void;
-  onSave: (editGroup: AgentManagementState["editGroup"]) => Promise<void>;
+  onSave: (editGroup: NonNullable<AgentManagementState["editGroup"]>) => Promise<void>;
 }) {
   const [localEditGroup, setLocalEditGroup] = useState(editGroup);
   const [isLoading, setIsLoading] = useState(false);

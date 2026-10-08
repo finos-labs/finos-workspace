@@ -5,7 +5,7 @@ on:
     types: [opened, synchronize, reopened, closed]
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: ${{ vars.AWS_REGION }}
   PR_NUMBER: ${{ github.event.pull_request.number }}
 
 concurrency:
@@ -70,19 +70,9 @@ jobs:
         run: |
           if [ -f .env ]; then
             echo "Editing .env file..."
-            sed -i 's|^VITE_PAYMENTS_URL=.*|VITE_PAYMENTS_URL=${{ secrets.DEV_VITE_PAYMENTS_URL }}|' .env
-            sed -i 's|^VITE_POSTHOG_KEY=.*|VITE_POSTHOG_KEY=${{ secrets.DEV_VITE_POSTHOG_KEY }}|' .env
-            sed -i 's|^VITE_POSTHOG_URL=.*|VITE_POSTHOG_URL=${{ secrets.DEV_VITE_POSTHOG_URL }}|' .env
-            sed -i 's|^VITE_PLATFORM_URL=.*|VITE_PLATFORM_URL=${{ secrets.DEV_VITE_PLATFORM_URL }}|' .env
+            sed -i 's|^VITE_BACKEND_URL=.*|VITE_BACKEND_URL=${{ secrets.DEV_VITE_BACKEND_URL }}|' .env
             sed -i 's|^VITE_AI_API_URL=.*|VITE_AI_API_URL=${{ secrets.DEV_VITE_AI_API_URL }}|' .env
             sed -i 's|^VITE_GOOGLE_OAUTH_CLIENT_ID=.*|VITE_GOOGLE_OAUTH_CLIENT_ID=${{ secrets.DEV_VITE_GOOGLE_OAUTH_CLIENT_ID }}|' .env
-
-            sed -i 's|^VITE_PLAYWRIGHT_TEST_KEY=.*|VITE_PLAYWRIGHT_TEST_KEY=""|' .env
-            sed -i 's|^VITE_PLAYWRIGHT_ACCOUNT_USERNAME=.*|VITE_PLAYWRIGHT_ACCOUNT_USERNAME=""|' .env
-            sed -i 's|^VITE_PLAYWRIGHT_ACCOUNT_PASSWORD=.*|VITE_PLAYWRIGHT_ACCOUNT_PASSWORD=""|' .env
-            sed -i 's|^VITE_PLAYWRIGHT_ACCOUNT_EMAIL=.*|VITE_PLAYWRIGHT_ACCOUNT_EMAIL=""|' .env
-            sed -i 's|^VITE_AZURE_CLIENT_ID=.*|VITE_AZURE_CLIENT_ID=""|' .env
-            sed -i 's|^VITE_AZURE_TENANT_ID=.*|VITE_AZURE_TENANT_ID=""|' .env
           else
             echo ".env file not found, skipping edit."
           fi
@@ -118,7 +108,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_PREVIEW_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_PREVIEW_SECRET_ACCESS_KEY }}
-          aws-region: "us-east-1"
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Create S3 Bucket
         id: create-bucket
@@ -369,7 +359,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_PREVIEW_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_PREVIEW_SECRET_ACCESS_KEY }}
-          aws-region: "us-east-1"
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Find CloudFront Distribution
         id: find-distribution

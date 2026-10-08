@@ -23,14 +23,14 @@ describe("CodeSnippet Component", () => {
   });
 
   it("renders the code snippet with the provided text", () => {
-    const text = "data = obb.equity.fundamental.management()";
+    const text = "total = sum(values)";
     render(<CodeSnippet text={text} />);
 
     expect(screen.getByText(text)).toBeInTheDocument();
   });
 
   it("copies the text to clipboard when the copy button is clicked", async () => {
-    const text = "data = obb.equity.fundamental.management()";
+    const text = "total = sum(values)";
     render(<CodeSnippet text={text} />);
 
     const copyButton = screen.getByText("Copy");
@@ -40,7 +40,7 @@ describe("CodeSnippet Component", () => {
   });
 
   it("when disables applies correct styles but still allows to copy the code", () => {
-    const text = "data = obb.equity.fundamental.management()";
+    const text = "total = sum(values)";
     render(<CodeSnippet text={text} disabled={true} />);
 
     const codeElement = screen.getByText(text).closest("code");

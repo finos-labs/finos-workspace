@@ -1,7 +1,6 @@
 // tests/unit/components/General/ExportModal.test.tsx
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { usePostHog } from "posthog-js/react";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import ExportModal from "~/components/General/ExportModal";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
@@ -28,9 +27,6 @@ vi.mock("~/lib/state/sharedApp", () => ({
   useShallowSharedAppStore: vi.fn(() => ({
     sharedItems: {},
   })),
-}));
-vi.mock("posthog-js/react", () => ({
-  usePostHog: vi.fn(),
 }));
 vi.mock("sonner", () => ({
   toast: {
@@ -80,12 +76,6 @@ describe("ExportModal", () => {
 
     // Return null so isShared is false (selector is ignored by mock)
     (useShallowSharedAppStore as Mock).mockReturnValue(null);
-
-    // Mock posthog
-    const mockCapture = vi.fn();
-    (usePostHog as Mock).mockReturnValue({
-      capture: mockCapture,
-    });
   });
 
   it("renders the ExportModal component", () => {

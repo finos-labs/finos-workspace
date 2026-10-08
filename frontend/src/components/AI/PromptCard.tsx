@@ -24,7 +24,7 @@ export const PromptCard = memo(function PromptCard({
     id: string;
     prompt: string;
     widgets?: string[];
-    createdAt: string;
+    createdAt?: string;
   };
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
@@ -90,7 +90,7 @@ export const PromptCard = memo(function PromptCard({
                 disabled={!canMoveUp}
                 onClick={handleMoveUp}
                 className={cn(
-                  "obb-small-navbar-btn flex items-center justify-center",
+                  "ws-small-navbar-btn flex items-center justify-center",
                   !canMoveUp && "cursor-not-allowed opacity-40",
                 )}
               >
@@ -103,7 +103,7 @@ export const PromptCard = memo(function PromptCard({
                 disabled={!canMoveDown}
                 onClick={handleMoveDown}
                 className={cn(
-                  "obb-small-navbar-btn flex items-center justify-center",
+                  "ws-small-navbar-btn flex items-center justify-center",
                   !canMoveDown && "cursor-not-allowed opacity-40",
                 )}
               >
@@ -117,14 +117,14 @@ export const PromptCard = memo(function PromptCard({
             <button
               type="button"
               onClick={handleDuplicate}
-              className="obb-small-navbar-btn"
+              className="ws-small-navbar-btn"
             >
               <Icon id="copy-03" className="size-3.5" />
             </button>
           </Tooltip>
         )}
         <Tooltip message="Copy to clipboard">
-          <button type="button" onClick={handleCopy} className="obb-small-navbar-btn">
+          <button type="button" onClick={handleCopy} className="ws-small-navbar-btn">
             <Icon id="clipboard-icon" className="size-3.5" />
           </button>
         </Tooltip>
@@ -134,7 +134,7 @@ export const PromptCard = memo(function PromptCard({
               <button
                 type="button"
                 onClick={handleEdit}
-                className="obb-small-navbar-btn"
+                className="ws-small-navbar-btn"
               >
                 <Icon id="edit" className="size-3.5" />
               </button>
@@ -143,7 +143,7 @@ export const PromptCard = memo(function PromptCard({
               <button
                 type="button"
                 onClick={handleDelete}
-                className="obb-small-navbar-btn"
+                className="ws-small-navbar-btn"
               >
                 <Icon id="trash-02" className="size-3.5" />
               </button>
@@ -198,7 +198,7 @@ export const PromptCard = memo(function PromptCard({
           {prompt.widgets && prompt.widgets.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {prompt.widgets.map((widget) => (
-                <span key={widget} className="obb-tag">
+                <span key={widget} className="ws-tag">
                   {widget}
                 </span>
               ))}

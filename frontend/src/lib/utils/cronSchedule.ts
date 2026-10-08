@@ -1,4 +1,3 @@
-import type { UseQueryOptions } from "@tanstack/react-query";
 import { Cron } from "croner";
 import cronstrue from "cronstrue";
 
@@ -44,7 +43,12 @@ export function getMillisecondsUntilNextCron(expression: string, from = Date.now
   return Math.max(nextDate.getTime() - from, MIN_REFETCH_INTERVAL_MS);
 }
 
-type RefetchIntervalFn = UseQueryOptions<any, any>["refetchInterval"];
+/** The queries a refetch interval is for: what it needs is when each was last updated. */
+type IntervalQuery = { state: { dataUpdatedAt: number } };
+type RefetchIntervalFn<Q extends IntervalQuery> =
+  | number
+  | false
+  | ((query: Q) => number | false | undefined);
 
 /**
  * Normalize a widget's refetch config into a value React Query's `refetchInterval` accepts.
@@ -53,10 +57,10 @@ type RefetchIntervalFn = UseQueryOptions<any, any>["refetchInterval"];
  * - cron string → returns a function that resolves to the ms until the next cron boundary
  *   (or `false` if the string is empty/invalid, which disables refetching)
  */
-export function resolveCronRefetchInterval(
-  refetchInterval: string | RefetchIntervalFn,
-  fallback: RefetchIntervalFn,
-): RefetchIntervalFn {
+export function resolveCronRefetchInterval<Q extends IntervalQuery>(
+  refetchInterval: string | RefetchIntervalFn<Q> | null | undefined,
+  fallback: RefetchIntervalFn<Q>,
+): RefetchIntervalFn<Q> {
   const interval = refetchInterval ?? fallback;
 
   if (typeof interval !== "string") return interval;

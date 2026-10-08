@@ -1,6 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
 import type { AxiosResponse } from "axios";
-import posthog from "posthog-js";
 import { toast } from "sonner";
 import { apiClient } from "~/api/api";
 import type { PostUploadFileResponse } from "~/api/auth.api";
@@ -87,7 +86,11 @@ export function useUploadDocuments() {
   const selectedCopilot = useShallowCopilotStore((s) => s.selectedCopilot);
   const aiEnhancements = useShallowThemeStore((state) => state.aiEnhancements);
 
-  const { mutateAsync: uploadDocuments } = useMutation<ResponseT, Error, File[]>({
+  const { mutateAsync: uploadDocuments } = useMutation<
+    ResponseT | undefined,
+    Error,
+    File[]
+  >({
     mutationFn: async (filesToUpload: File[]) => {
       // Need to split files into chunks of 150MB or less
       const { fileChunks } = filesToUpload.reduce(
@@ -117,28 +120,31 @@ export function useUploadDocuments() {
         { fileChunks: [[] as File[]], chunkSize: 0 },
       );
 
+      if (!user || !selectedCopilot) {
+        throw new Error("Sign in and select an agent to upload documents.");
+      }
+
       for (const files of fileChunks) {
         const formData = new FormData();
         for (const file of files) {
           formData.append("files", file);
-          if (posthog) {
-            posthog.capture("added_file_to_copilot", {
-              file_name: file.name,
-              file_size: file.size,
-            });
-          }
         }
 
+        const uploadUrl =
+          selectedCopilot.id === "default-copilot"
+            ? "app/files"
+            : selectedCopilot.endpoints.upload_docs;
+        if (!uploadUrl)
+          throw new Error("The selected agent does not accept documents.");
+
         const response = await apiClient.post<PostUploadFileResponse>(
-          selectedCopilot?.id === "openbb-copilot"
-            ? "pro/files"
-            : selectedCopilot.endpoints.upload_docs,
+          uploadUrl,
           formData,
           {
             headers: {
               "content-type": "multipart/form-data",
               Authorization:
-                selectedCopilot?.id === "openbb-copilot"
+                selectedCopilot.id === "default-copilot"
                   ? `Bearer ${user.token}`
                   : undefined,
             },
@@ -159,14 +165,14 @@ export function useUploadDocuments() {
                 const uploadedFile = uploadedFiles.find(
                   (file) => file.original_file_name === prevFile.name,
                 );
-                const fileInfo = descriptionsMap.get(uploadedFile?.stored_file_uuid);
                 if (uploadedFile) {
+                  const fileInfo = descriptionsMap.get(uploadedFile.stored_file_uuid);
                   return {
                     ...prevFile,
                     status: uploadedFile.failed ? "failed" : "uploaded",
                     stored_file_uuid: uploadedFile.stored_file_uuid,
                     url: uploadedFile.url,
-                    description: fileInfo.description,
+                    description: fileInfo?.description ?? prevFile.description,
                     name: uploadedFile.original_file_name,
                   };
                 }

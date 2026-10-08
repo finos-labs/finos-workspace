@@ -1,4 +1,3 @@
-import type { ColDef } from "ag-grid-community";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
@@ -15,16 +14,10 @@ import { round } from "lodash";
 import { useCallback, useEffect } from "react";
 import { v4 as uuidLibv4 } from "uuid";
 import type { CreateWidgetParams } from "~/components/AI/hooks/useCreateWidgetFromArtifact";
-import { isDate } from "~/components/General/Table/AgGridUtils";
-import { areTruthy } from "~/components/General/Table/utils";
-import type { NewWidgetT } from "~/components/types";
-import {
-  BENZINGA_NEWS_IMG_URLS,
-  butterflyTypes,
-  MAX_SKILL_SLUG_LENGTH,
-} from "../constants";
-import { useAppStore } from "../state/app";
-import { useAuthStore } from "../state/auth";
+import type { NewWidgetT, StoredParamValue } from "~/components/types";
+import { isDate } from "~/lib/utils/format";
+import { areTruthy } from "~/lib/utils/values";
+import { butterflyTypes, MAX_SKILL_SLUG_LENGTH } from "../constants";
 import type { SaveWidgetsEventT } from "../types";
 
 dayjs.extend(quarterOfYear);
@@ -63,7 +56,6 @@ export function extractUrlsFromText(text: string): string[] {
         if (url.startsWith("mailto:")) return false;
 
         // Check if preceded by @ (indicating email domain pattern like @gmail.com)
-        // https://openbb.atlassian.net/browse/AA-3812
         const originalText = matches.find((m) => m.url === url)?.raw || "";
         const urlIndex = text.indexOf(originalText);
         if (urlIndex > 0 && text[urlIndex - 1] === "@") {
@@ -80,17 +72,20 @@ export function extractUrlsFromText(text: string): string[] {
   }
 }
 
-export function isInputFocused(target: HTMLElement | EventTarget) {
+/** The error to report for whatever was thrown. */
+export function toError(thrown: unknown): Error {
+  return thrown instanceof Error ? thrown : new Error(String(thrown));
+}
+
+export function isInputFocused(target: HTMLElement | EventTarget | null) {
   return (
     target instanceof HTMLInputElement ||
     target instanceof HTMLTextAreaElement ||
-    (target instanceof HTMLDivElement &&
-      (target?.className?.includes("ProseMirror") ||
-        target?.contentEditable === "true"))
+    (target instanceof HTMLDivElement && target?.contentEditable === "true")
   );
 }
 
-export function isValidUrl(url: any) {
+export function isValidUrl(url: string) {
   const urls = extractUrlsFromText(url);
   return urls.length === 1;
 }
@@ -136,7 +131,7 @@ type CustomEvents = {
   };
   [key: `requestStaleState-${WidgetUUID}`]: { requestStaleState: boolean };
   [key: `updateWidget-${WidgetUUID}`]: NewWidgetT;
-  [key: `updateQueryParams-${WidgetUUID}`]: { [key: string]: any };
+  [key: `updateQueryParams-${WidgetUUID}`]: Record<string, StoredParamValue>;
   [key: `queryChanged-${WidgetUUID}`]: string;
   [key: `sqlParamHover-${WidgetUUID}`]: { paramName: string | null };
   [key: `sqlParamHoverPill-${WidgetUUID}`]: { paramName: string | null };
@@ -168,7 +163,7 @@ export function useEventListener<T extends EventName>(
   handler: (detail: CustomEvents[T]) => void,
 ) {
   const listener = useCallback(
-    (event: CustomEvent) => handler(event.detail),
+    (event: Event) => handler((event as CustomEvent).detail),
     [handler],
   );
   useEffect(() => {
@@ -224,55 +219,22 @@ export function capitalize(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-export async function loaderDelayFn<T>(fn: (...args: any[]) => Promise<T> | T) {
-  const delay = Number(sessionStorage.getItem("loaderDelay") ?? 0);
-  const delayPromise = new Promise((r) => setTimeout(r, delay));
-
-  await delayPromise;
-  const res = await fn();
-
-  return res;
-}
-
-export function getRandomBenzingaImage() {
-  return BENZINGA_NEWS_IMG_URLS[
-    Math.floor(Math.random() * BENZINGA_NEWS_IMG_URLS.length)
-  ];
-}
-
-export async function actionDelayFn<T>(fn: (...args: any[]) => Promise<T> | T) {
-  const delay = Number(sessionStorage.getItem("actionDelay") ?? 0);
-  await new Promise((r) => setTimeout(r, delay));
-  return fn();
-}
-
 export function shuffle<T>(arr: T[]): T[] {
   let i = arr.length;
   if (i === 0) return arr;
   const copy = [...arr];
   while (--i) {
     const j = Math.floor(Math.random() * (i + 1));
-    const a = copy[i];
-    const b = copy[j];
-    copy[i] = b!;
-    copy[j] = a!;
+    // i and j are within the array
+    const a = copy[i] as T;
+    const b = copy[j] as T;
+    copy[i] = b;
+    copy[j] = a;
   }
   return copy;
 }
 
-export function getFromLS(localStorageKey, key, defaultValue = {}) {
-  let ls = {};
-  if (localStorage) {
-    try {
-      ls = JSON.parse(localStorage.getItem(localStorageKey)) || defaultValue;
-    } catch (_e) {
-      ls = defaultValue;
-    }
-  }
-  return ls[key];
-}
-
-export function saveToLS(localStorageKey, key, value) {
+export function saveToLS(localStorageKey: string, key: string, value: unknown) {
   localStorage.setItem(
     localStorageKey,
     JSON.stringify({
@@ -313,31 +275,6 @@ const hexToRGB = (hex: string): [number, number, number] => {
   }
   return [0, 0, 0];
 };
-
-export function getContrastColor(hexColor) {
-  // If the color is not a valid hex color, return black as default
-  if (!/^#([0-9A-F]{3}){1,2}$/i.test(hexColor)) {
-    return "#000000";
-  }
-
-  // Convert the hex color to RGB
-  let { r, g, b } = { r: 0, g: 0, b: 0 }; // linting hack
-  if (hexColor.length === 7) {
-    r = Number.parseInt(hexColor.substr(1, 2), 16);
-    g = Number.parseInt(hexColor.substr(3, 2), 16);
-    b = Number.parseInt(hexColor.substr(5, 2), 16);
-  } else {
-    r = Number.parseInt(hexColor[1] + hexColor[1], 16);
-    g = Number.parseInt(hexColor[2] + hexColor[2], 16);
-    b = Number.parseInt(hexColor[3] + hexColor[3], 16);
-  }
-
-  // Calculate the brightness of the color
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-
-  // Return white for dark colors and black for light colors
-  return brightness > 128 ? "#000000" : "#FFFFFF";
-}
 
 export function generateBackgroundColorWithContrast(
   textColor: "white" | "black" = "black",
@@ -430,9 +367,9 @@ export function isUUID(uuid: string) {
   return uuidRegex.test(uuid);
 }
 
-export function extractUUIDFromURL(url: string) {
+export function extractUUIDFromURL(url: string | undefined) {
   const uuid =
-    url.match(
+    url?.match(
       /\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\./i,
     )?.[1] || null;
   return uuid;
@@ -499,7 +436,10 @@ export function slugify(str: string, separator = "-") {
     .replace(/[^\w-]+/g, "");
 }
 
-export function beautifySlug(slug: string, toUpperCase = true): string {
+export function beautifySlug(
+  slug: string | null | undefined,
+  toUpperCase = true,
+): string {
   if (!slug) return "";
 
   try {
@@ -655,13 +595,9 @@ export function formatNumberMagnitude(
 export const numberRegex = /^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?$/;
 export const magnitudeRegex = /^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?[KMBT]$/;
 
-export function parseValue(
-  value: string | number,
-  chartDataType: ColDef["chartDataType"] = "series",
-): number | string {
+export function parseValue(value: string | number): number | string {
   try {
-    if (isDate(value) || typeof value !== "string" || chartDataType !== "series")
-      return value;
+    if (isDate(value) || typeof value !== "string") return value;
 
     const parsedValue = value?.replace(/^[$£€¥₹]/, "")?.replace(/[,\s%]/g, "");
 
@@ -680,11 +616,11 @@ export function parseValue(
 
 export async function generateReportImage(
   checkIfLoadingData: () => boolean,
-  element,
+  element: HTMLElement | null | undefined,
   name = "report",
   title = "Report",
   showDate = true,
-  exportType = "png",
+  exportType: "png" | "pdf" = "png",
   darkMode = true,
   onFinish?: () => void,
   onError?: () => void,
@@ -696,10 +632,9 @@ export async function generateReportImage(
   }
   await delay(1000);
 
-  const { jsPDF } =
-    exportType === "pdf" ? await import("jspdf") : { jsPDF: null as any };
+  const jsPDF = exportType === "pdf" ? (await import("jspdf")).jsPDF : undefined;
 
-  return new Promise((resolve) => {
+  return new Promise<string | null | undefined>((resolve) => {
     if (!element) return null;
     //document.documentElement.classList.add("generating-report");
 
@@ -721,6 +656,10 @@ export async function generateReportImage(
       .then((dataUrl) => {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
 
         const image = new Image();
         image.onload = () => {
@@ -746,7 +685,7 @@ export async function generateReportImage(
           ctx.fillText(title, 10, 48); // Adjusted position
 
           ctx.font = "28px Inter"; // Reset font size
-          const exportString = "| Exported with OpenBB";
+          const exportString = "| Exported with Workspace";
           ctx.fillText(exportString, ctx.measureText(title).width + 40, 48); // Adjusted position
 
           // Draw the logo SVG next to the title
@@ -776,7 +715,7 @@ export async function generateReportImage(
                 ? canvas.toDataURL("image/jpeg", 1)
                 : canvas.toDataURL();
 
-            if (exportType === "pdf") {
+            if (jsPDF) {
               const pdf = new jsPDF({
                 orientation: canvas.width > canvas.height ? "l" : "p",
                 unit: "px",
@@ -828,27 +767,8 @@ const EXPORT_TITLE_LOGO_GAP = 60;
 const ELEMENT_POLL_INTERVAL = 100;
 const ELEMENT_MAX_WAIT = 5000;
 const ELEMENT_SETTLE_DELAY = 1000; // Allow widgets to fully render after content detected
-const ELEMENT_SETTLE_DELAY_WITH_CHART = 3000; // Longer delay for dashboards with chart/TradingView widgets
 
-// Widget IDs that require longer settle time (charts, heavy visualizations, backend-connected widgets)
-const SLOW_WIDGET_IDS = ["charting", "price_performance", "ssrm_advanced", "omni"];
-
-// Widget types (viz types) that require longer settle time (backend-connected widgets)
-const SLOW_WIDGET_TYPES = ["ssrm_advanced", "omni"];
-
-function tabHasSlowWidget(tabId: string): boolean {
-  const widgets = useAppStore.getState().items[tabId]?.data?.widgets;
-  if (!Array.isArray(widgets)) return false;
-
-  return widgets.some(
-    (w) =>
-      w.widgetId?.startsWith("tv_") ||
-      (w.widgetId && SLOW_WIDGET_IDS.includes(w.widgetId)) ||
-      SLOW_WIDGET_TYPES.includes(w.type),
-  );
-}
-
-const OPENBB_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 255 127" width="32" height="16" fill="none" xmlns:xlink="http://www.w3.org/1999/xlink">
+const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 255 127" width="32" height="16" fill="none" xmlns:xlink="http://www.w3.org/1999/xlink">
   <path d="M151.404 103.189v-7.937h71.733v15.874h-71.733v-7.937Zm0-63.5v-7.937h87.66v15.874h-87.66V39.69Zm95.628-23.815H135.468V127h103.596V79.374h-87.66V63.5H255V15.874h-7.968Zm-215.16 87.315v-7.937h71.733v15.874H31.873v-7.937Zm-15.936-63.5v-7.937h87.66v15.874h-87.66V39.69ZM119.532 0v15.874H0V63.5h103.596v15.874h-87.66V127h103.596V15.874h15.936V0h-15.936Z" fill="white" />
 </svg>`;
 
@@ -890,7 +810,7 @@ async function captureElementWithHeader(
       ctx.fillText(title, EXPORT_HEADER_PADDING_LEFT, EXPORT_HEADER_TEXT_Y);
 
       ctx.font = `${EXPORT_HEADER_FONT_SIZE}px Inter`;
-      const exportString = "| Exported with OpenBB";
+      const exportString = "| Exported with Workspace";
       ctx.fillText(
         exportString,
         ctx.measureText(title).width + 40,
@@ -924,7 +844,7 @@ async function captureElementWithHeader(
         resolve(canvas);
       };
       logoImage.onerror = () => reject(new Error("Failed to load logo"));
-      logoImage.src = `data:image/svg+xml;base64,${btoa(OPENBB_LOGO_SVG)}`;
+      logoImage.src = `data:image/svg+xml;base64,${btoa(LOGO_SVG)}`;
     };
     image.onerror = () => reject(new Error("Failed to load captured image"));
     image.src = dataUrl;
@@ -944,19 +864,15 @@ function delay(ms: number): Promise<void> {
 
 export async function waitForGridLayout(
   maxWait = ELEMENT_MAX_WAIT,
-  dashboardId?: string,
-): Promise<Element | null> {
+): Promise<HTMLElement | null> {
   const start = Date.now();
   while (Date.now() - start < maxWait) {
-    const element = document.getElementsByClassName("react-grid-layout")[0];
+    const element = document.getElementsByClassName("react-grid-layout")[0] as
+      | HTMLElement
+      | undefined;
     // Check element exists and has rendered content (clientHeight > 0)
     if (element && element.clientHeight > 0) {
-      // Use longer delay if dashboard has slow-rendering widgets (charts, TradingView)
-      const settleDelay =
-        dashboardId && tabHasSlowWidget(dashboardId)
-          ? ELEMENT_SETTLE_DELAY_WITH_CHART
-          : ELEMENT_SETTLE_DELAY;
-      await delay(settleDelay);
+      await delay(ELEMENT_SETTLE_DELAY);
       return element;
     }
     await delay(ELEMENT_POLL_INTERVAL);
@@ -976,7 +892,6 @@ export async function generateMultiTabReport(
   onProgress?: (current: number, total: number, tabName: string) => void,
   onFinish?: () => void,
   onError?: (error: Error) => void,
-  dashboardId?: string,
 ): Promise<void> {
   const originalTab = new URLSearchParams(window.location.search).get("tab");
   const canvases: { name: string; canvas: HTMLCanvasElement }[] = [];
@@ -987,7 +902,7 @@ export async function generateMultiTabReport(
       onProgress?.(i + 1, tabs.length, tab.name);
 
       switchTab(tab.id);
-      const element = await waitForGridLayout(ELEMENT_MAX_WAIT, dashboardId);
+      const element = await waitForGridLayout(ELEMENT_MAX_WAIT);
       if (!element) {
         throw new Error(`Could not find grid layout for tab: ${tab.name}`);
       }
@@ -1123,7 +1038,7 @@ export async function generateFolderReport(
           );
 
           switchTab(tab.id);
-          const element = await waitForGridLayout(ELEMENT_MAX_WAIT, dashboard.id);
+          const element = await waitForGridLayout(ELEMENT_MAX_WAIT);
           if (!element) continue;
 
           let isDataLoading = checkIfLoadingData();
@@ -1172,7 +1087,7 @@ export async function generateFolderReport(
           }
         }
       } else {
-        const element = await waitForGridLayout(ELEMENT_MAX_WAIT, dashboard.id);
+        const element = await waitForGridLayout(ELEMENT_MAX_WAIT);
         if (!element) continue;
 
         let isDataLoading = checkIfLoadingData();
@@ -1226,23 +1141,6 @@ export async function generateFolderReport(
       window.dispatchEvent(new PopStateEvent("popstate"));
     }
   }
-}
-
-export function groupWidgetsBySearchCategory(widgets) {
-  const groupedWidgets = {};
-
-  for (const widgetKey in widgets) {
-    const widget = widgets[widgetKey];
-    const searchCategory = widget.searchCategory;
-
-    if (groupedWidgets[searchCategory]) {
-      groupedWidgets[searchCategory].push(widget);
-    } else {
-      groupedWidgets[searchCategory] = [widget];
-    }
-  }
-
-  return groupedWidgets;
 }
 
 // *didier made this function
@@ -1341,7 +1239,7 @@ export function scoreArrays<T>(
   if (!areTruthy(arr1, arr2)) return { score: 0, matches: [] };
 
   let score = 0;
-  const matches = [];
+  const matches: T[] = [];
   const [smArray, lgArray] = [arr1, arr2].sort((a, b) =>
     iterSmArray ? b.length - a.length : a.length - b.length,
   );
@@ -1371,21 +1269,23 @@ export function scoreArrays<T>(
  **/
 export function mergeObjects<T, U>(target: T, source: U, withFunctions = false): T & U {
   try {
-    const sourceKeys = Object.keys(source || {});
+    const into = target as Record<string, unknown>;
+    const from = (source || {}) as Record<string, unknown>;
+    const sourceKeys = Object.keys(from);
 
-    for (const key of Object.keys(source || {})) {
+    for (const key of Object.keys(from)) {
       let removeKey = false;
-      if (typeof source[key] === "object" && !Array.isArray(source[key])) {
-        if (!target?.[key]) Object.assign(target, { [key]: {} });
+      if (typeof from[key] === "object" && !Array.isArray(from[key])) {
+        if (!into?.[key]) Object.assign(into, { [key]: {} });
 
         Object.assign(
-          target[key],
-          mergeObjects(target[key], source[key], withFunctions),
+          into[key] as object,
+          mergeObjects(into[key], from[key], withFunctions),
         );
         removeKey = true;
       }
-      if (Array.isArray(source[key])) {
-        Object.assign(target, { [key]: source[key] });
+      if (Array.isArray(from[key])) {
+        Object.assign(into, { [key]: from[key] });
         removeKey = true;
       }
 
@@ -1393,9 +1293,9 @@ export function mergeObjects<T, U>(target: T, source: U, withFunctions = false):
     }
 
     for (const key of sourceKeys) {
-      if (typeof source[key] !== "object") {
-        if (typeof source[key] !== "function" || withFunctions) {
-          Object.assign(target, { [key]: source[key] });
+      if (typeof from[key] !== "object") {
+        if (typeof from[key] !== "function" || withFunctions) {
+          Object.assign(into, { [key]: from[key] });
         }
       }
     }
@@ -1444,15 +1344,6 @@ export const formatFileSize = (bytes: number, decimalCases = 0): string => {
 
   return `${size.toFixed(decimalCases)}${units[unitIndex]}`;
 };
-
-/**
- *  Get the booking URL
- *  @returns The booking URL
- */
-export function getBookingUrl(): string {
-  const { user, name } = useAuthStore.getState();
-  return `/booking?used_before=Yes&email=${user.email}&first_name=${name.first}&last_name=${name.last}&from_pro=true`;
-}
 
 /**
  * Append -2, -3, ... until the slug is unique, truncating the base so the

@@ -6,8 +6,8 @@ import { cn } from "../ds/utils";
 import Icon from "../Icon";
 
 export type Changes = {
-  widgets: { removed?: number; added?: number };
-  prompts: { removed?: number; added?: number };
+  widgets: { removed: number; added: number };
+  prompts: { removed: number; added: number };
 };
 export type AppChanges = { name?: string } & Changes;
 interface PermissionChanges {
@@ -59,7 +59,7 @@ const SectionContainer = ({
   className?: string;
 }) => (
   <div className={cn("flew-1 w-full bg-general-bg-secondary p-2.5 rounded", className)}>
-    <h3 className="obb-uppercase-small-title mb-2.5">{title}</h3>
+    <h3 className="ws-uppercase-small-title mb-2.5">{title}</h3>
     {children}
   </div>
 );
@@ -118,7 +118,7 @@ export default function ConfirmPermissionsChangesDialog({
           before proceeding.
         </p>
 
-        {appChanges?.length > 0 && (
+        {appChanges && appChanges.length > 0 && (
           <SectionContainer title="APPS">
             <div className="w-full max-h-[300px] overflow-y-auto space-y-4">
               {appChanges?.map((backend, index) => (

@@ -1,10 +1,17 @@
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
-import { forwardRef, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  forwardRef,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { cn } from "~/lib/utils";
 
 type TooltipProps = {
   message: string | ReactNode;
-  children: any;
+  children: ReactNode;
   position?: "top" | "bottom" | "left" | "right";
   sideOffset?: number;
   align?: "start" | "center" | "end";
@@ -15,13 +22,12 @@ type TooltipProps = {
   open?: boolean;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
-  style?: any;
+  style?: CSSProperties;
   hoverOnly?: boolean;
   preventOnDropdown?: boolean;
 };
 
 // added this special tooltip to be used in the GroupDropdown component because the default tooltip was opening the tooltip when the element inside triggered a dropdown
-// https://openbbworkspace.slack.com/archives/C04EG3QND7X/p1740492578837219
 const Tooltip = forwardRef((props: TooltipProps, _forwardedRef) => {
   const {
     message,
@@ -52,7 +58,7 @@ const Tooltip = forwardRef((props: TooltipProps, _forwardedRef) => {
     if (isHovering) {
       // Check if a dropdown is open when hovering
       if (preventOnDropdown) {
-        const dropdownOpen = !!document.querySelector(".obb-dropdown-container");
+        const dropdownOpen = !!document.querySelector(".ws-dropdown-container");
         if (dropdownOpen) {
           setShowTooltip(false);
           return;

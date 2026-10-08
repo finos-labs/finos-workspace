@@ -21,16 +21,12 @@ import { Input } from "~/components/ds/atoms/Input";
 import type { DataTableColumn, SortState } from "~/components/ds/molecules/DataTable";
 import { DataTable } from "~/components/ds/molecules/DataTable";
 import { OverflowTags } from "~/components/ds/molecules/OverflowTags";
-import SnowflakeHide from "~/components/General/SnowflakeHide";
 import Icon from "~/components/Icon";
 import { SettingsLayout } from "~/components/LayoutAuth/Skeleton/SettingsLayout";
 import Tooltip from "~/components/Tooltip";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { isLiteEnvironment } from "~/lib/onPremFeatureFlags";
 import { RenderNoData } from "~/routes/admin";
 import type { User } from "~/types/user.type";
-
-const isLite = isLiteEnvironment();
 
 const getUserId = (user: User) => user.uuid;
 
@@ -120,7 +116,8 @@ export default function AdminUsers() {
   const users = usersQuery.data ?? undefined;
   const navigate = useNavigate();
   const entityInfo = entityInfoQuery.data ?? undefined;
-  const remainingSeats = entityInfo?.seats - entityInfo?.used_seats;
+  const remainingSeats =
+    entityInfo && (entityInfo.seats ?? 0) - (entityInfo.used_seats ?? 0);
 
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
@@ -272,7 +269,7 @@ export default function AdminUsers() {
         <button
           type="button"
           aria-label="Edit user"
-          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 obb-small-navbar-btn rounded flex items-center justify-center"
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center"
           onClick={() => dispatch({ openDetails: user })}
         >
           <Icon id="pencil-04" className="size-3.5" />
@@ -307,28 +304,20 @@ export default function AdminUsers() {
               {entityInfoQuery.isLoading ? "" : (users?.length ?? 0)}
             </span>
           </p>
-          {!isLite && (
-            <p className="text-xs text-ds-text-heading">
-              <span className="text-ds-text-subtitle font-medium">
-                Seats Remaining:
-              </span>{" "}
-              <span className="text-ds-text-caption">
-                {entityInfoQuery.isLoading ? "" : remainingSeats}
-              </span>
-            </p>
-          )}
-          {!isLite && (
-            <p className="text-xs text-ds-text-heading">
-              <span className="text-ds-text-subtitle font-medium">
-                Expiration Date:
-              </span>{" "}
-              <span className="text-ds-text-caption">
-                {entityInfoQuery.isLoading ? "" : expirationDate}
-              </span>
-            </p>
-          )}
+          <p className="text-xs text-ds-text-heading">
+            <span className="text-ds-text-subtitle font-medium">Seats Remaining:</span>{" "}
+            <span className="text-ds-text-caption">
+              {entityInfoQuery.isLoading ? "" : remainingSeats}
+            </span>
+          </p>
+          <p className="text-xs text-ds-text-heading">
+            <span className="text-ds-text-subtitle font-medium">Expiration Date:</span>{" "}
+            <span className="text-ds-text-caption">
+              {entityInfoQuery.isLoading ? "" : expirationDate}
+            </span>
+          </p>
         </div>
-        <div className="obb-divider my-6" />
+        <div className="ws-divider my-6" />
         <div className="flex items-center gap-[10px]">
           <Input
             size="xs"
@@ -345,15 +334,13 @@ export default function AdminUsers() {
           >
             Export users
           </Button>
-          <SnowflakeHide>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => dispatch({ openInvite: true })}
-            >
-              {isLite ? "Add users" : "Invite users"}
-            </Button>
-          </SnowflakeHide>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => dispatch({ openInvite: true })}
+          >
+            Add users
+          </Button>
         </div>
         <div className="relative flex-1 mt-6 min-h-0">
           <DataTable

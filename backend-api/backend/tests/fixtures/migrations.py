@@ -6,7 +6,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 
-from .base import _seed_pro_entities
+from .base import _seed_entities
 
 
 @pytest.fixture(scope="session")
@@ -27,6 +27,6 @@ def apply_migrations(db_containers):
     finally:
         os.chdir(cwd)
 
-    _seed_pro_entities()
+    _seed_entities()
 
     yield

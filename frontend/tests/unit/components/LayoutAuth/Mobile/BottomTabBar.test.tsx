@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ComponentProps } from "react";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import BottomTabBar from "~/components/LayoutAuth/Mobile/BottomTabBar";
 
 const mockNavigate = vi.fn();
@@ -40,11 +41,13 @@ vi.mock("~/lib/state/theme", () => ({
 }));
 
 vi.mock("~/components/Icon", () => ({
-  default: ({ id, ...props }: any) => <span data-testid={`icon-${id}`} {...props} />,
+  default: ({ id, ...props }: { id: string } & ComponentProps<"span">) => (
+    <span data-testid={`icon-${id}`} {...props} />
+  ),
 }));
 
 vi.mock("~/lib/utils", () => ({
-  cn: vi.fn((...args: any[]) => args.filter(Boolean).join(" ")),
+  cn: vi.fn((...args: unknown[]) => args.filter(Boolean).join(" ")),
   beautifySlug: vi.fn((s: string) => s),
 }));
 
@@ -114,9 +117,7 @@ describe("BottomTabBar", () => {
     const calls = cnMock.mock.calls;
 
     // Find the call for the Apps button (isActive: true when pathname === "/app")
-    const activeCall = calls.find(
-      (args) => args.includes("text-tab-action-active"),
-    );
+    const activeCall = calls.find((args) => args.includes("text-tab-action-active"));
     expect(activeCall).toBeDefined();
   });
 

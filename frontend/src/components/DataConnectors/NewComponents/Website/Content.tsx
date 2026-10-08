@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { usePostHog } from "posthog-js/react";
 import {
   createRef,
   forwardRef,
@@ -105,7 +104,7 @@ const WebsiteForm = forwardRef<HTMLFormElement, WebsiteFormProps>((props, _ref) 
           name="url"
           control={form.control}
           render={({ field }) => (
-            <FormInput label="Iframe URL" placeholder="https://openbb.co" {...field} />
+            <FormInput label="Iframe URL" placeholder="https://…" {...field} />
           )}
         />
         <div className="collapsible border-t dark:border-dark-500 border-light-200 py-1">
@@ -131,7 +130,7 @@ const WebsiteForm = forwardRef<HTMLFormElement, WebsiteFormProps>((props, _ref) 
                 render={({ field }) => (
                   <FormTextarea
                     label="Description"
-                    placeholder="Iframe from OpenBB, the company building an AI-powered Research Workspace"
+                    placeholder="Iframe from Workspace, the company building an AI-powered Research Workspace"
                     {...field}
                     rows={3}
                   />
@@ -155,7 +154,7 @@ const WebsiteForm = forwardRef<HTMLFormElement, WebsiteFormProps>((props, _ref) 
                 name="source"
                 control={form.control}
                 render={({ field }) => (
-                  <FormInput label="Source" placeholder="OpenBB" {...field} />
+                  <FormInput label="Source" placeholder="Workspace" {...field} />
                 )}
               />
             </div>
@@ -191,7 +190,6 @@ export default function WebsiteContent() {
 
   const { setOpen, pendingNavigate, mode, id, onWidgetAdded } =
     useDataConnectorContext();
-  const posthog = usePostHog();
 
   const [websiteForms, setWebsiteForms] = useState<WebsiteFormState[]>([
     {
@@ -213,12 +211,12 @@ export default function WebsiteContent() {
   }, [id]);
 
   const [websiteData, setWebsiteData] = useState<WebsiteFormData>({
-    url: metadata?.storage?.html as string,
-    name: metadata?.name,
-    description: metadata?.description,
-    category: metadata?.category,
-    subCategory: metadata?.subCategory,
-    source: metadata?.source,
+    url: String(metadata?.storage?.html ?? ""),
+    name: metadata?.name ?? "",
+    description: metadata?.description ?? undefined,
+    category: metadata?.category ?? undefined,
+    subCategory: metadata?.subCategory ?? undefined,
+    source: metadata?.source ?? undefined,
   });
 
   const updateEditFormData = useCallback((data: WebsiteFormData) => {
@@ -385,18 +383,11 @@ export default function WebsiteContent() {
         setWebsiteForms([{ id: uuidv4(), ref: createRef(), data: getDefault() }]);
         setOpen(false);
         onWidgetAdded?.();
-        handleConnectionAdded(dashboardId, widgets, pendingNavigate);
-
-        if (posthog) {
-          for (const website of widgets) {
-            posthog.capture("added_website", {
-              name: website.name,
-              category: website.category,
-              source: website.source,
-              url: website.storage?.html,
-            });
-          }
-        }
+        handleConnectionAdded(
+          dashboardId,
+          widgets.filter((widget): widget is WidgetT => !!widget),
+          pendingNavigate,
+        );
       } catch (error) {
         console.error("Error adding iframe widgets:", error);
         toast.error("An error occurred while adding iframe widgets");

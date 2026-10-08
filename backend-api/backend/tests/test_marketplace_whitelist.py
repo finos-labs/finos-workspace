@@ -108,7 +108,7 @@ async def test_whitelist_normalizes_email(auth_client, db_session):
 
 @pytest.mark.asyncio
 async def test_whitelist_unknown_email_404(auth_client):
-    """Whitelisting an email with no OpenBB account is a 404, not a 500."""
+    """Whitelisting an email with no Workspace account is a 404, not a 500."""
     with _superuser_override():
         resp = await auth_client.post(
             "/admin/marketplace/whitelist",

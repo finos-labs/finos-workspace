@@ -1,22 +1,7 @@
 import { renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { useFilterWidgets } from "~/components/LayoutAuth/Search/hooks/useFilterWidgets";
 import type { SearchDialogState } from "~/components/LayoutAuth/Search/SearchDialog";
-
-vi.mock("~/lib/onPremFeatureFlags", () => ({
-  getAllowedDataVendors: () => ["openbb", "fmp", "intrinio"],
-}));
-
-vi.mock("~/lib/widget_bundles.json", () => ({
-  default: {
-    openbb: {
-      widgets: ["stock_chart", "earnings_calendar", "price_target"],
-    },
-    premium: {
-      widgets: ["advanced_analytics", "portfolio_optimizer"],
-    },
-  },
-}));
 
 const createMockWidget = (overrides = {}) => ({
   widgetId: `widget-${Math.random().toString(36).substr(2, 9)}`,
@@ -25,7 +10,7 @@ const createMockWidget = (overrides = {}) => ({
   category: "Equity",
   subCategory: "Charts",
   description: "A test widget",
-  source: "openbb",
+  source: "workspace",
   external: false,
   supportedAssetClasses: [],
   ...overrides,
@@ -43,17 +28,14 @@ describe("useFilterWidgets", () => {
   describe("Basic Filtering", () => {
     it("returns all widgets when category is All and no options selected", () => {
       const widgets = [
-        createMockWidget({ widgetId: "stock_chart", name: "Stock Chart" }),
+        createMockWidget({ widgetId: "iframe", name: "Stock Chart" }),
         createMockWidget({
-          widgetId: "earnings_calendar",
+          widgetId: "html",
           name: "Earnings Calendar",
         }),
       ];
 
-      const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
-        useFilterWidgets(widgets, defaultState),
-      );
+      const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
 
       expect(result.current.length).toBe(2);
     });
@@ -61,19 +43,18 @@ describe("useFilterWidgets", () => {
     it("filters widgets by selected category", () => {
       const widgets = [
         createMockWidget({
-          widgetId: "stock_chart",
+          widgetId: "iframe",
           category: "Equity",
           name: "Stock Chart",
         }),
         createMockWidget({
-          widgetId: "bond_tracker",
+          widgetId: "html",
           category: "Economy",
           name: "Bond Tracker",
         }),
       ];
 
       const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
         useFilterWidgets(widgets, {
           ...defaultState,
           selectedCategory: "Equity",
@@ -87,13 +68,12 @@ describe("useFilterWidgets", () => {
     it("returns empty array when no widgets match category", () => {
       const widgets = [
         createMockWidget({
-          widgetId: "stock_chart",
+          widgetId: "iframe",
           category: "Equity",
         }),
       ];
 
       const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
         useFilterWidgets(widgets, {
           ...defaultState,
           selectedCategory: "Currency",
@@ -108,7 +88,7 @@ describe("useFilterWidgets", () => {
     it("includes external widgets when external option is selected", () => {
       const widgets = [
         createMockWidget({
-          widgetId: "stock_chart",
+          widgetId: "iframe",
           external: false,
         }),
         createMockWidget({
@@ -118,7 +98,6 @@ describe("useFilterWidgets", () => {
       ];
 
       const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
         useFilterWidgets(widgets, {
           ...defaultState,
           selectedOption: "external",
@@ -137,10 +116,7 @@ describe("useFilterWidgets", () => {
         }),
       ];
 
-      const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
-        useFilterWidgets(widgets, defaultState),
-      );
+      const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
 
       expect(result.current.some((w) => w.external === true)).toBe(true);
     });
@@ -156,7 +132,6 @@ describe("useFilterWidgets", () => {
       ];
 
       const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
         useFilterWidgets(widgets, {
           ...defaultState,
           selectedOption: "shared",
@@ -164,9 +139,7 @@ describe("useFilterWidgets", () => {
       );
 
       expect(
-        result.current.some(
-          (w) => w.category?.toLowerCase() === "shared files",
-        ),
+        result.current.some((w) => w.category?.toLowerCase() === "shared files"),
       ).toBe(true);
     });
 
@@ -179,7 +152,6 @@ describe("useFilterWidgets", () => {
       ];
 
       const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
         useFilterWidgets(widgets, {
           ...defaultState,
           selectedOption: "shared",
@@ -187,9 +159,7 @@ describe("useFilterWidgets", () => {
       );
 
       expect(
-        result.current.some(
-          (w) => w.category?.toLowerCase() === "shared backends",
-        ),
+        result.current.some((w) => w.category?.toLowerCase() === "shared backends"),
       ).toBe(true);
     });
   });
@@ -198,16 +168,13 @@ describe("useFilterWidgets", () => {
     it("creates multiple entries for widgets with multiple supported asset classes", () => {
       const widgets = [
         createMockWidget({
-          widgetId: "stock_chart",
+          widgetId: "iframe",
           name: "Multi-Asset Chart",
           supportedAssetClasses: ["equity", "etf"],
         }),
       ];
 
-      const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
-        useFilterWidgets(widgets, defaultState),
-      );
+      const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
 
       expect(result.current.some((w) => w.category === "equity")).toBe(true);
       expect(result.current.some((w) => w.category === "etf")).toBe(true);
@@ -216,17 +183,14 @@ describe("useFilterWidgets", () => {
     it("uses original category for widgets with only all asset class", () => {
       const widgets = [
         createMockWidget({
-          widgetId: "stock_chart",
+          widgetId: "iframe",
           name: "Universal Chart",
           category: "Equity",
           supportedAssetClasses: ["all"],
         }),
       ];
 
-      const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
-        useFilterWidgets(widgets, defaultState),
-      );
+      const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
 
       expect(result.current[0].category.toLowerCase()).toBe("equity");
     });
@@ -242,10 +206,7 @@ describe("useFilterWidgets", () => {
         }),
       ];
 
-      const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
-        useFilterWidgets(widgets, defaultState),
-      );
+      const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
 
       expect(result.current[0].category).toBe("my data");
     });
@@ -253,16 +214,13 @@ describe("useFilterWidgets", () => {
     it("keeps Others category for non-external widgets", () => {
       const widgets = [
         createMockWidget({
-          widgetId: "stock_chart",
+          widgetId: "iframe",
           category: "Others",
           external: false,
         }),
       ];
 
-      const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
-        useFilterWidgets(widgets, defaultState),
-      );
+      const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
 
       expect(result.current[0].category.toLowerCase()).toBe("others");
     });
@@ -272,21 +230,18 @@ describe("useFilterWidgets", () => {
     it("sorts widgets by category first", () => {
       const widgets = [
         createMockWidget({
-          widgetId: "price_target",
+          widgetId: "iframe",
           category: "Equity",
           name: "Widget A",
         }),
         createMockWidget({
-          widgetId: "stock_chart",
+          widgetId: "iframe",
           category: "Currency",
           name: "Widget B",
         }),
       ];
 
-      const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
-        useFilterWidgets(widgets, defaultState),
-      );
+      const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
 
       expect(result.current[0].category.toLowerCase()).toBe("currency");
       expect(result.current[1].category.toLowerCase()).toBe("equity");
@@ -295,23 +250,20 @@ describe("useFilterWidgets", () => {
     it("sorts by subcategory within same category", () => {
       const widgets = [
         createMockWidget({
-          widgetId: "stock_chart",
+          widgetId: "iframe",
           category: "Equity",
           subCategory: "Zebra",
           name: "Widget A",
         }),
         createMockWidget({
-          widgetId: "earnings_calendar",
+          widgetId: "html",
           category: "Equity",
           subCategory: "Alpha",
           name: "Widget B",
         }),
       ];
 
-      const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
-        useFilterWidgets(widgets, defaultState),
-      );
+      const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
 
       expect(result.current[0].subCategory).toBe("Alpha");
       expect(result.current[1].subCategory).toBe("Zebra");
@@ -320,23 +272,20 @@ describe("useFilterWidgets", () => {
     it("sorts alphabetically by name within same subcategory", () => {
       const widgets = [
         createMockWidget({
-          widgetId: "stock_chart",
+          widgetId: "iframe",
           category: "Equity",
           subCategory: "Charts",
           name: "Zebra Widget",
         }),
         createMockWidget({
-          widgetId: "earnings_calendar",
+          widgetId: "html",
           category: "Equity",
           subCategory: "Charts",
           name: "Alpha Widget",
         }),
       ];
 
-      const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
-        useFilterWidgets(widgets, defaultState),
-      );
+      const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
 
       expect(result.current[0].name).toBe("Alpha Widget");
       expect(result.current[1].name).toBe("Zebra Widget");
@@ -354,7 +303,6 @@ describe("useFilterWidgets", () => {
       ];
 
       const { result } = renderHook(() =>
-        // @ts-expect-error - ignored for now
         useFilterWidgets(widgets, {
           ...defaultState,
           selectedCategory: "Others",
@@ -367,12 +315,9 @@ describe("useFilterWidgets", () => {
 
   describe("Memoization", () => {
     it("returns same reference when inputs do not change", () => {
-      const widgets = [
-        createMockWidget({ widgetId: "stock_chart" }),
-      ];
+      const widgets = [createMockWidget({ widgetId: "iframe" })];
 
       const { result, rerender } = renderHook(() =>
-        // @ts-expect-error - ignored for now
         useFilterWidgets(widgets, defaultState),
       );
 
@@ -386,13 +331,12 @@ describe("useFilterWidgets", () => {
     it("returns new reference when selectedCategory changes", () => {
       const widgets = [
         createMockWidget({
-          widgetId: "stock_chart",
+          widgetId: "iframe",
           category: "Equity",
         }),
       ];
 
       const { result, rerender } = renderHook(
-        // @ts-expect-error - ignored for now
         ({ state }) => useFilterWidgets(widgets, state),
         { initialProps: { state: defaultState } },
       );

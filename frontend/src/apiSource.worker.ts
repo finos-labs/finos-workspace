@@ -1,5 +1,9 @@
 import { debounce } from "lodash";
-import { getApiSourceWidgets, processWorkerResults } from "~/lib/utils/validateBackend";
+import {
+  errorResponse,
+  getApiSourceWidgets,
+  processWorkerResults,
+} from "~/lib/utils/validateBackend";
 import type { Source, ValidateBackend } from "./lib/state/backendConnector";
 
 interface EventData {
@@ -31,12 +35,10 @@ self.onmessage = async (e: MessageEvent<EventData>) => {
       entry = { source, result };
     } catch (error) {
       console.error("Error processing backend in worker:", error);
-      const result = {
-        widgets: {},
-        templates: [],
-        agents: [],
+      const result: ValidateBackend = {
+        ...errorResponse,
         errorMessage: error instanceof Error ? error.message : "Unknown error",
-      } as ValidateBackend;
+      };
       entry = { source, result };
     }
     results.push(entry);

@@ -90,6 +90,47 @@ describe("Markdown Component", () => {
     expect(screen.getByRole("heading", { name: "API Content" })).toBeInTheDocument();
   });
 
+  describe("a note without an endpoint", () => {
+    const note = (text: string) => ({
+      name: "Note",
+      storage: { text },
+    });
+
+    it("shows its own text", () => {
+      (useWidgetContext as Mock).mockReturnValue({ widget: note("# My note") });
+
+      renderWithQueryClient(<Markdown />);
+
+      expect(screen.getByRole("heading", { name: "My note" })).toBeInTheDocument();
+    });
+
+    it("shows the new text when the Copilot updates it", () => {
+      (useWidgetContext as Mock).mockReturnValue({ widget: note("# Before") });
+      const { rerender } = renderWithQueryClient(<Markdown />);
+      expect(screen.getByRole("heading", { name: "Before" })).toBeInTheDocument();
+
+      (useWidgetContext as Mock).mockReturnValue({ widget: note("# After") });
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <Markdown />
+        </QueryClientProvider>,
+      );
+
+      expect(screen.getByRole("heading", { name: "After" })).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Before" })).not.toBeInTheDocument();
+    });
+
+    it("does not fetch anything", () => {
+      (useWidgetContext as Mock).mockReturnValue({ widget: note("# My note") });
+
+      renderWithQueryClient(<Markdown />);
+
+      expect((useJsonData as Mock).mock.calls[0][1]).toEqual(
+        expect.objectContaining({ enabled: false }),
+      );
+    });
+  });
+
   it("sanitizes content properly", () => {
     const unsafeContent = '<script>alert("xss")</script><style>body{color:red}</style>';
     (useJsonData as Mock).mockReturnValue({
@@ -172,23 +213,23 @@ describe("Markdown Component", () => {
   });
 
   it("renders AI artifact markers with the artifact component", async () => {
-    const artifactId = "table_artifact_6725b";
+    const artifactId = "html_artifact_6725b";
 
     render(
       <MarkdownContent
-        content={`See table. <|start_artifact_id|>${artifactId}<|end_artifact_id|>`}
+        content={`See report. <|start_artifact_id|>${artifactId}<|end_artifact_id|>`}
         artifacts={[
           {
             uuid: artifactId,
             name: artifactId,
-            type: "table",
-            content: [{ country: "United States", weight: 67.61 }],
+            type: "html",
+            content: "<p>United States: 67.61</p>",
           },
         ]}
       />,
     );
 
-    expect(screen.getByText(/See table/)).toBeInTheDocument();
+    expect(screen.getByText(/See report/)).toBeInTheDocument();
     expect(await screen.findByTestId(`artifact-${artifactId}`)).toBeInTheDocument();
   });
 

@@ -4,6 +4,7 @@ import {
   getReachableArtifacts,
   useCopilotStore,
 } from "~/lib/state/copilot";
+import { malformed } from "../../mocks";
 
 describe("getReachableArtifacts", () => {
   it("should return empty array when no messages are provided", () => {
@@ -122,8 +123,7 @@ describe("getReachableArtifacts", () => {
       undefined,
     ];
 
-    // @ts-ignore - Intentionally testing with invalid data
-    const result = getReachableArtifacts(messages, artifacts);
+    const result = getReachableArtifacts(malformed(messages), malformed(artifacts));
     expect(result).toHaveLength(1);
     expect(result[0].uuid).toBe("artifact-1");
   });
@@ -227,7 +227,7 @@ describe("createWidgetMetadataDialog state", () => {
         description: "Full Description",
         category: "Stocks",
         subCategory: "US Markets",
-        source: "OpenBB",
+        source: "Workspace",
       },
       pendingParams: {},
     };
@@ -240,7 +240,7 @@ describe("createWidgetMetadataDialog state", () => {
       description: "Full Description",
       category: "Stocks",
       subCategory: "US Markets",
-      source: "OpenBB",
+      source: "Workspace",
     });
   });
 });

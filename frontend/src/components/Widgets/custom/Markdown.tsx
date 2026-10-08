@@ -1,9 +1,10 @@
-import DOMPurify from "dompurify";
+import DOMPurify, { type Config as DOMPurifyConfig } from "dompurify";
 import get from "lodash/get";
 import mammoth from "mammoth";
 import MarkdownToJSX from "markdown-to-jsx";
 import {
-  type ComponentType,
+  type ComponentProps,
+  type ElementType,
   lazy,
   type MouseEvent,
   memo,
@@ -13,20 +14,16 @@ import {
   useMemo,
   useState,
 } from "react";
-import { toast } from "sonner";
 import DraggableCard from "~/components/DraggableCard";
 import { ExternalLinkDialog } from "~/components/ExternalLinkDialog";
-import { useWidgetParamsPositions } from "~/components/General/Table/NavBar/QueryParams";
-import Icon from "~/components/Icon";
 import { InlineMath } from "~/components/Tex";
-import Tooltip from "~/components/Tooltip";
 import { useWidgetContext } from "~/components/Widget.context";
+import { useWidgetParamsPositions } from "~/components/WidgetParams/QueryParams";
 import { buildIframeWidget } from "~/components/Widgets/custom/buildIframeWidget";
 import { useJsonData } from "~/lib/api";
 import { useShallowAppStore } from "~/lib/state/app";
 import type { ArtifactT, Citation as CitationT } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import { uuidv4 } from "~/lib/utils";
 import { protectAiMarkers } from "~/lib/utils/citationMarkers";
 import { HTML_SANITIZE_CONFIG } from "~/lib/utils/sanitize";
 
@@ -165,7 +162,7 @@ export default function Markdown() {
     newParams.theme = theme;
 
     return {
-      url: endpoint?.url,
+      url: endpoint?.url ?? "",
       endpointHeaders: endpoint?.headers ?? {},
       method: endpoint?.method ?? "GET",
       params: newParams,
@@ -187,7 +184,7 @@ export default function Markdown() {
         const dataKey = widget?.data?.dataKey;
         try {
           const jsonData = await data.json();
-          return resolve(get(jsonData, dataKey, jsonData));
+          return resolve(dataKey ? get(jsonData, dataKey, jsonData) : jsonData);
         } catch {
           return resolve(await clonedData.text());
         }
@@ -196,35 +193,24 @@ export default function Markdown() {
     {
       enabled: validEndpoint,
       staleTime: widget?.staleTime ?? 1000 * 60 * 15,
-      ...(!validEndpoint && { initialData: widget.storage.text }),
     },
   );
 
+  // Without an endpoint the widget holds its own text (what the Copilot wrote), which can change.
+  const body = validEndpoint ? data : widget.storage?.text;
+
   const markdownPayload = useMemo(() => {
     return {
-      content: typeof data === "string" ? data : (widget.storage.text ?? ""),
+      content: typeof body === "string" ? body : (widget.storage?.text ?? ""),
       citations: getCitations(widget.storage?.citations),
       artifacts: getArtifacts(widget.storage?.artifacts),
     };
-  }, [data, widget.storage.text, widget.storage?.citations, widget.storage?.artifacts]);
-
-  const createNote = useCallback(() => {
-    const widgetToCreate = {
-      id: uuidv4(),
-      widgetId: "rich_note",
-      name: `${widget.name} - note`,
-      description: widget.description,
-      type: "custom",
-      storage: { html: data },
-      innerTab: widget?.innerTab,
-    } as any;
-
-    addWidget(activeDashboardId, widgetToCreate);
-    toast.success("Note created", {
-      description:
-        "A new note has been created from this widget and added to the bottom of the dashboard",
-    });
-  }, [data, widget.name, widget.description, widget.innerTab, addWidget]);
+  }, [
+    body,
+    widget.storage?.text,
+    widget.storage?.citations,
+    widget.storage?.artifacts,
+  ]);
 
   const handleExternalLinkClick = useCallback((url: string) => {
     setExternalLinkDialog({ open: true, url });
@@ -252,19 +238,12 @@ export default function Markdown() {
         elementBelowNavbar={renderBelowNavbarRows}
         title={widget.name}
         aiEnabled={true}
-        aiData={data}
+        aiData={body}
         elementRightNextToTitle={renderRow0Params}
         lastUpdated={validEndpoint ? dataUpdatedAt : undefined}
         loading={isLoading}
-        error={error || !data}
+        error={error || !body}
         errorMessage={widget?.external ? error?.message : "No results found"}
-        extraNavbarElements={
-          <Tooltip message="Create note from this widget">
-            <button className="obb-small-navbar-btn" onClick={createNote}>
-              <Icon id="material-symbols-light-add-notes-outline" className="w-4 h-4" />
-            </button>
-          </Tooltip>
-        }
       >
         <div className="prose-sm text-xs! prose-p:my-1.5 p-2.5 pb-4 prose dark:prose-invert max-w-none">
           <MarkdownContent
@@ -290,8 +269,8 @@ export default function Markdown() {
 
 interface CustomOverrides {
   [key: string]: {
-    component: ComponentType<any>;
-    props?: Record<string, any>;
+    component: ElementType;
+    props?: Record<string, unknown>;
   };
 }
 
@@ -300,7 +279,7 @@ export interface MarkdownContentProps {
   content: string;
   citations?: CitationT[];
   artifacts?: ArtifactT[];
-  sanitizeOptions?: DOMPurify.Config;
+  sanitizeOptions?: DOMPurifyConfig;
   customOverrides?: CustomOverrides;
   onExternalLinkClick?: (url: string) => void;
 }
@@ -324,7 +303,7 @@ export function MarkdownContent({
         ...HTML_SANITIZE_CONFIG,
         ALLOW_SELF_CLOSE_IN_ATTR: extension === "docx",
         ...sanitizeOptions,
-      }) as string;
+      });
 
     if (!hasAiMarkers) return sanitize(content);
 
@@ -363,7 +342,7 @@ export function MarkdownContent({
             };
 
             return (
-              <button onClick={handleClick} className="obb-hyper-link">
+              <button onClick={handleClick} className="ws-hyper-link">
                 {children}
               </button>
             );
@@ -377,15 +356,18 @@ export function MarkdownContent({
             return <img src={src} alt={alt} />;
           },
         },
-        p: (props: any) => {
-          if (props?.children?.some((child: any) => typeof child === "object")) {
-            return <div {...props} />;
+        p: (props: ComponentProps<"p">) => {
+          if (
+            Array.isArray(props.children) &&
+            props.children.some((child) => typeof child === "object")
+          ) {
+            return <div {...(props as ComponentProps<"div">)} />;
           }
           return <p {...props} />;
         },
         pre: {
-          component: (props) => {
-            return <pre {...props} className="obb-code" />;
+          component: (props: ComponentProps<"pre">) => {
+            return <pre {...props} className="ws-code" />;
           },
         },
         ...customOverrides,

@@ -1,10 +1,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { deleteUser } from "~/api/admin.api";
 import AdminDeleteUserDialog from "~/components/AdminUsers/AdminDeleteUserDialog";
 import { NotificationId, showNotification } from "~/lib/utils/toast";
+import { makeUser } from "../../factories";
 
 vi.mock("~/api/admin.api", () => ({
   deleteUser: vi.fn(),
@@ -30,7 +31,7 @@ vi.mock("sonner", () => ({
 }));
 
 describe("AdminDeleteUserDialog", () => {
-  const user = { uuid: "123", email: "test@example.com", source: "source" };
+  const user = makeUser({ uuid: "123", email: "test@example.com" });
   const onClose = vi.fn();
   const onConfirm = vi.fn();
 
@@ -44,7 +45,6 @@ describe("AdminDeleteUserDialog", () => {
         open={true}
         onClose={onClose}
         onConfirm={onConfirm}
-        // @ts-expect-error - user is not typed for the sake of the test
         user={user}
       />,
     );
@@ -62,7 +62,6 @@ describe("AdminDeleteUserDialog", () => {
         open={true}
         onClose={onClose}
         onConfirm={onConfirm}
-        // @ts-expect-error - user is not typed for the sake of the test
         user={user}
       />,
     );
@@ -91,7 +90,6 @@ describe("AdminDeleteUserDialog", () => {
         open={true}
         onClose={onClose}
         onConfirm={onConfirm}
-        // @ts-expect-error - user is not typed for the sake of the test
         user={user}
       />,
     );

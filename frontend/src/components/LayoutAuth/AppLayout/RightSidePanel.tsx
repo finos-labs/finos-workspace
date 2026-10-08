@@ -4,9 +4,9 @@ import { CopilotChatErrorBoundary } from "~/components/AI";
 import CopilotChat from "~/components/AI/CopilotChat";
 import { useCopilotAvailable } from "~/components/AI/hooks/useCopilotAvailable";
 import { useStreamingStore } from "~/components/AI/hooks/useStreaming";
-import { useIsFirstRender } from "~/components/General/Table/hooks/utils";
 import { EdgeHoverZone } from "~/components/ui/EdgeHoverZone";
 import { ResizableHandle, ResizablePanel } from "~/components/ui/Resizable";
+import { useIsFirstRender } from "~/hooks/useIsFirstRender";
 import { useCallbackRef } from "~/hooks/useRefHooks";
 import { CopilotProvider } from "~/lib/contexts/CopilotChatContext";
 import { useMobile } from "~/lib/providers/MobileProvider";
@@ -49,16 +49,16 @@ export const RightSidePanel = forwardRef((_, _ref) => {
   const copilotAvailable = useCopilotAvailable();
 
   const rightPanelRef = useRef<ImperativePanelHandle>(null);
-  const isProgrammaticResize = useRef(null);
+  const isProgrammaticResize = useRef<boolean | null>(null);
   const previousSize = useRef(42); // Store the size before entering fullscreen (must be >= minSize)
   const isFirstRender = useIsFirstRender();
 
-  const toggleCopilot = useCallbackRef((e = null) => {
-    if (rightPanelRef.current.isExpanded() && !e) {
+  const toggleCopilot = useCallbackRef((e: unknown = null) => {
+    if (rightPanelRef.current?.isExpanded() && !e) {
       setLastPanelState(isFullscreen ? "fullscreen" : "open");
 
       setIsIntentionallyCollapsed(true);
-      rightPanelRef.current.collapse();
+      rightPanelRef.current?.collapse();
     } else {
       setIsDragging(true);
       setTimeout(setIsDragging);
@@ -67,9 +67,9 @@ export const RightSidePanel = forwardRef((_, _ref) => {
   });
 
   const expandCopilot = useCallbackRef(() => {
-    if (rightPanelRef.current.isCollapsed()) {
+    if (rightPanelRef.current?.isCollapsed()) {
       setIsIntentionallyCollapsed(false);
-      const currentSize = rightPanelRef.current?.getSize();
+      const currentSize = rightPanelRef.current.getSize();
 
       rightPanelRef.current.expand();
       if (lastPanelState === "fullscreen" && !isFullscreen) {
@@ -292,7 +292,6 @@ export const MobileRightSidePanel = forwardRef((_, _ref) => {
    * call sites that cannot import the Zustand store directly:
    *   - `src/lib/utils/createTemplates.ts`
    *   - `src/lib/state/copilotData.ts`
-   *   - `src/components/General/Table/AgGridUtils.tsx`
    *
    * Those callers fire `document.getElementById("expand-copilot-mobile-btn")?.click()`.
    * Must be rendered regardless of `mobileCopilotDrawer` state so the trigger

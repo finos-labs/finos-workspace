@@ -1,6 +1,9 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { getConfig } from "~/lib/runtimeConfig";
 import { useCopilotStore } from "~/lib/state/copilot";
 import Icon from "../Icon";
+
+const { supportEmail } = getConfig().contact;
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -15,7 +18,7 @@ class CopilotChatErrorBoundary extends Component<
     this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error: any) {
+  static getDerivedStateFromError(error: Error) {
     return { hasError: true, error: error };
   }
 
@@ -46,15 +49,17 @@ class CopilotChatErrorBoundary extends Component<
             >
               Clear
             </button>
-            <p className="mt-14 text-light-500 dark:text-light-400">
-              For help contact{" "}
-              <a
-                href="mailto:support@openbb.finance"
-                className="text-brand-main underline dark:text-brand-lighter"
-              >
-                support@openbb.finance
-              </a>
-            </p>
+            {supportEmail && (
+              <p className="mt-14 text-light-500 dark:text-light-400">
+                For help contact{" "}
+                <a
+                  href={`mailto:${supportEmail}`}
+                  className="text-brand-main underline dark:text-brand-lighter"
+                >
+                  {supportEmail}
+                </a>
+              </p>
+            )}
           </div>
         </div>
       );

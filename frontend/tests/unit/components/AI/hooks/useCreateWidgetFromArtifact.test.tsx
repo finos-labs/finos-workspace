@@ -6,6 +6,7 @@ import {
   useCreateWidgetFromArtifact,
 } from "~/components/AI/hooks/useCreateWidgetFromArtifact";
 import { useCopilotStore } from "~/lib/state/copilot";
+import { required } from "../../../mocks";
 
 // Mock sonner toast
 vi.mock("sonner", () => ({
@@ -25,13 +26,6 @@ vi.mock("react-router-dom", () => ({
   useSearchParams: () => [new URLSearchParams()],
 }));
 
-// Mock PostHog
-vi.mock("posthog-js/react", () => ({
-  usePostHog: () => ({
-    capture: vi.fn(),
-  }),
-}));
-
 // Mock API
 const mockCreateMetaDataWidget = vi.fn();
 vi.mock("~/api/auth.api", () => ({
@@ -43,7 +37,7 @@ const mockAddWidget = vi.fn();
 const mockAddTab = vi.fn();
 const mockGetLastInnerTab = vi.fn().mockReturnValue("");
 vi.mock("~/lib/state/app", () => ({
-  useShallowAppStore: (selector: (state: any) => any) =>
+  useShallowAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       addWidget: mockAddWidget,
       addTab: mockAddTab,
@@ -53,7 +47,7 @@ vi.mock("~/lib/state/app", () => ({
 
 // Mock auth store
 vi.mock("~/lib/state/auth", () => ({
-  useShallowAuthStore: (selector: (state: any) => any) =>
+  useShallowAuthStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       user: { token: "test-token" },
     }),
@@ -62,13 +56,13 @@ vi.mock("~/lib/state/auth", () => ({
 
 // Mock theme store
 vi.mock("~/lib/state/theme", () => ({
-  useShallowThemeStore: (selector: (state: any) => any) =>
+  useShallowThemeStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({ aiEnhancements: true }),
 }));
 
 // Mock copilotData store
 vi.mock("~/lib/state/copilotData", () => ({
-  useShallowCopilotDataStore: (selector: (state: any) => any) =>
+  useShallowCopilotDataStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       copilotWidgets: { selectedWidgets: [] },
     }),
@@ -95,14 +89,14 @@ describe("useCreateWidgetFromArtifact", () => {
 
       await act(async () => {
         result.current.createWidget({
-          widgetType: "table",
-          content: [{ col1: "data" }],
+          widgetType: "html",
+          content: "<p>data</p>",
           metadata: null,
         });
       });
 
       expect(toast.loading).toHaveBeenCalledWith(
-        "Creating table widget...",
+        "Creating html widget...",
         expect.objectContaining({
           cancel: expect.objectContaining({
             label: "Edit metadata",
@@ -116,8 +110,8 @@ describe("useCreateWidgetFromArtifact", () => {
 
       await act(async () => {
         await result.current.createWidget({
-          widgetType: "table",
-          content: [{ col1: "data" }],
+          widgetType: "html",
+          content: "<p>data</p>",
           metadata: null,
         });
       });
@@ -141,8 +135,8 @@ describe("useCreateWidgetFromArtifact", () => {
 
       await act(async () => {
         await result.current.createWidget({
-          widgetType: "table",
-          content: [{ col1: "data" }],
+          widgetType: "html",
+          content: "<p>data</p>",
           metadata: null,
         });
       });
@@ -166,8 +160,8 @@ describe("useCreateWidgetFromArtifact", () => {
 
       await act(async () => {
         await result.current.createWidget({
-          widgetType: "table",
-          content: [{ col1: "data" }],
+          widgetType: "html",
+          content: "<p>data</p>",
           metadata: null,
         });
       });
@@ -197,6 +191,66 @@ describe("useCreateWidgetFromArtifact", () => {
     });
   });
 
+  describe("a text artifact", () => {
+    it("is added as a markdown widget holding the text, without saving metadata", async () => {
+      const { result } = renderHook(() => useCreateWidgetFromArtifact());
+
+      await act(async () => {
+        await result.current.createWidget({
+          widgetType: "text",
+          content: "# Title\n\nSome text. <citation>ref</citation>",
+          metadata: null,
+        });
+      });
+
+      expect(mockCreateMetaDataWidget).not.toHaveBeenCalled();
+      expect(mockAddWidget).toHaveBeenCalledTimes(1);
+      const [dashboardId, widget] = mockAddWidget.mock.calls[0];
+      expect(dashboardId).toBe("dashboard-123");
+      expect(widget).toEqual(
+        expect.objectContaining({
+          widgetId: "markdown",
+          type: "custom",
+          name: "AI Title",
+          description: "AI Description",
+          storage: { text: "# Title\n\nSome text" },
+        }),
+      );
+      expect(widget.connectionType).toBeUndefined();
+    });
+
+    it("has no metadata to edit afterwards", async () => {
+      const { result } = renderHook(() => useCreateWidgetFromArtifact());
+
+      await act(async () => {
+        await result.current.createWidget({
+          widgetType: "text",
+          content: "Test content",
+          metadata: { name: "Summary", description: "A summary" },
+        });
+      });
+
+      await waitFor(() => expect(toast.success).toHaveBeenCalled());
+      const options = (toast.success as ReturnType<typeof vi.fn>).mock.calls[0][1];
+      expect(options.cancel).toBeUndefined();
+    });
+
+    it("has no metadata to edit when created with metadata from the dialog", async () => {
+      const { result } = renderHook(() => useCreateWidgetFromArtifact());
+
+      await act(async () => {
+        await result.current.createWidgetWithMetadata(
+          { widgetType: "text", content: "Test content" },
+          { name: "Summary", description: "A summary" },
+        );
+      });
+
+      await waitFor(() => expect(toast.success).toHaveBeenCalled());
+      const options = (toast.success as ReturnType<typeof vi.fn>).mock.calls[0][1];
+      expect(options.cancel).toBeUndefined();
+    });
+  });
+
   describe("Edit metadata button on loading toast", () => {
     it("opens dialog when Edit metadata is clicked on loading toast", async () => {
       let cancelCallback: (() => void) | undefined;
@@ -211,8 +265,8 @@ describe("useCreateWidgetFromArtifact", () => {
       const { result } = renderHook(() => useCreateWidgetFromArtifact());
 
       const params: CreateWidgetParams = {
-        widgetType: "table",
-        content: [{ col1: "data" }],
+        widgetType: "html",
+        content: "<p>data</p>",
         metadata: null,
       };
 
@@ -224,7 +278,7 @@ describe("useCreateWidgetFromArtifact", () => {
       // Simulate clicking Edit metadata
       if (cancelCallback) {
         act(() => {
-          cancelCallback!();
+          required(cancelCallback)();
         });
       }
 
@@ -259,8 +313,8 @@ describe("useCreateWidgetFromArtifact", () => {
 
       await act(async () => {
         await result.current.createWidget({
-          widgetType: "table",
-          content: [{ col1: "data" }],
+          widgetType: "html",
+          content: "<p>data</p>",
           metadata: null,
         });
       });
@@ -268,7 +322,7 @@ describe("useCreateWidgetFromArtifact", () => {
       // Simulate clicking Edit metadata on success toast
       if (cancelCallback) {
         act(() => {
-          cancelCallback!();
+          required(cancelCallback)();
         });
       }
 
@@ -290,8 +344,8 @@ describe("useCreateWidgetFromArtifact", () => {
       await act(async () => {
         await result.current.createWidgetWithMetadata(
           {
-            widgetType: "table",
-            content: [{ col1: "data" }],
+            widgetType: "html",
+            content: "<p>data</p>",
             metadata: null,
           },
           {
@@ -330,8 +384,8 @@ describe("useCreateWidgetFromArtifact", () => {
       await act(async () => {
         await result.current.createWidgetWithMetadata(
           {
-            widgetType: "table",
-            content: [{ col1: "data" }],
+            widgetType: "html",
+            content: "<p>data</p>",
             metadata: null,
           },
           {
@@ -344,7 +398,7 @@ describe("useCreateWidgetFromArtifact", () => {
       // Simulate clicking Edit metadata on success toast
       if (cancelCallback) {
         act(() => {
-          cancelCallback!();
+          required(cancelCallback)();
         });
       }
 
@@ -364,8 +418,8 @@ describe("useCreateWidgetFromArtifact", () => {
       await act(async () => {
         await result.current.createWidgetWithMetadata(
           {
-            widgetType: "table",
-            content: [{ col1: "data" }],
+            widgetType: "html",
+            content: "<p>data</p>",
             metadata: null,
           },
           { name: "Test", description: "Test" },
@@ -385,8 +439,8 @@ describe("useCreateWidgetFromArtifact", () => {
         try {
           await result.current.createWidgetWithMetadata(
             {
-              widgetType: "table",
-              content: [{ col1: "data" }],
+              widgetType: "html",
+              content: "<p>data</p>",
               metadata: null,
             },
             { name: "Test", description: "Test" },
@@ -396,7 +450,7 @@ describe("useCreateWidgetFromArtifact", () => {
         }
       });
 
-      expect(thrownError?.message).toBe("Creation failed");
+      expect((thrownError as Error | null)?.message).toBe("Creation failed");
       expect(toast.error).toHaveBeenCalledWith(
         "Failed to create widget",
         expect.objectContaining({
@@ -430,8 +484,8 @@ describe("useCreateWidgetFromArtifact", () => {
       // Start widget creation
       act(() => {
         result.current.createWidget({
-          widgetType: "table",
-          content: [{ col1: "data" }],
+          widgetType: "html",
+          content: "<p>data</p>",
           metadata: null,
         });
       });
@@ -439,7 +493,7 @@ describe("useCreateWidgetFromArtifact", () => {
       // Abort immediately
       if (cancelCallback) {
         act(() => {
-          cancelCallback!();
+          required(cancelCallback)();
         });
       }
 

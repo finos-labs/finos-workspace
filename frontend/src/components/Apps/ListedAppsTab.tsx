@@ -1,6 +1,5 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import Fuse from "fuse.js";
-import posthog from "posthog-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useDebouncedCallback } from "use-debounce";
@@ -22,7 +21,6 @@ import {
 } from "~/hooks/useMarketplaceSubmissions";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { useCanSubmitApp } from "~/lib/appSubmissionFlag";
-import { isLiteEnvironment } from "~/lib/onPremFeatureFlags";
 import { useAppStore } from "~/lib/state/app";
 import { useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
@@ -44,7 +42,6 @@ import type {
   SubmissionTarget,
 } from "~/types/marketplaceSubmission";
 import type { ApiKeySaveResult } from "./ApiKeyModal";
-import { ContactVendorModal } from "./ContactVendorModal";
 import {
   type AppsFuseKey,
   buildAppsFuseSearchQuery,
@@ -59,7 +56,7 @@ import { RateAppDialog } from "./RateAppDialog";
 import { SubmitListingDialog } from "./SubmitListingDialog";
 import { hasOpenRevision, targetForBackendUrl } from "./submissionTargets";
 
-type SortOption = { label: string; value: SortValue };
+type SortOption = { label: string; value: NonNullable<SortValue> };
 
 const sortOptions: SortOption[] = [
   { label: "Newest first", value: "newest" },
@@ -103,7 +100,6 @@ const DEFAULT_STATE = {
   category: undefined as string | undefined,
   view: "all" as ViewFilter,
   isLoading: false,
-  contactApp: null as ListedApp | null,
 };
 type AppsTabState = typeof DEFAULT_STATE;
 
@@ -208,7 +204,6 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
       toastType: "success",
     });
   }, [deletingSubmission, deleteSubmission]);
-  const isLite = isLiteEnvironment();
 
   const { outdatedApps, needsUpdate } = useMemo(() => {
     if (subscriptions?.length === 0 || !listedApps?.length)
@@ -248,13 +243,6 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
 
   const notifyAppConnected = useCallback(
     (app: ListedApp) => {
-      if (posthog) {
-        posthog.capture("app_installed", {
-          app_id: app.id,
-          app_name: app.appName,
-          vendor_name: app.vendorName,
-        });
-      }
       const hasMcp = !!app.mcpServers?.[0];
       showNotification({
         message: "App connected",
@@ -277,9 +265,7 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
     [openConnectedApp, navigate],
   );
 
-  useEffect(() => {
-    if (posthog) posthog.capture("app_marketplace_tab_viewed");
-  }, []);
+  useEffect(() => {}, []);
 
   useEffect(() => {
     if (!needsUpdate) return;
@@ -293,7 +279,7 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
           );
         }
         await unsubscribeListedApp(app.id);
-        await subscribeListedApp(parentAppUuid);
+        if (parentAppUuid) await subscribeListedApp(parentAppUuid);
       });
     }
   }, [needsUpdate]);
@@ -386,13 +372,6 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
 
   const handleOpenDetails = useCallback(
     (selectedApp: ListedApp) => {
-      if (posthog) {
-        posthog.capture("app_card_clicked", {
-          app_id: selectedApp.id,
-          app_name: selectedApp.appName,
-          vendor_name: selectedApp.vendorName,
-        });
-      }
       dispatch({ modalOpen: "details", selectedApp });
       setAppSlugParam(slugify(selectedApp.appName));
     },
@@ -440,21 +419,6 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
       dispatch({ isLoading: true });
       try {
         const result = await connectApp(selectedApp, { authValues, validateApiKey });
-        if (posthog) {
-          const eventProps = {
-            app_id: selectedApp.id,
-            app_name: selectedApp.appName,
-            vendor_name: selectedApp.vendorName,
-          };
-          if (result.success) {
-            posthog.capture("app_api_key_added", eventProps);
-          } else {
-            posthog.capture("app_api_key_validation_failed", {
-              ...eventProps,
-              error: "error" in result ? result.error : "Unknown error",
-            });
-          }
-        }
         if (result.success) {
           if (validateApiKey) {
             showNotification({
@@ -488,7 +452,6 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
         vendor_name: selectedApp.vendorName,
       };
       if (!isSubscribed) {
-        if (posthog) posthog.capture("app_api_key_removed", eventProps);
         return showNotification({
           message: `${authLabel} removed`,
           toastType: "success",
@@ -507,7 +470,6 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
             });
           }
 
-          if (posthog) posthog.capture("app_api_key_removed", eventProps);
           return showNotification({
             message: `${authLabel} removed`,
             description: `${selectedApp.appName} connected with limited access. Add ${authLabel.toLowerCase()} for more features.`,
@@ -520,9 +482,6 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
           description: `${selectedApp.appName} has been disconnected.`,
           toastType: "success",
         });
-        if (posthog) {
-          posthog.capture("app_api_key_removed", eventProps);
-        }
       } finally {
         dispatch({ isLoading: false });
       }
@@ -567,13 +526,6 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
           description: `${targetApp.appName} has been removed from My Apps.`,
           toastType: "success",
         });
-        if (posthog) {
-          posthog.capture("app_removed", {
-            app_id: targetApp.id,
-            app_name: targetApp.appName,
-            vendor_name: targetApp.vendorName,
-          });
-        }
       } finally {
         dispatch({ isLoading: false });
       }
@@ -687,6 +639,8 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
       </TabsPrimitive.Content>
     );
   }
+
+  const { selectedApp } = state;
 
   return (
     <TabsPrimitive.Content value="apps-marketplace" className="p-6 flex flex-col gap-4">
@@ -809,7 +763,7 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
           }
           secondMessage={
             view === "listed"
-              ? "Your approved apps appear here once the OpenBB team publishes them."
+              ? "Your approved apps appear here once the marketplace administrators publish them."
               : "Submissions waiting on review or needing changes appear here."
           }
         />
@@ -856,7 +810,6 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
                       : undefined
                   }
                   onDisconnect={subscribed ? () => handleUnsubscribe(app) : undefined}
-                  isLite={isLite}
                 />
               );
             })
@@ -887,13 +840,13 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
         }
       />
 
-      {state.selectedApp && (
+      {selectedApp && (
         <>
           <ListedAppDetailsModal
-            app={state.selectedApp}
+            app={selectedApp}
             isOpen={state.modalOpen === "details"}
             onClose={handleCloseDetails}
-            isSubscribed={subscribedAppIds.includes(state.selectedApp.id)}
+            isSubscribed={subscribedAppIds.includes(selectedApp.id)}
             onSubscribe={handleSubscribe}
             onAuthSave={handleAuthSave}
             onApiKeyRemove={handleApiKeyRemove}
@@ -906,16 +859,15 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
               })
             }
             onOpen={
-              subscribedAppIds.includes(state.selectedApp.id) ||
-              state.selectedApp.isBuiltIn
+              subscribedAppIds.includes(selectedApp.id) || selectedApp.isBuiltIn
                 ? () => {
                     handleCloseDetails();
-                    openConnectedApp(state.selectedApp!);
+                    openConnectedApp(selectedApp);
                   }
                 : undefined
             }
             onRate={
-              subscribedAppIds.includes(state.selectedApp.id)
+              subscribedAppIds.includes(selectedApp.id)
                 ? () => {
                     dispatch({
                       modalOpen: null,
@@ -931,25 +883,16 @@ export function ListedAppsTab({ appSlug }: ListedAppsTabProps) {
             onNext={
               filteredApps.length > 1 ? () => handleNavigateApp("next") : undefined
             }
-            onContactVendor={
-              isLite ? () => dispatch({ contactApp: state.selectedApp }) : undefined
-            }
           />
 
           <RateAppDialog
-            app={state.selectedApp}
+            app={selectedApp}
             isOpen={state.showRateDialog}
             onClose={handleCloseRateDialog}
             context={state.rateContext}
           />
         </>
       )}
-
-      <ContactVendorModal
-        app={state.contactApp}
-        isOpen={!!state.contactApp}
-        onClose={() => dispatch({ contactApp: null })}
-      />
     </TabsPrimitive.Content>
   );
 }
