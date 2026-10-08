@@ -1,9 +1,0 @@
-frontend/src/components/ds/atoms/EnhancedSelect.tsx
-frontend/src/components/ds/atoms/FontFamilyInput.tsx
-frontend/src/components/ds/atoms/SpacingInput.tsx
-frontend/src/components/ds/docs/Colors.mdx
-frontend/src/components/ds/docs/Introduction.mdx
-frontend/src/components/ds/docs/Tokens.mdx
-frontend/src/components/ds/molecules/ExpandableSection.tsx
-frontend/src/types/use-mcp.d.ts
-frontend/src/vite-env.d.ts

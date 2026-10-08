@@ -159,6 +159,7 @@
     "ajv": "^8.20.0",
     "minimatch": "^10.2.5",
     "exceljs": "^4.4.0",
+    "unzipper": "^0.12.5",
     "uuid": "^14.0.0",
     "serialize-javascript": "^7.0.5",
     "vite": "$vite",
