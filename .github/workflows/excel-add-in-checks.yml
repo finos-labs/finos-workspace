@@ -1,0 +1,33 @@
+name: Excel add-in checks
+
+on:
+  pull_request:
+    paths:
+      - "excel-add-in/**"
+      - ".github/workflows/excel-add-in-checks.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: ESLint, types and unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: excel-add-in
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: cp .env.example .env
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm run test:unit

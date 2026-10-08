@@ -1,4 +1,4 @@
-name: PR Description Check
+name: PR description
 
 on:
   pull_request:
@@ -10,10 +10,10 @@ permissions:
 
 jobs:
   pr-description:
-    name: Ensure PR description is present
+    name: Ensure the PR description is present
     runs-on: ubuntu-latest
     steps:
-      - name: Check PR description
+      - name: Check the PR description
         shell: bash
         run: |
           body="$(jq -r .pull_request.body "$GITHUB_EVENT_PATH")"

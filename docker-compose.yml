@@ -87,7 +87,9 @@ services:
 
   api:
     <<: *backend
+    # Built by `init`, which shares the image.
     image: workspace-api:local
+    pull_policy: never
     restart: unless-stopped
     ports:
       - "8000:8000"

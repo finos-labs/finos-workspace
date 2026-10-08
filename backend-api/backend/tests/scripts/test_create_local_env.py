@@ -21,9 +21,10 @@ ADMIN = ["--admin-email", "admin@mail.test"]
 
 @pytest.fixture
 def config(tmp_path, monkeypatch):
-    """Points the script's seed config at a file of its own."""
+    """Points the script's seed config and ``user_create.json`` at files of its own."""
     path = tmp_path / "cfgs" / "config.toml"
     monkeypatch.setattr(local_env, "CONFIG", path)
+    monkeypatch.setattr(local_env, "USER_CREATE", tmp_path / "user_create.json")
     return path
 
 
@@ -216,3 +217,38 @@ def test_the_real_example_activates_no_placeholder_path():
     ]
 
     assert [line for line in active if "/path/to/" in line] == []
+
+
+def test_main_writes_the_empty_file_that_compose_mounts(tmp_path, monkeypatch, config):
+    example = tmp_path / ".env.example"
+    example.write_text(EXAMPLE)
+    monkeypatch.setattr(local_env, "EXAMPLE", example)
+    monkeypatch.setattr(local_env, "TARGET", tmp_path / ".env")
+
+    assert local_env.main(ADMIN) == 0
+
+    assert (tmp_path / "user_create.json").read_text().strip() == "{}"
+
+
+def test_main_keeps_a_user_create_file_that_exists(tmp_path, monkeypatch, config):
+    example = tmp_path / ".env.example"
+    example.write_text(EXAMPLE)
+    monkeypatch.setattr(local_env, "EXAMPLE", example)
+    monkeypatch.setattr(local_env, "TARGET", tmp_path / ".env")
+    (tmp_path / "user_create.json").write_text('{"keep": 1}')
+
+    assert local_env.main(ADMIN) == 0
+
+    assert (tmp_path / "user_create.json").read_text() == '{"keep": 1}'
+
+
+def test_config_only_and_sqlite_leave_user_create_alone(tmp_path, monkeypatch, config):
+    example = tmp_path / ".env.sqlite.example"
+    example.write_text("JWT_SECRET=\nWORKSPACE_AUTH_TOKEN=\n")
+    monkeypatch.setattr(local_env, "SQLITE_EXAMPLE", example)
+    monkeypatch.setattr(local_env, "SQLITE_TARGET", tmp_path / ".env.sqlite")
+
+    assert local_env.main([*ADMIN, "--config-only"]) == 0
+    assert local_env.main([*ADMIN, "--sqlite", "--force"]) == 0
+
+    assert not (tmp_path / "user_create.json").exists()

@@ -158,7 +158,7 @@ type WidgetState = {
 
 function initBackendsState(
   backends: Backend[], 
-  getBackendWidgets: (id: string) => any
+  getBackendWidgets: (id: string) => unknown
 ): Record<string, BackendState> {
   return backends.reduce((acc, backend) => {
     // If backend has cached widgets, mark as "stale" (connected but not tested)
@@ -190,6 +190,8 @@ function Backends() {
   // Auto-refresh backend connections when user views this page
   useEffect(() => {
     handleRefresh();
+    // Runs once, when the page opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function toggleBackend(backendId: string) {

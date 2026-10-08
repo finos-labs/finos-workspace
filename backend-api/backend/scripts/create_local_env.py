@@ -4,7 +4,8 @@
 ``envs/.env.example``, points the settings at the compose services and fills the secrets with
 random values. ``scripts/cfgs/config.toml`` names the organization and the administrator that
 the first start creates (``scripts.init_users`` reads it); the administrator's password is
-random unless you pass one.
+random unless you pass one. ``user_create.json`` starts empty: compose mounts it into the
+containers, and without a file on the host Docker would put a directory there.
 
     python -m scripts.create_local_env --admin-email <your-email>   # refuses to overwrite
     python -m scripts.create_local_env --admin-email <your-email> --force
@@ -30,6 +31,7 @@ TARGET = ENVS / ".env"
 SQLITE_EXAMPLE = ENVS / ".env.sqlite.example"
 SQLITE_TARGET = ENVS / ".env.sqlite"
 CONFIG = Path(__file__).resolve().parent / "cfgs" / "config.toml"
+USER_CREATE = Path(__file__).resolve().parent.parent / "user_create.json"
 
 WEB_URL = "http://localhost:3000"
 API_URL = "http://localhost:8000"
@@ -169,6 +171,8 @@ def main(argv: list[str] | None = None) -> int:
         seed_config(args.entity_name, args.admin_email, args.admin_password or admin_password())
     )
     CONFIG.chmod(0o600)
+    if not (args.config_only or args.sqlite) and not USER_CREATE.exists():
+        USER_CREATE.write_text("{}\n")
     sys.stdout.write(
         f"Wrote {CONFIG if args.config_only else f'{target} and {CONFIG}'}\n"
         f"Sign in as {args.admin_email}; the password is in {CONFIG.name}.\n"

@@ -96,7 +96,6 @@ const Tooltip = forwardRef<HTMLButtonElement, TooltipProps>(
     }, [
       id,
       childrenMemo,
-      Object.values(contentPropsMemo),
       messageMemo,
       className,
       style,

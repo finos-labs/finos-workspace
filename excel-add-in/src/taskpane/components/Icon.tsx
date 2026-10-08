@@ -2,7 +2,7 @@ import { type SVGProps, forwardRef, memo, useMemo } from "react";
 import { twMerge } from "tailwind-merge";
 import { VERSION } from "~/constants";
 
-export const allIcons = [
+const allIcons = [
   "_", // Placeholder for no icon
   "user-icon",
   "grid-01",

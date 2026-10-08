@@ -7,7 +7,7 @@ interface BaseUser {
   // We don't save this field (feature_entitlements) in the store,
   // but it's part of the response and used upon login
   // to check that the user's plan includes the Excel add-in.
-  feature_entitlements?: Record<string, any>;
+  feature_entitlements?: Record<string, unknown>;
 }
 
 export interface BackendUser extends BaseUser {
