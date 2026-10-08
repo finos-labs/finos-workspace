@@ -34,6 +34,7 @@ The shape Workspace expects is determined by the widget's `type`:
 |---------------|-------------------------|
 | `markdown` | A markdown string (or JSON with the string at the widget's `data.dataKey`) |
 | `html` | An HTML document as text (and, when the widget sets `raw`, the underlying rows as JSON for `raw=true`) |
+| `newsfeed` | A JSON array of articles `{title, date, author, excerpt, body}` (or JSON with the array at the widget's `data.dataKey`); `body` is markdown |
 | `pdf` | The PDF (`application/pdf`), or JSON with a base64 `content` or a `url` |
 | `iframe` | Nothing: the widget's `endpoint` is the URL of the page to embed |
 

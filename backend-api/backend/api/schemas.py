@@ -34,7 +34,6 @@ main_config = ConfigDict(extra="forbid", from_attributes=True)
 source_type = Literal["sdk", "app", "oauth-app", "excel"]
 MetaDataWidgetType = Literal[
     "iframe",
-    "rss_viewer",
     "copilot_table",
     "youtube",
     "widget_studio",

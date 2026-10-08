@@ -50,8 +50,8 @@ export function useSkillSuggestions() {
         fuse
           .search(searchTerm)
           // Drop results that don't partially match the query if ends with a space
-          // "RSS F" -> ["RSS Feeds"]
-          // "RSS Feeds " -> []
+          // "Daily R" -> ["Daily Report"]
+          // "Daily Report " -> []
           .filter((result) => query.length <= result.item.slashText.length)
           .map((result) => result.item)
       );

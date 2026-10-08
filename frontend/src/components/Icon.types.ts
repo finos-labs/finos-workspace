@@ -195,7 +195,6 @@ export const allIcons = [
   "repeat-04",
   "robot-copilot",
   "rocket-02",
-  "rss-01",
   "safe-check",
   "search",
   "search",

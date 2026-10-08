@@ -303,25 +303,6 @@ describe("RightSideActions", () => {
         id: "test-id",
       });
     });
-
-    it("maps rss_feeds type to rss dcTab", async () => {
-      render(
-        <RightSideActions
-          selectionId="selection-1"
-          id="test-id"
-          type="others"
-          parentType="rss_feeds"
-        />,
-      );
-
-      await clickIconButton("icon-pencil-02");
-
-      expect(mockSetOpen).toHaveBeenCalledWith(true, {
-        mode: "edit",
-        dcTab: "rss",
-        id: "test-id",
-      });
-    });
   });
 
   describe("delete action", () => {

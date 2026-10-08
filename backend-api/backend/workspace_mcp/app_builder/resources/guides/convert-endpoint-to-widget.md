@@ -32,6 +32,7 @@ Match the response shape to a widget type. See `workspace://specs/widget-types` 
 |------------------------|-------------|
 | Markdown string, or JSON that holds one at a known path | `markdown` |
 | An HTML document | `html` |
+| Array of articles `{title, date, author, excerpt, body}` | `newsfeed` |
 | A PDF (bytes, or JSON with base64 `content` or a `url`) | `pdf` |
 | A page that already has a URL | `iframe` |
 | Array of row objects, or numbers meant for a table or chart | None of these. Wrap the rows in an `html` or `markdown` response (a table in the document), and keep the rows behind `?raw=true` with `"raw": true` on an `html` widget |
@@ -62,6 +63,7 @@ If a param depends on another (e.g. `city` depends on `country`), wire it via `o
 
 - `markdown`: return the markdown string. If the endpoint returns JSON, set `"data": { "dataKey": "path.to.text" }` on the widget so Workspace reads the string from that path.
 - `html`: return a complete HTML document that reads well without scripts, and honor `theme=dark|light`. If the document is built from rows, set `"raw": true` on the widget and return those rows (JSON array of objects) when called with `raw=true`.
+- `newsfeed`: return a JSON array of articles `{ "title", "date", "author", "excerpt", "body" }`, with `body` in markdown and `date` as an ISO 8601 string. If the array sits inside an object, set `"data": { "dataKey": "path.to.articles" }` on the widget.
 - `pdf`: return `application/pdf`, or JSON `{ "data_format": { "data_type": "pdf", "filename": "report.pdf" }, "content": "<base64>" }` (or `"url"` instead of `"content"`).
 - `iframe`: no response to shape; `endpoint` is the page URL.
 

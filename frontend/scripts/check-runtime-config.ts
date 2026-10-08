@@ -26,15 +26,12 @@ const rows = table[1]
     return { path: `${group}.${field}`, group, field, variable, type };
   });
 
-// For each type: a value to set in the environment, the value config.js must
-// then hold, and, when the schema adds to it, the value the schema returns.
-const feed = { tag: "a", source: "b", url: "https://example.org/feed" };
-const samples: Record<string, [string, unknown, unknown?]> = {
+// For each type: a value to set in the environment and the value config.js must then hold.
+const samples: Record<string, [string, unknown]> = {
   string: ['a "quoted" \\ value', 'a "quoted" \\ value'],
   bool: ["false", false],
   list: [" One,two ,,", ["one", "two"]],
   theme: ["light", "light"],
-  json: [JSON.stringify([feed]), [feed], [{ ...feed, enabled: true }]],
 };
 
 function render(env: Record<string, string>): Config {
@@ -92,10 +89,9 @@ if (!parsed.success) {
   const data = parsed.data as Config;
   for (const row of rows) {
     const expected = JSON.stringify(samples[row.type]?.[1]);
-    const parsedExpected = JSON.stringify(samples[row.type]?.[2] ?? samples[row.type]?.[1]);
     if (JSON.stringify(written[row.group]?.[row.field]) !== expected) {
       errors.push(`${row.path}: ${row.variable} is not written as ${expected}`);
-    } else if (JSON.stringify(data[row.group]?.[row.field]) !== parsedExpected) {
+    } else if (JSON.stringify(data[row.group]?.[row.field]) !== expected) {
       errors.push(`${row.path}: the schema changes the written value`);
     }
   }
@@ -105,7 +101,6 @@ if (!parsed.success) {
 for (const [variable, value, what] of [
   ["AUTHENTICATION_ALLOW_EMAIL_LOGIN", "yes", "boolean"],
   ["UI_DEFAULT_THEME", "blue", "theme"],
-  ["RSS_DEFAULT_FEEDS", "not a list", "JSON array"],
 ]) {
   try {
     render({ [variable]: value });

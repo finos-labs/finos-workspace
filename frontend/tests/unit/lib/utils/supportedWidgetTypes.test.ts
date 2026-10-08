@@ -11,25 +11,33 @@ const widget = (type?: string) => ({
 });
 
 describe("the widget types this Workspace renders", () => {
-  it("renders markdown, html, iframe and pdf", () => {
-    expect([...WidgetVizTypes].sort()).toEqual(["html", "iframe", "markdown", "pdf"]);
+  it("renders markdown, html, iframe, newsfeed and pdf", () => {
+    expect([...WidgetVizTypes].sort()).toEqual([
+      "html",
+      "iframe",
+      "markdown",
+      "newsfeed",
+      "pdf",
+    ]);
   });
 
-  it("does not know newsfeed, note or rich_note as a widget type of a backend", () => {
-    for (const type of ["newsfeed", "note", "rich_note", "table"]) {
+  it("does not know note, rich_note or table as a widget type of a backend", () => {
+    for (const type of ["note", "rich_note", "table"]) {
       expect(isWidgetVizType(type)).toBe(false);
     }
     expect(isWidgetVizType("markdown")).toBe(true);
+    expect(isWidgetVizType("newsfeed")).toBe(true);
   });
 
-  it("has a component for each widget the Workspace places itself", () => {
-    expect(getWidgetComponent("markdown")).toBeDefined();
-    expect(getWidgetComponent("rss_viewer")).toBeDefined();
+  it("has a component for each widget the Workspace renders", () => {
+    for (const type of WidgetVizTypes) {
+      expect(getWidgetComponent(type)).toBeDefined();
+    }
     expect(getWidgetComponent("rich_note" as never)).toBeUndefined();
-    expect(getWidgetComponent("newsfeed" as never)).toBeUndefined();
+    expect(getWidgetComponent("rss_viewer" as never)).toBeUndefined();
   });
 
-  it("keeps a backend's markdown widgets and leaves out the types it cannot render", () => {
+  it("keeps a backend's markdown and newsfeed widgets and leaves out the types it cannot render", () => {
     const { supported, unsupported } = partitionSupportedWidgets({
       notes: widget("markdown"),
       headlines: widget("newsfeed"),
@@ -38,8 +46,8 @@ describe("the widget types this Workspace renders", () => {
       untyped: widget(),
     } as never);
 
-    expect(Object.keys(supported)).toEqual(["notes"]);
-    expect(unsupported).toEqual(["headlines", "memo", "prices", "untyped"]);
+    expect(Object.keys(supported)).toEqual(["notes", "headlines"]);
+    expect(unsupported).toEqual(["memo", "prices", "untyped"]);
   });
 
   it("hands an entry that is not a widget on, to be reported as invalid", () => {

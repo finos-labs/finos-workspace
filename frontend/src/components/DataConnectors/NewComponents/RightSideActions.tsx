@@ -176,12 +176,7 @@ export const RightSideActions = ({
       e.stopPropagation();
       setOpen(true, {
         mode: "edit",
-        dcTab:
-          typeToEdit === "websites"
-            ? "website"
-            : typeToEdit === "rss_feeds"
-              ? "rss"
-              : (typeToEdit as DcTabT),
+        dcTab: typeToEdit === "websites" ? "website" : (typeToEdit as DcTabT),
         id,
       });
     },

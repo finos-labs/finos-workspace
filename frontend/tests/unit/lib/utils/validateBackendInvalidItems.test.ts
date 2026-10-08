@@ -196,7 +196,7 @@ describe("the warning about widget types that are not rendered", () => {
     const message = result.templateWarningMessage ?? "";
     expect(message).toContain("does not render their widget type: `prices`, `untyped`");
     expect(message).toContain(
-      "Supported widget types: `html`, `iframe`, `markdown`, `pdf`",
+      "Supported widget types: `html`, `iframe`, `markdown`, `newsfeed`, `pdf`",
     );
     expect(message).toContain("A widget with no `type` is a table");
   });

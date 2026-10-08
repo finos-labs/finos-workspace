@@ -373,7 +373,7 @@ const DefaultSettings = {
   showSchema: true,
 } as const;
 
-const ValidWidgetIds = ["iframe", "rss_viewer", "file"];
+const ValidWidgetIds = ["iframe", "file"];
 
 // Widget data larger than this many cells is not sent to the Copilot as context
 const TOTAL_CELL_LIMIT = 500_000;

@@ -46,7 +46,7 @@ Walk these checks before debugging individual widgets:
 - `widgets.json` is an object. Every entry has `name`, `type`, `endpoint`.
 - `apps.json` is an array. Every layout item uses `i`, not `id`. Every `i` matches a `widgets.json` key.
 - Layout coordinates are on the 40-column grid; widgets don't overlap.
-- Every `type` is one of `markdown`, `html`, `pdf`, `iframe`. A widget of another type is left out of the catalog; Workspace names it in a warning.
+- Every `type` is one of `markdown`, `html`, `newsfeed`, `pdf`, `iframe`. A widget of another type is left out of the catalog; Workspace names it in a warning.
 
 See `workspace://validation/common-errors`.
 
@@ -62,6 +62,7 @@ GET <backend-url><widget.endpoint>
 
 - `markdown` → a markdown string.
 - `html` → an HTML document; if the widget sets `raw`, `?raw=true` should return the underlying rows as JSON.
+- `newsfeed` → a JSON array of articles.
 - `pdf` → the PDF, or JSON with a base64 `content` or a `url`.
 - `iframe` → the `endpoint` is a page URL that a browser can open (and that allows being embedded).
 

@@ -118,7 +118,7 @@ export function isLoggedIn(
   return "uuid" in response && response.uuid !== undefined && response.status === 200;
 }
 
-export type MetaDataWidgetType = "iframe" | "rss_viewer" | "html";
+export type MetaDataWidgetType = "iframe" | "html";
 
 export type WidgetMetadataResponse = {
   widgetId: string;

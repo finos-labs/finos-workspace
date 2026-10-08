@@ -31,7 +31,7 @@ import {
 import { isExcludedWidgetId } from "../state/featureFlags";
 
 /** The built-in widgets every entity can add (the widget search shows them under "All"). */
-export const CORE_WIDGET_IDS = ["rss_viewer", "navigation_bar", "iframe", "html"];
+export const CORE_WIDGET_IDS = ["navigation_bar", "iframe", "html"];
 
 // biome-ignore format: off
 export type WidgetsIds = Extract<keyof typeof WIDGETS, string> | `${string}-${number | string}`;
@@ -267,11 +267,10 @@ export function getCleanWidgetId(
     ?.replace(/shared_file-.*/, "file")
     ?.replace(/file-.*/, "file")
     ?.replace(/iframe-.*/, "iframe")
-    ?.replace(/rss_viewer-.*/, "rss_viewer")
     ?.replace(/html-.*/, "html");
 }
 
-const WIDGET_ID_CLEANING = ["iframe-", "shared_file-", "file-", "rss_viewer-", "html-"];
+const WIDGET_ID_CLEANING = ["iframe-", "shared_file-", "file-", "html-"];
 
 const WIDGET_ID_CLEANING_REGEX = new RegExp(`^(${WIDGET_ID_CLEANING.join("|")})`);
 
@@ -305,7 +304,7 @@ export function processWidgetId(
   };
 }
 
-export const METADATA_WIDGETS = ["websites", "rss_feeds", "website", "rss", "html"];
+export const METADATA_WIDGETS = ["websites", "website", "html"];
 
 /**
  * Handles the deletion of a widget based on its type and ID.

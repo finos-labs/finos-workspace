@@ -8,15 +8,6 @@
     "widgetId": "iframe",
     "connectionType": "websites"
   },
-  "rss_viewer": {
-    "name": "RSS / Atom Feed",
-    "description": "View and manage RSS feeds",
-    "category": "Others",
-    "subCategory": "Utils",
-    "widgetId": "rss_viewer",
-    "connectionType": "rss_feeds",
-    "disableRetrievalForCopilot": false
-  },
   "navigation_bar": {
     "name": "Navigation Bar",
     "description": "Create nested tabs inside the main tab for navigation.",

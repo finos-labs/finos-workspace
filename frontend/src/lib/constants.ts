@@ -1,6 +1,5 @@
 import tlds from "tlds";
 import { getConfig } from "./runtimeConfig";
-import type { RssFeedConfig } from "./runtimeConfigSchema";
 import type { Copilot } from "./state/copilot";
 
 export const VERSION = import.meta.env.VITE_RELEASE_VERSION;
@@ -285,8 +284,6 @@ export function getDefaultCopilot(): Copilot {
   }
   return _defaultCopilot;
 }
-
-export type RSSFeed = RssFeedConfig;
 
 export const butterflyTypes = [
   "Azure Morpho",

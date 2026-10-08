@@ -10,7 +10,7 @@
 
 - #### Dashboards and widgets
 
-  Build dashboards from Markdown, HTML, iFrame, RSS reader and PDF viewer widgets, and from every widget that your own backends provide. Save a dashboard as an app and share it with others.
+  Build dashboards from Markdown, HTML, iFrame, news feed and PDF viewer widgets, and from every widget that your own backends provide. Save a dashboard as an app and share it with others.
 
 ---
 

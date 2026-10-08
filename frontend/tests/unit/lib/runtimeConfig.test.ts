@@ -86,7 +86,6 @@ describe("getConfig", () => {
       copilot: {},
       ui: {},
       data: {},
-      rss: {},
       links: {},
       contact: {},
       whiteLabel: {},
@@ -163,7 +162,6 @@ describe("getConfig", () => {
       copilot: {},
       ui: {},
       data: {},
-      rss: {},
       links: {},
       contact: {},
       whiteLabel: {},
@@ -176,8 +174,6 @@ describe("getConfig", () => {
     expect(cfg.ui.defaultTheme).toBe("dark");
     expect(cfg.ui.showMarketplace).toBe(true);
     expect(cfg.urls.marketplace).toBe("");
-    expect(cfg.urls.rssProxy).toBe("");
-    expect(cfg.rss.defaultFeeds).toEqual([]);
     expect(cfg.links.docsUrl).toBe("");
     expect(cfg.contact.supportEmail).toBe("");
     expect(cfg.whiteLabel.name).toBe("Workspace");

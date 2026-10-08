@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 
-export type DcTabT = "backend" | "file" | "website" | "rss";
+export type DcTabT = "backend" | "file" | "website";
 
 type DataConnectorContextType = {
   inDashboard: boolean;

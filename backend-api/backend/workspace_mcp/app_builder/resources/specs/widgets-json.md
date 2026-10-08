@@ -34,13 +34,13 @@ Each value is an object. The high-leverage fields:
 | Field | Required | Notes |
 |-------|----------|-------|
 | `name` | Yes | Display title shown on the widget. |
-| `type` | Yes | One of `markdown`, `html`, `pdf`, `iframe`. See `workspace://specs/widget-types`. |
+| `type` | Yes | One of `markdown`, `html`, `newsfeed`, `pdf`, `iframe`. See `workspace://specs/widget-types`. |
 | `endpoint` | Yes | Path on this backend that serves the widget's data. |
 | `description` | Recommended | Tooltip text, and the main signal the AI Agent uses to find the widget. |
 | `category` / `subCategory` | Optional | Grouping in the widget catalog. |
 | `gridData` | Optional | Default placement hint as `{w, h}`. Not the app layout — see below. |
 | `params` | Optional | Array of parameter definitions. See `workspace://specs/widget-parameters`. |
-| `data` | Optional | Type-specific config. For `markdown`, `data.dataKey` names the path of the string inside a JSON response. |
+| `data` | Optional | Type-specific config. For `markdown`, `data.dataKey` names the path of the string inside a JSON response; for `newsfeed`, the path of the array of articles. |
 | `source` | Optional | Array of source labels, e.g. `["API"]`. |
 | `raw` | Optional | `true` when the endpoint also answers `raw=true` with the underlying rows as JSON (`html` widgets): Workspace then offers a toggle to the data. |
 | `runButton` | Optional | When `true`, the widget waits for the user to click Run before fetching. Default `false`. Only set `true` for heavy work (>5 s). |
@@ -55,7 +55,7 @@ Unknown keys are tolerated by some Workspace builds and ignored by others — do
 Common mistakes:
 
 - Returning an array instead of an object.
-- Setting a `type` other than the four above — the widget is left out of the catalog.
+- Setting a `type` other than the five above — the widget is left out of the catalog.
 - Setting `defaultViz` — deprecated legacy field, never emit it.
 
 ## Endpoint path

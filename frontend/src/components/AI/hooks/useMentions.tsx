@@ -301,8 +301,8 @@ export function useMentions() {
           .search(sequence)
           .map((result) => {
             // Drop results that don't partially match the sequence if ends with a space
-            // "RSS F" -> ["RSS Feeds"]
-            // "RSS Feeds " -> []
+            // "Daily R" -> ["Daily Report"]
+            // "Daily Report " -> []
             if (sequence.length > result.item.name.length) return null;
             return result.item;
           })

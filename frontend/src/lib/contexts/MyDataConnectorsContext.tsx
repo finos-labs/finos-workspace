@@ -65,23 +65,6 @@ export const createDashboardWidget = (
         source: widget.source ?? undefined,
         connectionType: "file" as const,
       };
-    case "rss":
-      return {
-        id: uuidv4(),
-        widgetId: `rss_viewer-${widget.id}`,
-        name: widget.name,
-        description: widget.description,
-        category: widget.category ?? "Others",
-        subCategory: widget.subCategory,
-        source: widget.source ?? undefined,
-        type: "custom",
-        external: true,
-        storage: {
-          feeds: widget.storage?.feeds,
-        },
-        data: {},
-        connectionType: "widgetMetadata" as const,
-      };
     case "website":
       return {
         id: uuidv4(),
@@ -356,17 +339,6 @@ export function createAllElements(params: {
       type: "others",
       items: withOthers
         ? [
-            {
-              type: "rss",
-              name: "RSS Feeds",
-              widgets: widgetMetadata
-                ?.filter((item) => item.widgetType === "rss_viewer")
-                ?.map((item) => ({
-                  ...item,
-                  id: item.widgetId,
-                  selectionId: `rss,${item.widgetId}`,
-                })),
-            },
             {
               type: "website",
               name: "Iframes",

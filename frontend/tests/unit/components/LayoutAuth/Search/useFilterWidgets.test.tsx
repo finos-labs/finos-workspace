@@ -30,7 +30,7 @@ describe("useFilterWidgets", () => {
       const widgets = [
         createMockWidget({ widgetId: "iframe", name: "Stock Chart" }),
         createMockWidget({
-          widgetId: "rss_viewer",
+          widgetId: "html",
           name: "Earnings Calendar",
         }),
       ];
@@ -256,7 +256,7 @@ describe("useFilterWidgets", () => {
           name: "Widget A",
         }),
         createMockWidget({
-          widgetId: "rss_viewer",
+          widgetId: "html",
           category: "Equity",
           subCategory: "Alpha",
           name: "Widget B",
@@ -278,7 +278,7 @@ describe("useFilterWidgets", () => {
           name: "Zebra Widget",
         }),
         createMockWidget({
-          widgetId: "rss_viewer",
+          widgetId: "html",
           category: "Equity",
           subCategory: "Charts",
           name: "Alpha Widget",

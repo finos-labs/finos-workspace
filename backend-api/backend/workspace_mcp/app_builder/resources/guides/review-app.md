@@ -28,7 +28,7 @@ If any of these are wrong, fix before reviewing further.
 
 - Top level is an object keyed by widget id.
 - Each widget has `name`, `type`, `endpoint`.
-- `type` is one of the four types this Workspace renders: `markdown`, `html`, `pdf`, `iframe`. No invented aliases, and no types of the wider protocol (`table`, `chart`, `metric`, ...).
+- `type` is one of the five types this Workspace renders: `markdown`, `html`, `newsfeed`, `pdf`, `iframe`. No invented aliases, and no types of the wider protocol (`table`, `chart`, `metric`, ...).
 - Every param has `paramName`, `type`, `label`, `description`, and a sensible `value`.
 - Param types match shape: `boolean` for toggles, `number` for free-form integers, `date` for dates, `endpoint` for dropdowns from a backend.
 - Dropdown option objects are simple unless an advanced picker is intentional: usually `{label, value}`. Do not add `extraInfo` by default.
@@ -56,8 +56,8 @@ See `workspace://specs/apps-json`.
 ## 4. Layout and widget endpoint compatibility
 
 - Coordinates land on the 40-column grid; widgets don't overlap.
-- Tab heights make sense per type (markdown 8–12, html 12–15, pdf 15–20).
-- Each widget's data endpoint is reachable and returns the shape its `type` expects (markdown → string, html → document, pdf → file or base64 JSON).
+- Tab heights make sense per type (markdown 8–12, html 12–15, newsfeed 12–15, pdf 15–20).
+- Each widget's data endpoint is reachable and returns the shape its `type` expects (markdown → string, html → document, newsfeed → array of articles, pdf → file or base64 JSON).
 - Endpoints honor the params their `widgets.json` declares.
 
 ## 4.5 Semantic data correctness

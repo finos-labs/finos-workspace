@@ -8,7 +8,6 @@ import Icon from "../Icon";
 import type { IconId } from "../Icon.types";
 import BackendContent from "./NewComponents/Backend/Content";
 import FileContent from "./NewComponents/File/Content";
-import RSSContent from "./NewComponents/RSS/Content";
 import WebsiteContent from "./NewComponents/Website/Content";
 import { type DcTabT, useDataConnectorContext } from "./Providers/DataConnectorContext";
 
@@ -45,7 +44,6 @@ function MenuTab({
 const dataTypes = [
   { id: "file", label: "File", icon: "file-attachment-01" },
   { id: "website", label: "Iframe", icon: "globe-01" },
-  { id: "rss", label: "RSS / Atom Feed", icon: "rss-01" },
 ] as const;
 
 export const DataConnectionTabs = ({
@@ -114,13 +112,6 @@ export const DataConnectionTabs = ({
         description="Add any embeddable iframe URL (e.g. a Streamlit app) to your workspace."
       >
         <WebsiteContent />
-      </Content>
-      <Content
-        value="rss"
-        title="RSS / Atom Feed"
-        description="Add any RSS or Atom feed to your workspace."
-      >
-        <RSSContent />
       </Content>
     </TabsPrimitive.Root>
   );

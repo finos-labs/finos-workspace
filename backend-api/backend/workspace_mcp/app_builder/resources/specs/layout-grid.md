@@ -35,6 +35,7 @@ Use `i` for the widget id (not `id`). Use `x`, `y`, `w`, `h` directly (not neste
 |-------------|------------------|
 | `markdown` | 8–12 |
 | `html` | 12–15 |
+| `newsfeed` | 12–15 |
 | `pdf` | 15–20 |
 | `iframe` | 12–20 |
 

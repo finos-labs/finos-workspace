@@ -51,7 +51,7 @@ export function useGetAppWidgets() {
   const builtInJsonWidgets = useMemo(
     () => jsonWidgetsToWidgets(API_WIDGETS),
     [API_WIDGETS],
-  ); // the built-in widgets from widgets.json: iframe, rss_viewer, navigation_bar
+  ); // the built-in widgets from widgets.json: iframe, navigation_bar
 
   const hubWidgets = useMemo(() => storedFilesToWidgets(storedFiles), [storedFiles]); // images, pdfs, etc
 

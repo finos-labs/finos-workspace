@@ -3,15 +3,15 @@ import type { WidgetsIds } from "~/lib/utils/widget";
 
 const MarkdownFC = lazy(() => import("./custom/Markdown"));
 const IframeFC = lazy(() => import("./Iframe"));
-const RSSViewerFC = lazy(() => import("./RssViewer"));
+const NewsFC = lazy(() => import("./custom/News"));
 const PdfViewerFC = lazy(() => import("./PdfViewer"));
 const HtmlViewerFC = lazy(() => import("./custom/HtmlViewer"));
 const NavigationBarFC = lazy(() => import("./ui/NavigationBar"));
 
 export const WidgetComponentMap = {
   iframe: "Iframe",
-  rss_viewer: "RSSViewer",
   markdown: "Markdown",
+  newsfeed: "News",
   pdf: "PdfViewer",
   html: "HtmlViewer",
   navigation_bar: "NavigationBar",
@@ -20,7 +20,7 @@ export const WidgetComponentMap = {
 export const Widgets = {
   Markdown: MarkdownFC,
   Iframe: IframeFC,
-  RSSViewer: RSSViewerFC,
+  News: NewsFC,
   PdfViewer: PdfViewerFC,
   HtmlViewer: HtmlViewerFC,
   NavigationBar: NavigationBarFC,

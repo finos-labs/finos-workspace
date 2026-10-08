@@ -20,8 +20,8 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 |---------|-------|-----|
 | `widgets.json must be object` | Top-level is `[ ... ]` | Change to `{ "widget_id": { ... } }` |
 | `Missing required field: name` | Widget has no `name` | Add `"name": "Widget Name"` |
-| `Invalid widget type: xxx` | Typo or invented alias | Use a type this Workspace renders: `markdown`, `html`, `pdf`, `iframe` |
-| Widget missing from the catalog, with a warning that its type is not rendered | The widget has a type of the wider protocol (`table`, `chart`, `metric`, ...) or none | Change it to one of the four types |
+| `Invalid widget type: xxx` | Typo or invented alias | Use a type this Workspace renders: `markdown`, `html`, `newsfeed`, `pdf`, `iframe` |
+| Widget missing from the catalog, with a warning that its type is not rendered | The widget has a type of the wider protocol (`table`, `chart`, `metric`, ...) or none | Change it to one of the five types |
 | `gridData.w out of range` | Width too small/large | Use `w` between 10 and 40 |
 | Widget endpoint 404 | Path mismatch | Confirm `endpoint` matches a real route |
 
@@ -61,7 +61,7 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 | CORS error in browser | Backend doesn't allow the Workspace origin | Add the origin the Workspace is served from, and `http://localhost:1420` for local development |
 | `Mixed content blocked` | HTTPS Workspace can't reach HTTP backend | Serve the backend over HTTPS in production |
 | 404 on widget endpoint | Path typo or missing route | Confirm the route is registered; match `endpoint` exactly |
-| Wrong response shape | Endpoint returns the wrong kind of response for the widget type | `markdown` → string; `html` → HTML document; `pdf` → file or base64 JSON |
+| Wrong response shape | Endpoint returns the wrong kind of response for the widget type | `markdown` → string; `html` → HTML document; `newsfeed` → array of articles; `pdf` → file or base64 JSON |
 | Garbled non-ASCII | JSON file read with OS locale (cp1252 on Windows) | Open files with `encoding="utf-8"` (Python) or your language's UTF-8 equivalent |
 
 ## State and styling

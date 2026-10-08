@@ -46,6 +46,8 @@ For `markdown` widgets, the agent reads the same text the user sees.
 
 For `html` widgets, the agent **does not parse the HTML** when it can avoid it: if the widget sets `raw`, the agent calls the endpoint with `raw=true` and reads the underlying rows (a JSON array of row objects). Set `raw` on every `html` widget that is generated from data, and make the endpoint return those rows. The same toggle powers the user-facing "view the data" affordance.
 
+For `newsfeed` widgets, the agent reads the articles the way the renderer does: it calls the endpoint and reads the array.
+
 For `pdf` widgets, the agent reads the document's text.
 
 ## Make responses agent-readable

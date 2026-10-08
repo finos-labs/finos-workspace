@@ -285,7 +285,6 @@ describe("Zod Schemas from app.ts", () => {
     it("should reject widget types this Workspace does not render", () => {
       expect(widgetTypesSchema.safeParse("table").success).toBe(false);
       expect(widgetTypesSchema.safeParse("chart").success).toBe(false);
-      expect(widgetTypesSchema.safeParse("newsfeed").success).toBe(false);
       expect(widgetTypesSchema.safeParse("note").success).toBe(false);
       expect(widgetTypesSchema.safeParse("rich_note").success).toBe(false);
     });

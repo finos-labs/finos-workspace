@@ -103,11 +103,6 @@ const backendNameToWidget: Record<string, DeepPartial<WidgetT>[]> = {
       params: [{ paramName: "symbol", type: "text" }],
       gridData: { w: 20, h: 10, minW: 12, minH: 4 },
     },
-    {
-      widgetId: "rss_viewer",
-      sourceName: "Workspace",
-      name: "RSS Reader",
-    },
   ],
   "My Custom Backend": [
     {
@@ -986,39 +981,6 @@ describe("useWorkspaceBridgeCommandHandler", () => {
     expect(response?.error?.message).toContain("__no_tab__");
   });
 
-  it("omits unsupported plain-create widgets from the available catalog", async () => {
-    const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
-
-    let response: Awaited<ReturnType<typeof result.current>> | undefined;
-    await act(async () => {
-      response = await result.current({
-        command: "list_available_widgets",
-      } as never);
-    });
-
-    expect(response).toMatchObject({
-      ok: true,
-      command: "list_available_widgets",
-      data: {
-        widgets: expect.arrayContaining([
-          expect.objectContaining({ widget_id: "price_history" }),
-          expect.objectContaining({
-            origin: "My Custom Backend",
-            backend_name: "My Custom Backend",
-            widget_id: "company_filings",
-          }),
-        ]),
-      },
-    });
-    expect(response?.data).not.toEqual(
-      expect.objectContaining({
-        widgets: expect.arrayContaining([
-          expect.objectContaining({ widget_id: "rss_viewer" }),
-        ]),
-      }),
-    );
-  });
-
   it("loads schemas for backend widgets using the listed origin", async () => {
     const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
 
@@ -1117,31 +1079,6 @@ describe("useWorkspaceBridgeCommandHandler", () => {
             }),
           ],
         }),
-      },
-    });
-  });
-
-  it("rejects unsupported plain-create widgets explicitly", async () => {
-    const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
-
-    let response: Awaited<ReturnType<typeof result.current>> | undefined;
-    await act(async () => {
-      response = await result.current({
-        command: "create_widget",
-        dashboard_id: "dashboard-1",
-        backend_name: "Workspace",
-        widget_id: "rss_viewer",
-      } as never);
-    });
-
-    expect(mockCreateWidget).not.toHaveBeenCalled();
-    expect(response).toMatchObject({
-      ok: false,
-      command: "create_widget",
-      error: {
-        code: "invalid_request",
-        message:
-          "create_widget does not support 'rss_viewer'. rss_viewer requires feed bootstrap that is not yet exposed through create_widget.",
       },
     });
   });

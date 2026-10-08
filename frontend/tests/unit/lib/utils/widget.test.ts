@@ -270,10 +270,6 @@ describe("Widget Utility Functions", () => {
       expect(getCleanWidgetId("iframe-abc123")).toBe("iframe");
     });
 
-    it("should clean rss_viewer prefix", () => {
-      expect(getCleanWidgetId("rss_viewer-feed123")).toBe("rss_viewer");
-    });
-
     it("should not know a rich_note prefix any more", () => {
       expect(getCleanWidgetId("rich_note-note123")).toBe("rich_note-note123");
     });
@@ -301,10 +297,6 @@ describe("Widget Utility Functions", () => {
     it("should extract UUID from file widget ID", () => {
       expect(getUUIDFromWidgetId("file-file123")).toBe("file123");
       expect(getUUIDFromWidgetId("shared_file-shared123")).toBe("shared123");
-    });
-
-    it("should extract UUID from rss_viewer widget ID", () => {
-      expect(getUUIDFromWidgetId("rss_viewer-feed123")).toBe("feed123");
     });
 
     it("should extract UUID from html widget ID", () => {
@@ -347,7 +339,6 @@ describe("Widget Utility Functions", () => {
     describe("METADATA_WIDGETS", () => {
       it("should contain expected widget types", () => {
         expect(METADATA_WIDGETS).toContain("websites");
-        expect(METADATA_WIDGETS).toContain("rss_feeds");
         expect(METADATA_WIDGETS).toContain("html");
         expect(METADATA_WIDGETS).not.toContain("notes");
       });
@@ -355,7 +346,6 @@ describe("Widget Utility Functions", () => {
       it("should include legacy widget names", () => {
         expect(METADATA_WIDGETS).not.toContain("note");
         expect(METADATA_WIDGETS).toContain("website");
-        expect(METADATA_WIDGETS).toContain("rss");
       });
     });
 

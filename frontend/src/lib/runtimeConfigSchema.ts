@@ -16,20 +16,6 @@ function coerceBool(v: unknown): boolean | undefined {
   return undefined;
 }
 
-/** A JSON array, given as text (an environment variable) or already parsed. */
-function coerceJsonArray(v: unknown): unknown[] | undefined {
-  if (Array.isArray(v)) return v;
-  if (typeof v === "string" && v.trim()) {
-    try {
-      const parsed: unknown = JSON.parse(v);
-      return Array.isArray(parsed) ? parsed : undefined;
-    } catch {
-      return undefined;
-    }
-  }
-  return undefined;
-}
-
 function coerceStringArray(v: unknown): string[] | undefined {
   if (Array.isArray(v)) return v.map(String);
   if (typeof v === "string" && v.trim()) {
@@ -59,15 +45,6 @@ const boolField = (defaultVal: boolean) =>
 const strArrayField = (defaultVal: string[] = []) =>
   z.preprocess(coerceStringArray, z.array(z.string()).default(defaultVal));
 
-const RssFeedSchema = z.object({
-  tag: z.string(),
-  source: z.string(),
-  url: z.string(),
-  enabled: z.boolean().default(true),
-});
-
-const rssFeedsField = z.preprocess(coerceJsonArray, z.array(RssFeedSchema).default([]));
-
 // ── Schema ─────────────────────────────────────────────────────────────
 
 export const RuntimeConfigSchema = z.object({
@@ -76,8 +53,6 @@ export const RuntimeConfigSchema = z.object({
     ai: z.string().default(""),
     /** A remote marketplace to list apps from. Empty: this deployment's own backend is the marketplace. */
     marketplace: z.string().default(""),
-    /** A proxy that fetches RSS feeds for the browser. Empty: feeds are fetched directly. */
-    rssProxy: z.string().default(""),
   }),
   authentication: z.object({
     allowEmailLogin: boolField(true),
@@ -118,10 +93,6 @@ export const RuntimeConfigSchema = z.object({
   data: z.object({
     allowHtmlJsExecution: boolField(false),
   }),
-  rss: z.object({
-    /** The feeds that a new RSS widget can start from. Empty: the widget starts without any. */
-    defaultFeeds: rssFeedsField,
-  }),
   links: z.object({
     /** Where the documentation lives. Empty: the links to it are hidden. */
     docsUrl: z.string().default(""),
@@ -147,7 +118,6 @@ export const RuntimeConfigSchema = z.object({
 });
 
 export type RuntimeConfig = z.infer<typeof RuntimeConfigSchema>;
-export type RssFeedConfig = z.infer<typeof RssFeedSchema>;
 
 /**
  * The environment variable that sets each setting: `VITE_*` in the browser during
@@ -161,7 +131,6 @@ export const ENV_NAMES = {
     backend: "VITE_BACKEND_URL",
     ai: "VITE_AI_API_URL",
     marketplace: "VITE_MARKETPLACE_URL",
-    rssProxy: "VITE_RSS_PROXY_URL",
   },
   authentication: {
     allowEmailLogin: "VITE_AUTHENTICATION_ALLOW_EMAIL_LOGIN",
@@ -201,9 +170,6 @@ export const ENV_NAMES = {
   },
   data: {
     allowHtmlJsExecution: "VITE_ALLOW_HTML_JS_EXECUTION",
-  },
-  rss: {
-    defaultFeeds: "VITE_RSS_DEFAULT_FEEDS",
   },
   links: {
     docsUrl: "VITE_DOCS_URL",

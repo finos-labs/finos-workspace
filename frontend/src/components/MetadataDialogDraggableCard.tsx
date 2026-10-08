@@ -125,7 +125,7 @@ export function MetadataDialog(props: Props) {
       dispatchSaveState();
       dispatch({ isLoading: true });
       try {
-        let updateOtherDashboardsWidgets = true; // we need this for when creating a metadata item from inside a dashboard. we cannot update all the other elements with widgetId because core widgets created from the search will have widgetId as iframe or rss_viewer, so they would all be updated which is not what we want
+        let updateOtherDashboardsWidgets = true; // we need this for when creating a metadata item from inside a dashboard. we cannot update all the other elements with widgetId because core widgets created from the search will have widgetId as iframe or html, so they would all be updated which is not what we want
         if (isMetadataType(widget, metadata, "file")) {
           // Handle file widget update
           const cleanData = {

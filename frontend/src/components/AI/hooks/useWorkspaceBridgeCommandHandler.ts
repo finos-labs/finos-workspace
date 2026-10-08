@@ -100,14 +100,6 @@ const LAYOUT_UI_ARG_KEYS = new Set([
   "inner_tab",
 ]);
 
-const UNSUPPORTED_MCP_CREATE_WIDGET_REASONS: Record<string, string> = {
-  rss_viewer:
-    "rss_viewer requires feed bootstrap that is not yet exposed through create_widget.",
-};
-const UNSUPPORTED_MCP_CREATE_WIDGET_IDS = new Set(
-  Object.keys(UNSUPPORTED_MCP_CREATE_WIDGET_REASONS),
-);
-
 function errorResult(
   command: string,
   requestId: string | null | undefined,
@@ -424,18 +416,8 @@ function isAvailableWidget(widget: WidgetT): boolean {
   return Boolean(
     widgetId &&
       widgetId !== "navigation_bar" &&
-      !UNSUPPORTED_MCP_CREATE_WIDGET_IDS.has(widgetId) &&
       widget.disableRetrievalForCopilot !== true,
   );
-}
-
-function getUnsupportedCreateWidgetMessage(widgetId: string) {
-  const reason = UNSUPPORTED_MCP_CREATE_WIDGET_REASONS[widgetId];
-  if (!reason) {
-    return null;
-  }
-
-  return `create_widget does not support '${widgetId}'. ${reason}`;
 }
 
 function toGridDataPayload(gridData: unknown) {
@@ -1073,10 +1055,6 @@ async function handleWidgetCommand(
           "invalid_request",
           "create_widget requires dashboard_id, backend_name, and widget_id.",
         );
-      }
-      const unsupportedMessage = getUnsupportedCreateWidgetMessage(command.widget_id);
-      if (unsupportedMessage) {
-        return errorResult("invalid_request", unsupportedMessage);
       }
 
       if (command.dry_run) {

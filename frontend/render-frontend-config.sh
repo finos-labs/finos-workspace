@@ -17,7 +17,6 @@ FIELDS='
 urls backend BACKEND_URL string
 urls ai AI_API_URL string
 urls marketplace MARKETPLACE_URL string
-urls rssProxy RSS_PROXY_URL string
 authentication allowEmailLogin AUTHENTICATION_ALLOW_EMAIL_LOGIN bool
 authentication identityProviders AUTHENTICATION_IDENTITY_PROVIDERS list
 authentication sendMicrosoftIdToken AUTHENTICATION_SEND_MICROSOFT_IDTOKEN bool
@@ -47,7 +46,6 @@ ui showRemoveFromOrg UI_SHOW_REMOVE_FROM_ORG bool
 ui defaultTheme UI_DEFAULT_THEME theme
 ui showMarketplace UI_SHOW_MARKETPLACE bool
 data allowHtmlJsExecution ALLOW_HTML_JS_EXECUTION bool
-rss defaultFeeds RSS_DEFAULT_FEEDS json
 links docsUrl DOCS_URL string
 contact supportEmail SUPPORT_EMAIL string
 whiteLabel name WL_NAME string
@@ -115,12 +113,6 @@ render() {
         case $value in
           light | dark) json="\"$value\"" ;;
           *) fail "$var must be light or dark" ;;
-        esac
-        ;;
-      json)
-        case $value in
-          "["*"]") json=$value ;;
-          *) fail "$var must be a JSON array" ;;
         esac
         ;;
       *) fail "unknown type $type for $var" ;;

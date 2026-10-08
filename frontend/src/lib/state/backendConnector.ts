@@ -37,7 +37,7 @@ import {
   showUnrecognizedKeysToast,
 } from "~/utils/zodErrors";
 import type { UnrecognizedKeysReport, WidgetsType } from "~/utils/zodForms";
-import type { Extension, RSSFeed } from "../constants";
+import type { Extension } from "../constants";
 import type { TabLayout } from "../templates";
 import { createParamDefs, dispatchSaveState, getJsonWidget } from "../utils";
 
@@ -97,7 +97,6 @@ export type WidgetMetadataItem = {
   storage?: {
     autoUpdateMetadataOnRun?: boolean;
     params?: Record<string, string>;
-    feeds?: RSSFeed[];
     [key: string]: unknown;
   };
   category?: string | null;

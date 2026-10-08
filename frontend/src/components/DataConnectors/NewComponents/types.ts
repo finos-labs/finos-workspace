@@ -12,7 +12,6 @@ export type POSSIBLE_SOURCES =
   | "file"
   | "backend"
   | "others"
-  | "rss_feeds"
   | "websites"
   | "ai_artifacts"
   | "html";
@@ -91,8 +90,6 @@ export const SourceMeta = {
   backend: { name: "Backend Widgets", icon: "grid-01" },
   "advanced-backend": { name: "Backends", icon: "grid-01" },
   file: { name: "File Uploads", icon: "file-attachment-01" },
-  rss: { name: "RSS / Atom Feeds", icon: "rss-01" },
-  rss_feeds: { name: "RSS / Atom Feeds", icon: "rss-01" },
   websites: { name: "Iframes", icon: "globe-01" },
   website: { name: "Iframes", icon: "globe-01" },
   html: { name: "HTML", icon: "code-browser", showEdit: false },

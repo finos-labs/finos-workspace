@@ -50,7 +50,7 @@ For each widget:
 
 1. Pick a stable widget id (becomes the dict key and the layout's `i`).
 2. Pick a business-readable `name` and description. The name should describe the metric/question, not the implementation (`Executive ESG KPI Snapshot`, not `KPI Cards`).
-3. Pick the right `type` — `markdown`, `html`, `pdf` or `iframe`. See `workspace://specs/widget-types`. Don't default to `html` for plain prose.
+3. Pick the right `type` — `markdown`, `html`, `newsfeed`, `pdf` or `iframe`. See `workspace://specs/widget-types`. Don't default to `html` for plain prose.
 4. Define the params. See `workspace://specs/widget-parameters`. Use `boolean`, `number`, `date`, `endpoint` types — not `text` dropdowns of "true"/"false".
    - Prefer individual multi-select choices over fake aggregate options such as `All Geographies` or `2020-2024`; default all values selected when the intended starting scope is "all".
    - Keep option objects simple: usually `{label, value}`. Add `category` only when it has a concrete Workspace role.
@@ -76,6 +76,7 @@ For each widget, implement the data endpoint to return the shape the widget type
 
 - Markdown → a markdown string.
 - HTML → an HTML document; support `?raw=true` for the underlying rows when the widget sets `raw`.
+- Newsfeed → a JSON array of articles `{title, date, author, excerpt, body}`.
 - PDF → the file (`application/pdf`), or JSON with a base64 `content` or a `url`.
 - Iframe → nothing: the `endpoint` is the URL of the page to embed.
 
@@ -89,7 +90,7 @@ Before going to the browser:
 - `apps.json` is an array (`[...]`), not an object.
 - Layout `i` matches a key in `widgets.json`.
 - Group `name` uses `Group 1`, `Group 2`, ... unless you have browser-tested descriptive names.
-- Every widget `type` is one of `markdown`, `html`, `pdf`, `iframe`.
+- Every widget `type` is one of `markdown`, `html`, `newsfeed`, `pdf`, `iframe`.
 
 Then run a semantic output pass. Schema-valid is not enough:
 

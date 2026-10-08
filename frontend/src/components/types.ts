@@ -1,6 +1,5 @@
 import type { MutableRefObject } from "react";
 import type { Layout } from "react-grid-layout";
-import type { RSSFeed } from "~/lib/constants";
 import type { InnerTab } from "~/lib/state/app";
 import type { ArtifactT, Citation, QuoteBoundingBox } from "~/lib/state/copilot";
 import type { EditorLanguage, WidgetVizType } from "~/lib/types/app";
@@ -118,7 +117,6 @@ export type WidgetStorage = {
   text?: string;
   scale?: number;
   page?: number;
-  feeds?: RSSFeed[];
   citations?: Citation[];
   artifacts?: ArtifactT[];
   quoteBoundingBoxes?: QuoteBoundingBox[][];

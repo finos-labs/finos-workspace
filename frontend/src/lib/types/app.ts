@@ -294,7 +294,13 @@ export const ParamsSchema = z
   }, ParamDefSchemaArray)
   .default([]);
 
-export const WidgetVizTypes = ["html", "iframe", "markdown", "pdf"] as const;
+export const WidgetVizTypes = [
+  "html",
+  "iframe",
+  "markdown",
+  "newsfeed",
+  "pdf",
+] as const;
 
 const supportedTypesError = WidgetVizTypes.filter((v) => v !== "iframe")
   .map((v) => `\`${v}\``)

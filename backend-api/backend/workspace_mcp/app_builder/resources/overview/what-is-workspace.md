@@ -23,7 +23,7 @@ User-facing nouns. Match them when you write descriptions, titles, and docs.
 | Term | What it is |
 |------|------------|
 | **Dashboard** | A user's working surface. A grid of Widgets plus embedded files, with parameters that synchronize widgets sharing a Group. |
-| **Widget** | A single component (markdown text, an HTML report, a PDF or an embedded page) backed by your endpoint. |
+| **Widget** | A single component (markdown text, an HTML report, a list of articles, a PDF or an embedded page) backed by your endpoint. |
 | **App** | A *pre-built dashboard template* shipped via `apps.json`. Bundles layout, default parameter values, parameter Groups, curated **Prompts**, and (optionally) curated AI Agents. Users open an App from the gallery and land on a working dashboard, not a blank page. |
 | **Prompts** | Curated query suggestions that ship with an App. They surface as starting points for the AI Agent and reference the widgets in the layout. The empty `"prompts": []` you see in app templates is where these go. |
 | **AI Agent** | Built-in assistant that reads the Dashboard's widgets and answers questions across them, runs multi-step analysis, and drops artifacts (text and HTML reports) back into the Dashboard. See `workspace://overview/ai-agent-contract`. |
