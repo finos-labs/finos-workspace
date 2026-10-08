@@ -10,8 +10,6 @@
 admin_cli
 admin_frontend
 on-prem-deploy
-snowflake
-docker/native-backend
 
 # Python build artifacts
 **/__pycache__
@@ -42,9 +40,8 @@ backend/envs/.env.*
 **/dist
 **/.next
 **/.turbo
-terminalpro/playwright-report
-terminalpro/test-results
-terminalpro/src-tauri/target
+frontend/playwright-report
+frontend/test-results
 
 # Editor cruft
 **/.DS_Store

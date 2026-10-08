@@ -7,19 +7,20 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
+from fastapi import BackgroundTasks
 from fastapi.encoders import jsonable_encoder
 from loguru import logger
-from pydantic import BaseModel, SecretStr, field_validator
+from pydantic import BaseModel, Field, SecretStr, field_validator
 from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import base, schemas
 from api.base import clean_email
-from api.helpers import init_trial_mappings
+from api.helpers import create_developer_mapping
 from api.models import Entity, EntityType, PermissionsEntityMap, User
+from routers.app.helpers import insert_entity_data_bundle
+from routers.app.index import process_create_user, register_app_user
 from routers.entity import add_entity, aget_write_db
-from routers.pro.helpers import insert_entity_data_bundle
-from routers.pro.index import process_create_user, register_pro_user
 
 type MaybCoro[T] = Coroutine[Any, Any, T] | T
 
@@ -53,7 +54,8 @@ class EntityConfig(BaseModel):
 
 class Config(BaseModel):
     entity: EntityConfig
-    admins: list[AdminUser] | None = []
+    # The first administrator owns the entity: a config without one is an error
+    admins: list[AdminUser] = Field(min_length=1)
     users: list[UserConfig] | None = []
 
     @field_validator("users", "admins", mode="before", check_fields=False)
@@ -76,18 +78,7 @@ async def call_func[**P, T](
 DEFAULT_DATA_BUNDLE = schemas.DataBundle(
     bundle_name="On-Premise",
     except_widgets=[],
-    except_dashboard_templates=[
-        "calendars",
-        "charting",
-        "countryEconomics",
-        "comparison",
-        "earnings",
-        "etfTemplate",
-        "equity",
-        "equityAnalyst",
-        "news",
-        "onboarding",
-    ],
+    except_dashboard_templates=[],
     except_team_collaboration=None,
     excel_add_in=1,
     data_export=1,
@@ -97,14 +88,6 @@ DEFAULT_DATA_BUNDLE = schemas.DataBundle(
     invite_your_colleagues=0,
     number_copilot_calls_day=10_000,
     total_file_upload_size_gb=10,
-)
-
-DummyAdmin = AdminUser(
-    email="no_admin@entity.com",
-    first_name="No",
-    last_name="Admin",
-    password=SecretStr("INVALID_PASSWORD"),
-    uuid=UUID("11111111-1111-1111-1111-111111111111"),
 )
 
 
@@ -121,9 +104,15 @@ class SetupConfig:
         self.code = config.entity.name[:3].upper()
 
     async def add_entity(self, entity: schemas.EntityPost):
-        return await call_func(add_entity, None, entity, self.db)
+        return await call_func(
+            add_entity,
+            request=None,
+            entity=entity,
+            background_tasks=BackgroundTasks(),
+            db=self.db,
+        )
 
-    async def create_user(self, the_uuid: UUID, email: str) -> User:
+    async def create_user(self, the_uuid: UUID, email: str) -> UUID | bool:
         return await process_create_user(the_uuid, email, self.db)
 
     async def init_admins(self, permissions_uuid: UUID) -> User:
@@ -131,7 +120,7 @@ class SetupConfig:
         for admin in self.config.admins:
             admin_users.append(await self.create_admin(admin, permissions_uuid))
 
-        self.admin_user = admin_users[0] if admin_users else DummyAdmin
+        self.admin_user = admin_users[0]
 
     async def create_admin(self, admin_user: AdminUser, permissions_uuid: UUID) -> User:
         logger.info(f"Checking for admin: {admin_user.email}")
@@ -189,7 +178,7 @@ class SetupConfig:
         query = select(EntityType.uuid).where(EntityType.code == self.code)
         result = await self.db.execute(query)
 
-        main_admin = self.config.admins[0] if self.config.admins else DummyAdmin
+        main_admin = self.config.admins[0]
 
         if (entity_type_uuid := result.scalars().first()) is None:
             query = insert(EntityType).values(
@@ -237,26 +226,21 @@ class SetupConfig:
         user_create = {
             "on_prem_admin_uuid": permissions_map["Admin"],
             "permissions_uuid": permissions_map["User"],
-            "inviting_uuid": self.admin_user.uuid,
-            "inviting_email": self.admin_user.email,
         }
         with USER_CREATE_JSON_PATH.open("w", encoding="utf-8", newline="\n") as f:
             f.write(json.dumps(jsonable_encoder(user_create), indent=4))
 
         for user in self.config.users:
-            user_create = schemas.UserCreateProAdmin(
+            user_create = schemas.UserCreateAppAdmin(
                 email=user.email,
                 permissions_uuid=permissions_map["User"],
                 first_name=user.first_name,
                 last_name=user.last_name,
             )
-            extra_info = schemas.RegisterProUser(
-                inviting_uuid=self.admin_user.uuid,
-                inviting_email=self.admin_user.email,
-            )
+            extra_info = schemas.RegisterAppUser(inviting_uuid=self.admin_user.uuid)
 
             with suppress(Exception):
-                invite_uuid = await register_pro_user(
+                invite_uuid = await register_app_user(
                     self.db, user_create, extra_info, from_oauth=True
                 )
                 if not invite_uuid or not await self.create_user(
@@ -274,7 +258,7 @@ async def setup_configs():
             configs.append(Config(**tomllib.load(f)))
 
     with suppress(Exception):
-        await init_trial_mappings()
+        await create_developer_mapping()
 
     async for db in aget_write_db():
         for config in configs:

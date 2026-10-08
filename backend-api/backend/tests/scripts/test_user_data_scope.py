@@ -116,23 +116,11 @@ def test_insert_order_respects_dependencies(earlier: str, later: str):
     )
 
 
-def test_legacy_chat_table_is_archived_but_not_imported():
-    assert "copilot_chats" in scope.NOT_IMPORTED
-    assert scope.spec_by_table("copilot_chats") is not None
-
-
-def test_all_three_chat_generations_are_exported_by_default():
-    """Chats live in up to three places while the refactor migration runs.
-
-    migrate_duplicate_copilot_chats moves rows from copilot_chat_old into
-    copilot_chat/copilot_messages one user at a time, so an unmigrated account's
-    only copy is the old table. Dropping any of these loses real history.
-    """
+def test_both_chat_tables_are_exported_by_default():
     default = {s.table for s in scope.included_specs()}
 
     assert "copilot_chat" in default
     assert "copilot_messages" in default
-    assert "copilot_chat_old" in default
 
 
 def test_chat_messages_are_scoped_to_the_user_directly():
@@ -143,7 +131,7 @@ def test_chat_messages_are_scoped_to_the_user_directly():
 
 
 def test_describe_covers_both_registries():
-    text = scope.describe(include_history=True, include_legacy=True)
+    text = scope.describe(include_history=True)
     for spec in scope.INCLUDED:
         assert spec.table in text
     for ex in scope.EXCLUDED:

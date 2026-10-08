@@ -1,0 +1,35 @@
+{
+  "iframe": {
+    "name": "Iframe",
+    "description": "Embed an iframe",
+    "category": "Others",
+    "subCategory": "Utils",
+    "keywords": ["iframe", "embed", "webpage", "page", "website", "web"],
+    "widgetId": "iframe",
+    "connectionType": "websites"
+  },
+  "rss_viewer": {
+    "name": "RSS / Atom Feed",
+    "description": "View and manage RSS feeds",
+    "category": "Others",
+    "subCategory": "Utils",
+    "widgetId": "rss_viewer",
+    "connectionType": "rss_feeds",
+    "disableRetrievalForCopilot": false
+  },
+  "navigation_bar": {
+    "name": "Navigation Bar",
+    "description": "Create nested tabs inside the main tab for navigation.",
+    "widgetId": "navigation_bar",
+    "category": "Others",
+    "subCategory": "Utils",
+    "gridData": {
+      "w": 40,
+      "h": 2,
+      "minW": 40,
+      "maxH": 2,
+      "minH": 2
+    },
+    "disableRetrievalForCopilot": true
+  }
+}

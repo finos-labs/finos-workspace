@@ -14,9 +14,7 @@ export default function Page() {
 
         <div className="mt-6 w-full space-y-3">
           <p>
-            Follow this{" "}
-            <Link to="https://pro.openbb.co/forgot-password">link</Link> to
-            reset your password.
+            Ask the administrator of your Workspace to reset your password.
           </p>
           <p>
             <Link to="/auth/login">&lt; Back to login</Link>

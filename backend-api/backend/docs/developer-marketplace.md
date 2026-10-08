@@ -1,18 +1,18 @@
 # Marketplace Developer Guide
 
-This guide walks you through listing and testing your app in the OpenBB marketplace before it goes live.
+This guide walks you through listing and testing your app in the marketplace before it goes live. In the examples, `<API_URL>` is the base URL of the Workspace backend.
 
 ## How It Works
 
 1. You create your app via the API — it enters **development** mode
 2. Only you can see it in the marketplace (log in to verify)
 3. You iterate — update descriptions, fix your backend URLs, test widgets
-4. When you're happy, message us: **"Version X.X is ready to publish"**
-5. We review and publish it to all users
+4. When you're happy, tell the marketplace administrators: **"Version X.X is ready to publish"**
+5. They review and publish it to all users
 
 ## Prerequisites
 
-- An OpenBB account
+- An account on the Workspace
 - Your session token (from browser DevTools — look for the `Authorization: Bearer <TOKEN>` header in network requests)
 - A backend that serves `widgets.json` and `apps.json` (see [Manifest Requirements](#manifest-requirements) below)
 
@@ -21,21 +21,21 @@ This guide walks you through listing and testing your app in the OpenBB marketpl
 This single request creates your vendor profile and app in one call:
 
 ```bash
-curl -X POST https://payments.openbb.dev/marketplace/developer/apps \
+curl -X POST <API_URL>/marketplace/developer/apps \
   -H "Authorization: Bearer <YOUR_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{
     "vendor_name": "Your Company Name",
     "vendor_description": "What your company does",
-    "vendor_website_url": "https://yourcompany.com",
-    "contact_email": "support@yourcompany.com",
+    "vendor_website_url": "https://<vendor-host>",
+    "contact_email": "<contact-email>",
     "app_name": "Your App Name",
     "version": "1.0",
     "short_description": "One-line description of your app",
     "category": "App category (optional)",
     "tagline": "One-line tagline shown under the app name in the marketplace (optional)",
-    "thumbnail_url": "https://yourcompany.com/logo.png",
-    "backend_base_url": "https://api.yourcompany.com",
+    "thumbnail_url": "https://<vendor-host>/logo.png",
+    "backend_base_url": "https://<backend-host>",
     "auth_type": ["api_key"]
   }'
 ```
@@ -84,18 +84,18 @@ The `media` array is rendered under the description for each app in the marketpl
 
 | URL pattern | Renders as | Example |
 |---|---|---|
-| `youtube.com/*` or `youtu.be/*` | `<iframe>` embed | `https://www.youtube.com/watch?v=abc123` |
-| `.mp4` / `.webm` / `.mov` / `.m4v` extension | `<video>` with native controls | `https://example.com/demo.mp4` |
-| Everything else | `<img>` | `https://example.com/screenshot.png` |
+| `youtube.com/*` or `youtu.be/*` | `<iframe>` embed | `https://www.youtube.com/watch?v=<video-id>` |
+| `.mp4` / `.webm` / `.mov` / `.m4v` extension | `<video>` with native controls | `https://<media-host>/demo.mp4` |
+| Everything else | `<img>` | `https://<media-host>/screenshot.png` |
 
 You can mix types freely in the same array — the carousel handles each item based on its URL:
 
 ```json
 {
   "media": [
-    "https://example.com/hero.png",
-    "https://www.youtube.com/watch?v=abc123",
-    "https://example.com/walkthrough.mp4"
+    "https://<media-host>/hero.png",
+    "https://www.youtube.com/watch?v=<video-id>",
+    "https://<media-host>/walkthrough.mp4"
   ]
 }
 ```
@@ -116,13 +116,13 @@ When a user adds your app, they're prompted for an API key. We need to verify th
 If you set `api_key_url`, the Workspace POSTs the user-provided key to that URL and expects a success/error response. This lets you:
 
 - Fully control the verification flow (hit your auth service, check entitlements, whatever you need).
-- Return a **custom error message** that gets shown directly to the user in the "Add API Key" modal — so you can be specific (e.g. *"This key doesn't have access to the Pro tier, upgrade at acmedata.com/pro"*) instead of a generic failure.
+- Return a **custom error message** that gets shown directly to the user in the "Add API Key" modal — so you can be specific (e.g. *"This key doesn't have access to the premium plan, upgrade at <vendor-host>/plans"*) instead of a generic failure.
 
 **Option B — Widget fallback (`api_key_url` not set)**
 
 If you leave `api_key_url` empty, we verify the key by calling the **first widget in your `widgets.json`** with it. If the widget returns successfully, the key is considered valid. If it errors, the key is rejected.
 
-In this mode, make sure that first widget returns a **clear, user-facing error message** when the key is invalid — because whatever error string it returns is what the user will see in the modal. A generic 401 or an obscure stack trace is a bad experience; prefer something like *"Invalid API key — check your key at acmedata.com/keys"*.
+In this mode, make sure that first widget returns a **clear, user-facing error message** when the key is invalid — because whatever error string it returns is what the user will see in the modal. A generic 401 or an obscure stack trace is a bad experience; prefer something like *"Invalid API key — check your key at <vendor-host>/keys"*.
 
 **`api_key_info_url` (both options)**
 
@@ -200,7 +200,7 @@ Your app always lands in `development` status, even if verification fails. If th
 
 ## Step 2 — Preview Your App
 
-Log in to the OpenBB frontend. Your app will appear in the marketplace — only visible to you. Other users won't see it.
+Log in to the Workspace. Your app will appear in the marketplace — only visible to you. Other users won't see it.
 
 Apps marked as development will show an `isDevelopment: true` flag in the API response.
 
@@ -209,7 +209,7 @@ Apps marked as development will show an `isDevelopment: true` flag in the API re
 Fix descriptions, change thumbnails, update your backend URL — whatever you need:
 
 ```bash
-curl -X PATCH https://payments.openbb.dev/marketplace/developer/apps/<APP_ID> \
+curl -X PATCH <API_URL>/marketplace/developer/apps/<APP_ID> \
   -H "Authorization: Bearer <YOUR_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"short_description": "Updated description"}'
@@ -230,7 +230,7 @@ If you change `backend_base_url`, `apps_json_url`, or `widgets_json_url`, verifi
 Want to release an update? Create a new version:
 
 ```bash
-curl -X POST https://payments.openbb.dev/marketplace/developer/apps \
+curl -X POST <API_URL>/marketplace/developer/apps \
   -H "Authorization: Bearer <YOUR_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -238,7 +238,7 @@ curl -X POST https://payments.openbb.dev/marketplace/developer/apps \
     "app_name": "Your App Name",
     "version": "1.1",
     "short_description": "What this app does",
-    "backend_base_url": "https://api.yourcompany.com/v2",
+    "backend_base_url": "https://<backend-host>/v2",
     "auth_type": ["api_key"]
   }'
 ```
@@ -250,15 +250,15 @@ You can have multiple versions in development at the same time. Only one version
 If you want to delete a development app (frees up an app slot):
 
 ```bash
-curl -X DELETE https://payments.openbb.dev/marketplace/developer/apps/<APP_ID> \
+curl -X DELETE <API_URL>/marketplace/developer/apps/<APP_ID> \
   -H "Authorization: Bearer <YOUR_TOKEN>"
 ```
 
-You can only remove apps in `development` status. Once an app is published, contact us to remove it.
+You can only remove apps in `development` status. Once an app is published, ask the marketplace administrators to remove it.
 
 ## Step 6 — Request Publish
 
-When your app is ready, message us with:
+When your app is ready, message the marketplace administrators with:
 
 > **"[App Name] version [X.X] is ready to be published"**
 
@@ -271,7 +271,7 @@ If we find any issues, we'll let you know what needs to be fixed. Once fixed, up
 ## Limits
 
 - **5 apps** per developer (counted by app name, not versions)
-- Once published, you **cannot** edit or remove the app — contact us for changes
+- Once published, you **cannot** edit or remove the app — ask the marketplace administrators for changes
 - Vendor names are unique — if someone else already has that vendor name, choose a different one
 
 ## Manifest Requirements
@@ -314,7 +314,7 @@ A JSON array of app configurations:
   {
     "name": "Your App Name",
     "description": "App description",
-    "img": "https://yourcompany.com/logo.png",
+    "img": "https://<vendor-host>/logo.png",
     "prompts": [
       "Analyze the latest stock price movement.",
       "Compare the top 3 sectors by performance."

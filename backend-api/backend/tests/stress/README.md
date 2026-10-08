@@ -57,8 +57,9 @@ cd backend/tests/stress
 | `--no-run` | off | bring the stack up but skip the simulator |
 | `--down` | off | tear the stack down and exit |
 
-The simulator authenticates as `admin@openbb.co` / `asdQWE123!` (override with `ADMIN_EMAIL` /
-`ADMIN_PASSWORD` env). It needs the frontend User-Agent to skip rate limiting — this defaults to
+The simulator authenticates as the administrator that `ADMIN_EMAIL` and `ADMIN_PASSWORD` name; both
+are required. With `--seed`, that is the administrator listed in `scripts/cfgs/config.toml`
+(write it with `python -m scripts.create_local_env --admin-email <your-email>`). It needs the frontend User-Agent to skip rate limiting — this defaults to
 `test` (the value in the dev/lite envs); override with `FRONTEND_UA` if your env differs.
 
 ## What it does

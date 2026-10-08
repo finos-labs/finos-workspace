@@ -1,7 +1,3 @@
-import posthog from "posthog-js";
-import { VITE_PLATFORM_URL } from "~/constants";
-import { useAuthStore } from "~/store/auth";
-
 interface ValidationError {
   input: string | null;
   loc: string[];
@@ -33,7 +29,7 @@ export function CFError(
 
 export const throwSignInError = () => {
   Office.addin.showAsTaskpane();
-  throw CFError("Sign in with Pro account.");
+  throw CFError("Sign in to the add-in.");
 };
 
 function parseValidationError(detail: string): ValidationError[] {
@@ -56,18 +52,7 @@ function parseValidationError(detail: string): ValidationError[] {
  * @param {ErrorResponse} errorResponse
  * @returns {void}
  */
-export function handleErrors(
-  errorResponse: ErrorResponse,
-  status?: number,
-  url?: string,
-): void {
-  if (status === 401 && url?.includes(VITE_PLATFORM_URL)) {
-    console.log("🚫 User token is not valid.");
-    const { logout } = useAuthStore.getState();
-    logout();
-    return throwSignInError();
-  }
-
+export function handleErrors(errorResponse: ErrorResponse): void {
   const errorArray: string[][] = [];
   const { detail } = errorResponse;
   try {
@@ -121,18 +106,16 @@ export function handleErrors(
  * @param {Error | CustomFunctions.Error} error
  * @returns {string[][]}
  */
-export default function OBBExcelError(
+export default function ExcelError(
   error: Error | CustomFunctions.Error,
 ): string[][] {
   // Excel desktop on Mac does not show the error message, so we need to return it as a range
   if (error instanceof CustomFunctions.Error && error.message) {
-    posthog.capture("custom_function_error", { error_message: error.message });
-    return error.message.split(";\n").map((item: string) => ["#OBB!: " + item]);
+    return error.message.split(";\n").map((item: string) => ["#ERROR!: " + item]);
   }
   // If the error is not a CustomFunctions.Error, it is unexpected
   // so we log it and throw, this will display #VALUE! in the cell
   // instead of returning a Typescript error in the sheet
-  posthog.capture("unexpected_error", { error_message: error.message });
   console.error(error);
   throw error;
 }

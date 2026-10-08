@@ -1,0 +1,93 @@
+name: Frontend Docker Image (ECR)
+
+# Pull requests build the image to check it. A tag like frontend-v1.1.0 builds it
+# and pushes it to ECR as 1.1.0.
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-image.yml"
+  push:
+    tags:
+      - "frontend-v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: frontend-image-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    env:
+      ECR_REPOSITORY: finos/frontend
+      IMAGE_TAG: pr-${{ github.event.pull_request.number }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Tags are the release: frontend-v1.1.0 pushes finos/frontend:1.1.0. The
+      # version must be X.Y.Z and the tagged commit must be on main.
+      - name: Read version
+        if: github.ref_type == 'tag'
+        run: |
+          version="${GITHUB_REF_NAME#frontend-v}"
+          if ! grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' <<< "$version"; then
+            echo "Tag $GITHUB_REF_NAME must look like frontend-vX.Y.Z" >&2
+            exit 1
+          fi
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "The tagged commit is not on main" >&2
+            exit 1
+          fi
+          echo "IMAGE_TAG=$version" >> "$GITHUB_ENV"
+
+      # OIDC: GitHub vouches for this run and AWS hands back credentials for an hour.
+      # The role only trusts tags of this repository and can only push images.
+      - name: Configure AWS credentials
+        if: github.ref_type == 'tag'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: github.ref_type == 'tag'
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Tags in this repository are immutable, so a rerun for the same commit keeps the
+      # image that is already there.
+      - name: Check for an existing image
+        if: github.ref_type == 'tag'
+        id: existing
+        run: |
+          if output=$(aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag="$IMAGE_TAG" 2>&1); then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif grep -q ImageNotFoundException <<< "$output"; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "$output" >&2
+            exit 1
+          fi
+
+      - name: Build image
+        if: steps.existing.outputs.exists != 'true'
+        run: docker build -t "$ECR_REPOSITORY:$IMAGE_TAG" frontend
+
+      - name: Push image
+        if: github.ref_type == 'tag' && steps.existing.outputs.exists != 'true'
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker tag "$ECR_REPOSITORY:$IMAGE_TAG" "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"

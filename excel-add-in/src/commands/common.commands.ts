@@ -8,7 +8,7 @@ export function updateRibbon() {
   Office?.ribbon?.requestUpdate({
     tabs: [
       {
-        id: "OpenBB.Tab",
+        id: "Workspace.Tab",
         groups: [
           {
             id: "Group3",
@@ -30,10 +30,6 @@ export function updateRibbon() {
                 id: "Group3.ButtonSignOut",
                 enabled: isLogged,
               },              
-              {
-                id: "Group3.ButtonFeedback",
-                enabled: isLogged,
-              },
             ],
           },
         ],

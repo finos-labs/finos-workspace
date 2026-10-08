@@ -17,14 +17,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 _BASE_TEST_ENV = {
     "MODE": "test",
     "DATABASE_TYPE": "mysql",
-    "HUBSPOT": "true",
-    "HUBSPOT_EMAIL_TOKEN": "test_email_token",
-    "HUBSPOT_CONTACT_TOKEN": "test_contact_token",
-    "HUBSPOT_SERVICE_TOKEN": "test_service_token",
-    "PROURL": "http://localhost:3000",
+    "APPURL": "http://localhost:3000",
+    "FRONTENDURL": "http://localhost:3000",
     "SELFURL": "http://localhost:8000",
     "JWT_SECRET": "supersecretkeyfortestingonly12345",
-    "OPENBB_AES_KEY": "sixteenbytekey!!",
+    "WORKSPACE_AES_KEY": "sixteenbytekey!!",
     "DISABLE_CORS": "true",
 }
 for key, value in _BASE_TEST_ENV.items():
@@ -62,7 +59,7 @@ CleanupStatement = tuple[Executable, Mapping[str, Any]]
 
 
 _AUTH_USER: UserConfig = {
-    "email": "testrunner@openbb.co",
+    "email": "testrunner@example.com",
     "user_uuid": _TEST_USER_UUID,
     "session_uuid": _TEST_SESSION_UUID,
     "entity_uuid": _TEST_ENTITY_UUID,
@@ -71,13 +68,13 @@ _AUTH_USER: UserConfig = {
     "entity_type": "test_company",
     "entity_code": "TST",
     "entity_name": "Test Entity",
-    "entity_email": "entity@openbb.co",
+    "entity_email": "entity@example.com",
     "perm_name": "admin",
     "session_source": "integration_test",
 }
 
 _ADMIN_USER: UserConfig = {
-    "email": "admin_testrunner@openbb.co",
+    "email": "admin_testrunner@example.com",
     "user_uuid": "00000000-0000-0000-0000-000000000010",
     "session_uuid": "00000000-0000-0000-0000-000000000011",
     "entity_uuid": "00000000-0000-0000-0000-000000000012",
@@ -86,13 +83,13 @@ _ADMIN_USER: UserConfig = {
     "entity_type": "admin_company",
     "entity_code": "ADM",
     "entity_name": "Admin Entity",
-    "entity_email": "admin_entity@openbb.co",
+    "entity_email": "admin_entity@example.com",
     "perm_name": "Admin",
     "session_source": "test_admin",
 }
 
 _SECOND_USER: UserConfig = {
-    "email": "second_testrunner@openbb.co",
+    "email": "second_testrunner@example.com",
     "user_uuid": "00000000-0000-0000-0000-000000000020",
     "session_uuid": "00000000-0000-0000-0000-000000000021",
     "entity_uuid": "00000000-0000-0000-0000-000000000022",
@@ -101,7 +98,7 @@ _SECOND_USER: UserConfig = {
     "entity_type": "second_company",
     "entity_code": "SEC",
     "entity_name": "Second Entity",
-    "entity_email": "second_entity@openbb.co",
+    "entity_email": "second_entity@example.com",
     "perm_name": "admin",
     "session_source": "test_second",
 }
@@ -148,12 +145,9 @@ _DELETE_PERMISSIONS_BY_UUID = text(
 _DELETE_ENTITY_BY_UUID = text("DELETE FROM `entity` WHERE uuid = :uuid")
 _DELETE_ENTITY_TYPE_BY_UUID = text("DELETE FROM `entity_type` WHERE uuid = :uuid")
 
-_PRO_DEVELOPER_UUID = "22222222-2222-2222-2222-222222222222"
-_PRO_TRIAL_UUID = "11111111-1111-1111-1111-111111111111"
-_PRO_TRIAL_USER_UUID = "11111111-1111-1111-1111-111111111111"
-_PRO_DEVELOPER_ENTITY_UUID = "33333333-3333-3333-3333-333333333333"
-_PRO_TRIAL_ENTITY_UUID = "44444444-4444-4444-4444-444444444444"
-_PRO_ENTITY_TYPE_UUID = "55555555-5555-5555-5555-555555555555"
+_DEVELOPER_UUID = "22222222-2222-2222-2222-222222222222"
+_DEVELOPER_ENTITY_UUID = "33333333-3333-3333-3333-333333333333"
+_APP_ENTITY_TYPE_UUID = "55555555-5555-5555-5555-555555555555"
 
 
 def _configure_test_settings(
@@ -388,7 +382,7 @@ async def _create_session_record(
         uuid=session_uuid,
         user_uuid=user_uuid,
         expiration_date=exp_naive,
-        pro=True,
+        app_session=True,
         source=source,
     )
     db_session.add(new_session)
@@ -396,13 +390,13 @@ async def _create_session_record(
 
 
 def _build_service_jwt() -> str:
-    """Generate a service JWT for OpenBB auth header checks."""
+    """Generate a service JWT for Workspace auth header checks."""
     import jwt
     from datetime import datetime, timedelta
 
     payload = {
-        "sub": "pro",
-        "iss": "openbb-hub",
+        "sub": "app",
+        "iss": "workspace",
         "exp": datetime.now(UTC) + timedelta(hours=1),
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
@@ -415,7 +409,7 @@ async def _make_auth_client(service_jwt: str, session_token: str):
     async with AsyncClient(transport=transport, base_url="http://test") as auth_ac:
         auth_ac.headers.update(
             {
-                "X-OpenBB-Authorization": f"Bearer {service_jwt}",
+                "X-Workspace-Authorization": f"Bearer {service_jwt}",
                 "Authorization": f"Bearer {session_token}",
                 "Origin": "http://test",
             }
@@ -424,19 +418,19 @@ async def _make_auth_client(service_jwt: str, session_token: str):
 
 
 def _get_or_create_entity_type(session):
-    """Ensure the PRO entity type exists for /pro endpoints."""
+    """Ensure the app entity type exists for /app endpoints."""
     from api.models.entity_models import EntityType
 
     entity_type = (
         session.query(EntityType)
-        .filter(EntityType.uuid == _PRO_ENTITY_TYPE_UUID)
+        .filter(EntityType.uuid == _APP_ENTITY_TYPE_UUID)
         .first()
     )
     if entity_type:
         return entity_type
 
     entity_type = EntityType(
-        uuid=_PRO_ENTITY_TYPE_UUID,
+        uuid=_APP_ENTITY_TYPE_UUID,
         entity_type="developer",
         code="DEV",
         active=True,
@@ -497,26 +491,8 @@ def _get_or_create_permission(
     session.commit()
 
 
-def _get_or_create_user(session, *, uuid: str, email: str, perm_uuid: str) -> None:
-    """Ensure a User row exists for /pro register/login flows."""
-    existing_user = session.query(User).filter(User.uuid == uuid).first()
-    if existing_user:
-        return
-
-    trial_user = User(
-        uuid=uuid,
-        email=email,
-        clean_email=email,
-        password="not_a_real_password",  # noqa: S106
-        confirmed=True,
-        permissions_uuid=perm_uuid,
-    )
-    session.add(trial_user)
-    session.commit()
-
-
-def _seed_pro_entities() -> None:
-    """Seed required entities for /pro endpoints after migrations."""
+def _seed_entities() -> None:
+    """Seed required entities for /app endpoints after migrations."""
     from sqlalchemy import create_engine
     from sqlalchemy.orm import Session
 
@@ -530,35 +506,16 @@ def _seed_pro_entities() -> None:
         entity_type = _get_or_create_entity_type(session)
         developer_entity = _get_or_create_entity(
             session,
-            uuid=_PRO_DEVELOPER_ENTITY_UUID,
+            uuid=_DEVELOPER_ENTITY_UUID,
             name="Developer Entity",
-            email="developer@openbb.co",
-            entity_type_uuid=entity_type.uuid,
-        )
-        trial_entity = _get_or_create_entity(
-            session,
-            uuid=_PRO_TRIAL_ENTITY_UUID,
-            name="Trial Entity",
-            email="trial@openbb.co",
+            email="developer@example.com",
             entity_type_uuid=entity_type.uuid,
         )
         _get_or_create_permission(
             session,
-            uuid=_PRO_DEVELOPER_UUID,
+            uuid=_DEVELOPER_UUID,
             entity_uuid=developer_entity.uuid,
             name="developer",
-        )
-        _get_or_create_permission(
-            session,
-            uuid=_PRO_TRIAL_UUID,
-            entity_uuid=trial_entity.uuid,
-            name="trial",
-        )
-        _get_or_create_user(
-            session,
-            uuid=_PRO_TRIAL_USER_UUID,
-            email="pro_trial_user@openbb.co",
-            perm_uuid=_PRO_TRIAL_UUID,
         )
 
     engine.dispose()
@@ -589,7 +546,7 @@ __all__ = [
     "_create_session_record",
     "_build_service_jwt",
     "_make_auth_client",
-    "_seed_pro_entities",
+    "_seed_entities",
     "_get_test_db_url_async",
     "_get_test_db_url_sync",
     "_AUTH_USER",

@@ -82,4 +82,4 @@ class AESCipher:
         return s[: -ord(s[len(s) - 1 :])]  # noqa: E203
 
 
-base_cipher = AESCipher(key=settings.OPENBB_AES_KEY)
+base_cipher = AESCipher(key=settings.WORKSPACE_AES_KEY)

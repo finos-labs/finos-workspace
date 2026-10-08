@@ -1,0 +1,184 @@
+name: Deploy to dev
+
+# A push to develop builds the changed app and pushes the image to ECR as
+# dev-<commit>. Then .github/scripts/pin-dev-tags.sh sets that tag in the dev
+# values file of the infrastructure repository and pushes it to main, where that
+# repository's Apps workflow deploys it to the dev cluster. The job waits for
+# that deploy. If it fails, helm has already put the previous release back, and
+# the script sets the tag in the values file back too, so the file always
+# matches the cluster.
+#
+# Repository variables: AWS_REGION, AWS_IMAGE_PUSH_ROLE_ARN (the role that may
+# push to ECR), ECR_REGISTRY (<account>.dkr.ecr.<region>.amazonaws.com),
+# INFRA_REPO (<owner>/<infrastructure repository>), DEV_VALUES_FILE (the dev
+# values file in that repository) and INFRA_APP_ID.
+#
+# Pushing to the infrastructure repository uses a GitHub App installed on it
+# with contents write and actions read: INFRA_APP_ID (variable) and
+# INFRA_APP_PRIVATE_KEY (secret).
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - "backend-api/backend/**"
+      - "frontend/**"
+      - ".github/workflows/deploy-dev.yml"
+      - ".github/scripts/pin-dev-tags.sh"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  INFRA_REPO: ${{ vars.INFRA_REPO }}
+  VALUES_FILE: ${{ vars.DEV_VALUES_FILE }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - "backend-api/backend/**"
+              - ".github/workflows/deploy-dev.yml"
+              - ".github/scripts/pin-dev-tags.sh"
+            frontend:
+              - "frontend/**"
+              - ".github/workflows/deploy-dev.yml"
+              - ".github/scripts/pin-dev-tags.sh"
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-dev-backend
+      cancel-in-progress: false
+    env:
+      IMAGE_TAG: dev-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to AWS to push images
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      # Tags are immutable, so a rerun keeps the images the first attempt pushed.
+      - name: Build and push the API and worker images
+        run: |
+          for image in backend:fastapi.Dockerfile backend-worker:rqworker.Dockerfile; do
+            repository="finos/${image%%:*}" dockerfile="${image#*:}"
+            if output=$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="$IMAGE_TAG" 2>&1); then
+              echo "$repository:$IMAGE_TAG is already in ECR."
+            elif grep -q ImageNotFoundException <<< "$output"; then
+              docker build -f "backend-api/backend/$dockerfile" -t "$ECR_REGISTRY/$repository:$IMAGE_TAG" backend-api/backend
+              docker push "$ECR_REGISTRY/$repository:$IMAGE_TAG"
+            else
+              echo "$output" >&2
+              exit 1
+            fi
+          done
+
+      - name: Name the infrastructure repository
+        id: infra
+        run: |
+          echo "owner=${INFRA_REPO%%/*}" >> "$GITHUB_OUTPUT"
+          echo "name=${INFRA_REPO#*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Get a token for the infrastructure repository
+        id: infra-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.INFRA_APP_ID }}
+          private-key: ${{ secrets.INFRA_APP_PRIVATE_KEY }}
+          owner: ${{ steps.infra.outputs.owner }}
+          repositories: ${{ steps.infra.outputs.name }}
+          permission-contents: write
+          permission-actions: read
+
+      - name: Pin the tag in the infrastructure repository and wait for the deploy
+        env:
+          GH_TOKEN: ${{ steps.infra-token.outputs.token }}
+        run: >-
+          .github/scripts/pin-dev-tags.sh
+          --repo "$INFRA_REPO"
+          --values "$VALUES_FILE"
+          --keys backend,backendWorker
+          --tag "$IMAGE_TAG"
+          --source "$GITHUB_REPOSITORY@$GITHUB_SHA"
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-dev-frontend
+      cancel-in-progress: false
+    env:
+      IMAGE_TAG: dev-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to AWS to push images
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      # Tags are immutable, so a rerun keeps the image the first attempt pushed.
+      - name: Build and push the frontend image
+        run: |
+          if output=$(aws ecr describe-images --repository-name finos/frontend --image-ids imageTag="$IMAGE_TAG" 2>&1); then
+            echo "finos/frontend:$IMAGE_TAG is already in ECR."
+          elif grep -q ImageNotFoundException <<< "$output"; then
+            docker build -t "$ECR_REGISTRY/finos/frontend:$IMAGE_TAG" frontend
+            docker push "$ECR_REGISTRY/finos/frontend:$IMAGE_TAG"
+          else
+            echo "$output" >&2
+            exit 1
+          fi
+
+      - name: Name the infrastructure repository
+        id: infra
+        run: |
+          echo "owner=${INFRA_REPO%%/*}" >> "$GITHUB_OUTPUT"
+          echo "name=${INFRA_REPO#*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Get a token for the infrastructure repository
+        id: infra-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.INFRA_APP_ID }}
+          private-key: ${{ secrets.INFRA_APP_PRIVATE_KEY }}
+          owner: ${{ steps.infra.outputs.owner }}
+          repositories: ${{ steps.infra.outputs.name }}
+          permission-contents: write
+          permission-actions: read
+
+      - name: Pin the tag in the infrastructure repository and wait for the deploy
+        env:
+          GH_TOKEN: ${{ steps.infra-token.outputs.token }}
+        run: >-
+          .github/scripts/pin-dev-tags.sh
+          --repo "$INFRA_REPO"
+          --values "$VALUES_FILE"
+          --keys frontend
+          --tag "$IMAGE_TAG"
+          --source "$GITHUB_REPOSITORY@$GITHUB_SHA"

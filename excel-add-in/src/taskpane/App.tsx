@@ -1,4 +1,4 @@
-import { TooltipProvider } from "@openbb/ui";
+import { TooltipProvider } from "@radix-ui/react-tooltip";
 import { QueryClient, QueryClientProvider } from "react-query";
 import { RouterProvider } from "react-router-dom";
 

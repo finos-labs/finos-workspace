@@ -20,6 +20,29 @@ if BACKEND_DIR not in sys.path:
 import pytest
 from uuid import uuid4
 
+from tests.fixtures.marketplace import superuser_override
+
+
+class TestEntityValidate:
+    """Tests for GET /entity/validate, the probe that shows entity management"""
+
+    @pytest.mark.asyncio
+    async def test_validate_unauthenticated(self, client):
+        response = await client.get("/entity/validate")
+        assert response.status_code in {401, 403}
+
+    @pytest.mark.asyncio
+    async def test_validate_rejects_a_user_who_is_not_a_superuser(self, auth_client):
+        response = await auth_client.get("/entity/validate")
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_validate_accepts_a_superuser(self, auth_client):
+        with superuser_override():
+            response = await auth_client.get("/entity/validate")
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+
 
 class TestEntityTypeList:
     """Tests for GET /entity/entity-type endpoint"""

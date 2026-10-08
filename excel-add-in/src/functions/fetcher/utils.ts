@@ -1,4 +1,3 @@
-import { VERSION, VITE_ADDIN_BASE_URL } from "~/constants";
 import { useAuthStore } from "~/store/auth";
 import { isExpired } from "./dates";
 import { throwSignInError } from "./errors";
@@ -25,33 +24,6 @@ export function privateFunc() {
     logout();
     throwSignInError();
   }
-}
-
-export function getHeaders(token: string) {
-  const filteredVersion = VERSION ? VERSION.replace(".", "_") : "0_0.0.0";
-  const headers = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-    "X-OpenBB-Client": VITE_ADDIN_BASE_URL ?? "excel",
-    "X-OpenBB-Client-Version": filteredVersion,
-  };
-  return headers;
-}
-
-export async function getProviderChoice(
-  custom_function: string,
-  defaultProvider: string,
-): Promise<string> {
-  if (
-    [
-      "equity_fundamental_balance",
-      "equity_fundamental_income",
-      "equity_fundamental_cash",
-    ].includes(custom_function)
-  ) {
-    return "fmp";
-  }
-  return defaultProvider;
 }
 
 export function isEmpty(obj: object | undefined) {

@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "types": ["vite-plugin-pwa/client", "vitest/globals"],
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "esModuleInterop": false,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "~/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "src",
+    "tests",
+    "vite.config.ts",
+    "vitest.setup.ts",
+    "playwright.config.ts",
+    "scripts/check-runtime-config.ts",
+    "tailwind.config.ts"
+  ]
+}

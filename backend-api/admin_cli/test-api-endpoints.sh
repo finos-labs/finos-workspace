@@ -1,5 +1,5 @@
 #!/bin/bash
-# OpenBB Admin API - Direct HTTP Endpoint Test Script
+# Admin API - Direct HTTP Endpoint Test Script
 # Tests the raw API endpoints with curl (mirrors test-workflow.sh)
 #
 # This shows what the HubAPIClient does under the hood.
@@ -8,11 +8,11 @@
 #     ./test-api-endpoints.sh
 #
 #     # Or with environment variables:
-#     OPENBB_BASE_URL=http://localhost:8000 ./test-api-endpoints.sh
+#     WORKSPACE_BASE_URL=http://localhost:8000 ./test-api-endpoints.sh
 
 set -e
 
-BASE_URL="${OPENBB_BASE_URL:-https://payments.openbb.dev}"
+BASE_URL="${WORKSPACE_BASE_URL:?Set WORKSPACE_BASE_URL to the backend URL, e.g. http://localhost:8000}"
 TIMESTAMP=$(date +%s)
 
 # Colors for output
@@ -52,7 +52,7 @@ json_val() {
 # 1. AUTHENTICATION
 # =============================================================================
 log_step "Step 1: Authenticating..."
-echo "Endpoint: POST /pro/login"
+echo "Endpoint: POST /app/login"
 
 EMAIL="${ADMIN_EMAIL:-}"
 PASSWORD="${ADMIN_PASSWORD:-}"
@@ -65,14 +65,14 @@ if [ -z "$PASSWORD" ]; then
     echo ""
 fi
 
-AUTH_RESPONSE=$(curl -s -X POST "$BASE_URL/pro/login" \
+AUTH_RESPONSE=$(curl -s -X POST "$BASE_URL/app/login" \
     -H "Content-Type: application/json" \
     -d "{
         \"email\": \"$EMAIL\",
         \"password\": \"$PASSWORD\",
         \"remember\": false,
         \"ip_address\": \"\",
-        \"source\": \"pro\",
+        \"source\": \"app\",
         \"totp_token\": null
     }")
 
@@ -135,7 +135,7 @@ log_step "Step 4: Updating entity entitlements..."
 echo "Endpoint: PATCH /entity/entitlement/{entity_uuid}?update_all=true"
 
 ENTITLEMENT_RESPONSE=$(api_request PATCH "/entity/entitlement/$ENTITY_UUID?update_all=true" "{
-    \"tier\": \"pro\",
+    \"tier\": \"full\",
     \"number_copilot_calls_day\": 10000,
     \"total_file_upload_size_gb\": 10,
     \"excel_add_in\": 1,
@@ -328,7 +328,7 @@ echo "What HubAPIClient abstracts:"
 echo ""
 echo "| Client Method                      | Raw Endpoints                              |"
 echo "|------------------------------------|-------------------------------------------|"
-echo "| auth_login(email, pw)              | POST /pro/login                           |"
+echo "| auth_login(email, pw)              | POST /app/login                           |"
 echo "| entity_type_list()                 | GET /entity/entity-type                   |"
 echo "| entity_create_with_entitlements()  | POST /entity/entity                       |"
 echo "|                                    | + PATCH /entity/entitlement/{uuid}        |"

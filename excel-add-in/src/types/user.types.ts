@@ -6,8 +6,7 @@ interface BaseUser {
   expiration_date: string;
   // We don't save this field (feature_entitlements) in the store,
   // but it's part of the response and used upon login
-  // to check if the user has Pro access.
-  // TODO: this was a patch, this validation should be done in the backend  
+  // to check that the user's plan includes the Excel add-in.
   feature_entitlements?: Record<string, any>;
 }
 
@@ -35,20 +34,16 @@ export interface Backend {
 }
 
 export interface UserProfile {
-  accepted_pro_tos: boolean;
   api_sources: Backend[];
   data_connector_url: string;
   email: string;
-  // entitlements: null | ProEntitlements;
   expiration_date: string;
-  // features_pro_info: null | ProInfo;
   feedback_improve: null | string;
   feedback_like: null | string;
   feedback_to_pay: null | string;
   first_name: null | string;
   last_name: null | string;
-  // pro_display_settings: DisplaySettings;
-  single_widgets: any[];
+  // display_settings: DisplaySettings;
   username: string;
   uuid: string;
 }

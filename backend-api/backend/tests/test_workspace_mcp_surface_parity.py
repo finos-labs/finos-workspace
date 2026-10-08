@@ -11,11 +11,6 @@ FIXTURE_PATH = Path(__file__).parent / "fixtures" / "workspace_mcp_sidecar_surfa
 
 
 @pytest.fixture(autouse=True)
-def mock_external_services():
-    yield
-
-
-@pytest.fixture(autouse=True)
 def reset_rate_limiter():
     yield
 

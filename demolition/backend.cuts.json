@@ -1,0 +1,38 @@
+{
+  "roots": [
+    "main.py"
+  ],
+  "cut": [
+    "api/email",
+    "api/marketing",
+    "api/hubspot.py",
+    "api/geo.py",
+    "routers/stripe_lite.py",
+    "api/stripe_schemas.py",
+    "utilities/feedback_providers.py",
+    "routers/metrics.py"
+  ],
+  "not_roots_but_keep": [
+    "base_workers.py",
+    "init-db.py",
+    "run.py",
+    "scripts/init_users.py",
+    "scripts/clean_users.py",
+    "scripts/import_user_data.py",
+    "scripts/dashboard_item_type.py",
+    "scripts/export_workspace_mcp_surface.py",
+    "setup_compile.py",
+    "workspace_mcp/__init__.py",
+    "workspace_mcp/__main__.py",
+    "workspace_mcp/app.py"
+  ],
+  "test_delete_name_regex": "(test_stripe_lite|test_mailchimp|api/email/|test_hubspot|test_metrics\\.py)",
+  "removed_route_regex": "/stripe(?:/webhook)?\\b|/pro/tv-state|/feedback\\b|/invite-emails|/forgot-password|/confirm-account|/resend-confirmation|/newsletter|/marketing\\b|/pro/register|(?<![\\w-])/register\\b|/pro/create-user|/pro/create-account|/pro/extend-trial|/pro/enabled-bundles|/single-widget|/support-confirmation|/pro/pro-developer-onboarding|/pro/zero-to-hero|/pro/invites|/transfer-user|/profileimage|/metrics/users|/admin/providers|/entity/takeover|/run-tasks/(?:pat-token-check|give-pro-trial|send-four)|/pro/user/|(?<![\\w-])/validate(?![\\w-])",
+  "removed_names": {
+    "integration": "stripe|chargebee|hubspot|mailchimp|mandrill|marketing|newsletter|emailservice|email_service|email_provider|send_\\w*(email|notice|confirmation|invite|takeover|new_entity|pat_warning|support_received|create_account|password_reset|welcome)\\w*|four_days_no_use|trading_?view|tv_state|single_?widget|enabled_?bundles?|developer_?onboarding|permissions_?invite|zero_?to_?hero|\\bfeedback\\b|feedback_provider|jira|\\bgeo\\b|geo_|_geo\\b|geolocation|get_ip_info|prokeys|forgot_password|confirm_account|resend_confirmation|invite_emails|support_confirmation|account_takeover|transfer_user|benzinga|polygon|intrinio|\\bfmp\\b|datarade|veraset|alphavantage|trading_economics|check_bot|backend_return|ag_grid|prokeys|proentitlements|tpro_redis|update_all_redis|validate_email|usercount|profile_?url|profile_?image|migrate_file_widget_urls|migrate_stored_files",
+    "marketing-fields": "primary_usage|wants_contacted|hear_about_us|inactivity_email"
+  },
+  "name_ignore": {
+    "api/marketplace_schemas.py": "the rating's `feedback` field is the review text, not the removed Feedback model"
+  }
+}

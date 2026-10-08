@@ -1,10 +1,32 @@
+import json
+from contextlib import asynccontextmanager
 from uuid import UUID
 
 import pytest
 
 
+MCP_HEADERS = {"Accept": "application/json, text/event-stream"}
+
+
+@asynccontextmanager
+async def mcp_running():
+    """Starts the MCP app's session manager, which httpx's ASGI transport does not do."""
+    from main import workspace_mcp_asgi_app
+
+    async with workspace_mcp_asgi_app.lifespan(workspace_mcp_asgi_app):
+        yield
+
+
+def rpc_message(response) -> dict:
+    """The JSON-RPC message of a streamable-HTTP response (plain JSON or one SSE event)."""
+    if response.headers["content-type"].startswith("text/event-stream"):
+        data = [line for line in response.text.splitlines() if line.startswith("data:")]
+        return json.loads(data[-1].removeprefix("data:").strip())
+    return response.json()
+
+
 def test_workspace_mcp_token_helpers_generate_hash_and_prefix():
-    from routers.pro.workspace_mcp.auth import (
+    from routers.app.workspace_mcp.auth import (
         WORKSPACE_MCP_TOKEN_PREFIX,
         display_token_prefix,
         generate_workspace_mcp_token,
@@ -24,28 +46,29 @@ def test_workspace_mcp_token_helpers_generate_hash_and_prefix():
 
 
 def test_workspace_mcp_auth_failure_does_not_advertise_oauth():
-    from routers.pro.workspace_mcp.auth import workspace_mcp_credentials_exception
+    from routers.app.workspace_mcp.auth import workspace_mcp_credentials_exception
 
     assert "WWW-Authenticate" not in (workspace_mcp_credentials_exception.headers or {})
 
 
 @pytest.mark.asyncio
 async def test_mcp_endpoint_rejects_missing_and_malformed_auth(client):
-    missing = await client.post("/mcp", json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
-    malformed = await client.post(
-        "/mcp",
-        headers={"Authorization": "Basic abc"},
-        json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
-    )
-    unknown = await client.post(
-        "/mcp",
-        headers={"Authorization": "Bearer obb_mcp_unknown"},
-        json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
-    )
+    request = {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
+    async with mcp_running():
+        missing = await client.post("/mcp", headers=MCP_HEADERS, json=request)
+        malformed = await client.post(
+            "/mcp", headers={**MCP_HEADERS, "Authorization": "Basic abc"}, json=request
+        )
+        unknown = await client.post(
+            "/mcp",
+            headers={**MCP_HEADERS, "Authorization": "Bearer ws_mcp_unknown"},
+            json=request,
+        )
 
     assert missing.status_code == 401
     assert malformed.status_code == 401
     assert unknown.status_code == 401
+    assert "resource_metadata" not in unknown.headers.get("www-authenticate", "")
 
 
 @pytest.mark.asyncio
@@ -58,7 +81,7 @@ async def test_mcp_get_is_not_registered_as_one_shot_transport(client):
 @pytest.mark.asyncio
 async def test_unknown_path_returns_404_not_credential_error(client):
     response = await client.post(
-        "/pro/adfasdfasfd",
+        "/app/adfasdfasfd",
         json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
     )
 
@@ -69,43 +92,50 @@ async def test_unknown_path_returns_404_not_credential_error(client):
 @pytest.mark.asyncio
 async def test_mcp_endpoint_rejects_revoked_token(auth_client, client):
     create_response = await auth_client.post(
-        "/pro/workspace-mcp/tokens",
+        "/app/workspace-mcp/tokens",
         json={"name": "Revoked token"},
     )
     token = create_response.json()["token"]
     token_uuid = create_response.json()["uuid"]
 
-    await auth_client.delete(f"/pro/workspace-mcp/tokens/{token_uuid}")
+    await auth_client.delete(f"/app/workspace-mcp/tokens/{token_uuid}")
 
-    response = await client.post(
-        "/mcp",
-        headers={"Authorization": f"Bearer {token}"},
-        json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
-    )
+    async with mcp_running():
+        response = await client.post(
+            "/mcp",
+            headers={**MCP_HEADERS, "Authorization": f"Bearer {token}"},
+            json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+        )
 
     assert response.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_mcp_tool_call_with_valid_token_returns_no_browser_connected(auth_client, client):
+async def test_mcp_tool_call_with_valid_token_returns_no_browser_connected(
+    auth_client, client
+):
     create_response = await auth_client.post(
-        "/pro/workspace-mcp/tokens",
+        "/app/workspace-mcp/tokens",
         json={"name": "Agent"},
     )
     payload = create_response.json()
 
     assert UUID(payload["uuid"])
 
-    response = await client.post(
-        "/mcp",
-        headers={"Authorization": f"Bearer {payload['token']}"},
-        json={
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {"name": "get_workspace_snapshot", "arguments": {}},
-        },
-    )
+    async with mcp_running():
+        response = await client.post(
+            "/mcp",
+            headers={**MCP_HEADERS, "Authorization": f"Bearer {payload['token']}"},
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {"name": "get_workspace_snapshot", "arguments": {}},
+            },
+        )
 
-    assert response.status_code == 503
-    assert response.json()["error"]["code"] == "unavailable"
+    # An MCP tool call always answers 200; the tool reports that no browser is connected
+    assert response.status_code == 200
+    result = rpc_message(response)["result"]
+    assert result["structuredContent"]["ok"] is False
+    assert result["structuredContent"]["error"]["code"] == "unavailable"

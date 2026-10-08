@@ -15,18 +15,18 @@ from uuid import uuid4
 
 
 class TestFiles:
-    """Tests for /pro/files endpoints"""
+    """Tests for /app/files endpoints"""
 
     @pytest.mark.asyncio
     async def test_get_files_unauthenticated(self, client):
         """Should fail without auth"""
-        response = await client.get("/pro/files")
+        response = await client.get("/app/files")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
     async def test_get_files_authenticated(self, auth_client):
         """Should return user files"""
-        response = await auth_client.get("/pro/files")
+        response = await auth_client.get("/app/files")
         assert response.status_code == 200
 
     @pytest.mark.asyncio
@@ -36,7 +36,7 @@ class TestFiles:
 
         response = await client.request(
             "DELETE",
-            "/pro/files",
+            "/app/files",
             content=json.dumps({"uuids": [str(uuid4())]}),
             headers={"Content-Type": "application/json"},
         )
@@ -49,7 +49,7 @@ class TestFiles:
 
         response = await auth_client.request(
             "DELETE",
-            "/pro/files",
+            "/app/files",
             content=json.dumps({"uuids": [str(uuid4())]}),
             headers={"Content-Type": "application/json"},
         )
@@ -58,38 +58,38 @@ class TestFiles:
 
 
 class TestFileSingle:
-    """Tests for /pro/files/{uuid} endpoints"""
+    """Tests for /app/files/{uuid} endpoints"""
 
     @pytest.mark.asyncio
     async def test_delete_file_unauthenticated(self, client):
         """Should fail without auth"""
         test_uuid = str(uuid4())
-        response = await client.delete(f"/pro/files/{test_uuid}")
+        response = await client.delete(f"/app/files/{test_uuid}")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
     async def test_delete_file_nonexistent(self, auth_client):
         """Should return 404 for nonexistent file"""
         test_uuid = str(uuid4())
-        response = await auth_client.delete(f"/pro/files/{test_uuid}")
+        response = await auth_client.delete(f"/app/files/{test_uuid}")
         assert response.status_code in {200, 404}
 
 
 class TestFilePresignedUrl:
-    """Tests for /pro/files/{uuid}/presigned-url endpoint"""
+    """Tests for /app/files/{uuid}/presigned-url endpoint"""
 
     @pytest.mark.asyncio
     async def test_get_presigned_url_unauthenticated(self, client):
         """Should fail without auth"""
         test_uuid = str(uuid4())
-        response = await client.get(f"/pro/files/{test_uuid}/presigned-url")
+        response = await client.get(f"/app/files/{test_uuid}/presigned-url")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
     async def test_get_presigned_url_nonexistent(self, auth_client):
         """Should return 404 for nonexistent file"""
         test_uuid = str(uuid4())
-        response = await auth_client.get(f"/pro/files/{test_uuid}/presigned-url")
+        response = await auth_client.get(f"/app/files/{test_uuid}/presigned-url")
         assert response.status_code in {404, 400}
 
 
@@ -104,19 +104,19 @@ class TestFileInputValidation:
     @pytest.mark.asyncio
     async def test_delete_file_invalid_uuid_format(self, auth_client):
         """Invalid UUID format should return 422"""
-        response = await auth_client.delete("/pro/files/not-a-valid-uuid")
+        response = await auth_client.delete("/app/files/not-a-valid-uuid")
         assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_delete_file_sql_injection_uuid(self, auth_client):
         """SQL injection in UUID should return 422"""
-        response = await auth_client.delete("/pro/files/'; DROP TABLE files; --")
+        response = await auth_client.delete("/app/files/'; DROP TABLE files; --")
         assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_presigned_url_invalid_uuid(self, auth_client):
         """Invalid UUID in presigned URL request should return error"""
-        response = await auth_client.get("/pro/files/invalid-uuid/presigned-url")
+        response = await auth_client.get("/app/files/invalid-uuid/presigned-url")
         # 400 for bad request, 422 for validation error
         assert response.status_code in {400, 422}
 
@@ -127,7 +127,7 @@ class TestFileInputValidation:
 
         response = await auth_client.request(
             "DELETE",
-            "/pro/files",
+            "/app/files",
             content=json.dumps({"uuids": []}),
             headers={"Content-Type": "application/json"},
         )
@@ -140,7 +140,7 @@ class TestFileInputValidation:
 
         response = await auth_client.request(
             "DELETE",
-            "/pro/files",
+            "/app/files",
             content=json.dumps({"uuids": ["not-a-uuid", "also-invalid"]}),
             headers={"Content-Type": "application/json"},
         )
@@ -153,7 +153,7 @@ class TestFileInputValidation:
 
         response = await auth_client.request(
             "DELETE",
-            "/pro/files",
+            "/app/files",
             content=json.dumps({"uuids": [str(uuid4()), "invalid"]}),
             headers={"Content-Type": "application/json"},
         )
@@ -171,7 +171,7 @@ class TestFileOutputValidation:
     @pytest.mark.asyncio
     async def test_files_list_response_schema(self, auth_client):
         """Files list should return proper schema"""
-        response = await auth_client.get("/pro/files")
+        response = await auth_client.get("/app/files")
         assert response.status_code == 200
         data = response.json()
         # Should be a list
@@ -180,7 +180,7 @@ class TestFileOutputValidation:
     @pytest.mark.asyncio
     async def test_files_response_no_sensitive_data(self, auth_client):
         """Files response should not expose sensitive data"""
-        response = await auth_client.get("/pro/files")
+        response = await auth_client.get("/app/files")
         if response.status_code == 200:
             data_str = str(response.json())
             # Should not expose internal paths
@@ -200,22 +200,22 @@ class TestFileSecurity:
     @pytest.mark.asyncio
     async def test_path_traversal_in_file_uuid(self, auth_client):
         """Path traversal attempt in UUID should be rejected"""
-        response = await auth_client.get("/pro/files/../../../etc/passwd/presigned-url")
+        response = await auth_client.get("/app/files/../../../etc/passwd/presigned-url")
         assert response.status_code in {404, 422}
 
     @pytest.mark.asyncio
     async def test_null_byte_in_file_uuid(self, auth_client):
         """Null byte in UUID should be rejected"""
         test_uuid = str(uuid4())
-        response = await auth_client.delete(f"/pro/files/{test_uuid}%00.exe")
+        response = await auth_client.delete(f"/app/files/{test_uuid}%00.exe")
         assert response.status_code in {404, 422}
 
     @pytest.mark.asyncio
     async def test_cannot_access_other_users_files(self, auth_client, second_user_client):
         """User should not be able to access other user's files"""
         # Get first user's files
-        first_user_files = await auth_client.get("/pro/files")
-        second_user_files = await second_user_client.get("/pro/files")
+        first_user_files = await auth_client.get("/app/files")
+        second_user_files = await second_user_client.get("/app/files")
 
         # Both should succeed with 200
         assert first_user_files.status_code == 200
@@ -227,7 +227,7 @@ class TestFileSecurity:
                 if "uuid" in file_item:
                     file_uuid = file_item["uuid"]
                     # Second user tries to access first user's file
-                    response = await second_user_client.get(f"/pro/files/{file_uuid}/presigned-url")
+                    response = await second_user_client.get(f"/app/files/{file_uuid}/presigned-url")
                     # Should be 404 or 403 (not found or forbidden)
                     assert response.status_code in {404, 403}
 
@@ -245,7 +245,7 @@ class TestFileDownload:
         """Bulk download should fail without auth"""
 
         response = await client.post(
-            "/pro/files/download",
+            "/app/files/download",
             json={"uuids": [str(uuid4())]},
         )
         assert response.status_code in {401, 403}
@@ -254,7 +254,7 @@ class TestFileDownload:
     async def test_bulk_download_empty_uuids(self, auth_client):
         """Bulk download with empty UUIDs should be handled"""
         response = await auth_client.post(
-            "/pro/files/download",
+            "/app/files/download",
             json={"uuids": []},
         )
         assert response.status_code in {200, 422, 400}
@@ -264,7 +264,7 @@ class TestFileDownload:
         """Bulk download with nonexistent files should be handled"""
         # API expects list directly, not {"uuids": [...]}
         response = await auth_client.post(
-            "/pro/files/download",
+            "/app/files/download",
             json=[str(uuid4()), str(uuid4())],
         )
         # Could be 200 with empty result, 404, 400, or 422 for validation
@@ -275,7 +275,7 @@ class TestFileDownload:
         """Bulk download with invalid UUID format should return error"""
         # API expects list directly
         response = await auth_client.post(
-            "/pro/files/download",
+            "/app/files/download",
             json=["not-a-uuid"],
         )
         assert response.status_code in {422, 400}
@@ -294,7 +294,7 @@ class TestPresignedUrlEdgeCases:
         """Presigned URL with expiration should be handled"""
         test_uuid = str(uuid4())
         response = await auth_client.get(
-            f"/pro/files/{test_uuid}/presigned-url",
+            f"/app/files/{test_uuid}/presigned-url",
             params={"expiration": 3600},
         )
         # 404 for nonexistent, 400 for bad request
@@ -305,7 +305,7 @@ class TestPresignedUrlEdgeCases:
         """Presigned URL with negative expiration should be handled"""
         test_uuid = str(uuid4())
         response = await auth_client.get(
-            f"/pro/files/{test_uuid}/presigned-url",
+            f"/app/files/{test_uuid}/presigned-url",
             params={"expiration": -1},
         )
         assert response.status_code in {404, 422, 400}
@@ -315,7 +315,7 @@ class TestPresignedUrlEdgeCases:
         """Presigned URL with zero expiration should be handled"""
         test_uuid = str(uuid4())
         response = await auth_client.get(
-            f"/pro/files/{test_uuid}/presigned-url",
+            f"/app/files/{test_uuid}/presigned-url",
             params={"expiration": 0},
         )
         assert response.status_code in {404, 422, 400, 200}
@@ -327,13 +327,13 @@ class TestPresignedUrlEdgeCases:
 
 
 class TestFileDownloadExtended:
-    """Extended tests for /pro/files/download endpoint"""
+    """Extended tests for /app/files/download endpoint"""
 
     @pytest.mark.asyncio
     async def test_download_post_unauthenticated(self, client):
         """Should fail without auth"""
         response = await client.post(
-            "/pro/files/download",
+            "/app/files/download",
             json=[str(uuid4())],
         )
         assert response.status_code in {401, 403}
@@ -342,7 +342,7 @@ class TestFileDownloadExtended:
     async def test_download_empty_list(self, auth_client):
         """Download with empty list should be handled"""
         response = await auth_client.post(
-            "/pro/files/download",
+            "/app/files/download",
             json=[],
         )
         # API may return 404 for empty list, 200 with empty result, or 422/400 for validation
@@ -352,7 +352,7 @@ class TestFileDownloadExtended:
     async def test_download_nonexistent_files(self, auth_client):
         """Download with nonexistent file UUIDs should be handled"""
         response = await auth_client.post(
-            "/pro/files/download",
+            "/app/files/download",
             json=[str(uuid4()), str(uuid4())],
         )
         assert response.status_code in {200, 404, 400, 422}
@@ -361,7 +361,7 @@ class TestFileDownloadExtended:
     async def test_download_invalid_uuid_format(self, auth_client):
         """Download with invalid UUID format should return error"""
         response = await auth_client.post(
-            "/pro/files/download",
+            "/app/files/download",
             json=["not-a-uuid", "also-not-a-uuid"],
         )
         assert response.status_code in {422, 400}
@@ -370,7 +370,7 @@ class TestFileDownloadExtended:
     async def test_download_single_file(self, auth_client):
         """Download single file should work"""
         response = await auth_client.post(
-            "/pro/files/download",
+            "/app/files/download",
             json=[str(uuid4())],
         )
         assert response.status_code in {200, 404, 400, 422}
@@ -380,7 +380,7 @@ class TestFileDownloadExtended:
         """Download many files at once should be handled"""
         many_uuids = [str(uuid4()) for _ in range(50)]
         response = await auth_client.post(
-            "/pro/files/download",
+            "/app/files/download",
             json=many_uuids,
         )
         assert response.status_code in {200, 404, 400, 422}
@@ -389,7 +389,7 @@ class TestFileDownloadExtended:
     async def test_download_sql_injection(self, auth_client):
         """SQL injection in file UUIDs should be safely handled"""
         response = await auth_client.post(
-            "/pro/files/download",
+            "/app/files/download",
             json=["'; DROP TABLE files; --"],
         )
         assert response.status_code in {422, 400}
@@ -398,7 +398,7 @@ class TestFileDownloadExtended:
     async def test_download_xss_in_uuid(self, auth_client):
         """XSS in file UUIDs should be safely handled"""
         response = await auth_client.post(
-            "/pro/files/download",
+            "/app/files/download",
             json=["<script>alert('xss')</script>"],
         )
         assert response.status_code in {422, 400}
@@ -407,7 +407,7 @@ class TestFileDownloadExtended:
     async def test_download_content_type(self, auth_client):
         """Download should return appropriate content type"""
         response = await auth_client.post(
-            "/pro/files/download",
+            "/app/files/download",
             json=[str(uuid4())],
         )
         if response.status_code == 200:
@@ -422,18 +422,18 @@ class TestFileDownloadExtended:
 
 
 class TestFileGetByName:
-    """Tests for /pro/files/{file_name} endpoint"""
+    """Tests for /app/files/{file_name} endpoint"""
 
     @pytest.mark.asyncio
     async def test_get_file_by_name_unauthenticated(self, client):
         """Should fail without auth"""
-        response = await client.get("/pro/files/test_file.txt")
+        response = await client.get("/app/files/test_file.txt")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
     async def test_get_file_nonexistent(self, auth_client):
         """Should return 404 for nonexistent file"""
-        response = await auth_client.get(f"/pro/files/nonexistent_{uuid4().hex}.txt")
+        response = await auth_client.get(f"/app/files/nonexistent_{uuid4().hex}.txt")
         assert response.status_code in {404, 400}
 
     @pytest.mark.asyncio
@@ -446,7 +446,7 @@ class TestFileGetByName:
             "%2e%2e%2f%2e%2e%2fetc/passwd",
         ]
         for path in dangerous_paths:
-            response = await auth_client.get(f"/pro/files/{path}")
+            response = await auth_client.get(f"/app/files/{path}")
             # Should be 400, 404, or 422 - NOT 200
             assert response.status_code in {400, 404, 422}
 
@@ -459,13 +459,13 @@ class TestFileGetByName:
             "file<script>.txt",
         ]
         for name in special_names:
-            response = await auth_client.get(f"/pro/files/{name}")
+            response = await auth_client.get(f"/app/files/{name}")
             assert response.status_code in {400, 404, 422}
 
     @pytest.mark.asyncio
     async def test_get_file_null_byte(self, auth_client):
         """Null byte injection should be blocked"""
-        response = await auth_client.get("/pro/files/file.txt%00.html")
+        response = await auth_client.get("/app/files/file.txt%00.html")
         assert response.status_code in {400, 404, 422}
 
     @pytest.mark.asyncio
@@ -490,7 +490,7 @@ class TestFileGetByName:
             "is_entity_shared": False,
         }
         with mock.patch("utilities.config.Settings.redis_cache", return_value=fake_cache, autospec=True):
-            response = await auth_client.get(f"/pro/files/{fake_uuid}.csv")
+            response = await auth_client.get(f"/app/files/{fake_uuid}.csv")
             assert response.status_code == 403
             assert response.json().get("detail") == "User does not have access to this file"
 
@@ -501,13 +501,13 @@ class TestFileGetByName:
 
 
 class TestFileUpload:
-    """Tests for /pro/files POST endpoint"""
+    """Tests for /app/files POST endpoint"""
 
     @pytest.mark.asyncio
     async def test_upload_unauthenticated(self, client):
         """Should fail without auth"""
         response = await client.post(
-            "/pro/files",
+            "/app/files",
             json={"files": []},
         )
         assert response.status_code in {401, 403, 422}
@@ -516,7 +516,7 @@ class TestFileUpload:
     async def test_upload_empty_files(self, auth_client):
         """Upload with empty files list should be handled"""
         response = await auth_client.post(
-            "/pro/files",
+            "/app/files",
             json={"files": []},
         )
         assert response.status_code in {200, 422}
@@ -526,7 +526,7 @@ class TestFileUpload:
         """Upload with very long filename should be handled"""
         long_name = "a" * 500 + ".txt"
         response = await auth_client.post(
-            "/pro/files",
+            "/app/files",
             json={"files": [{"name": long_name, "size": 100}]},
         )
         assert response.status_code in {200, 400, 422}
@@ -535,7 +535,7 @@ class TestFileUpload:
     async def test_upload_file_size_too_large(self, auth_client):
         """Upload with too large file size should be handled"""
         response = await auth_client.post(
-            "/pro/files",
+            "/app/files",
             json={"files": [{"name": "huge.txt", "size": 10000000000}]},
         )
         assert response.status_code in {200, 400, 422}
@@ -553,7 +553,7 @@ class TestFileSecurityExtended:
     async def test_cannot_access_random_users_files(self, auth_client):
         """Should not be able to access random users' files"""
         other_user_file = str(uuid4())
-        response = await auth_client.get(f"/pro/files/{other_user_file}/presigned-url")
+        response = await auth_client.get(f"/app/files/{other_user_file}/presigned-url")
         # API may return 400 (bad request), 403 (forbidden), or 404 (not found)
         assert response.status_code in {400, 403, 404}
 
@@ -561,7 +561,7 @@ class TestFileSecurityExtended:
     async def test_cannot_delete_other_users_files(self, auth_client):
         """Should not be able to delete other users' files"""
         other_user_file = str(uuid4())
-        response = await auth_client.delete(f"/pro/files/{other_user_file}")
+        response = await auth_client.delete(f"/app/files/{other_user_file}")
         # Should be 404 (not found) rather than 403 to avoid enumeration
         assert response.status_code in {200, 404}
 
@@ -572,7 +572,7 @@ class TestFileSecurityExtended:
         responses = []
         for _ in range(5):
             random_uuid = str(uuid4())
-            response = await auth_client.get(f"/pro/files/{random_uuid}/presigned-url")
+            response = await auth_client.get(f"/app/files/{random_uuid}/presigned-url")
             responses.append(response.status_code)
 
         # All should return same status code to prevent enumeration
@@ -582,7 +582,7 @@ class TestFileSecurityExtended:
     async def test_no_internal_paths_in_response(self, auth_client):
         """Response should not expose internal file paths"""
         test_uuid = str(uuid4())
-        response = await auth_client.get(f"/pro/files/{test_uuid}/presigned-url")
+        response = await auth_client.get(f"/app/files/{test_uuid}/presigned-url")
         response_text = response.text
 
         # Should not contain internal paths
@@ -602,13 +602,13 @@ class TestStoredFiles:
     @pytest.mark.asyncio
     async def test_get_stored_files_unauthenticated(self, client):
         """Should fail without auth"""
-        response = await client.get("/pro/data-connectors/stored-files")
+        response = await client.get("/app/data-connectors/stored-files")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
     async def test_get_stored_files_authenticated(self, auth_client):
         """Should return list of stored files"""
-        response = await auth_client.get("/pro/data-connectors/stored-files")
+        response = await auth_client.get("/app/data-connectors/stored-files")
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
@@ -616,7 +616,7 @@ class TestStoredFiles:
     @pytest.mark.asyncio
     async def test_stored_files_response_schema(self, auth_client):
         """Stored files should return proper schema"""
-        response = await auth_client.get("/pro/data-connectors/stored-files")
+        response = await auth_client.get("/app/data-connectors/stored-files")
         if response.status_code == 200:
             data = response.json()
             assert isinstance(data, list)

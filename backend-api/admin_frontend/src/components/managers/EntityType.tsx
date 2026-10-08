@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, FormField, FormInput, FormSelect, useForm } from "@openbb/ui";
+import { FormField, FormInput, FormSelect } from "ui/Form";
+import { useForm } from "react-hook-form";
 import { ManagerForm } from "components/formItems";
 import type { SubmitFormProps } from "components/managers/Base";
 import { handleRequest } from "components/managers/helpers";
@@ -22,7 +23,7 @@ export function EntityTypeSubmitForm({
   data,
   item,
   setItem,
-}: SubmitFormProps<EntityType, null>): JSX.Element {
+}: SubmitFormProps<EntityType, Record<string, never>>): JSX.Element {
   const [warning, setWarning] = useState("");
 
   const form = useForm<TEntityType>({
@@ -77,7 +78,7 @@ export function EntityTypeSubmitForm({
           return <FormInput label="Permissions" type="number" {...field} />;
         }}
       />
-      <Button className="obb-btn-blue mt-2">Submit</Button>
+      <button type="submit" className="ws-btn-blue mt-2">Submit</button>
     </ManagerForm>
   );
 }

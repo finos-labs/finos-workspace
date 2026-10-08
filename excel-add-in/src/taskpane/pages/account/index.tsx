@@ -1,9 +1,8 @@
 import clsx from "clsx";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import OPENBB_SANDBOX_WIDGETS from "~/assets/openbb-sandbox-widgets.json";
 import { getUserProfile, getWidgetDefinitionMap } from "~/backend";
-import { ADDIN_FUNCS_SUFFIX, OPENBB_SANDBOX_ID } from "~/constants";
+import { ADDIN_FUNCS_SUFFIX } from "~/constants";
 import { isEmpty } from "~/functions/fetcher/utils";
 import { useAuthStore } from "~/store/auth";
 import { useCustomBackendsStore } from "~/store/custom.backends";
@@ -98,7 +97,7 @@ function CopyFormulaButton({
         .join(rowDelimiter);
 
       const widgetParamsArray = widgetParams ? `{${widgetParams}}` : "";
-      const func = `=OBB.${ADDIN_FUNCS_SUFFIX}WIDGET("${backendName}"${paramDelimiter}"${widgetName}"${paramDelimiter}${widgetParamsArray})`;
+      const func = `=WORKSPACE.${ADDIN_FUNCS_SUFFIX}WIDGET("${backendName}"${paramDelimiter}"${widgetName}"${paramDelimiter}${widgetParamsArray})`;
       await copyToClipboard(func);
       setCopied(true);
       setTimeout(() => setCopied(false), 1000);
@@ -162,16 +161,12 @@ function initBackendsState(
   getBackendWidgets: (id: string) => any
 ): Record<string, BackendState> {
   return backends.reduce((acc, backend) => {
-    let status: BackendState["status"];
-    
-    if (backend.id === OPENBB_SANDBOX_ID) {
-      status = "success";
-    } else {
-      // If backend has cached widgets, mark as "stale" (connected but not tested)
-      // If no cached widgets, mark as undefined (not connected)
-      status = getBackendWidgets(backend.id) ? "stale" : undefined;
-    }
-    
+    // If backend has cached widgets, mark as "stale" (connected but not tested)
+    // If no cached widgets, mark as undefined (not connected)
+    const status: BackendState["status"] = getBackendWidgets(backend.id)
+      ? "stale"
+      : undefined;
+
     acc[backend.id] = {
       expanded: false,
       status,
@@ -232,8 +227,6 @@ function Backends() {
     try {
       const results = await Promise.all(
         customBackends.map(async (backend) => {
-          if (backend.id === OPENBB_SANDBOX_ID)
-            return { [OPENBB_SANDBOX_ID]: OPENBB_SANDBOX_WIDGETS };
           try {
             const widgetDefinitionMap = await getWidgetDefinitionMap(backend);
             if (isEmpty(widgetDefinitionMap))

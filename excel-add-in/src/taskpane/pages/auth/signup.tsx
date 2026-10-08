@@ -13,14 +13,11 @@ export default function Page() {
         </div>
 
         <div className="mt-6 w-full space-y-3">
-          <p>Thanks for your interest in OpenBB!</p>
           <p>
-            This add-in is a part of Terminal Pro subscription and can be used
-            only by OpenBB Terminal Pro users. You can find more information or
-            start the sign up process{" "}
-            <Link to="https://my.openbb.co/app/pro">here</Link>.
+            This add-in works with an account of your Workspace. Ask the
+            administrator of your Workspace to add you.
           </p>
-          <p>If you are already a Pro user, please sign in to your account.</p>
+          <p>If you already have an account, please sign in.</p>
           <p>
             <Link to="/auth/login">&lt; Back to login</Link>
           </p>

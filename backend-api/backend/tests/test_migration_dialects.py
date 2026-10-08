@@ -39,7 +39,7 @@ needs_docker = pytest.mark.skipif(not _DOCKER_AVAILABLE, reason="Docker not avai
 _BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Tables seeded by 0002_seed_data
-_SEED_TABLES = {"tier": 2, "default_tier": 2, "data_bundle": 3}
+_SEED_TABLES = {"tier": 2, "default_tier": 2, "data_bundle": 2}
 
 # Minimum expected tables (model-created tables)
 _MIN_TABLES = 40
@@ -50,11 +50,10 @@ def _base_env() -> dict[str, str]:
     return {
         "MODE": "test",
         "JWT_SECRET": "testsecretfortesting12345678",
-        "OPENBB_AES_KEY": "sixteenbytekey!!",
-        "PROURL": "http://localhost:3000",
+        "WORKSPACE_AES_KEY": "sixteenbytekey!!",
+        "APPURL": "http://localhost:3000",
         "SELFURL": "http://localhost:8000",
         "DISABLE_CORS": "true",
-        "HUBSPOT": "0",
         "PROMETHEUS": "0",
         "WORKERS": "1",
         "STORAGE_PROVIDER": "aws",
@@ -64,15 +63,10 @@ def _base_env() -> dict[str, str]:
         "S3_FILE_BUCKET": "test",
         "S3_ENDPOINT_URL": "http://localhost",
         "FRONTENDURL": "http://localhost",
-        "OPENBB_FRONTEND_USER_AGENT": "test",
-        "OPENBB_AI_USER_AGENT": "test",
-        "OPENBB_GEO_KEY": "test",
-        "OPENBB_CHARGEBEE_SITE_KEY": "test",
-        "OPENBB_CHARGEBEE_API_KEY": "test",
-        "OKTA_DOMAIN": "test.okta.com",
-        "SUPPRESSED_API_ROUTERS": '["bot", "terminal", "sdk", "run_tasks", "testing", "metrics"]',
+        "WORKSPACE_FRONTEND_USER_AGENT": "test",
+        "SUPPRESSED_API_ROUTERS": '["sdk", "run_tasks"]',
         "SUPPRESSED_API_ROUTES": "[]",
-        "OPENBB_AUTH_TOKEN": "test-token",
+        "WORKSPACE_AUTH_TOKEN": "test-token",
     }
 
 
@@ -199,17 +193,17 @@ def _wait_for_mysql(host: str, port: int, timeout: int = 60):
 
 def _wait_for_postgres(host: str, port: int, timeout: int = 60):
     """Wait for PostgreSQL to accept connections."""
-    import psycopg2
+    import pg8000.dbapi
 
     for attempt in range(timeout):
         try:
-            conn = psycopg2.connect(
+            conn = pg8000.dbapi.connect(
                 host=host,
                 port=port,
                 user="root",
                 password="test_password",  # noqa: S106
-                dbname="test_db",
-                connect_timeout=3,
+                database="test_db",
+                timeout=3,
             )
             conn.close()
             return
@@ -338,7 +332,7 @@ class TestPostgreSQLMigrations:
             ), f"No migrations ran:\n{result.stderr}"
 
             url = (
-                f"postgresql+psycopg2://root:test_password@{pg_host}:{pg_port}/test_db"
+                f"postgresql+pg8000://root:test_password@{pg_host}:{pg_port}/test_db"
             )
             engine = sa.create_engine(url)
             try:

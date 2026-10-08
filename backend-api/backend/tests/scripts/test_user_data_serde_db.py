@@ -60,7 +60,7 @@ def _sample_rows() -> dict[str, object]:
             source="custom",
             category="c",
             sub_category="s",
-            widget_type="rich_note",
+            widget_type="html",
             storage={"body": "# heading\n\nsome **markdown** with ünïcøde"},
             widget_config={"theme": "dark", "n": 3},
             widget_id=uuid4(),
@@ -69,7 +69,7 @@ def _sample_rows() -> dict[str, object]:
             uuid=uuid4(),
             creater_uuid=USER_UUID,
             s3_file_name="7f3a-report.pdf",
-            bucket="pro-file-storage-dev",
+            bucket="file-storage-dev",
             extension="pdf",
             original_file_name="report.pdf",
             size=182_344,
@@ -106,7 +106,7 @@ def _sample_rows() -> dict[str, object]:
         "mcp_servers": models.MCPServers(
             uuid=uuid4(),
             user_uuid=USER_UUID,
-            servers=[{"name": "openbb", "url": "https://mcp.example.com"}],
+            servers=[{"name": "workspace", "url": "https://mcp.example.com"}],
         ),
         "copilot_chat": models.CopilotChat(
             uuid=CHAT_UUID,
@@ -124,11 +124,6 @@ def _sample_rows() -> dict[str, object]:
             content={"text": "what is the price of AAPL?"},
             searchable_content="what is the price of AAPL?",
         ),
-        "copilot_chat_old": models.CopilotChatOld(
-            uuid=uuid4(),
-            user_uuid=USER_UUID,
-            content={"messages": [{"role": "user", "content": "an older chat"}]},
-        ),
         "user_prompts": models.UserPrompts(
             uuid=uuid4(), user_uuid=USER_UUID, prompt=[{"title": "p", "body": "b"}]
         ),
@@ -138,28 +133,6 @@ def _sample_rows() -> dict[str, object]:
             slug="my-skill",
             description="does things",
             content="# Skill\n\nBody with ünïcøde and\ttabs",
-        ),
-        "trading_view": models.TradingView(
-            uuid=uuid4(),
-            user_uuid=USER_UUID,
-            charts_state={"charts": [{"symbol": "AAPL"}]},
-            settings={"theme": "dark"},
-        ),
-        "enabled_widget_bundles": models.EnabledWidgetBundles(
-            uuid=uuid4(),
-            user_uuid=USER_UUID,
-            enabled_bundles=["equity", "crypto"],
-            disabled_widgets=["noisy_widget"],
-        ),
-        "single_widget": models.SingleWidget(
-            uuid=uuid4(),
-            user_uuid=USER_UUID,
-            name="w",
-            endpoint="/data",
-            grid_data={"x": 1},
-            data={"k": "v"},
-            endpoint_headers={"X-Key": "abc"},
-            source=["custom"],
         ),
         "file_widget": models.FileWidget(
             uuid=uuid4(),

@@ -21,7 +21,7 @@ from workspace_mcp.state import BridgeSessionManager
 type ToolResponse = dict[str, Any]
 type CommandRunner = Callable[[Any], Awaitable[ToolResponse]]
 
-RESULT_REF_URI_TEMPLATE = "openbb://workspace/results/{result_id}"
+RESULT_REF_URI_TEMPLATE = "workspace://results/{result_id}"
 
 
 class ResultOffloadStore:
@@ -142,11 +142,6 @@ def has_layout_ui_args(ui_args: dict[str, Any] | None) -> bool:
     )
 
 
-def is_generative_only_widget(widget_id: str) -> bool:
-    """Return whether the widget must be created through add_generative_widget."""
-    return widget_id == "rich_note"
-
-
 # ---------------------------------------------------------------------------
 # Tool error envelopes
 # ---------------------------------------------------------------------------
@@ -191,72 +186,17 @@ def require_widget_identifier(
 # Validators
 # ---------------------------------------------------------------------------
 
-_CHART_PARAM_ALIASES: dict[str, str] = {
-    "chart_type": "chartType",
-    "x_key": "xKey",
-    "y_key": "yKey",
-    "angle_key": "angleKey",
-    "callout_label_key": "calloutLabelKey",
-}
-
-
-def normalize_chart_params(
-    chart_params: dict[str, Any] | None,
-) -> dict[str, Any] | None:
-    """Translate snake_case chart_params aliases into the camelCase bridge keys.
-
-    The camelCase key wins when both spellings are present; unknown keys pass
-    through untouched.
-    """
-    if not isinstance(chart_params, dict):
-        return chart_params
-    normalized: dict[str, Any] = {}
-    for key, value in chart_params.items():
-        camel_key = _CHART_PARAM_ALIASES.get(key, key)
-        if camel_key != key and camel_key in chart_params:
-            continue
-        normalized[camel_key] = value
-    return normalized
-
-
 def validate_add_generative_widget_request(
     *,
     widget_type: str,
-    data: list[dict[str, Any]] | str | None,
-    chart_params: dict[str, Any] | None,
+    data: str | None,
 ) -> str | None:
-    """Validate widget-type-specific generative widget payload requirements."""
-    if widget_type in {"note", "html"}:
-        if not isinstance(data, str):
-            return (
-                f"add_generative_widget with widget_type='{widget_type}' "
-                "requires string data."
-            )
-        return None
-    if not isinstance(data, list):
+    """Validate the generative widget payload: note and html widgets take a string."""
+    if not isinstance(data, str):
         return (
             f"add_generative_widget with widget_type='{widget_type}' "
-            "requires data as list[dict]."
+            "requires string data."
         )
-    if widget_type != "chart":
-        return None
-
-    chart_config = chart_params if isinstance(chart_params, dict) else {}
-    y_key = chart_config.get("yKey")
-    invalid_chart_params = (
-        not isinstance(chart_params, dict)
-        or not isinstance(chart_config.get("chartType"), str)
-        or not isinstance(chart_config.get("xKey"), str)
-        or not isinstance(y_key, list)
-        or not y_key
-        or not all(isinstance(item, str) for item in y_key)
-    )
-    if invalid_chart_params:
-        return (
-            "add_generative_widget with widget_type='chart' requires chart_params "
-            "with chartType, xKey, and non-empty yKey."
-        )
-
     return None
 
 
@@ -273,7 +213,6 @@ def data_source_payloads(items: list[WidgetDataRequest]) -> list[dict[str, Any]]
             "id": item.widget_id,
             "input_args": item.data_args,
             "widget_uuid": item.widget_uuid,
-            "ssm_request": item.ssm_request,
         }
         for item in items
     ]

@@ -12,6 +12,7 @@ from typing import Any
 from fastmcp import FastMCP
 from fastmcp.exceptions import ResourceError
 from fastmcp.prompts.base import Message
+from fastmcp.server.auth import AuthProvider
 from starlette.types import Lifespan
 
 from workspace_mcp.app_builder import register_app_builder_resources
@@ -24,7 +25,6 @@ from workspace_mcp.server._helpers import (
     data_source_payloads,
     has_layout_ui_args,
     invalid_request,
-    is_generative_only_widget,
     param_options_payloads,
     payload_list,
     required_widget_config,
@@ -51,7 +51,6 @@ __all__ = [
     "describe_tool",
     "has_layout_ui_args",
     "invalid_request",
-    "is_generative_only_widget",
     "param_options_payloads",
     "payload_list",
     "required_widget_config",
@@ -62,13 +61,20 @@ __all__ = [
 
 
 def create_mcp_server(
-    state: BridgeSessionManager, lifespan: Lifespan | None = None
+    state: BridgeSessionManager,
+    lifespan: Lifespan | None = None,
+    auth: AuthProvider | None = None,
 ) -> FastMCP:
-    """Create the Workspace MCP server with the full v1 tool list."""
+    """Create the Workspace MCP server with the full v1 tool list.
+
+    ``auth`` makes the HTTP transport require a bearer token that the provider accepts;
+    without it the server is open, which is only right for the local sidecar.
+    """
     server = FastMCP(
-        name="OpenBB Workspace MCP",
+        name="Workspace MCP",
         instructions=SERVER_INSTRUCTIONS,
         lifespan=lifespan,
+        auth=auth,
     )
 
     register_app_builder_resources(server)
@@ -98,7 +104,7 @@ def create_mcp_server(
 
     @server.prompt(
         name="workspace_tool_usage",
-        description="Generic guidance for using the OpenBB Workspace MCP tool surface.",
+        description="Generic guidance for using the Workspace MCP tool surface.",
     )
     def workspace_tool_usage() -> list[Message]:
         """Return a compact, generic usage prompt for MCP agents."""

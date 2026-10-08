@@ -18,12 +18,12 @@ from sqlalchemy import text
 
 
 class TestWidgetMetadata:
-    """Tests for /pro/widget-metadata endpoints"""
+    """Tests for /app/widget-metadata endpoints"""
 
     @pytest.mark.asyncio
     async def test_get_widget_metadata_unauthenticated(self, client):
         """Should fail without auth"""
-        response = await client.get("/pro/widget-metadata")
+        response = await client.get("/app/widget-metadata")
         assert response.status_code in {401, 403}
         # Validate error response structure
         data = response.json()
@@ -33,7 +33,7 @@ class TestWidgetMetadata:
     @pytest.mark.asyncio
     async def test_get_widget_metadata_authenticated(self, auth_client):
         """Should return widget metadata or 404 if none exists"""
-        response = await auth_client.get("/pro/widget-metadata")
+        response = await auth_client.get("/app/widget-metadata")
         # 200 for success, 404 if no metadata exists yet
         assert response.status_code in {200, 404}
         # Validate response structure
@@ -45,7 +45,7 @@ class TestWidgetMetadata:
     @pytest.mark.asyncio
     async def test_create_widget_metadata_unauthenticated(self, client):
         """Should fail without auth"""
-        response = await client.post("/pro/widget-metadata", json={})
+        response = await client.post("/app/widget-metadata", json={})
         assert response.status_code in {401, 403, 422}
         # Validate error response structure
         data = response.json()
@@ -67,7 +67,7 @@ class TestWidgetMetadata:
             "storage": {"url": "https://example.com"},
             "widgetConfig": {},
         }
-        response = await auth_client.post("/pro/widget-metadata", json=payload)
+        response = await auth_client.post("/app/widget-metadata", json=payload)
         assert response.status_code in {200, 201}
         data = response.json()
         assert data.get("success") is True
@@ -86,13 +86,13 @@ class TestWidgetMetadata:
                 "subCategory": "testing",
                 "widgetType": widget_type,
                 "storage": (
-                    {"plotlyData": {"data": [], "layout": {}}}
+                    {"figure": {"data": [], "layout": {}}}
                     if widget_type == "chart"
                     else {"html": "<div>test</div>"}
                 ),
             }
 
-            response = await auth_client.post("/pro/widget-metadata", json=payload)
+            response = await auth_client.post("/app/widget-metadata", json=payload)
             assert response.status_code in {200, 201}
             data = response.json()
             assert data.get("success") is True
@@ -114,17 +114,17 @@ class TestWidgetMetadata:
                 "subCategory": "testing",
                 "widgetType": widget_type,
                 "storage": (
-                    {"plotlyData": {"data": [], "layout": {}}}
+                    {"figure": {"data": [], "layout": {}}}
                     if widget_type == "chart"
                     else {"html": "<div>test</div>"}
                 ),
             }
-            create_response = await auth_client.post("/pro/widget-metadata", json=payload)
+            create_response = await auth_client.post("/app/widget-metadata", json=payload)
             assert create_response.status_code in {200, 201}
 
         for widget_type in ("chart", "html"):
             response = await auth_client.get(
-                f"/pro/widget-metadata?widget_type={widget_type}"
+                f"/app/widget-metadata?widget_type={widget_type}"
             )
             assert response.status_code == 200
             widgets = response.json()
@@ -138,7 +138,7 @@ class TestWidgetMetadata:
     @pytest.mark.parametrize(
         ("widget_type", "storage"),
         [
-            ("chart", {"plotlyData": {"data": [], "layout": {}}}),
+            ("chart", {"figure": {"data": [], "layout": {}}}),
             ("html", {"html": "<div>test</div>"}),
         ],
     )
@@ -160,21 +160,21 @@ class TestWidgetMetadata:
             "storage": storage,
         }
         create_response = await auth_client.post(
-            "/pro/widget-metadata",
+            "/app/widget-metadata",
             json=create_payload,
         )
         assert create_response.status_code in {200, 201}
 
         patch_payload = {"description": "after update"}
         patch_response = await auth_client.patch(
-            f"/pro/widget-metadata?widget_type={widget_type}&name={name}",
+            f"/app/widget-metadata?widget_type={widget_type}&name={name}",
             json=patch_payload,
         )
         assert patch_response.status_code == 200
         assert patch_response.json().get("success") is True
 
         verify_response = await auth_client.get(
-            f"/pro/widget-metadata?widget_id={widget_id}"
+            f"/app/widget-metadata?widget_id={widget_id}"
         )
         assert verify_response.status_code == 200
         widgets = verify_response.json()
@@ -198,7 +198,7 @@ class TestWidgetMetadata:
             "widgetType": "iframe",
             "storage": {"url": "https://example.com"},
         }
-        await auth_client.post("/pro/widget-metadata", json=payload)
+        await auth_client.post("/app/widget-metadata", json=payload)
 
         # Now update it
         patch_payload = {
@@ -207,7 +207,7 @@ class TestWidgetMetadata:
         }
         # Note: API requires widget_id as query param for specific widget update
         response = await auth_client.patch(
-            f"/pro/widget-metadata?widget_id={widget_id}", json=patch_payload
+            f"/app/widget-metadata?widget_id={widget_id}", json=patch_payload
         )
         assert response.status_code == 200
         data = response.json()
@@ -215,7 +215,7 @@ class TestWidgetMetadata:
 
         # Verify update
         get_response = await auth_client.get(
-            f"/pro/widget-metadata?widget_id={widget_id}"
+            f"/app/widget-metadata?widget_id={widget_id}"
         )
         # Returns a list
         widgets = get_response.json()
@@ -228,7 +228,7 @@ class TestWidgetMetadata:
     async def test_delete_widget_metadata_unauthenticated(self, client):
         """Should fail without auth"""
         test_id = str(uuid4())
-        response = await client.delete(f"/pro/widget-metadata/{test_id}")
+        response = await client.delete(f"/app/widget-metadata/{test_id}")
         assert response.status_code in {401, 403}
         # Validate error response structure
         data = response.json()
@@ -239,17 +239,17 @@ class TestWidgetMetadata:
     async def test_delete_widget_metadata_nonexistent(self, auth_client):
         """Should return 404 for nonexistent widget"""
         test_id = str(uuid4())
-        response = await auth_client.delete(f"/pro/widget-metadata/{test_id}")
+        response = await auth_client.delete(f"/app/widget-metadata/{test_id}")
         assert response.status_code in {200, 404}
 
 
 class TestThemeSettings:
-    """Tests for /pro/theme-settings endpoint"""
+    """Tests for /app/theme-settings endpoint"""
 
     @pytest.mark.asyncio
     async def test_get_theme_settings_unauthenticated(self, client):
         """Should fail without auth"""
-        response = await client.get("/pro/theme-settings")
+        response = await client.get("/app/theme-settings")
         assert response.status_code in {401, 403}
         # Validate error response structure
         data = response.json()
@@ -259,7 +259,7 @@ class TestThemeSettings:
     @pytest.mark.asyncio
     async def test_get_theme_settings_authenticated(self, auth_client):
         """Should return theme settings"""
-        response = await auth_client.get("/pro/theme-settings")
+        response = await auth_client.get("/app/theme-settings")
         # 200 for success, 404 if no settings exist
         assert response.status_code in {200, 404}
         # Validate response structure
@@ -267,29 +267,6 @@ class TestThemeSettings:
         assert isinstance(data, dict)
         content_type = response.headers.get("content-type", "")
         assert "application/json" in content_type
-
-
-class TestTvState:
-    """Tests for /pro/tv-state endpoint"""
-
-    @pytest.mark.asyncio
-    async def test_save_tv_state_unauthenticated(self, client):
-        """Should fail without auth"""
-        response = await client.post("/pro/tv-state", json={})
-        assert response.status_code in {401, 403, 422}
-        # Validate error response structure
-        data = response.json()
-        assert isinstance(data, dict)
-        assert "detail" in data or "message" in data or "error" in data
-
-    @pytest.mark.asyncio
-    async def test_save_tv_state_authenticated(self, auth_client):
-        """Should save TradingView state"""
-        response = await auth_client.post(
-            "/pro/tv-state", json={"state": {"chart": "data"}}
-        )
-        # 200 for success, 422 for validation error
-        assert response.status_code in {200, 422}
 
 
 # =============================================================================
@@ -304,7 +281,7 @@ class TestWidgetInputValidation:
     async def test_create_widget_empty_name(self, auth_client):
         """Creating widget with empty name should be handled"""
         response = await auth_client.post(
-            "/pro/widget-metadata", json={"name": "", "type": "chart"}
+            "/app/widget-metadata", json={"name": "", "type": "chart"}
         )
         assert response.status_code in {200, 201, 400, 422}
 
@@ -312,7 +289,7 @@ class TestWidgetInputValidation:
     async def test_create_widget_very_long_name(self, auth_client):
         """Creating widget with very long name should be handled"""
         response = await auth_client.post(
-            "/pro/widget-metadata", json={"name": "a" * 500, "type": "chart"}
+            "/app/widget-metadata", json={"name": "a" * 500, "type": "chart"}
         )
         assert response.status_code in {200, 201, 400, 422}
 
@@ -321,7 +298,7 @@ class TestWidgetInputValidation:
         """SQL injection in widget name should be handled safely - verify DB"""
         sql_payload = "'; DROP TABLE widget_metadata; --"
         response = await auth_client.post(
-            "/pro/widget-metadata",
+            "/app/widget-metadata",
             json={"name": sql_payload, "type": "chart"},
         )
         assert response.status_code in {200, 201, 400, 422}
@@ -336,7 +313,7 @@ class TestWidgetInputValidation:
         """XSS in widget name should be handled safely - verify storage"""
         xss_payload = "<script>alert('xss')</script>"
         response = await auth_client.post(
-            "/pro/widget-metadata",
+            "/app/widget-metadata",
             json={"name": xss_payload, "type": "chart"},
         )
 
@@ -361,7 +338,7 @@ class TestWidgetInputValidation:
     @pytest.mark.asyncio
     async def test_delete_widget_invalid_uuid(self, auth_client):
         """Deleting widget with invalid UUID should return 422"""
-        response = await auth_client.delete("/pro/widget-metadata/not-a-valid-uuid")
+        response = await auth_client.delete("/app/widget-metadata/not-a-valid-uuid")
         assert response.status_code == 422
 
 
@@ -378,13 +355,13 @@ class TestThemeSettingsValidation:
         """SQL injection in theme settings should be handled safely - verify DB"""
         sql_payload = "'; DROP TABLE user; --"
         response = await auth_client.post(
-            "/pro/theme-settings",
+            "/app/theme-settings",
             json={"theme": sql_payload},
         )
         # POST may not exist, try PUT
         if response.status_code == 405:
             response = await auth_client.put(
-                "/pro/theme-settings",
+                "/app/theme-settings",
                 json={"theme": sql_payload},
             )
         assert response.status_code in {200, 400, 404, 405, 422}
@@ -399,63 +376,18 @@ class TestThemeSettingsValidation:
         """XSS in theme settings should be handled safely"""
         xss_payload = "<script>alert('xss')</script>"
         response = await auth_client.post(
-            "/pro/theme-settings",
+            "/app/theme-settings",
             json={"theme": xss_payload},
         )
         if response.status_code == 405:
             response = await auth_client.put(
-                "/pro/theme-settings",
+                "/app/theme-settings",
                 json={"theme": xss_payload},
             )
 
         if response.status_code in {200, 201}:
             content_type = response.headers.get("content-type", "")
             assert "application/json" in content_type
-
-
-# =============================================================================
-# TV STATE VALIDATION TESTS
-# =============================================================================
-
-
-class TestTvStateValidation:
-    """Tests for TradingView state validation"""
-
-    @pytest.mark.asyncio
-    async def test_save_tv_state_sql_injection(self, auth_client, db_session):
-        """SQL injection in TV state should be handled safely - verify DB"""
-        response = await auth_client.post(
-            "/pro/tv-state",
-            json={"state": {"query": "'; DROP TABLE user; --"}},
-        )
-        assert response.status_code in {200, 400, 422}
-
-        # ACTUALLY verify the database is intact
-        result = await db_session.execute(text("SELECT COUNT(*) FROM user"))
-        count = result.scalar()
-        assert count is not None  # Table still exists
-
-    @pytest.mark.asyncio
-    async def test_save_tv_state_xss(self, auth_client):
-        """XSS in TV state should be handled safely"""
-        response = await auth_client.post(
-            "/pro/tv-state",
-            json={"state": {"script": "<script>alert('xss')</script>"}},
-        )
-
-        if response.status_code == 200:
-            content_type = response.headers.get("content-type", "")
-            assert "application/json" in content_type
-
-    @pytest.mark.asyncio
-    async def test_save_tv_state_nested_object(self, auth_client):
-        """Deeply nested TV state should be handled"""
-        deep_state = {"level1": {"level2": {"level3": {"level4": "value"}}}}
-        response = await auth_client.post(
-            "/pro/tv-state",
-            json={"state": deep_state},
-        )
-        assert response.status_code in {200, 400, 422}
 
 
 # =============================================================================
@@ -469,7 +401,7 @@ class TestWidgetOutputValidation:
     @pytest.mark.asyncio
     async def test_widget_metadata_response_schema(self, auth_client):
         """Widget metadata response should have expected schema"""
-        response = await auth_client.get("/pro/widget-metadata")
+        response = await auth_client.get("/app/widget-metadata")
         if response.status_code == 200:
             data = response.json()
             assert isinstance(data, (list, dict))
@@ -477,7 +409,7 @@ class TestWidgetOutputValidation:
     @pytest.mark.asyncio
     async def test_theme_settings_response_schema(self, auth_client):
         """Theme settings response should have expected schema"""
-        response = await auth_client.get("/pro/theme-settings")
+        response = await auth_client.get("/app/theme-settings")
         if response.status_code == 200:
             data = response.json()
             assert isinstance(data, (list, dict))
@@ -485,7 +417,7 @@ class TestWidgetOutputValidation:
     @pytest.mark.asyncio
     async def test_widget_response_no_sensitive_data(self, auth_client):
         """Widget responses should not expose sensitive data"""
-        response = await auth_client.get("/pro/widget-metadata")
+        response = await auth_client.get("/app/widget-metadata")
         if response.status_code == 200:
             data_str = str(response.json())
             assert "password" not in data_str.lower()
@@ -504,23 +436,12 @@ class TestWidgetCrossUserSecurity:
     @pytest.mark.asyncio
     async def test_widgets_isolated_per_user(self, auth_client, second_user_client):
         """Each user should only see their own widgets"""
-        response1 = await auth_client.get("/pro/widget-metadata")
-        response2 = await second_user_client.get("/pro/widget-metadata")
+        response1 = await auth_client.get("/app/widget-metadata")
+        response2 = await second_user_client.get("/app/widget-metadata")
 
         # Both should work but be isolated
         assert response1.status_code in {200, 404}
         assert response2.status_code in {200, 404}
-
-    @pytest.mark.asyncio
-    async def test_tv_state_isolated_per_user(self, auth_client, second_user_client):
-        """Each user should only see their own TV state"""
-        # Save state for first user
-        await auth_client.post("/pro/tv-state", json={"state": {"user": "first"}})
-
-        # Second user saves different state
-        await second_user_client.post(
-            "/pro/tv-state", json={"state": {"user": "second"}}
-        )
 
         # States should be isolated (each user has their own)
         # This test passes if no cross-user contamination occurs
@@ -532,7 +453,7 @@ class TestWidgetCrossUserSecurity:
         """Users should not be able to delete other users' widgets"""
         # Create a widget as first user
         create_response = await auth_client.post(
-            "/pro/widget-metadata",
+            "/app/widget-metadata",
             json={"name": "user1_widget", "type": "chart"},
         )
 
@@ -541,10 +462,10 @@ class TestWidgetCrossUserSecurity:
             if "uuid" in data:
                 # Second user tries to delete it
                 delete_response = await second_user_client.delete(
-                    f"/pro/widget-metadata/{data['uuid']}"
+                    f"/app/widget-metadata/{data['uuid']}"
                 )
                 # Should fail (404 because not their widget, or 403)
                 assert delete_response.status_code in {403, 404}
 
                 # Cleanup: delete as original user
-                await auth_client.delete(f"/pro/widget-metadata/{data['uuid']}")
+                await auth_client.delete(f"/app/widget-metadata/{data['uuid']}")

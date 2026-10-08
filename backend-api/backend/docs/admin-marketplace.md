@@ -2,7 +2,7 @@
 
 Internal guide for publishing and managing marketplace apps.
 
-All `/admin/marketplace/*` endpoints require a **superuser** session token.
+All `/admin/marketplace/*` endpoints require a **superuser** session token. In the examples, `<API_URL>` is the base URL of your Workspace backend.
 
 ## Getting Your Token
 
@@ -19,7 +19,7 @@ The most common flow. A developer has submitted an app — it's in `development`
 ### 1. List apps waiting for review
 
 ```bash
-curl "https://payments.openbb.dev/admin/marketplace/apps?status=development" \
+curl "<API_URL>/admin/marketplace/apps?status=development" \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
@@ -29,13 +29,13 @@ Each version is a separate entry with its own `id`. If a developer submitted v1.
 [
   {
     "id": "77f0acf2-...",
-    "name": "Acme Markets",
+    "name": "<app name>",
     "version": "1.0",
     "status": "development"
   },
   {
     "id": "84f8abda-...",
-    "name": "Acme Markets",
+    "name": "<app name>",
     "version": "1.2",
     "status": "development"
   }
@@ -49,7 +49,7 @@ Find the version the developer asked you to publish and use its `id` in the next
 Re-run verification to make sure manifests are reachable and valid:
 
 ```bash
-curl -X POST https://payments.openbb.dev/admin/marketplace/apps/<APP_ID>/verify \
+curl -X POST <API_URL>/admin/marketplace/apps/<APP_ID>/verify \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
@@ -58,7 +58,7 @@ Check the response — `verification.status` should be `"ok"`. If there are erro
 ### 3. Publish
 
 ```bash
-curl -X POST https://payments.openbb.dev/admin/marketplace/apps/<APP_ID>/publish \
+curl -X POST <API_URL>/admin/marketplace/apps/<APP_ID>/publish \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
@@ -69,7 +69,7 @@ The app must be in `verified` or `development` status.
 ### 4. Confirm it's live
 
 ```bash
-curl https://payments.openbb.dev/marketplace/apps
+curl <API_URL>/marketplace/apps
 ```
 
 The app should now appear in the public list.
@@ -82,11 +82,11 @@ If a published version has issues, roll back to the previous one:
 
 ```bash
 # Find the old version (it'll be in "disabled" status)
-curl "https://payments.openbb.dev/admin/marketplace/apps?status=disabled" \
+curl "<API_URL>/admin/marketplace/apps?status=disabled" \
   -H "Authorization: Bearer <TOKEN>"
 
 # Re-enable it (auto-disables the current published version)
-curl -X POST https://payments.openbb.dev/admin/marketplace/apps/<OLD_APP_ID>/enable \
+curl -X POST <API_URL>/admin/marketplace/apps/<OLD_APP_ID>/enable \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
@@ -99,32 +99,32 @@ If the developer hasn't used the self-serve flow, you can create the vendor + ap
 ### Create vendor + app
 
 ```bash
-curl -X POST https://payments.openbb.dev/admin/marketplace/apps \
+curl -X POST <API_URL>/admin/marketplace/apps \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{
-    "vendor_name": "Acme Data",
-    "vendor_description": "Financial data provider",
-    "vendor_website_url": "https://acmedata.com",
-    "vendor_thumbnail_url": "https://acmedata.com/vendor-logo.png",
-    "documentation_url": "https://docs.acmedata.com",
-    "contact_email": "support@acmedata.com",
-    "app_name": "Acme Markets",
+    "vendor_name": "<vendor name>",
+    "vendor_description": "<what the vendor offers>",
+    "vendor_website_url": "https://<vendor-host>",
+    "vendor_thumbnail_url": "https://<vendor-host>/vendor-logo.png",
+    "documentation_url": "https://<docs-host>",
+    "contact_email": "<contact-email>",
+    "app_name": "<app name>",
     "version": "1.0",
-    "short_description": "Real-time market data widgets",
+    "short_description": "<one-line description>",
     "category": "Real-time Data & Analytics",
-    "tagline": "Keep a pulse on the markets with Acme's real-time data widgets.",
-    "thumbnail_url": "https://acmedata.com/logo.png",
-    "thumbnail_url_dark": "https://acmedata.com/logo-dark.png",
-    "thumbnail_url_light": "https://acmedata.com/logo-light.png",
+    "tagline": "<one-line tagline>",
+    "thumbnail_url": "https://<vendor-host>/logo.png",
+    "thumbnail_url_dark": "https://<vendor-host>/logo-dark.png",
+    "thumbnail_url_light": "https://<vendor-host>/logo-light.png",
     "media": [
-      "https://acmedata.com/screenshot1.png",
-      "https://acmedata.com/walkthrough.mp4"
+      "https://<vendor-host>/screenshot1.png",
+      "https://<vendor-host>/walkthrough.mp4"
     ],
-    "api_key_url": "https://acmedata.com/verify-key",
-    "api_key_info_url": "https://acmedata.com/docs/api-keys",
-    "more_information_url": "https://acmedata.com/about",
-    "backend_base_url": "https://api.acmedata.com",
+    "api_key_url": "https://<vendor-host>/verify-key",
+    "api_key_info_url": "https://<vendor-host>/docs/api-keys",
+    "more_information_url": "https://<vendor-host>/about",
+    "backend_base_url": "https://<backend-host>",
     "is_built_in": false,
     "auth_type": ["none"]
   }'
@@ -165,9 +165,9 @@ The `media` array feeds the Workspace's `MediaCarousel` component on the app det
 
 | URL pattern | Renders as | Example |
 |---|---|---|
-| `youtube.com/*` or `youtu.be/*` | `<iframe>` embed | `https://www.youtube.com/watch?v=abc123` |
-| `.mp4` / `.webm` / `.mov` / `.m4v` extension | `<video>` with native controls | `https://example.com/demo.mp4` |
-| Everything else | `<img>` | `https://example.com/screenshot.png` |
+| `youtube.com/*` or `youtu.be/*` | `<iframe>` embed | `https://www.youtube.com/watch?v=<video-id>` |
+| `.mp4` / `.webm` / `.mov` / `.m4v` extension | `<video>` with native controls | `https://<media-host>/demo.mp4` |
+| Everything else | `<img>` | `https://<media-host>/screenshot.png` |
 
 Developers can mix types freely. Things to check when reviewing:
 
@@ -238,7 +238,7 @@ Rules to enforce when reviewing:
 Save the `app_id`. Then publish:
 
 ```bash
-curl -X POST https://payments.openbb.dev/admin/marketplace/apps/<APP_ID>/publish \
+curl -X POST <API_URL>/admin/marketplace/apps/<APP_ID>/publish \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
@@ -247,14 +247,14 @@ curl -X POST https://payments.openbb.dev/admin/marketplace/apps/<APP_ID>/publish
 If the vendor already exists, use their `vendor_id`:
 
 ```bash
-curl -X POST https://payments.openbb.dev/admin/marketplace/vendors/<VENDOR_ID>/apps \
+curl -X POST <API_URL>/admin/marketplace/vendors/<VENDOR_ID>/apps \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{
-    "app_name": "Acme Analytics",
+    "app_name": "<app name>",
     "version": "1.0",
     "short_description": "Portfolio analytics widgets",
-    "backend_base_url": "https://analytics.acmedata.com",
+    "backend_base_url": "https://<backend-host>",
     "auth_type": ["api_key"]
   }'
 ```
@@ -264,10 +264,10 @@ curl -X POST https://payments.openbb.dev/admin/marketplace/vendors/<VENDOR_ID>/a
 So a developer can manage the app via the self-serve endpoints:
 
 ```bash
-curl -X PATCH https://payments.openbb.dev/admin/marketplace/apps/<APP_ID> \
+curl -X PATCH <API_URL>/admin/marketplace/apps/<APP_ID> \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{"owner_email": "developer@acmedata.com"}'
+  -d '{"owner_email": "<developer-email>"}'
 ```
 
 ---
@@ -278,11 +278,11 @@ curl -X PATCH https://payments.openbb.dev/admin/marketplace/apps/<APP_ID> \
 
 ```bash
 # All apps
-curl https://payments.openbb.dev/admin/marketplace/apps \
+curl <API_URL>/admin/marketplace/apps \
   -H "Authorization: Bearer <TOKEN>"
 
 # Filter by status
-curl "https://payments.openbb.dev/admin/marketplace/apps?status=published" \
+curl "<API_URL>/admin/marketplace/apps?status=published" \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
@@ -291,7 +291,7 @@ curl "https://payments.openbb.dev/admin/marketplace/apps?status=published" \
 All fields are optional. If `backend_base_url`, `apps_json_url`, or `widgets_json_url` change, re-verification runs automatically.
 
 ```bash
-curl -X PATCH https://payments.openbb.dev/admin/marketplace/apps/<APP_ID> \
+curl -X PATCH <API_URL>/admin/marketplace/apps/<APP_ID> \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{"short_description": "Updated description"}'
@@ -304,14 +304,14 @@ curl -X PATCH https://payments.openbb.dev/admin/marketplace/apps/<APP_ID> \
 ### Disable (temporarily hide)
 
 ```bash
-curl -X POST https://payments.openbb.dev/admin/marketplace/apps/<APP_ID>/disable \
+curl -X POST <API_URL>/admin/marketplace/apps/<APP_ID>/disable \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
 ### Re-enable
 
 ```bash
-curl -X POST https://payments.openbb.dev/admin/marketplace/apps/<APP_ID>/enable \
+curl -X POST <API_URL>/admin/marketplace/apps/<APP_ID>/enable \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
@@ -320,7 +320,7 @@ curl -X POST https://payments.openbb.dev/admin/marketplace/apps/<APP_ID>/enable 
 Works from any status:
 
 ```bash
-curl -X POST https://payments.openbb.dev/admin/marketplace/apps/<APP_ID>/remove \
+curl -X POST <API_URL>/admin/marketplace/apps/<APP_ID>/remove \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
@@ -329,7 +329,7 @@ curl -X POST https://payments.openbb.dev/admin/marketplace/apps/<APP_ID>/remove 
 Refresh manifest cache and re-check URLs:
 
 ```bash
-curl -X POST https://payments.openbb.dev/admin/marketplace/apps/<APP_ID>/verify \
+curl -X POST <API_URL>/admin/marketplace/apps/<APP_ID>/verify \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
@@ -338,7 +338,7 @@ curl -X POST https://payments.openbb.dev/admin/marketplace/apps/<APP_ID>/verify 
 ## Subscription Stats
 
 ```bash
-curl https://payments.openbb.dev/admin/marketplace/apps/<APP_ID>/subscriptions \
+curl <API_URL>/admin/marketplace/apps/<APP_ID>/subscriptions \
   -H "Authorization: Bearer <TOKEN>"
 ```
 

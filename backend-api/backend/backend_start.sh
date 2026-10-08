@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "Starting OpenBB Backend Services..."
+echo "Starting Backend Services..."
 echo "=================================="
 
 echo "Step 1: Initializing database..."

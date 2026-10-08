@@ -1,10 +1,10 @@
 """Export one user's account into a portable archive.
 
-    python -m scripts.export_user_data --email someone@example.com --out ./exports
+    python -m scripts.export_user_data --email <email> --out ./exports
 
-Produces ``openbb-export-<email>-<timestamp>.zip`` containing the user's rows as
+Produces ``workspace-export-<email>-<timestamp>.zip`` containing the user's rows as
 JSONL, their uploaded files, a manifest, and a README telling them how to import
-it into OpenBB Lite.
+it into Lite.
 
 What travels is defined entirely by ``scripts.user_data_scope`` -- run
 ``--describe-scope`` to print the contract, which is also embedded in the
@@ -43,9 +43,6 @@ from scripts import (
 from utilities.config import settings
 
 MANIFEST_VERSION = 1
-
-# Hardcoded in routers/auth.py's profile image upload; not a configurable bucket.
-PROFILE_BUCKET = "openbb-assets"
 
 # Blob downloads run concurrently, bounded so a large account cannot exhaust
 # the object store's connection pool.
@@ -165,7 +162,7 @@ async def fetch_blob(bucket: str, key: str, sem: asyncio.Semaphore) -> bytes | N
 async def collect_blobs(
     stored_files: list[models.StoredFile], user: models.User
 ) -> tuple[dict[str, bytes], list[str]]:
-    """Download every blob the account owns, plus the profile picture."""
+    """Download every blob the account owns."""
     sem = asyncio.Semaphore(MAX_CONCURRENT_DOWNLOADS)
 
     wanted: list[tuple[str, str, str]] = []  # (archive path, bucket, key)
@@ -174,10 +171,6 @@ async def collect_blobs(
             continue
         bucket = row.bucket or settings.get_file_bucket()
         wanted.append((f"files/{row.s3_file_name}", bucket, row.s3_file_name))
-
-    if user.has_profile_url:
-        key = f"profile-pictures/{user.uuid}.png"
-        wanted.append((f"files/{key}", PROFILE_BUCKET, key))
 
     payloads = await asyncio.gather(
         *(fetch_blob(bucket, key, sem) for _, bucket, key in wanted)
@@ -210,22 +203,21 @@ want the files themselves.
 """
     return """## Your uploaded files
 
-The `files/` folder holds every file you uploaded to OpenBB, plus your profile
-picture. **These are not imported into OpenBB Lite** -- they are here so you
-keep your own copy.
+The `files/` folder holds every file you uploaded to Workspace. **These are not
+imported into Lite** -- they are here so you keep your own copy.
 
 Unzip the archive and move `files/` somewhere safe before deleting it. If you
-want any of them back inside OpenBB Lite, upload them again there.
+want any of them back inside Lite, upload them again there.
 """
 
 
 def build_readme(result: ExportResult, scope_text: str) -> str:
-    return f"""# Your OpenBB data
+    return f"""# Your Workspace data
 
 Exported {datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")} for {result.email}.
 
 This archive contains {result.total_rows} records and {result.files_written}
-uploaded file(s) from your OpenBB account.
+uploaded file(s) from your Workspace account.
 
 ## SECURITY -- read this first
 
@@ -237,25 +229,25 @@ Store it somewhere private, and delete it once you have imported it -- but see
 "Your uploaded files" below first, because that folder is the only copy you get.
 
 {_files_section(result)}
-## Importing into OpenBB Lite
+## Importing into Lite
 
-1. Install OpenBB Lite and start it, mounting the folder holding this archive:
+1. Install Lite and start it, mounting the folder holding this archive:
 
-       docker run -d --name openbb -p 3000:3000 \\
-           -v openbb-data:/data \\
+       docker run -d --name workspace -p 3000:3000 \\
+           -v workspace-data:/data \\
            -v /path/to/this/folder:/import \\
-           openbb/lite
+           lite
 
 2. Import this archive:
 
-       docker exec openbb openbb-import /import/{result.archive.name}
+       docker exec workspace workspace-import /import/{result.archive.name}
 
 3. Get the admin login and sign in at http://localhost:3000
 
-       docker exec openbb credentials
+       docker exec workspace credentials
 
 4. As the admin, set a password for your account ({result.email}).
-   Your OpenBB password is **not** carried over -- for your safety it was
+   Your Workspace password is **not** carried over -- for your safety it was
    never exported.
 
 You can then sign in as {result.email} with the password the admin set.
@@ -277,7 +269,6 @@ async def build_archive(
     email: str,
     *,
     include_history: bool = False,
-    include_legacy: bool = False,
     with_files: bool = False,
 ) -> tuple[bytes, ExportResult]:
     """Produce the archive in memory from an existing session.
@@ -285,9 +276,7 @@ async def build_archive(
     Split out from ``export_user`` so the admin API endpoint can stream the same
     bytes without going through the filesystem.
     """
-    specs = scope.included_specs(
-        include_history=include_history, include_legacy=include_legacy
-    )
+    specs = scope.included_specs(include_history=include_history)
 
     # Fail before touching the database if the schema and codec disagree.
     for spec in specs:
@@ -296,7 +285,7 @@ async def build_archive(
     user = await resolve_user(db, email)
     result = ExportResult(archive=Path(), user_uuid=user.uuid, email=str(user.email))
     result.archive = Path(
-        f"openbb-export-{_safe_slug(email)}-"
+        f"workspace-export-{_safe_slug(email)}-"
         f"{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.zip"
     )
     if user.deleted:
@@ -354,16 +343,14 @@ async def build_archive(
                 f"{len(missing)} file(s) could not be read from storage and are "
                 "absent from the archive: " + ", ".join(missing[:10])
             )
-    elif stored_files or user.has_profile_url:
+    elif stored_files:
         result.files_skipped = len(stored_files)
         logger.info(
             f"  {'files':<24} {len(stored_files):>6} not downloaded "
             "(pass --with-files to include them)"
         )
 
-    scope_text = scope.describe(
-        include_history=include_history, include_legacy=include_legacy
-    )
+    scope_text = scope.describe(include_history=include_history)
     manifest = {
         "manifest_version": MANIFEST_VERSION,
         "scope_version": scope.SCOPE_VERSION,
@@ -381,7 +368,6 @@ async def build_archive(
         },
         "options": {
             "include_history": include_history,
-            "include_legacy": include_legacy,
             "with_files": with_files,
         },
         "tables": {
@@ -415,7 +401,6 @@ async def export_user(
     out_dir: Path,
     *,
     include_history: bool = False,
-    include_legacy: bool = False,
     with_files: bool = False,
 ) -> ExportResult:
     """Export an account to a zip on disk."""
@@ -424,7 +409,6 @@ async def export_user(
             db,
             email,
             include_history=include_history,
-            include_legacy=include_legacy,
             with_files=with_files,
         )
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -441,7 +425,7 @@ async def export_user(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="export_user_data",
-        description="Export one user's OpenBB account to a portable archive.",
+        description="Export one user's Workspace account to a portable archive.",
     )
     parser.add_argument("--email", help="Email address of the account to export")
     parser.add_argument(
@@ -451,11 +435,6 @@ def main(argv: list[str] | None = None) -> int:
         "--include-history",
         action="store_true",
         help="Include dashboard version history (much larger archive)",
-    )
-    parser.add_argument(
-        "--include-legacy",
-        action="store_true",
-        help="Include the legacy copilot chat table (archived, never imported)",
     )
     parser.add_argument(
         "--with-files",
@@ -471,12 +450,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.describe_scope:
-        logger.info(
-            scope.describe(
-                include_history=args.include_history,
-                include_legacy=args.include_legacy,
-            )
-        )
+        logger.info(scope.describe(include_history=args.include_history))
         return 0
 
     if not args.email:
@@ -489,7 +463,6 @@ def main(argv: list[str] | None = None) -> int:
                 args.email,
                 Path(args.out),
                 include_history=args.include_history,
-                include_legacy=args.include_legacy,
                 with_files=args.with_files,
             )
         )

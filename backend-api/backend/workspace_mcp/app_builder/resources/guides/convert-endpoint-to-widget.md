@@ -1,13 +1,13 @@
 ---
 title: Convert an Existing Endpoint to a Widget
-uri: openbb://workspace/guides/convert-endpoint-to-widget
+uri: workspace://guides/convert-endpoint-to-widget
 use_when: You already have an HTTP endpoint that returns JSON and want to expose its response as a Workspace widget.
 language_specific: false
 related:
-  - openbb://workspace/specs/widget-types
-  - openbb://workspace/specs/widgets-json
-  - openbb://workspace/specs/widget-parameters
-  - openbb://workspace/examples/generic-http/minimal
+  - workspace://specs/widget-types
+  - workspace://specs/widgets-json
+  - workspace://specs/widget-parameters
+  - workspace://examples/generic-http/minimal
 ---
 
 # Convert an Existing Endpoint to a Widget
@@ -18,7 +18,7 @@ Use this when the backend already exists and you need to wrap one of its endpoin
 
 Hit the endpoint with realistic params and read the JSON. Note:
 
-- Top-level shape: array of objects, single object, string, Plotly figure?
+- Top-level shape: array of objects, single object, string, HTML document, file?
 - Field names and value types.
 - Any timestamp fields and their format.
 - Whether numbers are pre-formatted strings or raw numbers.
@@ -26,17 +26,15 @@ Hit the endpoint with realistic params and read the JSON. Note:
 
 ## 2. Choose the widget type
 
-Match the response shape to a widget type. See `openbb://workspace/specs/widget-types` for the catalog and the "choose this, not that" rules.
+Match the response shape to a widget type. See `workspace://specs/widget-types` for the catalog and the "choose this, not that" rules.
 
 | Sample response shape | Widget type |
 |------------------------|-------------|
-| Array of row objects with `symbol`, `price`, ... | `table` |
-| Plotly figure JSON (`{data, layout}`) | `chart` |
-| Array of `{label, value, delta, ...}` cards | `metric` |
-| Long markdown string | `markdown` |
-| Array of `{title, date, author, excerpt, body, ...}` | `newsfeed` |
-| WebSocket or push-style streaming rows | `live_grid` |
-| File / PDF collection metadata | `multi_file_viewer` |
+| Markdown string, or JSON that holds one at a known path | `markdown` |
+| An HTML document | `html` |
+| A PDF (bytes, or JSON with base64 `content` or a `url`) | `pdf` |
+| A page that already has a URL | `iframe` |
+| Array of row objects, or numbers meant for a table or chart | None of these. Wrap the rows in an `html` or `markdown` response (a table in the document), and keep the rows behind `?raw=true` with `"raw": true` on an `html` widget |
 
 If the shape doesn't match any widget type cleanly, change the endpoint to fit the closest type — don't try to force the wrong renderer.
 
@@ -56,52 +54,16 @@ Every query param the endpoint accepts becomes a `params` entry in `widgets.json
 - `endpoint` with `optionsEndpoint` for dropdowns whose values come from another endpoint.
 - `text` with `options` only for genuinely curated short lists (e.g. interval presets).
 
-Every param needs `paramName`, `type`, `label`, `description`, and a sensible `value`. See `openbb://workspace/specs/widget-parameters`.
+Every param needs `paramName`, `type`, `label`, `description`, and a sensible `value`. See `workspace://specs/widget-parameters`.
 
 If a param depends on another (e.g. `city` depends on `country`), wire it via `optionsParams: { "country": "$country" }`.
 
-## 5. Infer columns or chart fields
+## 5. Shape the response
 
-For `table`:
-
-```json
-"data": {
-  "table": {
-    "columnsDefs": [
-      { "field": "symbol", "headerName": "Symbol", "cellDataType": "text", "pinned": "left" },
-      { "field": "price",  "headerName": "Price",  "cellDataType": "number", "formatterFn": "none" },
-      { "field": "change_pct", "headerName": "Change %", "cellDataType": "number", "formatterFn": "percent", "renderFn": "greenRed" }
-    ]
-  }
-}
-```
-
-- Use `formatterFn`: `int`, `none`, `percent`, `normalized`, `normalizedPercent`, `dateToYear`. **`"currency"` is invalid** — use `"none"` and pre-format if needed.
-- Use `renderFn` for visual treatment: `greenRed` for up/down, `cellOnClick` for navigation, `hoverCard` for markdown previews.
-- Pin identifier columns left (`pinned: "left"`).
-
-For per-row mini-charts, set `sparkline` on a column (`type` of `line`, `bar`, or `area`):
-
-```json
-{ "field": "trend", "headerName": "30d",
-  "sparkline": { "type": "line", "options": { "stroke": "#2563eb", "strokeWidth": 2 } } }
-```
-
-To let users flip the whole table into a chart, set `data.table.chartView`:
-
-```json
-"data": {
-  "table": {
-    "chartView": { "enabled": true, "chartType": "line",
-      "chartNavigatorEnabled": true, "chartMiniChartEnabled": true },
-    "columnsDefs": [ ... ]
-  }
-}
-```
-
-Supported `chartType`s include `line`, `bar`/`groupedBar`/`stackedBar`, `column`/`groupedColumn`/`stackedColumn`, `area`/`stackedArea`, `pie`, `donut`, `scatter`, `bubble`, `histogram`, `heatmap`, `treemap`, `waterfall`, `radarLine`/`radarArea`, `boxPlot`, `rangeBar`/`rangeArea` (see https://docs.openbb.co/workspace/developers/widget-types/aggrid-table-charts for the full list).
-
-For `chart`: have the endpoint return a Plotly figure (no title — the widget supplies it). Add a `raw=true` query param so AI agents and table conversions can read the underlying rows. Before reaching here, confirm a `table` with sparklines or `chartView` won't do the job — only pick `chart` when AG Grid lacks the type (candlesticks/OHLC, custom subplots) or you need annotations / technical indicators / non-row-shaped data.
+- `markdown`: return the markdown string. If the endpoint returns JSON, set `"data": { "dataKey": "path.to.text" }` on the widget so Workspace reads the string from that path.
+- `html`: return a complete HTML document that reads well without scripts, and honor `theme=dark|light`. If the document is built from rows, set `"raw": true` on the widget and return those rows (JSON array of objects) when called with `raw=true`.
+- `pdf`: return `application/pdf`, or JSON `{ "data_format": { "data_type": "pdf", "filename": "report.pdf" }, "content": "<base64>" }` (or `"url"` instead of `"content"`).
+- `iframe`: no response to shape; `endpoint` is the page URL.
 
 ## 6. Add descriptions
 
@@ -113,24 +75,16 @@ Combine the above into a `widgets.json` entry:
 
 ```json
 {
-  "stock_prices": {
-    "name": "Stock Prices",
-    "description": "Latest closing prices",
-    "type": "table",
-    "endpoint": "/stock_prices",
+  "weekly_summary": {
+    "name": "Weekly Summary",
+    "description": "The week's activity for one team, as written commentary",
+    "type": "markdown",
+    "endpoint": "/summary",
     "gridData": { "w": 20, "h": 12 },
     "params": [
-      { "paramName": "limit", "type": "number", "label": "Limit",
-        "description": "Row count cap", "value": 10 }
-    ],
-    "data": {
-      "table": {
-        "columnsDefs": [
-          { "field": "symbol", "headerName": "Symbol", "cellDataType": "text", "pinned": "left" },
-          { "field": "price",  "headerName": "Price",  "cellDataType": "number", "formatterFn": "none" }
-        ]
-      }
-    }
+      { "paramName": "team", "type": "endpoint", "label": "Team",
+        "description": "Team to summarize", "optionsEndpoint": "/teams" }
+    ]
   }
 }
 ```
@@ -141,8 +95,8 @@ Combine the above into a `widgets.json` entry:
 - Confirm the `endpoint` path exists and returns the shape the widget type expects with the default params.
 - If you're also adding the widget to an `apps.json` template, confirm the layout's `i` matches the new widget id.
 
-See `openbb://workspace/validation/common-errors` for the failure list and `openbb://workspace/guides/debug-app` if something doesn't render.
+See `workspace://validation/common-errors` for the failure list and `workspace://guides/debug-app` if something doesn't render.
 
-## 9. Layer on click-through (if it makes sense)
+## 9. Link it to other widgets (if it makes sense)
 
-If this widget is a discovery table — movers, screeners, watchlists, IPO calendars — and a downstream widget on the same dashboard accepts a synced param (typically `symbol`), wire `cellOnClick` on the relevant column. See `openbb://workspace/specs/layout-grid` § "Click-through navigation".
+If other widgets on the same dashboard take the same param (a `team`, say), put them in one parameter group so that one choice drives all of them. See `workspace://specs/layout-grid` and `workspace://specs/apps-json`.

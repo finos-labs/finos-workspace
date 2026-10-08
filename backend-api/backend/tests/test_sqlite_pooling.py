@@ -25,12 +25,6 @@ from utilities.config import DatabaseSessionManager, DatabaseSettings
 
 
 @pytest.fixture(autouse=True)
-def mock_external_services():
-    """Override the conftest autouse mock; these tests touch no external services."""
-    yield
-
-
-@pytest.fixture(autouse=True)
 def reset_rate_limiter():
     """Override the conftest autouse fixture; no app/rate limiter involved."""
     yield

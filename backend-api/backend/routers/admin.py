@@ -16,20 +16,18 @@ from sqlalchemy.orm import selectinload
 from api import auth_helpers, crud, helpers, models, schemas
 from api.base import clean_email, get_now, random_password
 from api.database import aget_read_db, aget_write_db
-from api.email import EmailService
 from api.models import (
     Entity,
     PermissionsEntityMap,
-    PermissionsInvite,
     User,
-    UserProInvite,
+    UserInvite,
     UserRole,
 )
 from api.rate_limit import LIMIT_DEFAULT, exempt_user_agent, limiter
 from api.schemas import ResetPasswordReturn, SuccessReturn
-from routers import pro_helpers, routers_helpers
+from routers import app_helpers, routers_helpers
 from scripts import export_user_data
-from utilities.config import BaseModel, settings
+from utilities.config import BaseModel
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -65,7 +63,7 @@ async def patch_entity(
     await db.commit()
 
     if data.require_authenticator is not None:
-        await pro_helpers.require_entity_users_2fa(
+        await app_helpers.require_entity_users_2fa(
             db, admin_result, data.require_authenticator
         )
 
@@ -152,10 +150,8 @@ async def register_user(
         raise HTTPException(404, detail="Could not find the provided permissions map")
     if perms_result.entity_uuid != admin_result.uuid:
         raise HTTPException(403, detail="Invalid permissions")
-    extra_info = schemas.RegisterProUser(
-        inviting_uuid=admin.uuid, inviting_email=admin.email
-    )
-    result = await routers_helpers.register_pro_user(db, user, extra_info)
+    extra_info = schemas.RegisterAppUser(inviting_uuid=admin.uuid)
+    result = await routers_helpers.register_app_user(db, user, extra_info)
     return SuccessReturn.from_bool(result)
 
 
@@ -181,46 +177,18 @@ async def revoke_register_user(
     perms_query = (
         select(PermissionsEntityMap.entity_uuid)
         .join(
-            UserProInvite, UserProInvite.permissions_uuid == PermissionsEntityMap.uuid
+            UserInvite, UserInvite.permissions_uuid == PermissionsEntityMap.uuid
         )
-        .where(UserProInvite.uuid == invite_uuid)
+        .where(UserInvite.uuid == invite_uuid)
     )
     perms_result = (await db.execute(perms_query)).first()
     if perms_result is None:
         raise HTTPException(404, detail="Could not find the provided permissions map")
     if perms_result.entity_uuid != admin_result.uuid:
         raise HTTPException(403, detail="Invalid permissions")
-    delete_query = delete(UserProInvite).where(UserProInvite.uuid == invite_uuid)
+    delete_query = delete(UserInvite).where(UserInvite.uuid == invite_uuid)
     await db.execute(delete_query)
     await db.commit()
-    return SuccessReturn.success_instance()
-
-
-@router.post("/users/{user_uuid}/revoke", response_model=SuccessReturn)
-async def revoke_user(
-    request: Request,
-    user_uuid: UUID,
-    db: Annotated[AsyncSession, Depends(aget_write_db)],
-    admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
-):
-    admin_result = await get_admin_entity(db, admin.permissions_uuid)
-    maps_query = select(PermissionsEntityMap.uuid).where(
-        PermissionsEntityMap.entity_uuid == admin_result
-    )
-    maps_result = (await db.execute(maps_query)).all()
-    maps_clean = [item.uuid for item in maps_result]
-    query = (
-        update(PermissionsInvite)
-        .where(
-            PermissionsInvite.user_uuid == user_uuid,
-            PermissionsInvite.permissions_uuid.in_(maps_clean),
-        )
-        .values(revoked=True)
-    )
-    response = await db.execute(query)
-    await db.commit()
-    if response.rowcount == 0:
-        raise HTTPException(404, detail="Invite does not exist")
     return SuccessReturn.success_instance()
 
 
@@ -267,7 +235,7 @@ async def delete_user(
     _: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
     """This endpoint is used to soft delete a user."""
-    result = await pro_helpers.delete_user(db, user_uuid)
+    result = await app_helpers.delete_user(db, user_uuid)
     return SuccessReturn.from_bool(result)
 
 
@@ -329,7 +297,7 @@ async def update_user(
     if response.rowcount == 0:
         raise HTTPException(404, detail="Matching user not found")
     if update_info.billing_active is False:
-        await auth_helpers.delete_user_pro_sessions(db, user_uuid)
+        await auth_helpers.delete_user_app_sessions(db, user_uuid)
 
     return SuccessReturn.success_instance()
 
@@ -361,9 +329,7 @@ async def see_users(
     admin_result = await get_admin_entity(db, admin.permissions_uuid)
     results1 = await helpers.get_managed_users(db, admin_result)
     add_to_list([x._mapping for x in results1], source="user")
-    results2 = await helpers.get_permissions_invite_users(db, admin_result)
-    add_to_list([x._mapping for x in results2], source="takeover")
-    results3 = await helpers.get_pro_invite_users(db, admin_result)
+    results3 = await helpers.get_invite_users(db, admin_result)
     cleaned3 = [
         {
             "email": x[0],
@@ -436,85 +402,22 @@ async def get_apps(
     ]
 
 
-@router.get("/providers", response_model=schemas.ProKeys)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
-async def get_providers(
-    request: Request,
-    db: Annotated[AsyncSession, Depends(aget_read_db)],
-    admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
-):
-    query = (
-        select(Entity.api_keys)
-        .join(
-            PermissionsEntityMap,
-            Entity.uuid == PermissionsEntityMap.entity_uuid,
-        )
-        .where(PermissionsEntityMap.uuid == admin.permissions_uuid)
+async def ensure_user_in_admin_entity(
+    db: AsyncSession, admin: User, user_uuid: UUID
+) -> None:
+    """Admins manage the users of their own organization. Superusers manage anyone."""
+    if admin.is_superuser:
+        return
+
+    admin_entity_uuid = await get_admin_entity(db, admin.permissions_uuid)
+    target_entity_query = (
+        select(PermissionsEntityMap.entity_uuid)
+        .join(User, User.permissions_uuid == PermissionsEntityMap.uuid)
+        .where(User.uuid == user_uuid)
     )
-    result = (await db.execute(query)).first()
-    if result is None:
-        raise HTTPException(404, detail="Could not find an entity")
-    return result.api_keys
-
-
-@router.patch("/providers", response_model=SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
-async def patch_providers(
-    request: Request,
-    db: Annotated[AsyncSession, Depends(aget_write_db)],
-    admin: Annotated[User, Depends(auth_helpers.get_current_admin)],
-    data: schemas.ProKeys,
-):
-    if admin.permissions_uuid is None:
-        raise HTTPException(400, detail="Invalid admin configuration")
-    admin_result = await get_admin_entity(db, admin.permissions_uuid)
-    current_q = select(Entity.api_keys).where(Entity.uuid == admin_result)
-    current_result = (await db.execute(current_q)).first()
-    if current_result is None:
-        raise HTTPException(404, detail="Could not find an entity")
-    new_model = current_result.api_keys
-    validate_return = data.validate_keys()
-    if validate_return:
-        raise HTTPException(422, detail=f"Invalid key for source: {validate_return}")
-    for key, value in data.model_dump(exclude_unset=True).items():
-        setattr(new_model, key, value)
-
-    if admin_result is None:
-        raise HTTPException(404, detail="Could not find the provided permissions map")
-    query = update(Entity).where(Entity.uuid == admin_result).values(api_keys=new_model)
-    response = await db.execute(query)
-    await db.commit()
-    if response.rowcount == 0:
-        raise HTTPException(404, detail="Could not find an entity")
-    return SuccessReturn.success_instance()
-
-
-@router.get("/extend-trial/{user_uuid}", response_model=SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
-async def extend_trial(
-    request: Request,
-    db: Annotated[AsyncSession, Depends(aget_write_db)],
-    admin: Annotated[User, Depends(auth_helpers.get_current_admin)],
-    user_uuid: UUID,
-):
-    if not admin.permissions_uuid:
-        raise HTTPException(
-            404, detail="User is currently not assigned any permissions"
-        )
-    admin_result = await get_admin_entity(db, admin.permissions_uuid)
-    maps_query = select(PermissionsEntityMap.uuid).where(
-        PermissionsEntityMap.entity_uuid == admin_result
-    )
-    maps_result = (await db.execute(maps_query)).all()
-    maps_clean = [item.uuid for item in maps_result]
-    query = select(User.email, User.uuid).where(
-        User.uuid == user_uuid, User.permissions_uuid.in_(maps_clean)
-    )
-    user = (await db.execute(query)).first()
-    if user is None:
-        raise HTTPException(404, detail="User not found")
-    EmailService.extend_pro_trial(user[0], user[1])
-    return SuccessReturn.success_instance()
+    target_entity_uuid = (await db.execute(target_entity_query)).scalar_one_or_none()
+    if target_entity_uuid is not None and target_entity_uuid != admin_entity_uuid:
+        raise HTTPException(403, detail="Cannot manage users outside your organization")
 
 
 @router.get("/entitlement/{user_uuid}", response_model=schemas.EntitlementGet)
@@ -523,21 +426,23 @@ async def get_entitlement(
     request: Request,
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user_uuid: UUID,
-    _: Annotated[User, Depends(auth_helpers.get_current_admin)],
+    admin: Annotated[User, Depends(auth_helpers.get_current_admin)],
 ):
     """Endpoint to retrieve the entitlement for a user."""
+    await ensure_user_in_admin_entity(db, admin, user_uuid)
 
     query = (
         select(
             case(
-                (models.Entitlement.tier_id == models.PRO_TIER_ID, literal("pro")),
+                (models.Entitlement.tier_id == models.FULL_TIER_ID, literal("full")),
                 (
-                    models.Entitlement.tier_id == models.TERMINAL_TIER_ID,
-                    literal("terminal"),
+                    models.Entitlement.tier_id == models.BASIC_TIER_ID,
+                    literal("basic"),
                 ),
                 else_=None,
             ).label("tier"),
             models.Entitlement.number_copilot_calls_day,
+            models.Entitlement.number_copilot_tokens_day,
             models.Entitlement.total_file_upload_size_gb,
             models.Entitlement.share_widgets,
             models.Entitlement.bring_your_own_data,
@@ -574,25 +479,27 @@ async def patch_entitlement(
     entitlement: schemas.EntitlementPatch,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user_uuid: UUID,
-    _: Annotated[User, Depends(auth_helpers.get_current_admin)],
+    admin: Annotated[User, Depends(auth_helpers.get_current_admin)],
 ):
     """Endpoint to update the entitlement for a user."""
+    await ensure_user_in_admin_entity(db, admin, user_uuid)
+
     tiers_match = {
-        "pro": models.PRO_TIER_ID,
-        "terminal": models.TERMINAL_TIER_ID,
+        "full": models.FULL_TIER_ID,
+        "basic": models.BASIC_TIER_ID,
     }
-    if not await pro_helpers.has_entitlement(db, user_uuid):
+    if not await app_helpers.has_entitlement(db, user_uuid):
         raise HTTPException(status_code=404, detail="Entitlement not found")
 
     entitlement_dict = entitlement.model_dump(exclude_unset=True)
     if tier := entitlement_dict.pop("tier", None):
         # User can't be on a different tier than the associated entity
-        await pro_helpers.check_against_entity_tier(db, user_uuid, tier)
+        await app_helpers.check_against_entity_tier(db, user_uuid, tier)
 
         entitlement_dict["tier_id"] = tiers_match.get(tier)
 
     if bundle_name := entitlement_dict.pop("bundle_name", None):
-        entitlement_dict["data_bundle_uuid"] = await pro_helpers.get_data_bundle_uuid(
+        entitlement_dict["data_bundle_uuid"] = await app_helpers.get_data_bundle_uuid(
             db, bundle_name
         )
 
@@ -603,6 +510,30 @@ async def patch_entitlement(
     )
     await db.execute(query)
     await db.commit()
+    app_helpers.invalidate_usage_cache(user_uuid)
+    return SuccessReturn.success_instance()
+
+
+@router.post("/usage/{user_uuid}/reset", response_model=SuccessReturn)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+async def post_reset_usage(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(aget_write_db)],
+    user_uuid: UUID,
+    admin: Annotated[User, Depends(auth_helpers.get_current_admin)],
+):
+    """Endpoint to reset the Copilot usage (queries and tokens) of a user for the day."""
+    await ensure_user_in_admin_entity(db, admin, user_uuid)
+    if not await app_helpers.has_entitlement(db, user_uuid):
+        raise HTTPException(status_code=404, detail="Entitlement not found")
+
+    await db.execute(
+        update(models.EntitlementUsage)
+        .where(models.EntitlementUsage.user_uuid == user_uuid)
+        .values(number_copilot_calls_day_count=0, number_copilot_tokens_day_count=0)
+    )
+    await db.commit()
+    app_helpers.invalidate_usage_cache(user_uuid)
     return SuccessReturn.success_instance()
 
 
@@ -660,9 +591,6 @@ async def post_export_user_data(
     include_history: Annotated[
         bool, Query(description="Include dashboard version history")
     ] = False,
-    include_legacy: Annotated[
-        bool, Query(description="Include the legacy copilot chat table")
-    ] = False,
     with_files: Annotated[
         bool,
         Query(
@@ -679,7 +607,7 @@ async def post_export_user_data(
     resetting a password is recoverable, exfiltrating an account is not.
 
     The archive carries the user's dashboards, widgets, custom backends and
-    chats, and can be imported into OpenBB Lite. Uploaded files travel in the
+    chats, and can be imported into Lite. Uploaded files travel in the
     archive's files/ folder for the user to keep, but are not reinstated on
     import. Exactly what travels is defined by ``scripts.user_data_scope``.
 
@@ -701,7 +629,6 @@ async def post_export_user_data(
             db,
             str(target.email),
             include_history=include_history,
-            include_legacy=include_legacy,
             with_files=with_files,
         )
     except export_user_data.ExportError as exc:
@@ -712,8 +639,8 @@ async def post_export_user_data(
         media_type="application/zip",
         headers={
             "Content-Disposition": f'attachment; filename="{result.archive.name}"',
-            "X-OpenBB-Export-Rows": str(result.total_rows),
-            "X-OpenBB-Export-Files": str(result.files_written),
+            "X-Workspace-Export-Rows": str(result.total_rows),
+            "X-Workspace-Export-Files": str(result.files_written),
         },
     )
 
@@ -780,7 +707,7 @@ async def create_user(
         )
 
     # Check if the user is already invited
-    query_invite = select(UserProInvite.uuid).where(UserProInvite.email == user.email)
+    query_invite = select(UserInvite.uuid).where(UserInvite.email == user.email)
     invite_result = (await db.execute(query_invite)).first()
     if invite_result:
         raise HTTPException(409, detail="User is already invited")
@@ -788,11 +715,6 @@ async def create_user(
     # Check if the user is already registered
     if await crud.check_new_user(db, user.email):
         raise HTTPException(409, detail="A user with this email already exists")
-
-    pro_trial_granted = user.permissions_uuid != settings.PRO_DEVELOPER_MAPPING
-    nowish = get_now()
-
-    # hubspot contact creation removed — not needed for marketing provider
 
     # Create user
     random_pw = random_password()
@@ -804,11 +726,9 @@ async def create_user(
         first_name=user.first_name,
         last_name=user.last_name,
         billing_active=True,
-        pro_start=get_now(),
+        app_start=get_now(),
         confirmed=1,
         temporary_password=True,
-        pro_trial_granted=pro_trial_granted,
-        pro_trial_granted_date=nowish if pro_trial_granted else None,
     )
     response = await db.execute(insert_query)
 
@@ -839,7 +759,7 @@ async def post_role(
     """
     Create a new role for the entity
     """
-    entity_uuid = await pro_helpers.get_entity_uuid(db, admin.uuid)
+    entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     new_role = models.Role(
         uuid=role.uuid,
         name=role.name,
@@ -851,7 +771,7 @@ async def post_role(
     role_uuid = new_role.uuid
 
     if role.users:
-        await pro_helpers.add_users_to_role(db, role_uuid, role.users)
+        await app_helpers.add_users_to_role(db, role_uuid, role.users)
 
     await db.commit()
 
@@ -866,7 +786,7 @@ async def get_roles(
     """
     Get all roles for the entity
     """
-    entity_uuid = await pro_helpers.get_entity_uuid(db, admin.uuid)
+    entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     query = select(models.Role).where(
         models.Role.entity_uuid == entity_uuid, models.Role.deleted_at.is_(None)
     )
@@ -874,7 +794,7 @@ async def get_roles(
 
     result = []
     for role in roles.scalars():
-        role_users = await pro_helpers.get_role_users(db, role.uuid)
+        role_users = await app_helpers.get_role_users(db, role.uuid)
         result.append(
             schemas.GetRoleWithUsers(
                 uuid=role.uuid,
@@ -894,7 +814,7 @@ async def get_role(
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
     """Get a role by uuid"""
-    entity_uuid = await pro_helpers.get_entity_uuid(db, admin.uuid)
+    entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     role = (
         await db.execute(
             select(models.Role).where(
@@ -906,7 +826,7 @@ async def get_role(
     ).scalar_one_or_none()
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
-    role_users = await pro_helpers.get_role_users(db, role_uuid)
+    role_users = await app_helpers.get_role_users(db, role_uuid)
     return schemas.GetRoleWithUsers(
         uuid=role.uuid,
         name=role.name,
@@ -924,8 +844,8 @@ async def patch_role(
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
     """Patch a role"""
-    entity_uuid = await pro_helpers.get_entity_uuid(db, admin.uuid)
-    if not await pro_helpers.role_exists(db, role_uuid, entity_uuid):
+    entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
+    if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
 
     # Update role details if name or description provided
@@ -942,7 +862,7 @@ async def patch_role(
 
     # Update users if provided
     if role.users is not None:  # Check if None since empty list is valid
-        await pro_helpers.update_role_users(db, role_uuid, role.users)
+        await app_helpers.update_role_users(db, role_uuid, role.users)
 
     await db.commit()
     return schemas.SuccessReturn.success_instance()
@@ -955,8 +875,8 @@ async def delete_role(
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
     """Delete a role"""
-    entity_uuid = await pro_helpers.get_entity_uuid(db, admin.uuid)
-    if not await pro_helpers.role_exists(db, role_uuid, entity_uuid):
+    entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
+    if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
 
     role = await db.get(models.Role, role_uuid)
@@ -977,32 +897,68 @@ async def put_role_permissions(
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
     """Update the permissions for a role"""
-    entity_uuid = await pro_helpers.get_entity_uuid(db, admin.uuid)
-    if not await pro_helpers.role_exists(db, role_uuid, entity_uuid):
+    entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
+    if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
 
     for item in role_permissions:
         if item.type == "backend":
-            await pro_helpers.insert_or_update_backend_permissions(
+            await app_helpers.insert_or_update_backend_permissions(
                 db, role_uuid, item.uuid, item
             )
         elif item.type == "file":
-            await pro_helpers.insert_or_update_file_permissions(
+            await app_helpers.insert_or_update_file_permissions(
                 db, role_uuid, item.uuid, item.access
             )
         elif item.type == "prompt":
             if not item.prompt and item.templates:
-                await pro_helpers.insert_or_update_prompt_template_permissions(
+                await app_helpers.insert_or_update_prompt_template_permissions(
                     db, role_uuid, item
                 )
             else:
-                await pro_helpers.insert_or_update_prompt_permissions(
+                await app_helpers.insert_or_update_prompt_permissions(
                     db, role_uuid, item.uuid, item.access
                 )
 
     await db.flush()
     await db.commit()
 
+    return schemas.SuccessReturn.success_instance()
+
+
+@router.get(
+    "/role/{role_uuid}/copilot-access", response_model=schemas.RoleCopilotAccess
+)
+async def get_role_copilot_access(
+    role_uuid: UUID,
+    db: AsyncSession = Depends(aget_read_db),
+    admin: User = Depends(auth_helpers.get_current_admin),
+):
+    """Get the Copilot models and MCP tools that a role grants"""
+    entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
+    if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
+        raise HTTPException(status_code=404, detail="Role not found")
+
+    return await app_helpers.get_role_copilot_access(db, [role_uuid])
+
+
+@router.put("/role/{role_uuid}/copilot-access", response_model=schemas.SuccessReturn)
+async def put_role_copilot_access(
+    role_uuid: UUID,
+    access: schemas.RoleCopilotAccess,
+    db: AsyncSession = Depends(aget_write_db),
+    admin: User = Depends(auth_helpers.get_current_admin),
+):
+    """Set the Copilot models and MCP tools that a role grants.
+
+    The users of the role may use what their roles grant. A role that grants nothing of a
+    kind leaves that kind unrestricted.
+    """
+    entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
+    if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
+        raise HTTPException(status_code=404, detail="Role not found")
+
+    await app_helpers.set_role_copilot_access(db, role_uuid, access)
     return schemas.SuccessReturn.success_instance()
 
 
@@ -1015,8 +971,8 @@ async def get_role_permissions(
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
     """Get the permissions for a role"""
-    entity_uuid = await pro_helpers.get_entity_uuid(db, admin.uuid)
-    if not await pro_helpers.role_exists(db, role_uuid, entity_uuid):
+    entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
+    if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
 
     permissions = []
@@ -1106,7 +1062,7 @@ async def get_audit_logs(  # noqa: PLR0913, PLR0917
 ):
     """Retrieve audit logs for the entity"""
     # Get admin's entity
-    entity_uuid = await pro_helpers.get_entity_uuid(db, admin.uuid)
+    entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
 
     # Build query
     query = (
@@ -1157,7 +1113,7 @@ async def get_audit_logs(  # noqa: PLR0913, PLR0917
     for row in results.mappings():
         details_msg = None
         with suppress(Exception):
-            details_msg = pro_helpers.create_details_message(
+            details_msg = app_helpers.create_details_message(
                 row["action"], row["resource_type"], row["details"]
             )
 
@@ -1188,14 +1144,14 @@ async def get_user_permissions(
     _: User = Depends(auth_helpers.get_current_admin),
 ):
     """Get the permissions for a user"""
-    user_role_permissions = await pro_helpers.get_user_role_permissions(db, user_uuid)
+    user_role_permissions = await app_helpers.get_user_role_permissions(db, user_uuid)
 
     # Convert permissions dict to use role names as keys instead of UUIDs
     permissions_dict = user_role_permissions.model_dump().get("permissions", {})
     named_permissions = {}
     for role_uuid, role_data in permissions_dict.items():
         # Don't try to convert role_uuid to UUID again, it's already a string
-        role_name = await pro_helpers.get_role_name(db, role_uuid)
+        role_name = await app_helpers.get_role_name(db, role_uuid)
         named_permissions[role_name] = role_data
     user_role_permissions.permissions = named_permissions
 
@@ -1211,10 +1167,10 @@ async def get_user_permissions(
         user_role_permissions.model_dump().get("permissions", {}).items()
     ):
         for backend in role_data.get("backends", []):
-            await pro_helpers.process_backend(
+            await app_helpers.process_backend(
                 role_name, backend, data_connectors, processed_backends
             )
-            await pro_helpers.process_templates(
+            await app_helpers.process_templates(
                 role_name,
                 backend,
                 processed_templates,
@@ -1224,17 +1180,17 @@ async def get_user_permissions(
             )
 
         for file in role_data.get("files", []):
-            await pro_helpers.process_file(
+            await app_helpers.process_file(
                 role_name, file, data_connectors, processed_files
             )
 
         # Process standalone prompts
-        await pro_helpers.process_prompts(
+        await app_helpers.process_prompts(
             role_name, role_data.get("prompts", []), processed_prompts, prompts
         )
 
     # Add final_permission to all resources
-    await pro_helpers.add_final_permissions_to_resources(
+    await app_helpers.add_final_permissions_to_resources(
         data_connectors, templates, prompts
     )
 
@@ -1246,13 +1202,13 @@ async def get_user_permissions(
 
 
 @router.patch("/theme-settings", response_model=schemas.SuccessReturn)
-async def patch_ag_grid_theme_settings(
+async def patch_theme_settings(
     settings: schemas.EntityThemeSettings,
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
-    """Update the ag-grid theme settings for the entity"""
-    entity_uuid = await pro_helpers.get_entity_uuid(db, admin.uuid)
+    """Update the theme settings for the entity"""
+    entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     existing = (
         await db.execute(
             select(models.EntityThemeSettings).where(

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@openbb/ui";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "ui/Tabs";
 import { ManageBase } from "components/managers/Base";
 import { EntitySubmitForm } from "components/managers/Entity";
 import { EntityRelationshipSubmitForm } from "components/managers/EntityRelationship";
@@ -13,6 +13,7 @@ import {
   type EntityRelationship,
   type EntityType,
   type FullUser,
+  type ListResponse,
   type Paginated,
   type PermissionMap,
   getEntities,
@@ -61,7 +62,7 @@ export default function ManageEntities(): JSX.Element {
   const [fullUsers, setFullUsers] = useState<Paginated<FullUser>>(paginatedDefault);
 
   const dataGetter = async <T,>(
-    getter: (accessToken: string) => Promise<any>,
+    getter: (accessToken: string) => Promise<ListResponse<T>>,
   ): Promise<Paginated<T>> => {
     if (user !== null) {
       const data = await getter(user.accessToken);
@@ -114,8 +115,8 @@ export default function ManageEntities(): JSX.Element {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="obb-admin-title">Entity Administration</h1>
-        <p className="obb-admin-subtitle">
+        <h1 className="ws-admin-title">Entity Administration</h1>
+        <p className="ws-admin-subtitle">
           Manage users, entities, roles, relationships, and permission maps.
         </p>
       </div>
@@ -140,7 +141,7 @@ export default function ManageEntities(): JSX.Element {
               SubmitForm={UserSubmitForm}
               columns={["email", "permissions.entity.name"]}
               user={user}
-              formData={{ permissionMaps }}
+              formData={{ permissionMaps: permissionMaps.items }}
               retrieveItems={retrieveFullUsers}
               items={fullUsers}
               SearchBar={UserSearchBar}
@@ -153,7 +154,7 @@ export default function ManageEntities(): JSX.Element {
               columns={["name", "entity_type.code"]}
               SubmitForm={EntitySubmitForm}
               user={user}
-              formData={{ entityTypes }}
+              formData={{ entityTypes: entityTypes.items }}
               retrieveItems={retrieveEntities}
               items={entities}
             />
@@ -167,6 +168,7 @@ export default function ManageEntities(): JSX.Element {
               user={user}
               retrieveItems={retrieveEntityTypes}
               items={entityTypes}
+              formData={{}}
             />
           </TabsContent>
           <TabsContent value="entityRelationship">
@@ -176,7 +178,7 @@ export default function ManageEntities(): JSX.Element {
               SubmitForm={EntityRelationshipSubmitForm}
               columns={["parent.name", "child.name"]}
               user={user}
-              formData={{ entities }}
+              formData={{ entities: entities.items }}
               retrieveItems={retrieveRelationships}
               items={entityRelationships}
             />
@@ -188,7 +190,7 @@ export default function ManageEntities(): JSX.Element {
               SubmitForm={PermissionsMapSubmitForm}
               columns={["entity.name", "user_permission.name"]}
               user={user}
-              formData={{ entities }}
+              formData={{ entities: entities.items }}
               retrieveItems={retrievePermissionMaps}
               items={permissionMaps}
             />

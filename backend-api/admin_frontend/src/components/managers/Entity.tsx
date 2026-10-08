@@ -1,16 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Button,
-  Checkbox,
-  FormField,
-  FormInput,
-  FormSelect,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  useForm,
-} from "@openbb/ui";
+import { Checkbox, FormField, FormInput, FormSelect } from "ui/Form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "ui/Tabs";
+import { useForm } from "react-hook-form";
 import { ManagerForm } from "components/formItems";
 import type { SubmitFormProps } from "components/managers/Base";
 import { handleRequest } from "components/managers/helpers";
@@ -63,15 +54,15 @@ const entitySchema = z.object({
       /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/,
       "Format must be 'YYYY-MM-DD'",
     ),
-  stripeId: z.string().optional(),
-  // API Keys
-  benzinga: z.string(),
-  intrinio: z.string(),
-  trading_economics: z.string(),
-  fmp: z.string(),
   // Entitlements
-  tier: z.enum(["pro", "terminal"]).optional(),
+  tier: z.enum(["full", "basic"]).optional(),
   number_copilot_calls_day: z.coerce.number().optional(),
+  number_copilot_tokens_day: z
+    .preprocess(
+      (value) => (value === "" || value == null ? null : Number(value)),
+      z.number().int().min(0).nullable(),
+    )
+    .optional(), // empty: no token limit
   total_file_upload_size_gb: z.coerce.number().optional(),
   share_widgets: z.enum(["public", "private"]).optional(),
   bring_your_own_data: z.boolean().optional(),
@@ -81,7 +72,7 @@ const entitySchema = z.object({
   excel_add_in: z.boolean().optional(),
   data_add_ons_redistribution: z.boolean().optional(),
   bundle_name: z
-    .enum(["Default", "Equity Research", "Pro Trial"])
+    .enum(["Default", "Equity Research"])
     .nullable()
     .optional(),
 });
@@ -111,7 +102,7 @@ export function EntitySubmitForm({
 }: SubmitFormProps<Entity, FormData>): JSX.Element {
   const [warning, setWarning] = useState("");
   const extras = item ? {} : { adminFirstName: "", adminLastName: "", adminEmail: "" };
-  const [entitlements, setEntitlements] = useState({});
+  const [entitlements, setEntitlements] = useState<Partial<EntitlementBase>>({});
   const [updateAllUsers, setUpdateAllUsers] = useState(false);
 
   const expirationDate = item?.expiration_date
@@ -132,11 +123,6 @@ export function EntitySubmitForm({
       country: item?.country ?? "",
       seats: item?.seats ?? 1,
       expirationDate: formatDate(expirationDate),
-      stripeId: item?.stripe_id ?? "",
-      benzinga: item?.api_keys.benzinga ?? "",
-      intrinio: item?.api_keys.intrinio ?? "",
-      trading_economics: item?.api_keys.trading_economics ?? "",
-      fmp: item?.api_keys.fmp ?? "",
       ...extras,
     },
   });
@@ -178,13 +164,6 @@ export function EntitySubmitForm({
       country: values.country,
       seats: values.seats,
       expiration_date: values.expirationDate,
-      stripe_id: values.stripeId,
-      api_keys: {
-        benzinga: values.benzinga,
-        intrinio: values.intrinio,
-        trading_economics: values.trading_economics,
-        fmp: values.fmp,
-      },
     };
     if (item === undefined && editType === "Add" && isAdminSchema(values)) {
       postData = {
@@ -196,6 +175,7 @@ export function EntitySubmitForm({
     const entitlement: EntitlementBase = {
       tier: values.tier,
       number_copilot_calls_day: values.number_copilot_calls_day,
+      number_copilot_tokens_day: values.number_copilot_tokens_day,
       total_file_upload_size_gb: values.total_file_upload_size_gb,
       share_widgets: values.share_widgets,
       bring_your_own_data: values.bring_your_own_data,
@@ -280,10 +260,13 @@ export function EntitySubmitForm({
   return (
     <Tabs defaultValue="base">
       <TabsList className="mb-2 flex w-full flex-wrap gap-2 rounded border border-general-border-primary bg-general-bg-secondary p-1">
-        <TabsTrigger value="base">Base</TabsTrigger>
-        <TabsTrigger value="apiKeys">Api Keys</TabsTrigger>
+        <TabsTrigger value="base" className="px-3 py-1 text-xs">
+          Base
+        </TabsTrigger>
         {editType === "Edit" && (
-          <TabsTrigger value="entitlements">Entitlements</TabsTrigger>
+          <TabsTrigger value="entitlements" className="px-3 py-1 text-xs">
+            Entitlements
+          </TabsTrigger>
         )}
       </TabsList>
       <ManagerForm form={form} onSubmit={handleSubmit} warning={warning}>
@@ -293,7 +276,7 @@ export function EntitySubmitForm({
               name="entityName"
               control={form.control}
               render={({ field }) => {
-                return <FormInput label="Name" placeholder="OpenBB" {...field} />;
+                return <FormInput label="Name" placeholder="Workspace" {...field} />;
               }}
             />
             <FormField
@@ -357,13 +340,6 @@ export function EntitySubmitForm({
                 return <FormInput type="date" label="Expiration Date" {...field} />;
               }}
             />
-            <FormField
-              name="stripeId"
-              control={form.control}
-              render={({ field }) => {
-                return <FormInput label="Stripe Id" {...field} />;
-              }}
-            />
             {item === undefined ? (
               <>
                 <FormField
@@ -392,36 +368,6 @@ export function EntitySubmitForm({
               <></>
             )}
           </TabsContent>
-          <TabsContent value="apiKeys">
-            <FormField
-              name="benzinga"
-              control={form.control}
-              render={({ field }) => {
-                return <FormInput label="Benzinga" {...field} />;
-              }}
-            />
-            <FormField
-              name="intrinio"
-              control={form.control}
-              render={({ field }) => {
-                return <FormInput label="Intrinio" {...field} />;
-              }}
-            />
-            <FormField
-              name="trading_economics"
-              control={form.control}
-              render={({ field }) => {
-                return <FormInput label="Trading Economics" {...field} />;
-              }}
-            />
-            <FormField
-              name="fmp"
-              control={form.control}
-              render={({ field }) => {
-                return <FormInput label="Financial Modeling Prep" {...field} />;
-              }}
-            />
-          </TabsContent>
           {editType === "Edit" ? (
             <TabsContent value="entitlements">
               <FormField
@@ -431,8 +377,8 @@ export function EntitySubmitForm({
                   return (
                     <FormSelect
                       options={[
-                        { value: "pro", label: "Pro" },
-                        { value: "terminal", label: "Terminal" },
+                        { value: "full", label: "Full" },
+                        { value: "basic", label: "Basic" },
                       ]}
                       label="Tier"
                       {...field}
@@ -449,6 +395,20 @@ export function EntitySubmitForm({
                       type="number"
                       label="Number of Copilot Calls per Day"
                       {...field}
+                    />
+                  );
+                }}
+              />
+              <FormField
+                name="number_copilot_tokens_day"
+                control={form.control}
+                render={({ field }) => {
+                  return (
+                    <FormInput
+                      type="number"
+                      label="Number of Copilot Tokens per Day (empty for no limit)"
+                      {...field}
+                      value={field.value ?? ""}
                     />
                   );
                 }}
@@ -568,7 +528,6 @@ export function EntitySubmitForm({
                     options={[
                       { value: "Default", label: "Default" },
                       { value: "Equity Research", label: "Equity Research" },
-                      { value: "Pro Trial", label: "Pro Trial" },
                     ]}
                     label="Bundle Name"
                     {...field}
@@ -589,7 +548,7 @@ export function EntitySubmitForm({
             <></>
           )}
         </div>
-        <Button className="obb-btn-blue mt-2">Submit</Button>
+        <button type="submit" className="ws-btn-blue mt-2">Submit</button>
       </ManagerForm>
     </Tabs>
   );

@@ -1,0 +1,106 @@
+name: Runner Cleanup
+
+# Frees disk space on a self-hosted runner: Git objects, build output and tool caches.
+
+on:
+  schedule:
+    - cron: "0 0 1 * *"
+  workflow_dispatch:
+
+jobs:
+  cleanup-runner-workspace:
+    runs-on: [self-hosted, linux]
+    steps:
+      - name: Check Initial Disk Space
+        run: |
+          df -h
+          echo "Initial directory sizes:"
+          du -ah . | sort -rh | head -n 50
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup Git Objects
+        run: |
+          echo "Cleaning up Git repositories..."
+
+          # Prune all unreachable objects
+          git gc --prune=now --aggressive
+
+          # Remove old pack files
+          find .git/objects/pack -type f -name "pack-*.old" -delete
+
+          # Clean up loose objects
+          git prune --expire now
+
+          # Remove refs to deleted remote branches
+          git remote prune origin
+
+          # Clean reflog
+          git reflog expire --expire=now --all
+          git gc --prune=now
+
+      - name: Cleanup Build Artifacts
+        run: |
+          echo "Cleaning up build artifacts..."
+          # The directory that holds the checkout of this repository
+          cd "$RUNNER_WORKSPACE"
+
+          # Remove build artifacts and caches
+          find . -name "dist" -type d -prune -exec rm -rf {} \;
+          find . -name "node_modules" -type d -prune -exec rm -rf {} \;
+          find . -name ".git/index.lock" -type f -delete
+          find . -name ".git/refs/remotes/origin/*" -type f -not -name "main" -not -name "HEAD" -delete
+          find . -name "dist-config.json" -type f -delete
+          find . -name "bucket-policy.json" -type f -delete
+
+      - name: Cleanup AWS and Config Files
+        run: |
+          echo "Cleaning up AWS artifacts..."
+          rm -rf "$HOME"/.aws/cli/cache/*
+          find "$(dirname "$RUNNER_WORKSPACE")" -name "*.aws" -type f -delete
+
+      - name: Cleanup bun and Build Cache
+        run: |
+          echo "Cleaning bun and build cache..."
+          bun pm cache rm 2>/dev/null || true
+          rm -rf "$HOME"/.bun/install/cache
+          rm -rf "$HOME"/.npm/_cacache
+          find "$(dirname "$RUNNER_WORKSPACE")" -name ".cache" -type d -prune -exec rm -rf {} \;
+
+      - name: Cleanup Node.js Tools
+        run: |
+          echo "Cleaning up Node.js installations..."
+          # Keep only the latest Node.js version
+          if [ -d "$RUNNER_TOOL_CACHE/node" ]; then
+            cd "$RUNNER_TOOL_CACHE/node"
+            ls -t | tail -n +2 | xargs -r rm -rf
+          fi
+
+          # Clean node externals
+          rm -rf "$(dirname "$(dirname "$RUNNER_WORKSPACE")")"/externals/node20/include/node/openssl/archs/*
+
+      - name: Cleanup Temporary Directories
+        run: |
+          echo "Cleaning temporary directories..."
+          work_dir="$(dirname "$RUNNER_WORKSPACE")"
+          rm -rf "$RUNNER_TEMP"/*
+          rm -rf "$work_dir"/_PipelineMapping/*
+
+          # Clean old action runs (keep last 7 days)
+          find "$work_dir/_actions" -type d -mtime +7 -exec rm -rf {} \;
+
+          # Clean old tool installations (keep last 30 days)
+          if [ -d "$RUNNER_TOOL_CACHE" ]; then
+            find "$RUNNER_TOOL_CACHE" -type d -mtime +30 -exec rm -rf {} \;
+          fi
+
+      - name: Show Final Disk Space
+        run: |
+          echo "Final disk usage:"
+          df -h
+          echo "Final directory sizes:"
+          du -sh "$(dirname "$RUNNER_WORKSPACE")"/*

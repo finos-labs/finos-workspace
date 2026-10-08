@@ -32,7 +32,7 @@ describe("excelDateToString", () => {
         const input = "someBadInput";
         expect(() => {
             excelDateToString(input)
-        }).toThrowError(`Invalid date -> '${input}'. Use YYYY-MM-DD format or Excel date.`);
+        }).toThrow(`Invalid date -> '${input}'. Use YYYY-MM-DD format or Excel date.`);
     });
 
     test("case1", () => {

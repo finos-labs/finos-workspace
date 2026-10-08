@@ -9,7 +9,7 @@ from workspace_mcp.server._helpers import CommandRunner, ToolResponse
 def register(server: FastMCP, run: CommandRunner) -> None:
     @server.tool(
         description=describe_tool(
-            "Request a fresh OpenBB Workspace snapshot from the connected browser.",
+            "Request a fresh Workspace snapshot from the connected browser.",
             (
                 "Call this first when you need current dashboard state, dashboard "
                 "identifiers across the workspace, or skill identifiers."

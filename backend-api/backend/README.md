@@ -1,6 +1,6 @@
 # Backend
 
-FastAPI + SQLAlchemy backend for OpenBB Workspace.
+FastAPI + SQLAlchemy backend for Workspace.
 
 ## Setup
 
@@ -11,7 +11,7 @@ Quick start for local UI testing:
 ```bash
 docker compose -f docker-compose-local-dev.yml up --build --watch
 
-# in a second terminal
+# in a second shell
 cd backend
 ../.venv/bin/python -m scripts.init_users
 ```

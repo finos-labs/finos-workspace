@@ -1,13 +1,13 @@
 ---
 title: Common Errors
-uri: openbb://workspace/validation/common-errors
+uri: workspace://validation/common-errors
 use_when: A widget or app failed to load and you want a curated list of the most likely shape, layout, and contract failures.
 language_specific: false
 related:
-  - openbb://workspace/specs/widgets-json
-  - openbb://workspace/specs/apps-json
-  - openbb://workspace/specs/layout-grid
-  - openbb://workspace/guides/debug-app
+  - workspace://specs/widgets-json
+  - workspace://specs/apps-json
+  - workspace://specs/layout-grid
+  - workspace://guides/debug-app
 ---
 
 # Common Errors
@@ -20,9 +20,8 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 |---------|-------|-----|
 | `widgets.json must be object` | Top-level is `[ ... ]` | Change to `{ "widget_id": { ... } }` |
 | `Missing required field: name` | Widget has no `name` | Add `"name": "Widget Name"` |
-| `Invalid widget type: xxx` | Typo or invented alias | Use a real type — `table`, `chart`, `metric`, `markdown`, `newsfeed`, `table_ssrm`, `live_grid`, `advanced_charting`, `chart-highcharts` |
-| `Invalid formatterFn: currency` | `"currency"` is not a valid value | Use `"none"` and pre-format the value if needed |
-| `data.columnsDefs must be an array` | Columns nested at the wrong path | Move to `data.table.columnsDefs` |
+| `Invalid widget type: xxx` | Typo or invented alias | Use a type this Workspace renders: `markdown`, `html`, `pdf`, `iframe` |
+| Widget missing from the catalog, with a warning that its type is not rendered | The widget has a type of the wider protocol (`table`, `chart`, `metric`, ...) or none | Change it to one of the four types |
 | `gridData.w out of range` | Width too small/large | Use `w` between 10 and 40 |
 | Widget endpoint 404 | Path mismatch | Confirm `endpoint` matches a real route |
 
@@ -46,26 +45,23 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 |---------|-------|-----|
 | Widget never appears | Layout used `id` instead of `i` | Rename the key to `i` |
 | Coordinates ignored | Layout used `gridData: {x,y,w,h}` | Use `x`, `y`, `w`, `h` directly on the layout item |
-| Click-through silently broken | Used `groupByParamName` (legacy) | Use `renderFnParams.groupBy.paramName` |
-| Click-through doesn't propagate | Widget receives the param AND has a visible matching dropdown | Set `"show": false` on the receiving param, or remove the `cellOnClick` |
 
 ## Parameter groups
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Group exists, no widget joins | Group `name` may not be compatible with runtime group matching | Prefer `Group 1`/`Group 2`/... and put human-readable meaning in `description`/`category`; browser-test custom names before shipping |
-| Group exists but sync silently disabled | Group `type` doesn't match the underlying param shape | `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for OpenBB's universal ticker registry |
+| Group exists but sync silently disabled | Group `type` doesn't match the underlying param shape | `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for Workspace's universal ticker registry |
 | Sync works for some widgets, not others | A widget is missing from the group's `widgetIds`, or its layout entry is missing `"groups": [...]`, or its widget config uses a different `paramName`/`optionsEndpoint` | Make all three places agree |
-| Discovery widget doesn't drive the dashboard | Discovery widget isn't in the symbol group | Add it to `widgetIds` and add `"groups": ["Group 1"]` to its layout entry |
 
 ## Endpoint and CORS
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| CORS error in browser | Backend doesn't allow the Workspace origin | Add `https://pro.openbb.co`, `https://pro.openbb.dev`, `http://localhost:1420` |
+| CORS error in browser | Backend doesn't allow the Workspace origin | Add the origin the Workspace is served from, and `http://localhost:1420` for local development |
 | `Mixed content blocked` | HTTPS Workspace can't reach HTTP backend | Serve the backend over HTTPS in production |
 | 404 on widget endpoint | Path typo or missing route | Confirm the route is registered; match `endpoint` exactly |
-| Wrong response shape | Endpoint returns the wrong kind of JSON for the widget type | Tables → array of rows; charts → Plotly figure JSON; metrics → array of `{label, value, ...}`; markdown → string; newsfeed → array of articles |
+| Wrong response shape | Endpoint returns the wrong kind of response for the widget type | `markdown` → string; `html` → HTML document; `pdf` → file or base64 JSON |
 | Garbled non-ASCII | JSON file read with OS locale (cp1252 on Windows) | Open files with `encoding="utf-8"` (Python) or your language's UTF-8 equivalent |
 
 ## State and styling
@@ -83,4 +79,4 @@ Trust the running validator. Workspace's actual validator is the source of truth
 - **Preferred check** — `workspace_mcp`: `manage_backends(operation="add", url=...)` returns schema errors directly.
 - **Browser check**: Settings → Data Connectors → Connect Backend → Test.
 
-See `openbb://workspace/guides/debug-app` for the full diagnostic order.
+See `workspace://guides/debug-app` for the full diagnostic order.

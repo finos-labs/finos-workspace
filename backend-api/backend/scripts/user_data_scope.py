@@ -1,7 +1,7 @@
 """Declarative scope for the user data export/import.
 
 This module is the single source of truth for *what moves* when a user's account
-is exported from OpenBB Hub and imported into OpenBB Lite. Both
+is exported from the backend and imported into Lite. Both
 ``scripts.export_user_data`` and ``scripts.import_user_data`` read this list, so
 the two sides cannot drift apart.
 
@@ -87,7 +87,7 @@ INCLUDED: list[TableSpec] = [
         model=models.User,
         link_column="uuid",
         label="Account profile, display settings and onboarding state",
-        redact=("stripe_id", "microsoft_id", "referred_by", "referral_code"),
+        redact=("microsoft_id", "referred_by", "referral_code"),
         note=(
             "permissions_uuid is repointed to the local Lite entity on import. "
             "referral_code is regenerated because it carries a UNIQUE constraint."
@@ -103,13 +103,8 @@ INCLUDED: list[TableSpec] = [
             "Personal backends only (user_uuid IS NOT NULL); entity-owned "
             "backends are org property and stay behind. endpointHeaders is "
             "EncryptedType -- exported as plaintext, re-encrypted on import "
-            "under the target instance's OPENBB_AES_KEY."
+            "under the target instance's WORKSPACE_AES_KEY."
         ),
-    ),
-    TableSpec(
-        model=models.SingleWidget,
-        link_column="user_uuid",
-        label="Single-endpoint widget definitions",
     ),
     TableSpec(
         model=models.FileWidget,
@@ -193,22 +188,6 @@ INCLUDED: list[TableSpec] = [
         ),
     ),
     TableSpec(
-        model=models.CopilotChatOld,
-        link_column="user_uuid",
-        label="Pre-refactor copilot chats",
-        note=(
-            "The copilot chat refactor renamed the old table aside; "
-            "migrate_duplicate_copilot_chats copies rows into copilot_chat in "
-            "the background WITHOUT deleting the originals, so a migrated "
-            "account holds every chat in both places (observed on a real "
-            "account: 251 rows in each). Always exported, but imported only "
-            "when copilot_chat is empty -- otherwise loading it would duplicate "
-            "the user's entire chat history. An account the worker never "
-            "reached has its only copy here, which is why it is not simply "
-            "dropped."
-        ),
-    ),
-    TableSpec(
         model=models.UserPrompts,
         link_column="user_uuid",
         label="Saved prompts",
@@ -219,33 +198,10 @@ INCLUDED: list[TableSpec] = [
         label="Agent skills",
         note="UNIQUE on (user_uuid, slug).",
     ),
-    # -- Preferences.
-    TableSpec(
-        model=models.TradingView,
-        link_column="user_uuid",
-        label="TradingView chart state and settings",
-    ),
-    TableSpec(
-        model=models.EnabledWidgetBundles,
-        link_column="user_uuid",
-        label="Enabled widget bundles and disabled widgets",
-    ),
-    # -- Preserved for completeness, not replayed. See EXCLUDED note below.
-    TableSpec(
-        model=models.DONT_USE_CopilotChats,
-        link_column="user_uuid",
-        label="Legacy copilot chat blob (archived, not imported)",
-        optional=True,
-        note=(
-            "Superseded by copilot_chat. Exported under --include-legacy so "
-            "old accounts lose nothing, but the importer never writes it."
-        ),
-    ),
 ]
 
 # Specs the importer skips even when present in the archive.
 NOT_IMPORTED: frozenset[str] = frozenset({
-    models.DONT_USE_CopilotChats.__tablename__,
     # Uploaded files are handed back to the user as a folder in the archive,
     # not reinstated in the destination. See the StoredFile spec above.
     models.StoredFile.__tablename__,
@@ -259,15 +215,12 @@ EXCLUDED: list[ExcludedTable] = [
     ExcludedTable(
         "session", "user_uuid", "Live bearer tokens for a service being shut down."
     ),
-    ExcludedTable("login", "user_uuid", "Login audit trail with IP and geolocation."),
+    ExcludedTable("login", "user_uuid", "Login audit trail with IP addresses."),
     ExcludedTable(
         "personal_access_token",
         "user_uuid",
         "Only token_hash and token_prefix are stored; the tokens themselves are "
         "unrecoverable by design, so the rows would import as dead metadata.",
-    ),
-    ExcludedTable(
-        "developer_onboarding", "user_uuid", "Signup survey answers; no product value."
     ),
     ExcludedTable(
         "user_role",
@@ -276,10 +229,7 @@ EXCLUDED: list[ExcludedTable] = [
         "maps, so Hub role rows would dangle.",
     ),
     ExcludedTable(
-        "permissions_invite", "user_uuid", "Pending org invitations to a dead service."
-    ),
-    ExcludedTable(
-        "user_pro_invite", "inviting_user_uuid", "Invitations the user sent to others."
+        "user_invite", "inviting_user_uuid", "Invitations the user sent to others."
     ),
     ExcludedTable(
         "dashboard_share",
@@ -336,7 +286,6 @@ IMPORT_OVERRIDE_REASONS: dict[str, dict[str, str]] = {
         ),
         "is_superuser": "Hub superuser status does not transfer to a new instance.",
         "deleted": "A soft-deleted Hub account imports as a live Lite account.",
-        "stripe_id": "No billing in Lite.",
         "billing_active": "No billing in Lite.",
     },
     "api_source": {
@@ -370,7 +319,6 @@ def import_overrides(spec: TableSpec) -> dict[str, Any]:
             "confirmed": True,
             "is_superuser": False,
             "deleted": False,
-            "stripe_id": None,
             "billing_active": False,
         }
     if spec.table == "api_source":
@@ -400,24 +348,16 @@ ASSETS: list[AssetSpec] = [
         "storage at export. The import never writes these anywhere: they are in "
         "the archive so the user keeps their own copy of the files.",
     ),
-    AssetSpec(
-        "files/profile-pictures/",
-        "Profile picture -- yours to keep, not imported",
-        "Present only when user.has_profile_url is set.",
-    ),
 ]
 
 
 # --------------------------------------------------------------------------- #
 # Lookups and reporting
 # --------------------------------------------------------------------------- #
-def included_specs(
-    *, include_history: bool = False, include_legacy: bool = False
-) -> list[TableSpec]:
+def included_specs(*, include_history: bool = False) -> list[TableSpec]:
     """The specs active for a given run, in insert order."""
     optional_on = {
         models.DashboardSave.__tablename__: include_history,
-        models.DONT_USE_CopilotChats.__tablename__: include_legacy,
     }
     return [s for s in INCLUDED if not s.optional or optional_on.get(s.table, False)]
 
@@ -487,18 +427,16 @@ def _describe_excluded() -> list[str]:
     return lines
 
 
-def describe(*, include_history: bool = False, include_legacy: bool = False) -> str:
+def describe(*, include_history: bool = False) -> str:
     """Render the scope as human-readable text.
 
     Surfaced by ``--describe-scope`` on both commands and embedded in the
     archive README so the contract ships with the data.
     """
-    active = included_specs(
-        include_history=include_history, include_legacy=include_legacy
-    )
+    active = included_specs(include_history=include_history)
 
     lines = [
-        f"OpenBB user data scope (version {SCOPE_VERSION})",
+        f"Workspace user data scope (version {SCOPE_VERSION})",
         "",
         "EXPORTED -- listed in import order",
         "",
@@ -521,4 +459,4 @@ def describe(*, include_history: bool = False, include_legacy: bool = False) -> 
 if __name__ == "__main__":
     # Written straight to stdout rather than logged: this is a document meant to
     # be read or redirected to a file, not an operational message.
-    sys.stdout.write(describe(include_history=True, include_legacy=True) + "\n")
+    sys.stdout.write(describe(include_history=True) + "\n")

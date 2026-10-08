@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 name = "backend"
 version = "0.1.0"
 description = ""
-authors = ["OpenBB Team <hello@openbb.co>"]
+license = "Apache-2.0"
 package-mode = false
 
 [tool.poetry.dependencies]
@@ -36,16 +36,12 @@ fastapi-pagination = "^0.15.16"
 slowapi = { git = "https://github.com/laurentS/slowapi", branch = "master" }
 prometheus-fastapi-instrumentator = "^8.0.0"
 pydantic-settings = "^2.15.0"
-python-slugify = "^8.0"
-hubspot-api-client = "^12.0.0"
 pyotp = "^2.9"
 cryptography = "^50.0.0"
 pyjwt = "2.13.0"
 aiohttp = "^3.14.3"
 tornado = "^6.5.7"
 h11 = "^0.16.0"
-mailchimp-transactional = "^1.3.3"
-mailchimp-marketing = "^3.0.80"
 wheel = "^0.46.3"
 httpx = "^0.28.1"
 idna = "^3.18"
@@ -53,15 +49,9 @@ certifi = "^2026.5.20"
 aioboto3 = "^15.5.0"
 greenlet = "^3.5.1"
 asyncpg = "^0.31.0"
-psycopg2-binary = "^2.9.10"
+pg8000 = "^1.31.2"
 aiosqlite = "^0.22.0"
-fastmcp = "^3.4.6"
-openbb-ai = "^2.1.0"
-
-# This is still needed for old_aes script and util to work
-# and should be removed once the issue is resolved
-pycryptodome = "^3.23.0"
-
+fastmcp = "^4.0.11"
 
 [tool.poetry.group.dev.dependencies]
 vcrpy = { version = ">=8.3.0", markers = "platform_python_implementation == 'CPython'" }
@@ -125,7 +115,6 @@ preview = true
 "tests/stress/*" = ["T201", "PLR0914", "PLR0915"]
 "tests/test_bridge_load.py" = ["T201", "PLR0914", "PLR0915"]
 "alembic/versions/*" = ["E501", "Q000"]
-"alembic/versions_archive/*" = ["E501", "Q000"]
 "alembic/*" = ["SIM105"]
 "*/__init__.py" = ["F401"]
 

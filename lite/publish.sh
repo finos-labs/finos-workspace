@@ -1,40 +1,36 @@
 #!/usr/bin/env bash
-# Build the OpenBB Lite image for amd64 + arm64 and push to GHCR.
+# Build the Lite image for amd64 + arm64 and push to a registry (GHCR by default).
 #
 # For most publishing, prefer the GitHub Actions workflow (.github/workflows/
 # build.yml). This script is the local equivalent: it assembles the build
-# context (backend from openbb-hub, frontend from terminalpro) and pushes a
-# multi-arch image.
+# context from this repository (backend-api/backend and frontend/) and pushes
+# a multi-arch image.
 #
 # Usage:
-#   ./publish.sh                # uses ./VERSION, both sources @ develop
-#   ./publish.sh 0.2.0          # explicit version
+#   ORG=<namespace> ./publish.sh          # uses ./VERSION
+#   ORG=<namespace> ./publish.sh 0.2.0    # explicit version
 #
 # Auth (pick one):
 #   - Set CR_PAT (GitHub PAT with write:packages) + GHCR_USER before running.
-#   - Or run `docker login ghcr.io` manually beforehand.
+#   - Or run `docker login <registry>` manually beforehand.
 #
-# Override target / sources via env:
-#   REGISTRY=ghcr.io  ORG=openbb-finance  IMAGE=lite
+# Target via env (ORG is required):
+#   REGISTRY=ghcr.io  ORG=<namespace>  IMAGE=lite
 #   PLATFORMS=linux/amd64,linux/arm64
-#   HUB_REF=develop   TP_REF=develop      (branch, tag, SHA, or refs/pull/<N>/head)
 #
 # Re-running is safe — buildx caches layers and QEMU binfmt registration is
 # idempotent.
 set -euo pipefail
 
 REGISTRY="${REGISTRY:-ghcr.io}"
-ORG="${ORG:-openbb-finance}"
+ORG="${ORG:?Set ORG to the registry namespace to publish under (e.g. your GitHub organization)}"
 IMAGE="${IMAGE:-lite}"
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
-BUILDER="${BUILDER:-openbb-builder}"
-HUB_REF="${HUB_REF:-develop}"
-TP_REF="${TP_REF:-develop}"
-HUB_REPO="${HUB_REPO:-https://github.com/OpenBB-finance/openbb-hub.git}"
-TP_REPO="${TP_REPO:-https://github.com/OpenBB-finance/terminalpro.git}"
+BUILDER="${BUILDER:-workspace-builder}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
+SOURCE_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 DOCKERFILE="Dockerfile"
 VERSION_FILE="$SCRIPT_DIR/VERSION"
 
@@ -90,19 +86,19 @@ docker run --rm --privileged tonistiigi/binfmt --install all >/dev/null
 # --- assemble build context --------------------------------------------------
 cd "$REPO_ROOT"
 
-fetch_ref() { # <repo-url> <ref> <dest>
-  git init -q "$3"
-  git -C "$3" remote add origin "$1"
-  git -C "$3" fetch -q --depth 1 origin "$2"
-  git -C "$3" checkout -q FETCH_HEAD
+# Copy a source directory without the heavy/irrelevant dirs (the build reinstalls deps).
+copy_src() { # <src> <dest>
+  mkdir -p "$2"
+  tar -C "$1" \
+    --exclude=node_modules --exclude=.git --exclude=.venv \
+    --exclude=venv --exclude=dist --exclude=__pycache__ \
+    -cf - . | tar -C "$2" -xf -
 }
 
-echo "[publish] Assembling context — backend@$HUB_REF, frontend@$TP_REF..."
-rm -rf backend terminalpro _hub
-fetch_ref "$TP_REPO" "$TP_REF" terminalpro
-fetch_ref "$HUB_REPO" "$HUB_REF" _hub
-mv _hub/backend ./backend
-rm -rf _hub
+echo "[publish] Assembling context from $SOURCE_ROOT..."
+rm -rf backend frontend
+copy_src "$SOURCE_ROOT/backend-api/backend" ./backend
+copy_src "$SOURCE_ROOT/frontend" ./frontend
 
 # --- build + push ------------------------------------------------------------
 echo "[publish] Building and pushing $IMAGE_BASE:{$VERSION,latest}..."

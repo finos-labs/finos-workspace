@@ -1,7 +1,9 @@
-import { BaseDialog, Button, DialogTitle, useForm } from "@openbb/ui";
+import { BaseDialog, DialogTitle } from "ui/Dialog";
 import { clsx } from "clsx";
-import React, { useState } from "react";
+import React, { type ComponentType, useState } from "react";
 import type { Paginated, User } from "utils/requests";
+
+type RetrieveItems = (search?: string) => Promise<void>;
 
 interface TableBodyProps<T> {
   items: T[];
@@ -20,16 +22,24 @@ export interface SubmitFormProps<T, V> {
   editType: string;
 }
 
-interface ManageBaseProps<T> {
+interface SearchBarProps {
+  retrieveItems: RetrieveItems;
+}
+
+/**
+ * T is the type of a row and V what the form needs besides the row, such as the
+ * options of a select. A form that needs nothing takes an empty record.
+ */
+interface ManageBaseProps<T, V> {
   user: User;
   headers: string[];
   title: string;
-  SubmitForm: any;
+  SubmitForm: ComponentType<SubmitFormProps<T, V>>;
   columns: string[];
-  formData?: Record<string, Paginated<any>>;
-  retrieveItems: () => Promise<void>;
+  formData: V;
+  retrieveItems: RetrieveItems;
   items: Paginated<T>;
-  SearchBar?: any;
+  SearchBar?: ComponentType<SearchBarProps>;
 }
 
 interface TableHeaderProps {
@@ -68,17 +78,17 @@ function TableBody<T>({
     setShow(true);
   }
 
-  function getValue(row: T, column: string): string | number {
-    let value: any = row;
+  // The cell of a row for a dotted column such as "entity_type.code"; null when the path leads nowhere
+  function getValue(row: T, column: string): string | number | null {
+    let value: unknown = row;
     for (const key of column.split(".")) {
-      if (typeof value === "object" && value !== null && key in value) {
-        value = value[key];
-      }
+      if (typeof value !== "object" || value === null) return null;
+      value = Reflect.get(value, key);
     }
     if (typeof value === "boolean") {
       return value ? "true" : "false";
     }
-    return value;
+    return typeof value === "string" || typeof value === "number" ? value : null;
   }
 
   return (
@@ -101,7 +111,7 @@ function TableBody<T>({
   );
 }
 
-export function ManageBase<T>({
+export function ManageBase<T, V>({
   user,
   headers,
   title,
@@ -111,7 +121,7 @@ export function ManageBase<T>({
   retrieveItems,
   items,
   SearchBar,
-}: ManageBaseProps<T>): JSX.Element {
+}: ManageBaseProps<T, V>): JSX.Element {
   const [show, setShow] = useState(false);
   const [item, setItem] = useState<undefined | T>();
   const editType = item ? "Edit" : "Add";
@@ -121,15 +131,8 @@ export function ManageBase<T>({
     setShow(show);
   };
 
-  const cleanFormData: any = {};
-  if (formData !== null && formData !== undefined) {
-    for (const [key, value] of Object.entries(formData)) {
-      cleanFormData[key] = value.items;
-    }
-  }
-
   return (
-    <div className="obb-card overflow-hidden">
+    <div className="ws-card overflow-hidden">
       {show && (
         <BaseDialog open={show} onClose={() => prepareAdd(false)}>
           <DialogTitle>{`${title} ${editType}`}</DialogTitle>
@@ -137,7 +140,7 @@ export function ManageBase<T>({
             user={user}
             setShowAdd={setShow}
             retrieveItems={retrieveItems}
-            data={cleanFormData}
+            data={formData}
             setItem={setItem}
             item={item}
             editType={editType}
@@ -145,17 +148,17 @@ export function ManageBase<T>({
         </BaseDialog>
       )}
       <div
-        className={clsx("obb-card-header flex items-center gap-2", {
+        className={clsx("ws-card-header flex items-center gap-2", {
           "justify-end": SearchBar === undefined,
           "justify-between": SearchBar !== undefined,
         })}
       >
         {SearchBar !== undefined && <SearchBar retrieveItems={retrieveItems} />}
-        <Button className="obb-btn-blue" onClick={() => prepareAdd(true)}>
+        <button type="button" className="ws-btn-blue" onClick={() => prepareAdd(true)}>
           Add
-        </Button>
+        </button>
       </div>
-      <div className="obb-card-content">
+      <div className="ws-card-content">
         <table className="w-full overflow-hidden rounded border border-general-border-primary">
           <TableHeader headers={headers} />
           <TableBody

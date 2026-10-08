@@ -32,7 +32,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
             (
                 "After add_tabs, navigate_workspace to the generated slug tab_id, "
-                "e.g. AAPL Analysis -> aapl-analysis, before creating content for "
+                "e.g. Q3 Review -> q3-review, before creating content for "
                 "that tab."
             ),
         )
@@ -47,9 +47,9 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             Field(
                 description=(
                     'Array of {"name": ...} objects, for example '
-                    '[{"name":"AAPL Analysis"}]; name is the only key (tab_id and '
+                    '[{"name":"Q3 Review"}]; name is the only key (tab_id and '
                     "tab_name are rejected) and tab_id is generated as the slug "
-                    'of name. Not a string array such as ["AAPL Analysis"]. '
+                    'of name. Not a string array such as ["Q3 Review"]. '
                     "Required for create, add_tabs, and remove_tabs."
                 )
             ),
@@ -117,7 +117,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             str | None,
             Field(
                 description=(
-                    "Inner tab slug id, e.g. aapl-analysis. Required for "
+                    "Inner tab slug id, e.g. q3-review. Required for "
                     "operation='tab'."
                 )
             ),

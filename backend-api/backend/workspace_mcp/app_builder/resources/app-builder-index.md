@@ -1,20 +1,20 @@
 ---
 title: App Builder Index
-uri: openbb://workspace/app-builder/index
-use_when: You are about to build, review, debug, or extend an OpenBB Workspace app and need to find the right resource to read next.
+uri: workspace://app-builder/index
+use_when: You are about to build, review, debug, or extend an Workspace app and need to find the right resource to read next.
 language_specific: false
 related:
-  - openbb://workspace/overview/what-is-workspace
-  - openbb://workspace/overview/ai-agent-contract
-  - openbb://workspace/contract/backend
-  - openbb://workspace/specs/widgets-json
-  - openbb://workspace/specs/apps-json
-  - openbb://workspace/guides/build-an-app
+  - workspace://overview/what-is-workspace
+  - workspace://overview/ai-agent-contract
+  - workspace://contract/backend
+  - workspace://specs/widgets-json
+  - workspace://specs/apps-json
+  - workspace://guides/build-an-app
 ---
 
-# OpenBB Workspace App Builder
+# Workspace App Builder
 
-OpenBB Workspace apps are **language-agnostic HTTP backends plus JSON metadata contracts**. A backend can be written in any language or framework; Workspace only requires that it expose the right endpoints and return the right JSON shapes. FastAPI is the recommended starter path because most current examples use Python — not because Workspace requires Python.
+Workspace apps are **language-agnostic HTTP backends plus JSON metadata contracts**. A backend can be written in any language or framework; Workspace only requires that it expose the right endpoints and return the right JSON shapes. FastAPI is the recommended starter path because most current examples use Python — not because Workspace requires Python.
 
 ## How to use this resource set
 
@@ -22,17 +22,17 @@ If this is your first time touching Workspace, read the two **overview** docs be
 
 | You are about to… | Read |
 |-------------------|------|
-| **Build a mental model of what Workspace is** | `openbb://workspace/overview/what-is-workspace` |
-| **Make widgets the AI Agent can actually use** | `openbb://workspace/overview/ai-agent-contract` |
-| Understand what a backend must expose | `openbb://workspace/contract/backend` |
-| Author or edit `widgets.json` | `openbb://workspace/specs/widgets-json` + `openbb://workspace/specs/widget-types` + `openbb://workspace/specs/widget-parameters` |
-| Author or edit `apps.json` | `openbb://workspace/specs/apps-json` + `openbb://workspace/specs/layout-grid` |
-| Build a brand-new app | `openbb://workspace/guides/build-an-app` |
-| Review someone else's app | `openbb://workspace/guides/review-app` + `openbb://workspace/validation/common-errors` |
-| Debug an app that doesn't load | `openbb://workspace/guides/debug-app` + `openbb://workspace/validation/common-errors` |
-| Wrap an existing HTTP endpoint as a widget | `openbb://workspace/guides/convert-endpoint-to-widget` |
-| Want a framework-neutral picture of the backend | `openbb://workspace/examples/generic-http/minimal` |
-| Want the recommended Python starter | `openbb://workspace/examples/python-fastapi/minimal` |
+| **Build a mental model of what Workspace is** | `workspace://overview/what-is-workspace` |
+| **Make widgets the AI Agent can actually use** | `workspace://overview/ai-agent-contract` |
+| Understand what a backend must expose | `workspace://contract/backend` |
+| Author or edit `widgets.json` | `workspace://specs/widgets-json` + `workspace://specs/widget-types` + `workspace://specs/widget-parameters` |
+| Author or edit `apps.json` | `workspace://specs/apps-json` + `workspace://specs/layout-grid` |
+| Build a brand-new app | `workspace://guides/build-an-app` |
+| Review someone else's app | `workspace://guides/review-app` + `workspace://validation/common-errors` |
+| Debug an app that doesn't load | `workspace://guides/debug-app` + `workspace://validation/common-errors` |
+| Wrap an existing HTTP endpoint as a widget | `workspace://guides/convert-endpoint-to-widget` |
+| Want a framework-neutral picture of the backend | `workspace://examples/generic-http/minimal` |
+| Want the recommended Python starter | `workspace://examples/python-fastapi/minimal` |
 
 ## Reminders
 
@@ -41,7 +41,7 @@ If this is your first time touching Workspace, read the two **overview** docs be
 - `apps.json` is a JSON **array** of app objects. Not an object.
 - Layout uses `i` for the widget id, not `id`.
 - Prefer `Group 1`, `Group 2`, ... names for parameter groups; put human-readable meaning in descriptions/categories.
-- A schema-valid app still needs a semantic output pass: verify default aggregates, parameter scenarios, units, table columns, and chart state columns.
+- A schema-valid app still needs a semantic output pass: verify default values, parameter scenarios, units, and the shape of each widget's response.
 - Try to ship app thumbnails via `img`, `img_dark`, and `img_light`; a small backend-served SVG is enough.
 - FastAPI is one option. Use whatever fits the project.
 

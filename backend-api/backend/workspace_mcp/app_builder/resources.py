@@ -1,6 +1,6 @@
 """App-builder resource catalog and FastMCP registration.
 
-Each entry binds an ``openbb://workspace/...`` URI to a markdown file shipped
+Each entry binds an ``workspace://...`` URI to a markdown file shipped
 inside this package. The file's YAML frontmatter doubles as the resource's
 human-readable title and ``use_when`` description.
 """
@@ -39,10 +39,10 @@ class AppBuilderResource:
 
 _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
     AppBuilderResource(
-        uri="openbb://workspace/app-builder/index",
+        uri="workspace://app-builder/index",
         title="App Builder Index",
         description=(
-            "Router for the OpenBB Workspace app-builder resources. Read this "
+            "Router for the Workspace app-builder resources. Read this "
             "first to find the right spec, guide, or example. Only for when the "
             "user has explicitly asked to build, review, debug, or extend a "
             "backend or app — not for composing dashboards from existing widgets."
@@ -50,17 +50,17 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         relative_path="app-builder-index.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/overview/what-is-workspace",
+        uri="workspace://overview/what-is-workspace",
         title="What Workspace Is",
         description=(
-            "Mental model of OpenBB Workspace from the consumer side — "
+            "Mental model of Workspace from the consumer side — "
             "Dashboards, Apps (templates), Widgets, Prompts, the AI Agent, "
             "and what is native vs. what your backend supplies."
         ),
         relative_path="overview/what-is-workspace.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/overview/ai-agent-contract",
+        uri="workspace://overview/ai-agent-contract",
         title="AI Agent Contract",
         description=(
             "How Workspace's built-in AI Agent reads widget metadata and data, "
@@ -70,16 +70,16 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         relative_path="overview/ai-agent-contract.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/contract/backend",
+        uri="workspace://contract/backend",
         title="Backend Contract",
         description=(
-            "What an OpenBB Workspace backend must expose over HTTP, "
+            "What an Workspace backend must expose over HTTP, "
             "language-agnostic."
         ),
         relative_path="backend-contract.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/specs/widgets-json",
+        uri="workspace://specs/widgets-json",
         title="widgets.json Spec",
         description=(
             "Top-level shape and critical fields for widgets.json, the widget "
@@ -88,7 +88,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         relative_path="specs/widgets-json.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/specs/apps-json",
+        uri="workspace://specs/apps-json",
         title="apps.json Spec",
         description=(
             "Served shape, tab/layout structure, and parameter group wiring "
@@ -97,7 +97,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         relative_path="specs/apps-json.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/specs/widget-types",
+        uri="workspace://specs/widget-types",
         title="Widget Types",
         description=(
             "Catalog of widget type strings and a use-case-to-type quick "
@@ -106,7 +106,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         relative_path="specs/widget-types.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/specs/widget-parameters",
+        uri="workspace://specs/widget-parameters",
         title="Widget Parameters",
         description=(
             "Param types (text, number, boolean, date, endpoint), option "
@@ -115,34 +115,33 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         relative_path="specs/widget-parameters.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/specs/layout-grid",
+        uri="workspace://specs/layout-grid",
         title="Layout Grid and Groups",
         description=(
-            "40-column grid math, tab/group conventions, and click-through "
-            "navigation rules."
+            "40-column grid math and tab/group conventions."
         ),
         relative_path="specs/layout-grid.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/guides/build-an-app",
+        uri="workspace://guides/build-an-app",
         title="Build an App",
         description=(
-            "End-to-end workflow for building a new OpenBB Workspace app from "
+            "End-to-end workflow for building a new Workspace app from "
             "scratch. Only for when the user has explicitly asked to build one."
         ),
         relative_path="guides/build-an-app.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/guides/review-app",
+        uri="workspace://guides/review-app",
         title="Review an App",
         description=(
-            "Structured review pass for an existing OpenBB Workspace backend "
+            "Structured review pass for an existing Workspace backend "
             "or app template."
         ),
         relative_path="guides/review-app.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/guides/debug-app",
+        uri="workspace://guides/debug-app",
         title="Debug an App",
         description=(
             "Diagnostic order for apps that don't load, widgets that render "
@@ -151,7 +150,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         relative_path="guides/debug-app.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/guides/convert-endpoint-to-widget",
+        uri="workspace://guides/convert-endpoint-to-widget",
         title="Convert an Existing Endpoint to a Widget",
         description=(
             "Turn an existing HTTP endpoint into a Workspace widget — type "
@@ -160,25 +159,25 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         relative_path="guides/convert-endpoint-to-widget.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/examples/generic-http/minimal",
+        uri="workspace://examples/generic-http/minimal",
         title="Minimal Backend (Generic HTTP)",
         description=(
-            "Framework-neutral picture of an OpenBB Workspace backend — "
+            "Framework-neutral picture of an Workspace backend — "
             "routes, response shapes, CORS, auth."
         ),
         relative_path="examples/generic-http-minimal.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/examples/python-fastapi/minimal",
+        uri="workspace://examples/python-fastapi/minimal",
         title="Minimal Backend (Python + FastAPI)",
         description=(
-            "Recommended Python starter shape for an OpenBB Workspace backend "
+            "Recommended Python starter shape for an Workspace backend "
             "using FastAPI."
         ),
         relative_path="examples/python-fastapi-minimal.md",
     ),
     AppBuilderResource(
-        uri="openbb://workspace/validation/common-errors",
+        uri="workspace://validation/common-errors",
         title="Common Errors",
         description=(
             "Curated list of the most common widgets.json, apps.json, "

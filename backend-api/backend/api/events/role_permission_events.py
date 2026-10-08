@@ -21,12 +21,12 @@ from api.models.entity_models import (
     RoleFile,
     RolePrompt,
 )
-from api.models.tauri_models import ApiSource, FileWidget
 from api.models.user_models import (
     Session as DDSession,
     User,
     UserRole,
 )
+from api.models.workspace_models import ApiSource, FileWidget
 
 
 async def _create_role_audit_entry_task(  # noqa: PLR0913, PLR0917

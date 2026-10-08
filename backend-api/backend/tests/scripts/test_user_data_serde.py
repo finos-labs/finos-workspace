@@ -125,33 +125,18 @@ def test_gzip_string_content_round_trips():
     assert _round_trip(spec, skill)["content"] == body
 
 
-def test_scalar_list_round_trips():
-    spec = scope.spec_by_table("enabled_widget_bundles")
-    bundles = models.EnabledWidgetBundles(
-        uuid=uuid4(),
-        user_uuid=uuid4(),
-        enabled_bundles=["equity", "crypto"],
-        disabled_widgets=["some_widget"],
-    )
-
-    result = _round_trip(spec, bundles)
-
-    assert result["enabled_bundles"] == ["equity", "crypto"]
-    assert result["disabled_widgets"] == ["some_widget"]
-
-
 def test_pydantic_column_decodes_back_to_a_model_instance():
     """BasePydanticType.process_bind_param rejects a plain dict."""
     spec = scope.spec_by_table("user")
-    settings = schemas.ProDisplaySettings()
+    settings = schemas.UserDisplaySettings()
     user = models.User(
-        uuid=uuid4(), email="a@b.co", clean_email="a@b.co", pro_display_settings=settings
+        uuid=uuid4(), email="a@b.co", clean_email="a@b.co", display_settings=settings
     )
 
     result = _round_trip(spec, user)
 
-    assert isinstance(result["pro_display_settings"], schemas.ProDisplaySettings)
-    assert result["pro_display_settings"] == settings
+    assert isinstance(result["display_settings"], schemas.UserDisplaySettings)
+    assert result["display_settings"] == settings
 
 
 def test_bytes_survive_via_base64():

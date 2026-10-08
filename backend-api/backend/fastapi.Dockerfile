@@ -1,5 +1,5 @@
 ###############################################
-# Base Image  OpenBB Backend
+# Base Image  Backend
 ###############################################
 
 ARG PLATFORM=linux/amd64
@@ -65,6 +65,8 @@ RUN useradd -m -s /bin/bash appuser -p $(openssl passwd -1 appuser)
 
 WORKDIR $PYSETUP_PATH/code
 COPY ./ ./
+# Uploaded files live here (a volume in docker-compose.yml)
+RUN mkdir -p $PYSETUP_PATH/code/local_storage
 RUN chown -R appuser:appuser $PYSETUP_PATH/code
 
 ENV PATH="$VENV_PATH/bin:$PATH"

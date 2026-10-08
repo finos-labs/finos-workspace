@@ -29,12 +29,12 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             "For add, requires name and url.",
             (
                 "For update, requires backend_id and at least one of name, url, "
-                "endpoint_headers, or is_openbb_platform."
+                "endpoint_headers, or is_platform."
             ),
             "For refresh, requires backend_id; re-fetches widgets and templates from the backend URL.",
             "For remove, requires backend_id.",
             "To author or debug a custom backend's widgets.json or apps.json, read the "
-            "openbb://workspace/app-builder/index resource; it links the specs, minimal "
+            "workspace://app-builder/index resource; it links the specs, minimal "
             "working examples, and validation/common-errors.",
         )
     )
@@ -71,7 +71,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
                 )
             ),
         ] = None,
-        is_openbb_platform: bool | None = None,
+        is_platform: bool | None = None,
     ) -> ToolResponse:
         """List, add, update, refresh, or remove Workspace data backends."""
         allowed_operations = literal_values(BackendsOperation)
@@ -100,18 +100,18 @@ def register(server: FastMCP, run: CommandRunner) -> None:
                 name
                 or url
                 or endpoint_headers is not None
-                or is_openbb_platform is not None
+                or is_platform is not None
             ):
                 return invalid_request(
                     "manage_backends",
                     "manage_backends operation='update' requires at least one of "
-                    "name, url, endpoint_headers, or is_openbb_platform.",
+                    "name, url, endpoint_headers, or is_platform.",
                     details={
                         "required_one_of": [
                             "name",
                             "url",
                             "endpoint_headers",
-                            "is_openbb_platform",
+                            "is_platform",
                         ]
                     },
                 )
@@ -125,7 +125,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
                 url=url,
                 endpoint_headers=endpoint_headers,
                 validate_widgets=validate_widgets,
-                is_openbb_platform=is_openbb_platform,
+                is_platform=is_platform,
             )
         )
 
@@ -147,7 +147,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             "from the app template and returns its dashboard_id. Pass that dashboard_id to "
             "subsequent dashboard-targeting tools.",
             "Apps are defined by the apps.json a backend serves; to author one, read the "
-            "openbb://workspace/app-builder/index resource.",
+            "workspace://app-builder/index resource.",
         )
     )
     async def manage_apps(

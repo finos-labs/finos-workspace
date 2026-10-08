@@ -28,26 +28,10 @@ class TestEmailValidation:
     """Tests for email input validation across endpoints"""
 
     @pytest.mark.asyncio
-    async def test_email_max_length_chargebee_limit(self, client):
-        """Email > 70 chars should fail (Chargebee limit)"""
-        # Create an email that's 71 characters (over the 70 char limit)
-        # 61 chars + "@openbb.co" (10 chars) = 71 chars total
-        long_local = "a" * 61
-        long_email = f"{long_local}@openbb.co"
-
-        response = await client.post(
-            "/register",
-            json={"email": long_email, "password": "ValidPassword123!"},
-        )
-        assert response.status_code == 422
-        data = response.json()
-        assert "detail" in data
-
-    @pytest.mark.asyncio
     async def test_email_invalid_format_no_at(self, client):
         """Email without @ should fail validation"""
         response = await client.post(
-            "/register",
+            "/login",
             json={"email": "invalidemail.com", "password": "ValidPassword123!"},
         )
         assert response.status_code == 422
@@ -60,7 +44,7 @@ class TestEmailValidation:
     async def test_email_invalid_format_no_domain(self, client):
         """Email without domain should fail validation"""
         response = await client.post(
-            "/register",
+            "/login",
             json={"email": "invalid@", "password": "ValidPassword123!"},
         )
         assert response.status_code == 422
@@ -73,7 +57,7 @@ class TestEmailValidation:
     async def test_email_invalid_format_spaces(self, client):
         """Email with spaces should fail validation"""
         response = await client.post(
-            "/register",
+            "/login",
             json={"email": "invalid email@test.com", "password": "ValidPassword123!"},
         )
         assert response.status_code == 422
@@ -83,7 +67,7 @@ class TestEmailValidation:
         assert "detail" in data
 
     @pytest.mark.asyncio
-    async def test_email_sql_injection_in_register(self, client, db_session):
+    async def test_email_sql_injection_in_login(self, client, db_session):
         """SQL injection in email should be safely handled - verify DB"""
         malicious_emails = [
             "test@test.com'; DROP TABLE user; --",
@@ -93,11 +77,11 @@ class TestEmailValidation:
 
         for email in malicious_emails:
             response = await client.post(
-                "/register",
+                "/login",
                 json={"email": email, "password": "ValidPassword123!"},
             )
-            # Should return validation error, not 500
-            assert response.status_code in {400, 422}, f"Failed for email: {email}"
+            # Rejected by validation or by the credential check, never a 500
+            assert response.status_code in {400, 401, 422}, f"Failed for email: {email}"
 
         # ACTUALLY verify the database is intact after all injection attempts
         result = await db_session.execute(text("SELECT COUNT(*) FROM user"))
@@ -105,7 +89,7 @@ class TestEmailValidation:
         assert count is not None  # Table still exists and is queryable
 
     @pytest.mark.asyncio
-    async def test_email_xss_attempt_in_register(self, client):
+    async def test_email_xss_attempt_in_login(self, client):
         """XSS in email should be safely handled"""
         xss_emails = [
             "<script>alert('xss')</script>@test.com",
@@ -115,11 +99,11 @@ class TestEmailValidation:
 
         for email in xss_emails:
             response = await client.post(
-                "/register",
+                "/login",
                 json={"email": email, "password": "ValidPassword123!"},
             )
-            # Should return validation error, not 500
-            assert response.status_code in {400, 422}, f"Failed for email: {email}"
+            # Rejected by validation or by the credential check, never a 500
+            assert response.status_code in {400, 401, 422}, f"Failed for email: {email}"
 
     @pytest.mark.asyncio
     async def test_email_unicode_handling(self, client):
@@ -132,11 +116,11 @@ class TestEmailValidation:
 
         for email in unicode_emails:
             response = await client.post(
-                "/register",
+                "/login",
                 json={"email": email, "password": "ValidPassword123!"},
             )
-            # May be valid internationalized email or validation error
-            assert response.status_code in {200, 400, 422}, f"Failed for email: {email}"
+            # May be a valid internationalized email (unknown user) or a validation error
+            assert response.status_code in {400, 401, 422}, f"Failed for email: {email}"
 
 
 class TestPasswordValidation:
@@ -146,9 +130,9 @@ class TestPasswordValidation:
     async def test_password_min_length_7_chars_fails(self, client):
         """Password with 7 chars should fail (min is 8)"""
         response = await client.post(
-            "/register",
+            "/login",
             json={
-                "email": f"pwtest_{uuid4().hex[:8]}@openbb.co",
+                "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "Short1!",  # 7 chars
             },
         )
@@ -160,22 +144,22 @@ class TestPasswordValidation:
     async def test_password_min_length_8_chars_succeeds(self, client):
         """Password with exactly 8 chars should pass validation"""
         response = await client.post(
-            "/register",
+            "/login",
             json={
-                "email": f"pwtest_{uuid4().hex[:8]}@openbb.co",
+                "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "Valid12!",  # 8 chars
             },
         )
-        # 200 success or 400 if HubSpot disabled (but not 422 for validation)
-        assert response.status_code in {200, 400}
+        # Passes validation and reaches the credential check
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_password_empty_fails(self, client):
         """Empty password should fail validation"""
         response = await client.post(
-            "/register",
+            "/login",
             json={
-                "email": f"pwtest_{uuid4().hex[:8]}@openbb.co",
+                "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "",
             },
         )
@@ -189,42 +173,41 @@ class TestPasswordValidation:
     async def test_password_whitespace_only_fails(self, client):
         """Password with only whitespace should fail or be rejected"""
         response = await client.post(
-            "/register",
+            "/login",
             json={
-                "email": f"pwtest_{uuid4().hex[:8]}@openbb.co",
+                "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "        ",  # 8 spaces
             },
         )
-        # May succeed (whitespace trimmed and treated as empty) or fail validation
-        # 200 if registration works (API might allow it), 400/422 if validation fails
-        assert response.status_code in {200, 400, 422}
+        # Rejected by validation or by the credential check
+        assert response.status_code in {400, 401, 422}
 
     @pytest.mark.asyncio
     async def test_password_unicode_characters(self, client):
         """Password with unicode characters should be handled"""
         response = await client.post(
-            "/register",
+            "/login",
             json={
-                "email": f"pwtest_{uuid4().hex[:8]}@openbb.co",
+                "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "Pässwörd123!",  # Unicode chars
             },
         )
-        # May succeed or fail depending on implementation
-        assert response.status_code in {200, 400, 422}
+        # Passes validation (unknown user) or fails it
+        assert response.status_code in {400, 401, 422}
 
     @pytest.mark.asyncio
     async def test_password_very_long(self, client):
         """Very long password should be handled"""
         long_password = "A" * 1000 + "1!"
         response = await client.post(
-            "/register",
+            "/login",
             json={
-                "email": f"pwtest_{uuid4().hex[:8]}@openbb.co",
+                "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": long_password,
             },
         )
-        # Should either succeed or return appropriate error
-        assert response.status_code in {200, 400, 422}
+        # Passes validation (unknown user) or fails it
+        assert response.status_code in {400, 401, 422}
 
 
 class TestUUIDValidation:
@@ -241,7 +224,7 @@ class TestUUIDValidation:
         ]
 
         for uuid in invalid_uuids:
-            response = await auth_client.get(f"/pro/dash/{uuid}/shares")
+            response = await auth_client.get(f"/app/dash/{uuid}/shares")
             # Should return 422 (validation) or 400 (bad request)
             assert response.status_code in {400, 422, 404}, f"Failed for UUID: {uuid}"
 
@@ -255,7 +238,7 @@ class TestUUIDValidation:
         ]
 
         for uuid in malicious_uuids:
-            response = await auth_client.delete(f"/pro/files/{uuid}")
+            response = await auth_client.delete(f"/app/files/{uuid}")
             # Should return validation error, not 500
             assert response.status_code in {400, 404, 422}, f"Failed for UUID: {uuid}"
 
@@ -268,7 +251,7 @@ class TestUUIDValidation:
     async def test_valid_uuid_nonexistent_resource(self, auth_client):
         """Valid UUID format but nonexistent resource should return 404 or 200"""
         valid_uuid = str(uuid4())
-        response = await auth_client.get(f"/pro/dash/{valid_uuid}/shares")
+        response = await auth_client.get(f"/app/dash/{valid_uuid}/shares")
         # Should return 404 (not found) or 200 (empty list)
         assert response.status_code in {200, 400, 404}
 
@@ -330,7 +313,7 @@ class TestJSONPayloadValidation:
             current = current["nested"]
 
         response = await auth_client.post(
-            "/pro/display-settings",
+            "/app/display-settings",
             json=nested,
         )
         # Should handle gracefully - either accept, return 422, or 400
@@ -341,9 +324,9 @@ class TestJSONPayloadValidation:
         """Large array in payload should be handled"""
         large_array = list(range(100))  # Reasonable size to avoid hanging
 
-        response = await auth_client.put(
-            "/pro/enabled-bundles",
-            json={"bundles": large_array},
+        response = await auth_client.post(
+            "/app/display-settings",
+            json={"gridCorners": large_array},
         )
         # Should handle gracefully
         assert response.status_code in {200, 400, 413, 422}
@@ -361,52 +344,29 @@ class TestJSONPayloadValidation:
 
 
 class TestUsernameValidation:
-    """Tests for username validation"""
+    """Tests for username validation (PUT /user)"""
 
     @pytest.mark.asyncio
-    async def test_username_min_length_3_chars_fails(self, client):
+    async def test_username_min_length_3_chars_fails(self, auth_client):
         """Username with 3 chars should fail (min is 4)"""
-        response = await client.post(
-            "/register",
-            json={
-                "email": f"usertest_{uuid4().hex[:8]}@openbb.co",
-                "password": "ValidPassword123!",
-                "username": "abc",  # 3 chars
-            },
-        )
+        response = await auth_client.put("/user", json={"username": "abc"})
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_username_min_length_4_chars_succeeds(self, client):
+    async def test_username_min_length_4_chars_succeeds(self, auth_client):
         """Username with 4 chars should pass validation"""
-        # Use random 4-char username to avoid conflicts
-        random_username = uuid4().hex[:4]
-        response = await client.post(
-            "/register",
-            json={
-                "email": f"usertest_{uuid4().hex[:8]}@openbb.co",
-                "password": "ValidPassword123!",
-                "username": random_username,  # 4 random chars
-            },
-        )
-        # 200 success, 400 if HubSpot disabled, 409 if username/email exists
-        assert response.status_code in {200, 400, 409}
+        response = await auth_client.put("/user", json={"username": uuid4().hex[:4]})
+        # 409 if the username is taken
+        assert response.status_code in {200, 409}
 
     @pytest.mark.asyncio
-    async def test_username_max_length_51_chars_fails(self, client):
+    async def test_username_max_length_51_chars_fails(self, auth_client):
         """Username with 51 chars should fail (max is 50)"""
-        response = await client.post(
-            "/register",
-            json={
-                "email": f"usertest_{uuid4().hex[:8]}@openbb.co",
-                "password": "ValidPassword123!",
-                "username": "a" * 51,
-            },
-        )
+        response = await auth_client.put("/user", json={"username": "a" * 51})
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_username_special_chars_rejected(self, client):
+    async def test_username_special_chars_rejected(self, auth_client):
         """Username with special characters should be rejected"""
         invalid_usernames = [
             "user@name",
@@ -417,41 +377,23 @@ class TestUsernameValidation:
         ]
 
         for username in invalid_usernames:
-            response = await client.post(
-                "/register",
-                json={
-                    "email": f"usertest_{uuid4().hex[:8]}@openbb.co",
-                    "password": "ValidPassword123!",
-                    "username": username,
-                },
-            )
+            response = await auth_client.put("/user", json={"username": username})
             assert response.status_code == 422, f"Failed for username: {username}"
 
     @pytest.mark.asyncio
-    async def test_username_valid_characters_allowed(self, client):
+    async def test_username_valid_characters_allowed(self, auth_client):
         """Username with letters, numbers, underscores should be allowed"""
+        suffix = uuid4().hex[:6]
         valid_usernames = [
-            "user_name",
-            "UserName123",
-            "user123",
-            "USER_NAME_123",
+            f"user_name_{suffix}",
+            f"UserName123{suffix}",
+            f"user123{suffix}",
+            f"USER_NAME_123_{suffix}",
         ]
 
         for username in valid_usernames:
-            response = await client.post(
-                "/register",
-                json={
-                    "email": f"usertest_{uuid4().hex[:8]}@openbb.co",
-                    "password": "ValidPassword123!",
-                    "username": username,
-                },
-            )
-            # 200 success or 400 if HubSpot disabled (but not 422)
-            assert response.status_code in {
-                200,
-                400,
-                409,
-            }, f"Failed for username: {username}"
+            response = await auth_client.put("/user", json={"username": username})
+            assert response.status_code in {200, 409}, f"Failed for username: {username}"
 
 
 class TestContentTypeValidation:
@@ -493,13 +435,13 @@ class TestPathParameterValidation:
         ]
 
         for path in malicious_paths:
-            response = await auth_client.get(f"/pro/files/{path}")
+            response = await auth_client.get(f"/app/files/{path}")
             # Should return 400/404/422, not expose files
             assert response.status_code in {400, 404, 422}, f"Failed for path: {path}"
 
     @pytest.mark.asyncio
     async def test_null_byte_injection(self, auth_client):
         """Null byte injection should be blocked"""
-        response = await auth_client.get("/pro/files/test%00.txt")
+        response = await auth_client.get("/app/files/test%00.txt")
         # Should return validation error
         assert response.status_code in {400, 404, 422}

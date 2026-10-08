@@ -11,9 +11,6 @@ from uuid import UUID
 
 import aioboto3
 import boto3
-import hubspot
-import mailchimp_marketing
-import mailchimp_transactional
 from aiobotocore.config import AioConfig
 from aiobotocore.session import AioSession
 from azure.identity import DefaultAzureCredential
@@ -26,7 +23,6 @@ from pydantic import (
     ConfigDict,
     EmailStr,
     Field,
-    HttpUrl,
     field_validator,
     model_validator,
 )
@@ -85,7 +81,7 @@ def get_url(self: "DatabaseSettings", access: Literal["READ", "WRITE"] = "READ")
     name = self.DB_NAME
 
     if self.DATABASE_TYPE == "postgresql":
-        return f"postgresql+psycopg2://{user}:{password}@{the_host}:{the_port}/{name}"
+        return f"postgresql+pg8000://{user}:{password}@{the_host}:{the_port}/{name}"
 
     return f"mysql+pymysql://{user}:{password}@{the_host}:{the_port}/{name}?charset=utf8mb4"
 
@@ -156,7 +152,7 @@ class DatabaseEngineSettings(BaseModel):
 
 class DatabaseSessionManager:
     def __init__(self, host: str, **engine_kwargs: Any):
-        host = host.replace("pymysql", "aiomysql").replace("psycopg2", "asyncpg")
+        host = host.replace("pymysql", "aiomysql").replace("pg8000", "asyncpg")
 
         is_sqlite = host.startswith("sqlite")
         if is_sqlite:
@@ -285,12 +281,22 @@ class DatabaseSettings(BaseModel):
             "max_overflow": 0,
         }
 
+    def _engine_kwargs(self, settings: DatabaseEngineSettings) -> dict[str, Any]:
+        """Engine kwargs for the synchronous driver of the configured database."""
+        kwargs = settings.model_dump()
+        if self.DATABASE_TYPE == "postgresql":
+            # pg8000 takes the TLS context as `ssl_context`; asyncpg and the MySQL drivers take `ssl`
+            ssl_context = kwargs["connect_args"].pop("ssl", None)
+            if ssl_context is not None:
+                kwargs["connect_args"]["ssl_context"] = ssl_context
+        return kwargs
+
     def get_read_engine(self, settings: DatabaseEngineSettings | None = None) -> Engine:
         if self.DATABASE_TYPE == "sqlite":
             return create_engine(self.get_read_url(), **self._sqlite_engine_kwargs())
         if settings is None:
             settings = DatabaseEngineSettings.with_custom_ssl(self.get_ssl_config())
-        return create_engine(self.get_read_url(), **settings.model_dump())
+        return create_engine(self.get_read_url(), **self._engine_kwargs(settings))
 
     def get_read_session(
         self, settings: DatabaseEngineSettings | None = None
@@ -309,7 +315,7 @@ class DatabaseSettings(BaseModel):
             return create_engine(self.get_write_url(), **self._sqlite_engine_kwargs())
         if settings is None:
             settings = DatabaseEngineSettings.with_custom_ssl(self.get_ssl_config())
-        return create_engine(self.get_write_url(), **settings.model_dump())
+        return create_engine(self.get_write_url(), **self._engine_kwargs(settings))
 
     def get_write_session(
         self, settings: DatabaseEngineSettings | None = None
@@ -333,7 +339,7 @@ class RedisSettings(BaseModel):
     REDIS_PORT: int = 6379
     REDIS_SSL_PORT: int = 6380
     REDIS_DB_BOT: int = 0
-    REDIS_DB_PRO: int = 1
+    REDIS_DB_APP: int = 1
     REDIS_DB_SDK: int = 12
     REDIS_SSL_CA: str | None = None
     REDIS_SSL_CERT: str | None = None
@@ -381,10 +387,10 @@ class RedisSettings(BaseModel):
         return None
 
     def get_redis_url(self) -> str:
-        uri = f"{self.schema}://{self.REDIS_USER}:{self.REDIS_PASS}@{self.REDIS_HOST}:{self.port}/{self.REDIS_DB_PRO}"
+        uri = f"{self.schema}://{self.REDIS_USER}:{self.REDIS_PASS}@{self.REDIS_HOST}:{self.port}/{self.REDIS_DB_APP}"
 
         if self.REDIS_CLUSTER_MODE:
-            uri = uri.replace(f"/{self.REDIS_DB_PRO}", "")
+            uri = uri.replace(f"/{self.REDIS_DB_APP}", "")
 
         query_params = []
         if self.ssl_config:
@@ -398,11 +404,11 @@ class RedisSettings(BaseModel):
         return uri
 
     def get_redis_session(
-        self, database: Literal["bot", "pro", "sdk"]
+        self, database: Literal["app", "sdk"]
     ) -> Redis | RedisCluster:
         db_options = {
             "bot": self.REDIS_DB_BOT,
-            "pro": self.REDIS_DB_PRO,
+            "app": self.REDIS_DB_APP,
             "sdk": self.REDIS_DB_SDK,
         }
 
@@ -425,7 +431,7 @@ class RedisSettings(BaseModel):
         return Redis(**kwargs)
 
     def get_async_redis_session(
-        self, database: Literal["bot", "pro", "sdk"]
+        self, database: Literal["app", "sdk"]
     ) -> AsyncRedis | AsyncRedisCluster:
         """Async counterpart of get_redis_session for non-blocking pub/sub and keyspace ops.
 
@@ -434,7 +440,7 @@ class RedisSettings(BaseModel):
         """
         db_options = {
             "bot": self.REDIS_DB_BOT,
-            "pro": self.REDIS_DB_PRO,
+            "app": self.REDIS_DB_APP,
             "sdk": self.REDIS_DB_SDK,
         }
 
@@ -509,11 +515,11 @@ class RedisSettings(BaseModel):
         if not isinstance(expire, timedelta) and expire is not None:
             expire = timedelta(seconds=expire)
 
-        redis_client = self.get_redis_session("pro")
+        redis_client = self.get_redis_session("app")
         redis_key = str(redis_key)
 
         if self.REDIS_CLUSTER_MODE:
-            redis_key = f"pro:{{cluster}}:{redis_key}"
+            redis_key = f"app:{{cluster}}:{redis_key}"
 
         if redis_client.get(redis_key) and not update:
             if delete:
@@ -535,13 +541,8 @@ class RedisSettings(BaseModel):
 class AWSSettings(BaseModel):
     S3_ACCESS_KEY: str = os.environ.get("S3_ACCESS_KEY", "")
     S3_SECRET_KEY: str = os.environ.get("S3_SECRET_KEY", "")
-    S3_BUCKET_NAME: str = os.environ.get("S3_BUCKET_NAME", "openbb-assets")
-    S3_BUCKET_BASE: HttpUrl = HttpUrl("https://openbb-assets.s3.amazonaws.com/")
-    S3_FILE_BUCKET: str = os.environ.get("S3_BUCKET", "pro-file-storage-dev")
-    S3_FILE_BUCKET_BASE: HttpUrl = HttpUrl(
-        f"https://{S3_FILE_BUCKET}.s3.amazonaws.com/"
-    )
-    S3_IMAGE_BUCKET: HttpUrl = HttpUrl(f"{S3_BUCKET_BASE}profile-pictures/")
+    S3_BUCKET_NAME: str | None = os.environ.get("S3_BUCKET_NAME")
+    S3_FILE_BUCKET: str | None = os.environ.get("S3_BUCKET")
     S3_VERIFY_SSL: bool | None = None
     S3_ENDPOINT_URL: str | None = None
     S3_REGION: str | None = os.environ.get("S3_REGION", None)
@@ -579,9 +580,6 @@ class AWSSettings(BaseModel):
             aws_secret_access_key=self.S3_SECRET_KEY,
             region_name=self.S3_REGION,
         )
-
-    def get_profile_url(self, uuid: UUID) -> str:
-        return f"{self.S3_IMAGE_BUCKET}{uuid}.png"
 
     async def s3_client(self):
         session = AioSession()
@@ -654,9 +652,7 @@ class LocalStorageSettings(BaseModel):
 
 class AzureSettings(BaseModel):
     AZURE_CONNECTION_STRING: str | None = None
-    AZURE_STORAGE_CONTAINER: str = os.environ.get(
-        "AZURE_STORAGE_CONTAINER", "pro-file-storage-dev"
-    )
+    AZURE_STORAGE_CONTAINER: str | None = os.environ.get("AZURE_STORAGE_CONTAINER")
     AZURE_STORAGE_ACCOUNT: str | None = None
     AZURE_USE_CLI_AUTH: bool | None = (
         AZURE_CONNECTION_STRING is None and AZURE_STORAGE_ACCOUNT
@@ -704,104 +700,27 @@ class AzureSettings(BaseModel):
 
 
 class AccessSettings(BaseModel):
-    # https://ipgeolocation.io/documentation/ip-geolocation-api.html
-    OPENBB_GEO_KEY: str | None = None
-    OPENBB_AES_KEY: str
-
-
-class MailChimpSettings(BaseModel):
-    MAILCHIMP_MARKETING: str | None = None
-    MAILCHIMP_TRANSACTIONAL: str | None = None
-    MAILCHIMP_SERVER: str | None = None
-    MAILCHIMP_AUDIENCE_ID: str | None = None
-
-    @property
-    def MAILCHIMP(self) -> bool:
-        return bool(self.MAILCHIMP_MARKETING and self.MAILCHIMP_TRANSACTIONAL)
-
-    def get_marketing_client(self) -> mailchimp_marketing.Client:
-        if not self.MAILCHIMP_MARKETING:
-            raise ValueError("Mailchimp marketing is not configured")
-        return mailchimp_marketing.Client(
-            {"api_key": self.MAILCHIMP_MARKETING, "server": self.MAILCHIMP_SERVER}
-        )
-
-    def get_transactional_client(self) -> mailchimp_transactional.Client:
-        if not self.MAILCHIMP_TRANSACTIONAL:
-            raise ValueError("Mailchimp transactional is not configured")
-        return mailchimp_transactional.Client(self.MAILCHIMP_TRANSACTIONAL)
-
-
-class HubspotSettings(BaseModel):
-    HUBSPOT: bool | None = False
-    HUBSPOT_EMAIL_TOKEN: str | None = None
-    HUBSPOT_CONTACT_TOKEN: str | None = None
-    HUBSPOT_SERVICE_TOKEN: str | None = None
-    HUBSPOT_BASE_URL: HttpUrl | None = HttpUrl("https://api.hubapi.com/")
-    HUBSPOT_CONTACTS_URL: HttpUrl | None = HttpUrl(
-        f"{HUBSPOT_BASE_URL}crm/v3/objects/contacts"
-    )
-
-    def __init__(self, **data: Any):
-        super().__init__(**data)
-
-        if any(
-            [
-                self.HUBSPOT_EMAIL_TOKEN,
-                self.HUBSPOT_CONTACT_TOKEN,
-                self.HUBSPOT_SERVICE_TOKEN,
-            ]
-        ):
-            self.HUBSPOT = True
-
-        if not self.HUBSPOT:
-            self.HUBSPOT_EMAIL_TOKEN = None
-            self.HUBSPOT_CONTACT_TOKEN = None
-            self.HUBSPOT_SERVICE_TOKEN = None
-            self.HUBSPOT_BASE_URL = None
-            self.HUBSPOT_CONTACTS_URL = None
-
-    def get_hubspot_email_client(self) -> hubspot.Client:
-        if not self.HUBSPOT:
-            raise ValueError("Hubspot is disabled")
-        return hubspot.Client.create(access_token=self.HUBSPOT_EMAIL_TOKEN)
-
-    def get_hubspot_contact_client(self) -> hubspot.Client:
-        if not self.HUBSPOT:
-            raise ValueError("Hubspot is disabled")
-        return hubspot.Client.create(access_token=self.HUBSPOT_CONTACT_TOKEN)
-
-
-class JiraSettings(BaseModel):
-    JIRA_BASE_URL: str | None = None
-    JIRA_USER_EMAIL: str | None = None
-    JIRA_API_TOKEN: str | None = None
-    JIRA_SERVICE_DESK_ID: str | None = None
-    JIRA_DEFAULT_REQUEST_TYPE_ID: str | None = None
-    JIRA_REQUEST_TYPE_MAPPING: dict[str, str] = Field(default_factory=dict)
-
-    def get_jira_auth(self) -> tuple[str, str]:
-        if not self.JIRA_USER_EMAIL or not self.JIRA_API_TOKEN:
-            raise ValueError("Jira credentials not fully configured")
-        return (self.JIRA_USER_EMAIL, self.JIRA_API_TOKEN)
-
-
-class FeedbackSettings(BaseModel):
-    FEEDBACK_PROVIDER: Literal["hubspot", "jira"] = "hubspot"
+    WORKSPACE_AES_KEY: str
 
 
 class PrometheusSettings(BaseModel):
     PROMETHEUS: bool | None = False
 
 
-class ProSettings(BaseModel):
+class NotificationSettings(BaseModel):
+    # Import path (`package.module:Class`) of the AdminNotifier transport; api/notifications.py
+    ADMIN_NOTIFIER: str = "api.notifications:WebhookNotifier"
+    ADMIN_NOTIFY_WEBHOOK_URL: str | None = None
+    ADMIN_NOTIFY_WEBHOOK_SECRET: str | None = None
+    ADMIN_NOTIFY_RECIPIENT: str | None = None
+    ADMIN_NOTIFY_SENDER: str | None = None
+
+
+class AppSettings(BaseModel):
     INVITE_EXPIRATION: timedelta = timedelta(weeks=52)
-    PRO_DEVELOPER_MAPPING: UUID = UUID("22222222-2222-2222-2222-222222222222")
-    PRO_TRIAL_MAPPING: UUID = UUID("11111111-1111-1111-1111-111111111111")
-    PRO_TRIAL_USER: UUID = UUID("11111111-1111-1111-1111-111111111111")
-    PRO_TRIAL_EMAIL: EmailStr = "colin.delahunty+registertrial@openbb.finance"
+    DEVELOPER_MAPPING: UUID = UUID("22222222-2222-2222-2222-222222222222")
     ON_PREM_ADMIN_MAPPING: UUID | None = None
-    PROURL: str
+    APPURL: str
 
     def __init__(self, **data: Any):
         super().__init__(**data)
@@ -811,29 +730,26 @@ class ProSettings(BaseModel):
 
         with suppress(Exception):
             json_data = json.loads(create_user.read_text())
-            self.PRO_DEVELOPER_MAPPING = UUID(json_data["permissions_uuid"])
-            self.PRO_TRIAL_USER = UUID(json_data["inviting_uuid"])
-            self.PRO_TRIAL_EMAIL = json_data["inviting_email"]
+            self.DEVELOPER_MAPPING = UUID(json_data["permissions_uuid"])
             self.ON_PREM_ADMIN_MAPPING = UUID(json_data["on_prem_admin_uuid"])
 
 
 class GeneralSettings(BaseModel):
     JWT_SECRET: str = os.environ.get("JOSESECRET", None)
-    SNOWFLAKE_ACCOUNT: str = os.environ.get("SNOWFLAKE_ACCOUNT", "")
-    SNOWFLAKE_HOST: str = os.environ.get("SNOWFLAKE_HOST", "")
     IS_WORKER_CONTAINER: bool = False
     DISABLE_REGISTRATION: bool = False
 
-    FRONTENDURL: str = "https://my.openbb.co"
+    FRONTENDURL: str
     SELFURL: str
     MODE: Literal["production", "local", "test", "onprem", "lite"]
-    EMAIL_PROVIDER: str = "mailchimp"  # "hubspot" or "mailchimp"
-    OPENBB_FRONTEND_USER_AGENT: str = "colinlovedrust"
+    # Requests whose user agent contains this value skip rate limiting; unset disables the exemption
+    WORKSPACE_FRONTEND_USER_AGENT: str | None = None
+    # Requests carrying a valid X-Workspace-Authorization token skip rate limiting (development only)
+    RATE_LIMIT_EXEMPT_ENABLED: bool = False
+    MARKETPLACE_MAX_DEVELOPER_APPS: int = 5
     OKTA_DOMAIN: str | None = None
     # These are characters that cannot be in our url
     UNUSABLE_JSON_CHARACTERS: set[str] = {"?"}
-    # Users made before this date are bot users
-    HUB_RELEASE_DATE: datetime = datetime(2023, 4, 25)
     MAX_DICT_LEN: int = 100_000
     WORKERS: int = 3
     # Per-worker address-space cap in GiB (RLIMIT_AS, applied in run.py).
@@ -846,42 +762,15 @@ class GeneralSettings(BaseModel):
     RQ_TIMEOUT: int = 10
     DISABLE_CORS: bool = False
     CLEAR_UNCONFIRMED_FILES_DATE: str = "2024-10-07"
-    OPENBB_AUTH_TOKEN: str | None = None
-    BACKEND_CORS_ORIGINS: list[str] | str = [
-        "http://10.5.2.231:5173",
-        "https://pro.openbb.co",
-        "https://pro.openbb.dev",
-        "https://openbb-excel-add-in.vercel.app",
-        "https://excel.openbb.co",
-        "https://excel.openbb.dev",
-        "https://admin.openbb.co",
-        "https://admin.openbb.dev",
-        "https://bofa.openbb.dev",
-    ]
-    SPECIAL_EMAILS: set[EmailStr] = {
-        "colin99delahunty@gmail.com",
-        "colindelahunty@openbb.finance",
-        "andrewkenreich@gmail.com",
-        "andrewkenreich@openbb.co",
-        "andrewkenreich@openbb.finance",
-        "juanalfonso@openbb.co",
-        "juanalfonso@openbb.finance",
-        "jamesmaslek@openbb.co",
-        "jamesmaslek@openbb.finance",
-    }
+    WORKSPACE_AUTH_TOKEN: str | None = None
+    BACKEND_CORS_ORIGINS: list[str] | str = Field(default_factory=list)
+    # Addresses exempt from the duplicate-email checks in crud.check_new_user
+    SPECIAL_EMAILS: set[EmailStr] = Field(default_factory=set)
     SUPPRESSED_API_ROUTERS: list[str] | None = Field(default_factory=list)
     SUPPRESSED_API_ROUTES: list[str] | None = Field(default_factory=list)
-    STORAGE_PROVIDER: Literal["aws", "azure", "gcp", "folder"] = "aws"
+    STORAGE_PROVIDER: Literal["aws", "azure", "gcp", "folder"] = "folder"
+    GCP_STORAGE_BUCKET: str | None = None
     ALLOWED_MCP_HOSTNAMES: list[str] = Field(default_factory=list)
-    STRIPE_WEBHOOK_SECRET: str | None = None
-    STRIPE_WEBHOOK_TOLERANCE_SECONDS: int = 300
-    # Private provisioning lambda invoked via the AWS SDK; authorized by the
-    # pod's IAM role. Set empty to skip provisioning + install email.
-    LITE_LAMBDA_FUNCTION_NAME: str = "dev-lite-onboarding"
-    # Docker tag customers pull (e.g. "0.3.1"). Bump per release; rendered into
-    # the install email so the `docker pull / run` commands stay current.
-    # This is ignored for now - I made it "latest" by default
-    OPENBB_LITE_DOCKER_TAG: str = "0.0.3"
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
@@ -892,17 +781,6 @@ class GeneralSettings(BaseModel):
         if isinstance(v, str):
             return json.loads(v)
         return v
-
-    @staticmethod
-    def get_snowflake_email(user: str, subdomain: str) -> str:
-        # If user is already an email address (federated identity), use it directly
-        if "@" in user:
-            return user
-
-        host_parts = subdomain.split("-")
-        account = "-".join(host_parts[1:])
-
-        return f"{user}@{account}.snowflakecomputing.app"
 
     def is_test(self) -> bool:
         return self.MODE == "test"
@@ -924,17 +802,14 @@ class Settings(
     BaseSettings,
     AccessSettings,
     GeneralSettings,
-    ProSettings,
+    AppSettings,
     DatabaseSettings,
     RedisSettings,
     AWSSettings,
     AzureSettings,
     LocalStorageSettings,
-    HubspotSettings,
-    JiraSettings,
-    FeedbackSettings,
-    MailChimpSettings,
     PrometheusSettings,
+    NotificationSettings,
 ):
     model_config = SettingsConfigDict(
         env_file=create_path("envs", ".env"),
@@ -942,7 +817,7 @@ class Settings(
         extra="ignore",
     )
 
-    def get_file_bucket(self) -> str:
+    def get_file_bucket(self) -> str | None:
         if self.STORAGE_PROVIDER == "aws":
             return self.S3_FILE_BUCKET
 
@@ -952,7 +827,7 @@ class Settings(
         if self.STORAGE_PROVIDER == "folder":
             return "local_storage"
 
-        return "pro-file-storage-dev"
+        return self.GCP_STORAGE_BUCKET
 
     def setup_logging(self):
         """Set up logging for the application."""

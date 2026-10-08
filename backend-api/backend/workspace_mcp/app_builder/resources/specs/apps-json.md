@@ -1,12 +1,12 @@
 ---
 title: apps.json Spec
-uri: openbb://workspace/specs/apps-json
+uri: workspace://specs/apps-json
 use_when: You are authoring or editing apps.json and need the served shape, tab layout, and parameter group wiring.
 language_specific: false
 related:
-  - openbb://workspace/specs/widgets-json
-  - openbb://workspace/specs/layout-grid
-  - openbb://workspace/validation/common-errors
+  - workspace://specs/widgets-json
+  - workspace://specs/layout-grid
+  - workspace://validation/common-errors
 ---
 
 # `apps.json` Spec
@@ -77,9 +77,9 @@ Each entry in `layout` is an object:
 | `w` | Yes | Width in columns (typically 10–40). |
 | `h` | Yes | Height in rows (typically 4+). |
 | `groups` | Optional | Array of group names this widget participates in, e.g. `["Group 1"]`. |
-| `state` | Optional | Pre-configures display: `chartView`, `chartModel`, `columnState`, `params`, etc. |
+| `state` | Optional | Pre-configures display: `params`, `paramOrder`, `style`. |
 
-Coordinates are on a 40-column grid — see `openbb://workspace/specs/layout-grid`.
+Coordinates are on a 40-column grid — see `workspace://specs/layout-grid`.
 
 ## Parameter groups
 
@@ -92,7 +92,7 @@ Coordinates are on a 40-column grid — see `openbb://workspace/specs/layout-gri
    |---|---|---|
    | `"param"` | static dropdown — `type: "text"` with inline `options` | required |
    | `"endpointParam"` | dynamic dropdown — `type: "endpoint"` with `optionsEndpoint` | required |
-   | `"ticker"` | OpenBB's built-in universal ticker registry (no custom `optionsEndpoint`) | omit |
+   | `"ticker"` | Workspace's built-in universal ticker registry (no custom `optionsEndpoint`) | omit |
 
 3. **Three places must agree:** the group's `widgetIds`, every participating widget's layout `groups: [...]`, and the widget's own param config (matching `paramName` and option source).
 
@@ -102,9 +102,9 @@ Group object shape:
 {
   "name": "Group 1",
   "type": "endpointParam",
-  "paramName": "symbol",
-  "widgetIds": ["watchlist", "price_chart"],
-  "defaultValue": "AAPL"
+  "paramName": "team",
+  "widgetIds": ["team_summary", "team_report"],
+  "defaultValue": "platform"
 }
 ```
 
@@ -114,13 +114,6 @@ Group object shape:
 
 Optional. Pre-configures how a widget displays inside this app template. Common keys:
 
-- `chartView.enabled` (bool) — flip a table widget into chart mode.
-- `chartView.chartType` — chart type when in chart mode.
-- `chartModel.modelType` — `"range"` or `"pivot"`.
-- `chartModel.cellRange.columns` — array of column `field` names that feed the chart. Order matters: first is typically the x/category axis.
-- `columnState.default.rowGroup.groupColIds` — group rows by these columns.
-- `columnState.default.columnVisibility.hiddenColIds` — hide columns.
-- `columnState.default.columnOrder.orderedColIds` — fixed column order.
 - `params` — pre-set parameter values for this widget.
 - `paramOrder` — render order for the widget's parameter panel.
 - `style.borderWidth` (0–24), `style.radius` (0–64), `style.contentPadding` (0–64), `style.shadow` (`none|sm|md|lg`).
@@ -135,7 +128,7 @@ Optional. Pre-configures how a widget displays inside this app template. Common 
 [
   {
     "name": "My Dashboard",
-    "description": "Stocks overview",
+    "description": "Weekly summary and report for a team",
     "img": "http://localhost:7779/thumbnails/my_dashboard",
     "img_dark": "http://localhost:7779/thumbnails/my_dashboard",
     "img_light": "http://localhost:7779/thumbnails/my_dashboard",
@@ -144,8 +137,8 @@ Optional. Pre-configures how a widget displays inside this app template. Common 
       "": {
         "id": "", "name": "",
         "layout": [
-          { "i": "stock_prices", "x": 0,  "y": 0, "w": 20, "h": 12, "groups": ["Group 1"] },
-          { "i": "price_chart",  "x": 20, "y": 0, "w": 20, "h": 12, "groups": ["Group 1"] }
+          { "i": "team_summary", "x": 0,  "y": 0, "w": 20, "h": 12, "groups": ["Group 1"] },
+          { "i": "team_report",  "x": 20, "y": 0, "w": 20, "h": 12, "groups": ["Group 1"] }
         ]
       }
     },
@@ -153,9 +146,9 @@ Optional. Pre-configures how a widget displays inside this app template. Common 
       {
         "name": "Group 1",
         "type": "endpointParam",
-        "paramName": "symbol",
-        "widgetIds": ["stock_prices", "price_chart"],
-        "defaultValue": "AAPL"
+        "paramName": "team",
+        "widgetIds": ["team_summary", "team_report"],
+        "defaultValue": "platform"
       }
     ],
     "prompts": []
@@ -165,6 +158,6 @@ Optional. Pre-configures how a widget displays inside this app template. Common 
 
 ## What this spec does not cover
 
-- Layout grid math — see `openbb://workspace/specs/layout-grid`.
-- Widget metadata that supplies the widgets referenced here — see `openbb://workspace/specs/widgets-json`.
-- Common validation errors — see `openbb://workspace/validation/common-errors`.
+- Layout grid math — see `workspace://specs/layout-grid`.
+- Widget metadata that supplies the widgets referenced here — see `workspace://specs/widgets-json`.
+- Common validation errors — see `workspace://validation/common-errors`.

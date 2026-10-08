@@ -1,6 +1,6 @@
-# OpenBB Hub Admin CLI & Python Client
+# Admin CLI & Python Client
 
-A single-file Python tool for managing OpenBB Hub entities and users. Zero dependencies (Python 3.8+ stdlib only).
+A single-file Python tool for managing entities and users. Zero dependencies (Python 3.8+ stdlib only).
 
 **Two ways to use:**
 1. **CLI** - Command-line interface for shell scripts and manual operations
@@ -8,19 +8,19 @@ A single-file Python tool for managing OpenBB Hub entities and users. Zero depen
 
 ## Quick Start
 
-**Note:** On Windows, replace `./openbb-admin` with `py openbb-admin` or `python openbb-admin` in all commands below.
+**Note:** On Windows, replace `./workspace-admin` with `py workspace-admin` or `python workspace-admin` in all commands below.
 
 ```bash
 # Authenticate
-./openbb-admin auth login --api-url https://your.backend.url
+./workspace-admin auth login --api-url https://your.backend.url
 
 # Check status
-./openbb-admin auth status
+./workspace-admin auth status
 ```
 
 ## Configuration
 
-Auth credentials (token) persisted in `~/.openbb-hub/config.json` (automatically created on first login).
+Auth credentials (token) persisted in `~/.workspace-admin/config.json` (automatically created on first login).
 
 **Config file structure:**
 
@@ -42,10 +42,10 @@ You can manually edit the config file or set environment variables:
 
 ```bash
 # Set custom base URL via environment variable
-export OPENBB_BASE_URL=http://localhost:8000
+export WORKSPACE_BASE_URL=http://localhost:8000
 
 # Or edit the config file directly
-cat > ~/.openbb-hub/config.json <<EOF
+cat > ~/.workspace-admin/config.json <<EOF
 {
   "base_url": "http://localhost:8000",
   "access_token": null
@@ -53,18 +53,18 @@ cat > ~/.openbb-hub/config.json <<EOF
 EOF
 
 # Then login
-./openbb-admin auth login
+./workspace-admin auth login
 ```
 
-**Note:** The config file value takes precedence over variable `OPENBB_BASE_URL`.
+**Note:** The config file value takes precedence over variable `WORKSPACE_BASE_URL`.
 
 ## Documentation
 
 The CLI is self-documenting. Use `-h` for details on any command.
 
 ```bash
-./openbb-admin -h
-./openbb-admin entity -h
+./workspace-admin -h
+./workspace-admin entity -h
 ```
 
 ## Common Operations
@@ -73,13 +73,13 @@ The CLI is self-documenting. Use `-h` for details on any command.
 
 ```bash
 # List all entities
-./openbb-admin entity list
+./workspace-admin entity list
 
 # With pagination
-./openbb-admin entity list --page 2 --size 50
+./workspace-admin entity list --page 2 --size 50
 
 # JSON output
-./openbb-admin entity list --json
+./workspace-admin entity list --json
 ```
 
 ### 2. Create an Entity
@@ -87,23 +87,23 @@ The CLI is self-documenting. Use `-h` for details on any command.
 First, get available entity types:
 
 ```bash
-./openbb-admin entity-type list
+./workspace-admin entity-type list
 ```
 
 Create a config file `new-entity.json`:
 
 ```json
 {
-  "name": "Acme Corp",
+  "name": "<entity name>",
   "entity_type_uuid": "your-entity-type-uuid-here",
-  "email": "billing@acme.com",
+  "email": "<billing-email>",
   "company_type": "Investment Firm",
   "organization_size": "10-50",
   "aum": 10000000,
   "country": "USA",
   "seats": 50,
   "expiration_date": "2025-12-31T00:00:00Z",
-  "admin_email": "admin@acme.com"
+  "admin_email": "<admin-email>"
 }
 ```
 
@@ -123,13 +123,13 @@ Create a config file `new-entity.json`:
 Then create:
 
 ```bash
-./openbb-admin entity create --config new-entity.json
+./workspace-admin entity create --config new-entity.json
 ```
 
 Or generate a template:
 
 ```bash
-./openbb-admin entity sample > new-entity.json
+./workspace-admin entity sample > new-entity.json
 ```
 
 ### 3. Update an Entity
@@ -138,13 +138,13 @@ Or generate a template:
 
 ```bash
 # Increase seat count
-./openbb-admin entity update <entity-uuid> --data '{"seats": 100}'
+./workspace-admin entity update <entity-uuid> --data '{"seats": 100}'
 
 # Update expiration date
-./openbb-admin entity update <entity-uuid> --data '{"expiration_date": "2026-12-31T00:00:00Z"}'
+./workspace-admin entity update <entity-uuid> --data '{"expiration_date": "2026-12-31T00:00:00Z"}'
 
 # Update multiple fields
-./openbb-admin entity update <entity-uuid> --data '{"seats": 75, "aum": 15000000}'
+./workspace-admin entity update <entity-uuid> --data '{"seats": 75, "aum": 15000000}'
 ```
 
 **Update from file:**
@@ -159,7 +159,7 @@ Create `update-entity.json`:
 ```
 
 ```bash
-./openbb-admin entity update <entity-uuid> --config update-entity.json
+./workspace-admin entity update <entity-uuid> --config update-entity.json
 ```
 
 **Available Update Fields** (all optional, only include what you want to change):
@@ -178,30 +178,30 @@ Create `update-entity.json`:
 
 ```bash
 # List all users
-./openbb-admin user list
+./workspace-admin user list
 
 # Filter by email
-./openbb-admin user list --email john@acme.com
+./workspace-admin user list --email <user-email>
 
 # With pagination
-./openbb-admin user list --page 1 --size 50
+./workspace-admin user list --page 1 --size 50
 ```
 
 ### 5. Add a User
 
 ```bash
 # Add regular user
-./openbb-admin user create <entity-uuid> \
-  --email analyst@acme.com \
-  --first-name John \
-  --last-name Doe \
+./workspace-admin user create <entity-uuid> \
+  --email <user-email> \
+  --first-name <first-name> \
+  --last-name <last-name> \
   --role user
 
 # Add admin user
-./openbb-admin user create <entity-uuid> \
-  --email admin@acme.com \
-  --first-name Jane \
-  --last-name Smith \
+./workspace-admin user create <entity-uuid> \
+  --email <admin-email> \
+  --first-name <first-name> \
+  --last-name <last-name> \
   --role admin
 ```
 
@@ -218,7 +218,7 @@ The command returns a temporary password for the new user.
 ### 6. Remove a User
 
 ```bash
-./openbb-admin user delete analyst@acme.com
+./workspace-admin user delete <user-email>
 ```
 
 **Note:** Regular admins can only delete users within their own entity. Superadmins can delete users from any entity.
@@ -227,22 +227,22 @@ The command returns a temporary password for the new user.
 
 ```bash
 # Move user to different entity
-./openbb-admin user move \
+./workspace-admin user move \
   --entity-uuid <target-entity-uuid> \
-  --email user@example.com \
+  --email <user-email> \
   --role user
 
 # Move and promote to admin
-./openbb-admin user move \
+./workspace-admin user move \
   --entity-uuid <target-entity-uuid> \
-  --email user@example.com \
+  --email <user-email> \
   --role admin
 ```
 
 ### 8. Reset User Password
 
 ```bash
-./openbb-admin user reset-password user@example.com
+./workspace-admin user reset-password <user-email>
 ```
 
 Returns a new temporary password.
@@ -250,10 +250,10 @@ Returns a new temporary password.
 ### 9. Export a User's Data
 
 Downloads a complete copy of somebody's account as a zip, which they can import
-into OpenBB Lite.
+into Lite.
 
 ```bash
-./openbb-admin user export analyst@acme.com --out ./exports
+./workspace-admin user export <user-email> --out ./exports
 ```
 
 **Superuser only.** Unlike the rest of the `user` commands, this is not
@@ -284,21 +284,21 @@ Pass `--with-files` when you want the files, and expect it to be slow. If it
 times out over HTTP, run the export directly on the backend instead:
 
 ```bash
-python -m scripts.export_user_data --email user@example.com --with-files --out ./exports
+python -m scripts.export_user_data --email <user-email> --with-files --out ./exports
 ```
 
 #### Running it against a specific environment
 
-The CLI reads its token from `~/.openbb-hub/config.json`. Either log in, or drop
+The CLI reads its token from `~/.workspace-admin/config.json`. Either log in, or drop
 an existing bearer token straight in — there is no `--token` flag and no
 environment variable for it.
 
 ```bash
 # Option A: log in as your superuser account
-./openbb-admin auth login --api-url https://dev.your-backend.url
+./workspace-admin auth login --api-url https://dev.your-backend.url
 
 # Option B: reuse a bearer token you already have
-mkdir -p ~/.openbb-hub && cat > ~/.openbb-hub/config.json <<'EOF'
+mkdir -p ~/.workspace-admin && cat > ~/.workspace-admin/config.json <<'EOF'
 {
   "base_url": "https://dev.your-backend.url",
   "access_token": "<your session token>"
@@ -306,7 +306,7 @@ mkdir -p ~/.openbb-hub && cat > ~/.openbb-hub/config.json <<'EOF'
 EOF
 
 # Confirm which environment and account you are pointed at
-./openbb-admin auth status
+./workspace-admin auth status
 ```
 
 The token is the session UUID issued at login. If the account is not a
@@ -329,22 +329,22 @@ instance uses a different key. Treat the file as a secret and delete it once the
 user has it.
 
 The archive also contains a `files/` folder with everything the user uploaded.
-Those files are **not** imported into OpenBB Lite; they are there so the user
+Those files are **not** imported into Lite; they are there so the user
 keeps their own copy.
 
-#### Importing into OpenBB Lite
+#### Importing into Lite
 
 The import runs inside the user's own Lite container, so it needs no token — it
 is a local command on a machine they already control.
 
 ```bash
-docker run -d --name openbb -p 3000:3000 \
-    -v openbb-data:/data \
+docker run -d --name workspace -p 3000:3000 \
+    -v workspace-data:/data \
     -v /path/to/exports:/import \
-    openbb/lite
+    lite
 
-docker exec openbb openbb-import /import/openbb-export-<email>-<stamp>.zip
-docker exec openbb credentials   # admin login, then set the user's password
+docker exec workspace workspace-import /import/workspace-export-<email>-<stamp>.zip
+docker exec workspace credentials   # admin login, then set the user's password
 ```
 
 The imported account has **no usable password** — none is exported. The Lite
@@ -357,7 +357,7 @@ admin sets one after importing.
 Generate template:
 
 ```bash
-./openbb-admin provision sample > provision.json
+./workspace-admin provision sample > provision.json
 ```
 
 Edit `provision.json`:
@@ -365,34 +365,34 @@ Edit `provision.json`:
 ```json
 {
   "entity": {
-    "name": "Acme Corp",
+    "name": "<entity name>",
     "entity_type_uuid": "<entity-type-uuid>",
-    "email": "billing@acme.com",
+    "email": "<billing-email>",
     "company_type": "Investment Firm",
     "organization_size": "10-50",
     "aum": 10000000,
     "country": "USA",
     "seats": 50,
     "expiration_date": "2025-12-31T00:00:00Z",
-    "admin_email": "admin@acme.com"
+    "admin_email": "<admin-email>"
   },
   "admins": [
     {
-      "email": "admin@acme.com",
-      "first_name": "Admin",
-      "last_name": "User"
+      "email": "<admin-email>",
+      "first_name": "<first name>",
+      "last_name": "<last name>"
     }
   ],
   "users": [
     {
-      "email": "analyst1@acme.com",
-      "first_name": "Analyst",
-      "last_name": "One"
+      "email": "<user-email-1>",
+      "first_name": "<first name>",
+      "last_name": "<last name>"
     },
     {
-      "email": "analyst2@acme.com",
-      "first_name": "Analyst",
-      "last_name": "Two"
+      "email": "<user-email-2>",
+      "first_name": "<first name>",
+      "last_name": "<last name>"
     }
   ]
 }
@@ -402,10 +402,10 @@ Validate and apply:
 
 ```bash
 # Validate configuration
-./openbb-admin provision check --config provision.json
+./workspace-admin provision check --config provision.json
 
 # Apply
-./openbb-admin provision apply --config provision.json
+./workspace-admin provision apply --config provision.json
 ```
 
 ### 9. Manage Data Backends
@@ -414,25 +414,25 @@ Data backends are API sources connected by default to an entity. Users in the en
 
 ```bash
 # Add a data backend to an entity
-./openbb-admin data-backend add <entity-uuid> \
+./workspace-admin data-backend add <entity-uuid> \
   --name "my-backend" \
-  --url "https://api.example.com"
+  --url "<backend-url>"
 
 # Add with authentication headers
-./openbb-admin data-backend add <entity-uuid> \
+./workspace-admin data-backend add <entity-uuid> \
   --name "my-backend" \
-  --url "https://api.example.com" \
+  --url "<backend-url>" \
   --header "Authorization:Bearer token123:headers" \
   --header "api-key:mykey123:query"
 
 # List data backends for an entity
-./openbb-admin data-backend list <entity-uuid>
+./workspace-admin data-backend list <entity-uuid>
 
 # JSON output
-./openbb-admin data-backend list <entity-uuid> --json
+./workspace-admin data-backend list <entity-uuid> --json
 
 # Delete a data backend
-./openbb-admin data-backend delete <entity-uuid> --name "my-backend"
+./workspace-admin data-backend delete <entity-uuid> --name "my-backend"
 ```
 
 **Header format:** `key:value` or `key:value:location` where location is `headers` (default) or `query`.
@@ -443,11 +443,11 @@ By default, entity users can add their own backends from the frontend. To restri
 
 ```bash
 # Disable custom backends - users only see admin-added backends
-./openbb-admin entitlement update <entity-uuid> \
+./workspace-admin entitlement update <entity-uuid> \
   --data '{"allow_custom_backends": false}'
 
 # Re-enable custom backends
-./openbb-admin entitlement update <entity-uuid> \
+./workspace-admin entitlement update <entity-uuid> \
   --data '{"allow_custom_backends": true}'
 ```
 
@@ -456,7 +456,7 @@ By default, entity users can add their own backends from the frontend. To restri
 ### Extend Entity Expiration
 
 ```bash
-./openbb-admin entity update <entity-uuid> \
+./workspace-admin entity update <entity-uuid> \
   --data '{"expiration_date": "2026-12-31T00:00:00Z"}'
 ```
 
@@ -464,10 +464,10 @@ By default, entity users can add their own backends from the frontend. To restri
 
 ```bash
 # Human-readable format
-./openbb-admin entity show <entity-uuid>
+./workspace-admin entity show <entity-uuid>
 
 # JSON format
-./openbb-admin entity show <entity-uuid> --json
+./workspace-admin entity show <entity-uuid> --json
 ```
 
 ## CLI Tips
@@ -481,7 +481,7 @@ By default, entity users can add their own backends from the frontend. To restri
 
 # Python Client (`HubAPIClient`)
 
-The `HubAPIClient` class provides programmatic access to the OpenBB Hub API. It's embedded in the same `openbb-admin` file and can be imported directly.
+The `HubAPIClient` class provides programmatic access to the Admin API. It's embedded in the same `workspace-admin` file and can be imported directly.
 
 ## Quick Start
 
@@ -489,13 +489,13 @@ The `HubAPIClient` class provides programmatic access to the OpenBB Hub API. It'
 from pathlib import Path
 
 # Load the client from the CLI file
-cli_path = Path("admin_cli/openbb-admin")
+cli_path = Path("admin_cli/workspace-admin")
 cli_source = cli_path.read_text()
 exec(compile(cli_source[:cli_source.find("def auth_login(args:")], cli_path, "exec"))
 
 # Create client and authenticate
-client = HubAPIClient("https://payments.openbb.dev")
-token = client.auth_login("your-email@example.com", "your-password")
+client = HubAPIClient("<api-url>")
+token = client.auth_login("<your-email>", "your-password")
 client.access_token = token
 
 # Now use the client
@@ -524,10 +524,10 @@ entity = client.entity_get("entity-uuid")
 
 # Create entity with auto-configured entitlements
 entity = client.entity_create_with_entitlements({
-    "name": "Acme Corp",
+    "name": "<entity name>",
     "entity_type_uuid": "entity-type-uuid",
-    "email": "billing@acme.com",
-    "admin_email": "admin@acme.com",
+    "email": "<billing-email>",
+    "admin_email": "<admin-email>",
     "company_type": "Investment Firm",
     "organization_size": "10-50",
     "aum": 10000000,
@@ -557,9 +557,9 @@ client.entity_type_create(name="Enterprise", code="ENT")
 # Create user with role name (no need to look up permission UUIDs)
 user = client.user_create(
     entity_uuid="entity-uuid",
-    email="analyst@acme.com",
-    first_name="John",
-    last_name="Doe",
+    email="<user-email>",
+    first_name="<first name>",
+    last_name="<last name>",
     role="user",  # or "admin"
 )
 print(f"Temp password: {user['temporary_password']}")
@@ -568,7 +568,7 @@ print(f"Temp password: {user['temporary_password']}")
 users = client.user_list(page=1, size=100)
 
 # Find user by email
-user = client.user_get_by_email("analyst@acme.com")
+user = client.user_get_by_email("<user-email>")
 
 # Reset password
 result = client.user_reset_password("user-uuid")
@@ -599,14 +599,14 @@ user_map = client.get_permission_map_by_role("entity-uuid", "user")
 client.data_backend_add(
     entity_uuid="entity-uuid",
     name="my-backend",
-    url="https://api.example.com",
+    url="<backend-url>",
 )
 
 # Add with authentication headers
 client.data_backend_add(
     entity_uuid="entity-uuid",
     name="my-backend",
-    url="https://api.example.com",
+    url="<backend-url>",
     endpoint_headers=[
         {"key": "Authorization", "value": "Bearer token123", "location": "headers"},
         {"key": "api-key", "value": "mykey123", "location": "query"},
@@ -636,10 +636,10 @@ client.entitlement_update("entity-uuid", {"allow_custom_backends": True})
 # Create entity + multiple users in one call
 results = client.provision_full({
     "entity": {
-        "name": "Acme Corp",
+        "name": "<entity name>",
         "entity_type_uuid": "entity-type-uuid",
-        "email": "billing@acme.com",
-        "admin_email": "admin@acme.com",
+        "email": "<billing-email>",
+        "admin_email": "<admin-email>",
         "company_type": "Investment Firm",
         "organization_size": "10-50",
         "aum": 10000000,
@@ -648,9 +648,9 @@ results = client.provision_full({
         "expiration_date": "2025-12-31T00:00:00Z",
     },
     "users": [
-        {"email": "admin@acme.com", "first_name": "Admin", "last_name": "User", "role": "admin"},
-        {"email": "analyst1@acme.com", "first_name": "Analyst", "last_name": "One", "role": "user"},
-        {"email": "analyst2@acme.com", "first_name": "Analyst", "last_name": "Two", "role": "user"},
+        {"email": "<admin-email>", "first_name": "<first name>", "last_name": "<last name>", "role": "admin"},
+        {"email": "<user-email-1>", "first_name": "<first name>", "last_name": "<last name>", "role": "user"},
+        {"email": "<user-email-2>", "first_name": "<first name>", "last_name": "<last name>", "role": "user"},
     ]
 })
 
@@ -668,12 +668,12 @@ from pathlib import Path
 import getpass
 
 # Load client
-cli_path = Path("admin_cli/openbb-admin")
+cli_path = Path("admin_cli/workspace-admin")
 cli_source = cli_path.read_text()
 exec(compile(cli_source[:cli_source.find("def auth_login(args:")], cli_path, "exec"))
 
 # Authenticate
-client = HubAPIClient("https://payments.openbb.dev")
+client = HubAPIClient("<api-url>")
 email = input("Email: ")
 password = getpass.getpass("Password: ")
 client.access_token = client.auth_login(email, password)
@@ -686,8 +686,8 @@ entity_type_uuid = entity_types["items"][0]["uuid"]
 entity = client.entity_create_with_entitlements({
     "name": "My New Entity",
     "entity_type_uuid": entity_type_uuid,
-    "email": "billing@example.com",
-    "admin_email": "admin@example.com",
+    "email": "<billing-email>",
+    "admin_email": "<admin-email>",
     "company_type": "Investment Firm",
     "organization_size": "10-50",
     "aum": 10000000,
@@ -700,18 +700,18 @@ print(f"Created entity: {entity['entity_uuid']}")
 # Add users
 admin = client.user_create(
     entity_uuid=entity["entity_uuid"],
-    email="admin@example.com",
+    email="<admin-email>",
     first_name="Admin",
-    last_name="User",
+    last_name="<last name>",
     role="admin",
 )
 print(f"Admin password: {admin['temporary_password']}")
 
 analyst = client.user_create(
     entity_uuid=entity["entity_uuid"],
-    email="analyst@example.com",
-    first_name="Analyst",
-    last_name="One",
+    email="<user-email>",
+    first_name="<first name>",
+    last_name="<last name>",
     role="user",
 )
 print(f"Analyst password: {analyst['temporary_password']}")
@@ -725,7 +725,7 @@ print("Updated seats to 20")
 
 ```python
 try:
-    user = client.user_get_by_email("nonexistent@example.com")
+    user = client.user_get_by_email("<unknown-email>")
 except APIError as e:
     print(f"Error {e.status_code}: {e.message}")
 ```

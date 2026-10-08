@@ -207,8 +207,8 @@ def test_response_is_a_downloadable_zip(client):
 def test_response_reports_row_and_file_counts(client):
     response = client(SUPERUSER).post(f"/admin/users/{TARGET_A}/export")
 
-    assert int(response.headers["x-openbb-export-rows"]) > 0
-    assert "x-openbb-export-files" in response.headers
+    assert int(response.headers["x-workspace-export-rows"]) > 0
+    assert "x-workspace-export-files" in response.headers
 
 
 def test_history_is_opt_in_via_query_param(client):
@@ -235,7 +235,7 @@ def test_files_are_opt_in_over_http(client):
     manifest = json.loads(ZipFile(io.BytesIO(default.content)).read("manifest.json"))
 
     assert manifest["options"]["with_files"] is False
-    assert int(default.headers["x-openbb-export-files"]) == 0
+    assert int(default.headers["x-workspace-export-files"]) == 0
 
     asked = caller.post(
         f"/admin/users/{TARGET_A}/export", params={"with_files": "true"}

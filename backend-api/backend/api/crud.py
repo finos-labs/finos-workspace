@@ -1,5 +1,4 @@
 import json
-import pickle  # noqa: S403
 import re
 from datetime import (
     date as dateType,
@@ -16,7 +15,7 @@ from sqlalchemy import Select, and_, case, delete, func, insert, or_, select, up
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import contains_eager, defer
 
-from api import auth_helpers, base, models, schemas
+from api import base, models, schemas
 from api.models import (
     ApiSource,
     DashboardItem,
@@ -25,14 +24,11 @@ from api.models import (
     Entity,
     Login,
     PermissionsEntityMap,
-    PermissionsInvite,
-    SingleWidget,
     User,
     UserApp,
     UserAppShare,
-    UserProInvite,
 )
-from api.models.tauri_models import StoredFile, StoredFileShare
+from api.models.workspace_models import StoredFile, StoredFileShare
 from api.storage import FileStorage
 from utilities.config import settings
 
@@ -146,7 +142,7 @@ async def bulk_dashboard_insert_update(  # noqa: PLR0912
         cleaner_update = [{"uuid": x.uuid, "content": x.content} for x in to_update]
         await db.execute(update(DashboardItem), cleaner_update)
 
-        if permissions_uuid != settings.PRO_DEVELOPER_MAPPING or settings.is_onprem():
+        if permissions_uuid != settings.DEVELOPER_MAPPING or settings.is_onprem():
             from api.helpers import handle_share_files  # noqa
 
             await db.commit()
@@ -454,22 +450,8 @@ async def search_copilot_chats(
     return [schemas.Chat.from_row(x, True) for x in results.unique().scalars().all()]
 
 
-def user_response(db_user) -> User:
-    """Filters for active subscriptions and active platforms"""
-
-    db_user.information_complete = auth_helpers.check_info_fields(db_user)
-    db_user.profile_url = (
-        settings.get_profile_url(db_user.uuid) if db_user.has_profile_url else None
-    )
-    return db_user
-
-
 async def get_user(db: AsyncSession, identify: dict[str, Any]) -> None | User:
-    query = (
-        select(User)
-        .filter_by(**identify)
-        .filter(User.email != settings.PRO_TRIAL_EMAIL)
-    )
+    query = select(User).filter_by(**identify)
     return (await db.execute(query)).scalars().first()
 
 
@@ -873,7 +855,7 @@ async def get_user_dashboards_entity_shared(
     exclude_uuids: list[UUID] | None = None,
 ) -> UserDashboards:
     "Gets all dashboards that are shared with all user's in the current user's entity"
-    if permissions_uuid == settings.PRO_DEVELOPER_MAPPING and not settings.is_onprem():
+    if permissions_uuid == settings.DEVELOPER_MAPPING and not settings.is_onprem():
         return {}
 
     user_entity_uuid = await get_user_entity_uuid(db, permissions_uuid)
@@ -1029,7 +1011,7 @@ async def check_clean_email(db: AsyncSession, user_email: str):
         raise HTTPException(409, detail="This email already has an account registered")
 
 
-async def remove_pro_data(db: AsyncSession, user_uuid: UUID):
+async def remove_app_data(db: AsyncSession, user_uuid: UUID):
     stored_file_query = select(StoredFile).where(StoredFile.creater_uuid == user_uuid)
     stored_files = (await db.execute(stored_file_query)).scalars().all()
 
@@ -1041,18 +1023,12 @@ async def remove_pro_data(db: AsyncSession, user_uuid: UUID):
         models.FileWidget.user_uuid == user_uuid
     )
     await db.execute(file_widgets)
-    single_widgets = delete(SingleWidget).where(SingleWidget.user_uuid == user_uuid)
-    await db.execute(single_widgets)
     api_sources = delete(ApiSource).where(ApiSource.user_uuid == user_uuid)
     await db.execute(api_sources)
     meta_data = delete(models.WidgetMetadata).where(
         models.WidgetMetadata.user_uuid == user_uuid
     )
     await db.execute(meta_data)
-    dev_onboarding = delete(models.DeveloperOnboarding).where(
-        models.DeveloperOnboarding.user_uuid == user_uuid
-    )
-    await db.execute(dev_onboarding)
     entitlements = delete(models.Entitlement).where(
         models.Entitlement.user_uuid == user_uuid
     )
@@ -1061,28 +1037,10 @@ async def remove_pro_data(db: AsyncSession, user_uuid: UUID):
         models.EntitlementUsage.user_uuid == user_uuid
     )
     await db.execute(entitlements_usage)
-    try:
-        copilot_chats = delete(models.DONT_USE_CopilotChats).where(
-            models.DONT_USE_CopilotChats.user_uuid == user_uuid
-        )
-        await db.execute(copilot_chats)
-    except Exception as e:
-        logger.error(e)
-
     copilot_chats = delete(models.CopilotChat).where(
         models.CopilotChat.user_uuid == user_uuid
     )
     await db.execute(copilot_chats)
-
-    tv_state = delete(models.TradingView).where(
-        models.TradingView.user_uuid == user_uuid
-    )
-    await db.execute(tv_state)
-
-    bundle_settings = delete(models.EnabledWidgetBundles).where(
-        models.EnabledWidgetBundles.user_uuid == user_uuid
-    )
-    await db.execute(bundle_settings)
 
     mcp_servers = delete(models.MCPServers).where(
         models.MCPServers.user_uuid == user_uuid
@@ -1108,56 +1066,22 @@ async def remove_other_user_items(db: AsyncSession, user_uuid: UUID):
 
     try:
         if user_email:
-            pro_invite_query = delete(models.UserProInvite).where(
-                models.UserProInvite.email == user_email
+            user_invite_query = delete(models.UserInvite).where(
+                models.UserInvite.email == user_email
             )
-            await db.execute(pro_invite_query)
+            await db.execute(user_invite_query)
     except Exception as e:
         logger.error(e)
 
-    perms_invite_query = delete(PermissionsInvite).where(
-        PermissionsInvite.user_uuid == user_uuid
-    )
-    await db.execute(perms_invite_query)
     user_query = delete(User).where(User.uuid == user_uuid)
     await db.execute(user_query)
 
 
 async def full_delete_user(db: AsyncSession, user_uuid: UUID):
     "This is a complete wipe of everything related to a user. We ONLY use this for integration tests."
-    await remove_pro_data(db, user_uuid)
+    await remove_app_data(db, user_uuid)
     await remove_other_user_items(db, user_uuid)
     await db.commit()
-
-
-async def get_trial_entity_uuid(db: AsyncSession) -> None | UUID:
-    r = settings.get_redis_session("pro")
-    existing = r.get("TRIAL_ENTITY_UUID")
-    if existing:
-        return pickle.loads(existing)  # noqa: S301
-    query = select(PermissionsEntityMap.entity_uuid).where(
-        PermissionsEntityMap.uuid == settings.PRO_TRIAL_MAPPING
-    )
-    result = await db.execute(query)
-    if (entity_uuid := result.scalar()) is None:
-        return None
-    r.set("TRIAL_ENTITY_UUID", pickle.dumps(entity_uuid))
-    return entity_uuid
-
-
-async def get_trial_permissions_uuids(db: AsyncSession) -> set[UUID]:
-    r = settings.get_redis_session("pro")
-    existing = r.get("TRIAL_PERMISSIONS_UUIDS")
-    if existing:
-        return pickle.loads(existing)  # noqa: S301
-    entity_uuid = await get_trial_entity_uuid(db)
-    query = select(PermissionsEntityMap.uuid).where(
-        PermissionsEntityMap.entity_uuid == entity_uuid
-    )
-    result = await db.execute(query)
-    final_result = {x[0] for x in result.all()}
-    r.set("TRIAL_PERMISSIONS_UUIDS", pickle.dumps(final_result), ex=60 * 60 * 24 * 7)
-    return final_result
 
 
 async def get_shares_without_existing(
@@ -1214,7 +1138,7 @@ async def get_new_sharing_permissions(
     permissions_uuid: UUID,
     dashboard_uuid: UUID | None = None,
     app_uuid: UUID | None = None,
-) -> tuple[list[NewSharingPermission], list[str], UUID, list[UUID]]:
+) -> tuple[list[NewSharingPermission], list[UUID]]:
     current_user_entity_query = select(PermissionsEntityMap.entity_uuid).where(
         PermissionsEntityMap.uuid == permissions_uuid
     )
@@ -1241,165 +1165,12 @@ async def get_new_sharing_permissions(
         }
         for x in user_uuids_response
     ]
-    return (
-        permissions,
-        [x.email for x in user_uuids_response],
-        entity_uuid,
-        [x.uuid for x in user_uuids_response],
-    )
-
-
-async def get_unregistered_users(
-    db: AsyncSession, shares: schemas.SharesPermissions, good_emails: list[str]
-) -> set[str]:
-    clean_emails = set(shares.keys()) - set(good_emails)
-    if not clean_emails:
-        return set()
-    query = select(User.email).where(
-        User.email.in_(clean_emails), User.permissions_uuid.isnot(None)
-    )
-    result = await db.execute(query)
-    return clean_emails - {x for x in result.scalars().all()}
-
-
-async def get_invite_shares(
-    db: AsyncSession,
-    user_uuid: UUID,
-    dashboard_uuid: UUID | None = None,
-    app_uuid: UUID | None = None,
-) -> dict[str, schemas.DashboardShareReturn | schemas.UserAppShareReturn]:
-    trial_permissions_uuids = await get_trial_permissions_uuids(db)
-    final_result: dict[
-        str, schemas.DashboardShareReturn | schemas.UserAppShareReturn
-    ] = {}
-    hub_invite_query = (
-        select(
-            PermissionsInvite.shared_apps,
-            PermissionsInvite.shared_dashboards,
-            PermissionsInvite.created_date,
-            User.email,
-        )
-        .select_from(PermissionsInvite)
-        .join(User, User.uuid == PermissionsInvite.user_uuid)
-        .where(
-            PermissionsInvite.accepted.is_(False),
-            PermissionsInvite.revoked.is_(False),
-            PermissionsInvite.expiration_date > base.get_now(),
-            PermissionsInvite.permissions_uuid.in_(trial_permissions_uuids),
-        )
-    )
-
-    if dashboard_uuid:
-        hub_invite_query = hub_invite_query.where(
-            PermissionsInvite.shared_dashboards.contains(str(dashboard_uuid))
-        )
-    if app_uuid:
-        hub_invite_query = hub_invite_query.where(
-            PermissionsInvite.shared_apps.contains(str(app_uuid))
-        )
-
-    for invited in (await db.execute(hub_invite_query)).all():
-        if dashboard_uuid and str(dashboard_uuid) in invited.shared_dashboards:
-            permissions = invited.shared_dashboards.get(str(dashboard_uuid))
-            final_result[invited.email] = schemas.DashboardShareReturn(
-                permissions=permissions,
-                created_date=invited.created_date,
-                is_invite=True,
-                first_name=None,
-                last_name=None,
-            )
-        if app_uuid and invited.shared_apps and str(app_uuid) in invited.shared_apps:
-            permissions = invited.shared_apps.get(str(app_uuid))
-            final_result[invited.email] = schemas.UserAppShareReturn(
-                permissions=permissions,
-                created_date=invited.created_date,
-                is_invite=True,
-                first_name=None,
-                last_name=None,
-            )
-
-    new_invite_query = select(
-        UserProInvite.shared_apps,
-        UserProInvite.shared_dashboards,
-        UserProInvite.created_date,
-        UserProInvite.email,
-    ).where(
-        UserProInvite.used.is_(False),
-        UserProInvite.inviting_user_uuid == user_uuid,
-        UserProInvite.permissions_uuid.in_(trial_permissions_uuids),
-    )
-    if dashboard_uuid:
-        new_invite_query = new_invite_query.where(
-            UserProInvite.shared_dashboards.contains(str(dashboard_uuid))
-        )
-    if app_uuid:
-        new_invite_query = new_invite_query.where(
-            UserProInvite.shared_apps.contains(str(app_uuid))
-        )
-
-    for new_invite in (await db.execute(new_invite_query)).all():
-        if dashboard_uuid and str(dashboard_uuid) in new_invite.shared_dashboards:
-            permissions = new_invite.shared_dashboards.get(str(dashboard_uuid))
-            final_result[new_invite.email] = schemas.DashboardShareReturn(
-                permissions=permissions,
-                created_date=new_invite.created_date,
-                is_invite=True,
-                first_name=None,
-                last_name=None,
-            )
-        if (
-            app_uuid
-            and new_invite.shared_apps
-            and str(app_uuid) in new_invite.shared_apps
-        ):
-            permissions = new_invite.shared_apps.get(str(app_uuid))
-            final_result[new_invite.email] = schemas.UserAppShareReturn(
-                permissions=permissions,
-                created_date=new_invite.created_date,
-                is_invite=True,
-                first_name=None,
-                last_name=None,
-            )
-    return final_result
-
-
-def get_updated_share_values(
-    dash_item_uuids: list[UUID],
-    shared_dashboards: dict,
-    user_app_uuids: list[UUID],
-    shared_apps: dict,
-) -> dict[Literal["shared_dashboards", "shared_apps"], dict]:
-    new_shared_dashboards = {
-        key: value
-        for key, value in shared_dashboards.items()
-        if shared_dashboards and key not in dash_item_uuids
-    }
-    new_shared_apps = {
-        key: value
-        for key, value in shared_apps.items()
-        if shared_apps and key not in user_app_uuids
-    }
-    values = {
-        k: v
-        for k, v in {
-            "shared_apps": (
-                new_shared_apps if len(new_shared_apps) != len(shared_apps) else None
-            ),
-            "shared_dashboards": (
-                new_shared_dashboards
-                if len(new_shared_dashboards) != len(shared_dashboards)
-                else None
-            ),
-        }.items()
-        if v is not None
-    }
-    return values
+    return permissions, [x.uuid for x in user_uuids_response]
 
 
 async def remove_shares_both_ways(
     db: AsyncSession, user_uuid: None | UUID = None, email: None | str = None
 ):
-    trial_permissions_uuids = await get_trial_permissions_uuids(db)
     if user_uuid is None:
         user_uuid_query = select(User.uuid).where(User.email == email)
         user_uuid_response = (await db.execute(user_uuid_query)).first()
@@ -1432,62 +1203,6 @@ async def remove_shares_both_ways(
     await db.execute(
         delete(UserAppShare).where(UserAppShare.user_app_uuid.in_(user_app_uuids))
     )
-
-    # Remove the share from permissions invites
-    hub_invite_query = select(
-        PermissionsInvite.uuid,
-        PermissionsInvite.shared_dashboards,
-        PermissionsInvite.shared_apps,
-    ).where(
-        PermissionsInvite.accepted.is_(False),
-        PermissionsInvite.revoked.is_(False),
-        PermissionsInvite.expiration_date > base.get_now(),
-        PermissionsInvite.permissions_uuid.in_(trial_permissions_uuids),
-    )
-    hub_invites: list[tuple[UUID, dict, dict]] = (
-        await db.execute(hub_invite_query)
-    ).all()
-    for uuid, shared_dashboards, shared_apps in hub_invites:
-        if not shared_dashboards and not shared_apps:
-            continue
-
-        values = get_updated_share_values(
-            dash_item_uuids, shared_dashboards, user_app_uuids, shared_apps
-        )
-        if not values:
-            continue
-
-        update_query = (
-            update(PermissionsInvite)
-            .where(PermissionsInvite.uuid == uuid)
-            .values(**values)
-        )
-        await db.execute(update_query)
-
-    new_invite_query = select(
-        UserProInvite.uuid, UserProInvite.shared_dashboards, UserProInvite.shared_apps
-    ).where(
-        UserProInvite.used.is_(False),
-        UserProInvite.inviting_user_uuid == user_uuid,
-        UserProInvite.permissions_uuid.in_(trial_permissions_uuids),
-    )
-    new_invites: list[tuple[UUID, dict, dict]] = (
-        await db.execute(new_invite_query)
-    ).all()
-    for uuid, shared_dashboards, shared_apps in new_invites:
-        if not shared_dashboards and not shared_apps:
-            continue
-
-        values = get_updated_share_values(
-            dash_item_uuids, shared_dashboards, user_app_uuids, shared_apps
-        )
-        if not values:
-            continue
-
-        update_query = (
-            update(UserProInvite).where(UserProInvite.uuid == uuid).values(**values)
-        )
-        await db.execute(update_query)
 
 
 async def update_user_dashboards_new_entity(

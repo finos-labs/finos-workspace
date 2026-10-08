@@ -31,8 +31,8 @@ pytest tests/test_auth.py -v
 ### Running a specific test class or method
 
 ```bash
-pytest tests/test_auth.py::TestProLogin -v
-pytest tests/test_auth.py::TestProLogin::test_login_valid_credentials -v
+pytest tests/test_auth.py::TestAppLogin -v
+pytest tests/test_auth.py::TestAppLogin::test_login_valid_credentials -v
 ```
 
 ## Database Dialect Migration Tests
@@ -80,17 +80,15 @@ Environment variables are set dynamically by `conftest.py` based on the containe
 
 ## Database Seeding
 
-The `/pro` endpoints require specific entities and permissions to exist in the database before tests can run. This seeding is handled automatically by the `_seed_pro_entities()` function in `conftest.py`.
+The `/app` endpoints require specific entities and permissions to exist in the database before tests can run. This seeding is handled automatically by the `_seed_entities()` function in `conftest.py`.
 
 ### What gets seeded
 
 The seed function creates the following records after database migrations run:
 
-1. **EntityType** - A single entity type record for "pro" entities
-2. **Entity (Developer)** - The developer-tier entity linked to `PRO_DEVELOPER_MAPPING`
-3. **Entity (Trial)** - The trial-tier entity linked to `PRO_TRIAL_MAPPING`
-4. **PermissionsEntityMap** - Permission mappings linking entities to their UUIDs
-5. **User (PRO_TRIAL_USER)** - The system user that serves as the `inviting_user_uuid` for new registrations
+1. **EntityType** - A single entity type record for "app" entities
+2. **Entity (Developer)** - The developer-tier entity linked to `DEVELOPER_MAPPING`
+3. **PermissionsEntityMap** - The permission mapping that links the entity to its UUID
 
 ### UUID References
 
@@ -98,29 +96,26 @@ The seed function uses specific UUIDs that align with the application's settings
 
 | Record | UUID | Purpose |
 |--------|------|---------|
-| PRO_DEVELOPER_MAPPING | `22222222-2222-2222-2222-222222222222` | Developer tier permission mapping |
-| PRO_TRIAL_MAPPING | `11111111-1111-1111-1111-111111111111` | Trial tier permission mapping |
-| PRO_TRIAL_USER | `11111111-1111-1111-1111-111111111111` | Default inviting user for registrations |
+| DEVELOPER_MAPPING | `22222222-2222-2222-2222-222222222222` | Developer tier permission mapping |
 | Developer Entity | `33333333-3333-3333-3333-333333333333` | Developer entity record |
-| Trial Entity | `44444444-4444-4444-4444-444444444444` | Trial entity record |
 | EntityType | `55555555-5555-5555-5555-555555555555` | Entity type record |
 
-### The `pro_client` fixture
+### The `app_client` fixture
 
-Tests that hit `/pro/*` endpoints must use the `pro_client` fixture instead of the base `client` fixture. This is because the `/pro` router requires a service JWT in the `X-OpenBB-Authorization` header.
+Tests that hit `/app/*` endpoints must use the `app_client` fixture instead of the base `client` fixture. This is because the `/app` router requires a service JWT in the `X-Workspace-Authorization` header.
 
 ```python
 @pytest.mark.asyncio
-async def test_pro_login(pro_client):
-    response = await pro_client.post("/pro/login", json={...})
+async def test_app_login(app_client):
+    response = await app_client.post("/app/login", json={...})
     assert response.status_code == 200
 ```
 
-The `pro_client` fixture:
+The `app_client` fixture:
 
 - Inherits from the base `client` fixture
-- Adds `X-OpenBB-Authorization: Bearer <service_jwt>` header
-- The service JWT has `sub="pro"` and `iss="openbb-hub"`
+- Adds `X-Workspace-Authorization: Bearer <service_jwt>` header
+- The service JWT has `sub="app"` and `iss="workspace"`
 
 ### Cleanup
 
@@ -137,11 +132,11 @@ This ensures each test run starts with a clean database state.
 Some test files are pure unit tests that mock all external dependencies and don't need the integration test infrastructure (MySQL, Redis, Docker). They can be run standalone without Docker:
 
 ```bash
-pytest tests/test_mailchimp.py -v
+pytest tests/scripts/test_create_local_env.py -v
 ```
 
 ### Unit test files
 
-| File               | What it covers                                              |
-|--------------------|-------------------------------------------------------------|
-| `test_mailchimp.py` | `api.email.mailchimp` send functions, `create_html` helper |
+| File | What it covers |
+|------|----------------|
+| `scripts/test_create_local_env.py` | `scripts.create_local_env`: the settings and the seed config it writes |

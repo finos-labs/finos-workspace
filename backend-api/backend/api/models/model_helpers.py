@@ -6,7 +6,6 @@ from datetime import UTC, datetime  # type: ignore[attr-defined]
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, HttpUrl, ValidationError
-from slugify import slugify
 from sqlalchemy import JSON, DateTime, LargeBinary, String, Text, TypeDecorator
 from sqlalchemy.dialects.mysql import (
     DATETIME as MySQL_DATETIME,
@@ -17,7 +16,7 @@ from sqlalchemy.dialects.postgresql import BYTEA, JSONB, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy_utils import UUIDType
 
-from api import aes, base, database, old_aes, schemas
+from api import aes, base, database, schemas
 
 Base = database.Base
 
@@ -254,19 +253,7 @@ class EncryptedType(TypeDecorator):
         if value is None:
             return None
 
-        try:
-            parsed = json.loads(value)
-            if isinstance(parsed, dict | list):
-                return parsed
-        except (json.JSONDecodeError, TypeError):
-            pass
-        data = bytes(value, encoding="utf-8")
-        try:
-            result = aes.base_cipher.decrypt_dict(data)
-        # This is legacy because of the old encrpytion method, and should be removed in the future
-        except UnicodeDecodeError:
-            result = old_aes.base_cipher.decrypt_dict(data)
-        return result
+        return aes.base_cipher.decrypt_dict(bytes(value, encoding="utf-8"))
 
 
 class PasswordType(TypeDecorator):
@@ -290,17 +277,6 @@ class PasswordType(TypeDecorator):
         elif dialect.name in {"postgresql", "sqlite"} and isinstance(value, str):
             return value.encode("utf-8")
         return value
-
-
-class SlugType(TypeDecorator):
-    impl = String(200)
-    cache_ok = True
-
-    def process_bind_param(self, value, _) -> None | str:  # noqa: PLR6301
-        if value is None:
-            return None
-        as_str = str(value)
-        return slugify(as_str)
 
 
 class BasePydanticType(TypeDecorator):
@@ -333,36 +309,10 @@ class BasePydanticType(TypeDecorator):
         return self.model(**data_dict)
 
 
-class ProEntitlementsType(BasePydanticType):
-    model = schemas.ProEntitlements
+class UserDisplaySettingsType(BasePydanticType):
+    model = schemas.UserDisplaySettings
     cache_ok = True
-    name = "ProEntitlements"
-
-
-class ProDisplaySettingsType(BasePydanticType):
-    model = schemas.ProDisplaySettings
-    cache_ok = True
-    name = "ProDisplaySettings"
-
-
-class ProZeroToHeroType(BasePydanticType):
-    model = schemas.ProZeroToHero
-    cache_ok = True
-    name = "ProZeroToHero"
-
-
-class ProKeysType(BasePydanticType):
-    model = schemas.ProKeys
-    cache_ok = True
-    name = "ProKeys"
-
-
-class ProInfoType(BasePydanticType):
-    """Deprecated. Retained only so historical alembic migrations remain importable."""
-
-    model = schemas.ProInfo
-    cache_ok = True
-    name = "ProInfo"
+    name = "UserDisplaySettings"
 
 
 class UUIDMixin:

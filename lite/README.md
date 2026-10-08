@@ -1,253 +1,168 @@
-# OpenBB Lite — Docker image
+# The Workspace as one Docker image
 
-A single Docker image that bundles the FastAPI backend, the `terminalpro` SPA,
-Redis, nginx, and supervisord. It defaults to SQLite, generates its own secrets
-on first start, and creates an admin user automatically — so the
-Metabase-style quick start is genuinely one command.
+A single image that bundles the FastAPI backend, the `workspace` web app, Redis, nginx and supervisord. It defaults to SQLite, generates its own secrets on first start and creates the first administrator, so running it takes one command.
 
 ## Quick start
 
+Build the image (see [Building the image](#building-the-image)), then:
+
 ```bash
 docker run -d -p 3000:3000 \
-  -v openbb-data:/data \
-  --name openbb \
-  openbb/lite:latest
+  -v workspace-data:/data \
+  -e WORKSPACE_ADMIN_EMAIL=<your-email> \
+  --name workspace \
+  <image>
 ```
 
-That's it. Open <http://localhost:3000> and log in as
-`admin@openbb.co` — the password is auto-generated on first start. Print it
-anytime with:
+Open <http://localhost:3000> and sign in as the address you gave. The password is generated on first start; print it any time with:
 
 ```bash
-docker exec openbb credentials
+docker exec workspace credentials
 ```
 
-It is stored at `/data/secrets.env` inside the container (and therefore
-inside the `openbb-data` volume), so it survives restarts. It is also printed
-at the end of the startup logs (`docker logs openbb --tail 15`).
+It is stored in `/data/secrets.env` inside the container, and therefore in the `workspace-data` volume, so it survives restarts. It is also printed at the end of the startup logs (`docker logs workspace --tail 15`).
 
-To run on a different port (say 8080):
+`WORKSPACE_ADMIN_EMAIL` has no default: the container stops with a message if it is missing.
 
-```bash
-docker run -d -p 8080:3000 -v openbb-data:/data --name openbb openbb/lite:latest
-```
+To run on another port (8080, say), map it: `-p 8080:3000`.
 
 ## Overriding configuration
 
-Every value the image auto-generates can be replaced with `-e` at run time.
-Anything you pass in wins; the image only fills in what's missing.
+Every value the image generates can be replaced with `-e` at run time. Whatever you pass wins; the image only fills in what is missing.
 
-### Custom admin
+### The administrator and the organization
 
 ```bash
 docker run -d -p 3000:3000 \
-  -v openbb-data:/data \
-  -e OPENBB_ADMIN_EMAIL=me@example.com \
-  -e OPENBB_ADMIN_PASSWORD='super-secret' \
-  openbb/lite:latest
+  -v workspace-data:/data \
+  -e WORKSPACE_ADMIN_EMAIL=<your-email> \
+  -e WORKSPACE_ADMIN_PASSWORD=<a password> \
+  -e WORKSPACE_ENTITY_NAME=<the name of your organization> \
+  <image>
 ```
+
+`WORKSPACE_ENTITY_NAME` defaults to `Workspace`. A password you choose has to meet the sign-in form's rules: at least 8 characters with an upper-case letter, a lower-case letter, a digit and a special character, and no spaces.
 
 ### Bring your own database (Postgres / MySQL)
 
 ```bash
 docker run -d -p 3000:3000 \
+  -e WORKSPACE_ADMIN_EMAIL=<your-email> \
   -e DATABASE_TYPE=postgresql \
-  -e DB_HOST=my-postgres-host \
+  -e DB_HOST=<database host> \
   -e DB_PORT=5432 \
-  -e DB_NAME=openbb \
-  -e WRITE_DB_USER=openbb \
-  -e WRITE_DB_PASSWORD=...\
-  -e READ_DB_USER=openbb \
-  -e READ_DB_PASSWORD=... \
-  --name openbb openbb/lite:latest
+  -e DB_NAME=<database> \
+  -e WRITE_DB_USER=<user> \
+  -e WRITE_DB_PASSWORD=<password> \
+  -e READ_DB_USER=<user> \
+  -e READ_DB_PASSWORD=<password> \
+  <image>
 ```
 
-(MySQL works the same way with `DATABASE_TYPE=mysql` and `DB_PORT=3306`.)
+MySQL works the same way with `DATABASE_TYPE=mysql` and `DB_PORT=3306`.
 
 ### External Redis
 
 ```bash
 docker run -d -p 3000:3000 \
-  -e REDIS_HOST=my-redis-host \
+  -e WORKSPACE_ADMIN_EMAIL=<your-email> \
+  -e REDIS_HOST=<redis host> \
   -e REDIS_PORT=6379 \
-  -e REDIS_PASS=... \
-  --name openbb openbb/lite:latest
+  -e REDIS_PASS=<password> \
+  <image>
 ```
 
-Redis still runs *inside* the container as well — it's harmless and lets
-the image stay self-contained. If you'd rather skip the embedded one,
-edit `supervisord.conf` and rebuild.
+Redis still runs *inside* the container as well; it is harmless and lets the image stay self-contained. To skip the embedded one, edit `supervisord.conf` and rebuild.
 
 ### Custom secrets
 
-By default the image generates `JWT_SECRET`, `OPENBB_AUTH_TOKEN`,
-`OPENBB_AES_KEY` and `LOCAL_STORAGE_SECRET_KEY` on first start and persists
-them to `/data/secrets.env`. To bring your own, pass any of them with `-e`:
+By default the image generates `JWT_SECRET`, `WORKSPACE_AUTH_TOKEN`, `WORKSPACE_AES_KEY` and `LOCAL_STORAGE_SECRET_KEY` on first start and persists them to `/data/secrets.env`. To bring your own, pass any of them with `-e`:
 
 ```bash
 docker run -d -p 3000:3000 \
   -e JWT_SECRET=$(openssl rand -hex 48) \
-  -e OPENBB_AES_KEY=$(openssl rand -hex 8) \
+  -e WORKSPACE_AES_KEY=$(openssl rand -hex 8) \
   ...
 ```
 
-`OPENBB_AUTH_TOKEN` must be a JWT (HS256) signed with `JWT_SECRET`. If you set
-`JWT_SECRET` without providing `OPENBB_AUTH_TOKEN`, the image will mint a
-matching token for you.
+`WORKSPACE_AUTH_TOKEN` must be a JWT (HS256) signed with `JWT_SECRET`. If you set `JWT_SECRET` without providing `WORKSPACE_AUTH_TOKEN`, the image mints a matching token for you.
 
-### Frontend runtime config
+### The web app's settings
 
-The SPA reads `/config.js` at load time, and the image regenerates that file
-on every start from the env vars below (see
-[`render-frontend-config.sh`](./render-frontend-config.sh)):
+The web app reads `/config.js` when it loads. The image writes that file at every start with [`render_frontend_config.py`](./render_frontend_config.py), from two things the build leaves in the image: the `config.js` it wrote, and `config.env.json`, which names the environment variable of every setting. Pass any of those variables with `-e` and it replaces its setting; the rest keep the value they were built with. The variables are the `VITE_*` ones of [`workspace/.env`](../workspace/.env), which lists each setting with a comment and its default, for example:
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `BACKEND_URL` | `/api` | Base URL the SPA uses for backend calls |
-| `AI_API_URL` | empty | AI service URL used by Workspace AI features |
-| `PLATFORM_URL` | empty | Platform service URL |
-| `DATABASE_API_URL` | empty | Database service URL |
-| `AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER` | `false` | Send the signed-in user's email as a request header |
-| `AI_COPILOT_ENABLED` | `true` | Show Copilot UI |
-| `AI_COPILOT_OPENBB_COPILOT` | `false` | Offer OpenBB Copilot (needs OpenBB's AI backend) |
-| `AI_COPILOT_AI_ENHANCEMENTS` | `true` | Enable AI enhancement UI |
-| `UI_SHOW_COMPANION_MCP_MODE` | `true` | Show the MCP companion |
-| `UI_SHOW_MINIMIZE_WIDGET` | `true` | Show widget minimize controls |
-| `UI_SHOW_CHART_GENERATION` | `true` | Show chart generation controls |
-| `UI_SHOW_CHANGELOG` | `true` | Show the in-app changelog |
-| `UI_SHOW_COPILOT_SWITCHER` | `true` | Show the Copilot switcher |
-| `UI_SHOW_MARKETPLACE` | `true` | Show the Apps Marketplace tab |
-| `MCP_DEFAULT_SERVER_ENABLED` | `true` | Add the default MCP server for new users |
-| `DATA_ALLOW_HTML_JS_EXECUTION` | `true` | Allow HTML widgets to execute JavaScript |
+| Variable | What it sets |
+| --- | --- |
+| `VITE_BACKEND_URL` | Where the app finds the backend (`/api` in this image: nginx proxies it) |
+| `VITE_AI_API_URL` | The AI service the Copilot talks to |
+| `VITE_MARKETPLACE_URL` | A remote marketplace to list apps from (empty: this backend) |
+| `VITE_DOCS_URL` | The documentation site (empty: links to it are hidden) |
+| `VITE_SUPPORT_EMAIL` | Where users are sent for help (empty: no address is shown) |
+| `VITE_AUTHENTICATION_IDENTITY_PROVIDERS` | Single sign-on providers to offer (`google`, `microsoft`, `okta`) |
+| `VITE_UI_SHOW_MARKETPLACE` | Show the Apps Marketplace tab |
 
-These are the only frontend fields an operator can change. Everything else
-(branding, registration, ToS, telemetry, ...) is **locked**: its values are
-baked into the JS bundle at build time by the strict Lite profile
-(`terminalpro/config-profiles/lite.locked.json`) and forcibly override
-`config.js` at runtime, so editing or replacing `config.js` cannot flip them.
-If a variable you pass seems to have no effect, start the container with
-`-e DEBUG=1` and check the logs — provided values for locked fields are
-reported and ignored.
-
-If you need finer control over the *overridable* fields, mount your own
-`config.js` instead (locked fields still win):
+A variable that is not a setting is reported in the startup logs and ignored. To start from a `config.js` of your own instead of the built one, mount it over the file the renderer reads (the renderer writes `/usr/share/nginx/html/config.js`, so that path cannot be mounted):
 
 ```bash
 docker run -d -p 3000:3000 \
-  -v $(pwd)/my-config.js:/usr/share/nginx/html/config.js:ro \
-  -v openbb-data:/data \
-  openbb/lite:latest
+  -v $(pwd)/my-config.js:/usr/local/share/workspace/config.js:ro \
+  -v workspace-data:/data \
+  -e WORKSPACE_ADMIN_EMAIL=<your-email> \
+  <image>
 ```
-
-### Changing what Lite locks
-
-The lock policy is a **strict profile** that lives in the sibling `terminalpro/` directory:
-`config-profiles/lite.locked.json`. Every field in terminalpro's
-`RuntimeConfigSchema` must be triaged there — either **locked** (given a
-value) or listed in **`_unlocked`** (operator-configurable). A terminalpro
-test fails any PR that adds a config field without making that call, and its
-error message points at this section.
-
-**To lock a field off (or on) in Lite** — one change, in terminalpro:
-
-1. Add the field with its forced value to `config-profiles/lite.locked.json`
-   (and remove it from `_unlocked` if it was there). The value is baked into
-   the JS bundle at the next image build; operators can never change it.
-
-**To make a field operator-configurable** — the profile change plus the
-runtime plumbing in this repo:
-
-1. terminalpro: add the field's path (e.g. `"ui.showChangelog"`) to
-   `_unlocked` in `config-profiles/lite.locked.json`. `group.*` wildcards
-   mark a fully overridable group.
-2. this repo: expose the knob in
-   [`render-frontend-config.sh`](./render-frontend-config.sh) — a `:=`
-   default at the top and a `${VAR}` interpolation in the heredoc. Without
-   this the field is neither locked nor reachable; the SPA just uses its
-   schema default.
-3. this repo: optionally add a `VITE_*` build-time fallback to
-   [`frontend.env`](./frontend.env), and document the new variable in the
-   table above (and in the Workspace docs).
-
-Changes to the profile ship with the next image build: terminalpro merges
-first, then rebuild the image (CI or `./build-local.sh`). The build log's
-`[locked-config] locking N field(s): ...` line confirms what got baked in.
 
 ## Building the image
 
-This is a standalone repo: it holds the Dockerfile and container config, but the
-backend comes from `backend-api/` in this monorepo (standalone mirror: [`OpenBB-finance/openbb-hub`](https://github.com/OpenBB-finance/openbb-hub))
-(its `backend/` directory) and the frontend from
-[`OpenBB-finance/terminalpro`](https://github.com/OpenBB-finance/terminalpro).
-The build assembles both source trees next to the Dockerfile, then builds.
+The Dockerfile and container config live here; the backend comes from `backend-api/backend` and the frontend from `frontend/` in this repository. The build copies both source trees next to the Dockerfile, then builds.
 
 ### In CI (GitHub Actions)
 
-The [`Build & publish`](./.github/workflows/build.yml) workflow checks out both
-source repos at a configurable ref and builds + pushes a multi-arch image to
-GHCR. Run it from the **Actions** tab (`workflow_dispatch`):
+The [`Build & publish`](./.github/workflows/build.yml) workflow assembles the context from the checked-out repository and builds and pushes a multi-arch image to GHCR as `<owner>/lite` (set the `LITE_IMAGE` repository variable to publish under another name). Run it from the **Actions** tab (`workflow_dispatch`) on any branch or tag:
 
-- `hub_ref` / `terminalpro_ref` — default `develop`. Set either to a branch,
-  tag, commit SHA, or **a PR** via `refs/pull/<N>/head`.
-- `push_image` — uncheck to build without pushing.
+- `push_image`: uncheck to build without pushing.
+- `tag`: an extra image tag.
 
-It authenticates to the (private) source repos with a fine-grained PAT stored
-as the `SOURCE_REPOS_PAT` secret (Contents: Read on both repos). The image push
-uses the built-in `GITHUB_TOKEN`.
+The image push uses the built-in `GITHUB_TOKEN`. The workflow runs from the repository root's `.github/workflows/`.
 
 ### Locally
 
-Use [`build-local.sh`](./build-local.sh), which assembles the context the same
-way CI does and runs a single-arch `docker build --load`:
+Use [`build-local.sh`](./build-local.sh), which copies the sources and runs a single-arch `docker build --load`:
 
 ```bash
-# Both repos at develop (clones them into ./backend and ./terminalpro):
 ./build-local.sh
-
-# Point either source at a PR / branch / SHA:
-./build-local.sh --backend-branch refs/pull/42/head --workspace-branch my-feature-branch
-
-# Build the full image for AMD64:
-./build-local.sh --variant full --platform linux/amd64 --backend-branch develop --workspace-branch develop
-
-# Or build from checkouts you already have on disk (picks up local edits):
-./build-local.sh --local   # defaults to the sibling ../backend-api and ../terminalpro directories
+./build-local.sh --platform linux/amd64
 ```
 
-Prefer to do it by hand? Clone the two repos beside the Dockerfile and build:
+To publish a multi-arch image from your machine, use [`publish.sh`](./publish.sh) with the registry namespace to publish under:
 
 ```bash
-git clone -b develop --depth 1 https://github.com/OpenBB-finance/terminalpro.git terminalpro
-git clone -b develop --depth 1 https://github.com/OpenBB-finance/openbb-hub.git _hub
-mv _hub/backend ./backend && rm -rf _hub
-DOCKER_BUILDKIT=1 docker build -f Dockerfile -t openbb/lite:latest .
+ORG=<namespace> ./publish.sh
 ```
 
-The assembled `backend/`, `terminalpro/`, and `_hub/` directories are
-git-ignored, so they won't pollute this repo.
+The assembled `backend/` and `frontend/` directories are git-ignored, so they won't pollute this repository.
 
 ## What's inside the container
 
-- `nginx` on `${PORT}` (default 3000). Serves the SPA and reverse-proxies
-  `/api/*` → backend at `127.0.0.1:8000` (stripping the `/api` prefix).
+- `nginx` on `${PORT}` (default 3000). Serves the web app and reverse-proxies `/api/*` to the backend at `127.0.0.1:8000`, stripping the `/api` prefix.
 - `uvicorn` running the FastAPI backend on `127.0.0.1:8000`.
 - `redis-server` on `127.0.0.1:6379`, dumping to `/data/redis`.
-- `supervisord` as PID 1's child (tini as PID 1).
+- `supervisord` as the child of tini (PID 1).
 
-All three are managed by [supervisord.conf](./supervisord.conf). nginx and
-redis log to stdout/stderr so `docker logs` shows everything.
+All three are managed by [supervisord.conf](./supervisord.conf). nginx and redis log to stdout and stderr, so `docker logs` shows everything.
 
 ## Files
 
 | File | Purpose |
 | --- | --- |
-| `Dockerfile` | Multi-stage build (frontend → backend → runtime) |
-| `entrypoint.sh` | Secret bootstrap, migrations, admin user, then exec supervisord |
-| `supervisord.conf` | Runs redis + uvicorn + nginx |
+| `Dockerfile` | Multi-stage build (frontend, backend, runtime) |
+| `entrypoint.sh` | Secret bootstrap, migrations, administrator, then supervisord |
+| `supervisord.conf` | Runs redis, uvicorn and nginx |
 | `nginx.conf.template` | Site config; `${PORT}` is substituted on start |
-| `render-frontend-config.sh` | Renders `/usr/share/nginx/html/config.js` from env |
-| `frontend.env` | Vite build-time env for the runtime SPA build |
-| `.github/workflows/build.yml` | CI (standalone-repo era, inert in this monorepo): assemble source, build & push to GHCR |
-| `build-local.sh` | Local build helper (assembles context, single-arch `--load`) |
-| `publish.sh` | Local multi-arch build + push to GHCR |
+| `render_frontend_config.py` | Writes `/usr/share/nginx/html/config.js` from the environment |
+| `credentials.sh` | `docker exec <container> credentials`: prints the administrator's login |
+| `import.sh` | `docker exec <container> workspace-import <archive>`: imports an exported account |
+| `installation-guide.md`, `enduser-steps.md` | Pulling the image from a private registry, and running it |
+| `.github/workflows/build.yml` | CI: assemble the source, build and push to GHCR |
+| `build-local.sh` | Local build helper (assembles the context, single-arch `--load`) |
+| `publish.sh` | Local multi-arch build and push to a registry (GHCR by default) |
 | `VERSION` | Image version tag |

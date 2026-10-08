@@ -2,8 +2,8 @@
 
 Covers the WorkspaceBench hardening work: Literal-typed operation params,
 required identifiers, sidecar-side guards, warnings passthrough, explicit
-empty-config preservation, manage_dashboard update targeting, chart_params
-snake_case tolerance, and error envelope completeness.
+empty-config preservation, manage_dashboard update targeting, and error
+envelope completeness.
 """
 
 import json
@@ -16,11 +16,6 @@ from workspace_mcp.models import (
 )
 from workspace_mcp.server import create_mcp_server
 from workspace_mcp.state import BridgeSessionManager
-
-
-@pytest.fixture(autouse=True)
-def mock_external_services():
-    yield
 
 
 @pytest.fixture(autouse=True)
@@ -108,8 +103,6 @@ async def test_operation_enums_are_surfaced_in_tool_schemas(server):
     ]
     assert schemas["add_generative_widget"]["properties"]["widget_type"]["enum"] == [
         "note",
-        "table",
-        "chart",
         "html",
     ]
 
@@ -345,54 +338,22 @@ async def test_manage_dashboard_update_without_name_errors_with_context_hint(
 
 
 # ---------------------------------------------------------------------------
-# H8: chart_params snake_case tolerance
+# H8: generative widgets take string content
 # ---------------------------------------------------------------------------
 
 
-async def test_add_generative_widget_translates_snake_case_chart_params(
-    server, recorded
-):
+async def test_add_generative_widget_rejects_non_string_data(server, recorded):
     async with Client(server) as client:
         result = await client.call_tool(
             "add_generative_widget",
-            {
-                "widget_type": "chart",
-                "data": [{"x": 1, "y": 2}],
-                "chart_params": {
-                    "chart_type": "line",
-                    "x_key": "x",
-                    "y_key": ["y"],
-                    "angle_key": "a",
-                },
-            },
-            raise_on_error=False,
-        )
-
-    assert payload(result)["ok"] is True
-    assert recorded[0].chart_params == {
-        "chartType": "line",
-        "xKey": "x",
-        "yKey": ["y"],
-        "angleKey": "a",
-    }
-
-
-async def test_add_generative_widget_chart_params_still_validated(server, recorded):
-    async with Client(server) as client:
-        result = await client.call_tool(
-            "add_generative_widget",
-            {
-                "widget_type": "chart",
-                "data": [{"x": 1}],
-                "chart_params": {"chart_type": "line"},
-            },
+            {"widget_type": "html", "data": None},
             raise_on_error=False,
         )
 
     body = payload(result)
     assert body["ok"] is False
     assert body["error"]["code"] == "invalid_request"
-    assert "chartType, xKey, and non-empty yKey" in body["message"]
+    assert "requires string data" in body["message"]
     assert recorded == []
 
 
@@ -486,11 +447,11 @@ async def test_not_supported_sentences_present(server):
 
 # ---------------------------------------------------------------------------
 # Result offloading: large list_available_widgets catalogs move behind an
-# openbb://workspace/results/{result_id} resource with a compact inline index.
+# workspace://results/{result_id} resource with a compact inline index.
 # ---------------------------------------------------------------------------
 
-OFFLOAD_ENV = "OPENBB_WORKSPACE_MCP_RESULT_OFFLOAD_THRESHOLD"
-RESULT_REF_PREFIX = "openbb://workspace/results/"
+OFFLOAD_ENV = "WORKSPACE_MCP_RESULT_OFFLOAD_THRESHOLD"
+RESULT_REF_PREFIX = "workspace://results/"
 
 
 def make_catalog_widgets(count: int, *, description_pad: int = 400) -> list[dict]:
@@ -505,7 +466,7 @@ def make_catalog_widgets(count: int, *, description_pad: int = 400) -> list[dict
             "description": "x" * description_pad,
             "category": "cat",
             "sub_category": "sub",
-            "widget_type": "table",
+            "widget_type": "html",
         }
         for index in range(count)
     ]

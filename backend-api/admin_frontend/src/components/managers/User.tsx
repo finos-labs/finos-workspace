@@ -1,16 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Button,
-  Checkbox,
-  FormField,
-  FormInput,
-  FormSelect,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  useForm,
-} from "@openbb/ui";
+import { Checkbox, FormField, FormInput, FormSelect } from "ui/Form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "ui/Tabs";
+import { useForm } from "react-hook-form";
 import { ManagerForm } from "components/formItems";
 import type { SubmitFormProps } from "components/managers/Base";
 import { handleRequest } from "components/managers/helpers";
@@ -33,12 +24,17 @@ interface FormData {
 }
 
 const userSchema = z.object({
-  pro_trial_end: z.coerce.date().optional(),
   email: z.string().email().min(1, "This field is required"),
   permissions: z.string().uuid().min(1, "This field is required"),
   // Entitlement fields
-  tier: z.enum(["pro", "terminal"]).optional(),
+  tier: z.enum(["full", "basic"]).optional(),
   number_copilot_calls_day: z.coerce.number().optional(),
+  number_copilot_tokens_day: z
+    .preprocess(
+      (value) => (value === "" || value == null ? null : Number(value)),
+      z.number().int().min(0).nullable(),
+    )
+    .optional(), // empty: no token limit
   total_file_upload_size_gb: z.coerce.number().optional(),
   share_widgets: z.enum(["public", "private"]).optional(),
   bring_your_own_data: z.boolean().optional(),
@@ -48,7 +44,7 @@ const userSchema = z.object({
   excel_add_in: z.boolean().optional(),
   data_add_ons_redistribution: z.boolean().optional(),
   bundle_name: z
-    .enum(["Default", "Equity Research", "Pro Trial"])
+    .enum(["Default", "Equity Research"])
     .nullable()
     .optional(),
 });
@@ -64,7 +60,7 @@ export function UserSubmitForm({
   editType,
 }: SubmitFormProps<FullUser, FormData>): JSX.Element {
   const [warning, setWarning] = useState("");
-  const [entitlements, setEntitlements] = useState({});
+  const [entitlements, setEntitlements] = useState<Partial<EntitlementBase>>({});
   const [activeTab, setActiveTab] = useState("base");
 
   const form = useForm<TUserSchema>({
@@ -72,7 +68,6 @@ export function UserSubmitForm({
     defaultValues: {
       email: item?.email ?? "",
       permissions: item?.permissions?.uuid ?? "",
-      pro_trial_end: item?.pro_trial_end ? new Date(item.pro_trial_end) : undefined,
     },
   });
 
@@ -101,29 +96,12 @@ export function UserSubmitForm({
     }
   }, [entitlements, form]);
 
-  useEffect(() => {
-    if(editType === "Edit"){
-      const permissions = form.getValues().permissions;
-      const currentProTrialEnd = form.getValues().pro_trial_end || null;
-
-      // Get the selected permission's label
-      const selectedPermission = getOptions().find(opt => opt.value === permissions)?.label;
-
-      if (selectedPermission?.includes("OpenBB Trial") && currentProTrialEnd === null) {
-        const threeWeeksFromNow = new Date();
-        threeWeeksFromNow.setDate(threeWeeksFromNow.getDate() + 21);
-        form.setValue('pro_trial_end', threeWeeksFromNow);
-      }
-    }
-  }, [form.watch('permissions')]);
-
   const handleSubmit = async (values: TUserSchema): Promise<void> => {
     if (item !== undefined) {
       if (activeTab === "base") {
         const response = await editUser(
           item.uuid,
           values.permissions,
-          values.pro_trial_end,
           user.accessToken,
         );
         if (response.success) {
@@ -136,6 +114,7 @@ export function UserSubmitForm({
         const entitlement: EntitlementBase = {
           tier: values.tier,
           number_copilot_calls_day: values.number_copilot_calls_day,
+          number_copilot_tokens_day: values.number_copilot_tokens_day,
           total_file_upload_size_gb: values.total_file_upload_size_gb,
           share_widgets: values.share_widgets,
           bring_your_own_data: values.bring_your_own_data,
@@ -186,9 +165,13 @@ export function UserSubmitForm({
   return (
     <Tabs defaultValue="base" onValueChange={setActiveTab}>
       <TabsList className="mb-2 flex w-full gap-2 rounded border border-general-border-primary bg-general-bg-secondary p-1">
-        <TabsTrigger value="base">Base</TabsTrigger>
+        <TabsTrigger value="base" className="px-3 py-1 text-xs">
+          Base
+        </TabsTrigger>
         {editType === "Edit" && (
-          <TabsTrigger value="entitlements">Entitlements</TabsTrigger>
+          <TabsTrigger value="entitlements" className="px-3 py-1 text-xs">
+            Entitlements
+          </TabsTrigger>
         )}
       </TabsList>
       <ManagerForm form={form} onSubmit={handleSubmit} warning={warning}>
@@ -207,27 +190,6 @@ export function UserSubmitForm({
               <FormSelect label="Permissions" options={getOptions()} {...field} />
             )}
           />
-          {editType === "Edit" && (
-            <FormField
-              name="pro_trial_end"
-              control={form.control}
-              render={({ field }) => {
-                const dateValue = field.value ? new Date(field.value) : undefined;
-                return (
-                  <FormInput
-                    type="date"
-                    label="Pro Trial End"
-                    {...field}
-                    value={
-                      dateValue && !Number.isNaN(dateValue.getTime())
-                        ? dateValue.toISOString().split("T")[0]
-                        : ""
-                    }
-                  />
-                );
-              }}
-            />
-          )}
         </TabsContent>
         {editType === "Edit" ? (
           <TabsContent value="entitlements">
@@ -238,8 +200,8 @@ export function UserSubmitForm({
                 return (
                   <FormSelect
                     options={[
-                      { value: "pro", label: "Pro" },
-                      { value: "terminal", label: "Terminal" },
+                      { value: "full", label: "Full" },
+                      { value: "basic", label: "Basic" },
                     ]}
                     label="Tier"
                     {...field}
@@ -256,6 +218,20 @@ export function UserSubmitForm({
                     type="number"
                     label="Number of Copilot Calls per Day"
                     {...field}
+                  />
+                );
+              }}
+            />
+            <FormField
+              name="number_copilot_tokens_day"
+              control={form.control}
+              render={({ field }) => {
+                return (
+                  <FormInput
+                    type="number"
+                    label="Number of Copilot Tokens per Day (empty for no limit)"
+                    {...field}
+                    value={field.value ?? ""}
                   />
                 );
               }}
@@ -375,7 +351,6 @@ export function UserSubmitForm({
                   options={[
                     { value: "Default", label: "Default" },
                     { value: "Equity Research", label: "Equity Research" },
-                    { value: "Pro Trial", label: "Pro Trial" },
                   ]}
                   label="Bundle Name"
                   {...field}
@@ -387,9 +362,9 @@ export function UserSubmitForm({
         ) : (
           <></>
         )}
-        <Button className="obb-btn-blue mt-2">
+        <button type="submit" className="ws-btn-blue mt-2">
           {activeTab === "base" ? "Submit Base Info" : "Submit Entitlements"}
-        </Button>
+        </button>
       </ManagerForm>
     </Tabs>
   );
@@ -416,7 +391,7 @@ export function UserSearchBar({
         className="h-8 rounded border border-general-border-primary bg-input-bg px-3 text-xs text-ds-text-body focus:outline-none"
         placeholder="Search by user email"
       />
-      <Button className="obb-btn">Search</Button>
+      <button type="submit" className="ws-btn">Search</button>
     </form>
   );
 }
