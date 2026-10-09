@@ -48,8 +48,8 @@ copy_src() { # <src> <dest>
 }
 
 # --- frontend ---
-[[ -d "$WORKSPACE_DIR" ]] || { echo "WORKSPACE_DIR not found: $WORKSPACE_DIR" >&2; exit 1; }
-echo "[build-local] Copying frontend from $WORKSPACE_DIR"
+[[ -d "$FRONTEND_DIR" ]] || { echo "FRONTEND_DIR not found: $FRONTEND_DIR" >&2; exit 1; }
+echo "[build-local] Copying frontend from $FRONTEND_DIR"
 copy_src "$FRONTEND_DIR" ./frontend
 
 # --- backend-api (backend only) ---
