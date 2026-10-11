@@ -539,6 +539,8 @@ class RedisSettings(BaseModel):
 
 
 class AWSSettings(BaseModel):
+    # Empty keys are passed as None, so boto uses the default AWS credentials,
+    # such as the pod's role, instead of rejecting an empty key.
     S3_ACCESS_KEY: str = os.environ.get("S3_ACCESS_KEY", "")
     S3_SECRET_KEY: str = os.environ.get("S3_SECRET_KEY", "")
     S3_BUCKET_NAME: str | None = os.environ.get("S3_BUCKET_NAME")
@@ -566,8 +568,8 @@ class AWSSettings(BaseModel):
     def get_s3_client(self) -> BaseClient:
         return boto3.client(
             "s3",
-            aws_access_key_id=self.S3_ACCESS_KEY,
-            aws_secret_access_key=self.S3_SECRET_KEY,
+            aws_access_key_id=self.S3_ACCESS_KEY or None,
+            aws_secret_access_key=self.S3_SECRET_KEY or None,
             region_name=self.S3_REGION,
             endpoint_url=self.S3_ENDPOINT_URL,
             verify=self.S3_VERIFY_SSL,
@@ -576,8 +578,8 @@ class AWSSettings(BaseModel):
 
     def get_async_s3_session(self) -> aioboto3.Session:
         return aioboto3.Session(
-            aws_access_key_id=self.S3_ACCESS_KEY,
-            aws_secret_access_key=self.S3_SECRET_KEY,
+            aws_access_key_id=self.S3_ACCESS_KEY or None,
+            aws_secret_access_key=self.S3_SECRET_KEY or None,
             region_name=self.S3_REGION,
         )
 
@@ -590,8 +592,8 @@ class AWSSettings(BaseModel):
         try:
             async with session.create_client(
                 "s3",
-                aws_access_key_id=self.S3_ACCESS_KEY,
-                aws_secret_access_key=self.S3_SECRET_KEY,
+                aws_access_key_id=self.S3_ACCESS_KEY or None,
+                aws_secret_access_key=self.S3_SECRET_KEY or None,
                 region_name=self.S3_REGION,
                 endpoint_url=self.S3_ENDPOINT_URL,
                 config=botocore_config,
@@ -605,8 +607,8 @@ class AWSSettings(BaseModel):
         session = Session()
         return session.create_client(
             "s3",
-            aws_access_key_id=self.S3_ACCESS_KEY,
-            aws_secret_access_key=self.S3_SECRET_KEY,
+            aws_access_key_id=self.S3_ACCESS_KEY or None,
+            aws_secret_access_key=self.S3_SECRET_KEY or None,
             region_name=self.S3_REGION,
             endpoint_url=self.S3_ENDPOINT_URL,
             verify=self.S3_VERIFY_SSL,

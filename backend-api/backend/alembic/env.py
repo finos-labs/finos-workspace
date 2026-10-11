@@ -81,6 +81,13 @@ def run_migrations_online():
     )
 
     with connectable.connect() as connection:
+        if is_sqlite:
+            # SQLite alters a table by rebuilding it, and with foreign keys enforced
+            # (api.database turns them on) dropping the old copy fails while other
+            # rows still refer to it. The pragma only applies outside a transaction.
+            connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+            connection.commit()
+
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
