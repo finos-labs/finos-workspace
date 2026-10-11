@@ -17,9 +17,7 @@ export default function useSyncChats() {
     (state) => state.updateChatsStoredInCloud,
   );
   const setUsage = useShallowFeatureFlagsStore((state) => state.setUsage);
-  const isStreaming = useShallowStreamingStore(
-    (s) => s.loading || s.streamingStatus === "streaming-started",
-  );
+  const isStreaming = useShallowStreamingStore((s) => s.loading);
 
   const saveChats = useCallback(
     async (currentChats: Chat[] | null, previousChats: Chat[] | null) => {

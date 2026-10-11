@@ -1,5 +1,4 @@
 import sys
-import time
 import traceback
 from collections.abc import Iterable
 from datetime import timedelta
@@ -13,6 +12,7 @@ import api.models  # noqa: F401, PLC0415
 from alembic import context  # type: ignore
 from api.models.model_helpers import Base
 from utilities.config import settings
+from utilities.migration_lock import DONE, LOCK_KEY, wait_for_migration_lock
 
 POD_NODE = uuid4()
 config = context.config
@@ -62,19 +62,10 @@ def run_migrations_online():
     use_redis_lock = not is_sqlite
 
     if use_redis_lock:
-        redis_key = "alembic_migrations"
-        settings.redis_cache(redis_key, POD_NODE.hex, expire=timedelta(minutes=2))
+        redis_key = LOCK_KEY
+        check = wait_for_migration_lock(settings.redis_cache, POD_NODE.hex)
 
-        showed_lock_message = False
-        while (check := settings.redis_cache(redis_key)) not in {POD_NODE.hex, "done"}:
-            if not showed_lock_message:
-                print(  # noqa: T201
-                    f"🛑 Another migration in progress by pod {check}, waiting to acquire lock..."
-                )
-                showed_lock_message = True
-            time.sleep(5)  # wait for other migration to finish
-
-        if check == "done":
+        if check == DONE:
             print("Migrations already applied, skipping...")  # noqa: T201
             return
 
@@ -102,9 +93,7 @@ def run_migrations_online():
             context.run_migrations()
 
     if use_redis_lock:
-        settings.redis_cache(
-            redis_key, "done", update=True, expire=timedelta(seconds=30)
-        )
+        settings.redis_cache(redis_key, DONE, update=True, expire=timedelta(seconds=30))
 
 
 def get_revision_directives_func():
@@ -137,29 +126,21 @@ def get_revision_directives_func():
             # is removed for those tables.   Needs a recursive function.
             d.ops = list(_filter_drop_indexes(d.ops, tables_dropped))
 
-    def _filter_drop_indexes(
-        directives: list[ops.MigrateOperation], tables_dropped: set[tuple[str, str]]
-    ):
+    def _filter_drop_indexes(directives: list[ops.MigrateOperation], tables_dropped: set[tuple[str, str]]):
         # given a set of (tablename, schemaname) to be dropped, filter
         # out DropIndexOp from the list of directives and yield the result.
 
         for d in directives:
             # ModifyTableOps is a container of ALTER TABLE types of
             # commands.  process those in place recursively.
-            if (
-                isinstance(d, ops.ModifyTableOps)
-                and (d.table_name, d.schema) in tables_dropped
-            ):
+            if isinstance(d, ops.ModifyTableOps) and (d.table_name, d.schema) in tables_dropped:
                 d.ops = list(_filter_drop_indexes(d.ops, tables_dropped))
 
                 # if we emptied out the directives, then skip the
                 # container altogether.
                 if not d.ops:
                     continue
-            elif (
-                isinstance(d, ops.DropIndexOp)
-                and (d.table_name, d.schema) in tables_dropped
-            ):
+            elif isinstance(d, ops.DropIndexOp) and (d.table_name, d.schema) in tables_dropped:
                 # we found a target DropIndexOp.   keep looping
                 continue
 

@@ -2,6 +2,7 @@ import DOMPurify from "dompurify";
 import Markdown from "markdown-to-jsx";
 import { memo, type ReactNode, useCallback, useMemo } from "react";
 import { highlightSelection } from "~/components/AI/hooks/useCopilotAddToContext";
+import { InertMarkdownOptions } from "~/components/AI/MarkdownOverrides";
 import Tooltip from "~/components/Tooltip";
 import { cn } from "~/lib/utils";
 import { MARKDOWN_SANITIZE_CONFIG, sanitizeMarkdown } from "~/lib/utils/sanitize";
@@ -110,7 +111,9 @@ export const SlashSuggestionItem = memo<SlashCommandSuggestionsProps>((props) =>
       output.label = `/skill:${item.slug}`;
       output.description = (
         <div className={cn(SUGGESTION_PROSE_CLASSES, "prose-pre:my-1")}>
-          <Markdown>{sanitizeMarkdown(item.content || item.description)}</Markdown>
+          <Markdown options={InertMarkdownOptions}>
+            {sanitizeMarkdown(item.content || item.description)}
+          </Markdown>
         </div>
       );
     } else if (item.type === "mcpTool") {
@@ -119,7 +122,7 @@ export const SlashSuggestionItem = memo<SlashCommandSuggestionsProps>((props) =>
         <>
           {item.description && (
             <div className={cn(SUGGESTION_PROSE_CLASSES, "prose-pre:my-1")}>
-              <Markdown>
+              <Markdown options={InertMarkdownOptions}>
                 {DOMPurify.sanitize(item.description, MARKDOWN_SANITIZE_CONFIG)}
               </Markdown>
             </div>
@@ -133,7 +136,7 @@ export const SlashSuggestionItem = memo<SlashCommandSuggestionsProps>((props) =>
                 Input Schema
               </div>
               <div className={cn(SUGGESTION_PROSE_CLASSES, "prose-pre:my-0")}>
-                <Markdown>
+                <Markdown options={InertMarkdownOptions}>
                   {DOMPurify.sanitize(
                     `\`\`\`json\n${JSON.stringify(item.inputSchema, null, 2)}\n\`\`\``,
                     MARKDOWN_SANITIZE_CONFIG,

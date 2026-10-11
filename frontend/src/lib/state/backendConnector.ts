@@ -5,7 +5,7 @@ import { persist, subscribeWithSelector } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
-import { deleteApiSource, unsubscribeListedApp } from "~/api/auth.api";
+import { deleteApiSource } from "~/api/auth.api";
 import ValidateApiSourceWorker from "~/apiSource.worker?worker";
 
 import {
@@ -18,7 +18,6 @@ import type { ProcessedBackendT } from "~/hooks/useProcessBackendWidgets";
 import type { ProcessedTemplate, SharedPromptT } from "~/hooks/useSharedTemplates";
 import type { Selector } from "~/lib/state/app";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
-import { useSidebarStore } from "~/lib/state/sidebar";
 import { createIndexedDBStorage } from "~/lib/utils/indexDB";
 import type { InvalidItem } from "~/lib/utils/invalidItems";
 import { type ShowNotificationProps, showNotification } from "~/lib/utils/toast";
@@ -28,8 +27,8 @@ import {
   type WorkerResult,
 } from "~/lib/utils/validateBackend";
 import { addExtraHeaders } from "~/lib/utils/widgetParams";
+import { mcpServerUsesTokenAuth } from "~/types/appMcpServer";
 import type { MetaDataWidgetType } from "~/types/auth.type";
-import { mcpServerUsesTokenAuth } from "~/types/listedApps";
 import {
   forgetInvalidItems,
   formatZodErrorMessage,
@@ -44,9 +43,8 @@ import { createParamDefs, dispatchSaveState, getJsonWidget } from "../utils";
 let validateApiSourceWorker: Worker | null = null;
 
 // Register MCP servers declared on a custom backend's apps.json templates so
-// they show up under "MCP Servers" in the AI tab, the same way marketplace
-// apps wire up via autoAddMcpForApp(). Idempotent — re-running on refresh is
-// a no-op if a server with the same sourceId+url is already present.
+// they show up under "MCP Servers" in the AI tab. Idempotent — re-running on
+// refresh is a no-op if a server with the same sourceId+url is already present.
 export function autoRegisterMcpForSource(source: Source) {
   const sourceId = source.id;
   if (!sourceId) return;
@@ -77,7 +75,6 @@ export function autoRegisterMcpForSource(source: Source) {
       tools: [],
       customHeaders: Object.keys(customHeaders).length > 0 ? customHeaders : undefined,
       sourceId,
-      vendorName: source.name,
       authType: entry.authType,
     });
   }
@@ -161,31 +158,6 @@ export type BackendAgent = {
   name: string;
 };
 
-export type VenderApp = {
-  uuid: string;
-  name: string;
-  version?: string;
-  vendorName: string;
-  shortDescription: string;
-  appsJsonUrl: string;
-  widgetsJsonUrl: string;
-  appsJsonCache: BackendTemplate[];
-  widgetsJsonCache: WidgetsType;
-  thumbnail: string;
-  thumbnailDark: string;
-  thumbnailLight: string;
-  widgets: { id?: string; name: string; description?: string; count?: number }[];
-  totalWidgets?: number;
-  prompts: string[];
-  mcpServers?: {
-    name: string;
-    description?: string;
-    url: string;
-    authType?: "oauth" | "token";
-  }[];
-  isDevelopment?: boolean;
-};
-
 export type Source = {
   endpointHeaders:
     | { key: string; value: string; location?: "headers" | "query" }[]
@@ -194,8 +166,6 @@ export type Source = {
   id: string;
   name: string;
   url: string;
-  vendorApp?: VenderApp | null;
-  vendorAppUuid?: string | null;
   status?: "success" | "error" | "pending" | "rehydrated";
   widgets?: WidgetsType;
   templates?: BackendTemplate[];
@@ -203,7 +173,6 @@ export type Source = {
   isSharedSource?: boolean;
   createdDate?: string;
   updatedDate?: string;
-  isPlatform?: boolean | null;
   isEntityBackend?: boolean | null;
   hasApiKey?: boolean | null;
 };
@@ -227,14 +196,6 @@ export function getTemplateWidgetsMetadata(
   template: BackendTemplate | ProcessedTemplate<SharedPromptT>,
   backend: Source | ProcessedBackendT<SharedPromptT> | undefined,
 ) {
-  if (!template && backend && !("access" in backend) && backend.vendorApp) {
-    const app = backend.vendorApp;
-    return {
-      widgets: app.widgets || [],
-      totalWidgets: app.totalWidgets,
-    };
-  }
-
   const builtInWidgetIds = new Set<WidgetId>();
 
   const widgetCounts = Object.values(template.tabs || {}).reduce(
@@ -289,7 +250,6 @@ export type ValidateBackend = {
   totalFailed: number;
   templates: BackendTemplate[];
   agents: BackendAgent[];
-  isPlatform?: boolean | null;
   /** IDs of widgets.json entries left out because this Workspace does not render their type */
   unsupportedWidgets?: string[];
   /** The widgets and apps that pass validation, whatever else is invalid */
@@ -393,28 +353,12 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
         apiSources: [],
         isLoadingBackends: false,
         storedFiles: [],
-        getApiSourceById: (id) =>
-          get().apiSources.find(
-            (source) =>
-              source.id === id ||
-              (source.vendorApp?.uuid && source.vendorApp.uuid === id),
-          ),
+        getApiSourceById: (id) => get().apiSources.find((source) => source.id === id),
         deleteApiSource: async (source, notify) => {
-          let sourceId = source.sourceId || source.id;
-          const vendorAppUuid = source.vendorAppUuid || source.vendorApp?.uuid;
+          const sourceId = source.sourceId || source.id;
 
           try {
-            if (vendorAppUuid) {
-              useMcpToolsStore.getState().removeVendorAppServer(vendorAppUuid);
-              await unsubscribeListedApp(vendorAppUuid);
-
-              const vendorSourceId = get().getApiSourceById(vendorAppUuid)?.id;
-              if (!sourceId && vendorSourceId) {
-                sourceId = vendorSourceId;
-              }
-            } else if (sourceId) {
-              useMcpToolsStore.getState().removeSourceServer(sourceId);
-            }
+            if (sourceId) useMcpToolsStore.getState().removeSourceServer(sourceId);
 
             if (!sourceId) return false;
             await deleteApiSource(sourceId);
@@ -543,9 +487,7 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
             await promise;
           }
 
-          const isPublishedMarketplaceApp =
-            updatedSource?.vendorApp && !updatedSource.vendorApp?.isDevelopment;
-          if (updatedSource && unrecognizedKeysMessage && !isPublishedMarketplaceApp) {
+          if (updatedSource && unrecognizedKeysMessage) {
             showUnrecognizedKeysToast(updatedSource, unrecognizedKeysMessage);
           }
           if (updatedSource && invalidItems && invalidItems.length > 0) {
@@ -567,14 +509,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
           const apiSources = cloneDeep(get().apiSources);
           const existingSource = apiSources.find((s) => s.id === source.id);
           const isNewSource = !existingSource;
-          const vendorApp = source.vendorApp;
-          source.vendorAppUuid = vendorApp?.uuid;
-
-          if (vendorApp && source.status === "error") {
-            source.widgets = vendorApp?.widgetsJsonCache || {};
-            source.templates = vendorApp?.appsJsonCache || [];
-          }
-
           source.hasApiKey = source.endpointHeaders?.some(
             (h) =>
               h.key.toLowerCase() === "authorization" && h.value.startsWith("Bearer "),
@@ -587,7 +521,7 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
 
           // Only fire on first connect, not on refresh. If the user removed the
           // MCP server manually, refreshing the backend must not bring it back.
-          if (isNewSource && !vendorApp && source.status === "success") {
+          if (isNewSource && source.status === "success") {
             autoRegisterMcpForSource(source);
           }
 
@@ -623,7 +557,7 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
           set({ apiSources, isLoadingBackends: apiSources.length > 0 });
 
           if (apiSources.length === 0) return true;
-          let needsSaveState = false;
+          const needsSaveState = false;
           const saveState = () => needsSaveState && dispatchSaveState();
 
           const onMessage = (event: MessageEvent<WorkerResult>) => {
@@ -636,17 +570,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
             // apiSources without disrupting the rest. Slow sources don't block
             // the UI swap for already-finished ones.
             if (data.__partial) {
-              const vendorApps = finalSources.filter(
-                (s) => s.status === "success" && (s.vendorApp?.uuid || s.vendorAppUuid),
-              );
-              if (vendorApps.length > 0 && !needsSaveState) needsSaveState = true;
-
-              // Update widget endpoints for all vendor app sources after the final validation is complete
-              for (const s of vendorApps) {
-                const activeDashboardId = useSidebarStore.getState().activeItem;
-                updateWidgetEndpoints(s, activeDashboardId as string, false);
-              }
-
               const updatedMap = new Map(finalSources.map((s) => [s.id, s]));
               const mergedSources = get().apiSources.map((s) => {
                 const updated = updatedMap.get(s.id);
@@ -732,13 +655,7 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
           });
         },
         removeApiSource: (id) => {
-          const apiSources = get().apiSources.filter(
-            (source) =>
-              !(
-                (source.vendorApp?.uuid && source.vendorApp.uuid === id) ||
-                source.id === id
-              ),
-          );
+          const apiSources = get().apiSources.filter((source) => source.id !== id);
           set({ apiSources });
         },
         updateBackendConnector: async (params) => {

@@ -273,6 +273,8 @@ export interface CopilotWidget {
   uuid?: string;
   name: string;
   description: string;
+  /** What the widget is (`iframe` for a page of a backend that the widget embeds). */
+  widget_type?: string;
   source?: string;
   category?: string;
   sub_category?: string;

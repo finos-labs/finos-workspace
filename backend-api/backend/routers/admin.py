@@ -452,6 +452,8 @@ async def get_entitlement(
             models.Entitlement.excel_add_in,
             models.Entitlement.data_add_ons_redistribution,
             models.Entitlement.allow_custom_backends,
+            models.Entitlement.search_web,
+            models.Entitlement.fetch_from_web,
             # DataBundle fields
             models.DataBundle.bundle_name,
         )

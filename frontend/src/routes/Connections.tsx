@@ -29,7 +29,6 @@ import Icon from "~/components/Icon";
 import { SettingsLayout } from "~/components/LayoutAuth/Skeleton/SettingsLayout";
 import { TabPageFilterGroup, TabPageSearchInput } from "~/components/shared/TabPage";
 import Tooltip from "~/components/Tooltip";
-import { useUserSubscriptions } from "~/hooks/useListedApps";
 import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
 import {
   type Source,
@@ -341,7 +340,6 @@ const ConnectionRowActions = memo<ConnectionRowActionsProps>((props) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const canRefresh = !!connection.backend;
-  const disableEdit = !!connection.backend?.vendorAppUuid;
 
   const handleRefresh = useCallback(async () => {
     if (!connection.backend?.id) return;
@@ -385,20 +383,14 @@ const ConnectionRowActions = memo<ConnectionRowActionsProps>((props) => {
       )}
 
       {connection.canEdit && (
-        <Tooltip
-          message={
-            disableEdit ? "Marketplace backends can't be edited" : "Edit backend"
-          }
-          position="top"
-        >
+        <Tooltip message="Edit backend" position="top">
           <button
             className={cn(
               "opacity-0 group-hover:opacity-100 transition-opacity",
               "duration-300 ws-small-navbar-btn",
               "rounded flex items-center justify-center",
-              disableEdit && "group-hover:opacity-40 cursor-not-allowed",
             )}
-            onClick={disableEdit ? undefined : handleEdit}
+            onClick={handleEdit}
           >
             <Icon id="edit" className="size-3.5" />
           </button>
@@ -640,8 +632,6 @@ export default function ConnectionsPage() {
       { replace: true },
     );
   }, [setSearchParams]);
-
-  useUserSubscriptions();
 
   const { apiSources, updateApiSources, deleteApiSource } =
     useShallowBackendConnectorStore((s) => ({
@@ -955,8 +945,8 @@ export default function ConnectionsPage() {
   }, [connectionRows, state.search, state.filterBy, state.sortBy, agentOnlyStatuses]);
 
   // In addition to highlighting the row, open the edit modal for the
-  // deep-linked connection when its backend is editable (skips marketplace /
-  // entity backends, which can't be edited).
+  // deep-linked connection when its backend is editable (skips entity backends,
+  // which can't be edited).
   const openedEditFor = useRef<string | null>(null);
   useEffect(() => {
     if (!connectionId) {
@@ -965,7 +955,7 @@ export default function ConnectionsPage() {
     }
     if (openedEditFor.current === connectionId) return;
     const target = connectionRows.find((c) => c.id === connectionId);
-    if (target?.backend && target.canEdit && !target.backend.vendorAppUuid) {
+    if (target?.backend && target.canEdit) {
       openedEditFor.current = connectionId;
       setManageAppDialog({ isOpen: true, mode: "edit", data: target.backend });
     }

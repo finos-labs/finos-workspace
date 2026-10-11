@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useLocalStorage } from "usehooks-ts";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import Icon from "../Icon";
 import { useShallowStreamingStore } from "./hooks/useStreaming";
@@ -27,13 +26,15 @@ export type ScrollButtonProps = {
 export function ScrollButton(props: ScrollButtonProps) {
   const { messagesRef } = props;
 
-  const { limitReached, isStreaming, loading } = useShallowStreamingStore((s) => ({
+  const { limitReached, loading } = useShallowStreamingStore((s) => ({
     limitReached: s.limitReached,
-    isStreaming: s.streamingStatus === "streaming-started",
     loading: s.loading,
   }));
 
-  const [streamedData] = useLocalStorage("streamedData", "");
+  // New content is put in the chat whole, so it is a new message that moves the view.
+  const messageCount = useShallowCopilotStore(
+    (s) => s.getCurrentChat().messages.length,
+  );
 
   const showWelcome = useShallowCopilotStore((s) => s.showWelcome);
 
@@ -63,9 +64,9 @@ export function ScrollButton(props: ScrollButtonProps) {
     return () => scrollElement.removeEventListener("scroll", handleUserScroll);
   }, [handleUserScroll, messagesRef]);
 
-  // Auto-scroll while streaming, only when the user hasn't scrolled away
+  // Auto-scroll while the answer is being worked on, only when the user hasn't scrolled away
   useEffect(() => {
-    if ((isStreaming || limitReached) && !userScrolledAwayRef.current) {
+    if ((loading || limitReached) && !userScrolledAwayRef.current) {
       const animationFrame = requestAnimationFrame(() => {
         if (messagesRef.current) {
           messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
@@ -74,7 +75,7 @@ export function ScrollButton(props: ScrollButtonProps) {
 
       return () => cancelAnimationFrame(animationFrame);
     }
-  }, [loading, limitReached, streamedData, isStreaming, messagesRef]);
+  }, [loading, limitReached, messageCount, messagesRef]);
 
   // Keep the user at the bottom when new content arrives (e.g. new message, loading state change)
   // but only if they haven't intentionally scrolled away.
@@ -84,7 +85,7 @@ export function ScrollButton(props: ScrollButtonProps) {
         messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
       }
     }
-  }, [limitReached, streamedData, loading, messagesRef]);
+  }, [limitReached, messageCount, loading, messagesRef]);
 
   const handleScrollToBottom = useCallback(() => {
     if (messagesRef.current) {
@@ -138,7 +139,6 @@ export function ScrollButton(props: ScrollButtonProps) {
 
   const shouldShowButton =
     !(loading || showWelcome) &&
-    streamedData === "" &&
     showScrollButton &&
     (messagesRef.current?.scrollHeight ?? 0) > (messagesRef.current?.clientHeight ?? 0);
 

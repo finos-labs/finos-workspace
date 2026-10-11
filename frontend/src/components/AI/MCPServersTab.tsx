@@ -29,7 +29,6 @@ import {
   useShallowMcpToolsStore,
 } from "~/lib/state/mcpTools";
 import { cn } from "~/lib/utils";
-import { McpServerSourceTag } from "./McpServerSourceTag";
 import { ToolDescriptionMarkdown } from "./McpToolsDropdown";
 
 function isPendingConnectionState(state: string): boolean {
@@ -301,7 +300,6 @@ const MCPServerCard = memo((props: McpServerCardProps) => {
       <LibrarySection
         title={server.name}
         count={toolCount}
-        description={<McpServerSourceTag server={server} />}
         open={isExpanded && !userClosed}
         onOpenChange={() =>
           canExpand &&

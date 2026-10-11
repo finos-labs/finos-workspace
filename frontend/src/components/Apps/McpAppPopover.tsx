@@ -2,18 +2,14 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "~/components/ds/atoms/Button";
 import Icon from "~/components/Icon";
-import { type ListedAppMcpServer, mcpServerUsesTokenAuth } from "~/types/listedApps";
+import { type AppMcpServer, mcpServerUsesTokenAuth } from "~/types/appMcpServer";
 import { McpTokenModal } from "./McpTokenModal";
 import { useMcpServerConnection } from "./useMcpServerConnection";
 
 interface McpAppPopoverProps {
-  /** Marketplace app id; mutually-exclusive with sourceId */
-  vendorAppUuid?: string;
-  /** Custom backend source id; mutually-exclusive with vendorAppUuid */
+  /** Custom backend source id */
   sourceId?: string;
-  /** Display name. Falls back to the MCP server name when omitted. */
-  vendorName?: string;
-  mcpServer: ListedAppMcpServer;
+  mcpServer: AppMcpServer;
   isSubscribed: boolean;
   /**
    * When the parent owns the token entry point (e.g. the app details modal
@@ -24,10 +20,10 @@ interface McpAppPopoverProps {
 }
 
 export const McpAppPopover = memo((props: McpAppPopoverProps) => {
-  const { vendorAppUuid, sourceId, vendorName, mcpServer, isSubscribed } = props;
+  const { sourceId, mcpServer, isSubscribed } = props;
   const tokenActionExternal = props.tokenActionExternal ?? false;
   const navigate = useNavigate();
-  const displayName = vendorName || mcpServer.name;
+  const displayName = mcpServer.name;
   const isTokenAuth = mcpServerUsesTokenAuth(mcpServer);
   const [tokenModalOpen, setTokenModalOpen] = useState(false);
 
@@ -40,7 +36,7 @@ export const McpAppPopover = memo((props: McpAppPopoverProps) => {
     isFailed,
     connect: handleAdd,
     saveToken: handleTokenSave,
-  } = useMcpServerConnection(mcpServer, { vendorAppUuid, sourceId, vendorName });
+  } = useMcpServerConnection(mcpServer, { sourceId });
 
   const openTokenModal = useCallback(() => setTokenModalOpen(true), []);
 
@@ -212,7 +208,6 @@ export const McpAppPopover = memo((props: McpAppPopoverProps) => {
           isOpen={tokenModalOpen}
           onClose={() => setTokenModalOpen(false)}
           serverName={mcpServer.name}
-          vendorName={vendorName}
           currentToken={currentToken}
           onSave={handleTokenSave}
           error={isFailed ? connectionError : undefined}

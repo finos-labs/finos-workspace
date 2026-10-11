@@ -1,9 +1,9 @@
 /**
- * Validation for URLs that originate outside the app — vendor-authored listing
- * fields, backend responses, form input. Anything rendered as an `href` or
+ * Validation for URLs that originate outside the app — backend responses, form
+ * input. Anything rendered as an `href` or
  * handed to `window.open` must go through {@link safeExternalUrl} first: a
- * `javascript:` value in either position executes in the current origin, so a
- * marketplace submission could otherwise run script in a reviewer's session.
+ * `javascript:` value in either position executes in the current origin, so an
+ * untrusted URL could otherwise run script in the user's session.
  */
 
 /** Shape check for a user-entered link. Not a safety check — use {@link safeExternalUrl}. */

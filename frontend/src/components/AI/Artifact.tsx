@@ -36,11 +36,17 @@ import { cn } from "../ds/utils";
 import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import { buildAppArtifactSource, buildWidgetSourceResolver } from "./appArtifactUtils";
+import {
+  artifactContentSecurityPolicy,
+  artifactNonce,
+  withArtifactPolicy,
+} from "./artifactPolicy";
 import type { CreateWidgetParams } from "./hooks/useCreateWidgetFromArtifact";
 import { dispatchCreate } from "./hooks/utils";
 import {
   CodeComponent,
   hasObjectChild,
+  inertImageOverride,
   PreCodeComponent,
   renderRule,
 } from "./MarkdownOverrides";
@@ -133,8 +139,11 @@ const HTMLArtifact = memo<ArtifactProps<"html">>(({ artifact, inAiMessage }) => 
     const injectedStyle =
       "<style>body{margin:0;padding:0}table{display:block;overflow-x:auto;max-width:100%}</style>";
 
-    const injectedScript = allowJsExecution
-      ? `<script>
+    // The app's own script (it reports the height of the document) carries the nonce that the policy allows.
+    // Nothing in the artifact can: it is written before the nonce exists, and scripts are sanitized away anyway.
+    const nonce = allowJsExecution ? artifactNonce() : undefined;
+    const injectedScript = nonce
+      ? `<script nonce="${nonce}">
 (function(){
   function postHeight(){
     var h=Math.max(document.documentElement.scrollHeight,document.body.scrollHeight);
@@ -148,11 +157,11 @@ const HTMLArtifact = memo<ArtifactProps<"html">>(({ artifact, inAiMessage }) => 
 </script>`
       : "";
 
-    // Inject style (and script if JS enabled) into the HTML
-    if (clean.includes("</head>")) {
-      return clean.replace("</head>", `${injectedStyle}${injectedScript}</head>`);
-    }
-    return `${injectedStyle}${injectedScript}${clean}`;
+    return withArtifactPolicy(
+      clean,
+      artifactContentSecurityPolicy(nonce),
+      `${injectedStyle}${injectedScript}`,
+    );
   }, [artifact.content]);
 
   const handleIframeLoad = useCallback(() => {
@@ -294,6 +303,7 @@ const TextArtifact = memo<ArtifactProps<"text">>(({ artifact, inAiMessage }) => 
       disableParsingRawHTML: true,
       renderRule,
       overrides: {
+        ...inertImageOverride,
         a: (props: ComponentPropsWithoutRef<"a">) => {
           return (
             <a {...props} target="_blank" rel="noopener noreferrer">

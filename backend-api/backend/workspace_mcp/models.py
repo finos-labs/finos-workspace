@@ -447,7 +447,6 @@ class ManageBackendsCommand(Model):
     url: str | None = None
     endpoint_headers: list[BackendEndpointHeader] | None = None
     validate_widgets: bool | None = None
-    is_platform: bool | None = None
 
 
 class ManageAppsCommand(Model):

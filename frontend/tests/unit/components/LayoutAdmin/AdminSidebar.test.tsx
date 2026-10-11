@@ -5,12 +5,6 @@ import AdminSidebar from "~/components/LayoutAdmin/AdminSidebar";
 import { useIsEntityAdmin } from "~/hooks/useEntityAdmin";
 
 vi.mock("~/hooks/useEntityAdmin", () => ({ useIsEntityAdmin: vi.fn() }));
-vi.mock("~/hooks/useAdminMarketplace", () => ({
-  useIsMarketplaceAdmin: () => ({ isMarketplaceAdmin: false, isLoading: false }),
-}));
-vi.mock("~/lib/runtimeConfig", () => ({
-  getConfig: () => ({ ui: { showMarketplace: false } }),
-}));
 vi.mock("~/lib/state/sidebar", () => ({
   useShallowSidebarStore: () => vi.fn(),
 }));

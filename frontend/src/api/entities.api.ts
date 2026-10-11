@@ -40,6 +40,9 @@ export interface EntityEntitlement {
   excel_add_in: boolean | null;
   data_add_ons_redistribution: boolean | null;
   allow_custom_backends: boolean | null;
+  /** The Copilot's tools for the web (SEARCH_WEB, FETCH_FROM_WEB): on unless false. */
+  search_web: boolean | null;
+  fetch_from_web: boolean | null;
   bundle_name: BundleName | null;
 }
 

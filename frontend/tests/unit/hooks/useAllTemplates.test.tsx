@@ -37,7 +37,6 @@ import { useAllTemplates } from "~/hooks/useAllTemplates";
 import { type ProcessedTemplate, useSharedTemplates } from "~/hooks/useSharedTemplates";
 import { useShallowAppStore } from "~/lib/state/app";
 import {
-  type BackendTemplate,
   getTemplateWidgetsMetadata,
   type Source,
   useShallowBackendConnectorStore,
@@ -466,53 +465,6 @@ describe("useAllTemplates", () => {
 
       expect(result.current[0].totalWidgets).toBe(5);
       expect(result.current[0].widgets).toEqual([{ name: "W1" }, { name: "W2" }]);
-    });
-  });
-
-  describe("rehydrated listed apps", () => {
-    it("renders rehydrated listed app from full cached templates (no fake disconnected template)", () => {
-      const cachedTemplate = partial<BackendTemplate>({
-        id: "custom-cached-template",
-        name: "Cached Listed Template",
-        description: "Hydrated from localStorage",
-        prompts: ["cached prompt"],
-        tabs: {},
-      });
-
-      const mockSource = partial<Source>({
-        id: "source-listed",
-        uuid: "source-listed",
-        name: "Listed Backend",
-        url: "https://listed.example.com",
-        status: "rehydrated",
-        templates: [cachedTemplate],
-        widgets: { foo: { name: "Foo" } },
-        vendorApp: {
-          uuid: "vendor-uuid",
-          name: "Vendor App",
-          shortDescription: "Vendor desc",
-          prompts: [],
-        },
-      });
-
-      stubStoreState(useShallowBackendConnectorStore, { apiSources: [mockSource] });
-
-      vi.mocked(getTemplateWidgetsMetadata).mockReturnValue(
-        partial({
-          widgets: [{ name: "Foo" }],
-          totalWidgets: 1,
-        }),
-      );
-
-      const { result } = renderHook(() => useAllTemplates(), { wrapper });
-
-      expect(result.current).toHaveLength(1);
-      const tpl = result.current[0];
-      expect(tpl.type).toBe("listed");
-      expect(tpl.id).toBe("listed-vendor-uuid");
-      expect(tpl.name).toBe("Vendor App");
-      expect(tpl.description).toBe(cachedTemplate.description);
-      expect(tpl.prompts).toEqual(["cached prompt"]);
     });
   });
 });

@@ -21,10 +21,13 @@ ADMIN = ["--admin-email", "admin@mail.test"]
 
 @pytest.fixture
 def config(tmp_path, monkeypatch):
-    """Points the script's seed config and ``user_create.json`` at files of its own."""
+    """Points the script's seed config, ``user_create.json`` and Ines's environment file at files of
+    its own, so that no test writes into the checkout."""
     path = tmp_path / "cfgs" / "config.toml"
     monkeypatch.setattr(local_env, "CONFIG", path)
     monkeypatch.setattr(local_env, "USER_CREATE", tmp_path / "user_create.json")
+    monkeypatch.setattr(local_env, "INES_EXAMPLE", tmp_path / "ines" / ".env.example")
+    monkeypatch.setattr(local_env, "INES_TARGET", tmp_path / "ines" / ".env")
     return path
 
 
@@ -252,3 +255,89 @@ def test_config_only_and_sqlite_leave_user_create_alone(tmp_path, monkeypatch, c
     assert local_env.main([*ADMIN, "--sqlite", "--force"]) == 0
 
     assert not (tmp_path / "user_create.json").exists()
+
+
+INES_EXAMPLE = """\
+DEFAULT_MODEL=
+NVIDIA_API_KEY=
+# What Ines uses to report usage and to sign the scope of a chat
+INES_METERING_TOKEN=
+INES_SCOPE_SECRET=
+"""
+
+
+@pytest.fixture
+def ines(tmp_path, monkeypatch, config):
+    """A checkout with an ``ines/`` directory and the example environment of the API."""
+    example = tmp_path / ".env.example"
+    example.write_text(EXAMPLE)
+    monkeypatch.setattr(local_env, "EXAMPLE", example)
+    monkeypatch.setattr(local_env, "TARGET", tmp_path / ".env")
+    (tmp_path / "ines").mkdir()
+    (tmp_path / "ines" / ".env.example").write_text(INES_EXAMPLE)
+    return tmp_path / "ines" / ".env"
+
+
+def test_the_metering_token_is_what_the_api_expects(ines):
+    values = local_env.ines_secrets("a-secret")
+
+    payload = jwt.decode(values["INES_METERING_TOKEN"], "a-secret", algorithms=["HS256"])
+
+    assert payload == {"sub": "metering"}
+    assert len(values["INES_SCOPE_SECRET"]) >= 16
+
+
+def test_main_creates_ines_environment_from_her_example(ines, tmp_path):
+    assert local_env.main(ADMIN) == 0
+
+    written = parse(ines.read_text())
+    jwt_secret = parse((tmp_path / ".env").read_text())["JWT_SECRET"]
+    jwt.decode(written["INES_METERING_TOKEN"], jwt_secret, algorithms=["HS256"])
+    assert len(written["INES_SCOPE_SECRET"]) >= 16
+    assert written["DEFAULT_MODEL"] == ""
+    assert ines.stat().st_mode & 0o077 == 0
+
+
+def test_main_keeps_what_a_user_set_in_ines_environment(ines, tmp_path):
+    ines.write_text("DEFAULT_MODEL=provider:model\nNVIDIA_API_KEY=a-key\nINES_SCOPE_SECRET=keep-this-secret\n")
+
+    assert local_env.main([*ADMIN, "--force"]) == 0
+
+    written = parse(ines.read_text())
+    assert written["DEFAULT_MODEL"] == "provider:model"
+    assert written["NVIDIA_API_KEY"] == "a-key"
+    assert written["INES_SCOPE_SECRET"] == "keep-this-secret"
+    jwt_secret = parse((tmp_path / ".env").read_text())["JWT_SECRET"]
+    jwt.decode(written["INES_METERING_TOKEN"], jwt_secret, algorithms=["HS256"])
+
+
+def test_a_new_jwt_secret_means_a_new_metering_token(ines):
+    assert local_env.main(ADMIN) == 0
+    first = parse(ines.read_text())["INES_METERING_TOKEN"]
+
+    assert local_env.main([*ADMIN, "--force"]) == 0
+
+    assert parse(ines.read_text())["INES_METERING_TOKEN"] != first
+
+
+def test_main_without_ines_writes_nothing_for_her(tmp_path, monkeypatch, config):
+    example = tmp_path / ".env.example"
+    example.write_text(EXAMPLE)
+    monkeypatch.setattr(local_env, "EXAMPLE", example)
+    monkeypatch.setattr(local_env, "TARGET", tmp_path / ".env")
+
+    assert local_env.main(ADMIN) == 0
+
+    assert not (tmp_path / "ines").exists()
+
+
+def test_config_only_and_sqlite_leave_ines_alone(ines, tmp_path, monkeypatch):
+    sqlite_example = tmp_path / ".env.sqlite.example"
+    sqlite_example.write_text("JWT_SECRET=\nWORKSPACE_AUTH_TOKEN=\n")
+    monkeypatch.setattr(local_env, "SQLITE_EXAMPLE", sqlite_example)
+    monkeypatch.setattr(local_env, "SQLITE_TARGET", tmp_path / ".env.sqlite")
+
+    assert local_env.main([*ADMIN, "--config-only"]) == 0
+    assert local_env.main([*ADMIN, "--sqlite", "--force"]) == 0
+
+    assert not ines.exists()

@@ -44,10 +44,6 @@ vi.mock("~/lib/constants", async (importOriginal) => {
   };
 });
 
-vi.mock("~/lib/appSubmissionFlag", () => ({
-  useCanSubmitApp: () => false,
-}));
-
 vi.mock("~/components/ds/utils", () => ({
   cn: (...args: unknown[]) =>
     args
@@ -161,7 +157,7 @@ describe("AppCard isBackendLoading", () => {
     mockSource = makeSource("rehydrated");
     const { container } = render(
       <MemoryRouter>
-        <AppCard template={makeTemplate("listed")} setDeleteConfirm={vi.fn()} />
+        <AppCard template={makeTemplate("user")} setDeleteConfirm={vi.fn()} />
       </MemoryRouter>,
     );
     const card = getCardEl(container);
@@ -173,7 +169,7 @@ describe("AppCard isBackendLoading", () => {
     mockSource = makeSource("success");
     const { container } = render(
       <MemoryRouter>
-        <AppCard template={makeTemplate("listed")} setDeleteConfirm={vi.fn()} />
+        <AppCard template={makeTemplate("user")} setDeleteConfirm={vi.fn()} />
       </MemoryRouter>,
     );
     const card = getCardEl(container);
@@ -184,7 +180,7 @@ describe("AppCard isBackendLoading", () => {
     mockSource = makeSource("pending");
     const { container } = render(
       <MemoryRouter>
-        <AppCard template={makeTemplate("listed")} setDeleteConfirm={vi.fn()} />
+        <AppCard template={makeTemplate("user")} setDeleteConfirm={vi.fn()} />
       </MemoryRouter>,
     );
     const card = getCardEl(container);
@@ -192,22 +188,11 @@ describe("AppCard isBackendLoading", () => {
     expect(card.className).toContain("cursor-wait");
   });
 
-  it("does NOT show loading opacity for non-listed template with no status (hydrated user app)", () => {
+  it("does NOT show loading opacity for template with no status (hydrated user app)", () => {
     mockSource = makeSource(undefined);
     const { container } = render(
       <MemoryRouter>
         <AppCard template={makeTemplate("user")} setDeleteConfirm={vi.fn()} />
-      </MemoryRouter>,
-    );
-    const card = getCardEl(container);
-    expect(card.className).not.toContain("opacity-50");
-  });
-
-  it("does NOT show loading opacity for listed template with undefined status (was buggy before)", () => {
-    mockSource = makeSource(undefined);
-    const { container } = render(
-      <MemoryRouter>
-        <AppCard template={makeTemplate("listed")} setDeleteConfirm={vi.fn()} />
       </MemoryRouter>,
     );
     const card = getCardEl(container);

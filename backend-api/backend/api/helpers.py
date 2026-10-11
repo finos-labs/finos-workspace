@@ -172,7 +172,6 @@ def get_app_user_query(email: str):
             User.billing_active,
             User.two_factor_auth,
             User.is_superuser,
-            User.can_submit_marketplace,
             Entity.uuid.label("entity_uuid"),
             Entity.require_authenticator,
             Entity.name,

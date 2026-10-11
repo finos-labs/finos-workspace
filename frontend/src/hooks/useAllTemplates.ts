@@ -9,12 +9,9 @@ import {
   createCustomTemplateTab,
   getUntouchedAppTabInfo,
 } from "~/lib/utils/createTemplates";
-import { showNotification } from "~/lib/utils/toast";
-import { areTruthy } from "~/lib/utils/values";
-import type { ListedAppMcpServer } from "~/types/listedApps";
+import type { AppMcpServer } from "~/types/appMcpServer";
 import { useShallowAppStore } from "../lib/state/app";
 import {
-  type BackendTemplate,
   getTemplateWidgetsMetadata,
   type Source,
   useShallowBackendConnectorStore,
@@ -22,7 +19,7 @@ import {
 import { type SharedUser, useShallowUserAppsStore } from "../lib/state/userApps";
 import { useSharedTemplates } from "./useSharedTemplates";
 
-export type TemplateType = "user" | "shared" | "listed" | "generated";
+export type TemplateType = "user" | "shared" | "generated";
 
 export interface UnifiedTemplate {
   id: string;
@@ -35,7 +32,7 @@ export interface UnifiedTemplate {
     | { name: string; description?: string; count?: number }[];
   totalWidgets?: number;
   prompts: string[];
-  mcpServers?: ListedAppMcpServer[];
+  mcpServers?: AppMcpServer[];
   img?: string;
   img_dark?: string;
   img_light?: string;
@@ -43,13 +40,11 @@ export interface UnifiedTemplate {
   onOpen?: () => void;
   onDelete?: () => Promise<void>;
   onAfterDelete?: () => void;
-  onRate?: () => void;
   source?: Source;
   isShared?: boolean;
   createdBy?: string;
   creator?: boolean;
   sharedWith?: SharedUser[];
-  vendorName?: string;
 }
 
 export function useAllTemplates(isLoadingApiSources = false) {
@@ -80,73 +75,28 @@ export function useAllTemplates(isLoadingApiSources = false) {
     );
 
     const userTemplates = apiSources
-      .filter(
-        (source) =>
-          (source.templates && source.templates.length > 0) || source.vendorApp,
-      )
-      .flatMap((source) => {
-        const vendorApp = source.vendorApp;
-        const appUuid = vendorApp?.uuid;
-        const isListedApp = Boolean(appUuid);
-
-        const templates = [...(source.templates || [])];
-        const listedAppDisconnected =
-          isListedApp && !areTruthy(source.templates, source.widgets);
-        if (listedAppDisconnected) {
-          // If this is a Listed App without templates, create a template from the vendorApp data
-          const listedAppTemplate: BackendTemplate = {
-            name: vendorApp?.name || source.name,
-            description: vendorApp?.shortDescription || "",
-            prompts: vendorApp?.prompts || [],
-            mcpServers: vendorApp?.mcpServers,
-            img: vendorApp?.thumbnail,
-            img_dark: vendorApp?.thumbnailDark,
-            img_light: vendorApp?.thumbnailLight,
-            tabs: {},
-          };
-          templates.push(listedAppTemplate);
-        }
-
-        return templates.map((template) => {
+      .filter((source) => source.templates && source.templates.length > 0)
+      .flatMap((source) =>
+        (source.templates || []).map((template) => {
           const { widgets, totalWidgets } = getTemplateWidgetsMetadata(
             template,
             source,
           );
 
           return {
-            id: isListedApp ? `listed-${appUuid}` : template.id,
-            name: isListedApp ? vendorApp?.name || source.name : template.name,
+            id: template.id,
+            name: template.name,
             description: template.description,
-            type: isListedApp ? "listed" : "user",
-            vendorName: isListedApp ? vendorApp?.vendorName : undefined,
+            type: "user",
             totalWidgets,
             widgets,
             prompts: template.prompts || [],
-            mcpServers: template.mcpServers || vendorApp?.mcpServers,
+            mcpServers: template.mcpServers,
             selected_agent: template.selected_agent,
-            img: vendorApp?.thumbnail || template.img,
-            img_dark: vendorApp?.thumbnailDark || template.img_dark,
-            img_light: vendorApp?.thumbnailLight || template.img_light,
+            img: template.img,
+            img_dark: template.img_dark,
+            img_light: template.img_light,
             onClick: () => {
-              if (listedAppDisconnected) {
-                console.warn("[ListedApp] App not connected debug:", {
-                  appName: vendorApp?.name,
-                  appBackendUrl: source.url,
-                  existingSource: source,
-                  allApiSources: apiSources.map((s) => ({
-                    name: s.name,
-                    url: s.url,
-                    templatesLength: s.templates?.length,
-                  })),
-                });
-                return showNotification({
-                  message: "App not connected",
-                  description:
-                    "Re-enter your API key in the Apps Marketplace to connect this app.",
-                  toastType: "warning",
-                });
-              }
-
               createCustomTemplateTab({
                 addTab,
                 navigate,
@@ -159,8 +109,8 @@ export function useAllTemplates(isLoadingApiSources = false) {
             source,
             isShared: sharedTemplateIds.has(template.id),
           } as UnifiedTemplate;
-        });
-      });
+        }),
+      );
 
     const userTemplateIds = new Set(userTemplates.map((template) => template.id));
 

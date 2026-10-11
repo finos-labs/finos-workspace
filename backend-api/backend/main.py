@@ -26,8 +26,6 @@ from routers import (
     admin,
     auth,
     entity,
-    marketplace,
-    marketplace_developer,
     run_tasks,
     sdk,
 )
@@ -38,6 +36,7 @@ from routers.app import (
     index,
     user_apps,
     workspace_mcp,
+    workspace_tools,
 )
 from routers.app.workspace_mcp.asgi import create_workspace_mcp_asgi_app
 from utilities import config
@@ -107,10 +106,9 @@ routers = [
     dash.router,
     user_apps.router,
     workspace_mcp.router,
+    workspace_tools.router,
     entity.router,
     admin.router,
-    marketplace.router,
-    marketplace_developer.router,
     run_tasks.router,
 ]
 
@@ -305,8 +303,3 @@ app.openapi = custom_openapi  # type: ignore
 
 
 app.add_middleware(GZipMiddleware)
-
-# Added last so it is the outermost middleware: it answers the CORS preflight
-# for the public marketplace paths before the restrictive global CORSMiddleware
-# can reject a non-allowlisted origin (e.g. localhost).
-app.add_middleware(auth_helpers.PublicCORSMiddleware)

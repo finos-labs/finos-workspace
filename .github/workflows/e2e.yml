@@ -6,6 +6,7 @@ on:
     paths:
       - "frontend/**"
       - "backend-api/backend/**"
+      - "ines/**"
       - "docker-compose.yml"
       - ".github/workflows/e2e.yml"
 

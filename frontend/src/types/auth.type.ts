@@ -40,8 +40,7 @@ export interface DashSyncT {
   shared?: Record<string, SharedItem>;
   entity_shared?: Record<string, SharedItem>;
   entity_theme_settings: EntityThemeSettings;
-  feature_entitlements?: Omit<FeatureFlags, "can_submit_marketplace">;
-  can_submit_marketplace?: boolean;
+  feature_entitlements?: FeatureFlags;
   usage?: Usage;
   copilot_chats?: Chat[];
   questions_history?: string[];
@@ -67,8 +66,7 @@ export type Detail = { status: number; detail: string };
 export interface LoginResponse {
   is_first_login: boolean;
   custom_copilots: CustomCopilot[];
-  feature_entitlements: Omit<FeatureFlags, "can_submit_marketplace">;
-  can_submit_marketplace: boolean;
+  feature_entitlements: FeatureFlags;
   usage: Usage;
   uuid: string;
   email: string;

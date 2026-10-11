@@ -1,7 +1,7 @@
 ---
 title: Minimal Backend (Generic HTTP)
 uri: workspace://examples/generic-http/minimal
-use_when: You want a framework-neutral picture of what an Workspace backend looks like, before committing to a specific language.
+use_when: You want a framework-neutral picture of what a Workspace backend looks like, before committing to a specific language.
 language_specific: false
 related:
   - workspace://contract/backend

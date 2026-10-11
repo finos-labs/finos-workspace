@@ -1,0 +1,72 @@
+name: Ines checks
+
+on:
+  pull_request:
+    paths:
+      - "ines/**"
+      - ".github/workflows/ines-checks.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# Ines is the built-in agent: the agent (ines/src) and the MCP server it uses for its tools (ines/mcp-server).
+# The tests need no keys and no network. The evals (ines/evals) call a real model and are run by hand.
+jobs:
+  typecheck:
+    name: Types
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ines
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ines
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun run test
+
+  # A critical advisory in what the agent ships fails the check. Lower ones are reviewed by hand: most are in
+  # code that is not reached (the Daytona SDK's own telemetry packages, for one).
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ines
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun audit --prod --audit-level=critical
+
+  image:
+    name: Images build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the agent and the MCP server images
+        working-directory: ines
+        run: |
+          docker build --target ines -t ines:check .
+          docker build --target ines-mcp -t ines-mcp:check .

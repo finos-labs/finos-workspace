@@ -1,9 +1,12 @@
-# The whole Workspace: database, cache, API, background worker, web app and admin panel.
+# The whole Workspace: database, cache, API, background worker, web app, admin panel, Ines, the
+# Copilot's agent, and the MCP server with the tools she uses.
 #
 #   (cd backend-api/backend && python3 -m scripts.create_local_env --admin-email <your-email>)
+#   # ...which also writes ines/.env: set DEFAULT_MODEL and that provider's key in it
 #   docker compose up --build
 #
-# Web app http://localhost:3000, admin panel http://localhost:3001, API http://localhost:8000.
+# Web app http://localhost:3000, admin panel http://localhost:3001, API http://localhost:8000,
+# Ines http://localhost:7777.
 # The first start creates the organization and the administrator listed in
 # backend-api/backend/scripts/cfgs/config.toml.
 #
@@ -17,6 +20,8 @@ x-backend: &backend
     DB_HOST: mysql
     REDIS_HOST: redis
     FOLDER_STORAGE_PATH: /opt/code/local_storage
+    # Every user has the agent's tools, enabled. The web app reaches them through the API's MCP proxy.
+    DEFAULT_MCP_SERVERS: '[{"id": "ines-tools", "name": "Ines Tools", "url": "http://ines-mcp:8787/mcp"}]'
   networks:
     - workspace
 
@@ -142,11 +147,90 @@ services:
     restart: unless-stopped
     environment:
       BACKEND_URL: ${API_URL:-http://localhost:8000}
-      AI_API_URL: ${AI_API_URL:-}
+      # The browser talks to Ines directly, so this is her address as the browser sees it.
+      AI_API_URL: ${AI_API_URL:-http://localhost:7777}
+      # The Copilot panel stays hidden until this is true.
+      AI_COPILOT_ENABLED: ${AI_COPILOT_ENABLED:-true}
+      # HTML widgets and Copilot artifacts run their scripts only when this is true. Iframe widgets always
+      # run theirs, in a sandboxed frame.
+      ALLOW_HTML_JS_EXECUTION: ${ALLOW_HTML_JS_EXECUTION:-false}
     ports:
       - "3000:8080"
     depends_on:
       - api
+      - ines
+    networks:
+      - workspace
+
+  # The Copilot's agent. The web app sends chat requests to it. ines/.env (create_local_env writes it) holds
+  # its secrets and its model: DEFAULT_MODEL and that provider's key (see ines/.env.example); without
+  # a model it answers that none is configured, and without its secrets it does not start.
+  ines:
+    build:
+      context: ./ines
+      target: ines
+    image: workspace-ines:local
+    restart: unless-stopped
+    # What a bug, a hostile file or a model that was talked into something can do is kept to this container:
+    # no writable root, no capabilities, no new privileges, and bounded memory and processes. The work done
+    # for one request in a child process (SQL, spreadsheets, documents, pages) has its own limits inside.
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${INES_MEM_LIMIT:-4g}
+    pids_limit: 1024
+    env_file:
+      - ./ines/.env
+    environment:
+      # Every caller signs in with the API, which owns the users, their roles and usage limits. The
+      # metering token and the scope secret are in ines/.env (create_local_env writes them).
+      WORKSPACE_API_URL: http://api:8000
+      # The address the browser uses for the API: the Workspace's links to its users' files are on it.
+      WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
+      # The origin of the web app: the browser calls Ines directly. This is a developer stack, so without
+      # WEB_URL every origin is allowed (the web app answers on localhost and on 127.0.0.1, and the API
+      # allows all origins here too). Set WEB_URL to the web app's address for a deployment.
+      INES_CORS_ORIGINS: ${WEB_URL:-*}
+    ports:
+      - "7777:7777"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - workspace
+
+  # The tools Ines uses: web search, page fetch, document search and more, each registered when what
+  # it needs is set (see ines/.env.example). Every user has this server by default
+  # (DEFAULT_MCP_SERVERS above). The web app calls it through the API's MCP proxy, so it publishes no port.
+  ines-mcp:
+    build:
+      context: ./ines
+      target: ines-mcp
+    image: workspace-ines-mcp:local
+    restart: unless-stopped
+    # Kept to this container as the agent's is (see above): the tools read the files and pages of strangers.
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${INES_MEM_LIMIT:-4g}
+    pids_limit: 1024
+    env_file:
+      - ./ines/.env
+    environment:
+      # The document search fetches the files of the Workspace itself, from the links the Workspace gives
+      # out: they are on the address the browser uses, and are fetched from the API's address here.
+      WORKSPACE_API_URL: http://api:8000
+      WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
     networks:
       - workspace
 

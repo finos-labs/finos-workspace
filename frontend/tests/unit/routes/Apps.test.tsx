@@ -128,12 +128,6 @@ vi.mock("~/components/LayoutAuth/Skeleton/SettingsLayout", () => ({
   ),
 }));
 
-vi.mock("~/components/Apps/ListedAppsTab", () => ({
-  ListedAppsTab: () => (
-    <div data-testid="listed-apps-tab">Apps Marketplace Content</div>
-  ),
-}));
-
 vi.mock("~/components/General/SearchResultsNotFound", () => ({
   default: ({
     children,

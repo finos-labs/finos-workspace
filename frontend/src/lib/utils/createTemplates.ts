@@ -383,33 +383,6 @@ export async function createCustomTemplateTab({
   return id;
 }
 
-export async function openListedApp({
-  source,
-  items,
-  addTab,
-  navigate,
-  currentDashboard,
-}: {
-  source: Source | null | undefined;
-  items: Items | null;
-  addTab: AppState["addTab"];
-  navigate?: NavigateFunction;
-  currentDashboard?: string;
-}) {
-  if (!source) return false;
-  const template = source.templates?.[0];
-  if (!template) return false;
-
-  return await createCustomTemplateTab({
-    addTab,
-    navigate,
-    items,
-    template,
-    source,
-    currentDashboard,
-  });
-}
-
 export function extractCustomTemplateInfo(templateId = "") {
   const groups = templateId.match(
     /custom-(?<sourceId>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-(?<templateName>.+)/,

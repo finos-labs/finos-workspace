@@ -19,7 +19,6 @@ vi.mock("~/components/AI/hooks/useStreaming", () => ({
   useShallowStreamingStore: vi.fn(),
   StreamingStatus: {
     READY: { streamingStatus: "streaming-ready" },
-    STARTED: { streamingStatus: "streaming-started" },
     STOPPED: { streamingStatus: "streaming-stopped" },
   },
   useLocalCommand: vi.fn(() => ""),

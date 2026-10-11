@@ -7,6 +7,11 @@ the first start creates (``scripts.init_users`` reads it); the administrator's p
 random unless you pass one. ``user_create.json`` starts empty: compose mounts it into the
 containers, and without a file on the host Docker would put a directory there.
 
+Ines, the Copilot's agent, takes two secrets from ``ines/.env``: the token with which she reports
+usage to the API (signed with the API's ``JWT_SECRET``) and the secret that signs the chat scopes she
+hands to the tools. They are written there, into the file that holds her model settings, which is
+created from ``ines/.env.example`` when it is missing and otherwise only has these two set.
+
     python -m scripts.create_local_env --admin-email <your-email>   # refuses to overwrite
     python -m scripts.create_local_env --admin-email <your-email> --force
     python -m scripts.create_local_env --admin-email <your-email> --config-only   # only the seed config
@@ -32,6 +37,9 @@ SQLITE_EXAMPLE = ENVS / ".env.sqlite.example"
 SQLITE_TARGET = ENVS / ".env.sqlite"
 CONFIG = Path(__file__).resolve().parent / "cfgs" / "config.toml"
 USER_CREATE = Path(__file__).resolve().parent.parent / "user_create.json"
+INES = Path(__file__).resolve().parents[3] / "ines"
+INES_EXAMPLE = INES / ".env.example"
+INES_TARGET = INES / ".env"
 
 WEB_URL = "http://localhost:3000"
 API_URL = "http://localhost:8000"
@@ -115,6 +123,28 @@ password = {json.dumps(password)}
 """
 
 
+def ines_secrets(jwt_secret: str, current_scope_secret: str = "") -> dict[str, str]:
+    """What Ines needs that comes from the API's secrets: the token with which she reports usage
+    (what ``scripts.create_metering_token`` prints) and a secret of her own, which stays as it was
+    when she has one."""
+    return {
+        "INES_METERING_TOKEN": jwt_hs256({"sub": "metering"}, jwt_secret),
+        "INES_SCOPE_SECRET": current_scope_secret or secrets.token_urlsafe(32),
+    }
+
+
+def write_ines_env(jwt_secret: str) -> Path | None:
+    """Set her two secrets in ``ines/.env``, which starts from ``ines/.env.example`` and is otherwise
+    left as it is (it holds her model settings). None when this checkout has no ``ines/``."""
+    if not INES_EXAMPLE.exists():
+        return None
+    text = INES_TARGET.read_text() if INES_TARGET.exists() else INES_EXAMPLE.read_text()
+    current = dict(line.partition("=")[::2] for line in text.splitlines()).get("INES_SCOPE_SECRET", "")
+    INES_TARGET.write_text(render(text, ines_secrets(jwt_secret, current.strip())))
+    INES_TARGET.chmod(0o600)
+    return INES_TARGET
+
+
 def render(example: str, values: dict[str, str]) -> str:
     """The example with each of ``values`` set; keys that are not in it are appended."""
     lines = example.splitlines()
@@ -173,10 +203,13 @@ def main(argv: list[str] | None = None) -> int:
     CONFIG.chmod(0o600)
     if not (args.config_only or args.sqlite) and not USER_CREATE.exists():
         USER_CREATE.write_text("{}\n")
+    ines = None if args.config_only or args.sqlite else write_ines_env(generated["jwt_secret"])
     sys.stdout.write(
         f"Wrote {CONFIG if args.config_only else f'{target} and {CONFIG}'}\n"
         f"Sign in as {args.admin_email}; the password is in {CONFIG.name}.\n"
     )
+    if ines:
+        sys.stdout.write(f"Set Ines's secrets in {ines}; set DEFAULT_MODEL and that provider's key there too.\n")
     return 0
 
 

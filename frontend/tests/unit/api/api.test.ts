@@ -88,22 +88,6 @@ describe("apiClient", () => {
     expect(requestConfig.headers.Authorization).toBe("Bearer test-token");
   });
 
-  it("strips an explicitly empty per-request Authorization header (opts out of auth)", async () => {
-    // Real AxiosHeaders (the axios module is mocked above): in production the
-    // interceptor receives the merged per-request headers as an AxiosHeaders
-    // instance. `headers: { authorization: "" }` must result in NO header on
-    // the wire — an empty Authorization header would still trigger a CORS
-    // preflight, which the marketplace host rejects.
-    const { AxiosHeaders } = await vi.importActual<typeof import("axios")>("axios");
-    const requestConfig = await requestHandlers()[0].fulfilled({
-      headers: new AxiosHeaders({ authorization: "" }),
-      method: "get",
-      url: "/marketplace/apps",
-    } as InternalAxiosRequestConfig);
-
-    expect(requestConfig.headers.has("Authorization")).toBe(false);
-  });
-
   it("should log request details in development mode", async () => {
     import.meta.env.DEV = true;
     await requestHandlers()[0].fulfilled({

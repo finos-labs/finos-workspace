@@ -601,13 +601,9 @@ export async function loginSuccess(data: LoginResponse) {
   useAuthStore.getState().login(data);
   const user = data.user;
 
-  useFeatureFlagsStore.getState().setFeatureFlagsAndUsage(
-    {
-      ...data.feature_entitlements,
-      can_submit_marketplace: data.can_submit_marketplace,
-    },
-    data.usage,
-  );
+  useFeatureFlagsStore
+    .getState()
+    .setFeatureFlagsAndUsage(data.feature_entitlements, data.usage);
 
   if (data.entity_theme_settings)
     useEntityThemeStore.getState().updateThemeSettings(data.entity_theme_settings);

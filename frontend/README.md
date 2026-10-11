@@ -20,7 +20,7 @@ src/
 ├── api/                    # Calls to the backend
 ├── components/             # React components by domain
 │   ├── AI/                 # The Copilot
-│   ├── Admin*/             # Administration: users, roles, entities, marketplace
+│   ├── Admin*/             # Administration: users, roles, entities
 │   ├── DataConnectors/     # Connections to data backends
 │   ├── ds/                 # Design system (atoms, molecules, dialogs)
 │   ├── General/            # Shared UI
@@ -55,7 +55,7 @@ The app starts on `http://localhost:1420` and talks to the backend named by `VIT
 
 ## Configuration
 
-Every setting, and its default, is defined in `src/lib/runtimeConfigSchema.ts`; `.env` lists them as `VITE_*` variables with a comment each. Settings that name a deployment's own services (the AI service, a remote marketplace, the documentation site, a support address, the identity providers' client IDs) are empty by default, and the parts of the interface that depend on one are hidden until it is set.
+Every setting, and its default, is defined in `src/lib/runtimeConfigSchema.ts`; `.env` lists them as `VITE_*` variables with a comment each. Settings that name a deployment's own services (the AI service, the documentation site, a support address, the identity providers' client IDs) are empty by default, and the parts of the interface that depend on one are hidden until it is set.
 
 ```bash
 bun run build            # builds with the settings from .env baked in

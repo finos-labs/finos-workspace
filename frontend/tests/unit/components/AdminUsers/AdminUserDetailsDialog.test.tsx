@@ -60,6 +60,13 @@ vi.mock("@tanstack/react-query", async () => {
   };
 });
 
+// What the Copilot may do on the web has its own tests (AdminUserWebAccess.test.tsx).
+vi.mock("~/components/AdminUsers/AdminUserWebAccess", () => ({
+  default: ({ userUuid }: { userUuid: string }) => (
+    <div data-testid="web-access-stub">{userUuid}</div>
+  ),
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),

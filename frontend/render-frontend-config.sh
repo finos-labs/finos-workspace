@@ -16,7 +16,6 @@ me=$(basename "$0")
 FIELDS='
 urls backend BACKEND_URL string
 urls ai AI_API_URL string
-urls marketplace MARKETPLACE_URL string
 authentication allowEmailLogin AUTHENTICATION_ALLOW_EMAIL_LOGIN bool
 authentication identityProviders AUTHENTICATION_IDENTITY_PROVIDERS list
 authentication sendMicrosoftIdToken AUTHENTICATION_SEND_MICROSOFT_IDTOKEN bool
@@ -44,7 +43,6 @@ ui showChangelog UI_SHOW_CHANGELOG bool
 ui showCopilotSwitcher UI_SHOW_COPILOT_SWITCHER bool
 ui showRemoveFromOrg UI_SHOW_REMOVE_FROM_ORG bool
 ui defaultTheme UI_DEFAULT_THEME theme
-ui showMarketplace UI_SHOW_MARKETPLACE bool
 data allowHtmlJsExecution ALLOW_HTML_JS_EXECUTION bool
 links docsUrl DOCS_URL string
 contact supportEmail SUPPORT_EMAIL string

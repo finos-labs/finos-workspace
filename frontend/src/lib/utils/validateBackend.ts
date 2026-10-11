@@ -55,7 +55,6 @@ export async function validateBackendEndpoints(
   widgets: WidgetsType,
   backendUrl: URL,
   headers: Record<string, string>,
-  isVendorApp = false,
   signal?: AbortSignal,
 ) {
   const failedEndpoints: string[] = [];
@@ -86,8 +85,6 @@ export async function validateBackendEndpoints(
 
       failedEndpoints.push(`Widget: ${widgetId} - ${errorString}`);
     }
-
-    if (isVendorApp) break; // for vendor apps, only validate the first widget to avoid excessive requests
   }
 
   return failedEndpoints;
@@ -349,12 +346,10 @@ export const errorResponse = {
   templateErrorMessage: null,
   templateWarningMessage: null,
   unrecognizedKeysMessage: null,
-  isPlatform: null,
 } satisfies ValidateBackend;
 
 const DEFAULT_OPTIONS = {
   validateAllWidgets: false,
-  vendorAppCache: false,
   agents: true,
   apps: true,
   extraHeaders: {} as Record<string, string>,
@@ -417,45 +412,6 @@ export async function validateBackend(
   options?: GetApiSourceWidgetsOptions | boolean,
 ) {
   options = parseOptions(options);
-  const isVendorApp = !!(source.vendorAppUuid || source.vendorApp);
-
-  if (isVendorApp && !options.validateAllWidgets && options.vendorAppCache) {
-    const { widgetsJsonCache = {}, appsJsonCache = [] } = source.vendorApp || {};
-    const { supported: vendorWidgets, unsupported: unsupportedWidgets } =
-      partitionSupportedWidgets(widgetsJsonCache);
-    const widgetItems = validateWidgetItems(vendorWidgets);
-    const widgetValidationError = widgetErrorMessage(widgetItems);
-    const unrecognizedReports = [] as UnrecognizedKeysReport[];
-    for (const t of appsJsonCache) normalizeBackendTemplate(t);
-
-    if (!widgetItems.fileError) {
-      const report = detectUnrecognizedKeys(
-        "[widgets.json]",
-        Object.values(widgetItems.valid),
-        KNOWN_WIDGET_KEYS,
-      );
-      if (report) unrecognizedReports.push(report);
-    }
-
-    const templateItems = partitionTemplates(appsJsonCache);
-    const jsonErrors = validateWidgetsAppsJson({
-      invalidTemplates: templateItems.invalid,
-      widgetValidationError,
-      unrecognizedReports,
-    });
-
-    return {
-      widgets: widgetValidationError ? {} : vendorWidgets, // return empty widgets if validation failed
-      validWidgets: widgetItems.valid,
-      unsupportedWidgets,
-      ...jsonErrors,
-      templates: jsonErrors.templateErrors.length > 0 ? [] : appsJsonCache, // return empty templates if validation failed
-      validTemplates: templateItems.valid,
-      invalidItems: [...widgetItems.invalid, ...templateItems.invalid],
-      fatalErrorMessage: widgetItems.fileError,
-      agents: [], // vendor apps don't have agents
-    } as ValidateBackend;
-  }
 
   // 60s timeout when you connect - in the future we can do something else here -
   // let user set it or turn off for on prem?
@@ -508,7 +464,6 @@ export async function validateBackend(
   const rawWidgets = (await widgetsRes.json()) as WidgetsType;
   const { supported: widgets, unsupported: unsupportedWidgets } =
     partitionSupportedWidgets(rawWidgets);
-  const isPlatform = widgetsRes.headers.get("X-Backend-Type") === "Platform";
   const widgetItems = validateWidgetItems(widgets);
   const widgetValidationError = widgetErrorMessage(widgetItems);
 
@@ -528,7 +483,6 @@ export async function validateBackend(
       widgets,
       backendUrl,
       headers,
-      isVendorApp,
       reqInit.signal,
     );
   }
@@ -624,7 +578,6 @@ export async function validateBackend(
     fatalErrorMessage:
       [widgetItems.fileError, ...failedEndpoints].filter(Boolean).join("\n\n") || null,
     agents,
-    isPlatform,
   } as ValidateBackend;
 }
 
@@ -661,12 +614,8 @@ export async function validateSource(
   );
 
   const tabWidgets = {} as { [appName: string]: { [tabId: string]: string[] } };
-  const vendorApp = source.vendorApp;
-  const isSingleTemplate = loadedTemplates.length === 1;
 
   for (const t of loadedTemplates) {
-    if (vendorApp && isSingleTemplate) t.name = vendorApp.name;
-
     for (const tab of Object.values(t.tabs || {})) {
       for (const layout of tab.layout || []) {
         const widgetId = layout.i;
@@ -744,15 +693,7 @@ export async function getApiSourceWidgets(
   return validated;
 }
 
-function handleVendorAppSource(source: Source) {
-  const vendorApp = source.vendorApp;
-  source.vendorAppUuid = vendorApp?.uuid;
-
-  if (vendorApp && source.status === "error") {
-    source.widgets = vendorApp?.widgetsJsonCache || {};
-    source.templates = vendorApp?.appsJsonCache || [];
-  }
-
+function withApiKeyFlag(source: Source) {
   source.hasApiKey = source.endpointHeaders?.some(
     (h) => h.key.toLowerCase() === "authorization" && h.value.startsWith("Bearer "),
   );
@@ -775,7 +716,7 @@ export function processWorkerResults(
           : result.errorMessage;
         if (fatalErrorMessage) {
           apiSource.status = "error";
-          acc.apiSources.push(handleVendorAppSource({ ...apiSource }));
+          acc.apiSources.push(withApiKeyFlag({ ...apiSource }));
           return acc;
         }
 
@@ -802,9 +743,7 @@ export function processWorkerResults(
           });
         }
 
-        const isPublishedMarketplaceApp =
-          apiSource.vendorApp && !apiSource.vendorApp?.isDevelopment;
-        if (!partial && unrecognizedKeysMessage && !isPublishedMarketplaceApp) {
+        if (!partial && unrecognizedKeysMessage) {
           acc.unrecognizedKeysMessages.push({
             source: { name: apiSource.name, id: apiSource.id },
             reports: unrecognizedKeysMessage,
@@ -836,7 +775,7 @@ export function processWorkerResults(
         return acc;
       } catch (err) {
         console.error(err instanceof Error ? err.message : err);
-        acc.apiSources.push(handleVendorAppSource({ ...apiSource }));
+        acc.apiSources.push(withApiKeyFlag({ ...apiSource }));
         return acc;
       }
     },

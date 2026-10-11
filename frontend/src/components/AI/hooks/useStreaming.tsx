@@ -16,7 +16,7 @@ export type HandleSubmitParams = {
 };
 
 export interface StreamingData {
-  streamingStatus: "streaming-ready" | "streaming-started" | "streaming-stopped";
+  streamingStatus: "streaming-ready" | "streaming-stopped";
   isDragging: boolean;
   loading: boolean;
   files: CopilotFile[];
@@ -62,7 +62,6 @@ export type DispatchActionType = Dispatch<DispatchAction<StreamingData>>;
 
 export const StreamingStatus = {
   READY: { streamingStatus: "streaming-ready" },
-  STARTED: { streamingStatus: "streaming-started" },
   STOPPED: { streamingStatus: "streaming-stopped" },
 } as { [key: string]: { streamingStatus: StreamingState["streamingStatus"] } };
 

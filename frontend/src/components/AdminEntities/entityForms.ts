@@ -74,6 +74,8 @@ export const entitlementFormSchema = z.object({
   excel_add_in: z.boolean(),
   data_add_ons_redistribution: z.boolean(),
   allow_custom_backends: z.boolean(),
+  search_web: z.boolean(),
+  fetch_from_web: z.boolean(),
   bundle_name: z.enum(["Default", "Equity Research", "On-Premise"]),
 });
 
@@ -141,7 +143,7 @@ export function entityBody(values: EntityFormValues): EntityBody {
   };
 }
 
-/** The entitlements as the form holds them; what the entity has not been given reads as off. */
+/** The entitlements as the form holds them; what the entity has not been given reads as off (the web tools and custom backends: as on). */
 export function entitlementFormDefaults(
   entitlement: EntityEntitlement | undefined,
 ): EntitlementFormValues {
@@ -158,6 +160,8 @@ export function entitlementFormDefaults(
     excel_add_in: entitlement?.excel_add_in ?? false,
     data_add_ons_redistribution: entitlement?.data_add_ons_redistribution ?? false,
     allow_custom_backends: entitlement?.allow_custom_backends ?? true,
+    search_web: entitlement?.search_web ?? true,
+    fetch_from_web: entitlement?.fetch_from_web ?? true,
     bundle_name: entitlement?.bundle_name ?? "Default",
   };
 }
@@ -178,6 +182,8 @@ export function entitlementBody(values: EntitlementFormValues): EntityEntitlemen
     excel_add_in: values.excel_add_in,
     data_add_ons_redistribution: values.data_add_ons_redistribution,
     allow_custom_backends: values.allow_custom_backends,
+    search_web: values.search_web,
+    fetch_from_web: values.fetch_from_web,
     number_copilot_calls_day: Number(values.number_copilot_calls_day),
     number_copilot_tokens_day:
       values.number_copilot_tokens_day === ""
