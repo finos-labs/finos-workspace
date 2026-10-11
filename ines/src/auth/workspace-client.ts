@@ -99,6 +99,34 @@ export function createWorkspaceClient(options: WorkspaceClientOptions): Workspac
 
   const rejected = (status: number) => status === 401 || status === 403;
 
+  /**
+   * Whether a call that carried the metering token was turned down because of that token rather than
+   * the user's.
+   *
+   * The calls that count a question send two credentials: the user's session token and
+   * INES_METERING_TOKEN, which is the agent's own and which the API checks separately
+   * (`api/auth_helpers.check_metering`). It answers 403 when that token is missing, wrong or run out.
+   * Read as "the user may not do this", that becomes "Not signed in" in the chat for every user at
+   * once, with nothing in the logs — an agent whose own credential is wrong looks exactly like a user
+   * whose session is. So it is read as what it is: a deployment that cannot count what it serves.
+   */
+  function meteringRefused(res: { status: number; json: unknown }): boolean {
+    if (res.status !== 403) return false;
+    const detail = (res.json as { detail?: unknown } | null)?.detail;
+    return typeof detail === "string" && detail.toLowerCase().includes("metering token");
+  }
+
+  /** Says, once per call, what an operator has to change. */
+  function reportMeteringRefused(endpoint: string, res: { json: unknown }): void {
+    const detail = (res.json as { detail?: unknown } | null)?.detail;
+    logger.error(
+      "The Workspace API refused this agent's metering token on {endpoint}: {detail}. " +
+        "Until it is replaced no question can be answered. Mint a new one with " +
+        "`python -m scripts.create_metering_token` in backend-api/backend and set INES_METERING_TOKEN to it.",
+      { endpoint, detail: typeof detail === "string" ? detail : "no reason given" },
+    );
+  }
+
   return {
     async getUser(token) {
       const res = await call("user", "/app/user", token, { method: "GET" }, (s) =>
@@ -132,6 +160,10 @@ export function createWorkspaceClient(options: WorkspaceClientOptions): Workspac
           message: typeof message === "string" ? message : "You have reached your usage limit.",
         };
       }
+      if (meteringRefused(res)) {
+        reportMeteringRefused("usage", res);
+        return { ok: false, reason: "unavailable" };
+      }
       return { ok: false, reason: rejected(res.status) ? "rejected" : "unavailable" };
     },
 
@@ -144,6 +176,10 @@ export function createWorkspaceClient(options: WorkspaceClientOptions): Workspac
         { method: "PUT", body: { add_copilot_tokens: Math.round(tokens) }, metering: true },
         (s) => (s === 200 ? "ok" : rejected(s) ? "rejected" : "error"),
       );
+      if (res && meteringRefused(res)) {
+        reportMeteringRefused("usage", res);
+        return;
+      }
       if (!res || res.status !== 200) {
         logger.warn("Could not report {tokens} tokens of usage (status {status})", { tokens, status: res?.status ?? "none" });
       }
@@ -166,6 +202,10 @@ export function createWorkspaceClient(options: WorkspaceClientOptions): Workspac
         (s) => (s === 200 ? "ok" : rejected(s) ? "rejected" : "error"),
       );
       if (!res) return { ok: false, reason: "unavailable" };
+      if (meteringRefused(res)) {
+        reportMeteringRefused("authorize", res);
+        return { ok: false, reason: "unavailable" };
+      }
       if (rejected(res.status)) return { ok: false, reason: "rejected" };
       const body = res.json as {
         allowed?: unknown;

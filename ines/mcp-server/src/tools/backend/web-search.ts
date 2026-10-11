@@ -32,7 +32,8 @@ function resultUrl(href: string): string | null {
   } catch {
     return null;
   }
-  const target = link.hostname.endsWith("duckduckgo.com") ? link.searchParams.get("uddg") : link.href;
+  const isDuckDuckGoHost = link.hostname === "duckduckgo.com" || link.hostname.endsWith(".duckduckgo.com");
+  const target = isDuckDuckGoHost ? link.searchParams.get("uddg") : link.href;
   if (!target) return null;
   try {
     const { protocol } = new URL(target);

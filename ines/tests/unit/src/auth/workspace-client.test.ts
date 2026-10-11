@@ -183,3 +183,51 @@ describe("ready", () => {
     expect(await clientAnswering(() => json({}, 503)).client.ready()).toBe(false);
   });
 });
+
+/**
+ * The calls that count a question carry two credentials: the user's session token and the agent's
+ * own INES_METERING_TOKEN. The API checks them separately and answers 403 when the metering one is
+ * missing, wrong or run out — which is the agent being misconfigured, not the user being unknown.
+ * Read as the latter it becomes "Not signed in" in the chat, for every user at once, with nothing in
+ * the logs to say why (which is what an expired metering token did).
+ */
+describe("a metering token the Workspace API will not take", () => {
+  // A fresh Response per call: a body can only be read once, so a shared one would be empty the
+  // second time and the test would be measuring that instead.
+  const expired = () =>
+    json(
+      { detail: "The metering token has expired. Mint a new one with `python -m scripts.create_metering_token`." },
+      403,
+    );
+
+  it("is not reported as the user not being signed in, when a question is counted", async () => {
+    const { client } = clientAnswering(expired);
+    expect(await client.recordQuery("user-token")).toEqual({ ok: false, reason: "unavailable" });
+  });
+
+  it("is not reported as the user not being signed in, when the roles are checked", async () => {
+    const { client } = clientAnswering(expired);
+    expect(await client.authorize("user-token", { agentId: "ines", tools: [] })).toEqual({
+      ok: false,
+      reason: "unavailable",
+    });
+  });
+
+  // A 403 that is about the user keeps meaning what it meant: their roles do not allow this.
+  it("is still the user when the refusal is not about the metering token", async () => {
+    const { client } = clientAnswering(() => json({ detail: "You do not have access to the tool `web_search`" }, 403));
+    expect(await client.authorize("user-token", { agentId: "ines", tools: [] })).toEqual({
+      ok: false,
+      reason: "rejected",
+    });
+    expect(await client.recordQuery("user-token")).toEqual({ ok: false, reason: "rejected" });
+  });
+
+  it("is still the user when the session token itself is refused", async () => {
+    const { client } = clientAnswering(() => json({ detail: "Could not validate credentials" }, 401));
+    expect(await client.authorize("user-token", { agentId: "ines", tools: [] })).toEqual({
+      ok: false,
+      reason: "rejected",
+    });
+  });
+});

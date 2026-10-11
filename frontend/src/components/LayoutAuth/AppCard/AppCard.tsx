@@ -384,134 +384,132 @@ const AppCard = memo<AppCardProps>((props) => {
   const whiteLabel = getConfig().whiteLabel;
 
   return (
-    <>
-      <div
-        role="button"
-        onClick={isBackendLoading ? undefined : template.onClick}
-        className={cn(
-          `bg-general-bg-primary border border-general-border-secondary
+    <div
+      role="button"
+      onClick={isBackendLoading ? undefined : template.onClick}
+      className={cn(
+        `bg-general-bg-primary border border-general-border-secondary
           hover:border-general-border-primary rounded p-2.5 flex flex-col cursor-pointer`,
-          className,
-          { "opacity-50 cursor-wait": isBackendLoading },
-        )}
+        className,
+        { "opacity-50 cursor-wait": isBackendLoading },
+      )}
+    >
+      <div
+        className="flex items-center justify-between cursor-auto!"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div
-          className="flex items-center justify-between cursor-auto!"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="min-w-0">{tagElement}</div>
-          {!hideActions && (
-            <div className="flex items-center gap-0.5 shrink-0">
-              {dropDownItems.length > 0 && <AppCardDropdown items={dropDownItems} />}
-            </div>
-          )}
-        </div>
-        <div className="mt-2.5 w-full rounded overflow-hidden bg-surface-card aspect-[5/3] border border-general-border-secondary">
-          <AuthenticatedAvatar
-            src={imgSrc}
-            source={template.source}
-            alt={template.name}
-            className="w-full h-full object-cover text-ds-text-body text-center text-2xs"
-            fallback={
-              <div className="w-full h-full flex items-center justify-center">
-                {whiteLabel.leftSidebarLogo ? (
-                  <img
-                    className="w-[100px] object-contain opacity-50"
-                    src={
-                      theme === "dark" && whiteLabel.leftSidebarLogoDark
-                        ? whiteLabel.leftSidebarLogoDark
-                        : whiteLabel.leftSidebarLogo
-                    }
-                    alt={whiteLabel.name || "Workspace"}
-                  />
-                ) : (
-                  <Icon
-                    id="material-symbols-image-outline"
-                    className="w-16 h-12 text-general-label-disabled"
-                  />
-                )}
-              </div>
-            }
-          />
-        </div>
-        <div className="mt-2.5 flex flex-col gap-2">
-          <div className="text-sm font-bold text-ds-text-heading truncate">
-            {template.name}
+        <div className="min-w-0">{tagElement}</div>
+        {!hideActions && (
+          <div className="flex items-center gap-0.5 shrink-0">
+            {dropDownItems.length > 0 && <AppCardDropdown items={dropDownItems} />}
           </div>
-          {state.isDescriptionTruncated ? (
-            <Tooltip
-              message={template.description}
-              position="top"
-              className="max-w-[300px]"
-            >
-              {descriptionElement}
-            </Tooltip>
-          ) : (
-            descriptionElement
-          )}
-        </div>
-        <div
-          className="flex items-center justify-between gap-2 mt-auto pt-4 cursor-auto!"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {bottomLeft ?? (
-            <div className="flex items-center">
-              {bottomItems.map((item, i) => (
-                <Fragment key={i}>
-                  {i > 0 && <div className="mx-2 h-3.5 w-px bg-surface-divider" />}
-                  {item}
-                </Fragment>
-              ))}
-            </div>
-          )}
-          {bottomRight ?? (
-            <div className="flex items-center gap-0.5">
-              {isPersonalApp && template.onDelete && template.creator && (
-                <FeatureLock isLocked={isSaveAppLocked} tooltipPosition="top">
-                  <Tooltip message="Share app" position="top">
-                    <Button
-                      variant="secondary"
-                      size="xs"
-                      icon
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (isSaveAppLocked) return;
-                        setShareUserAppsPopupId(template.id);
-                      }}
-                    >
-                      <Icon id="share-07" className="size-3.5 text-ds-text-body" />
-                    </Button>
-                  </Tooltip>
-                </FeatureLock>
+        )}
+      </div>
+      <div className="mt-2.5 w-full rounded overflow-hidden bg-surface-card aspect-[5/3] border border-general-border-secondary">
+        <AuthenticatedAvatar
+          src={imgSrc}
+          source={template.source}
+          alt={template.name}
+          className="w-full h-full object-cover text-ds-text-body text-center text-2xs"
+          fallback={
+            <div className="w-full h-full flex items-center justify-center">
+              {whiteLabel.leftSidebarLogo ? (
+                <img
+                  className="w-[100px] object-contain opacity-50"
+                  src={
+                    theme === "dark" && whiteLabel.leftSidebarLogoDark
+                      ? whiteLabel.leftSidebarLogoDark
+                      : whiteLabel.leftSidebarLogo
+                  }
+                  alt={whiteLabel.name || "Workspace"}
+                />
+              ) : (
+                <Icon
+                  id="material-symbols-image-outline"
+                  className="w-16 h-12 text-general-label-disabled"
+                />
               )}
-              {isBackendApp && template.type !== "shared" && (
-                <Tooltip
-                  message="Refresh backend associated with this app"
-                  position="top"
-                >
+            </div>
+          }
+        />
+      </div>
+      <div className="mt-2.5 flex flex-col gap-2">
+        <div className="text-sm font-bold text-ds-text-heading truncate">
+          {template.name}
+        </div>
+        {state.isDescriptionTruncated ? (
+          <Tooltip
+            message={template.description}
+            position="top"
+            className="max-w-[300px]"
+          >
+            {descriptionElement}
+          </Tooltip>
+        ) : (
+          descriptionElement
+        )}
+      </div>
+      <div
+        className="flex items-center justify-between gap-2 mt-auto pt-4 cursor-auto!"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {bottomLeft ?? (
+          <div className="flex items-center">
+            {bottomItems.map((item, i) => (
+              <Fragment key={i}>
+                {i > 0 && <div className="mx-2 h-3.5 w-px bg-surface-divider" />}
+                {item}
+              </Fragment>
+            ))}
+          </div>
+        )}
+        {bottomRight ?? (
+          <div className="flex items-center gap-0.5">
+            {isPersonalApp && template.onDelete && template.creator && (
+              <FeatureLock isLocked={isSaveAppLocked} tooltipPosition="top">
+                <Tooltip message="Share app" position="top">
                   <Button
                     variant="secondary"
                     size="xs"
                     icon
-                    loading={isBackendLoading}
-                    disabled={isBackendLoading}
-                    onClick={handleRefreshBackend}
-                    loadingChildren={null}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isSaveAppLocked) return;
+                      setShareUserAppsPopupId(template.id);
+                    }}
                   >
-                    <Icon
-                      id="refresh-icon-ds"
-                      className={cn("size-3.5 text-ds-text-body", {
-                        "animate-spin": isBackendLoading,
-                      })}
-                    />
+                    <Icon id="share-07" className="size-3.5 text-ds-text-body" />
                   </Button>
                 </Tooltip>
-              )}
-            </div>
-          )}
-        </div>
+              </FeatureLock>
+            )}
+            {isBackendApp && template.type !== "shared" && (
+              <Tooltip
+                message="Refresh backend associated with this app"
+                position="top"
+              >
+                <Button
+                  variant="secondary"
+                  size="xs"
+                  icon
+                  loading={isBackendLoading}
+                  disabled={isBackendLoading}
+                  onClick={handleRefreshBackend}
+                  loadingChildren={null}
+                >
+                  <Icon
+                    id="refresh-icon-ds"
+                    className={cn("size-3.5 text-ds-text-body", {
+                      "animate-spin": isBackendLoading,
+                    })}
+                  />
+                </Button>
+              </Tooltip>
+            )}
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 });
 
