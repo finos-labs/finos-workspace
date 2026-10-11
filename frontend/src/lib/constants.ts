@@ -547,15 +547,30 @@ export const butterflyTypes = [
   "Obsidian Daggerwing",
 ];
 
-// For srcDoc= iframes (HtmlViewer, Artifact) — would inherit parent origin.
-// On-prem with allowHtmlJsExecution enabled intentionally treats uploaded and
-// fetched .html file widgets as trusted executable content. allow-same-origin
-// is required so HTML widget API calls send the correct Origin header
-// (not `null`).
+// For srcDoc= iframes holding a file a user put there (HtmlViewer) — the document inherits this
+// app's origin. `allow-scripts` together with `allow-same-origin` means the sandbox holds nothing
+// back: the document runs script as this app, with its storage and its session. On-prem with
+// allowHtmlJsExecution enabled intentionally treats uploaded and fetched .html file widgets as
+// trusted executable content, and allow-same-origin is required so their API calls send the correct
+// Origin header (not `null`). Use this ONLY for content the deployment has decided to trust —
+// never for content a model wrote (see ARTIFACT_SANDBOX_ATTRIBUTES).
 export const IFRAME_SRCDOC_SANDBOX_ATTRIBUTES =
   "allow-scripts allow-forms allow-downloads allow-popups allow-same-origin";
+
+// For srcDoc= iframes holding what a model wrote (Artifact.tsx). A model's output is shaped by
+// whatever it has read — a fetched page, an uploaded document, a widget's rows — so it is not
+// content the deployment has decided to trust, and it does not get this app's origin. Without
+// `allow-same-origin` the document is on an opaque origin: script in it can still run and still
+// post its height to the parent, but it cannot reach this app's storage, session or DOM.
+// No `allow-forms` either: the artifact's own CSP sets `form-action 'none'`.
+export const ARTIFACT_SANDBOX_ATTRIBUTES =
+  "allow-scripts allow-downloads allow-popups";
+
+// For an artifact whose scripts are off: nothing can run, so sharing the origin costs nothing and
+// lets the app measure the document's height by reading it directly.
+export const ARTIFACT_SANDBOX_ATTRIBUTES_NO_SCRIPTS = "allow-same-origin";
 
 // For src= iframes (Iframe.tsx) — external URL origin, NOT parent origin.
 // allow-same-origin lets external site use its own cookies/storage.
 // SAFE: a different origin cannot access this app's localStorage.
-export const IFRAME_SANDBOX_ATTRIBUTES = `${IFRAME_SRCDOC_SANDBOX_ATTRIBUTES} allow-same-origin`;
+export const IFRAME_SANDBOX_ATTRIBUTES = IFRAME_SRCDOC_SANDBOX_ATTRIBUTES;

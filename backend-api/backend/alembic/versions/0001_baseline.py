@@ -391,7 +391,6 @@ def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
         sa.Column("totp_active", sa.Boolean(), nullable=False),
         sa.Column("two_factor_auth", sa.Boolean(), nullable=False),
         sa.Column("temporary_password", sa.Boolean(), nullable=True),
-        sa.Column("auth_token", sa.Text(), nullable=True),
         sa.Column(
             "display_settings",
             api.models.model_helpers.UserDisplaySettingsType(),

@@ -51,8 +51,6 @@ class User(Base, UUIDMixin, DateMixin):
     totp_active: Mapped[bool] = mapped_column(Boolean, default=False)
     two_factor_auth: Mapped[bool] = mapped_column(Boolean, default=False)
     temporary_password: Mapped[None | bool] = mapped_column(Boolean, default=False)
-    # This is the currently active json token
-    auth_token: Mapped[None | str] = mapped_column(Text)
 
     logins = relationship("Login", back_populates="user")
 

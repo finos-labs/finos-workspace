@@ -12,6 +12,7 @@ import { getLogger, withContext } from "../lib/logger";
 import { metrics } from "../lib/metrics";
 import type { ServerConfig } from "../lib/config";
 import type { Limits } from "./limits";
+import type { Store } from "../lib/store";
 import type { WorkspaceClient } from "./workspace-client";
 
 const audit = getLogger(["audit"]);
@@ -27,6 +28,7 @@ export interface Services {
   /** Null without workspace auth: nobody to ask, and nothing to count. */
   workspace: WorkspaceClient | null;
   limits: Limits;
+  store: Store;
 }
 
 export interface AppEnv {
@@ -36,12 +38,12 @@ export interface AppEnv {
 export const ANONYMOUS: Principal = { userId: "anonymous", token: "" };
 
 export interface AuthCache {
-  get(token: string): string | null;
-  set(token: string, userId: string): void;
+  get(token: string): Promise<string | null>;
+  set(token: string, userId: string): Promise<void>;
   /** Whether the Workspace turned this token down a moment ago. */
-  rejected(token: string): boolean;
+  rejected(token: string): Promise<boolean>;
   /** Remembers that the Workspace turned this token down. */
-  reject(token: string): void;
+  reject(token: string): Promise<void>;
 }
 
 /** How long a token the Workspace turned down is not asked about again. */
@@ -53,53 +55,31 @@ const MAX_TOKEN_CHARS = 4096;
  * Remembers who a token belongs to for a few seconds, so that a chat's tool round trips do not each ask the API,
  * and which tokens were turned down, so that a client that sends the same wrong token over and over does not
  * make the agent ask the API each time.
+ *
+ * It lives in the store (src/lib/store.ts), so with Redis one replica's answer saves every other replica
+ * the same question. The token itself is never a key: what is stored is its SHA-256, so a dump of the
+ * store is not a list of session tokens.
  */
-export function createAuthCache(ttlSeconds: number, now: () => number = Date.now, max = 5000): AuthCache {
-  const entries = new Map<string, { userId: string; expires: number }>();
-  const turnedDown = new Map<string, number>(); // token key -> when it is asked about again
+export function createAuthCache(store: Store, ttlSeconds: number): AuthCache {
   const keyOf = (token: string) => createHash("sha256").update(token).digest("base64url");
+  const signedIn = (token: string) => `auth:${keyOf(token)}`;
+  const turnedDown = (token: string) => `auth-no:${keyOf(token)}`;
   return {
-    rejected(token) {
+    async rejected(token) {
       if (ttlSeconds <= 0) return false;
-      const key = keyOf(token);
-      const until = turnedDown.get(key);
-      if (until === undefined) return false;
-      if (until <= now()) {
-        turnedDown.delete(key);
-        return false;
-      }
-      return true;
+      return (await store.get(turnedDown(token))) !== null;
     },
-    reject(token) {
+    async reject(token) {
       if (ttlSeconds <= 0) return;
-      if (turnedDown.size >= max) {
-        const cutoff = now();
-        for (const [key, until] of turnedDown) if (until <= cutoff) turnedDown.delete(key);
-        const oldest = turnedDown.keys().next();
-        if (turnedDown.size >= max && !oldest.done) turnedDown.delete(oldest.value);
-      }
-      turnedDown.set(keyOf(token), now() + Math.min(ttlSeconds, REJECTED_SECONDS) * 1000);
+      await store.set(turnedDown(token), "1", Math.min(ttlSeconds, REJECTED_SECONDS));
     },
-    get(token) {
+    async get(token) {
       if (ttlSeconds <= 0) return null;
-      const key = keyOf(token);
-      const entry = entries.get(key);
-      if (!entry) return null;
-      if (entry.expires <= now()) {
-        entries.delete(key);
-        return null;
-      }
-      return entry.userId;
+      return store.get(signedIn(token));
     },
-    set(token, userId) {
+    async set(token, userId) {
       if (ttlSeconds <= 0) return;
-      if (entries.size >= max) {
-        const cutoff = now();
-        for (const [key, entry] of entries) if (entry.expires <= cutoff) entries.delete(key);
-        const oldest = entries.keys().next();
-        if (entries.size >= max && !oldest.done) entries.delete(oldest.value);
-      }
-      entries.set(keyOf(token), { userId, expires: now() + ttlSeconds * 1000 });
+      await store.set(signedIn(token), userId, ttlSeconds);
     },
   };
 }
@@ -176,12 +156,12 @@ export function authMiddleware(services: Services, cache: AuthCache): Middleware
       return c.json({ error: "Not signed in" }, 401, { "WWW-Authenticate": "Bearer" });
     }
 
-    if (token.length > MAX_TOKEN_CHARS || cache.rejected(token)) {
+    if (token.length > MAX_TOKEN_CHARS || (await cache.rejected(token))) {
       metrics.authCache.inc({ result: "rejected" });
       return c.json({ error: "Not signed in" }, 401, { "WWW-Authenticate": "Bearer" });
     }
 
-    let userId = cache.get(token);
+    let userId = await cache.get(token);
     metrics.authCache.inc({ result: userId ? "hit" : "miss" });
     if (!userId) {
       const user = await signIn(token);
@@ -195,11 +175,11 @@ export function authMiddleware(services: Services, cache: AuthCache): Middleware
           return c.json({ error: "The Workspace API is not available" }, 503);
         }
         audit.info("Refused a session token the Workspace API does not accept");
-        cache.reject(token);
+        await cache.reject(token);
         return c.json({ error: "Not signed in" }, 401, { "WWW-Authenticate": "Bearer" });
       }
       userId = user.value.userId;
-      cache.set(token, userId);
+      await cache.set(token, userId);
     }
 
     c.set("principal", { userId, token });

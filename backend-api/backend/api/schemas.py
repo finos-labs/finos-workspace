@@ -31,7 +31,9 @@ if TYPE_CHECKING:
 StoredFileT = TypeVar("StoredFileT", bound="StoredFile")
 
 main_config = ConfigDict(extra="forbid", from_attributes=True)
-source_type = Literal["sdk", "app", "oauth-app", "excel"]
+# Where a login came from. "sdk" is gone with the SDK token endpoints; this is what a client
+# may send, not what is read back, so logins already recorded as "sdk" are unaffected.
+source_type = Literal["app", "oauth-app", "excel"]
 MetaDataWidgetType = Literal[
     "iframe",
     "copilot_table",
@@ -267,18 +269,6 @@ class LogCreate(BaseModel, extra="ignore"):  # type: ignore[call-arg]
 
 class Email(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     message: str
-
-
-class TokenGet(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    token: str
-
-
-class TokenReturn(TokenGet, extra="ignore"):  # type: ignore[call-arg]
-    expiration: datetime
-
-
-class Expiration(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    days: int
 
 
 class UUIDReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]

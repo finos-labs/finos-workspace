@@ -27,7 +27,6 @@ from routers import (
     auth,
     entity,
     run_tasks,
-    sdk,
 )
 from routers.app import (
     dash,
@@ -99,7 +98,6 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # ty
 
 routers = [
     auth.router,
-    sdk.router,
     index.router,
     data_connectors.router,
     file_storage.router,

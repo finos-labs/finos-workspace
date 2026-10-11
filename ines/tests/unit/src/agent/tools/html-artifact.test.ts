@@ -6,10 +6,12 @@ import {
 import type { CopilotArtifact, SSEEvent } from "../../../../../src/protocol/types";
 
 describe("runHtmlArtifact", () => {
-  it("steers Mermaid-style diagrams away from HTML artifacts", () => {
+  // This server has no diagram tool of its own, so the description names none: a description that
+  // named one would have the model call a tool that is not there.
+  it("sends diagrams to a diagram tool only when one is listed", () => {
     expect(htmlArtifactDescription).toContain("flowcharts");
-    expect(htmlArtifactDescription).toContain("Mermaid-style diagrams");
-    expect(htmlArtifactDescription).toContain("mermaid_diagram");
+    expect(htmlArtifactDescription).toContain("if one is listed");
+    expect(htmlArtifactDescription).not.toContain("mermaid_diagram");
   });
 
   it("emits a single html artifact onto the queue", () => {

@@ -20,6 +20,7 @@ mock.module("../../../src/lib/providers", () => ({
 const { createApp } = await import("../../../src/app");
 const { loadConfig } = await import("../../../src/lib/config");
 const { createLimits } = await import("../../../src/auth/limits");
+const { createLocalStore } = await import("../../../src/lib/store");
 const { verifyScope, signScope, signUrl, verifyUrl } = await import("../../../src/lib/scope");
 const { readSse } = await import("../../helpers/sse-reader");
 const { clearAllModuleState } = await import("../../helpers/clear-state");
@@ -94,10 +95,13 @@ function workspaceStub(): Stub {
 
 function appFor(stub: Stub, extraEnv: Record<string, string> = {}) {
   const config = loadConfig({ ...ENV, ...extraEnv });
+  const store = createLocalStore();
   return createApp({
     config,
     workspace: stub.workspace,
+    store,
     limits: createLimits({
+      store,
       maxConcurrent: config.maxConcurrentQueries,
       maxTotal: config.maxTotalQueries,
       maxRequestsPerTurn: config.maxTurnRequests,
@@ -626,7 +630,8 @@ describe("cross-origin requests", () => {
 describe("without users (INES_AUTH=none)", () => {
   it("needs no token and counts nothing", async () => {
     const config = loadConfig({ INES_AUTH: "none", DEFAULT_MODEL: "test-provider:test-model" });
-    const app = createApp({ config, workspace: null, limits: createLimits({ maxConcurrent: 4 }) });
+    const store = createLocalStore();
+    const app = createApp({ config, workspace: null, store, limits: createLimits({ store, maxConcurrent: 4 }) });
     const res = await ask(app, { token: null });
     expect(res.status).toBe(200);
     expect(chatText(await readSse(res))).toBe("ok from mock");
@@ -634,7 +639,8 @@ describe("without users (INES_AUTH=none)", () => {
 
   it("files a chat under its own id, as there is no user to file it under", async () => {
     const config = loadConfig({ INES_AUTH: "none", DEFAULT_MODEL: "test-provider:test-model" });
-    const app = createApp({ config, workspace: null, limits: createLimits({ maxConcurrent: 4 }) });
+    const store = createLocalStore();
+    const app = createApp({ config, workspace: null, store, limits: createLimits({ store, maxConcurrent: 4 }) });
     currentModel = makeMockLlm(llmCallsTool("Ines_Tools_execute_code", { code: "print(1)" }));
     const params = functionCall(await readSse(await ask(app, { token: null, chat: "only-chat" })))!.input_arguments.parameters;
     expect(params["x-ines-conversation-id"]).toBe("only-chat");

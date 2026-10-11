@@ -1,6 +1,10 @@
 import { describe, it, expect, afterEach, mock } from "bun:test";
 import { logicalUrl } from "../../helpers/logical-url";
-import server from "../../../mcp-server/src/server";
+// This is about answering several clients at once, with fetch_webpage as the vehicle. A server with
+// no users fetches any address (see lib/url-check.ts), which keeps the subject of the test the
+// concurrency and not the guards.
+process.env.INES_AUTH = "none";
+const { default: server } = await import("../../../mcp-server/src/server");
 
 const realFetch = globalThis.fetch;
 

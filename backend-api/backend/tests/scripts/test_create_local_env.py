@@ -1,4 +1,5 @@
 import re
+import time
 import tomllib
 
 import jwt
@@ -281,10 +282,28 @@ def ines(tmp_path, monkeypatch, config):
 def test_the_metering_token_is_what_the_api_expects(ines):
     values = local_env.ines_secrets("a-secret")
 
-    payload = jwt.decode(values["INES_METERING_TOKEN"], "a-secret", algorithms=["HS256"])
+    # The API requires an expiry and checks it (api.auth_helpers.check_metering), so decoding
+    # the way it does is what says the token this script writes is one the API will take.
+    payload = jwt.decode(
+        values["INES_METERING_TOKEN"],
+        "a-secret",
+        algorithms=["HS256"],
+        options={"require": ["exp"]},
+    )
 
-    assert payload == {"sub": "metering"}
+    assert payload["sub"] == "metering"
+    assert payload["exp"] - payload["iat"] == local_env.METERING_TOKEN_DAYS * 24 * 60 * 60
     assert len(values["INES_SCOPE_SECRET"]) >= 16
+
+
+def test_the_metering_token_runs_out(ines):
+    """A token that never ran out could only be withdrawn by changing JWT_SECRET, which signs
+    out every user at the same time."""
+    long_ago = time.time() - local_env.METERING_TOKEN_DAYS * 24 * 60 * 60 - 60
+    stale = local_env.metering_token("a-secret", now=long_ago)
+
+    with pytest.raises(jwt.ExpiredSignatureError):
+        jwt.decode(stale, "a-secret", algorithms=["HS256"])
 
 
 def test_main_creates_ines_environment_from_her_example(ines, tmp_path):
@@ -294,7 +313,7 @@ def test_main_creates_ines_environment_from_her_example(ines, tmp_path):
     jwt_secret = parse((tmp_path / ".env").read_text())["JWT_SECRET"]
     jwt.decode(written["INES_METERING_TOKEN"], jwt_secret, algorithms=["HS256"])
     assert len(written["INES_SCOPE_SECRET"]) >= 16
-    assert written["DEFAULT_MODEL"] == ""
+    assert not written["DEFAULT_MODEL"]
     assert ines.stat().st_mode & 0o077 == 0
 
 

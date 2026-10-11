@@ -5,7 +5,7 @@ import { honoLogger, withContext } from "./lib/logger";
 import { metrics } from "./lib/metrics";
 import { ANONYMOUS, authMiddleware, createAuthCache, servicesMiddleware, type AppEnv, type Services } from "./auth/middleware";
 import { agentsRouter } from "./routes/agents";
-import { statusRouter } from "./routes/status";
+import { createStatusRouter } from "./routes/status";
 import { queryRouter } from "./routes/query";
 import { generateRouter } from "./routes/generate";
 
@@ -28,7 +28,7 @@ function routeLabel(pattern: string, status: number): string {
 const helperGate: MiddlewareHandler<AppEnv> = async (c, next) => {
   const services = c.get("services");
   const principal = c.get("principal") ?? ANONYMOUS;
-  if (services && !services.limits.helperCall(principal.userId)) {
+  if (services && !(await services.limits.helperCall(principal.userId))) {
     metrics.helperRefused.inc();
     return c.json({ error: "Too many requests. Try again in a minute." }, 429, { "Retry-After": "60" });
   }
@@ -61,7 +61,7 @@ export function createApp(services: Services): Hono<AppEnv> {
   app.use("*", honoLogger);
 
   app.route("/", agentsRouter);
-  app.route("/", statusRouter);
+  app.route("/", createStatusRouter(services.store));
   // Ready when what the agent depends on answers; /status only says that the process is up.
   app.get("/ready", async (c) => {
     if (workspace && !(await workspace.ready())) {
@@ -77,7 +77,7 @@ export function createApp(services: Services): Hono<AppEnv> {
       onError: (c) => c.json({ error: "The request is too large" }, 413),
     }),
     servicesMiddleware(services),
-    authMiddleware(services, createAuthCache(config.auth.mode === "workspace" ? config.auth.cacheSeconds : 0)),
+    authMiddleware(services, createAuthCache(services.store, config.auth.mode === "workspace" ? config.auth.cacheSeconds : 0)),
   );
   // A helper call is counted against the user before its body is read, so that a user who makes too many is
   // turned away at no cost: reading a body takes the whole agent a moment, and a model call is paid for.

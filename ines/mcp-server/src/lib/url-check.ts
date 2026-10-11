@@ -3,13 +3,16 @@
  * carries the user's data out in its address. The agent signs the addresses it can point to in what the
  * model was given (src/agent/known-urls.ts); this tool does not fetch one that lacks the signature.
  *
- * INES_SCOPE_SECRET is shared with the agent. Without it (a deployment without users) every address is
- * fetched, and INES_FETCH_ANY_URL=true opens a deployment that has users to every address as well.
+ * INES_SCOPE_SECRET is shared with the agent. A deployment without users (INES_AUTH=none) has no user
+ * whose data could be carried out, so there every address is fetched; a deployment that has users and
+ * no secret cannot tell a given address from one the model invented, and so fetches none.
+ * INES_FETCH_ANY_URL=true opens a deployment that has users to every address, by name.
  */
 
 import { z } from "zod";
 import { verifyUrl } from "../../../src/lib/scope";
 import { getLogger } from "./logger";
+import { scopeSecretProblem } from "./scope-check";
 
 const logger = getLogger(["mcp", "url-check"]);
 
@@ -24,8 +27,15 @@ export function urlProblem(
   signature: string | undefined,
   secret: string | undefined = process.env.INES_SCOPE_SECRET,
   anyUrl: boolean = process.env.INES_FETCH_ANY_URL === "true",
+  env: Record<string, string | undefined> = process.env,
 ): string | null {
-  if (!secret || anyUrl) return null;
+  if (anyUrl) return null;
+  // No secret: fetch anything only where there are no users to carry anything out of.
+  if (!secret) {
+    if (scopeSecretProblem(env) === null) return null;
+    logger.warn("Refused a fetch: this server has no secret to tell a given address from any other");
+    return "That address was not fetched: this server is not configured to tell which addresses were given in the conversation.";
+  }
   if (signature && verifyUrl(secret, url, signature)) return null;
   logger.warn("Refused a fetch of an address that was not given in the conversation");
   return (

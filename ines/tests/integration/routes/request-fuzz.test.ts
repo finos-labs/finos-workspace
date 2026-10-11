@@ -17,6 +17,8 @@ mock.module("../../../src/lib/providers", () => ({
 const { createApp } = await import("../../../src/app");
 const { loadConfig } = await import("../../../src/lib/config");
 const { createLimits } = await import("../../../src/auth/limits");
+const { createLocalStore } = await import("../../../src/lib/store");
+const store = createLocalStore();
 const { renderMetrics } = await import("../../../src/lib/metrics");
 const { clearAllModuleState } = await import("../../helpers/clear-state");
 import type { WorkspaceClient } from "../../../src/auth/workspace-client";
@@ -49,7 +51,8 @@ const config = loadConfig({
 const app = createApp({
   config,
   workspace,
-  limits: createLimits({ maxConcurrent: 1000, maxInvalidPerMinute: 100_000, maxHelperCallsPerMinute: 100_000 }),
+  store,
+  limits: createLimits({ store, maxConcurrent: 1000, maxInvalidPerMinute: 100_000, maxHelperCallsPerMinute: 100_000 }),
 });
 
 const widget = (i: number) => ({ uuid: `w${i}`, name: `Widget ${i}`, widget_id: `id${i}`, origin: "o", description: "d", params: [], metadata: {} });

@@ -469,7 +469,7 @@ describe("get_widget_data identifier resolution", () => {
     );
 
     expect(spy.calls).toHaveLength(0);
-    expect(getCachedRows("wr-empty-filter-invalidates", [table]).size).toBe(0);
+    expect((await getCachedRows("wr-empty-filter-invalidates", [table])).size).toBe(0);
     const statusMessages = events
       .filter((e) => e.event === "copilotStatusUpdate")
       .map((e) => (e.data as { message?: string }).message);

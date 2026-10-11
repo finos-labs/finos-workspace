@@ -39,7 +39,7 @@ SCOPE_VERSION = 1
 # hashes on *every* write, so a hash round-tripped through the ORM would be
 # double-hashed and the account would be permanently unloggable. The importer
 # sets an unknown random password instead and the Lite admin assigns a real one.
-GLOBAL_REDACT = ("password", "auth_token", "totp_secret")
+GLOBAL_REDACT = ("password", "totp_secret")
 
 
 @dataclass(frozen=True)

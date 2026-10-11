@@ -44,6 +44,7 @@ def superuser_override():
     finally:
         app.dependency_overrides.pop(auth_helpers.get_current_superuser, None)
 
+
 _TEST_USER_UUID = "00000000-0000-0000-0000-000000000001"
 _TEST_SESSION_UUID = "00000000-0000-0000-0000-000000000002"
 _TEST_ENTITY_UUID = "00000000-0000-0000-0000-000000000003"

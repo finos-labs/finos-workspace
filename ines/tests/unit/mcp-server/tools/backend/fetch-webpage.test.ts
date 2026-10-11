@@ -2,9 +2,27 @@ import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 import { fetchWebpageHandler } from "../../../../../mcp-server/src/tools/backend/fetch-webpage";
 import { logicalUrl } from "../../../../helpers/logical-url";
 import { _resetPageStore, getPage } from "../../../../../mcp-server/src/lib/page-store";
-import { signScope } from "../../../../../src/lib/scope";
+import { signScope, signUrl } from "../../../../../src/lib/scope";
 
 const realFetch = globalThis.fetch;
+// A page is held for one chat, so the tool holds it only for a scope the agent signed. The tests run
+// as a deployment with users does: a secret is set, and the chat is signed with it.
+const CHAT = "u1:chat1";
+const SECRET = "0123456789abcdef0123";
+process.env.INES_SCOPE_SECRET = SECRET;
+/** The chat, as the agent hands it to a tool. */
+const scoped = (chat: string = CHAT) => ({
+  "x-ines-conversation-id": chat,
+  "x-ines-scope-sig": signScope(SECRET, chat),
+});
+/** A call as the agent makes it: the address was given in the conversation, and the chat is signed. */
+const call = (url: string, chat: string = CHAT) => ({
+  url,
+  "x-ines-url-sig": signUrl(SECRET, url),
+  ...scoped(chat),
+});
+/** The same, for a tool call that belongs to no chat (nothing is held for it). */
+const callWithoutChat = (url: string) => ({ url, "x-ines-url-sig": signUrl(SECRET, url) });
 
 function mockFetch(impl: (url: string) => Response | Promise<Response>) {
   globalThis.fetch = mock((input: string | URL | Request, init?: RequestInit) => {
@@ -30,7 +48,7 @@ describe("fetchWebpageHandler — happy path", () => {
         { status: 200 },
       ),
     );
-    const res = await fetchWebpageHandler({ url: "https://example.com" });
+    const res = await fetchWebpageHandler(call("https://example.com"));
     expect(res.content).toHaveLength(2);
     expect(res.content[0].text).toContain("Heading");
     expect(res.content[0].text).toContain("Body");
@@ -44,14 +62,14 @@ describe("fetchWebpageHandler — happy path", () => {
 
   it("decodes HTML entities in the title", async () => {
     mockFetch(() => new Response("<html><head><title>A &amp; B</title></head><body>x</body></html>"));
-    const res = await fetchWebpageHandler({ url: "https://example.com" });
+    const res = await fetchWebpageHandler(call("https://example.com"));
     const cit = JSON.parse(res.content[1].text);
     expect(cit.citation.title).toBe("A & B");
   });
 
   it("falls back title to hostname when none present", async () => {
     mockFetch(() => new Response("<html><body>plain</body></html>"));
-    const res = await fetchWebpageHandler({ url: "https://example.com/page" });
+    const res = await fetchWebpageHandler(call("https://example.com/page"));
     const cit = JSON.parse(res.content[1].text);
     expect(cit.citation.title).toBe("example.com");
   });
@@ -59,7 +77,7 @@ describe("fetchWebpageHandler — happy path", () => {
   it("returns an overview of a large page, not the page", async () => {
     const paragraphs = Array.from({ length: 300 }, (_, i) => `<p>Paragraph ${i} says something about the quarter.</p>`).join("");
     mockFetch(() => new Response(`<html><head><title>Big</title></head><body><h1>Report</h1>${paragraphs}</body></html>`));
-    const res = await fetchWebpageHandler({ url: "https://example.com/big-report", "x-ines-conversation-id": "u1:chat1" });
+    const res = await fetchWebpageHandler(call("https://example.com/big-report"));
     const text = res.content[0].text;
     expect(text.length).toBeLessThan(4500);
     expect(text).toContain("Title: Big");
@@ -74,19 +92,19 @@ describe("fetchWebpageHandler — happy path", () => {
   it("holds the page as it was fetched, for the chat that fetched it, under an id that is the same for the same address", async () => {
     const html = "<html><head><title>Held</title></head><body><p>content</p><a href='/x'>x</a></body></html>";
     mockFetch(() => new Response(html));
-    const first = await fetchWebpageHandler({ url: "https://example.com/p", "x-ines-conversation-id": "u1:chat1" });
+    const first = await fetchWebpageHandler(call("https://example.com/p"));
     const id = first.content[0].text.match(/page_id: (p-[0-9a-f]{8})/)?.[1] ?? "";
     expect(id).not.toBe("");
     expect(getPage("u1:chat1", id)).toMatchObject({ title: "Held", source: html, url: "https://example.com/p" });
     expect(getPage("u2:chat9", id)).toBeUndefined();
 
-    const again = await fetchWebpageHandler({ url: "https://example.com/p", "x-ines-conversation-id": "u1:chat1" });
+    const again = await fetchWebpageHandler(call("https://example.com/p"));
     expect(again.content[0].text).toContain(`page_id: ${id}`);
   });
 
   it("holds nothing, and says so, when there is no chat to hold it for", async () => {
     mockFetch(() => new Response("<html><body>" + "<p>word</p>".repeat(2000) + "</body></html>"));
-    const res = await fetchWebpageHandler({ url: "https://example.com/p" });
+    const res = await fetchWebpageHandler(callWithoutChat("https://example.com/p"));
     expect(res.content[0].text).not.toContain("page_id");
     expect(res.content[0].text).toContain("it is not held");
   });
@@ -104,7 +122,7 @@ describe("fetchWebpageHandler — happy path", () => {
       const signed = await fetchWebpageHandler({
         url,
         "x-ines-url-sig": signUrl("0123456789abcdef0123", url),
-        "x-ines-conversation-id": "u1:chat1",
+        ...scoped(),
         "x-ines-scope-sig": signScope("0123456789abcdef0123", "u1:chat1"),
       });
       expect(signed.content[0].text).toContain("page_id");
@@ -116,11 +134,11 @@ describe("fetchWebpageHandler — happy path", () => {
 
   it("reads JSON and plain text as pages, and refuses what is not one", async () => {
     mockFetch(() => new Response('{"rows":[1,2],"total":2}', { headers: { "content-type": "application/json" } }));
-    const json = await fetchWebpageHandler({ url: "https://example.com/data.json" });
+    const json = await fetchWebpageHandler(call("https://example.com/data.json"));
     expect(json.content[0].text).toContain("Embedded JSON: [0] JSON (rows, total)");
 
     mockFetch(() => new Response("%PDF-1.7 ...", { headers: { "content-type": "application/pdf" } }));
-    const pdf = await fetchWebpageHandler({ url: "https://example.com/a.pdf" });
+    const pdf = await fetchWebpageHandler(call("https://example.com/a.pdf"));
     expect(pdf.content).toHaveLength(1);
     expect(pdf.content[0].text).toContain("application/pdf, which is not a web page");
   });
@@ -129,7 +147,7 @@ describe("fetchWebpageHandler — happy path", () => {
 describe("fetchWebpageHandler — failure paths", () => {
   it("returns an explanatory text item on non-2xx response", async () => {
     mockFetch(() => new Response("not found", { status: 404, statusText: "Not Found" }));
-    const res = await fetchWebpageHandler({ url: "https://example.com" });
+    const res = await fetchWebpageHandler(call("https://example.com"));
     expect(res.content).toHaveLength(1);
     expect(res.content[0].text).toContain("Failed to fetch");
     expect(res.content[0].text).toContain("404");
@@ -137,7 +155,7 @@ describe("fetchWebpageHandler — failure paths", () => {
 
   it("returns an error item when fetch throws", async () => {
     globalThis.fetch = mock(() => Promise.reject(new Error("offline"))) as unknown as typeof fetch;
-    const res = await fetchWebpageHandler({ url: "https://example.com" });
+    const res = await fetchWebpageHandler(call("https://example.com"));
     expect(res.content).toHaveLength(1);
     expect(res.content[0].text).toContain("Failed to fetch");
     expect(res.content[0].text).toContain("offline");
@@ -148,11 +166,11 @@ describe("fetchWebpageHandler — turndown isolation", () => {
   it("does not leak `.remove()` state across calls", async () => {
     // Call once with a script tag to verify it's stripped.
     mockFetch(() => new Response("<html><body><p>visible</p><script>secret</script></body></html>"));
-    const a = await fetchWebpageHandler({ url: "https://x" });
+    const a = await fetchWebpageHandler(call("https://x"));
     expect(a.content[0].text).not.toContain("secret");
 
     // Call again — state must remain fresh, scripts still stripped.
-    const b = await fetchWebpageHandler({ url: "https://x" });
+    const b = await fetchWebpageHandler(call("https://x"));
     expect(b.content[0].text).not.toContain("secret");
   });
 });
@@ -172,7 +190,7 @@ describe("fetchWebpageHandler — addresses inside the deployment", () => {
       "http://10.0.0.5/admin",
       "http://[::1]/",
     ]) {
-      const res = await fetchWebpageHandler({ url });
+      const res = await fetchWebpageHandler(call(url));
       expect(res.content).toHaveLength(1);
       expect(res.content[0].text).toContain("Refusing to fetch");
       expect(res.content[0].text).not.toContain("secret");
@@ -186,7 +204,7 @@ describe("fetchWebpageHandler — addresses inside the deployment", () => {
         ? new Response(null, { status: 302, headers: { location: "http://169.254.169.254/latest/meta-data/" } })
         : new Response("<title>secret</title>"),
     );
-    const res = await fetchWebpageHandler({ url: "https://example.com/go" });
+    const res = await fetchWebpageHandler(call("https://example.com/go"));
     expect(res.content[0].text).toContain("Refusing to fetch");
   });
 });
@@ -194,7 +212,7 @@ describe("fetchWebpageHandler — addresses inside the deployment", () => {
 describe("fetchWebpageHandler — a page that is built to cause trouble", () => {
   it("is refused when it is larger than a page is", async () => {
     mockFetch(() => new Response(`<html><body>${"x".repeat(6 * 1024 * 1024)}</body></html>`, { status: 200 }));
-    const res = await fetchWebpageHandler({ url: "https://example.com/big" });
+    const res = await fetchWebpageHandler(call("https://example.com/big"));
     expect(res.content).toHaveLength(1);
     expect(res.content[0].text).toContain("Failed to fetch https://example.com/big");
     expect(res.content[0].text).toContain("larger than");
@@ -204,12 +222,12 @@ describe("fetchWebpageHandler — a page that is built to cause trouble", () => 
     const deep = `<html><body>${"<div>".repeat(100_000)}text${"</div>".repeat(100_000)}</body></html>`;
     mockFetch(() => new Response(deep, { status: 200 }));
     const started = Date.now();
-    const res = await fetchWebpageHandler({ url: "https://example.com/deep" });
+    const res = await fetchWebpageHandler(call("https://example.com/deep"));
     expect(Date.now() - started).toBeLessThan(20_000);
     expect(res.content.length).toBeGreaterThan(0);
 
     mockFetch(() => new Response("<html><head><title>Ok</title></head><body><p>fine</p></body></html>", { status: 200 }));
-    const next = await fetchWebpageHandler({ url: "https://example.com/ok" });
+    const next = await fetchWebpageHandler(call("https://example.com/ok"));
     expect(next.content[0].text).toContain("fine");
   }, 40_000);
 });
@@ -262,7 +280,7 @@ describe("fetchWebpageHandler — addresses the agent did not sign", () => {
   it("fetches any address when the deployment says so", async () => {
     process.env.INES_FETCH_ANY_URL = "true";
     mockFetch(() => new Response("<html><body>open</body></html>"));
-    const res = await fetchWebpageHandler({ url: "https://example.com/anything" });
+    const res = await fetchWebpageHandler(call("https://example.com/anything"));
     expect(res.content[0].text).toContain("open");
   });
 });

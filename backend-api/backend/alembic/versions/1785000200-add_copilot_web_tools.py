@@ -5,7 +5,7 @@ a page from it (FETCH_FROM_WEB), for an entity and for one user. Everything that
 was before the switches.
 
 Revision ID: 7e2b5c9d4a18
-Revises: c3a97e5d2b14
+Revises: b179074b50c6
 Create Date: 2026-10-10
 
 """
@@ -16,7 +16,10 @@ from alembic import op  # type: ignore
 
 # revision identifiers, used by Alembic.
 revision = "7e2b5c9d4a18"
-down_revision = "c3a97e5d2b14"
+# After b179074b50c6, not beside it: two revisions with the same parent are two heads, and
+# `alembic upgrade head` refuses to run with more than one (the API applies the migrations at
+# every start, so that is the API not starting).
+down_revision = "b179074b50c6"
 branch_labels = None
 depends_on = None
 

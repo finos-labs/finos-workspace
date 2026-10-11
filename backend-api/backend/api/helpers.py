@@ -88,7 +88,7 @@ def refresh_usage_cache(user_uuid: UUID) -> None:
 def handle_add_login(
     user_uuid: UUID,
     ip_address: None | IPvAnyAddress,
-    source: None | Literal["sdk", "app", "oauth-app", "excel"],
+    source: None | Literal["app", "oauth-app", "excel"],
 ) -> None:
     try:
         rq_results.rq_que.enqueue(

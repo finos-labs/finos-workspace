@@ -28,6 +28,7 @@ import json
 import secrets
 import string
 import sys
+import time
 from pathlib import Path
 
 ENVS = Path(__file__).resolve().parent.parent / "envs"
@@ -49,12 +50,32 @@ def _b64(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
 
 
-def jwt_hs256(payload: dict[str, str], secret: str) -> str:
+def jwt_hs256(payload: dict[str, object], secret: str) -> str:
     """A JWT signed with HS256, as ``jwt.encode`` writes it."""
     header = _b64(json.dumps({"alg": "HS256", "typ": "JWT"}, separators=(",", ":")).encode())
     body = _b64(json.dumps(payload, separators=(",", ":")).encode())
     signature = hmac.new(secret.encode(), f"{header}.{body}".encode(), hashlib.sha256)
     return f"{header}.{body}.{_b64(signature.digest())}"
+
+
+# How long the token Ines reports usage with is accepted for. The API refuses one that never runs
+# out (``api.auth_helpers.check_metering``), because it is pasted into another service's
+# configuration and could otherwise only be withdrawn by changing JWT_SECRET, which signs out every
+# user. ``scripts.create_metering_token`` mints a replacement; keep the two in step.
+METERING_TOKEN_DAYS = 365
+
+
+def metering_token(jwt_secret: str, now: float | None = None) -> str:
+    """The token Ines reports usage with, good for ``METERING_TOKEN_DAYS``."""
+    issued = int(time.time() if now is None else now)
+    return jwt_hs256(
+        {
+            "sub": "metering",
+            "iat": issued,
+            "exp": issued + METERING_TOKEN_DAYS * 24 * 60 * 60,
+        },
+        jwt_secret,
+    )
 
 
 def secrets_for(
@@ -125,10 +146,10 @@ password = {json.dumps(password)}
 
 def ines_secrets(jwt_secret: str, current_scope_secret: str = "") -> dict[str, str]:
     """What Ines needs that comes from the API's secrets: the token with which she reports usage
-    (what ``scripts.create_metering_token`` prints) and a secret of her own, which stays as it was
-    when she has one."""
+    (what ``scripts.create_metering_token`` prints, and which runs out after
+    ``METERING_TOKEN_DAYS``) and a secret of her own, which stays as it was when she has one."""
     return {
-        "INES_METERING_TOKEN": jwt_hs256({"sub": "metering"}, jwt_secret),
+        "INES_METERING_TOKEN": metering_token(jwt_secret),
         "INES_SCOPE_SECRET": current_scope_secret or secrets.token_urlsafe(32),
     }
 

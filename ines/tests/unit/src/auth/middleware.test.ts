@@ -10,6 +10,7 @@ import {
   type Services,
 } from "../../../../src/auth/middleware";
 import { createLimits } from "../../../../src/auth/limits";
+import { createLocalStore } from "../../../../src/lib/store";
 import type { Result, WorkspaceClient } from "../../../../src/auth/workspace-client";
 
 function workspaceStub(users: Record<string, Result<{ userId: string }>>) {
@@ -34,13 +35,15 @@ function workspaceStub(users: Record<string, Result<{ userId: string }>>) {
 }
 
 function appWith(workspace: WorkspaceClient | null, cacheSeconds = 30, now = Date.now) {
+  const store = createLocalStore(now);
   const services = {
     config: {} as Services["config"],
     workspace,
-    limits: createLimits({ maxConcurrent: 4 }),
+    store,
+    limits: createLimits({ store, maxConcurrent: 4 }),
   } satisfies Services;
   const app = new Hono<AppEnv>();
-  app.use("/v1/*", servicesMiddleware(services), authMiddleware(services, createAuthCache(cacheSeconds, now)));
+  app.use("/v1/*", servicesMiddleware(services), authMiddleware(services, createAuthCache(store, cacheSeconds)));
   app.get("/v1/me", (c) => c.json({ userId: c.get("principal").userId, hasToken: Boolean(c.get("principal").token) }));
   app.get("/open", (c) => c.text("open"));
   return app;
@@ -133,11 +136,30 @@ describe("authMiddleware — without a Workspace API", () => {
 });
 
 describe("createAuthCache", () => {
-  it("is bounded", () => {
-    const cache = createAuthCache(30, Date.now, 3);
-    for (const t of ["a", "b", "c", "d"]) cache.set(t, `user-${t}`);
-    expect(cache.get("a")).toBeNull();
-    expect(cache.get("d")).toBe("user-d");
+  it("remembers a token's user until the time it was given runs out", async () => {
+    let now = 1_000_000;
+    const cache = createAuthCache(createLocalStore(() => now), 30);
+    await cache.set("a-token", "alice");
+    expect(await cache.get("a-token")).toBe("alice");
+    now += 31_000;
+    expect(await cache.get("a-token")).toBeNull();
+  });
+
+  it("keeps the token itself out of the store: what is kept is its hash", async () => {
+    const store = createLocalStore();
+    const cache = createAuthCache(store, 30);
+    await cache.set("a-secret-session-token", "alice");
+    // Asked under the token itself, the store has nothing; only the cache knows how to look it up.
+    expect(await store.get("auth:a-secret-session-token")).toBeNull();
+    expect(await cache.get("a-secret-session-token")).toBe("alice");
+  });
+
+  it("remembers nothing at all when it is given no time to remember it for", async () => {
+    const cache = createAuthCache(createLocalStore(), 0);
+    await cache.set("a-token", "alice");
+    expect(await cache.get("a-token")).toBeNull();
+    await cache.reject("a-token");
+    expect(await cache.rejected("a-token")).toBe(false);
   });
 });
 
@@ -231,10 +253,11 @@ describe("signing in callers the cache does not know", () => {
         return { ok: false, reason: "rejected" };
       },
     };
-    const services = { config: {} as Services["config"], workspace: stalled, limits: createLimits({ maxConcurrent: 4 }) } satisfies Services;
+    const store = createLocalStore();
+    const services = { config: {} as Services["config"], workspace: stalled, store, limits: createLimits({ store, maxConcurrent: 4 }) } satisfies Services;
     const app = new Hono<AppEnv>();
-    const cache = createAuthCache(30);
-    cache.set("remembered", "alice");
+    const cache = createAuthCache(store, 30);
+    await cache.set("remembered", "alice");
     app.use("/v1/*", servicesMiddleware(services), authMiddleware(services, cache));
     app.get("/v1/me", (c) => c.json({ userId: c.get("principal").userId }));
 

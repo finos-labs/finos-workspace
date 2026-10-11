@@ -592,7 +592,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
   // tripping back through get_widget_data. Fresh widget data later in the
   // request still overwrites these (latest-write-wins per tableName).
   const pendingTables = new Map<string, Record<string, unknown>[]>(
-    getCachedRows(conversationId, allWidgets),
+    await getCachedRows(conversationId, allWidgets),
   );
   if (pendingTables.size > 0) {
     logger.info("Seeded pendingTables from chat row cache", {

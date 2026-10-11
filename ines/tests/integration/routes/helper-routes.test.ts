@@ -41,6 +41,7 @@ mock.module("../../../src/lib/llm", () => ({
 const { createApp } = await import("../../../src/app");
 const { loadConfig } = await import("../../../src/lib/config");
 const { createLimits } = await import("../../../src/auth/limits");
+const { createLocalStore } = await import("../../../src/lib/store");
 import type { Authorization, Result, WorkspaceClient } from "../../../src/auth/workspace-client";
 
 const ENV = {
@@ -76,10 +77,12 @@ function setup(extraEnv: Record<string, string> = {}) {
     },
   };
   const config = loadConfig({ ...ENV, ...extraEnv });
+  const store = createLocalStore();
   const app = createApp({
     config,
     workspace,
-    limits: createLimits({ maxConcurrent: config.maxConcurrentQueries, maxHelperCallsPerMinute: config.maxHelperCallsPerMinute }),
+    store,
+    limits: createLimits({ store, maxConcurrent: config.maxConcurrentQueries, maxHelperCallsPerMinute: config.maxHelperCallsPerMinute }),
   });
   return {
     app,

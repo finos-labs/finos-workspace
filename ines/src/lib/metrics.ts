@@ -194,6 +194,11 @@ export const metrics = {
   authCache: registry.counter("ines_auth_cache_total", "Lookups of a signed-in user in the cache, by result.", [
     "result",
   ]),
+  storeErrors: registry.counter(
+    "ines_store_errors_total",
+    "Times the shared store could not answer and this process answered instead, by operation. Steadily above zero means quotas and turns are being counted per replica.",
+    ["op"],
+  ),
   recalls: registry.counter(
     "ines_conversation_recalls_total",
     "Times the model read the earlier part of a chat, by how: latest messages, words, or numbers.",

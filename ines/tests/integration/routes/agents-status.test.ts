@@ -6,12 +6,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { Hono } from "hono";
 import { agentsRouter } from "../../../src/routes/agents";
-import { statusRouter } from "../../../src/routes/status";
+import { createStatusRouter } from "../../../src/routes/status";
+import { createLocalStore, type Store } from "../../../src/lib/store";
 
-function app() {
+function app(store: Store = createLocalStore()) {
   const a = new Hono();
   a.route("/", agentsRouter);
-  a.route("/", statusRouter);
+  a.route("/", createStatusRouter(store));
   return a;
 }
 
@@ -74,5 +75,17 @@ describe("GET /status", () => {
     const body = (await res.json()) as { status: string; timestamp: string };
     expect(body.status).toBe("ok");
     expect(() => new Date(body.timestamp).toISOString()).not.toThrow();
+  });
+
+  // This route is public, so it is given the store rather than reading it from the request: the
+  // middleware that puts the services on the context runs for /v1/* only, and a route that asked the
+  // context would answer that nothing is shared however the deployment is configured.
+  it("says whether what the agent keeps is shared between replicas", async () => {
+    const alone = (await (await app().request("/status")).json()) as { sharedState: boolean };
+    expect(alone.sharedState).toBe(false);
+
+    const sharing = { ...createLocalStore(), shared: true } as Store;
+    const together = (await (await app(sharing).request("/status")).json()) as { sharedState: boolean };
+    expect(together.sharedState).toBe(true);
   });
 });

@@ -16,7 +16,10 @@ import { toast } from "sonner";
 import { Button } from "~/components/ds/atoms/Button";
 import { BaseDialog } from "~/components/ds/dialogs/BaseDialog";
 import { DialogTitle } from "~/components/ds/dialogs/Dialog";
-import { IFRAME_SRCDOC_SANDBOX_ATTRIBUTES } from "~/lib/constants";
+import {
+  ARTIFACT_SANDBOX_ATTRIBUTES,
+  ARTIFACT_SANDBOX_ATTRIBUTES_NO_SCRIPTS,
+} from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowAppStore } from "~/lib/state/app";
 import {
@@ -162,11 +165,12 @@ const HTMLArtifact = memo<ArtifactProps<"html">>(({ artifact, inAiMessage }) => 
       artifactContentSecurityPolicy(nonce),
       `${injectedStyle}${injectedScript}`,
     );
-  }, [artifact.content]);
+  }, [artifact.content, allowJsExecution]);
 
   const handleIframeLoad = useCallback(() => {
-    // When JS enabled, postMessage handles height — contentDocument is null (opaque origin)
-    if (allowJsExecution && !inAiMessage) return;
+    // With scripts on, the document is on an opaque origin (no allow-same-origin), so there is no
+    // contentDocument to read: the script injected into it posts the height instead.
+    if (allowJsExecution) return;
 
     const iframe = iframeRef.current;
     const doc = iframe?.contentDocument;
@@ -191,12 +195,14 @@ const HTMLArtifact = memo<ArtifactProps<"html">>(({ artifact, inAiMessage }) => 
       });
       resizeObserverRef.current.observe(doc.body);
     });
-  }, [inAiMessage]);
+  }, [allowJsExecution]);
 
   useEffect(() => {
-    if (!allowJsExecution || !inAiMessage) return;
+    if (!allowJsExecution) return;
 
     const handleMessage = (event: MessageEvent) => {
+      // The only thing taken from the message is a height, and only from this very frame: the
+      // artifact is on an opaque origin, so `event.origin` is "null" and says nothing.
       if (event.source !== iframeRef.current?.contentWindow) return;
       if (event.data?.type === "artifactHeight") {
         const h = Number(event.data.height);
@@ -208,7 +214,7 @@ const HTMLArtifact = memo<ArtifactProps<"html">>(({ artifact, inAiMessage }) => 
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [inAiMessage]);
+  }, [allowJsExecution]);
 
   useEffect(() => () => resizeObserverRef.current?.disconnect(), []);
 
@@ -235,7 +241,9 @@ const HTMLArtifact = memo<ArtifactProps<"html">>(({ artifact, inAiMessage }) => 
         className="w-full border-0"
         style={iframeStyle}
         sandbox={
-          allowJsExecution ? IFRAME_SRCDOC_SANDBOX_ATTRIBUTES : "allow-same-origin" // fine to have allow-same-origin because we dont have js execution (allow-scripts)
+          allowJsExecution
+            ? ARTIFACT_SANDBOX_ATTRIBUTES
+            : ARTIFACT_SANDBOX_ATTRIBUTES_NO_SCRIPTS
         }
         title={artifact.name}
         onLoad={handleIframeLoad}
@@ -278,7 +286,9 @@ const HTMLArtifact = memo<ArtifactProps<"html">>(({ artifact, inAiMessage }) => 
           srcDoc={sanitizedContent}
           className="w-full flex-1 border-0 min-h-0"
           sandbox={
-            allowJsExecution ? IFRAME_SRCDOC_SANDBOX_ATTRIBUTES : "allow-same-origin"
+            allowJsExecution
+              ? ARTIFACT_SANDBOX_ATTRIBUTES
+              : ARTIFACT_SANDBOX_ATTRIBUTES_NO_SCRIPTS
           }
           title={`${artifact.name} — full screen`}
         />

@@ -192,14 +192,26 @@ services:
       WORKSPACE_API_URL: http://api:8000
       # The address the browser uses for the API: the Workspace's links to its users' files are on it.
       WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
-      # The origin of the web app: the browser calls Ines directly. This is a developer stack, so without
-      # WEB_URL every origin is allowed (the web app answers on localhost and on 127.0.0.1, and the API
-      # allows all origins here too). Set WEB_URL to the web app's address for a deployment.
+      # Where what Ines keeps between the requests of a turn lives: who is signed in, how much of their
+      # share is left, which turn is under way, and a chat's rows. In Redis they are shared, so the
+      # answers are the same whichever replica a request reaches and a user has one share in all. Without
+      # it each replica keeps its own, so run one.
+      REDIS_URL: redis://redis:6379
+      # The origin of the web app: the browser calls Ines directly, so this has to name the address the
+      # web app was loaded from, whatever that is — localhost, 127.0.0.1, the machine's address on the
+      # network, a tunnel. A developer stack cannot know which, and an origin it does not name is a
+      # Copilot that fails with nothing in the UI to say why, so without WEB_URL every origin is allowed,
+      # as the API is here too (DISABLE_CORS=1 in envs/.env). That is not an open door by itself: every
+      # request needs the user's session token in a header, which a page on another origin does not have,
+      # and `*` cannot be combined with credentials. Set WEB_URL to the web app's address for a
+      # deployment; Ines refuses to start with users and no origins at all, so a deployment has to choose.
       INES_CORS_ORIGINS: ${WEB_URL:-*}
     ports:
       - "7777:7777"
     depends_on:
       api:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - workspace
@@ -231,6 +243,11 @@ services:
       # out: they are on the address the browser uses, and are fetched from the API's address here.
       WORKSPACE_API_URL: http://api:8000
       WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
+      # The documents of a chat, shared between replicas of this server as Ines shares what she keeps.
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
     networks:
       - workspace
 

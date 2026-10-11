@@ -20,12 +20,6 @@ import {
   inspectWebpageDescription,
 } from "./tools/backend/inspect-webpage";
 import {
-  mermaidSchema,
-  mermaidHandler,
-  mermaidDescription,
-  mermaidRenderingAvailable,
-} from "./tools/backend/mermaid";
-import {
   executeCodeSchema,
   executeCodeHandler,
   executeCodeDescription,
@@ -42,7 +36,7 @@ import {
 } from "./tools/backend/documents/list-documents";
 import { embeddingProblem } from "./tools/backend/documents/retrieve";
 import { observed } from "./lib/observe";
-import { requireScope } from "./lib/scope-check";
+import { requireScope, scopeSecretProblem } from "./lib/scope-check";
 import { renderMetrics } from "../../src/lib/metrics";
 import { configureFetchPolicy } from "../../src/lib/safe-fetch";
 import { mountBridgeRoutes } from "./bridge/routes";
@@ -142,6 +136,22 @@ import {
 
 const logger = getLogger(["mcp", "server"]);
 
+// What keeps one user's chat from another: the scope key of every call that reaches a tool holding state
+// for a chat is signed by the agent with this secret, and these tools act on no other. A server that ran
+// without it would take any key a client sent, so it does not start without it (INES_AUTH=none, the
+// deployment that has no users, is the named opt-out — the same one the agent takes).
+//
+// Only when this file is the process, which is how it is served (see the Dockerfile): a test that imports
+// it for its `fetch` is not a server starting, and stopping the process would stop the test run. Such a
+// server would in any case refuse every scoped call, because `scopeProblem` makes the same judgement.
+if (import.meta.main) {
+  const secretProblem = scopeSecretProblem();
+  if (secretProblem) {
+    logger.fatal(secretProblem);
+    process.exit(1);
+  }
+}
+
 // The Workspace's links to its users' files are on the address the browser uses; these tools fetch them from
 // the API's address inside the deployment (see src/lib/safe-fetch.ts). Without WORKSPACE_PUBLIC_URL a link is
 // fetched as it is.
@@ -160,16 +170,6 @@ if (workspacePublicUrl) {
 
 // Which tools exist is decided once, at start, and said once. Each request then gets a server
 // that registers exactly these (see `buildMcpServer`).
-
-// Mermaid — rendered server-side to SVG via Playwright Chromium. Registered
-// only when the browser binary is installed; otherwise the tool would fail
-// on every call and must not be advertised to the model.
-const mermaidEnabled = mermaidRenderingAvailable();
-if (!mermaidEnabled) {
-  logger.warn(
-    "Playwright Chromium not installed — mermaid_diagram disabled (run `bunx playwright install chromium`)",
-  );
-}
 
 // Code execution — Daytona Python sandbox per conversation. Slow first
 // call (sandbox cold start + pip install). Only used when the model needs
@@ -224,9 +224,6 @@ async function buildMcpServer(): Promise<McpServer> {
   // Read-widget-data SQL family lives in the agent now (in-process,
   // closure on pendingTables). It's no longer registered here.
 
-  if (mermaidEnabled) {
-    mcp.tool("mermaid_diagram", mermaidDescription, mermaidSchema, observed("mermaid_diagram", mermaidHandler));
-  }
   if (codeExecEnabled) {
     mcp.tool(
       "execute_code",
@@ -409,7 +406,6 @@ app.get("/", (c) =>
         "web_search",
         "fetch_webpage",
         "inspect_webpage",
-        ...(mermaidEnabled ? ["mermaid_diagram"] : []),
         ...(codeExecEnabled ? ["execute_code"] : []),
         ...(docRagEnabled ? ["query_documents", "list_documents"] : []),
       ],
@@ -472,5 +468,5 @@ export default {
 };
 
 logger.info(
-  `MCP server starting port=${PORT} codeExecEnabled=${codeExecEnabled} docRagEnabled=${docRagEnabled} mermaidEnabled=${mermaidEnabled} companionToolsEnabled=${companionToolsEnabled} bridgeMounted=true`,
+  `MCP server starting port=${PORT} codeExecEnabled=${codeExecEnabled} docRagEnabled=${docRagEnabled} companionToolsEnabled=${companionToolsEnabled} bridgeMounted=true`,
 );

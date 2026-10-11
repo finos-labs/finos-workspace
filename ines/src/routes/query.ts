@@ -195,7 +195,7 @@ function trackQuery(run: QueryRun) {
     ended = true;
     const result = outcome ?? fallback;
     // A turn that is waiting for the browser to run a tool goes on; any other ending ends it.
-    if (result !== "continued" && run.chatKey) run.services?.limits.endTurn(run.chatKey);
+    if (result !== "continued" && run.chatKey) void run.services?.limits.endTurn(run.chatKey);
     const seconds = (performance.now() - started) / 1000;
     metrics.activeQueries.dec();
     metrics.queries.inc({ outcome: result });
@@ -235,7 +235,7 @@ queryRouter.post("/v1/query", async (c) => {
   const principal = c.get("principal") ?? ANONYMOUS;
 
   // A user who keeps sending what is not a question is turned away before anything is read.
-  if (services?.limits.struck(principal.userId)) {
+  if (services && (await services.limits.struck(principal.userId))) {
     metrics.queries.inc({ outcome: "limit" });
     audit.info("Refused a query unread: the user has sent too many requests that were not questions");
     return c.json({ error: "Too many invalid requests. Try again in a minute." }, 429, { "Retry-After": "60" });
@@ -244,7 +244,7 @@ queryRouter.post("/v1/query", async (c) => {
   // One user can have only so many queries running at once, and the agent only so many in all. The place is
   // taken before the body is read: a body can be tens of megabytes, which takes the whole agent a moment to
   // parse, and a refused request must not cost that.
-  const admission = services ? services.limits.admit(principal.userId) : ({ ok: true, release: () => undefined } as const);
+  const admission = services ? await services.limits.admit(principal.userId) : ({ ok: true, release: () => undefined } as const);
   if (!admission.ok) {
     metrics.queries.inc({ outcome: "busy" });
     if (admission.reason === "server") {
@@ -274,12 +274,12 @@ async function answerQuery(
   try {
     raw = await c.req.json();
   } catch {
-    services?.limits.strike(principal.userId);
+    void services?.limits.strike(principal.userId);
     return c.json({ error: "Invalid JSON" }, 400);
   }
   const parsed = QueryRequestSchema.safeParse(raw);
   if (!parsed.success) {
-    services?.limits.strike(principal.userId);
+    void services?.limits.strike(principal.userId);
     logger.error("Invalid request", { issues: parsed.error.issues });
     metrics.queries.inc({ outcome: "invalid" });
     return c.json({ error: "Invalid request", details: parsed.error.issues }, 400);
@@ -354,8 +354,8 @@ async function answerQuery(
         audit.info("Left out {count} tools the user's roles do not allow", { count: denied.size });
       }
 
-      const continuing = lastMessage?.role === "tool" && !!conversationId && services.limits.inTurn(conversationId);
-      if (continuing && !services.limits.noteRequest(conversationId)) {
+      const continuing = lastMessage?.role === "tool" && !!conversationId && (await services.limits.inTurn(conversationId));
+      if (continuing && !(await services.limits.noteRequest(conversationId))) {
         release();
         metrics.queries.inc({ outcome: "limit" });
         audit.info("Refused a continuation: the turn has used all the requests it may");
@@ -367,7 +367,7 @@ async function answerQuery(
           release();
           return refusal(c, counted);
         }
-        if (conversationId) services.limits.startTurn(conversationId);
+        if (conversationId) await services.limits.startTurn(conversationId);
       }
     } catch (error) {
       release();

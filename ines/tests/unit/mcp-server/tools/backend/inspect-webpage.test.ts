@@ -3,11 +3,26 @@ import { fetchWebpageHandler } from "../../../../../mcp-server/src/tools/backend
 import { inspectWebpageHandler } from "../../../../../mcp-server/src/tools/backend/inspect-webpage";
 import { _resetPageStore } from "../../../../../mcp-server/src/lib/page-store";
 import { requireScope } from "../../../../../mcp-server/src/lib/scope-check";
-import { signScope } from "../../../../../src/lib/scope";
+import { signScope, signUrl } from "../../../../../src/lib/scope";
 import { logicalUrl } from "../../../../helpers/logical-url";
 
 const realFetch = globalThis.fetch;
 const CHAT = "u1:chat1";
+// These tools hold and read what belongs to one chat, so they act only on a scope the agent signed.
+// The tests run as a deployment with users does: a secret is set, and the chat is signed with it.
+const SECRET = "0123456789abcdef0123";
+process.env.INES_SCOPE_SECRET = SECRET;
+/** The chat, as the agent hands it to a tool. */
+const scoped = (chat: string = CHAT) => ({
+  "x-ines-conversation-id": chat,
+  "x-ines-scope-sig": signScope(SECRET, chat),
+});
+/** A fetch as the agent makes it: the address was given in the conversation, and the chat is signed. */
+const call = (url: string, chat: string = CHAT) => ({
+  url,
+  "x-ines-url-sig": signUrl(SECRET, url),
+  ...scoped(chat),
+});
 
 function mockFetch(impl: (url: string) => Response | Promise<Response>) {
   globalThis.fetch = mock((input: string | URL | Request, init?: RequestInit) => Promise.resolve(impl(logicalUrl(input, init)))) as unknown as typeof fetch;
@@ -31,14 +46,14 @@ const PAGE = `<html><head><title>Report</title>
 
 async function fetched(html = PAGE, url = "https://example.com/report"): Promise<string> {
   mockFetch(() => new Response(html, { headers: { "content-type": "text/html" } }));
-  const res = await fetchWebpageHandler({ url, "x-ines-conversation-id": CHAT });
+  const res = await fetchWebpageHandler(call(url));
   const id = res.content[0].text.match(/page_id: (p-[0-9a-f]{8})/)?.[1];
   if (!id) throw new Error(`no page_id in: ${res.content[0].text.slice(0, 300)}`);
   return id;
 }
 
 const inspect = (page_id: string, rest: Record<string, unknown>, chat: string | null = CHAT) =>
-  inspectWebpageHandler({ page_id, "x-ines-conversation-id": chat ?? undefined, ...rest } as Parameters<typeof inspectWebpageHandler>[0]);
+  inspectWebpageHandler({ page_id, ...(chat === null ? {} : scoped(chat)), ...rest } as Parameters<typeof inspectWebpageHandler>[0]);
 
 const textOf = (res: { content: Array<{ text: string }> }) => res.content[0].text;
 
@@ -138,7 +153,7 @@ describe("inspect_webpage — the other views", () => {
         ? new Response(null, { status: 301, headers: { location: "https://example.com/new/dir/" } })
         : new Response("<html><body><a href='page.html'>p</a></body></html>", { headers: { "content-type": "text/html" } }),
     );
-    const res = await fetchWebpageHandler({ url: "https://example.com/old", "x-ines-conversation-id": CHAT });
+    const res = await fetchWebpageHandler(call("https://example.com/old"));
     const id = res.content[0].text.match(/page_id: (p-[0-9a-f]{8})/)?.[1] ?? "";
     expect(textOf(await inspect(id, { view: "links" }))).toContain("https://example.com/new/dir/page.html");
   });
@@ -211,7 +226,7 @@ describe("inspect_webpage — a page that is built to cause trouble", () => {
   it("is answered, and the next call is, when a view of it cannot be made", async () => {
     const deep = `<html><body>${"<div>".repeat(100_000)}text${"</div>".repeat(100_000)}</body></html>`;
     mockFetch(() => new Response(deep, { headers: { "content-type": "text/html" } }));
-    const res = await fetchWebpageHandler({ url: "https://example.com/deep", "x-ines-conversation-id": CHAT });
+    const res = await fetchWebpageHandler(call("https://example.com/deep"));
     expect(res.content.length).toBeGreaterThan(0);
     const id = res.content[0].text.match(/page_id: (p-[0-9a-f]{8})/)?.[1];
     if (id) {
@@ -228,7 +243,7 @@ describe("inspect_webpage — a page that is built to cause trouble", () => {
     expect(big.length).toBeLessThan(5 * 1024 * 1024);
     mockFetch(() => new Response(big, { headers: { "content-type": "text/html" } }));
     const started = Date.now();
-    const res = await fetchWebpageHandler({ url: "https://example.com/huge", "x-ines-conversation-id": CHAT });
+    const res = await fetchWebpageHandler(call("https://example.com/huge"));
     expect(Date.now() - started).toBeLessThan(15_000);
     expect(res.content[0].text.length).toBeLessThan(5000);
   }, 60_000);

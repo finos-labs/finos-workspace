@@ -4,6 +4,8 @@ import { initTelemetry, shutdownTelemetry } from "./lib/telemetry";
 import { loadConfig } from "./lib/config";
 import { metrics, renderMetrics } from "./lib/metrics";
 import { createLimits } from "./auth/limits";
+import { createStore } from "./lib/store";
+import { shareRowsThrough } from "./agent/row-cache";
 import { createWorkspaceClient } from "./auth/workspace-client";
 import { configureFetchPolicy } from "./lib/safe-fetch";
 import { createApp } from "./app";
@@ -31,7 +33,13 @@ if (config.auth.mode === "none") {
 // The links to the Workspace's own files are the one internal address the agent may fetch from.
 configureFetchPolicy({ workspace: config.workspaceFiles ?? undefined });
 
+// Shared between replicas when REDIS_URL names a Redis, in this process otherwise.
+const store = createStore();
+// A chat's rows go to the shared store too, so a follow-up that reaches another replica finds them.
+shareRowsThrough(store);
+
 const limits = createLimits({
+  store,
   maxConcurrent: config.maxConcurrentQueries,
   maxTotal: config.maxTotalQueries,
   maxRequestsPerTurn: config.maxTurnRequests,
@@ -46,6 +54,7 @@ const app = createApp({
       ? createWorkspaceClient({ apiUrl: config.auth.apiUrl, meteringToken: config.auth.meteringToken })
       : null,
   limits,
+  store,
 });
 
 const PORT = Number(process.env.PORT ?? 7777);

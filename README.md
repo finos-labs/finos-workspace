@@ -74,7 +74,7 @@ panel, are used when the images are built, so changing them needs `docker compos
 | `PLATFORM` | `linux/amd64` | CPU architecture the api, worker and web images are built for. Use `linux/arm64` on Apple silicon. |
 | `API_URL` | `http://localhost:8000` | The API's address as the browser sees it. It becomes `BACKEND_URL` of the web container and is built into the admin panel (`VITE_API_URL`). Set `SELFURL` in `envs/.env` to the same address. |
 | `AI_API_URL` | `http://localhost:7777` | Ines's address as the browser sees it. The browser calls her directly. |
-| `WEB_URL` | unset: every origin | The web app's address as the browser sees it. When set, Ines allows requests from this origin only (`INES_CORS_ORIGINS`). Unset, she allows every origin, which is what a developer machine wants (the web app answers on `localhost` and on `127.0.0.1`); set it for a deployment. |
+| `WEB_URL` | unset: every origin | The web app's address as the browser sees it. When set, Ines allows requests from this origin only (`INES_CORS_ORIGINS`); unset, she allows every origin. The browser calls Ines directly, so the origin is whatever address you opened the web app on — `localhost`, `127.0.0.1`, your machine's address on the network, a tunnel — and an origin she does not allow is a Copilot that fails with nothing in the interface to say why. A developer machine cannot know which address you will use, and the API allows every origin here too (`DISABLE_CORS=1`), so the default matches it. Set it for a deployment: Ines refuses to start with users and no origins at all. |
 | `AI_COPILOT_ENABLED` | `true` | Shows the Copilot panel. Must be `true` or `false`. |
 
 ### Backend (`backend-api/backend/envs/.env`)

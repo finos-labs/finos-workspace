@@ -19,7 +19,6 @@ if BACKEND_DIR not in sys.path:
 from unittest.mock import patch
 from uuid import UUID, uuid4
 
-import jwt
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import delete, select, update
@@ -27,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from api import models
 from routers.app.index import MCPProxyRequest, check_mcp_tool_calls
+from scripts.create_metering_token import create_metering_token
 from tests.fixtures.base import (
     _ADMIN_USER,
     _AUTH_USER,
@@ -38,10 +38,7 @@ from tests.fixtures.db import TestAsyncSessionLocal
 
 MEMBER_UUID = UUID(_AUTH_USER["user_uuid"])
 ADMIN_ENTITY = _ADMIN_USER["entity_uuid"]
-METERING = {
-    "X-Metering-Authorization": "Bearer "
-    + jwt.encode({"sub": "metering"}, settings.JWT_SECRET, algorithm="HS256")
-}
+METERING = {"X-Metering-Authorization": "Bearer " + create_metering_token()[0]}
 
 MCP_URL = "https://mcp.example.com/mcp"
 OTHER_MCP_URL = "https://tools.example.com/mcp"

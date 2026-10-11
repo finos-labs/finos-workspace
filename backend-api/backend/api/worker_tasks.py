@@ -35,7 +35,7 @@ from utilities.config import settings
 async def login_information(
     user_uuid: UUID,
     ip_address: None | str,
-    source: None | Literal["sdk", "app", "oauth-app", "excel"],
+    source: None | Literal["app", "oauth-app", "excel"],
 ) -> None:
     """Records a login"""
     async with AsyncWriteSessionLocal.session() as db:

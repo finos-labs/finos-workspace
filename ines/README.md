@@ -2,7 +2,7 @@
 
 **Ines** is the Workspace's copilot agent. It searches the widgets on your dashboards, fetches their data, runs SQL over that data in-process, builds and edits dashboards, and streams back cited answers. It is made for a deployment with many users: it signs each caller in with the Workspace API, enforces the roles and usage limits the Workspace's admins set, keeps each user's chats apart, and says what it does in structured logs and Prometheus metrics (see [Running for many users](#running-for-many-users)).
 
-The **MCP server** (in [`mcp-server/`](./mcp-server)) holds the tools she uses beyond the widgets: web search, web-page fetch, document search, Python execution and Mermaid diagrams. In the repository's `docker-compose.yml` it runs with the agent and every user has it. The agent itself (widget search, data, SQL, dashboards, skills) does not need it.
+The **MCP server** (in [`mcp-server/`](./mcp-server)) holds the tools she uses beyond the widgets: web search, web-page fetch, document search and Python execution. In the repository's `docker-compose.yml` it runs with the agent and every user has it. The agent itself (widget search, data, SQL, dashboards, skills) does not need it.
 
 Built on Bun + Hono + the Vercel AI SDK + the Model Context Protocol.
 
@@ -47,12 +47,6 @@ bun run test                  # bun test tests/ mcp-server/test
 Outside the repository's compose stack there is usually no Workspace API to sign users in with, so on a development machine set `INES_AUTH=none` in `.env`: every request is then anonymous and nothing is counted (Ines logs a warning). Without it she expects the settings of a deployment with users and says which are missing when she starts.
 
 `bun run dev:agent` alone is enough for widget search, data fetching, SQL analysis, dashboard editing, and skills; the MCP server adds the rest.
-
-If you run the MCP server and want Mermaid diagrams, install the Chromium it renders with:
-
-```bash
-bunx playwright install chromium   # mermaid_diagram is disabled if this is missing
-```
 
 ### Connect it to the Workspace
 
@@ -140,7 +134,6 @@ Stateless / heavy / cold-start capabilities, exposed over Streamable HTTP MCP. N
 | `web_search` | DuckDuckGo (HTML endpoint, no key) | The capability **SEARCH_WEB** (see "The web tools", below). Returns text + web citations via `$ines_kind`. DuckDuckGo can answer a burst of queries with a human-check page; the tool then says so and the model can retry later |
 | `fetch_webpage` | `fetchClientUrl` + a DOM in a child process | The capability **FETCH_FROM_WEB**. Fetches a page and holds it for the chat; returns an **overview** (title, description, outline, what it contains, embedded JSON, the first 3,000 characters of its text) and a `page_id`, never the whole page |
 | `inspect_webpage` | the held page, read in a child process | Part of **FETCH_FROM_WEB**. Reads a held page by `page_id`, a bounded amount per call: `text` (readable text as markdown, from an offset), `find` (a literal phrase, with its offset and the text around it), `select` (elements by CSS selector), `links`, `tables` (returned as tables the agent loads for SQL), `data` (JSON the page embeds: JSON-LD, `__NEXT_DATA__`; by path), `raw` (the HTML source, from an offset or around a phrase) |
-| `mermaid_diagram` | mermaid-isomorphic (Playwright Chromium) | Renders Mermaid to SVG server-side, returns an `html` artifact; registered only when the Chromium binary is installed |
 | `execute_code` | Daytona Python sandbox | Per-conversation; gated by `DAYTONA_API_KEY` |
 | `query_documents` | Embeddings from `INES_EMBED_MODEL` + in-memory/Redis store | RAG search over uploaded docs (PDF per page, DOCX, TXT/MD/HTML); the files come by signed link or as bytes; each hit is tagged with its page and the tool reports every page with its score; gated by `INES_EMBED_MODEL` and its provider's key |
 | `list_documents` | same store | Inventory of docs loaded in the conversation |
@@ -196,7 +189,6 @@ mcp-server/                    # Optional companion MCP server (port 8787)
         ├── backend/
         │   ├── web-search.ts
         │   ├── fetch-webpage.ts
-        │   ├── mermaid.ts
         │   ├── documents/     # query_documents, list_documents + extract/chunk/retrieve/store
         │   └── compute/       # execute_code + sandbox/data-bridge/ines-helper
         └── workspace/         # Path B (Claude Desktop) wrappers around the bridge — filtered out for Ines
@@ -242,7 +234,7 @@ The Workspace is the only thing that speaks MCP. The agent just emits SSE events
 |---|---|---|
 | `get_widget_data` / `get_skill_content` | Bespoke agent paths with widget-tier resolution / skill payload | bespoke |
 | `<command>` (one of the agent's own bridge commands, above) | Workspace ops for a request without the Workspace's tools: `update_widget_in_dashboard`, `add_widget_to_dashboard`, … | the Workspace's `handleFunctionCall` |
-| `execute_agent_tool` | Any MCP tool: the Workspace's own, web search, fetch, mermaid, code sandbox, third-party MCPs | `useWorkspaceToolExecutor` for the Workspace's own (server id `workspace`), `useMcpExecutor` for the rest |
+| `execute_agent_tool` | Any MCP tool: the Workspace's own, web search, fetch, code sandbox, third-party MCPs | `useWorkspaceToolExecutor` for the Workspace's own (server id `workspace`), `useMcpExecutor` for the rest |
 
 (Both live in the Workspace frontend, not in this repo.)
 
@@ -381,7 +373,7 @@ The agent is built for a deployment shared by many users, and leaves to the Work
 - **One user's chats are theirs.** Everything kept for a chat (widget rows, documents, the code sandbox) is filed under `<user>:<chat>`. The browser makes the calls to the MCP tools, so it could name any chat; Ines signs each scope with `INES_SCOPE_SECRET` and the tools that keep state (`execute_code`, `query_documents`, `list_documents`) refuse a call without a valid signature.
 - **What a client can make the agent fetch.** Files, pasted links and pages a model asks for are fetched only from public addresses (`src/lib/safe-fetch.ts`): the host is resolved once, every address it resolves to is checked, and the connection goes to the address that was checked (so a host cannot answer one address to the check and another to the connection), redirects are checked again, internal names and private, loopback and link-local addresses are refused, and a response is cut off at 25 MB. The one exception is the Workspace's own links to its files, fetched from `WORKSPACE_API_URL`.
 - **Limits.** `INES_MAX_CONCURRENT_QUERIES` per user (a user over it gets 429), `INES_MAX_TOTAL_QUERIES` for the whole agent (503), `INES_MAX_TURN_REQUESTS` per question, `INES_HELPER_CALLS_PER_MINUTE` per user for the helpers (titles, prompt rewriting; 429, and counted before the body is read), `INES_INVALID_REQUESTS_PER_MINUTE` per user for requests that are not questions (past it their questions are turned away unread), `INES_MAX_BODY_MB` per request (8 MB for the helpers that take JSON), field limits on what a request may hold (messages, widgets, documents), and only the models on offer (`DEFAULT_MODEL`, `INES_MODELS`). A query's place is taken before its body is read (a body can be tens of megabytes, and refused requests must cost nothing), and a query whose client has gone is stopped, and its place and its model call with it.
-- **State is in memory.** Run one replica, or send a chat's requests to the same one. Every cache is bounded (entries, size and age) and filed under the user's scope. See the repository README for what a restart or a second replica costs.
+- **More than one replica.** A turn is several requests, and what the agent remembers between them decides what the next one may do. All of it — who a token belongs to, how much of a user's share is left, which turn is under way and a chat's rows — lives behind one store (`src/lib/store.ts`). With `REDIS_URL` set it is shared, so a user has one share of their quota across every replica, a continuation is recognised wherever it lands, and rows another replica fetched are found instead of fetched again; `GET /status` says `sharedState: true`. Without it the store keeps everything in this process, as it always did, and a deployment should run one replica (or send a chat's requests to the same one). Redis is never in the way of serving: an operation it cannot answer falls back to this process, so a Redis outage makes the quotas per-replica for a while rather than stopping the agent — `ines_store_errors_total` counts those. Every cache is bounded (entries, size and age) and filed under the user's scope; a table too large to be worth sending (1 MB as JSON) stays in the process that fetched it, and another replica fetches it again.
 
 ### Hardening
 
@@ -465,6 +457,9 @@ INES_SCOPE_SECRET            # Required with workspace auth (16+ characters); sh
 INES_CORS_ORIGINS            # Required with workspace auth: the web app's origin(s), or *
 INES_MODELS                  # More models users may pick, comma-separated <provider>:<model>
 INES_AUTH_CACHE_SECONDS      # How long a signed-in user is remembered (default 30)
+REDIS_URL                    # Shares what the agent keeps between the requests of a turn with the other
+                             # replicas (sign-ins, quotas, turns, a chat's rows). Unset: kept in this
+                             # process, so run one replica. See "Running for many users"
 INES_INLINE_TOOL_CALLS       # "off" does not read tool calls that a model writes into its text (see What the chat is shown); on by default
 INES_MAX_CONCURRENT_QUERIES  # Queries one user may run at once (default 4)
 INES_MAX_TOTAL_QUERIES       # Queries the whole agent runs at once; past it a query is refused with 503 (default 200)

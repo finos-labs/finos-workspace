@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM oven/bun:1-slim AS deps
+FROM oven/bun:1.4.2-slim AS deps
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ RUN bun install --frozen-lockfile --production
 
 # The companion MCP server: the tools the agent uses (web search, page fetch, document search, ...).
 # Only the Workspace talks to it, so it is not meant to be reachable from outside the deployment.
-FROM oven/bun:1-slim AS ines-mcp
+FROM oven/bun:1.4.2-slim AS ines-mcp
 
 ENV NODE_ENV=production
 ENV MCP_PORT=8787
@@ -31,7 +31,7 @@ USER bun
 
 CMD ["bun", "mcp-server/src/server.ts"]
 
-FROM oven/bun:1-slim AS ines
+FROM oven/bun:1.4.2-slim AS ines
 
 ENV NODE_ENV=production
 ENV PORT=7777
