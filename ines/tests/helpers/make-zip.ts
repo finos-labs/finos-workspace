@@ -8,12 +8,26 @@ export interface ZipEntry {
   data?: Uint8Array;
 }
 
+/**
+ * The table every CRC-32 implementation uses: the remainder for each possible byte, worked out once.
+ *
+ * Doing those eight steps per byte instead costs a second per 40 MB, and the ZIP-bomb fixtures are
+ * tens of megabytes, which was most of the time those tests took and what made them miss the 5 s
+ * budget on a slower machine than the one they were written on.
+ */
+const CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let byte = 0; byte < 256; byte++) {
+    let c = byte;
+    for (let k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xedb88320 : c >>> 1;
+    table[byte] = c >>> 0;
+  }
+  return table;
+})();
+
 function crc32(data: Uint8Array): number {
   let c = ~0;
-  for (const byte of data) {
-    c ^= byte;
-    for (let k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xedb88320 : c >>> 1;
-  }
+  for (let i = 0; i < data.length; i++) c = CRC_TABLE[(c ^ data[i]) & 0xff] ^ (c >>> 8);
   return ~c >>> 0;
 }
 
@@ -28,11 +42,13 @@ export function makeZip(entries: ZipEntry[]): Uint8Array {
     const packed = deflateRawSync(raw);
     const packedSize = entry.packedSize ?? packed.length;
     const unpackedSize = entry.unpackedSize ?? raw.length;
+    // Once per entry: the local header and the central directory record the same checksum.
+    const checksum = crc32(raw);
     const local = new DataView(new ArrayBuffer(30));
     local.setUint32(0, 0x04034b50, true);
     local.setUint16(4, 20, true);
     local.setUint16(8, 8, true);
-    local.setUint32(14, crc32(raw), true);
+    local.setUint32(14, checksum, true);
     local.setUint32(18, packed.length, true);
     local.setUint32(22, raw.length, true);
     local.setUint16(26, name.length, true);
@@ -42,7 +58,7 @@ export function makeZip(entries: ZipEntry[]): Uint8Array {
     dir.setUint16(4, 20, true);
     dir.setUint16(6, 20, true);
     dir.setUint16(10, 8, true);
-    dir.setUint32(16, crc32(raw), true);
+    dir.setUint32(16, checksum, true);
     dir.setUint32(20, packedSize, true);
     dir.setUint32(24, unpackedSize, true);
     dir.setUint16(28, name.length, true);

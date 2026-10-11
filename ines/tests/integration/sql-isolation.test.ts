@@ -85,6 +85,17 @@ describe("a query that never ends", () => {
 });
 
 describe("a query that wants more memory than there is", () => {
+  /**
+   * What ends these queries has to be the heap limit (`SQL_HEAP_LIMIT_BYTES`, 512 MB), not the clock.
+   * The 1.5 s the other tests here use is enough time to reach that limit on a fast machine and not
+   * on a slow one, so with it these tests assert "out of memory" on one machine and read the timeout
+   * message on another — which is what they did on CI. The time limit has its own tests above; here
+   * it is set out of the way so that only running out of memory can end the query.
+   */
+  beforeEach(() => {
+    process.env.INES_SQL_TIMEOUT_MS = "30000";
+  });
+
   it("fails with an error instead of taking the memory of the machine", async () => {
     const { call } = tools();
     const out = await call("execute_sql", { sql: "SELECT length(randomblob(900000000)) AS n" });
