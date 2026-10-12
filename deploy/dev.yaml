@@ -1,0 +1,46 @@
+# The dev environment's app settings. A push to develop that changes this file
+# deploys it, together with any images the push builds
+# (.github/workflows/deploy-dev.yml).
+#
+# frontend: written into config.js when the container starts. Every browser
+# downloads it, so nothing secret. The names are the variables in the FIELDS
+# table of frontend/render-frontend-config.sh.
+# backend: environment variables of the backend API and worker.
+#
+# The environment's own settings stay in the infrastructure repository's dev
+# values file: the URLs of the other services, hostnames, CORS origins,
+# databases, cache, file storage and worker counts. A setting in both places
+# fails the deploy. Secrets go in the environment's secret store, never here.
+# .github/scripts/check-deploy-config.sh checks this file on every pull request.
+frontend:
+  AUTHENTICATION_ALLOW_EMAIL_LOGIN: true
+  # Sign-in buttons to show, comma separated: google, microsoft, okta. Empty shows none.
+  AUTHENTICATION_IDENTITY_PROVIDERS: "google"
+  AUTHENTICATION_SEND_MICROSOFT_IDTOKEN: false
+  AUTHENTICATION_SEND_OKTA_IDTOKEN: false
+  AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER: true
+  GOOGLE_OAUTH_CLIENT_ID: "508662717287-ls9frq1ohf1tvug8vm91ofhmbraiuegu.apps.googleusercontent.com"
+  AZURE_CLIENT_ID: ""
+  AZURE_TENANT_ID: ""
+  OKTA_CLIENT_ID: ""
+  OKTA_DOMAIN: ""
+  AI_COPILOT_ENABLED: true
+  AI_COPILOT_DOCUMENTATION_LINKS: true
+  AI_COPILOT_WEB_SEARCH: true
+  AI_COPILOT_SEC_FILINGS: false
+  AI_COPILOT_JINA_AI: true
+  AI_COPILOT_AI_ENHANCEMENTS: true
+  AI_COPILOT_SAVE_SKILL_FROM_CHAT: true
+  UI_SHOW_COMPANION_MCP_MODE: true
+  UI_SHOW_MINIMIZE_WIDGET: true
+  UI_SHOW_EXTERNAL_DOCUMENTATION_LINKS: true
+  UI_SHOW_HELP_DOCUMENTATION: true
+  UI_SHOW_CHANGELOG: true
+  UI_SHOW_COPILOT_SWITCHER: true
+  UI_SHOW_REMOVE_FROM_ORG: true
+  UI_DEFAULT_THEME: "dark"
+  UI_SHOW_MARKETPLACE: true
+
+backend:
+  MODE: production
+  DISABLE_REGISTRATION: "0"
