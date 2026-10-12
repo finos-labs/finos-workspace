@@ -425,3 +425,40 @@ describe("a call of a tool", () => {
     expect(tools.executeWorkspaceTool).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * When the answer is in the chat the cursor goes back to the question box, after a short wait for the
+ * chat to render it. That wait is a timer, and a timer nobody owns outlives the component: it fires
+ * into a page that is no longer there and throws `document is not defined`, which fails the whole
+ * test file from outside any test ("This error originated in ..."). It is how this file failed on CI
+ * and not on a faster machine — the timer has to land in the gap between the file ending and the
+ * environment being torn down.
+ */
+describe("the cursor going back to the question box", () => {
+  it("is not attempted once the chat is gone", async () => {
+    const { unmount } = renderHook(() => useHandleStreaming(), { wrapper });
+    const stream = openStream();
+    let finished: Promise<void> | undefined;
+    await act(async () => {
+      finished = context.handleSubmitRef.current?.({ question: "summarize prices" });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    void finished?.catch(() => {});
+
+    await stream.send("copilotMessageChunk", { delta: "an answer" });
+    // `done` is what puts the answer in the chat and asks for the cursor back.
+    await stream.send("done", {});
+    await stream.end();
+
+    const lookup = vi.spyOn(document, "getElementById");
+    unmount();
+
+    // Past the wait: nothing may go looking for the question box any more.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    });
+
+    expect(lookup).not.toHaveBeenCalledWith("copilot-input");
+    lookup.mockRestore();
+  });
+});

@@ -184,6 +184,8 @@ function useStreamResponse(stopSubmit: () => void) {
 
   // Follow-up suggestions that arrive before the answer they belong to is put in the chat.
   const pendingSuggestionsRef = useRef<string[] | null>(null);
+  /** The pending "put the cursor back in the question box" timer, so it can be cancelled. */
+  const focusInputRef = useRef<ReturnType<typeof setTimeout>>();
 
   const autoOpenAppArtifact = useCallback(
     async (artifact: AppArtifactT, targetAgent?: Copilot) => {
@@ -829,7 +831,12 @@ function useStreamResponse(stopSubmit: () => void) {
             copilot.updateLastMessage(updateMessage);
           }
 
-          setTimeout(() => {
+          // The cursor goes back to the question box once the answer is in the chat. The wait is for
+          // the chat to have rendered it. Kept so it can be cancelled: a timer that nobody owns runs
+          // after the component is gone, and then there is no document to look in — which is what
+          // ended the unit tests when a stream finished within 100 ms of the test file finishing.
+          clearTimeout(focusInputRef.current);
+          focusInputRef.current = setTimeout(() => {
             document.getElementById("copilot-input")?.focus();
           }, 100);
           break;
@@ -857,6 +864,9 @@ function useStreamResponse(stopSubmit: () => void) {
   useEffect(() => {
     handleEventRef.current = handleEvent;
   }, [handleEvent]);
+
+  // Nothing to focus once this is unmounted, and the page it would look in may be gone.
+  useEffect(() => () => clearTimeout(focusInputRef.current), []);
 
   const startStreamCb = useCallback(
     async (params: CopilotSubmitParams): Promise<void> => {
