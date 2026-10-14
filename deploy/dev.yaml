@@ -39,7 +39,6 @@ frontend:
   UI_SHOW_COPILOT_SWITCHER: true
   UI_SHOW_REMOVE_FROM_ORG: true
   UI_DEFAULT_THEME: "dark"
-  UI_SHOW_MARKETPLACE: true
 
 backend:
   MODE: production
