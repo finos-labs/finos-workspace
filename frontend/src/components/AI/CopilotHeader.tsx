@@ -631,7 +631,9 @@ export function CopilotHeader({
                 )}
 
                 {/* Right: Action Buttons */}
-                <div className="ml-auto flex items-center gap-0.5 flex-shrink-0">{buttons}</div>
+                <div className="ml-auto flex items-center gap-0.5 flex-shrink-0">
+                  {buttons}
+                </div>
               </div>
             ) : (
               <div
@@ -643,7 +645,9 @@ export function CopilotHeader({
                     <ChatSelection />
                   </div>
                 )}
-                <div className="ml-auto flex shrink-0 items-center gap-0.5">{buttons}</div>
+                <div className="ml-auto flex shrink-0 items-center gap-0.5">
+                  {buttons}
+                </div>
               </div>
             )}
           </div>
