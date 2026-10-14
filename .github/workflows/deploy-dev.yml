@@ -1,12 +1,15 @@
 name: Deploy to dev
 
 # A push to develop builds the changed app and pushes the image to ECR as
-# dev-<commit>. Then .github/scripts/pin-dev-tags.sh sets that tag in the dev
-# values file of the infrastructure repository and pushes it to main, where that
-# repository's Apps workflow deploys it to the dev cluster. The job waits for
-# that deploy. If it fails, helm has already put the previous release back, and
-# the script sets the tag in the values file back too, so the file always
-# matches the cluster.
+# dev-<commit>. Then .github/scripts/pin-dev-deploy.sh sets that tag in the dev
+# values file of the infrastructure repository, copies deploy/dev.yaml (the app
+# settings) to app-config.yaml next to it in the same commit, and pushes it to
+# main, where that repository's Apps workflow deploys it to the dev cluster. A
+# push that changes deploy/dev.yaml alone deploys the settings without
+# building. The job waits for that deploy. If it fails, helm has already put the
+# previous release back, and the script sets the tag and the settings back too,
+# so the files always match the cluster. .github/scripts/check-deploy-config.sh
+# checks deploy/dev.yaml against the code first, and a problem stops the deploy.
 #
 # Repository variables: AWS_REGION, AWS_IMAGE_PUSH_ROLE_ARN (the role that may
 # push to ECR), ECR_REGISTRY (<account>.dkr.ecr.<region>.amazonaws.com),
@@ -23,8 +26,9 @@ on:
     paths:
       - "backend-api/backend/**"
       - "frontend/**"
+      - "deploy/dev.yaml"
       - ".github/workflows/deploy-dev.yml"
-      - ".github/scripts/pin-dev-tags.sh"
+      - ".github/scripts/pin-dev-deploy.sh"
 
 permissions:
   contents: read
@@ -35,6 +39,7 @@ env:
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
   INFRA_REPO: ${{ vars.INFRA_REPO }}
   VALUES_FILE: ${{ vars.DEV_VALUES_FILE }}
+  SETTINGS_FILE: deploy/dev.yaml
 
 jobs:
   changes:
@@ -42,8 +47,12 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      settings: ${{ steps.filter.outputs.settings }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check the app settings
+        run: .github/scripts/check-deploy-config.sh "$SETTINGS_FILE"
 
       - uses: dorny/paths-filter@v3
         id: filter
@@ -52,11 +61,13 @@ jobs:
             backend:
               - "backend-api/backend/**"
               - ".github/workflows/deploy-dev.yml"
-              - ".github/scripts/pin-dev-tags.sh"
+              - ".github/scripts/pin-dev-deploy.sh"
             frontend:
               - "frontend/**"
               - ".github/workflows/deploy-dev.yml"
-              - ".github/scripts/pin-dev-tags.sh"
+              - ".github/scripts/pin-dev-deploy.sh"
+            settings:
+              - "deploy/dev.yaml"
 
   backend:
     needs: changes
@@ -68,7 +79,11 @@ jobs:
     env:
       IMAGE_TAG: dev-${{ github.sha }}
     steps:
+      # The full history, so the script can tell whether the settings in the
+      # infrastructure repository came from a later commit.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Log in to AWS to push images
         uses: aws-actions/configure-aws-credentials@v4
@@ -111,13 +126,14 @@ jobs:
           permission-contents: write
           permission-actions: read
 
-      - name: Pin the tag in the infrastructure repository and wait for the deploy
+      - name: Pin the tag and the settings in the infrastructure repository and wait for the deploy
         env:
           GH_TOKEN: ${{ steps.infra-token.outputs.token }}
         run: >-
-          .github/scripts/pin-dev-tags.sh
+          .github/scripts/pin-dev-deploy.sh
           --repo "$INFRA_REPO"
           --values "$VALUES_FILE"
+          --config "$SETTINGS_FILE"
           --keys backend,backendWorker
           --tag "$IMAGE_TAG"
           --source "$GITHUB_REPOSITORY@$GITHUB_SHA"
@@ -132,7 +148,11 @@ jobs:
     env:
       IMAGE_TAG: dev-${{ github.sha }}
     steps:
+      # The full history, so the script can tell whether the settings in the
+      # infrastructure repository came from a later commit.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Log in to AWS to push images
         uses: aws-actions/configure-aws-credentials@v4
@@ -172,13 +192,55 @@ jobs:
           permission-contents: write
           permission-actions: read
 
-      - name: Pin the tag in the infrastructure repository and wait for the deploy
+      - name: Pin the tag and the settings in the infrastructure repository and wait for the deploy
         env:
           GH_TOKEN: ${{ steps.infra-token.outputs.token }}
         run: >-
-          .github/scripts/pin-dev-tags.sh
+          .github/scripts/pin-dev-deploy.sh
           --repo "$INFRA_REPO"
           --values "$VALUES_FILE"
+          --config "$SETTINGS_FILE"
           --keys frontend
           --tag "$IMAGE_TAG"
+          --source "$GITHUB_REPOSITORY@$GITHUB_SHA"
+
+  # A push that changes the settings and no app. When it also builds an app,
+  # that job deploys the settings with the image.
+  settings:
+    needs: changes
+    if: needs.changes.outputs.settings == 'true' && needs.changes.outputs.backend != 'true' && needs.changes.outputs.frontend != 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-dev-settings
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Name the infrastructure repository
+        id: infra
+        run: |
+          echo "owner=${INFRA_REPO%%/*}" >> "$GITHUB_OUTPUT"
+          echo "name=${INFRA_REPO#*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Get a token for the infrastructure repository
+        id: infra-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.INFRA_APP_ID }}
+          private-key: ${{ secrets.INFRA_APP_PRIVATE_KEY }}
+          owner: ${{ steps.infra.outputs.owner }}
+          repositories: ${{ steps.infra.outputs.name }}
+          permission-contents: write
+          permission-actions: read
+
+      - name: Pin the settings in the infrastructure repository and wait for the deploy
+        env:
+          GH_TOKEN: ${{ steps.infra-token.outputs.token }}
+        run: >-
+          .github/scripts/pin-dev-deploy.sh
+          --repo "$INFRA_REPO"
+          --values "$VALUES_FILE"
+          --config "$SETTINGS_FILE"
           --source "$GITHUB_REPOSITORY@$GITHUB_SHA"
