@@ -59,14 +59,30 @@ PROBE = textwrap.dedent(
         except Exception as error:
             return type(error).__name__
 
-    def status():
-        with open("/proc/self/status") as f:
-            return {k: v.strip() for k, _, v in (line.partition(":") for line in f)}
+    libc = ctypes.CDLL(None, use_errno=True)
+
+    def identity():
+        # No /proc in the sandbox: what the kernel says through prctl and capget
+        capget = {"aarch64": 90, "x86_64": 125}[os.uname().machine]
+        header = ctypes.create_string_buffer(b"\x22\x05\x08\x20" + bytes(4), 8)
+        sets = ctypes.create_string_buffer(24)
+        if libc.syscall(capget, header, sets) != 0:
+            raise OSError(ctypes.get_errno(), "capget")
+        bounding = [cap for cap in range(64) if libc.prctl(23, cap, 0, 0, 0) == 1]  # PR_CAPBSET_READ
+        return {
+            "capabilities": sets.raw.hex(),
+            "bounding": bounding,
+            "no_new_privs": libc.prctl(39, 0, 0, 0, 0),  # PR_GET_NO_NEW_PRIVS
+            "seccomp": libc.prctl(21, 0, 0, 0, 0),  # PR_GET_SECCOMP
+        }
 
     def connect(host, port):
         s = socket.create_connection((host, port), timeout=5)
         s.sendall(b"GET / HTTP/1.0\r\nHost: x\r\n\r\n")
-        data = s.recv(1000)
+        # Until the server closes: the head and the body can come through the relays apart
+        data = b""
+        while chunk := s.recv(1000):
+            data += chunk
         s.close()
         return data.decode(errors="replace").split("\r\n")[-1] or "closed"
 
@@ -86,26 +102,21 @@ PROBE = textwrap.dedent(
             raise OSError(code, "exec")
 
     def mount_tmp():
-        libc = ctypes.CDLL(None, use_errno=True)
         if libc.mount(b"tmpfs", b"/tmp", b"tmpfs", 0, None) != 0:
             raise OSError(ctypes.get_errno(), "mount")
 
     def probe():
-        st = status()
         return {
             "uid": os.getuid(),
-            "uid_map": open("/proc/self/uid_map").read().split(),
-            "cap_eff": st["CapEff"], "cap_bnd": st["CapBnd"],
-            "no_new_privs": st["NoNewPrivs"], "seccomp": st["Seccomp"],
+            **identity(),
             "hostname": socket.gethostname(),
             "list_root": outcome(lambda: os.listdir("/") and None),
             "exists": {path: os.path.exists(path) for path in (
                 "/usr", "/plugin/plugin.json", "/data", "/tmp", "/opt", "/srv", "/var", "/root", "/home",
-                "/run/wsr-test", "/run/workspace/egress", "/etc/shadow", "/etc/os-release", "/proc/sys", "/sys",
+                "/run/wsr-test", "/run/workspace/egress", "/etc/shadow", "/etc/os-release", "/proc", "/sys",
             )},
             "etc": sorted(os.listdir("/etc")),
             "dev": sorted(os.listdir("/dev")),
-            "processes": sorted(p for p in os.listdir("/proc") if p.isdigit()),
             "passwd": open("/etc/passwd").read().split(":")[0],
             "data": sorted(os.listdir("/data")),
             "write_package": outcome(lambda: open("/plugin/plugin.json", "a").close()),
@@ -260,6 +271,17 @@ def deployment():
     upstream.shutdown()
 
 
+def backend_uid_map() -> list[str]:
+    """The backend's user namespace, read from the container's /proc."""
+    for pid in filter(str.isdigit, os.listdir("/proc")):
+        try:
+            if b"/plugin/backend/probe.py" in Path(f"/proc/{pid}/cmdline").read_bytes():
+                return Path(f"/proc/{pid}/uid_map").read_text().split()
+        except OSError:
+            continue
+    raise AssertionError("no backend process")
+
+
 def wait_for_backend(deployment, seconds=30):
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
@@ -290,10 +312,11 @@ class TestTheSandbox:
 
     def test_it_runs_as_its_own_unprivileged_user_with_nothing_to_gain(self, probe):
         assert probe["uid"] == 0
-        assert probe["uid_map"] == ["0", "61000", "1"]
-        assert int(probe["cap_eff"], 16) == 0 and int(probe["cap_bnd"], 16) == 0
-        assert probe["no_new_privs"] == "1"
-        assert probe["seccomp"] == "2"
+        # Its root is the backend's own uid outside, as the container sees the process
+        assert backend_uid_map() == ["0", "61000", "1"]
+        assert int(probe["capabilities"], 16) == 0 and probe["bounding"] == []
+        assert probe["no_new_privs"] == 1
+        assert probe["seccomp"] == 2  # a filter
         assert probe["hostname"] == "plugin"
 
     def test_it_sees_its_own_view_and_nothing_of_the_container(self, probe):
@@ -304,13 +327,10 @@ class TestTheSandbox:
         own_etc = {"hosts", "resolv.conf", "nsswitch.conf", "passwd", "group", "hostname"}
         from_container = {"ssl", "ca-certificates", "ld.so.cache", "localtime", "mime.types"}
         assert set(probe["etc"]) <= own_etc | from_container
-        devices = {"null", "zero", "full", "random", "urandom", "fd", "stdin", "stdout", "stderr", "shm"}
-        assert set(probe["dev"]) == devices
+        assert set(probe["dev"]) == {"null", "zero", "full", "random", "urandom", "shm"}
         assert probe["passwd"] == "root"
         assert probe["data"] == ["sales.csv"]
-        # Its own processes only: PID 1 is the sandbox's, never the container's
-        assert len(probe["processes"]) <= 3
-        # The sandbox's own PID 1 is invisible to it (hidepid=invisible)
+        # No /proc: no process of the container, nor its own, to read
         assert probe["read_init_environ"] == "ENOENT"
 
     def test_it_writes_only_its_scratch_and_runs_nothing_from_there(self, probe):

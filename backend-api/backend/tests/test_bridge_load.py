@@ -23,6 +23,7 @@ sys.path.insert(
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # tests
 
 import asyncio
+import gc
 import json
 import statistics
 import threading
@@ -151,7 +152,13 @@ async def run_bridge_load(*, commands: int, think_seconds: float) -> dict:
 @pytest.mark.asyncio
 async def test_bridge_load_stays_thread_light_and_responsive():
     commands = 150
-    metrics = await run_bridge_load(commands=commands, think_seconds=0.05)
+    # The bridge's lag, not a full collection of what the earlier tests left in the process:
+    # over that heap one takes ~100 ms on a laptop and more than 300 ms on a CI runner
+    gc.freeze()
+    try:
+        metrics = await run_bridge_load(commands=commands, think_seconds=0.05)
+    finally:
+        gc.unfreeze()
 
     assert metrics["completed"] == commands
     # The async path holds no pool threads; the old to_thread path spiked to the ~20-thread cap.

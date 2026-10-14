@@ -10,7 +10,9 @@ every layer, in this order, and exits with the name of the first one that cannot
 3. ``mounts``: a private root on tmpfs holding the system's directories read-only, its
    runtime read-only, its package and data read-only without exec, a scratch ``/tmp``
    without exec, the directory of its listening socket and the runner's egress sockets;
-   nothing else of the container (R3).
+   no ``/proc``, and nothing else of the container (R3). Linux before 7.2 refuses a
+   ``/proc`` of the sandbox's own processes wherever the container's ``/proc`` is partly
+   covered, as Docker's is, so the sandbox has none on any kernel.
 4. ``network``: loopback only. Each approved endpoint is a relay on a loopback address that
    its own ``/etc/hosts`` gives the endpoint's name, to the runner's egress socket (R4).
 5. ``landlock``: the same paths again, TCP connections only to the relays' ports, signals
@@ -64,8 +66,9 @@ MS_REMOUNT, MS_BIND, MS_REC, MS_PRIVATE = 32, 4096, 16384, 1 << 18
 MS_NOATIME, MS_NODIRATIME, MS_RELATIME = 1024, 2048, 1 << 21
 MNT_DETACH = 2
 _PIVOT_ROOT = {"aarch64": 41, "x86_64": 155}
+_CAPGET = {"aarch64": 90, "x86_64": 125}
 _CAPSET = {"aarch64": 91, "x86_64": 126}
-PR_SET_PDEATHSIG, PR_SET_DUMPABLE, PR_CAPBSET_DROP = 1, 4, 24
+PR_SET_PDEATHSIG, PR_SET_DUMPABLE, PR_CAPBSET_READ, PR_CAPBSET_DROP = 1, 4, 23, 24
 PR_SET_SECUREBITS, PR_SET_NO_NEW_PRIVS, PR_CAP_AMBIENT = 28, 38, 47
 # NOROOT, NO_SETUID_FIXUP, KEEP_CAPS and NO_CAP_AMBIENT_RAISE, each with its lock
 SECUREBITS = 0b11101111
@@ -226,9 +229,6 @@ def _dev(view: View, spec: dict) -> None:
     for name in ("null", "zero", "full", "random", "urandom"):
         _touch(f"{dev}/{name}")
         _mount(f"/dev/{name}", f"{dev}/{name}", None, MS_BIND)
-    links = {"fd": "/proc/self/fd", "stdin": "/proc/self/fd/0", "stdout": "/proc/self/fd/1", "stderr": "/proc/self/fd/2"}
-    for name, target in links.items():
-        os.symlink(target, f"{dev}/{name}")
     os.makedirs(f"{dev}/shm")
     size = spec["limits"]["scratch_mb"]
     _mount("tmpfs", f"{dev}/shm", "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC, f"size={size}m,mode=1777")
@@ -246,7 +246,6 @@ def _own(view: View, spec: dict) -> None:
         _bind(bind["source"], view.directory(bind["target"]))
     _bind(spec["listen_dir"], view.directory(LISTEN_DIR), writable=True)
     _bind(spec["egress_dir"], view.directory(EGRESS_DIR))
-    view.directory("/proc")
 
 
 def mounts(spec: dict, arch: str) -> None:
@@ -263,8 +262,6 @@ def mounts(spec: dict, arch: str) -> None:
     if _libc.umount2(b"/.old", MNT_DETACH) != 0:
         raise _oserror("umount the old root")
     os.rmdir("/.old")
-    # Only its own processes, none of the container's
-    _mount("proc", "/proc", "proc", MS_NOSUID | MS_NODEV | MS_NOEXEC, "subset=pid,hidepid=invisible")
     _mount(None, "/", None, MS_REMOUNT | MS_RDONLY | MS_NOSUID | MS_NODEV)
     if _libc.sethostname(b"plugin", 6) != 0:
         raise _oserror("sethostname")
@@ -294,7 +291,6 @@ def landlock_rules(spec: dict) -> dict[str, int]:
     rules = {
         "/usr": landlock.READ_EXECUTE,
         "/etc": landlock.READ,
-        "/proc": landlock.READ,
         "/dev": landlock.READ,
         "/dev/null": landlock.READ_FILE | landlock.WRITE_FILE,
         "/dev/full": landlock.READ_FILE | landlock.WRITE_FILE,
@@ -317,19 +313,25 @@ def landlock_rules(spec: dict) -> dict[str, int]:
 def drop_privileges(arch: str) -> None:
     """No capabilities from here on, and none to be had again by any program it runs."""
     _prctl(PR_SET_SECUREBITS, SECUREBITS, "securebits")
-    with open("/proc/self/status") as f:
-        bounding = next(int(line.split()[1], 16) for line in f if line.startswith("CapBnd:"))
-    for cap in range(bounding.bit_length()):
-        _prctl(PR_CAPBSET_DROP, cap, "drop a bounding capability")
+    # Every capability the kernel knows: reading past the last one fails
+    known = 0
+    while _libc.prctl(PR_CAPBSET_READ, known, 0, 0, 0) >= 0:
+        _prctl(PR_CAPBSET_DROP, known, "drop a bounding capability")
+        known += 1
     _prctl(PR_CAP_AMBIENT, 4, "clear the ambient capabilities")  # PR_CAP_AMBIENT_CLEAR_ALL
     header = ctypes.create_string_buffer(struct.pack("<Ii", 0x20080522, 0), 8)
     data = ctypes.create_string_buffer(bytes(24), 24)
     if _libc.syscall(_CAPSET[arch], header, data) != 0:
         raise _oserror("capset")
-    with open("/proc/self/status") as f:
-        status = {line.split(":")[0]: line.split()[1] for line in f if line.startswith("Cap")}
-    if any(int(status[name], 16) for name in ("CapInh", "CapPrm", "CapEff", "CapBnd", "CapAmb")):
-        raise LayerError("seccomp", f"capabilities left: {status}")
+    if _libc.syscall(_CAPGET[arch], header, data) != 0:
+        raise _oserror("capget")
+    left = {
+        "effective, permitted, inheritable": data.raw.hex() if any(data.raw) else "",
+        "bounding": [cap for cap in range(known) if _libc.prctl(PR_CAPBSET_READ, cap, 0, 0, 0) != 0],
+        "ambient": [cap for cap in range(known) if _libc.prctl(PR_CAP_AMBIENT, 1, cap, 0, 0) != 0],  # IS_SET
+    }
+    if not known or any(left.values()):
+        raise LayerError("seccomp", f"capabilities left: {left}")
 
 
 def limit_backend(spec: dict) -> None:

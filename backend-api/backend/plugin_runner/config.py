@@ -42,7 +42,7 @@ FORBIDDEN_SOURCES = (
     "/home",
     "/tmp",  # noqa: S108 - refused as a mount source, not used as a temporary directory
 )
-# The sandbox's own layout (sandbox.py), which a mount may not cover
+# The sandbox's own layout (sandbox.py), and /proc, which it leaves out: no mount may cover them
 RESERVED_TARGETS = (
     *("/usr", "/bin", "/sbin", "/lib", "/lib32", "/lib64", "/libx32"),
     *("/etc", "/dev", "/proc", "/run", "/plugin"),
