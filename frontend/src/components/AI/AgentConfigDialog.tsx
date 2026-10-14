@@ -193,8 +193,8 @@ function CopilotApiKeyDialog() {
         id: `copilot_api_key_${type}`,
         description:
           isCleared || !state.openaiApiKey
-            ? "Copilot will now use the default API key."
-            : "Copilot will now use this API key.",
+            ? "Agent will now use the default API key."
+            : "Agent will now use this API key.",
       });
       onClose();
       debouncedUpdateSettings();

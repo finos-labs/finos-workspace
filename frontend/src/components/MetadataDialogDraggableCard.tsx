@@ -269,7 +269,8 @@ export function MetadataDialog(props: Props) {
     >
       <DialogTitle>Edit widget metadata</DialogTitle>
       <DialogDescription>
-        By editing the metadata, you will help Copilot to better understand your widget.
+        By editing the metadata, you will help the agent to better understand your
+        widget.
       </DialogDescription>
       <Form {...form}>
         <form

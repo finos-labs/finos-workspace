@@ -72,11 +72,11 @@ export default function ShortcutDialog() {
           ...(copilotAvailable
             ? [
                 {
-                  title: "Toggle Copilot",
+                  title: "Toggle Agent",
                   shortcut: "⌘ + L",
                 },
                 {
-                  title: "Maximize/Minimize Copilot",
+                  title: "Maximize/Minimize Agent",
                   shortcut: "⌘ + U",
                 },
               ]

@@ -63,7 +63,7 @@ describe("BottomTabBar", () => {
     expect(screen.getByText("Menu")).toBeInTheDocument();
     expect(screen.getByText("Apps")).toBeInTheDocument();
     expect(screen.getByText("Search")).toBeInTheDocument();
-    expect(screen.getByText("Copilot")).toBeInTheDocument();
+    expect(screen.getByText("Agent")).toBeInTheDocument();
   });
 
   it("renders as a nav element", () => {
@@ -103,7 +103,7 @@ describe("BottomTabBar", () => {
     const user = userEvent.setup();
     render(<BottomTabBar />);
 
-    await user.click(screen.getByText("Copilot"));
+    await user.click(screen.getByText("Agent"));
 
     expect(mockSetMobileCopilotDrawer).toHaveBeenCalledWith(true);
   });
@@ -148,7 +148,7 @@ describe("BottomTabBar", () => {
     mockCopilotAvailable = false;
     render(<BottomTabBar />);
 
-    expect(screen.queryByText("Copilot")).not.toBeInTheDocument();
+    expect(screen.queryByText("Agent")).not.toBeInTheDocument();
     expect(screen.getByText("Menu")).toBeInTheDocument();
     expect(screen.getByText("Apps")).toBeInTheDocument();
     expect(screen.getByText("Search")).toBeInTheDocument();
