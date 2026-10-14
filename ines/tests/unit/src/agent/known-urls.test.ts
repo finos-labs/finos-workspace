@@ -123,7 +123,7 @@ describe("addressesGiven", () => {
   });
 
   it("knows a tool by its name with the server in front, as the Workspace may call it", () => {
-    const set = given([human("hi"), mcp("Ines Tools_web_search", "https://news.example/story"), mcp("Ines Tools_execute_code", SECRET_URL), mcp("Ines Tools_not_web_search_at_all", SECRET_URL)]);
+    const set = given([human("hi"), mcp("Ines Tools_web_search", "https://news.example/story"), mcp("Ines Tools_mermaid_diagram", SECRET_URL), mcp("Ines Tools_not_web_search_at_all", SECRET_URL)]);
     expect(isGivenAddress("https://news.example/story", set)).toBe(true);
     expect(isGivenAddress(SECRET_URL, set)).toBe(false);
   });
@@ -132,8 +132,8 @@ describe("addressesGiven", () => {
     const set = given([
       human("hello"),
       ai(`Here you go: ${SECRET_URL}`),
-      // The code sandbox prints what it is told to; the bridge results repeat what the model asked.
-      mcp("execute_code", SECRET_URL),
+      // A renderer repeats what it is told to; the bridge results repeat what the model asked.
+      mcp("mermaid_diagram", SECRET_URL),
       toolResult("update_widget_in_dashboard", undefined, SECRET_URL),
       toolResult("get_params_options", undefined, "ok", { query: SECRET_URL }),
     ]);

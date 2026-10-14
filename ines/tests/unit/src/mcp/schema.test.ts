@@ -50,14 +50,14 @@ describe("buildToolInputSchema", () => {
       properties: {
         sql: { type: "string" },
         "x-ines-conversation-id": { type: "string" },
-        "x-ines-tables": { type: "object" },
+        "x-ines-documents": { type: "array" },
       },
       required: ["sql"],
     });
     const shape = schema.shape;
     expect(Object.keys(shape).sort()).toEqual(["display_summary", "sql"]);
     expect("x-ines-conversation-id" in shape).toBe(false);
-    expect("x-ines-tables" in shape).toBe(false);
+    expect("x-ines-documents" in shape).toBe(false);
   });
 
   it("marks non-required props as optional", () => {

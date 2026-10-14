@@ -360,11 +360,11 @@ describe("workspace bridge — generic dispatch", () => {
     expect(events.some((e) => e.event === "copilotMessageChunk")).toBe(false);
   });
 
-  it("carries continuation extra_state on bridge emissions (compute delta survives the round-trip)", async () => {
+  it("carries continuation extra_state on bridge emissions (document delta survives the round-trip)", async () => {
     // The workspace echoes extra_state back on the re-POST and the loop
     // restores from the LAST tool message only. A bridge emission that drops
-    // compute_tables_shipped would silently wipe the execute_code delta-ship
-    // state mid-turn.
+    // documents_shipped would silently wipe the document delta-ship state
+    // mid-turn.
     const priorBridgeResult: ToolMessage = {
       role: "tool",
       function: "manage_dashboard",
@@ -376,7 +376,7 @@ describe("workspace bridge — generic dispatch", () => {
           data: { ok: true, command: "manage_dashboard", data: { dashboard_id: "d-1" } },
         },
       ] as unknown as ToolMessage["data"],
-      extra_state: { compute_tables_shipped: ["events_table"] },
+      extra_state: { documents_shipped: ["doc-1"] },
     } as unknown as ToolMessage;
 
     const events = await collectGenerator(
@@ -404,7 +404,7 @@ describe("workspace bridge — generic dispatch", () => {
     expect(fc).toBeDefined();
     const extraState = (fc!.data as { extra_state?: Record<string, unknown> }).extra_state;
     expect(extraState).toMatchObject({
-      compute_tables_shipped: ["events_table"],
+      documents_shipped: ["doc-1"],
     });
   });
 

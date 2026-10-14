@@ -7,13 +7,12 @@
  *  - Subsequent calls in the same chat read from the store directly.
  *  - TTL eviction (30 min idle) matches the agent's `chatRowCache` so a chat
  *    that idles past the agent cache will re-ship anyway. Process restart
- *    drops the store entirely (no persistence — same as Daytona sandboxes).
+ *    drops the store entirely (no persistence).
  *
  * Memory cap: per-conversation `MAX_DOCS_PER_CHAT` and `MAX_CHUNKS_PER_CHAT`
  * fail loud on overflow so a runaway upload can't OOM the MCP server.
  *
- * `_resetDocStoreState()` test hook clears everything, mirroring
- * `_resetSandboxState`.
+ * `_resetDocStoreState()` test hook clears everything.
  */
 
 import type { DocChunk } from "./chunk";
@@ -263,7 +262,7 @@ export function* iterChunks(
   }
 }
 
-/** Test-only: clear all module state. Mirrors `_resetSandboxState`. */
+/** Test-only: clear all module state. */
 export function _resetDocStoreState(): void {
   stores.clear();
   ingestUsed.clear();

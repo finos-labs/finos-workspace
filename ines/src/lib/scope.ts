@@ -1,6 +1,6 @@
 /**
  * The scope of a chat: whose chat it is. Everything the agent and the MCP tools keep for a chat (the
- * rows of its widgets, its documents, its code sandbox) is filed under the chat's scope key, which
+ * rows of its widgets, its documents, the pages it fetched) is filed under the chat's scope key, which
  * names the user as well as the chat, so one user's chat can never be another's.
  *
  * The browser, not the agent, makes the MCP calls and so carries the scope key to the tools, which

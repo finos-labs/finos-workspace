@@ -17,7 +17,6 @@ import { reasoningStep } from "../protocol/events";
 import { htmlTableArtifact } from "../protocol/html-table";
 import { WORKSPACE_BRIDGE_COMMAND_NAMES } from "../protocol/bridge-commands";
 import { forgetRows, rememberRows } from "./row-cache";
-import { setPendingTable } from "./pending-tables";
 import { formatWidgetDataLoadedStatuses } from "./tool-status";
 import { mcpDisplayName } from "./mcp-display";
 import type { PendingDocument } from "./documents";
@@ -510,23 +509,14 @@ export interface RoundTripContext {
   artifactQueue: SSEEvent[];
   intermediateCitations: Citation[];
   /**
-   * Tables available for shipping to the compute MCP sandbox. Populated by
-   * injectWidgetData and processMcpResult; consumed by the decoration step
-   * in src/agent/loop.ts when the model calls a compute MCP tool. SQL
-   * execution itself lives in the compute MCP server, not the agent.
+   * Tables the SQL family queries. Populated by injectWidgetData and
+   * processMcpResult; the SQL tools read it through their factory closure.
    */
   pendingTables: Map<string, Record<string, unknown>[]>;
   /**
-   * Names already shipped to the compute sandbox in this chat. Mutated by
-   * `setPendingTable` whenever an entry in `pendingTables` is OVERWRITTEN
-   * (widget re-fetch, follow-up sqlite_table) so the next compute call
-   * re-ships the refreshed rows instead of skipping by name.
-   */
-  tablesShipped: Set<string>;
-  /**
    * Per-chat identifier from X-Trace-Id. Used as the key for the cross-
-   * request row cache so a follow-up message can use the compute MCP
-   * tools without re-fetching widget data.
+   * request row cache so a follow-up message can query the tables without
+   * re-fetching widget data.
    */
   conversationId: string;
   /**
@@ -538,12 +528,6 @@ export interface RoundTripContext {
    * `query_documents` / `list_documents` call.
    */
   pendingDocuments?: Map<string, PendingDocument>;
-  /**
-   * True only when execute_code is present in the current tool set and not
-   * suppressed for this request. Used so injected table guidance does not
-   * advertise Python when the model cannot actually call it.
-   */
-  codeExecutionAvailable?: boolean;
   /**
    * True when the query_documents tool is among this request's tools. A document (PDF, DOCX) is not shown
    * to the model: it is told how to search it, or, when it cannot, that it cannot read it.
@@ -702,7 +686,6 @@ function invalidateEmptyWidgetFetchTables(toolMsg: ToolMessage, ctx: RoundTripCo
     if (hadTableInfo) {
       ctx.tables.splice(0, ctx.tables.length, ...ctx.tables.filter((table) => table.tableName !== tableName));
     }
-    ctx.tablesShipped.delete(tableName);
     forgetRows(ctx.conversationId, tableName);
     if (wasPending || hadTableInfo) removed.push(tableName);
   }
@@ -723,9 +706,7 @@ export function injectWidgetData(
       type: "text",
       text:
         "The following widget data has been fetched and loaded. Use it to answer the user's question.\n" +
-        (ctx.codeExecutionAvailable
-          ? "Structured rows are queryable via the execute_sql tool (SQLite dialect) and from execute_code (Python with pandas/duckdb at /tmp/ines.db). Use ines.show() inside execute_code to render charts/tables inline.\n"
-          : "Structured rows are queryable via the execute_sql tool (SQLite dialect). Python execute_code is not available this turn.\n") +
+        "Structured rows are queryable via the execute_sql tool (SQLite dialect).\n" +
         "Do NOT call get_widget_data again for these exact widgets. If the user's request needs fields that are not present in the loaded tables, fetch a different relevant widget. The listed table and column names are authoritative; never infer column names from table/display names.",
     },
   ];
@@ -760,7 +741,7 @@ export function injectWidgetData(
           const rows = data as Record<string, unknown>[];
           const table = analyzeTable(tableNames.get(item) ?? item.name, rows);
           ctx.tables.push(table);
-          setPendingTable(table.tableName, rows, ctx.pendingTables, ctx.tablesShipped);
+          ctx.pendingTables.set(table.tableName, rows);
           rememberRows(ctx.conversationId, table.tableName, rows, {
             widgetUuid: item.uuid,
             inputArgs,
@@ -781,16 +762,13 @@ export function injectWidgetData(
             text:
               `--- ${item.name} (uuid: ${item.uuid}) ---\n` +
               inputArgsLine +
-              `[Structured data: ${table.rowCount} rows available as queryable table "${table.tableName}" in the compute sandbox]\n` +
+              `[Structured data: ${table.rowCount} rows available as queryable table "${table.tableName}"]\n` +
               `Queryable columns — use these exact names in SQL and artifact xKey/yKey values:\n${colLines}\n` +
               `Preview with queryable column names (first 5 rows):\n${preview}\n\n` +
               `Original labels are shown only for reference; do not use them as SQL identifiers unless you alias queryable columns to those names. ` +
               `Never infer a column from the table/display name; if the metric is stored in a generic column such as "value", select that exact column and alias it in SQL. ` +
               `If table or column names are uncertain, call peek_table before execute_sql or create_artifact. ` +
-              `Query via the execute_sql tool (SQLite dialect). Use double-quotes for identifiers.` +
-              (ctx.codeExecutionAvailable
-                ? ` For Python-only statistics, transformations, or charts, use execute_code (Python with pandas/plotly).`
-                : ` Use execute_sql/create_artifact for statistics, transformations, and charts because execute_code is not available this turn.`),
+              `Query via the execute_sql tool (SQLite dialect). Use double-quotes for identifiers.`,
           });
 
           logger.debug("Widget table prepared", {
@@ -872,12 +850,10 @@ export function extractSkillContent(toolMsg: ToolMessage): { slug: string; conte
 
 /**
  * Side-channel data returned alongside the yielded events (read via
- * `const out = yield* injectFromReboot(...)`). `sandboxId` tracks Daytona
- * sandbox recreation after execute_agent_tool results; `terminal` marks
- * bridge results that should not start another model turn.
+ * `const out = yield* injectFromReboot(...)`). `terminal` marks bridge
+ * results that should not start another model turn.
  */
 export interface InjectFromRebootResult {
-  sandboxId?: string;
   terminal?: boolean;
   terminalMessage?: string;
   suppressWidgetDataTool?: boolean;
@@ -944,7 +920,6 @@ export async function* injectFromReboot(
         citations: ctx.mcpCitations,
         messages: ctx.messages,
         pendingTables: ctx.pendingTables,
-        tablesShipped: ctx.tablesShipped,
         conversationId: ctx.conversationId,
       });
       const displayName = mcpDisplayName(summary.serverId, summary.toolName);
@@ -964,7 +939,7 @@ export async function* injectFromReboot(
           artifacts,
         );
       }
-      return { sandboxId: summary.sandboxId };
+      return {};
     }
 
     default: {

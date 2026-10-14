@@ -108,7 +108,7 @@ if (modelStopped) runAnother orchestration loop with a new instruction;
 ```
 
 Allowed exception: a retry may exist only for a narrow external transient with a structural signal, such
-as a stopped sandbox process or a network timeout. The retry must not inspect semantic content, must be
+as a network timeout. The retry must not inspect semantic content, must be
 bounded, and must be documented in the owning tool layer.
 
 Correct alternatives:

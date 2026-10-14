@@ -2,9 +2,9 @@
  * Tier 2 — agent-loop decoration & schema-strip scenarios.
  *
  * Pinned to CLAUDE.md gotchas:
- * - Missing X-Trace-Id → execute_code suppressed, SQL family unaffected
- * - COMPUTE_PERMANENTLY_UNAVAILABLE in any prior message → execute_code disabled
- * - x-ines-tables decoration shipped on SQL + code calls
+ * - the SQL family runs in-process, with no decoration
+ * - every round-trip emission carries the continuation extra_state
+ * - earlier MCP results of the turn, and their artifacts, stay visible
  * - x-ines-* keys never appear in the model-facing tool schema
  */
 
@@ -21,25 +21,45 @@ beforeEach(() => {
   _resetWidgetDataCache();
 });
 
-// Only `execute_code` rides the decoration path now; SQL family lives
-// in-process on the agent and never round-trips through MCP.
+// MCP tools of the ines tool server: a renderer, and a tool that keeps state per chat and so
+// carries decoration. The SQL family lives in-process on the agent and never round-trips through MCP.
 function tools(): AgentTool[] {
   return [
     {
-      name: "execute_code",
+      name: "mermaid_diagram",
       server_id: "ines",
       url: "http://localhost:8787/mcp",
-      description: "Run Python",
+      description: "Render a Mermaid diagram",
       input_schema: {
-        properties: {
-          code: { type: "string" },
-          "x-ines-conversation-id": { type: "string" },
-          "x-ines-tables": { type: "object" },
-        },
+        properties: { code: { type: "string" } },
         required: ["code"],
       },
     },
+    {
+      name: "query_documents",
+      server_id: "ines",
+      url: "http://localhost:8787/mcp",
+      description: "Search the loaded documents",
+      input_schema: {
+        properties: {
+          query: { type: "string" },
+          "x-ines-conversation-id": { type: "string" },
+          "x-ines-documents": { type: "array" },
+        },
+        required: ["query"],
+      },
+    },
   ];
+}
+
+function mermaidResult(items: Array<{ text: string }>, extraState?: Record<string, unknown>): ToolMessage {
+  return {
+    role: "tool",
+    function: "execute_agent_tool",
+    input_arguments: { tool_name: "mermaid_diagram", server_id: "ines" },
+    data: [{ items }],
+    ...(extraState ? { extra_state: extraState } : {}),
+  };
 }
 
 function findExecuteAgentTool(events: SSEEvent[]): SSEEvent | undefined {
@@ -50,37 +70,7 @@ function findExecuteAgentTool(events: SSEEvent[]): SSEEvent | undefined {
   );
 }
 
-function executeAgentToolPayload(e: SSEEvent): {
-  tool_name: string;
-  parameters: Record<string, unknown>;
-} {
-  const data = e.data as { input_arguments: Record<string, unknown> };
-  return data.input_arguments as { tool_name: string; parameters: Record<string, unknown> };
-}
-
-describe("decoration — execute_code suppression on missing conversationId", () => {
-  it("calling execute_code without X-Trace-Id is replaced by SQL family availability only", async () => {
-    // Model would call execute_code; without conversationId the loop suppresses it
-    // entirely (the tool is removed from the toolSet), so the AI SDK can't invoke it.
-    // Drive a model that responds with text instead and assert the suppression log
-    // shape via the absence of an execute_agent_tool emit.
-    const events = await collectGenerator(
-      runAgentLoop({
-        request: { messages: [{ role: "human", content: "run python" }], tools: tools() } as QueryRequest,
-        rawModelId: "openai:gpt-4o-mini",
-        model: makeMockLlm(llmEmitsText("compute is unavailable for this turn")),
-        allWidgets: [],
-        workspaceState: null,
-        generativeUiEnabled: false,
-        conversationId: "",
-      }),
-    );
-    expect(findExecuteAgentTool(events)).toBeUndefined();
-    expect(
-      (events.find((e) => e.event === "copilotMessageChunk")!.data as { delta: string }).delta,
-    ).toContain("compute is unavailable");
-  });
-
+describe("decoration — the SQL family needs none", () => {
   it("execute_sql runs in-process even when conversationId is missing — no executeAgentTool emit", async () => {
     rememberRows("", "prices", [{ symbol: "NVDA" }]);
     const events = await collectGenerator(
@@ -98,280 +88,13 @@ describe("decoration — execute_code suppression on missing conversationId", ()
   });
 });
 
-describe("decoration — COMPUTE_PERMANENTLY_UNAVAILABLE marker disables execute_code for the rest of the chat", () => {
-  it("a prior tool message containing the marker suppresses execute_code", async () => {
-    const priorTool: ToolMessage = {
-      role: "tool",
-      function: "execute_agent_tool",
-      input_arguments: { tool_name: "execute_code", server_id: "ines" },
-      data: [{ items: [{ text: "COMPUTE_PERMANENTLY_UNAVAILABLE: sandbox failed" }] }],
-    };
-    const events = await collectGenerator(
-      runAgentLoop({
-        request: {
-          messages: [
-            { role: "human", content: "again" },
-            priorTool,
-          ],
-          tools: tools(),
-        } as unknown as QueryRequest,
-        rawModelId: "openai:gpt-4o-mini",
-        model: makeMockLlm(llmEmitsText("I won't retry compute.")),
-        allWidgets: [],
-        workspaceState: null,
-        generativeUiEnabled: false,
-        conversationId: "conv-1",
-      }),
-    );
-    expect(findExecuteAgentTool(events)).toBeUndefined();
-  });
-});
-
-describe("decoration — pendingTables shipping", () => {
-  beforeEach(() => clearAllModuleState());
-
-  it("execute_code receives BOTH x-ines-tables AND x-ines-conversation-id", async () => {
-    rememberRows("conv-3", "prices", [{ symbol: "MSFT" }]);
-    const events = await collectGenerator(
-      runAgentLoop({
-        request: { messages: [{ role: "human", content: "py" }], tools: tools() } as QueryRequest,
-        rawModelId: "openai:gpt-4o-mini",
-        model: makeMockLlm(
-          llmCallsTool("execute_code", {
-            display_summary: "Running a Python check",
-            code: "print(1)",
-          }),
-        ),
-        allWidgets: [],
-        workspaceState: null,
-        generativeUiEnabled: false,
-        conversationId: "conv-3",
-      }),
-    );
-    const exec = findExecuteAgentTool(events);
-    expect(exec).toBeDefined();
-    const params = executeAgentToolPayload(exec!).parameters;
-    expect(params["x-ines-conversation-id"]).toBe("conv-3");
-    expect("display_summary" in params).toBe(false);
-    const shipped = params["x-ines-tables"] as Record<string, unknown[]>;
-    expect(shipped.prices).toEqual([{ symbol: "MSFT" }]);
-    const status = events.find(
-      (e) =>
-        e.event === "copilotStatusUpdate" &&
-        (e.data as { message?: string }).message === "Running a Python check",
-    );
-    expect(status).toBeDefined();
-    // Structured `tool_call` restores eval attribution for in-process calls;
-    // the Python display stays as a direct fenced code block for rendering.
-    const details = (status!.data as { details?: unknown[] }).details;
-    expect(details?.[0]).toBe("```python\nprint(1)\n```");
-    expect((status!.data as { tool_call?: Record<string, unknown> }).tool_call).toEqual({
-      tool_name: "execute_code",
-      input: {
-        display_summary: "Running a Python check",
-        code: "print(1)",
-      },
-    });
-  });
-
-  it("execute_code does not include x-ines-tables when no rows are pending", async () => {
-    const events = await collectGenerator(
-      runAgentLoop({
-        request: { messages: [{ role: "human", content: "x" }], tools: tools() } as QueryRequest,
-        rawModelId: "openai:gpt-4o-mini",
-        model: makeMockLlm(llmCallsTool("execute_code", { code: "print(1)" })),
-        allWidgets: [],
-        workspaceState: null,
-        generativeUiEnabled: false,
-        conversationId: "conv-4",
-      }),
-    );
-    const params = executeAgentToolPayload(findExecuteAgentTool(events)!).parameters;
-    expect("x-ines-tables" in params).toBe(false);
-  });
-});
-
-function priorExecuteCodeResult(args: {
-  sandboxMetaId?: string;
-  extraState?: Record<string, unknown>;
-}): ToolMessage {
-  const items: Array<{ text: string }> = [];
-  if (args.sandboxMetaId !== undefined) {
-    items.push({
-      text: JSON.stringify({ $ines_kind: "sandbox_meta", sandbox_id: args.sandboxMetaId }),
-    });
-  }
-  items.push({ text: "[No output]" });
-  return {
-    role: "tool",
-    function: "execute_agent_tool",
-    input_arguments: { tool_name: "execute_code", server_id: "ines" },
-    data: [{ items }],
-    ...(args.extraState ? { extra_state: args.extraState } : {}),
-  };
-}
-
-describe("decoration — delta shipping", () => {
-  beforeEach(() => clearAllModuleState());
-
-  it("delta: tables already shipped to the same sandbox are excluded from x-ines-tables", async () => {
-    rememberRows("conv-delta-1", "prices", [{ symbol: "AAPL" }]);
-    const events = await collectGenerator(
-      runAgentLoop({
-        request: {
-          messages: [
-            { role: "human", content: "again" },
-            priorExecuteCodeResult({
-              sandboxMetaId: "sb-1",
-              extraState: { compute_tables_shipped: ["prices"], compute_sandbox_id: "sb-1" },
-            }),
-          ],
-          tools: tools(),
-        } as unknown as QueryRequest,
-        rawModelId: "openai:gpt-4o-mini",
-        model: makeMockLlm(llmCallsTool("execute_code", { code: "print(1)" })),
-        allWidgets: [],
-        workspaceState: null,
-        generativeUiEnabled: false,
-        conversationId: "conv-delta-1",
-      }),
-    );
-    const exec = findExecuteAgentTool(events);
-    expect(exec).toBeDefined();
-    const params = executeAgentToolPayload(exec!).parameters;
-    // prices was already shipped + sandbox id matches → no x-ines-tables
-    expect("x-ines-tables" in params).toBe(false);
-  });
-
-  it("sandbox-id change clears tablesShipped → next call ships everything", async () => {
-    rememberRows("conv-delta-2", "prices", [{ symbol: "AAPL" }]);
-    const events = await collectGenerator(
-      runAgentLoop({
-        request: {
-          messages: [
-            { role: "human", content: "again" },
-            priorExecuteCodeResult({
-              sandboxMetaId: "sb-NEW",
-              extraState: { compute_tables_shipped: ["prices"], compute_sandbox_id: "sb-OLD" },
-            }),
-          ],
-          tools: tools(),
-        } as unknown as QueryRequest,
-        rawModelId: "openai:gpt-4o-mini",
-        model: makeMockLlm(llmCallsTool("execute_code", { code: "print(1)" })),
-        allWidgets: [],
-        workspaceState: null,
-        generativeUiEnabled: false,
-        conversationId: "conv-delta-2",
-      }),
-    );
-    const params = executeAgentToolPayload(findExecuteAgentTool(events)!).parameters;
-    const shipped = params["x-ines-tables"] as Record<string, unknown[]>;
-    expect(shipped).toBeDefined();
-    expect(shipped.prices).toEqual([{ symbol: "AAPL" }]);
-  });
-
-  it("backwards-compat: missing sandbox_meta in result → clear → full re-ship", async () => {
-    rememberRows("conv-delta-3", "prices", [{ symbol: "AAPL" }]);
-    const events = await collectGenerator(
-      runAgentLoop({
-        request: {
-          messages: [
-            { role: "human", content: "again" },
-            priorExecuteCodeResult({
-              sandboxMetaId: undefined,
-              extraState: { compute_tables_shipped: ["prices"] },
-            }),
-          ],
-          tools: tools(),
-        } as unknown as QueryRequest,
-        rawModelId: "openai:gpt-4o-mini",
-        model: makeMockLlm(llmCallsTool("execute_code", { code: "print(1)" })),
-        allWidgets: [],
-        workspaceState: null,
-        generativeUiEnabled: false,
-        conversationId: "conv-delta-3",
-      }),
-    );
-    const params = executeAgentToolPayload(findExecuteAgentTool(events)!).parameters;
-    const shipped = params["x-ines-tables"] as Record<string, unknown[]>;
-    expect(shipped).toBeDefined();
-    expect(shipped.prices).toEqual([{ symbol: "AAPL" }]);
-  });
-
-  it("first sighting of sandbox_id (no prior compute_sandbox_id) preserves tablesShipped — no wasted re-ship", async () => {
-    rememberRows("conv-delta-4", "prices", [{ symbol: "AAPL" }]);
-    const events = await collectGenerator(
-      runAgentLoop({
-        request: {
-          messages: [
-            { role: "human", content: "again" },
-            priorExecuteCodeResult({
-              sandboxMetaId: "sb-1",
-              // First-call extra_state shape: tables shipped but no sandbox_id
-              // recorded yet (agent didn't know it until this re-POST).
-              extraState: { compute_tables_shipped: ["prices"] },
-            }),
-          ],
-          tools: tools(),
-        } as unknown as QueryRequest,
-        rawModelId: "openai:gpt-4o-mini",
-        model: makeMockLlm(llmCallsTool("execute_code", { code: "print(1)" })),
-        allWidgets: [],
-        workspaceState: null,
-        generativeUiEnabled: false,
-        conversationId: "conv-delta-4",
-      }),
-    );
-    const params = executeAgentToolPayload(findExecuteAgentTool(events)!).parameters;
-    // prices was already shipped, sandbox id is now known and matches what
-    // MCP just used. Don't re-ship.
-    expect("x-ines-tables" in params).toBe(false);
-  });
-});
-
-describe("decoration — shipped rows use the sanitized column names the model was told", () => {
-  beforeEach(() => clearAllModuleState());
-
-  it("x-ines-tables rows carry sanitizeName'd keys, matching the loaded-tables inventory", async () => {
-    // Raw widget rows have camelCase/spaced keys; the model-facing inventory
-    // and execute_sql expose sanitized lowercase names. The sandbox must see
-    // the SAME schema or pandas code written against the inventory explodes
-    // (DuckDB SQL is case-insensitive, pandas indexing is not).
-    rememberRows("conv-sanitize-1", "home_cards", [
-      { startDate: "2026-01-01", "Volume 24hr": 5, title: "a" },
-    ]);
-    const events = await collectGenerator(
-      runAgentLoop({
-        request: {
-          messages: [{ role: "human", content: "chart it" }],
-          tools: tools(),
-        } as unknown as QueryRequest,
-        rawModelId: "openai:gpt-4o-mini",
-        model: makeMockLlm(llmCallsTool("execute_code", { code: "print(1)" })),
-        allWidgets: [],
-        workspaceState: null,
-        generativeUiEnabled: false,
-        conversationId: "conv-sanitize-1",
-      }),
-    );
-    const params = executeAgentToolPayload(findExecuteAgentTool(events)!).parameters;
-    const shipped = params["x-ines-tables"] as Record<string, Record<string, unknown>[]>;
-    expect(shipped).toBeDefined();
-    expect(shipped.home_cards).toEqual([
-      { startdate: "2026-01-01", volume_24hr: 5, title: "a" },
-    ]);
-  });
-});
-
 describe("round-trip extra_state — continuation state survives every emission", () => {
   beforeEach(() => clearAllModuleState());
 
-  it("get_widget_data emission carries compute_tables_shipped + compute_sandbox_id forward", async () => {
-    // Prior execute_code shipped "prices" to sb-1; the model now fetches a
-    // widget. If the widget emission drops the compute keys, the re-POST
-    // restores nothing and the next execute_code full-ships — the exact
-    // waste delta-shipping exists to avoid.
+  it("get_widget_data emission carries documents_shipped forward", async () => {
+    // A prior query_documents call shipped "doc-1"; the model now fetches a
+    // widget. If the widget emission drops documents_shipped, the re-POST
+    // restores nothing and the next query_documents re-ships the document.
     const widget: Widget = {
       uuid: "w-1",
       origin: "example",
@@ -385,10 +108,7 @@ describe("round-trip extra_state — continuation state survives every emission"
         request: {
           messages: [
             { role: "human", content: "fetch the widget" },
-            priorExecuteCodeResult({
-              sandboxMetaId: "sb-1",
-              extraState: { compute_tables_shipped: ["prices"], compute_sandbox_id: "sb-1" },
-            }),
+            mermaidResult([{ text: "[No output]" }], { documents_shipped: ["doc-1"] }),
           ],
           tools: tools(),
         } as unknown as QueryRequest,
@@ -409,12 +129,11 @@ describe("round-trip extra_state — continuation state survives every emission"
     );
     expect(fetchEvent).toBeDefined();
     const extra = (fetchEvent!.data as { extra_state?: Record<string, unknown> }).extra_state;
-    expect(extra?.compute_tables_shipped).toEqual(["prices"]);
-    expect(extra?.compute_sandbox_id).toBe("sb-1");
+    expect(extra?.documents_shipped).toEqual(["doc-1"]);
   });
 
   it("execute_agent_tool emission carries loaded_skill_slugs forward", async () => {
-    // Prior re-POST loaded a skill; the model now calls execute_code. If the
+    // Prior re-POST loaded a skill; the model now calls mermaid_diagram. If the
     // MCP emission drops loaded_skill_slugs, the skill inventory is lost for
     // the rest of the turn and the model may reload the skill.
     const skillResult: ToolMessage = {
@@ -432,7 +151,7 @@ describe("round-trip extra_state — continuation state survives every emission"
           tools: tools(),
         } as unknown as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
-        model: makeMockLlm(llmCallsTool("execute_code", { code: "print(1)" })),
+        model: makeMockLlm(llmCallsTool("mermaid_diagram", { code: "flowchart TD\n  A --> B" })),
         allWidgets: [],
         workspaceState: null,
         generativeUiEnabled: false,
@@ -450,32 +169,23 @@ describe("history — earlier MCP results from the turn stay visible to the mode
   beforeEach(() => clearAllModuleState());
 
   it("the prompt includes the earlier call's artifact ack, not just the last result", async () => {
-    const earlier: ToolMessage = {
-      role: "tool",
-      function: "execute_agent_tool",
-      input_arguments: { tool_name: "execute_code", server_id: "ines" },
-      data: [
-        {
-          items: [
-            {
-              text: JSON.stringify({
-                $ines_kind: "artifact",
-                artifact: { type: "html", uuid: "u1", name: "First Chart", description: "", content: "<img/>" },
-              }),
-            },
-            { text: "first call traceback" },
-          ],
-        },
-      ],
-    };
+    const earlier = mermaidResult([
+      {
+        text: JSON.stringify({
+          $ines_kind: "artifact",
+          artifact: { type: "html", uuid: "u1", name: "First Diagram", description: "", content: "<svg/>" },
+        }),
+      },
+      { text: "first call parse error" },
+    ]);
     const spy = makeSpyMockLlm(llmEmitsText("done"));
     await collectGenerator(
       runAgentLoop({
         request: {
           messages: [
-            { role: "human", content: "chart it" },
+            { role: "human", content: "draw it" },
             earlier,
-            priorExecuteCodeResult({ sandboxMetaId: "sb-1" }),
+            mermaidResult([{ text: "[No output]" }]),
           ],
           tools: tools(),
         } as unknown as QueryRequest,
@@ -488,33 +198,24 @@ describe("history — earlier MCP results from the turn stay visible to the mode
       }),
     );
     const prompt = JSON.stringify(spy.calls[0]?.messages ?? []);
-    expect(prompt).toContain('[Artifact \\"First Chart\\" (html) delivered to the user');
-    expect(prompt).toContain("first call traceback");
+    expect(prompt).toContain('[Artifact \\"First Diagram\\" (html) delivered to the user');
+    expect(prompt).toContain("first call parse error");
   });
 });
 
 describe("MCP artifacts — land in the message stream, not the status timeline", () => {
   beforeEach(() => clearAllModuleState());
 
-  function executeCodeResultWithArtifact(name: string): ToolMessage {
-    return {
-      role: "tool",
-      function: "execute_agent_tool",
-      input_arguments: { tool_name: "execute_code", server_id: "ines" },
-      data: [
-        {
-          items: [
-            {
-              text: JSON.stringify({
-                $ines_kind: "artifact",
-                artifact: { type: "html", uuid: "u1", name, description: "", content: "<img/>" },
-              }),
-            },
-            { text: "chart rendered" },
-          ],
-        },
-      ],
-    };
+  function mermaidResultWithArtifact(name: string): ToolMessage {
+    return mermaidResult([
+      {
+        text: JSON.stringify({
+          $ines_kind: "artifact",
+          artifact: { type: "html", uuid: "u1", name, description: "", content: "<svg/>" },
+        }),
+      },
+      { text: "diagram rendered" },
+    ]);
   }
 
   it("artifact from an MCP result is emitted as copilotMessageArtifact when the model answers", async () => {
@@ -522,8 +223,8 @@ describe("MCP artifacts — land in the message stream, not the status timeline"
       runAgentLoop({
         request: {
           messages: [
-            { role: "human", content: "chart it" },
-            executeCodeResultWithArtifact("Top Chart"),
+            { role: "human", content: "draw it" },
+            mermaidResultWithArtifact("Top Chart"),
           ],
           tools: tools(),
         } as unknown as QueryRequest,
@@ -546,7 +247,7 @@ describe("MCP artifacts — land in the message stream, not the status timeline"
     const status = events.find(
       (e) =>
         e.event === "copilotStatusUpdate" &&
-        (e.data as { message?: string }).message === "Output from ines - execute_code",
+        (e.data as { message?: string }).message === "Output from ines - mermaid_diagram",
     );
     expect(status).toBeDefined();
     expect((status!.data as { details?: unknown }).details).toBeUndefined();
@@ -559,8 +260,8 @@ describe("MCP artifacts — land in the message stream, not the status timeline"
       runAgentLoop({
         request: {
           messages: [
-            { role: "human", content: "chart it" },
-            executeCodeResultWithArtifact("Rendered Diagram"),
+            { role: "human", content: "draw it" },
+            mermaidResultWithArtifact("Rendered Diagram"),
           ],
           tools: tools(),
         } as unknown as QueryRequest,
@@ -593,13 +294,13 @@ describe("MCP artifacts — land in the message stream, not the status timeline"
       runAgentLoop({
         request: {
           messages: [
-            { role: "human", content: "chart it" },
-            executeCodeResultWithArtifact("Mid-turn Chart"),
+            { role: "human", content: "draw it" },
+            mermaidResultWithArtifact("Mid-turn Chart"),
           ],
           tools: tools(),
         } as unknown as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
-        model: makeMockLlm(llmCallsTool("execute_code", { code: "print(1)" })),
+        model: makeMockLlm(llmCallsTool("mermaid_diagram", { code: "flowchart TD\n  A --> B" })),
         allWidgets: [],
         workspaceState: null,
         generativeUiEnabled: false,

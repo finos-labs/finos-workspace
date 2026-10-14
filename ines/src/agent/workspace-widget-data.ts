@@ -74,10 +74,16 @@ export function asWidgetDataMessage(toolMsg: ToolMessage, allWidgets: Widget[]):
   const id = typeof parameters.widget_id === "string" ? parameters.widget_id : "";
   const args = asRecord(parameters.data_args) ?? {};
   // The tool takes the widget's uuid as an option; without it the widget is the one that has this origin and id.
+  // A file attached to the chat has the uuid `file-<stored file uuid>`, and a model may name it by the stored
+  // file's uuid alone.
+  const named = typeof parameters.widget_uuid === "string" ? parameters.widget_uuid : "";
   const widgetUuid =
-    typeof parameters.widget_uuid === "string" && parameters.widget_uuid
-      ? parameters.widget_uuid
-      : allWidgets.find((widget) => widget.origin === origin && widget.widget_id === id)?.uuid;
+    (named &&
+      (allWidgets.find((widget) => widget.uuid === named) ??
+        allWidgets.find((widget) => widget.widget_id === `file-${named}`))?.uuid) ||
+    allWidgets.find((widget) => widget.origin === origin && widget.widget_id === id)?.uuid ||
+    named ||
+    undefined;
   if (!widgetUuid) logger.warn("A widget-data result names no widget that is known", { origin, id });
 
   // The browser hands the rows over as data; the tool message of a round trip has them as the JSON text the

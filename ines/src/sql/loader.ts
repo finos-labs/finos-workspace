@@ -1,9 +1,8 @@
 /**
  * Table analyzer used by the agent to derive schema/preview text from
- * incoming widget rows or MCP-provided rows. The actual SQL execution
- * lives in the compute MCP server (DuckDB inside a Daytona sandbox);
- * this file is purely about producing a `TableInfo` for prompting and
- * for keying `pendingTables` (which the decoration step ships to compute).
+ * incoming widget rows or MCP-provided rows. The SQL family runs the
+ * queries (src/agent/tools/sql); this file is purely about producing a
+ * `TableInfo` for prompting and for keying `pendingTables`.
  */
 
 export function sanitizeName(name: string): string {
@@ -58,7 +57,7 @@ function dedupColumnNames<T extends { name: string }>(cols: T[]): T[] {
 /**
  * Inspect a row array and return a sanitized table name + column metadata.
  * Pure — does not write to any database. The rows themselves stay in the
- * caller's Map until shipped to the compute sandbox.
+ * caller's Map.
  */
 export function analyzeTable(
   name: string,
@@ -74,24 +73,4 @@ export function analyzeTable(
     })),
   );
   return { tableName, columns, rowCount: rows.length };
-}
-
-/**
- * Re-key rows to the sanitized column names `analyzeTable` reports. The
- * model only ever sees sanitized names (loaded-tables inventory, execute_sql
- * results), so anything that leaves the agent — in particular the
- * `x-ines-tables` payload shipped to the compute sandbox — must carry
- * the same keys. Shipping raw keys gives the sandbox a different schema
- * (e.g. camelCase `startDate`) than the model was told (`startdate`):
- * DuckDB's case-insensitive SQL masks the mismatch, then pandas'
- * case-sensitive indexing crashes. Returns new row objects; input untouched.
- */
-export function sanitizeRowKeys(
-  name: string,
-  rows: Record<string, unknown>[],
-): Record<string, unknown>[] {
-  const { columns } = analyzeTable(name, rows);
-  return rows.map((row) =>
-    Object.fromEntries(columns.map((col) => [col.name, row[col.originalName]])),
-  );
 }

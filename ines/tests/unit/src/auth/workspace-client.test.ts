@@ -111,18 +111,18 @@ describe("recordTokens", () => {
 describe("authorize", () => {
   it("sends the agent, the model and the tools, and reads what is denied", async () => {
     const { client, calls } = clientAnswering(() =>
-      json({ allowed: false, denied_model: "nvidia:x", denied_tools: [{ url: "http://tools/mcp", tool_name: "execute_code" }] }),
+      json({ allowed: false, denied_model: "nvidia:x", denied_tools: [{ url: "http://tools/mcp", tool_name: "query_documents" }] }),
     );
     const result = await client.authorize("t", {
       agentId: "default_agent",
       model: "nvidia:x",
-      tools: [{ url: "http://tools/mcp", toolName: "execute_code" }],
+      tools: [{ url: "http://tools/mcp", toolName: "query_documents" }],
     });
     expect(calls[0].url).toBe("http://api:8000/app/copilot/authorize");
     expect(calls[0].body).toEqual({
       agent_id: "default_agent",
       model: "nvidia:x",
-      tools: [{ url: "http://tools/mcp", tool_name: "execute_code" }],
+      tools: [{ url: "http://tools/mcp", tool_name: "query_documents" }],
     });
     expect(calls[0].headers.get("x-metering-authorization")).toBe("Bearer metering-secret");
     expect(result).toEqual({
@@ -130,7 +130,7 @@ describe("authorize", () => {
       value: {
         allowed: false,
         deniedModel: "nvidia:x",
-        deniedTools: [{ url: "http://tools/mcp", toolName: "execute_code" }],
+        deniedTools: [{ url: "http://tools/mcp", toolName: "query_documents" }],
         disabledCapabilities: [],
       },
     });

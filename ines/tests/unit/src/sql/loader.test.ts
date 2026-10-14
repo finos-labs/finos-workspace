@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { sanitizeName, analyzeTable, sanitizeRowKeys } from "../../../../src/sql/loader";
+import { sanitizeName, analyzeTable } from "../../../../src/sql/loader";
 
 describe("sanitizeName", () => {
   it("lowercases the input", () => {
@@ -92,27 +92,5 @@ describe("analyzeTable", () => {
     const t = analyzeTable("x", []);
     expect(t.rowCount).toBe(0);
     expect(t.columns).toEqual([]);
-  });
-});
-
-describe("sanitizeRowKeys", () => {
-  it("maps raw row keys to the same sanitized names analyzeTable reports", () => {
-    const rows = [
-      { startDate: "2026-01-01", "Volume 24hr": 5, title: "a" },
-      { startDate: "2026-02-01", "Volume 24hr": 7, title: "b" },
-    ];
-    const out = sanitizeRowKeys("Home Cards", rows);
-    expect(out).toEqual([
-      { startdate: "2026-01-01", volume_24hr: 5, title: "a" },
-      { startdate: "2026-02-01", volume_24hr: 7, title: "b" },
-    ]);
-    // Original rows untouched.
-    expect(Object.keys(rows[0])).toContain("startDate");
-  });
-
-  it("disambiguates case-colliding keys exactly like analyzeTable", () => {
-    const rows = [{ a: 1, A: 2 }];
-    const out = sanitizeRowKeys("t", rows);
-    expect(out).toEqual([{ a: 1, a_2: 2 }]);
   });
 });

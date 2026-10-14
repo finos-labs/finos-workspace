@@ -90,22 +90,22 @@ describe("makeMcpTools — input schema strips x-ines-*", () => {
   it("hides decoration keys from the model-facing input schema", () => {
     const out = makeMcpTools([
       tool({
-        name: "execute_code",
+        name: "query_documents",
         input_schema: {
           properties: {
-            code: { type: "string" },
-            "x-ines-tables": { type: "object" },
+            query: { type: "string" },
+            "x-ines-documents": { type: "array" },
             "x-ines-conversation-id": { type: "string" },
           },
-          required: ["code"],
+          required: ["query"],
         },
       }),
     ]);
-    const t = out.toolSet.execute_code as unknown as { inputSchema: { shape: Record<string, unknown> } };
+    const t = out.toolSet.query_documents as unknown as { inputSchema: { shape: Record<string, unknown> } };
     const keys = Object.keys(t.inputSchema.shape);
-    expect(keys).toContain("code");
+    expect(keys).toContain("query");
     expect(keys).toContain("display_summary");
-    expect(keys).not.toContain("x-ines-tables");
+    expect(keys).not.toContain("x-ines-documents");
     expect(keys).not.toContain("x-ines-conversation-id");
   });
 });

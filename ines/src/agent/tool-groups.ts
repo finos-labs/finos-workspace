@@ -93,9 +93,6 @@ const DOCUMENT_NOTES =
   "- query_documents searches a loaded file (PDF, DOCX, TXT, MD, HTML) by question: pass the question and doc_ids [the file widget's uuid]. Every passage it returns is tagged with its page: say the page in your answer. Never guess what is in a file; if it cannot be read, say so.\n" +
   "- A file widget holds no data until get_widget_data has loaded it (that call also loads it for searching); query_documents finds nothing in a file that was never loaded. list_documents says what is loaded.";
 
-const CODE_NOTES =
-  "- execute_code runs Python with pandas/plotly. Use it only when SQL and create_artifact cannot do the task (custom visualisations, complex statistics, ML). Loaded tables are available in the sandbox; use ines.show() inside it to render charts and tables inline.";
-
 const WEB_SEARCH_NOTE = "web_search finds current information (use the year of CURRENT DATE for recent events)";
 const WEB_FETCH_NOTE =
   "fetch_webpage returns an overview of a page and a page_id, not the page; read only what you need with inspect_webpage (text from an offset, a phrase, a CSS selector, links, tables that load for SQL, embedded JSON, the source)";
@@ -193,13 +190,6 @@ const STATIC_GROUPS: readonly StaticGroup[] = [
     names: ["web_search", "fetch_webpage", "inspect_webpage"],
     mcp: true,
     describe: describeWebGroup,
-  },
-  {
-    id: "code",
-    summary: "run Python (pandas, plotly) in a sandbox for custom analysis or visuals",
-    notes: CODE_NOTES,
-    names: ["execute_code"],
-    mcp: true,
   },
 ];
 

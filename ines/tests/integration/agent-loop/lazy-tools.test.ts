@@ -39,7 +39,6 @@ const MCP_TOOLS: AgentTool[] = [
   mcp("fetch_webpage", "Fetch a page."),
   mcp("query_documents", "Search loaded files."),
   mcp("list_documents", "List loaded files."),
-  mcp("execute_code", "Run Python."),
 ];
 
 interface RunOptions {
@@ -86,7 +85,7 @@ describe("a question that needs no tool", () => {
       expect(catalog).toContain(tool);
     }
     expect(catalog.some((n) => n.endsWith("web_search"))).toBe(true);
-    expect(catalog.some((n) => n.endsWith("execute_code"))).toBe(true);
+    expect(catalog.some((n) => n.endsWith("query_documents"))).toBe(true);
     expect(systemPromptOf(spy.calls[0])).toContain("call load_tools with its name");
   });
 
@@ -102,7 +101,7 @@ describe("a question that needs no tool", () => {
     const spy = makeSpyMockLlm(llmEmitsText("Tokyo."));
     await run(spy.model, { generativeUi: true });
     const prompt = systemPromptOf(spy.calls[0]);
-    for (const heading of ["SQL TOOLS:", "DASHBOARD TOOLS:", "RENDER TOOLS:", "CODE TOOLS:", "WEB TOOLS:", "DOCUMENTS TOOLS:"]) {
+    for (const heading of ["SQL TOOLS:", "DASHBOARD TOOLS:", "RENDER TOOLS:", "WEB TOOLS:", "DOCUMENTS TOOLS:"]) {
       expect(prompt).not.toContain(heading);
     }
   });
@@ -115,7 +114,7 @@ describe("a question that needs no tool", () => {
     expect(catalog).toContain("execute_sql");
     expect(catalog).toContain("create_app");
     expect(catalog.some((n) => n.endsWith("web_search"))).toBe(false);
-    expect(catalog.some((n) => n.endsWith("execute_code"))).toBe(false);
+    expect(catalog.some((n) => n.endsWith("query_documents"))).toBe(false);
     expect(catalog).not.toContain("update_widget_in_dashboard");
   });
 
@@ -162,7 +161,7 @@ describe("a question that needs a group", () => {
     const names = toolNamesOf(spy.calls[1]);
     expect(names.some((n) => n.endsWith("web_search"))).toBe(true);
     expect(names.some((n) => n.endsWith("fetch_webpage"))).toBe(true);
-    expect(names.some((n) => n.endsWith("execute_code"))).toBe(false);
+    expect(names.some((n) => n.endsWith("query_documents"))).toBe(false);
   });
 
   it("is not stopped by a tool of a group that was never loaded: using it loads it", async () => {

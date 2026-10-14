@@ -1,6 +1,5 @@
 import { describe, it, expect } from "bun:test";
 import {
-  COMPUTE_PERMANENTLY_UNAVAILABLE,
   readExtraState,
   makeExtraState,
 } from "../../../../src/protocol/extra-state";
@@ -16,12 +15,6 @@ function tm(extra?: Record<string, unknown>): ToolMessage {
   };
 }
 
-describe("COMPUTE_PERMANENTLY_UNAVAILABLE", () => {
-  it("is the canonical marker the loop greps for", () => {
-    expect(COMPUTE_PERMANENTLY_UNAVAILABLE).toBe("COMPUTE_PERMANENTLY_UNAVAILABLE");
-  });
-});
-
 describe("readExtraState", () => {
   it("returns {} when extra_state is missing", () => {
     expect(readExtraState(tm())).toEqual({});
@@ -32,7 +25,7 @@ describe("readExtraState", () => {
   });
 
   it("returns the raw object when shape is correct", () => {
-    const e = { intermediate_context: "ctx", compute_tables_shipped: ["t1"] };
+    const e = { intermediate_context: "ctx", documents_shipped: ["d1"] };
     expect(readExtraState(tm(e))).toEqual(e);
   });
 });
@@ -44,11 +37,11 @@ describe("readExtraState — what a client sends back", () => {
         loaded_tool_groups: 5,
         loaded_skill_slugs: "x",
         timezone: { not: "a string" },
-        compute_tables_shipped: ["t1"],
+        documents_shipped: ["d1"],
         intermediate_context: "ctx",
       }),
     );
-    expect(out).toEqual({ compute_tables_shipped: ["t1"], intermediate_context: "ctx" });
+    expect(out).toEqual({ documents_shipped: ["d1"], intermediate_context: "ctx" });
     expect("loaded_tool_groups" in out).toBe(false);
   });
 
@@ -60,10 +53,10 @@ describe("readExtraState — what a client sends back", () => {
 
   it("limits a list, and a string", () => {
     const out = readExtraState(
-      tm({ compute_tables_shipped: Array.from({ length: 5000 }, (_, i) => `t${i}`), compute_sandbox_id: "x".repeat(500), loaded_tool_groups: ["g".repeat(600), "ok"] }),
+      tm({ documents_shipped: Array.from({ length: 5000 }, (_, i) => `d${i}`), traceparent: "x".repeat(500), loaded_tool_groups: ["g".repeat(600), "ok"] }),
     );
-    expect(out.compute_tables_shipped).toHaveLength(500);
-    expect(out.compute_sandbox_id).toBeUndefined();
+    expect(out.documents_shipped).toHaveLength(500);
+    expect(out.traceparent).toBeUndefined();
     expect(out.loaded_tool_groups).toEqual(["ok"]);
   });
 
@@ -135,7 +128,7 @@ describe("makeExtraState", () => {
     const out = makeExtraState({
       intermediate_context: "x",
       continue_from: undefined,
-      compute_sandbox_id: null as unknown as string | undefined,
+      traceparent: null as unknown as string | undefined,
     });
     expect(out).toEqual({ intermediate_context: "x" });
   });
@@ -143,9 +136,9 @@ describe("makeExtraState", () => {
   it("drops empty arrays", () => {
     const out = makeExtraState({
       intermediate_citations: [],
-      compute_tables_shipped: ["t1"],
+      documents_shipped: ["d1"],
     });
-    expect(out).toEqual({ compute_tables_shipped: ["t1"] });
+    expect(out).toEqual({ documents_shipped: ["d1"] });
   });
 
   it("drops empty plain objects but keeps non-empty ones", () => {

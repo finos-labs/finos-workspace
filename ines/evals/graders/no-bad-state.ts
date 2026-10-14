@@ -10,17 +10,9 @@ export function noBadState(): GraderSpec {
   return {
     name: "noBadState",
     grader: (trace: Trace) => {
-      // Invariant 1: COMPUTE_PERMANENTLY_UNAVAILABLE must not surface in
-      // the model's text output (only as a tool error message).
       const blob = trace.finalText;
-      if (blob.includes("COMPUTE_PERMANENTLY_UNAVAILABLE")) {
-        return {
-          pass: false,
-          message: "Model surfaced COMPUTE_PERMANENTLY_UNAVAILABLE in final text",
-        };
-      }
 
-      // Invariant 2: x-ines-* must never appear in the model's text.
+      // Invariant 1: x-ines-* must never appear in the model's text.
       if (blob.includes("x-ines-")) {
         return {
           pass: false,
@@ -28,7 +20,7 @@ export function noBadState(): GraderSpec {
         };
       }
 
-      // Invariant 3: errors during execution should not pass silently.
+      // Invariant 2: errors during execution should not pass silently.
       if (trace.errored) {
         return {
           pass: false,

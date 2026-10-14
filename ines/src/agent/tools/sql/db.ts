@@ -3,8 +3,7 @@
  *
  * Stateless per call: every tool invocation builds a fresh
  * `Database(":memory:")`, loads pendingTables from the agent's request
- * scope, runs its query, and lets the DB GC. No sandbox, no Daytona, no
- * conversation state.
+ * scope, runs its query, and lets the DB GC. No conversation state.
  *
  * Moved here from mcp-server/ as part of the agent in-process migration:
  * the tool now executes locally via a Vercel AI SDK `execute` function

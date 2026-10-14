@@ -41,15 +41,14 @@ import {
 import { buildSystemPrompt } from "./prompt";
 import { applyParamOverrides, type TieredWidget } from "../widgets/tiers";
 import { extractWidgetItems, type WidgetItem } from "../widgets/parse";
-import { analyzeTable, sanitizeName, sanitizeRowKeys, type TableInfo } from "../sql/loader";
+import { analyzeTable, sanitizeName, type TableInfo } from "../sql/loader";
 import { makeMcpTools, type McpToolsResult } from "../mcp/factory";
 import { type McpCitation } from "../mcp/results";
-import { readExtraState, COMPUTE_PERMANENTLY_UNAVAILABLE } from "../protocol/extra-state";
+import { readExtraState } from "../protocol/extra-state";
 import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server";
 import { buildMessages } from "./messages";
 import { injectFromReboot, injectWidgetData, type RoundTripContext } from "./round-trip";
 import { getCachedRows } from "./row-cache";
-import { setPendingTable } from "./pending-tables";
 import {
   formatToolInputRejectedStatus,
   formatToolResultStatus,
@@ -174,7 +173,7 @@ function artifactPayloads(events: SSEEvent[]): CopilotArtifact[] {
 }
 
 function shouldRenderDetailAsCode(details: string): boolean {
-  return ["```sql\n", "```python\n", "```html\n", "```mermaid\n"].some((prefix) =>
+  return ["```sql\n", "```html\n", "```mermaid\n"].some((prefix) =>
     details.startsWith(prefix),
   );
 }
@@ -370,7 +369,7 @@ function buildLoadedSkillsInventory(loadedSkillSlugs: Set<string>): string | nul
 
 /**
  * Test-only: clear the module-level widget data cache. Underscore-prefixed
- * to discourage prod use; mirrors `_resetSandboxState` in the compute MCP.
+ * to discourage prod use.
  */
 export function _resetWidgetDataCache(): void {
   widgetDataCache.clear();
@@ -393,7 +392,7 @@ export interface AgentRunOptions {
   /**
    * The chat's scope key: the workspace's per-chat X-Trace-Id header, filed under the user it belongs
    * to (see lib/scope.ts). Threaded into the MCP calls that keep state per chat (via decoration) so
-   * the ines-tools MCP server keeps a single Daytona sandbox and document store per user's chat.
+   * the ines-tools MCP server keeps a single document store and page store per user's chat.
    */
   conversationId: string;
   /**
@@ -416,13 +415,6 @@ export interface AgentRunOptions {
   suggestionsVia?: "inline" | "tool";
 }
 
-// MCP tools that consume widget data via the x-ines-tables decoration.
-// SQL family is now in-process on the agent (no decoration needed); only
-// `execute_code` (Daytona-backed) still rides the decoration path. Workspace
-// prefixes tool names with a server slug (e.g. "inesmcp_execute_code"),
-// so we suffix-match.
-const CODE_TOOL_CANONICAL = ["execute_code"] as const;
-
 // PDF and DOCX file widgets are read with the document tools: the model is never shown their bytes.
 const READABLE_DOCUMENT_EXTENSIONS = new Set(["pdf", "docx"]);
 
@@ -432,12 +424,6 @@ function hasReadableDocumentWidget(request: QueryRequest): boolean {
     const ext = (w.metadata?.extension as string | undefined) ?? (w.metadata?.fileType as string | undefined);
     return ext ? READABLE_DOCUMENT_EXTENSIONS.has(ext.toLowerCase()) : false;
   }) || (request.documents?.length ?? 0) > 0;
-}
-
-function isCodeTool(toolName: string): boolean {
-  return CODE_TOOL_CANONICAL.some(
-    (canon) => toolName === canon || toolName.endsWith(`_${canon}`),
-  );
 }
 
 // Document RAG tools — `query_documents` and `list_documents` consume the
@@ -551,32 +537,12 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
   const agentTools = (request.tools ?? []) as AgentTool[];
   const mcpToolsResult: McpToolsResult | null =
     agentTools.length > 0 ? makeMcpTools(agentTools, { generativeUiEnabled }) : null;
-  const hasCodeTool = mcpToolsResult?.entries.some((entry) =>
-    isCodeTool(entry.sanitizedName) || isCodeTool(entry.toolName)
-  ) ?? false;
-  const codeBlockedBeforeFirstCall =
-    !conversationId ||
-    request.messages.some(
-      (m) =>
-        "content" in m &&
-        typeof m.content === "string" &&
-        m.content.includes(COMPUTE_PERMANENTLY_UNAVAILABLE),
-    );
-  const initialCodeExecutionAvailable = hasCodeTool && !codeBlockedBeforeFirstCall;
   // The model is served the current turn only, so what was said before reaches it through this tool.
   const earlierMessages = earlierEntries(request.messages);
-  // A sandbox that was reported permanently unavailable stays so for the whole chat, in a turn the model no
-  // longer sees as well as in this one.
-  const computeDeadInChat = request.messages.some(
-    (m) =>
-      m.role === "tool" &&
-      m.function === "execute_agent_tool" &&
-      JSON.stringify(m.data ?? "").includes(COMPUTE_PERMANENTLY_UNAVAILABLE),
-  );
 
-  // Request-scoped state. SQL execution lives in the compute MCP server now;
-  // the agent only carries table metadata + raw rows, ships them on demand,
-  // and queues artifacts/citations as they come back via the typed result.
+  // Request-scoped state. The agent carries table metadata + raw rows for
+  // the in-process SQL tools, and queues artifacts/citations as they come
+  // back via the typed result.
   const artifactQueue: SSEEvent[] = [];
   // Monotonic drain cursor into artifactQueue, request-scoped so each artifact
   // is yielded exactly once across all MAX_LOOPS iterations. (A per-iteration
@@ -588,8 +554,8 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
   const mcpCitations: McpCitation[] = [];
   const intermediateCitations: Citation[] = [];
   // Seed from the cross-request row cache so a follow-up user message in
-  // the same chat can call execute_sql / execute_code without first round-
-  // tripping back through get_widget_data. Fresh widget data later in the
+  // the same chat can call execute_sql without first round-tripping back
+  // through get_widget_data. Fresh widget data later in the
   // request still overwrites these (latest-write-wins per tableName).
   const pendingTables = new Map<string, Record<string, unknown>[]>(
     await getCachedRows(conversationId, allWidgets),
@@ -601,12 +567,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
       seedNames: [...pendingTables.keys()],
     });
   }
-  const tablesShipped = new Set<string>();
   const documentsShipped = new Set<string>();
-  // Daytona sandbox identity from the prior execute_code result (if any).
-  // The reboot path below restores this from extra_state and may clear
-  // `tablesShipped` when the sandbox has been recreated since.
-  let lastSandboxId: string | undefined = undefined;
   const rebootExtra = isRebootToolTurn ? readExtraState(lastMessage as ToolMessage) : {};
   const loadedSkillSlugs = new Set<string>(
     (request.selected_skills ?? []).map((skill) => skill.slug),
@@ -617,12 +578,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
       const slug = lastMessage.input_arguments?.slug;
       if (typeof slug === "string" && slug) loadedSkillSlugs.add(slug);
     }
-    // Restore delta-ship state BEFORE any pendingTables writes (context-table
-    // seed, injectFromReboot) so setPendingTable's invalidation always acts on
-    // the restored set, never on a transiently-empty one.
-    for (const t of rebootExtra.compute_tables_shipped ?? []) tablesShipped.add(t);
     for (const d of rebootExtra.documents_shipped ?? []) documentsShipped.add(d);
-    if (rebootExtra.compute_sandbox_id) lastSandboxId = rebootExtra.compute_sandbox_id;
   }
   // The tool groups the model has loaded in this turn (see tool-groups.ts); a re-POST restores them.
   const loadedGroups = new Set<string>(isRebootToolTurn ? (rebootExtra.loaded_tool_groups ?? []).filter((g) => typeof g === "string") : []);
@@ -747,7 +703,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
     // and unstructured text blocks (injected into the system context).
     const ctxSplit = splitContext(request.context);
     for (const t of ctxSplit.tables) {
-      setPendingTable(t.name, t.rows, pendingTables, tablesShipped);
+      pendingTables.set(t.name, t.rows);
     }
 
     const contextSections: string[] = [];
@@ -793,10 +749,8 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
       tables, messages, allWidgets,
       citedWidgets, mcpCitations, artifactQueue, intermediateCitations,
       pendingTables,
-      tablesShipped,
       conversationId,
       pendingDocuments,
-      codeExecutionAvailable: initialCodeExecutionAvailable,
       documentSearchAvailable:
         mcpToolsResult?.entries.some(
           (entry) =>
@@ -809,8 +763,8 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
     // (get_widget_data, get_skill_content, execute_agent_tool). The workspace
     // echoes extra_state back on the re-POST and the loop restores from the
     // LAST tool message only — any key omitted here is lost for the rest of
-    // the turn (e.g. a widget fetch between two execute_code calls would
-    // otherwise wipe the delta-ship state and force a full re-ship).
+    // the turn (e.g. a widget fetch between two query_documents calls would
+    // otherwise wipe documents_shipped and force a re-ship).
     async function buildContinuationExtraState(): Promise<Record<string, unknown>> {
       // Hits in documents are carried as they are: they are cited from the final answer, once there is one.
       const documentHits = mcpCitations.filter((c) => c.type === "document");
@@ -823,8 +777,6 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
       const extraState: Record<string, unknown> = {};
       if (cits.length > 0) extraState.intermediate_citations = cits;
       if (documentHits.length > 0) extraState.document_hits = documentHits;
-      if (tablesShipped.size > 0) extraState.compute_tables_shipped = [...tablesShipped];
-      if (lastSandboxId !== undefined) extraState.compute_sandbox_id = lastSandboxId;
       if (documentsShipped.size > 0) extraState.documents_shipped = [...documentsShipped];
       if (loadedSkillSlugs.size > 0) extraState.loaded_skill_slugs = [...loadedSkillSlugs];
       if (loadedGroups.size > 0) extraState.loaded_tool_groups = [...loadedGroups];
@@ -891,8 +843,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
     let suppressWidgetDiscoveryToolsForEmptyWidgetRetry = false;
 
     if (isRebootToolTurn) {
-      // (tablesShipped / documentsShipped / lastSandboxId were restored from
-      // rebootExtra before the context-table seed, near their declarations.)
+      // (documentsShipped was restored from rebootExtra near its declaration.)
       const rebootOut = yield* injectFromReboot(lastMessage as ToolMessage, ctx);
       // Calls of the Workspace's tools that the model made in one step wait in the extra state, which the browser
       // sends back (so it is not trusted): a call is made only of a tool that this request registers, which the
@@ -913,41 +864,6 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
       suppressWidgetDataToolForEmptyWidgetRetry = rebootOut.suppressWidgetDataTool === true;
       suppressWidgetDiscoveryToolsForEmptyWidgetRetry =
         rebootOut.suppressWidgetDiscoveryTools === true;
-      // Sandbox-id guard: only fires when the re-POST tool was execute_code.
-      // - new id != stored id → sandbox was recreated; old tables are gone.
-      //   Clear so the next call full-ships. (Recreation is detected one
-      //   round-trip late by design: the call that just ran against the fresh
-      //   sandbox saw missing tables and failed; the model gets the Python
-      //   error and retries.)
-      // - new id, no prior id → first sighting. With no prior id on record,
-      //   the restored tablesShipped can only have come from the extra_state
-      //   of the very call that returned this sandbox_id — i.e. it describes
-      //   exactly the payload prepareCompute loaded into THIS sandbox. Record
-      //   without clearing.
-      // - id absent (old MCP server) → no way to verify identity; conservative
-      //   clear so the next call full-ships.
-      const rebootToolName = (lastMessage as ToolMessage).input_arguments?.tool_name;
-      const wasExecuteCodeReboot =
-        typeof rebootToolName === "string" && isCodeTool(rebootToolName);
-      if (wasExecuteCodeReboot) {
-        if (rebootOut.sandboxId !== undefined) {
-          if (lastSandboxId !== undefined && rebootOut.sandboxId !== lastSandboxId) {
-            logger.info("Sandbox id changed — clearing tablesShipped", {
-              conversationId,
-              prev: lastSandboxId,
-              next: rebootOut.sandboxId,
-            });
-            tablesShipped.clear();
-          }
-          lastSandboxId = rebootOut.sandboxId;
-        } else {
-          logger.info("No sandbox_id in execute_code result — clearing tablesShipped (conservative)", {
-            conversationId,
-          });
-          tablesShipped.clear();
-          lastSandboxId = undefined;
-        }
-      }
       // Drain queued bridge commands one per re-POST (only ONE
       // copilotFunctionCall may be in flight per turn). The browser already
       // executed the prior emission and re-POSTed its result (injected above
@@ -1045,30 +961,6 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
       yield* drainQueueToDeferred();
       const hasSkillsCatalog = (request.skills_catalog ?? []).length > 0;
 
-      // Suppress only execute_code (Daytona-backed) when we have no
-      // conversationId or when a prior call in this chat returned the
-      // permanently-unavailable marker. The SQL family is in-process on the
-      // MCP server (no sandbox), so it never needs suppression.
-      const codeTerminallyDown =
-        !conversationId ||
-        computeDeadInChat ||
-        ctx.messages.some(
-          (m) =>
-            typeof m.content === "string" &&
-            m.content.includes(COMPUTE_PERMANENTLY_UNAVAILABLE),
-        );
-      ctx.codeExecutionAvailable = hasCodeTool && !codeTerminallyDown;
-      const filteredMcpToolSet = mcpToolsResult && codeTerminallyDown
-        ? Object.fromEntries(
-            Object.entries(mcpToolsResult.toolSet).filter(([name]) => !isCodeTool(name)),
-          )
-        : mcpToolsResult?.toolSet;
-      if (mcpToolsResult && codeTerminallyDown && loopIdx === 0) {
-        logger.warn(
-          `execute_code suppressed for this turn (conversationId=${conversationId || "MISSING"}); SQL family unaffected`,
-        );
-      }
-
       // The agent's own function calls for the Workspace are for a request that does not have the Workspace's
       // tools: with them, there is one way to do each thing, and it is the tool the Workspace describes.
       const workspaceToolSet =
@@ -1080,11 +972,9 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
       const sqlToolSet = makeSqlTools({
         pendingTables,
         artifactQueue,
-        codeExecutionAvailable: ctx.codeExecutionAvailable,
       });
       const nativeToolSet = makeNativeTools({
         pendingTables,
-        tablesShipped,
         artifactQueue,
         tables,
         conversationId,
@@ -1127,7 +1017,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
               },
             }),
           }),
-        ...(filteredMcpToolSet && filteredMcpToolSet),
+        ...mcpToolsResult?.toolSet,
         ...(workspaceToolSet ?? {}),
       };
 
@@ -1176,7 +1066,6 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
           const exposed = exposedGroups();
           const system = buildSystemPrompt(request, {
             ...promptOptions,
-            ...(hasCodeTool && !ctx.codeExecutionAvailable ? { codeExecutionAvailable: false } : {}),
             toolCatalog: catalog,
             loadedGroups: exposed,
           });
@@ -1568,48 +1457,6 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         const params = { ...((mcpToolCall.input ?? {}) as Record<string, unknown>) };
         delete params.display_summary;
 
-        // Decoration: ship pendingTables delta to `execute_code` (Daytona-
-        // backed). The SQL family runs in-process on the agent now, so it
-        // reads `pendingTables` directly through the tool factory's closure
-        // — no decoration, no x-ines-tables on the wire.
-        //
-        // Delta-ship: `tablesShipped` tracks what the sandbox already has.
-        // It's restored on re-POST from `extra_state.compute_tables_shipped`
-        // and invalidated entry-by-entry by `setPendingTable` whenever
-        // pendingTables is overwritten (widget re-fetch, follow-up
-        // sqlite_table). The sandbox-id guard in the re-POST block above
-        // clears the whole set when the Daytona sandbox is recreated.
-        if (isCodeTool(entry.toolName)) {
-          if (!conversationId) {
-            logger.warn(
-              `execute_code ${entry.toolName} called without X-Trace-Id — sandbox keying will fail`,
-            );
-          }
-          params["x-ines-conversation-id"] = conversationId;
-          if (scopeSecret) params["x-ines-scope-sig"] = signScope(scopeSecret, conversationId);
-          const toShip: Record<string, Record<string, unknown>[]> = {};
-          for (const [name, rows] of pendingTables.entries()) {
-            if (rows.length === 0) continue;
-            if (tablesShipped.has(name)) continue;
-            // Ship sanitized keys: the model only knows the sanitized column
-            // names (inventory, execute_sql), so the sandbox schema must match.
-            toShip[name] = sanitizeRowKeys(name, rows);
-          }
-          if (Object.keys(toShip).length > 0) {
-            params["x-ines-tables"] = toShip;
-            for (const name of Object.keys(toShip)) tablesShipped.add(name);
-          }
-          logger.info(
-            `Decoration tool=${entry.toolName} pending=${pendingTables.size} shipping=${Object.keys(toShip).length} alreadyShipped=${tablesShipped.size - Object.keys(toShip).length}`,
-            {
-              tool: entry.toolName,
-              conversationId,
-              pendingTableNames: [...pendingTables.keys()],
-              shippingNames: Object.keys(toShip),
-            },
-          );
-        }
-
         // Document RAG decoration. Ship the delta of uploaded docs not yet
         // in the MCP server's per-conversation store. After the call,
         // every shipped id is recorded so subsequent calls in this chat
@@ -1669,18 +1516,12 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         // the only place agent-side code can see what's actually leaving for
         // the workspace → MCP wire, so it's worth a log line per call.
         const paramsBytes = Buffer.byteLength(JSON.stringify(params), "utf-8");
-        const tablesParam = params["x-ines-tables"];
-        const decoratedTables = tablesParam && typeof tablesParam === "object"
-          ? Object.keys(tablesParam as Record<string, unknown>)
-          : [];
         logger.info("Emitting executeAgentTool", {
           conversationId,
           tool: entry.toolName,
           serverId: entry.serverId,
           paramsKeys: Object.keys(params),
           paramsBytes,
-          decoratedTables,
-          tablesShippedTotal: tablesShipped.size,
           extraStateKeys: Object.keys(extraState),
         });
 
@@ -1931,8 +1772,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
     turnSpan.setStatus({ code: SpanStatusCode.ERROR });
     throw err;
   } finally {
-    // No request-scoped resources to release: in-process SQLite is gone
-    // (compute lives in the MCP server's per-conversation Daytona sandbox).
+    // No request-scoped resources to release.
     //
     // The span MUST end here rather than at the return: every round-trip exits
     // this generator through a `return`, and an early return that skipped

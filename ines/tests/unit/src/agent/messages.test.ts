@@ -198,21 +198,20 @@ describe("buildMessages — earlier tool results rendered into history", () => {
   }
 
   it("renders earlier execute_agent_tool results (artifact ack + text), skipping the live last one", () => {
-    const earlier = mcpToolMsg("execute_code", [
-      { text: JSON.stringify({ $ines_kind: "sandbox_meta", sandbox_id: "sb-1" }) },
+    const earlier = mcpToolMsg("mermaid_diagram", [
       {
         text: JSON.stringify({
           $ines_kind: "artifact",
-          artifact: { type: "html", uuid: "u1", name: "Chart", description: "", content: "<img/>" },
+          artifact: { type: "html", uuid: "u1", name: "Diagram", description: "", content: "<svg/>" },
         }),
       },
-      { text: "Traceback: KeyError startdate" },
+      { text: "Parse error on line 2" },
     ]);
-    const last = mcpToolMsg("execute_code", [{ text: "LIVE RESULT MARKER" }]);
+    const last = mcpToolMsg("mermaid_diagram", [{ text: "LIVE RESULT MARKER" }]);
     const out = buildMessages(
       req({
         messages: [
-          { role: "human", content: "chart it" },
+          { role: "human", content: "draw it" },
           earlier,
           last,
         ] as unknown as LooseMessages,
@@ -221,19 +220,17 @@ describe("buildMessages — earlier tool results rendered into history", () => {
     const userContents = out
       .filter((m) => m.role === "user")
       .map((m) => m.content as string);
-    const hist = userContents.find((c) => c.includes("Earlier tool result from execute_code"));
+    const hist = userContents.find((c) => c.includes("Earlier tool result from mermaid_diagram"));
     expect(hist).toBeDefined();
-    expect(hist).toContain('[Artifact "Chart" (html) delivered to the user');
-    expect(hist).toContain("Traceback: KeyError startdate");
-    // sandbox_meta is protocol-internal — never model-facing.
-    expect(hist).not.toContain("sb-1");
+    expect(hist).toContain('[Artifact "Diagram" (html) delivered to the user');
+    expect(hist).toContain("Parse error on line 2");
     // The live (last) tool result is injected by the loop with full fidelity,
     // not by buildMessages — no double injection.
     expect(userContents.join("\n")).not.toContain("LIVE RESULT MARKER");
   });
 
   it("does not serve a tool result from a PRIOR turn (followed by a human message): the turn is over", () => {
-    const priorTurnResult = mcpToolMsg("execute_code", [{ text: "prior turn outcome" }]);
+    const priorTurnResult = mcpToolMsg("mermaid_diagram", [{ text: "prior turn outcome" }]);
     const out = buildMessages(
       req({
         messages: [

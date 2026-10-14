@@ -55,6 +55,19 @@ describe("asWidgetDataMessage", () => {
     expect((message?.input_arguments as { data_sources: Array<{ widget_uuid: string }> }).data_sources[0].widget_uuid).toBe("w-9");
   });
 
+  it("finds a file attached to the chat when the model names it by the stored file's uuid alone", () => {
+    // An attachment has no uuid of its own: the request carries `file-<stored file uuid>` as its id and uuid.
+    const stored = "98569980-e380-46d4-b3c6-c23db2e75180";
+    const attachment = widget({ uuid: `file-${stored}`, origin: "the backend", widget_id: `file-${stored}`, name: "notes.txt" });
+    const message = asWidgetDataMessage(mcpMessage(OK, { origin: "the backend", widget_id: "file", widget_uuid: stored }), [widget(), attachment]);
+    expect((message?.input_arguments as { data_sources: Array<{ widget_uuid: string }> }).data_sources[0].widget_uuid).toBe(`file-${stored}`);
+  });
+
+  it("finds the widget by its origin and id when the uuid the model gave names no widget", () => {
+    const message = asWidgetDataMessage(mcpMessage(OK, { origin: "ODP", widget_id: "asset_info", widget_uuid: "made-up" }), [widget({ uuid: "w-9" })]);
+    expect((message?.input_arguments as { data_sources: Array<{ widget_uuid: string }> }).data_sources[0].widget_uuid).toBe("w-9");
+  });
+
   it("leaves text content, and content that is already text, as it is", () => {
     const result = { ok: true, data: [{ items: [{ content: "plain text" }, { content: JSON.stringify(ROWS) }, { url: "https://f", data_format: { data_type: "pdf" } }] }] };
     const message = asWidgetDataMessage(mcpMessage(result), [widget()]);

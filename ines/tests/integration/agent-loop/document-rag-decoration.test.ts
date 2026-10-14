@@ -1,7 +1,7 @@
 /**
  * Tier 2 — agent-loop decoration for the document-RAG MCP tools.
  *
- * Mirrors `decoration.test.ts` for execute_code, pinned to:
+ * Pinned to:
  *  - `query_documents` and `list_documents` receive both
  *    `x-ines-conversation-id` and `x-ines-documents` (the delta).
  *  - Already-shipped doc ids restored from `extra_state.documents_shipped`

@@ -155,7 +155,6 @@ start which are not and why.
 | Variable | What it enables |
 |---|---|
 | `INES_EMBED_MODEL` | `query_documents` and `list_documents`: search of the documents a user attached, with the page of each hit. Written `<provider>:<model>` like `DEFAULT_MODEL`, with that provider's key (`openai`, `openrouter`, `nvidia` and `ollama` embed). |
-| `DAYTONA_API_KEY` | `execute_code`, a Python sandbox for each chat. |
 | `COMPANION_TOOLS_ENABLED` | The tools that drive a Workspace browser tab (`true`; off by default). |
 
 `mermaid_diagram` needs Chromium, which the image does not contain.
@@ -173,7 +172,7 @@ it is. For each question Ines then asks the API, with the token it trusts only t
   used are added to their daily tokens; when a limit is reached the chat says so in the API's words. Setting the limits is the
   admin's job, in the entitlement.
 
-The tools that keep state for a chat (the code sandbox, the document store) file it under the user and the chat, and accept only
+The tools that keep state for a chat (the document store, the fetched pages) file it under the user and the chat, and accept only
 a chat scope that Ines has signed with `INES_SCOPE_SECRET`: a user's browser makes the calls to the tools, so without the
 signature it could name another user's chat. The MCP server publishes no port, and the API's MCP proxy checks the user's roles
 on every tool call. Both services fetch only public addresses on behalf of a client (the Workspace's own file links are the one

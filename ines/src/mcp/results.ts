@@ -1,10 +1,8 @@
 import type { ModelMessage } from "ai";
-import { z } from "zod";
 import type { CopilotArtifact, SSEEvent, ToolMessage } from "../protocol/types";
 import { messageArtifact } from "../protocol/events";
 import { analyzeTable, type TableInfo } from "../sql/loader";
 import { rememberRows } from "../agent/row-cache";
-import { setPendingTable } from "../agent/pending-tables";
 import { getLogger } from "../lib/logger";
 import { clipForModel, MAX_TOOL_RESULT_CHARS } from "../agent/clip";
 
@@ -39,18 +37,13 @@ export type McpCitation = WebCitation | DocumentCitation;
  * `$ines_kind: "sqlite_table"` → loaded into request-scoped SQLite + preview added.
  * `$ines_kind: "error"` → typed error injected with code prefix.
  * `$ines_kind: "model_context"` → opt-in summary that REPLACES plain text in the LLM message.
- * `$ines_kind: "sandbox_meta"` → Daytona sandbox identity from execute_code;
- *   silent (no model text), captured for the loop's delta-ship invalidation.
  */
 type InesTypedItem =
   | { $ines_kind: "artifact"; artifact: CopilotArtifact }
   | { $ines_kind: "citation"; citation: WebCitationData | DocumentCitationData }
   | { $ines_kind: "sqlite_table"; name: string; rows: Record<string, unknown>[] }
   | { $ines_kind: "error"; error: { code: string; message: string; retryable?: boolean } }
-  | { $ines_kind: "model_context"; summary: string }
-  | { $ines_kind: "sandbox_meta"; sandbox_id: string };
-
-const sandboxMetaPayloadSchema = z.object({ sandbox_id: z.string().min(1) });
+  | { $ines_kind: "model_context"; summary: string };
 
 interface WebCitationData {
   type: "web";
@@ -102,19 +95,8 @@ export interface McpResultContext {
   artifactQueue: SSEEvent[];
   citations: McpCitation[];
   messages: ModelMessage[];
-  /**
-   * Tables available for shipping to the compute MCP sandbox. The loop's
-   * decoration step diffs this against `compute_tables_shipped` (extra_state)
-   * to send only deltas on each compute tool call.
-   */
+  /** Tables the SQL family queries; a `sqlite_table` result is added here. */
   pendingTables: Map<string, Record<string, unknown>[]>;
-  /**
-   * Names already shipped to the compute sandbox in this chat. Mutated here
-   * via `setPendingTable` when a `sqlite_table` result OVERWRITES an existing
-   * `pendingTables` entry — the new rows must re-ship even if the name was
-   * previously marked shipped.
-   */
-  tablesShipped: Set<string>;
   /**
    * Per-chat identifier from X-Trace-Id. Used to cache MCP-emitted tables
    * across requests so follow-up messages can use them without a re-fetch.
@@ -133,12 +115,6 @@ export interface McpResultSummary {
   tableCount: number;
   errorCount: number;
   hasModelContext: boolean;
-  /**
-   * Daytona sandbox identity from a `sandbox_meta` item, if one was present in
-   * this result. The agent loop compares this against the prior call's id to
-   * detect sandbox recreation and clear `tablesShipped`.
-   */
-  sandboxId: string | undefined;
 }
 
 interface Counters {
@@ -148,7 +124,6 @@ interface Counters {
   citationCount: number;
   tableCount: number;
   errorCount: number;
-  sandboxId: string | undefined;
 }
 
 const MAX_OUTPUT_ARTIFACT_ROWS = 100;
@@ -266,31 +241,17 @@ function dispatchTyped(typed: InesTypedItem, ctx: McpResultContext, c: Counters)
       if (typed.rows.length > 0) {
         const table = analyzeTable(typed.name, typed.rows);
         ctx.tables.push(table);
-        setPendingTable(table.tableName, typed.rows, ctx.pendingTables, ctx.tablesShipped);
+        ctx.pendingTables.set(table.tableName, typed.rows);
         rememberRows(ctx.conversationId, table.tableName, typed.rows);
         c.tableCount++;
         const colLines = table.columns
           .map((col) => `  - "${col.name}" (${col.type})`)
           .join("\n");
         c.textParts.push(
-          `[${table.rowCount} rows available as table "${table.tableName}" in the compute sandbox]\n` +
+          `[${table.rowCount} rows available as table "${table.tableName}"]\n` +
           `Columns:\n${colLines}\n` +
-          `Query via execute_sql; for analytics or charts use execute_code with ines.show().`,
+          `Query via execute_sql.`,
         );
-      }
-      return;
-    }
-
-    case "sandbox_meta": {
-      // Silent: no text, no message. The agent's loop reads `summary.sandboxId`
-      // to detect sandbox recreation and reset `tablesShipped`.
-      const parsed = sandboxMetaPayloadSchema.safeParse({ sandbox_id: typed.sandbox_id });
-      if (parsed.success) {
-        c.sandboxId = parsed.data.sandbox_id;
-      } else {
-        logger.warn("sandbox_meta payload failed validation", {
-          issues: parsed.error.issues,
-        });
       }
       return;
     }
@@ -353,7 +314,6 @@ export function processMcpResult(
     citationCount: 0,
     tableCount: 0,
     errorCount: 0,
-    sandboxId: undefined,
   };
 
   for (const entry of toolMsg.data ?? []) {
@@ -364,7 +324,7 @@ export function processMcpResult(
     }
   }
 
-  const { textParts, modelContext, artifactCount, citationCount, tableCount, errorCount, sandboxId } = counters;
+  const { textParts, modelContext, artifactCount, citationCount, tableCount, errorCount } = counters;
 
   // model_context REPLACES plain text in the LLM message when present (opt-in).
   // Plain text falls back to concat if no model_context.
@@ -389,7 +349,6 @@ export function processMcpResult(
     tableCount,
     errorCount,
     hasModelContext: modelContext !== null,
-    sandboxId,
   };
 
   const { outputRows: _outputRows, ...logSummary } = summary;
@@ -433,7 +392,6 @@ export function renderToolResultForHistory(toolMsg: ToolMessage): string | null 
         modelContext = typed.summary;
         return;
       case "citation":
-      case "sandbox_meta":
         return;
     }
   }

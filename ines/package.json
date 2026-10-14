@@ -24,7 +24,6 @@
     "@ai-sdk/groq": "^3.0.72",
     "@ai-sdk/openai": "^3.0.125",
     "@ai-sdk/provider": "^3.0.18",
-    "@daytonaio/sdk": "^0.162.0",
     "@hono/mcp": "^0.2.5",
     "@logtape/hono": "^2.4.0",
     "@logtape/logtape": "^2.4.0",

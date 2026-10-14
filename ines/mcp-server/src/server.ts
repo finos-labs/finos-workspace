@@ -20,11 +20,6 @@ import {
   inspectWebpageDescription,
 } from "./tools/backend/inspect-webpage";
 import {
-  executeCodeSchema,
-  executeCodeHandler,
-  executeCodeDescription,
-} from "./tools/backend/compute/execute-code";
-import {
   queryDocumentsSchema,
   queryDocumentsHandler,
   queryDocumentsDescription,
@@ -171,14 +166,6 @@ if (workspacePublicUrl) {
 // Which tools exist is decided once, at start, and said once. Each request then gets a server
 // that registers exactly these (see `buildMcpServer`).
 
-// Code execution — Daytona Python sandbox per conversation. Slow first
-// call (sandbox cold start + pip install). Only used when the model needs
-// Python (statistics, scipy/numpy, plotly, custom transformations).
-const codeExecEnabled = !!process.env.DAYTONA_API_KEY;
-if (!codeExecEnabled) {
-  logger.warn("DAYTONA_API_KEY not set — execute_code disabled (SQL family still works)");
-}
-
 // Document RAG — uploaded PDF/DOCX/TXT/MD search via per-conversation
 // vector store. Needs INES_EMBED_MODEL to name the embedding model as
 // <provider>:<model> (no model id is baked in) and that provider's credentials,
@@ -224,14 +211,6 @@ async function buildMcpServer(): Promise<McpServer> {
   // Read-widget-data SQL family lives in the agent now (in-process,
   // closure on pendingTables). It's no longer registered here.
 
-  if (codeExecEnabled) {
-    mcp.tool(
-      "execute_code",
-      executeCodeDescription,
-      executeCodeSchema,
-      observed("execute_code", requireScope(executeCodeHandler)),
-    );
-  }
   if (docRagEnabled) {
     mcp.tool(
       "query_documents",
@@ -406,7 +385,6 @@ app.get("/", (c) =>
         "web_search",
         "fetch_webpage",
         "inspect_webpage",
-        ...(codeExecEnabled ? ["execute_code"] : []),
         ...(docRagEnabled ? ["query_documents", "list_documents"] : []),
       ],
       workspace: companionToolsEnabled
@@ -432,7 +410,6 @@ app.get("/", (c) =>
           ]
         : [],
     },
-    code_execution_enabled: codeExecEnabled,
     companion_tools_enabled: companionToolsEnabled,
     prompts: companionToolsEnabled
       ? ["workspace_tool_usage", "workspace_session_context"]
@@ -468,5 +445,5 @@ export default {
 };
 
 logger.info(
-  `MCP server starting port=${PORT} codeExecEnabled=${codeExecEnabled} docRagEnabled=${docRagEnabled} companionToolsEnabled=${companionToolsEnabled} bridgeMounted=true`,
+  `MCP server starting port=${PORT} docRagEnabled=${docRagEnabled} companionToolsEnabled=${companionToolsEnabled} bridgeMounted=true`,
 );

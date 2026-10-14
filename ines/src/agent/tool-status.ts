@@ -89,10 +89,6 @@ function fullCode(code: unknown): string | undefined {
   return code.replace(/\r\n?/g, "\n").trim();
 }
 
-function pythonDetails(code: string): string {
-  return `\`\`\`python\n${code}\n\`\`\``;
-}
-
 function htmlDetails(code: string): string {
   return `\`\`\`html\n${code}\n\`\`\``;
 }
@@ -214,13 +210,6 @@ function toolDisplayName(toolName: string, options: ToolStatusOptions): string {
   return options.actualToolName ?? toolName;
 }
 
-function isExecuteCodeToolName(toolName: string, options: ToolStatusOptions = {}): boolean {
-  const displayName = toolDisplayName(toolName, options);
-  return [toolName, displayName].some(
-    (name) => name === "execute_code" || name.endsWith("_execute_code"),
-  );
-}
-
 function isMermaidToolName(toolName: string, options: ToolStatusOptions = {}): boolean {
   const displayName = toolDisplayName(toolName, options);
   return [toolName, displayName].some(
@@ -265,7 +254,6 @@ function startSummary(toolName: string, input: unknown, options: ToolStatusOptio
   const summary = displaySummary(record);
   if (summary) return summary;
   const displayName = toolDisplayName(toolName, options);
-  if (isExecuteCodeToolName(toolName, options)) return "Running Python code";
   if (isWebSearchTool(displayName)) {
     const query = searchQuery(input);
     return query ? `Searching "${query}"` : `Searching with ${displayName}`;
@@ -294,8 +282,6 @@ function startSummary(toolName: string, input: unknown, options: ToolStatusOptio
       return "Getting the tools for this task";
     case "execute_sql":
       return "Running SQL against loaded tables";
-    case "execute_code":
-      return "Running Python code";
     case "create_artifact": {
       const artifact = artifactDescription(record);
       return `Rendering ${artifact.noun}${artifact.name ? ` "${artifact.name}"` : ""}`;
@@ -401,7 +387,6 @@ export function formatToolStartStatus(
   const category = callCategory(toolName, options);
   const details = baseDetails(toolName, input, "call", category, options);
   const message = callMessage(toolName, input, options);
-  const statusToolName = isExecuteCodeToolName(toolName, options) ? "execute_code" : toolName;
   if (isMermaidToolName(toolName, options)) {
     const code = fullCode(record.code) ?? "(missing Mermaid code)";
     return {
@@ -409,7 +394,7 @@ export function formatToolStartStatus(
       details: mermaidDetails(code),
     };
   }
-  if (options.isMcp && !isExecuteCodeToolName(toolName, options)) {
+  if (options.isMcp) {
     const supplied = suppliedInputParams(record);
     return {
       message,
@@ -417,7 +402,7 @@ export function formatToolStartStatus(
     };
   }
 
-  switch (statusToolName) {
+  switch (toolName) {
     case "search_widgets": {
       const query = asString(record.query) ?? "";
       return {
@@ -469,13 +454,6 @@ export function formatToolStartStatus(
       return {
         message,
         details: sqlDetails(sql),
-      };
-    }
-    case "execute_code": {
-      const code = fullCode(record.code) ?? "(missing Python code)";
-      return {
-        message,
-        details: pythonDetails(code),
       };
     }
     case "create_artifact": {
@@ -624,14 +602,6 @@ export function formatToolInputRejectedStatus(
       message: "Input rejected",
       eventType: "WARNING",
       details: conciseValidationError(errorText),
-    };
-  }
-  if (toolName === "execute_code") {
-    const code = fullCode(asRecord(input).code);
-    return {
-      message: "Input rejected",
-      eventType: "WARNING",
-      details: code ? pythonDetails(code) : conciseValidationError(errorText),
     };
   }
   if (toolName === "get_widget_data") {

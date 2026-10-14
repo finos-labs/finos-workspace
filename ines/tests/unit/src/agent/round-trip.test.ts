@@ -20,7 +20,6 @@ function emptyCtx(): RoundTripContext {
     artifactQueue: [] as SSEEvent[],
     intermediateCitations: [] as Citation[],
     pendingTables: new Map(),
-    tablesShipped: new Set<string>(),
     conversationId: "test",
   };
 }

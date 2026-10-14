@@ -1,7 +1,6 @@
 /**
- * Tool-routing cases. Once data is loaded, the model must pick the right
- * compute tool: execute_sql for filters / aggregations / joins,
- * execute_code for Python statistics or interactive charts.
+ * Tool-routing cases. Once data is loaded, the model must query it with
+ * execute_sql for filters / aggregations / joins.
  *
  * Each case starts from a state where price data is already loaded
  * (simulated via prior tool message).
@@ -13,7 +12,6 @@ import {
   argContains,
   noBadState,
   toolCalled,
-  toolNeverCalled,
 } from "../graders";
 
 // Prior tool message uses `$ines_kind: sqlite_table` so the rows land
@@ -69,72 +67,30 @@ const SQL_TOOL = {
   input_schema: {
     properties: {
       sql: { type: "string" },
-      "x-ines-tables": { type: "object" },
     },
     required: ["sql"],
-  },
-};
-
-const CODE_TOOL = {
-  name: "execute_code",
-  server_id: "ines",
-  url: "http://localhost:8787/mcp",
-  description:
-    "Run Python in a sandbox with pandas/numpy/scipy/plotly. Use for statistics, regression, custom transforms, interactive charts. Slower than SQL.",
-  input_schema: {
-    properties: {
-      code: { type: "string" },
-      "x-ines-conversation-id": { type: "string" },
-      "x-ines-tables": { type: "object" },
-    },
-    required: ["code"],
   },
 };
 
 export const toolRoutingCases: EvalCase[] = [
   {
     id: "filter-aggregate-routes-to-sql",
-    description: "Simple filter+aggregate → execute_sql, NOT execute_code",
+    description: "Simple filter+aggregate → execute_sql",
     messages: [
       { role: "human", content: "what's the average close price for AAPL?" },
       PRICES_LOADED,
     ],
     // Empty workspace by design — see sql-analysis.ts for the rationale.
     // Pre-loaded `prices` table is the only data source, forcing the
-    // model toward execute_sql / execute_code instead of a get_widget_data
+    // model toward execute_sql instead of a get_widget_data
     // re-fetch escape.
     workspace: { primary: [], secondary: [], extra: [] },
-    tools: [SQL_TOOL, CODE_TOOL],
+    tools: [SQL_TOOL],
     trials: 3,
     passRate: 0.6,
     graders: [
       toolCalled("execute_sql"),
-      toolNeverCalled("execute_code"),
       argContains("execute_sql", ["AAPL"]),
-      noBadState(),
-    ],
-  },
-  {
-    id: "rolling-volatility-routes-to-code",
-    description:
-      "Rolling 20-day volatility → execute_code (statistics), NOT execute_sql alone",
-    messages: [
-      {
-        role: "human",
-        content: "give me the rolling 20-day volatility of NVDA close prices",
-      },
-      PRICES_LOADED,
-    ],
-    // Empty workspace by design — see sql-analysis.ts for the rationale.
-    // Pre-loaded `prices` table is the only data source, forcing the
-    // model toward execute_sql / execute_code instead of a get_widget_data
-    // re-fetch escape.
-    workspace: { primary: [], secondary: [], extra: [] },
-    tools: [SQL_TOOL, CODE_TOOL],
-    trials: 3,
-    passRate: 0.5,
-    graders: [
-      toolCalled("execute_code"),
       noBadState(),
     ],
   },
@@ -151,10 +107,10 @@ export const toolRoutingCases: EvalCase[] = [
     ],
     // Empty workspace by design — see sql-analysis.ts for the rationale.
     // Pre-loaded `prices` table is the only data source, forcing the
-    // model toward execute_sql / execute_code instead of a get_widget_data
+    // model toward execute_sql instead of a get_widget_data
     // re-fetch escape.
     workspace: { primary: [], secondary: [], extra: [] },
-    tools: [SQL_TOOL, CODE_TOOL],
+    tools: [SQL_TOOL],
     trials: 3,
     passRate: 0.5,
     graders: [

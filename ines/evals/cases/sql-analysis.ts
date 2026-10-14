@@ -59,7 +59,6 @@ const SQL_TOOL = {
   input_schema: {
     properties: {
       sql: { type: "string" },
-      "x-ines-tables": { type: "object" },
     },
     required: ["sql"],
   },

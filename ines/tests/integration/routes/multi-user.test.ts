@@ -39,13 +39,13 @@ const ENV = {
 };
 
 const TOOL_URL = "http://ines-mcp:8787/mcp";
-const executeCode = {
-  name: "Ines Tools_execute_code",
-  tool_name: "execute_code",
+const queryDocuments = {
+  name: "Ines Tools_query_documents",
+  tool_name: "query_documents",
   server_id: "ines-tools",
   url: TOOL_URL,
-  description: "Run Python",
-  input_schema: { properties: { code: { type: "string" } }, required: ["code"] },
+  description: "Search the loaded documents",
+  input_schema: { properties: { query: { type: "string" } }, required: ["query"] },
 };
 
 interface Stub {
@@ -120,7 +120,7 @@ interface Ask {
 }
 
 function ask(app: ReturnType<typeof appFor>, options: Ask = {}) {
-  const { token = "alice-token", chat = "chat-1", messages = [{ role: "human", content: "hello" }], model, tools = [executeCode] } = options;
+  const { token = "alice-token", chat = "chat-1", messages = [{ role: "human", content: "hello" }], model, tools = [queryDocuments] } = options;
   return app.request("/v1/query", {
     method: "POST",
     headers: {
@@ -148,7 +148,7 @@ const functionCall = (blocks: { event: string; data: unknown }[]) =>
 const toolResult = {
   role: "tool",
   function: "execute_agent_tool",
-  input_arguments: { tool_name: "execute_code", server_id: "ines-tools" },
+  input_arguments: { tool_name: "query_documents", server_id: "ines-tools" },
   data: [{ items: [{ text: "[No output]" }] }],
 };
 
@@ -214,7 +214,7 @@ describe("a user's query", () => {
     expect(stub.authorized[0].request).toEqual({
       agentId: "default_agent",
       model: "test-provider:test-model",
-      tools: [{ url: TOOL_URL, toolName: "execute_code" }],
+      tools: [{ url: TOOL_URL, toolName: "query_documents" }],
     });
     expect(stub.tokens).toHaveLength(1);
     expect(stub.tokens[0][0]).toBe("alice-token");
@@ -252,13 +252,13 @@ describe("a user's query", () => {
     const stub = workspaceStub();
     stub.setAuthorization({
       ok: true,
-      value: { allowed: false, deniedModel: null, deniedTools: [{ url: TOOL_URL, toolName: "execute_code" }], disabledCapabilities: [] },
+      value: { allowed: false, deniedModel: null, deniedTools: [{ url: TOOL_URL, toolName: "query_documents" }], disabledCapabilities: [] },
     });
     const spy = makeSpyMockLlm(llmEmitsText("done without it"));
     currentModel = spy.model;
     const res = await ask(appFor(stub));
     expect(chatText(await readSse(res))).toBe("done without it");
-    expect(modelKnowsTool(spy.calls[0], "execute_code")).toBe(false);
+    expect(modelKnowsTool(spy.calls[0], "query_documents")).toBe(false);
     expect(stub.counted).toEqual(["alice-token"]);
   });
 
@@ -266,7 +266,7 @@ describe("a user's query", () => {
     const spy = makeSpyMockLlm(llmEmitsText("with it"));
     currentModel = spy.model;
     await readSse(await ask(appFor(workspaceStub())));
-    expect(modelKnowsTool(spy.calls[0], "execute_code")).toBe(true);
+    expect(modelKnowsTool(spy.calls[0], "query_documents")).toBe(true);
   });
 
   it("is refused for a model the deployment does not offer, before the Workspace is asked anything", async () => {
@@ -291,7 +291,7 @@ describe("a turn that needs a tool", () => {
     const app = appFor(stub);
 
     // The question: the model asks the browser to run a tool.
-    currentModel = makeMockLlm(llmCallsTool("Ines_Tools_execute_code", { code: "print(1)" }));
+    currentModel = makeMockLlm(llmCallsTool("Ines_Tools_query_documents", { query: "revenue" }));
     const first = await readSse(await ask(app));
     expect(functionCall(first)?.function).toBe("execute_agent_tool");
     expect(stub.counted).toHaveLength(1);
@@ -319,7 +319,7 @@ describe("keeping users apart", () => {
   it("files a chat under its user, so that two users with the same chat id have two chats", async () => {
     const app = appFor(workspaceStub());
     const call = async (token: string) => {
-      currentModel = makeMockLlm(llmCallsTool("Ines_Tools_execute_code", { code: "print(1)" }));
+      currentModel = makeMockLlm(llmCallsTool("Ines_Tools_query_documents", { query: "revenue" }));
       return functionCall(await readSse(await ask(app, { token, chat: "shared-chat" })))!.input_arguments.parameters;
     };
     const alice = await call("alice-token");
@@ -329,7 +329,7 @@ describe("keeping users apart", () => {
   });
 
   it("signs the chat's scope so that the tools can tell it came from the agent", async () => {
-    currentModel = makeMockLlm(llmCallsTool("Ines_Tools_execute_code", { code: "print(1)" }));
+    currentModel = makeMockLlm(llmCallsTool("Ines_Tools_query_documents", { query: "revenue" }));
     const params = functionCall(await readSse(await ask(appFor(workspaceStub())))) !.input_arguments.parameters;
     const key = params["x-ines-conversation-id"] as string;
     const signature = params["x-ines-scope-sig"] as string;
@@ -462,7 +462,7 @@ describe("fetching an address", () => {
   });
 
   it("does not sign an address that only the model's own tools produced", async () => {
-    const messages = [{ role: "human", content: "hello" }, resultOf("execute_code", ATTACK)];
+    const messages = [{ role: "human", content: "hello" }, resultOf("mermaid_diagram", ATTACK)];
     expect((await fetchWith(ATTACK, messages))["x-ines-url-sig"]).toBeUndefined();
   });
 
@@ -570,7 +570,7 @@ describe("limits", () => {
   it("stops a turn that goes on asking for tools, and says why in the chat", async () => {
     const stub = workspaceStub();
     const app = appFor(stub, { INES_MAX_TURN_REQUESTS: "3" });
-    currentModel = makeMockLlm(llmCallsTool("Ines_Tools_execute_code", { code: "print(1)" }));
+    currentModel = makeMockLlm(llmCallsTool("Ines_Tools_query_documents", { query: "revenue" }));
     expect(functionCall(await readSse(await ask(app)))?.function).toBe("execute_agent_tool"); // request 1
     const continuation = () => ask(app, { messages: [{ role: "human", content: "hello" }, toolResult] });
     expect(functionCall(await readSse(await continuation()))?.function).toBe("execute_agent_tool"); // request 2
@@ -641,7 +641,7 @@ describe("without users (INES_AUTH=none)", () => {
     const config = loadConfig({ INES_AUTH: "none", DEFAULT_MODEL: "test-provider:test-model" });
     const store = createLocalStore();
     const app = createApp({ config, workspace: null, store, limits: createLimits({ store, maxConcurrent: 4 }) });
-    currentModel = makeMockLlm(llmCallsTool("Ines_Tools_execute_code", { code: "print(1)" }));
+    currentModel = makeMockLlm(llmCallsTool("Ines_Tools_query_documents", { query: "revenue" }));
     const params = functionCall(await readSse(await ask(app, { token: null, chat: "only-chat" })))!.input_arguments.parameters;
     expect(params["x-ines-conversation-id"]).toBe("only-chat");
     expect(params["x-ines-scope-sig"]).toBeUndefined();

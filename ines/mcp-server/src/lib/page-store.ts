@@ -5,7 +5,7 @@
  *
  * Filed under the chat's scope key, which names the user (src/lib/scope.ts), so a chat cannot read another
  * chat's page. Bounded in three ways: a few pages and a few megabytes to a chat, a ceiling on all chats
- * together (the least recently used go first), and a time (30 minutes). In memory, like the code sandbox:
+ * together (the least recently used go first), and a time (30 minutes). In memory, like the document store:
  * a restart drops them, and a page that is gone is fetched again.
  */
 

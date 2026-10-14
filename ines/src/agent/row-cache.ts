@@ -4,8 +4,7 @@
  * workspace). Written to by `injectWidgetData` and the `sqlite_table`
  * MCP-result handler; read at the top of `runAgentLoop` to seed
  * `pendingTables` so a follow-up message in the same chat can hit
- * `execute_sql` / `execute_code` without first round-tripping back through
- * `get_widget_data`.
+ * `execute_sql` without first round-tripping back through `get_widget_data`.
  *
  * Bounded (see lib/bounded-cache.ts): a chat's rows go after the TTL whether or not anyone asks for them
  * again, the chats that have not been used for longest go first when there are too many, and so do they
@@ -30,10 +29,8 @@ import type { Store } from "../lib/store";
 
 const logger = getLogger(["app", "agent", "row-cache"]);
 
-// 30 min — covers typical user pauses between follow-up messages. Daytona
-// sandbox auto-stops after 10 min idle, so on the next compute call we'll
-// re-ship from this cache (sandbox is recreated, tables reload via
-// CREATE OR REPLACE). Memory cost is small: ~100KB per loaded table.
+// 30 min — covers typical user pauses between follow-up messages. Memory
+// cost is small: ~100KB per loaded table.
 const CACHE_TTL_MS = 30 * 60 * 1000;
 
 interface ChatEntry {

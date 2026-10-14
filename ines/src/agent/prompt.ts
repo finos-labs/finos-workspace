@@ -246,11 +246,6 @@ export interface PromptOptions {
    */
   suggestionsVia?: "inline" | "tool";
   workspaceState?: WorkspaceState | null;
-  /**
-   * False when the sandbox cannot be used in this chat: the model is told, so it does not try or promise it.
-   * Left out, nothing is said.
-   */
-  codeExecutionAvailable?: boolean;
   /** The tools that exist beyond the core ones, by group (src/agent/tool-groups.ts). */
   toolCatalog?: ToolCatalog;
   /** The groups of the catalog that are loaded: their instructions are part of the prompt. */
@@ -273,9 +268,6 @@ export function buildSystemPrompt(
   const loaded = options?.loadedGroups ?? new Set<string>();
   if (catalog) {
     sections.push(renderToolCatalog(catalog, loaded));
-    if (options?.codeExecutionAvailable === false) {
-      sections.push("Python execution is not available in this chat: do not attempt it.");
-    }
     const notes = renderToolNotes(catalog, loaded);
     if (notes) sections.push(notes);
   }

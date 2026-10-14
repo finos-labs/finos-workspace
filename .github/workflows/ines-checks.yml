@@ -46,7 +46,7 @@ jobs:
       - run: bun run test
 
   # A critical advisory in what the agent ships fails the check. Lower ones are reviewed by hand: most are in
-  # code that is not reached (the Daytona SDK's own telemetry packages, for one).
+  # code that is not reached (sprintf-js under mammoth's command-line parser, for one).
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest

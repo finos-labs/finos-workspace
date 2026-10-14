@@ -2,7 +2,7 @@
 
 **Ines** is the Workspace's copilot agent. It searches the widgets on your dashboards, fetches their data, runs SQL over that data in-process, builds and edits dashboards, and streams back cited answers. It is made for a deployment with many users: it signs each caller in with the Workspace API, enforces the roles and usage limits the Workspace's admins set, keeps each user's chats apart, and says what it does in structured logs and Prometheus metrics (see [Running for many users](#running-for-many-users)).
 
-The **MCP server** (in [`mcp-server/`](./mcp-server)) holds the tools she uses beyond the widgets: web search, web-page fetch, document search and Python execution. In the repository's `docker-compose.yml` it runs with the agent and every user has it. The agent itself (widget search, data, SQL, dashboards, skills) does not need it.
+The **MCP server** (in [`mcp-server/`](./mcp-server)) holds the tools she uses beyond the widgets: web search, web-page fetch and document search. In the repository's `docker-compose.yml` it runs with the agent and every user has it. The agent itself (widget search, data, SQL, dashboards, skills) does not need it.
 
 Built on Bun + Hono + the Vercel AI SDK + the Model Context Protocol.
 
@@ -28,7 +28,7 @@ Built on Bun + Hono + the Vercel AI SDK + the Model Context Protocol.
 - [Bun](https://bun.sh) v1.x
 - The Workspace — needed to use the agent from its UI (the repository's `docker-compose.yml` runs both)
 - At least one LLM provider key: `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, or `NVIDIA_API_KEY` — or a local [Ollama](https://ollama.com) endpoint via `OLLAMA_BASE_URL`
-- Optional, for some of the MCP server's tools: `DAYTONA_API_KEY` (Python execution), `INES_EMBED_MODEL` as `<provider>:<model>` with that provider's key (document search). Web search uses DuckDuckGo and needs no key
+- Optional, for some of the MCP server's tools: `INES_EMBED_MODEL` as `<provider>:<model>` with that provider's key (document search). Web search uses DuckDuckGo and needs no key
 
 ### Run it
 
@@ -75,7 +75,7 @@ Ines follows the **thin harness** principle: the model drives decisions, the cod
 Two ideas drive the codebase:
 
 1. **The model picks tools, not the harness.** No `if data looks like X then path A else path B` heuristics. Every tool sits in front of the model with a clear description, and the model chains them as it sees fit. The only branching the harness does is by *where a tool runs* (in-process vs. SSE round-trip vs. MCP), never by inspecting tool content.
-2. **Capabilities live in MCP servers.** The agent is deliberately lean — it owns only what needs the Workspace's Copilot protocol or local request state. Web search, fetch, diagrams, Python execution, and document RAG all live in the reference MCP server. Adding a stateless capability is one new tool file there; the agent code is untouched.
+2. **Capabilities live in MCP servers.** The agent is deliberately lean — it owns only what needs the Workspace's Copilot protocol or local request state. Web search, fetch, diagrams, and document RAG all live in the reference MCP server. Adding a stateless capability is one new tool file there; the agent code is untouched.
 
 Why structure it this way:
 
@@ -134,11 +134,8 @@ Stateless / heavy / cold-start capabilities, exposed over Streamable HTTP MCP. N
 | `web_search` | DuckDuckGo (HTML endpoint, no key) | The capability **SEARCH_WEB** (see "The web tools", below). Returns text + web citations via `$ines_kind`. DuckDuckGo can answer a burst of queries with a human-check page; the tool then says so and the model can retry later |
 | `fetch_webpage` | `fetchClientUrl` + a DOM in a child process | The capability **FETCH_FROM_WEB**. Fetches a page and holds it for the chat; returns an **overview** (title, description, outline, what it contains, embedded JSON, the first 3,000 characters of its text) and a `page_id`, never the whole page |
 | `inspect_webpage` | the held page, read in a child process | Part of **FETCH_FROM_WEB**. Reads a held page by `page_id`, a bounded amount per call: `text` (readable text as markdown, from an offset), `find` (a literal phrase, with its offset and the text around it), `select` (elements by CSS selector), `links`, `tables` (returned as tables the agent loads for SQL), `data` (JSON the page embeds: JSON-LD, `__NEXT_DATA__`; by path), `raw` (the HTML source, from an offset or around a phrase) |
-| `execute_code` | Daytona Python sandbox | Per-conversation; gated by `DAYTONA_API_KEY` |
 | `query_documents` | Embeddings from `INES_EMBED_MODEL` + in-memory/Redis store | RAG search over uploaded docs (PDF per page, DOCX, TXT/MD/HTML); the files come by signed link or as bytes; each hit is tagged with its page and the tool reports every page with its score; gated by `INES_EMBED_MODEL` and its provider's key |
 | `list_documents` | same store | Inventory of docs loaded in the conversation |
-
-The compute family is **stateful per conversation** — the sandbox persists across calls in the same chat, and the agent ships only delta tables on each call.
 
 ### Repo layout
 
@@ -189,8 +186,7 @@ mcp-server/                    # Optional companion MCP server (port 8787)
         ├── backend/
         │   ├── web-search.ts
         │   ├── fetch-webpage.ts
-        │   ├── documents/     # query_documents, list_documents + extract/chunk/retrieve/store
-        │   └── compute/       # execute_code + sandbox/data-bridge/ines-helper
+        │   └── documents/     # query_documents, list_documents + extract/chunk/retrieve/store
         └── workspace/         # Path B (Claude Desktop) wrappers around the bridge — filtered out for Ines
 
 tests/                         # Tiers 1 + 2 (every PR, mocked LLM)
@@ -218,7 +214,6 @@ evals/                         # Tier 3 (nightly, real LLM)
 | HTTP | Hono |
 | AI SDK | Vercel AI SDK v6 (OpenAI, OpenRouter, Groq, Ollama) |
 | MCP SDK (server) | `@modelcontextprotocol/sdk` + `@hono/mcp` |
-| Compute backend | Daytona (`@daytonaio/sdk`) |
 | Validation | Zod (everywhere) |
 | In-process SQL | `bun:sqlite` (per-call, on the agent) |
 | HTML → Markdown | Turndown |
@@ -234,7 +229,7 @@ The Workspace is the only thing that speaks MCP. The agent just emits SSE events
 |---|---|---|
 | `get_widget_data` / `get_skill_content` | Bespoke agent paths with widget-tier resolution / skill payload | bespoke |
 | `<command>` (one of the agent's own bridge commands, above) | Workspace ops for a request without the Workspace's tools: `update_widget_in_dashboard`, `add_widget_to_dashboard`, … | the Workspace's `handleFunctionCall` |
-| `execute_agent_tool` | Any MCP tool: the Workspace's own, web search, fetch, code sandbox, third-party MCPs | `useWorkspaceToolExecutor` for the Workspace's own (server id `workspace`), `useMcpExecutor` for the rest |
+| `execute_agent_tool` | Any MCP tool: the Workspace's own, web search, fetch, document search, third-party MCPs | `useWorkspaceToolExecutor` for the Workspace's own (server id `workspace`), `useMcpExecutor` for the rest |
 
 (Both live in the Workspace frontend, not in this repo.)
 
@@ -278,10 +273,9 @@ Helpers in [`mcp-server/src/lib/typed.ts`](./mcp-server/src/lib/typed.ts): `text
 
 ### Decoration (`x-ines-*`)
 
-Some agent-side data has to ride along with an MCP call without the LLM seeing it. Two capabilities use it — `execute_code` (Daytona-backed) and the document-RAG tools (`query_documents` / `list_documents`):
+Some agent-side data has to ride along with an MCP call without the LLM seeing it. The document-RAG tools (`query_documents` / `list_documents`) use it:
 
-- `x-ines-conversation-id` — the Workspace's `X-Trace-Id`; keys the per-chat Daytona sandbox and the per-chat document store
-- `x-ines-tables` — `{ [name]: rows[] }`, delta only; names already shipped (tracked in `extra_state.compute_tables_shipped`) are skipped. If the sandbox is recreated after idle auto-stop, it's detected one call late via a silent `sandbox_meta` result item, the shipped set is cleared, and the next call full-ships
+- `x-ines-conversation-id` — the Workspace's `X-Trace-Id`; keys the per-chat document store
 - `x-ines-documents` — the delta of uploaded-doc bytes shipped to the document tools for ingest
 
 The agent injects these into `parameters` just before emitting the SSE event; the Workspace forwards `parameters` byte-for-byte; the MCP-side tool reads them. The model never sees them — `src/mcp/schema.ts` strips any `x-ines-*` key from the model-facing schema, so **any new internal-only key must start with that prefix.** The SQL family needs no decoration — it runs in-process and reads `pendingTables` directly through its tool factory's closure.
@@ -292,7 +286,7 @@ The Workspace sends the whole chat with every request; **the model is not given 
 
 Why: serving the whole chat makes every question cost more than the last (a question at the 300th exchange used 68k tokens, 4 times the 25th's, and the tokens count against the user's daily limit) and ends in a request the model refuses once the chat outgrows its context. Measured on a live model, a question at the 5th, 100th and 300th exchange now uses the same ~19k tokens when it needs an earlier fact (two model calls: look back, answer) and ~9k when it stands on its own (one call). A single message longer than 60,000 characters is cut off and says so.
 
-State that the model no longer sees but the agent still needs is read from the request directly: a code sandbox reported permanently unavailable stays off for the rest of the chat, and the tables loaded in earlier turns are still there to query (they are cached for the chat and listed in the system prompt).
+State that the model no longer sees but the agent still needs is read from the request directly: the tables loaded in earlier turns are still there to query (they are cached for the chat and listed in the system prompt).
 
 ### What the chat is shown: reasoning, and the answer
 
@@ -370,7 +364,7 @@ The agent is built for a deployment shared by many users, and leaves to the Work
 - **Sign-in.** Every request to `/v1/*` carries the user's session token, and `GET /app/user` on the Workspace API says whose it is (remembered for `INES_AUTH_CACHE_SECONDS`). The `X-User-Id` header the web app also sends is ignored: a client could put anything in it. If the API cannot be asked, the request fails with 503 rather than going on unchecked. What the API is asked is bounded, since anyone can send any token: a token it turned down is not asked about again for 10 seconds, concurrent requests with one token share one question, and at most 32 questions are under way (some more wait, the rest get 503 with `Retry-After`), so a flood of made-up tokens cannot become a flood to the API.
 - **The web tools.** `SEARCH_WEB` (`web_search`) and `FETCH_FROM_WEB` (`fetch_webpage`) are on for everyone, and an administrator can switch either off for an entity or for one user (see "The web tools" below).
 - **Roles and limits.** Before any work for a question, Ines calls `POST /app/copilot/authorize` (which models and MCP tools the user's roles grant: a denied model is refused in the chat, a denied tool is left out) and, for the first request of the turn, `PUT /app/usage` (one question against the daily limit; the API answers 422 with its own wording when it is used up). After the request she adds the tokens it used. Both calls carry `INES_METERING_TOKEN` besides the user's own token, so users cannot write their own usage. A turn that needs a tool in the browser is several requests; only the first is counted, and a request that claims to continue a turn Ines does not know of is counted again.
-- **One user's chats are theirs.** Everything kept for a chat (widget rows, documents, the code sandbox) is filed under `<user>:<chat>`. The browser makes the calls to the MCP tools, so it could name any chat; Ines signs each scope with `INES_SCOPE_SECRET` and the tools that keep state (`execute_code`, `query_documents`, `list_documents`) refuse a call without a valid signature.
+- **One user's chats are theirs.** Everything kept for a chat (widget rows, documents, fetched pages) is filed under `<user>:<chat>`. The browser makes the calls to the MCP tools, so it could name any chat; Ines signs each scope with `INES_SCOPE_SECRET` and the tools that keep state (`query_documents`, `list_documents`) refuse a call without a valid signature.
 - **What a client can make the agent fetch.** Files, pasted links and pages a model asks for are fetched only from public addresses (`src/lib/safe-fetch.ts`): the host is resolved once, every address it resolves to is checked, and the connection goes to the address that was checked (so a host cannot answer one address to the check and another to the connection), redirects are checked again, internal names and private, loopback and link-local addresses are refused, and a response is cut off at 25 MB. The one exception is the Workspace's own links to its files, fetched from `WORKSPACE_API_URL`.
 - **Limits.** `INES_MAX_CONCURRENT_QUERIES` per user (a user over it gets 429), `INES_MAX_TOTAL_QUERIES` for the whole agent (503), `INES_MAX_TURN_REQUESTS` per question, `INES_HELPER_CALLS_PER_MINUTE` per user for the helpers (titles, prompt rewriting; 429, and counted before the body is read), `INES_INVALID_REQUESTS_PER_MINUTE` per user for requests that are not questions (past it their questions are turned away unread), `INES_MAX_BODY_MB` per request (8 MB for the helpers that take JSON), field limits on what a request may hold (messages, widgets, documents), and only the models on offer (`DEFAULT_MODEL`, `INES_MODELS`). A query's place is taken before its body is read (a body can be tens of megabytes, and refused requests must cost nothing), and a query whose client has gone is stopped, and its place and its model call with it.
 - **More than one replica.** A turn is several requests, and what the agent remembers between them decides what the next one may do. All of it — who a token belongs to, how much of a user's share is left, which turn is under way and a chat's rows — lives behind one store (`src/lib/store.ts`). With `REDIS_URL` set it is shared, so a user has one share of their quota across every replica, a continuation is recognised wherever it lands, and rows another replica fetched are found instead of fetched again; `GET /status` says `sharedState: true`. Without it the store keeps everything in this process, as it always did, and a deployment should run one replica (or send a chat's requests to the same one). Redis is never in the way of serving: an operation it cannot answer falls back to this process, so a Redis outage makes the quotas per-replica for a while rather than stopping the agent — `ines_store_errors_total` counts those. Every cache is bounded (entries, size and age) and filed under the user's scope; a table too large to be worth sending (1 MB as JSON) stays in the process that fetched it, and another replica fetches it again.
@@ -381,8 +375,7 @@ What strangers can send the agent (files, pages, a user's own questions) and wha
 
 - **Work on a stranger's bytes runs in a child process** with an empty environment, a time limit and a memory limit, and is killed when it overruns (`src/lib/isolate.ts`): the SQL tools (`INES_SQL_TIMEOUT_MS`, default 10 s), spreadsheets (read after their ZIP directory was checked for bombs, `src/lib/zip-guard.ts`), PDFs, Word files and pages (in the MCP server). `INES_ISOLATED_CONCURRENCY` (default 4) bounds how many run at once; past it a call is refused instead of queued without end. A worker thread would not do: a thread inside SQLite cannot be stopped.
 - **What is read is bounded before it is paid for**: sizes of files, rows, chunks and pages, and the chunks one user may have embedded in an hour (`INES_INGEST_CHUNKS_PER_HOUR`, default 20,000), all checked before a model or an embedding is called.
-- **Text a model reads is data.** The system prompt says so, and the tools are held to it: `fetch_webpage` fetches only an address the agent signed (`x-ines-url-sig`), and the agent signs only an address that was in what the model was given: the user's messages and attachments, and what a search, a page, a widget or a document returned. Not what the model wrote itself, and not the results of the code and SQL tools or of `recall_conversation`, which print or repeat any string they are told to. The match is exact, so an address with the user's data added is refused (`src/agent/known-urls.ts`, `mcp-server/src/lib/url-check.ts`). `INES_FETCH_ANY_URL=true` turns this off. A model's answer cannot show an image from outside: `![alt](address)` becomes a link the user may follow (`neutralizeImages` in `src/protocol/events.ts`), since the chat window loads an image by itself and its address could carry the user's data. The web app holds to the same rule on its side, whatever an agent sends: the chat renders no image of any kind (alt text only), no raw HTML, no script and no style from message text, and an HTML artifact (a table, a chart) is shown in an iframe whose own content security policy lets the browser load nothing by address (`frontend/src/components/AI/artifactPolicy.ts`: images and fonts only as `data:`, inline styles, no scripts but the app's own); the preview of a link the user clicks is loaded only when they ask for it, and in a sandbox.
-- **The code sandbox** can reach the network by default (it installs its packages on creation). `INES_SANDBOX_NETWORK=blocked` with `DAYTONA_SNAPSHOT` (a snapshot that already has the packages) cuts it off, so code a model was talked into writing cannot send data anywhere.
+- **Text a model reads is data.** The system prompt says so, and the tools are held to it: `fetch_webpage` fetches only an address the agent signed (`x-ines-url-sig`), and the agent signs only an address that was in what the model was given: the user's messages and attachments, and what a search, a page, a widget or a document returned. Not what the model wrote itself, and not the results of the SQL tools or of `recall_conversation`, which repeat any string they are told to. The match is exact, so an address with the user's data added is refused (`src/agent/known-urls.ts`, `mcp-server/src/lib/url-check.ts`). `INES_FETCH_ANY_URL=true` turns this off. A model's answer cannot show an image from outside: `![alt](address)` becomes a link the user may follow (`neutralizeImages` in `src/protocol/events.ts`), since the chat window loads an image by itself and its address could carry the user's data. The web app holds to the same rule on its side, whatever an agent sends: the chat renders no image of any kind (alt text only), no raw HTML, no script and no style from message text, and an HTML artifact (a table, a chart) is shown in an iframe whose own content security policy lets the browser load nothing by address (`frontend/src/components/AI/artifactPolicy.ts`: images and fonts only as `data:`, inline styles, no scripts but the app's own); the preview of a link the user clicks is loaded only when they ask for it, and in a sandbox.
 - **The process stays up and says why it did not**: unhandled errors are logged and counted (`ines_unhandled_errors_total`), `SIGTERM` stops taking requests and lets the running ones end (`INES_SHUTDOWN_GRACE_SECONDS`, default 25), and `LIVE_DEBUG_TRACES` is ignored in production unless `INES_ALLOW_DEBUG_TRACES=true`.
 - **The containers** (`docker-compose.yml`) have a read-only root, no capabilities, no new privileges, a memory limit (`INES_MEM_LIMIT`, default 4g) and a limit on processes.
 
@@ -395,7 +388,7 @@ Searching the web and reading a page from it are two capabilities, **SEARCH_WEB*
 
 A flag that is off wins over what roles grant, and goes by the tool's name, so the same tool on another MCP server is as switched off. It is enforced in three places: the API's `POST /app/copilot/authorize` names the tools as denied and says which capabilities are off (`disabled_capabilities`), so Ines leaves them out and tells the model ("WEB ACCESS: your administrator has switched off …"); the API's MCP proxy refuses a call of the tool; and the web app does not offer the tool. With **FETCH_FROM_WEB** off, Ines does not fetch the addresses in the user's message either (the eager prefetch is the same capability). An administrator never has to list the web tools in a role: the switches work for users whose roles grant nothing too.
 
-A page is read in parts, never put in front of the model whole (a few hundred KB of markup, mostly not written to be read), and a markdown copy of it would throw away what the work may need (links, tables, the data a page carries for its scripts, the markup). `fetch_webpage` keeps the page as fetched, under an id that is the same for the same address, in a store of the MCP server filed under the chat's scope key (`mcp-server/src/lib/page-store.ts`: six pages and 12 million characters to a chat, 80 million for all chats, 30 minutes, in memory like the code sandbox; a page that is gone is fetched again), and `inspect_webpage` reads parts of it. Every view returns a bounded amount (`text` and `raw` at most 12,000 characters, the others a few dozen items), and the DOM work (parsing, selectors, tables, JSON) runs in a child process with a deadline (`src/lib/page-view.ts`, `html-child.ts`), so a page built to be deep, wide or slow cannot stop the server. `find` takes a literal, not a pattern. A result is only the page's own words and numbers: it never repeats the selector, phrase or path it was asked for, so a model cannot get its own text back as something that came from a page (the addresses in `links` and the other views count as given for `fetch_webpage`, see Hardening). The eager prefetch of the addresses in a user's message gives the model the same overview of each page (no `page_id`: the agent holds nothing for the tool server), and a model that needs more calls `fetch_webpage` and `inspect_webpage`.
+A page is read in parts, never put in front of the model whole (a few hundred KB of markup, mostly not written to be read), and a markdown copy of it would throw away what the work may need (links, tables, the data a page carries for its scripts, the markup). `fetch_webpage` keeps the page as fetched, under an id that is the same for the same address, in a store of the MCP server filed under the chat's scope key (`mcp-server/src/lib/page-store.ts`: six pages and 12 million characters to a chat, 80 million for all chats, 30 minutes, in memory like the document store; a page that is gone is fetched again), and `inspect_webpage` reads parts of it. Every view returns a bounded amount (`text` and `raw` at most 12,000 characters, the others a few dozen items), and the DOM work (parsing, selectors, tables, JSON) runs in a child process with a deadline (`src/lib/page-view.ts`, `html-child.ts`), so a page built to be deep, wide or slow cannot stop the server. `find` takes a literal, not a pattern. A result is only the page's own words and numbers: it never repeats the selector, phrase or path it was asked for, so a model cannot get its own text back as something that came from a page (the addresses in `links` and the other views count as given for `fetch_webpage`, see Hardening). The eager prefetch of the addresses in a user's message gives the model the same overview of each page (no `page_id`: the agent holds nothing for the tool server), and a model that needs more calls `fetch_webpage` and `inspect_webpage`.
 
 ### Logs, metrics and health
 
@@ -408,7 +401,7 @@ A page is read in parts, never put in front of the model whole (a few hundred KB
 
 Decide by where the work needs to run:
 
-1. **Stateless / heavy / cold-start** (web search, fetch, a renderer, a sandbox-backed tool): **write a new MCP tool** in `mcp-server/src/tools/`. Export `<name>Schema` / `<name>Description` / `<name>Handler`, register it in `mcp-server/src/server.ts`, and use the `typed.ts` helpers for artifacts/citations/tables. The agent picks it up automatically — no agent code changes.
+1. **Stateless / heavy / cold-start** (web search, fetch, a renderer): **write a new MCP tool** in `mcp-server/src/tools/`. Export `<name>Schema` / `<name>Description` / `<name>Handler`, register it in `mcp-server/src/server.ts`, and use the `typed.ts` helpers for artifacts/citations/tables. The agent picks it up automatically — no agent code changes.
 2. **State-bound** (operates on `pendingTables`, `artifactQueue`, or other request-scoped agent state): **add an agent tool** under `src/agent/tools/` with an `execute` that closes over the context, following the `make<Name>Tool(ctx)` factory pattern.
 3. **A new workspace bridge op:** extend `src/protocol/bridge-commands.ts` (Zod schema + description + the name in `WORKSPACE_BRIDGE_COMMANDS`). The factory and loop dispatch pick it up generically.
 
@@ -496,12 +489,7 @@ OTEL_RECORD_PROMPTS                 # "true" puts prompts, widget rows and SQL r
 INES_SCOPE_SECRET       # Shared with the agent. When set, the tools that keep state for a chat act only on a scope she signed
 MCP_METRICS_PORT        # Prometheus metrics (default 9465; 0 turns them off)
 LOG_LEVEL, LOG_FORMAT   # As for the agent
-DAYTONA_API_KEY         # Required for execute_code (otherwise execute_code is unregistered)
 COMPANION_TOOLS_ENABLED # "true" registers the 18 Path-B workspace bridge tools + prompts + app-builder resources (default false)
-DAYTONA_API_URL         # Optional Daytona overrides
-DAYTONA_TARGET
-DAYTONA_SNAPSHOT        # Optional — a snapshot with the sandbox's Python packages already installed (nothing is installed then)
-INES_SANDBOX_NETWORK    # open (default) | blocked. blocked cuts the sandbox off from the network and needs DAYTONA_SNAPSHOT
 INES_FETCH_ANY_URL      # "true" lets fetch_webpage fetch any address; by default only one the agent signed (see Hardening)
 INES_INGEST_CHUNKS_PER_HOUR  # Chunks one user may have embedded in an hour (default 20000)
 REDIS_URL               # Optional — persists the document-RAG store across restarts (in-memory if unset)
@@ -544,7 +532,7 @@ Inside a container, `localhost` is the container itself, not your host machine. 
 The tag after `ollama:` in `DEFAULT_MODEL` must be a model you've **actually pulled**, matching exactly. If it isn't, Ollama 404s the chat request and the agent surfaces a `Model error`. Check what's installed with `ollama list` and pull the one you want (`ollama pull <model>`).
 
 **Do I need the MCP server?**
-The repository's compose stack runs it, and the tools in it are how the agent searches the web and your documents. The agent itself is standalone — widget search, data, SQL, dashboards, and skills all work with `bun run dev:agent` alone. The MCP server adds web search, fetch, diagrams, Python execution, and document search.
+The repository's compose stack runs it, and the tools in it are how the agent searches the web and your documents. The agent itself is standalone — widget search, data, SQL, dashboards, and skills all work with `bun run dev:agent` alone. The MCP server adds web search, fetch, diagrams, and document search.
 
 **Ines will not start and lists what is missing.**
 With the default `INES_AUTH=workspace` she needs `WORKSPACE_API_URL`, `INES_METERING_TOKEN`, `INES_SCOPE_SECRET` and `INES_CORS_ORIGINS`, and she stops at start if any is missing instead of running without users. In the compose stack `create_local_env` and `docker-compose.yml` set them. On a development machine with no Workspace API, set `INES_AUTH=none`.

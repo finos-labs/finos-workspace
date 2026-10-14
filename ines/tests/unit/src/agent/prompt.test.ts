@@ -68,7 +68,7 @@ describe("buildSystemPrompt — base content", () => {
   it("is lean: the instructions of tools that are not in use are not in it", () => {
     const out = buildSystemPrompt(req(), withTools());
     expect(out.length).toBeLessThan(10_000);
-    for (const notThere of ["execute_sql:", "create_artifact renders", "operation 'create'", "ines.show()", "_llm_think: show"]) {
+    for (const notThere of ["execute_sql:", "create_artifact renders", "operation 'create'", "_llm_think: show"]) {
       expect(out).not.toContain(notThere);
     }
   });
@@ -449,23 +449,14 @@ describe("buildSystemPrompt — tool groups", () => {
   it("gives the other groups' instructions only while they are loaded", () => {
     const tools: AgentTool[] = [
       { name: "ines_query_documents", server_id: "s", url: "u", description: "Search files" },
-      { name: "ines_execute_code", server_id: "s", url: "u", description: "Run Python" },
     ];
     const off = buildSystemPrompt(req(), withTools([], tools));
-    for (const heading of ["DOCUMENTS TOOLS:", "CODE TOOLS:", "RENDER TOOLS:", "PLANNING TOOLS:"]) expect(off).not.toContain(heading);
+    for (const heading of ["DOCUMENTS TOOLS:", "RENDER TOOLS:", "PLANNING TOOLS:"]) expect(off).not.toContain(heading);
 
-    const on = buildSystemPrompt(req(), withTools(["documents", "code", "render", "planning"], tools));
+    const on = buildSystemPrompt(req(), withTools(["documents", "render", "planning"], tools));
     expect(on).toContain("Every passage it returns is tagged with its page");
-    expect(on).toContain("use ines.show() inside it");
     expect(on).toContain("one-off layout");
     expect(on).toContain("One workflow-level plan, not repeated planning between routine tool calls");
-  });
-
-  it("says when Python execution is not available in the chat, and only then", () => {
-    const tools: AgentTool[] = [{ name: "ines_execute_code", server_id: "s", url: "u", description: "Run Python" }];
-    expect(buildSystemPrompt(req(), { ...withTools([], tools), codeExecutionAvailable: false })).toContain("Python execution is not available");
-    expect(buildSystemPrompt(req(), { ...withTools([], tools), codeExecutionAvailable: true })).not.toContain("Python execution is not available");
-    expect(buildSystemPrompt(req(), withTools([], tools))).not.toContain("Python execution is not available");
   });
 
   it("appends dashboard context only when workspaceState is provided", () => {
