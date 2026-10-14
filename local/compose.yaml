@@ -114,6 +114,9 @@ services:
     environment:
       VITE_BACKEND_URL: http://localhost:8000
       VITE_AI_API_URL: ""
+      # BQ plugin host from the bq-workspace-plugins repository. Override the
+      # port with e.g. `PLUGIN_HOST_URL=http://localhost:5174 make up`.
+      VITE_PLUGIN_HOST_URL: ${PLUGIN_HOST_URL:-http://localhost:5173}
     ports:
       - "1420:1420"
     volumes:

@@ -17,6 +17,7 @@ FIELDS='
 urls backend BACKEND_URL string
 urls ai AI_API_URL string
 urls marketplace MARKETPLACE_URL string
+urls pluginHost PLUGIN_HOST_URL string
 authentication allowEmailLogin AUTHENTICATION_ALLOW_EMAIL_LOGIN bool
 authentication identityProviders AUTHENTICATION_IDENTITY_PROVIDERS list
 authentication sendMicrosoftIdToken AUTHENTICATION_SEND_MICROSOFT_IDTOKEN bool

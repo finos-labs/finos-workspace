@@ -49,6 +49,8 @@ const AdminMarketplace = lazy(() => import("./routes/admin/marketplace"));
 const AdminThemeSettings = lazy(() => import("./routes/admin/themeSettings"));
 const AdminUsers = lazy(() => import("./routes/admin/users"));
 const AILibrary = lazy(() => import("./routes/aiLibrary"));
+const PluginsPage = lazy(() => import("./routes/plugins"));
+const PluginRuntimePage = lazy(() => import("./routes/pluginRuntime"));
 const MenuHomePage = lazy(() => import("./routes/appHome"));
 const ConnectionsPage = lazy(() => import("./routes/Connections"));
 const HomePage = lazy(() => import("./routes/home"));
@@ -199,6 +201,16 @@ const router = createBrowserRouter([
             path: "ai",
             element: <S children={<AILibrary />} />,
             id: "app-ai",
+          },
+          {
+            path: "plugins",
+            element: <S children={<PluginsPage />} />,
+            id: "app-plugins",
+          },
+          {
+            path: "plugins/:pluginId",
+            element: <S children={<PluginRuntimePage />} />,
+            id: "app-plugin-runtime",
           },
           {
             path: "settings",

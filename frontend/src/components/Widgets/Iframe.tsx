@@ -10,6 +10,7 @@ import {
   registerIframeWidget,
   unregisterIframeWidget,
 } from "~/lib/iframeWidgetRegistry";
+import { isPluginHostUrl } from "~/lib/plugins";
 import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
@@ -31,7 +32,8 @@ import { IframeParamControls } from "./Helpers/IframeParamControls";
 import { useIframeProtocol } from "./Helpers/useIframeProtocol";
 import { useParamGroupBindings } from "./Helpers/useParamGroupBindings";
 
-const allowJsExecution = getConfig().data.allowHtmlJsExecution;
+const { data: dataConfig, urls: urlsConfig } = getConfig();
+const allowJsExecution = dataConfig.allowHtmlJsExecution;
 
 function normalizeParamRecord(params?: Record<string, unknown>) {
   return Object.fromEntries(
@@ -599,7 +601,13 @@ export default function Iframe() {
               src={iframeSrc}
               width="100%"
               height="100%"
-              sandbox={allowJsExecution ? IFRAME_SANDBOX_ATTRIBUTES : ""}
+              sandbox={
+                // Plugin host pages are trusted and need scripts, even when
+                // other external frames are fully sandboxed.
+                allowJsExecution || isPluginHostUrl(iframeSrc, urlsConfig.pluginHost)
+                  ? IFRAME_SANDBOX_ATTRIBUTES
+                  : ""
+              }
             />
           </div>
         </div>

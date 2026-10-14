@@ -25,7 +25,12 @@ describe("configFromEnv", () => {
   it("leaves every deployment-specific value empty by default", () => {
     const cfg = configFromEnv({});
 
-    expect(cfg.urls).toEqual({ backend: "", ai: "", marketplace: "" });
+    expect(cfg.urls).toEqual({
+      backend: "",
+      ai: "",
+      marketplace: "",
+      pluginHost: "",
+    });
     expect(cfg.authProviders).toEqual({
       googleClientId: "",
       azureClientId: "",
@@ -42,6 +47,7 @@ describe("configFromEnv", () => {
       VITE_BACKEND_URL: "https://backend.test",
       VITE_AI_API_URL: "https://ai.test",
       VITE_MARKETPLACE_URL: "https://marketplace.test",
+      VITE_PLUGIN_HOST_URL: "https://plugins.test",
       VITE_GOOGLE_OAUTH_CLIENT_ID: "google-id",
       VITE_OKTA_DOMAIN: "okta.test",
       VITE_DOCS_URL: "https://docs.test",
@@ -53,6 +59,7 @@ describe("configFromEnv", () => {
       backend: "https://backend.test",
       ai: "https://ai.test",
       marketplace: "https://marketplace.test",
+      pluginHost: "https://plugins.test",
     });
     expect(cfg.authProviders.googleClientId).toBe("google-id");
     expect(cfg.authProviders.oktaDomain).toBe("okta.test");

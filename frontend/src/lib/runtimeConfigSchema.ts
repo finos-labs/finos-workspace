@@ -53,6 +53,8 @@ export const RuntimeConfigSchema = z.object({
     ai: z.string().default(""),
     /** A remote marketplace to list apps from. Empty: this deployment's own backend is the marketplace. */
     marketplace: z.string().default(""),
+    /** Base URL of the BQ plugin host; plugin runtime URLs are this + the registry route. Empty: plugins cannot be opened. */
+    pluginHost: z.string().default(""),
   }),
   authentication: z.object({
     allowEmailLogin: boolField(true),
@@ -131,6 +133,7 @@ export const ENV_NAMES = {
     backend: "VITE_BACKEND_URL",
     ai: "VITE_AI_API_URL",
     marketplace: "VITE_MARKETPLACE_URL",
+    pluginHost: "VITE_PLUGIN_HOST_URL",
   },
   authentication: {
     allowEmailLogin: "VITE_AUTHENTICATION_ALLOW_EMAIL_LOGIN",
