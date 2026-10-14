@@ -51,8 +51,8 @@ settings in `config.js`, and any other setting is one more `environment:` entry 
   `pr-description.yml`, `deploy-settings.yml`), the end-to-end tests (`e2e.yml`), the Docker images and build check
   (`backend-image.yml`, `frontend-image.yml`, `pr-build-check.yml`), the deployment to the dev environment
   (`deploy-dev.yml`) and the production frontend deployment (`prod-deploy.yml`). The dev environment's app settings
-  (sign-in, feature flags, branding, backend mode) are in `deploy/dev.yaml`: `deploy-dev.yml` deploys them with the
-  images, and `deploy-settings.yml` checks them against the code on every pull request. Each deployment file's header lists the repository variables and
+  (sign-in, feature flags, branding, backend mode) are in `deploy/dev.yaml`: `deploy-dev.yml` asks the infrastructure
+  repository to deploy them with the images, and `deploy-settings.yml` checks them against the code on every pull request. Each deployment file's header lists the repository variables and
   secrets it reads. The `.github/workflows/` files left inside `frontend/` are kept for reference; GitHub Actions only
   executes workflows from a repository's root `.github/` directory, so none of them run here as-is.
 - Licensed under Apache-2.0 (see [LICENSE](LICENSE)). Individual components may carry additional notices in their own directories.
