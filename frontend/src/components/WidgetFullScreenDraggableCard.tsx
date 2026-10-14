@@ -64,7 +64,7 @@ export default function WidgetFullscreen({
             "DialogContent fixed z-20 flex flex-col gap-4 overflow-hidden rounded p-6",
             "max-h-[80vh] w-[95vw] md:w-[70vw]",
             "left-[50%] top-[50%] -translate-x-[50%] -translate-y-[50%]",
-            "bg-white text-black dark:bg-[#151518] dark:text-white",
+            "bg-white text-black dark:bg-[#0b2432] dark:text-white",
             "focus:outline-hidden focus-visible:ring-3 focus-visible:ring-brand-main focus-visible:ring-opacity-50",
           )}
         >
@@ -80,7 +80,7 @@ export default function WidgetFullscreen({
             />
           </DialogPrimitive.Close>
 
-          <div className="overflow-auto bg-white dark:bg-[#151518]" /*ref={ref}*/>
+          <div className="overflow-auto bg-white dark:bg-[#0b2432]" /*ref={ref}*/>
             {image ? (
               <img src={image} className="mx-auto" />
             ) : (

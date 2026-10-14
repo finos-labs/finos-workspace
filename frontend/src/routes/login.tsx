@@ -157,7 +157,7 @@ export default function LoginPage() {
   return (
     <div className="absolute top-0 left-0 w-full h-full overflow-y-auto hide-scrollbars">
       <div className="flex items-center justify-center min-h-screen w-full py-8 px-8">
-        <div className="w-full max-w-[408px] p-10 rounded-lg bg-white">
+        <div className="w-full max-w-[408px] p-10 rounded-lg bg-white border border-light-200 shadow-[0_8px_30px_rgba(7,24,32,0.12)]">
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit)}

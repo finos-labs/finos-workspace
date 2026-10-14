@@ -20,7 +20,7 @@ Dark theme:
 - Alternating rows: `#2A2A31`
 - Header background: `#36363E`
 - Text: `#FFFFFF`
-- Outer wrapper background: `#151518`
+- Outer wrapper background: `#0b2432`
 
 3. **No borders**: the workspace table has no visible divider lines
 between rows or columns. Rely only on the alternating row background for

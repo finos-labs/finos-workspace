@@ -109,14 +109,17 @@ export function CopilotChat() {
 function NoCopilotSelected() {
   return (
     <CopilotWrapper>
-      <div className="flex flex-col items-center gap-2 justify-center h-full">
-        <span>No copilot selected</span>
-        <Button
-          size="xs"
-          onClick={() => useThemeStore.getState().setShowAddAgentsDialog(true)}
-        >
-          Add Copilot
-        </Button>
+      <div className="flex h-full flex-col">
+        <CopilotHeader showChatActions={false} />
+        <div className="flex flex-1 flex-col items-center justify-center gap-2">
+          <span>No copilot selected</span>
+          <Button
+            size="xs"
+            onClick={() => useThemeStore.getState().setShowAddAgentsDialog(true)}
+          >
+            Add Copilot
+          </Button>
+        </div>
       </div>
     </CopilotWrapper>
   );

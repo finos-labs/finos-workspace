@@ -126,7 +126,7 @@ These rules apply to ALL report types and must be followed exactly.
 
 ### Font & Typography
 
-- **Font family**: `Inter, Roboto, -apple-system, "Segoe UI", sans-serif` -- no external font imports; the report must not load anything from the network
+- **Font family**: `Montserrat, -apple-system, "Segoe UI", sans-serif` -- no external font imports; the report must not load anything from the network
 - **Banner**: Report type text in the banner must be **UPPERCASE**
 - **Lead-in sentences**: Must be both **bold AND underlined** (`font-weight: bold; text-decoration: underline;`)
 - **Source attributions** below tables: Regular weight, NOT italic
@@ -155,7 +155,7 @@ These rules apply to ALL report types and must be followed exactly.
 ### Every Page Must Have
 
 1. **Top-right**: the organization name + "Equity Research" (or report type) text
-2. **Bottom**: Accent line (`#0088CC`) + "Generated with Workspace" + the organization name
+2. **Bottom**: Accent line (`#0086BF`) + "Generated with Workspace" + the organization name
 
 ### House Style (Non-Negotiable)
 
@@ -164,7 +164,7 @@ These elements are constant across ALL report types:
 - **Header**: Report type text on the left, organization name on the right (spread across full width)
 - **Footer**: Accent top-border line + "Generated with Workspace" left + organization name right
 - **Organization**: the name the user gives; "Workspace" when they give none
-- **Colors**: Black `#000000` banner, Blue `#0088CC` main accent, chart series use Group colors: `#00AAFF` (1), `#EF6689` (2), `#16A34A` (3), `#FB923C` (4), `#CCBE00` (5)
+- **Colors**: Black `#000000` banner, Blue `#0086BF` main accent, chart series use Group colors: `#00B5E2` (1), `#EF6689` (2), `#16A34A` (3), `#FB923C` (4), `#CCBE00` (5)
 
 ---
 
@@ -189,8 +189,8 @@ Produce a single HTML file named `{Subject}_{ReportType}_Report.html`. The file 
 | Organization name | Black | #000000 |
 | Title banner background | Black | #000000 |
 | Title banner text | White | #FFFFFF |
-| **Main accent** / footer line / table headers | Blue | #0088CC |
-| **Group 1** / Primary chart series | Light Blue | #00AAFF |
+| **Main accent** / footer line / table headers | Blue | #0086BF |
+| **Group 1** / Primary chart series | Light Blue | #00B5E2 |
 | **Group 2** / Secondary chart series | Pink | #EF6689 |
 | **Group 3** / Tertiary chart series | Green | #16A34A |
 | **Group 4** / Quaternary chart series | Orange | #FB923C |
@@ -232,7 +232,7 @@ Below is the full self-contained HTML template with all CSS classes. Assemble pa
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: Inter, Roboto, sans-serif;
+    font-family: Montserrat, sans-serif;
     font-size: 9.5pt;
     line-height: 1.35;
     color: #000000;
@@ -272,7 +272,7 @@ Below is the full self-contained HTML template with all CSS classes. Assemble pa
     font-size: 7pt;
     color: #666666;
     line-height: 1.3;
-    border-top: 1.5px solid #0088CC;
+    border-top: 1.5px solid #0086BF;
     padding-top: 4px;
     margin-top: auto;
     display: flex;
@@ -431,7 +431,7 @@ Below is the full self-contained HTML template with all CSS classes. Assemble pa
     height: auto;
   }
   .chart-container svg text {
-    font-family: Inter, Roboto, sans-serif;
+    font-family: Montserrat, sans-serif;
   }
 
   /* ============================================================
@@ -475,7 +475,7 @@ Below is the full self-contained HTML template with all CSS classes. Assemble pa
 
   /* Highlighted header row variant (red background) */
   .fin-table.red-header thead th {
-    background-color: #0088CC;
+    background-color: #0086BF;
     color: #FFFFFF;
     border-bottom: none;
   }
@@ -496,7 +496,7 @@ Below is the full self-contained HTML template with all CSS classes. Assemble pa
     margin-bottom: 8px;
   }
   .comparison-table thead th {
-    background-color: #0088CC;
+    background-color: #0086BF;
     color: #FFFFFF;
     padding: 4px 6px;
     text-align: center;
@@ -542,7 +542,7 @@ Below is the full self-contained HTML template with all CSS classes. Assemble pa
     font-size: 8pt;
   }
   .tp-history-table thead th {
-    background-color: #0088CC;
+    background-color: #0086BF;
     color: #FFFFFF;
     padding: 3px 4px;
     text-align: center;
@@ -583,7 +583,7 @@ Below is the full self-contained HTML template with all CSS classes. Assemble pa
      ============================================================ */
 
   .callout-box {
-    border-left: 3px solid #0088CC;
+    border-left: 3px solid #0086BF;
     background: #FAFAFA;
     padding: 8px 12px;
     margin: 10px 0;
@@ -595,7 +595,7 @@ Below is the full self-contained HTML template with all CSS classes. Assemble pa
   }
 
   .highlight-box {
-    border: 1px solid #00AAFF;
+    border: 1px solid #00B5E2;
     background: #F0F8FF;
     padding: 8px 12px;
     margin: 10px 0;

@@ -219,7 +219,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
           e.stopPropagation();
         }}
         className={cn(
-          "group/widget relative z-0 flex flex-col h-full w-full rounded bg-white text-xs only-sm:text-sm shadow-xs dark:bg-[#151518]",
+          "group/widget relative z-0 flex flex-col h-full w-full rounded bg-white text-xs only-sm:text-sm shadow-xs dark:bg-[#0b2432]",
           {
             "draggable-card": !name,
             "select-none!": !state.hasAccess,
@@ -249,7 +249,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
           className={cn(
             "transition-all duration-200 ease-out",
             effectiveAutoHide &&
-              "absolute top-0 left-0 right-0 z-10 bg-white dark:bg-[#151518] rounded-t",
+              "absolute top-0 left-0 right-0 z-10 bg-white dark:bg-[#0b2432] rounded-t",
             effectiveAutoHide &&
               !navbarHovered &&
               "-translate-y-full opacity-0 pointer-events-none",
