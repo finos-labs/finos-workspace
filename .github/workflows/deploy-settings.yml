@@ -1,0 +1,19 @@
+name: Deploy settings
+
+# Checks deploy/*.yaml (each environment's app settings) against the code on
+# every pull request. A change that renames or removes a frontend or backend
+# setting fails here until the settings file changes with it.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check deploy/*.yaml
+        run: .github/scripts/check-deploy-config.sh deploy/*.yaml
