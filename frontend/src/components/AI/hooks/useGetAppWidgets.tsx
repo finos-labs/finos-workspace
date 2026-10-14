@@ -24,6 +24,7 @@ import {
   convertAdvancedBackend,
   getJsonWidget,
 } from "~/lib/utils";
+import { standalonePluginWidgets, usePluginRegistryStore } from "~/plugins/registry";
 
 export function useGetAppWidgets() {
   const { storedFiles, apiSources, widgetMetadata } = useShallowBackendConnectorStore(
@@ -62,6 +63,10 @@ export function useGetAppWidgets() {
 
   const sharedWidgets = useSharedResources();
 
+  // Standalone widgets of the plugins available to the user
+  const plugins = usePluginRegistryStore((s) => s.plugins);
+  const pluginWidgets = useMemo(() => standalonePluginWidgets(plugins), [plugins]);
+
   const backendNameToWidgetMap = useMemo(() => {
     const map = new Map<BackendName, Map<string, WidgetT>>();
 
@@ -81,7 +86,11 @@ export function useGetAppWidgets() {
     }
 
     addWidgets("the backend", hubWidgets);
-    addWidgets("Workspace", [...builtInJsonWidgets, ...workspaceWidgets]);
+    addWidgets("Workspace", [
+      ...builtInJsonWidgets,
+      ...workspaceWidgets,
+      ...pluginWidgets,
+    ]);
 
     // Handle custom backends dynamically
     for (const widget of customBackendWidgets) {
@@ -133,6 +142,7 @@ export function useGetAppWidgets() {
     customBackendWidgets,
     sharedUserAppWidgets,
     sharedWidgets,
+    pluginWidgets,
   ]);
 
   useEffect(() => {

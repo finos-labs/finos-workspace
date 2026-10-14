@@ -67,6 +67,8 @@ export interface McpServer {
   iframeWidgetId?: string; // Links this server to an iframe widget
   iframeParams?: Record<string, string>; // Current iframe widget param values
   sourceId?: string; // Backend source id the server was declared by
+  /** The name the backend's apps.json gives the server, which a widget's `mcp_tool` names */
+  declaredName?: string;
   authType?: "oauth" | "token"; // Static-token auth suppresses the OAuth flow when "token"
 }
 

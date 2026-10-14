@@ -6,6 +6,7 @@ import { EntitySubmitForm } from "components/managers/Entity";
 import { EntityRelationshipSubmitForm } from "components/managers/EntityRelationship";
 import { EntityTypeSubmitForm } from "components/managers/EntityType";
 import { PermissionsMapSubmitForm } from "components/managers/PermissionsMap";
+import { PluginManager } from "components/managers/Plugin";
 import { UserSearchBar, UserSubmitForm } from "components/managers/User";
 import { type AuthStore, useAuthStore } from "utils/auth";
 import {
@@ -28,7 +29,8 @@ type allowed_tabs =
   | "entity"
   | "entityType"
   | "entityRelationship"
-  | "permissionMap";
+  | "permissionMap"
+  | "plugin";
 
 interface TAB {
   id: allowed_tabs;
@@ -41,6 +43,7 @@ const TABS: TAB[] = [
   { id: "entityType", label: "Entity Type" },
   { id: "entityRelationship", label: "Entity Relationship" },
   { id: "permissionMap", label: "Permission Map" },
+  { id: "plugin", label: "Plugins" },
 ];
 
 export default function ManageEntities(): JSX.Element {
@@ -194,6 +197,9 @@ export default function ManageEntities(): JSX.Element {
               retrieveItems={retrievePermissionMaps}
               items={permissionMaps}
             />
+          </TabsContent>
+          <TabsContent value="plugin">
+            <PluginManager user={user} />
           </TabsContent>
         </div>
       )}

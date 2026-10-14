@@ -35,10 +35,38 @@ jobs:
           echo "E2E_USER_EMAIL=$EMAIL" >> "$GITHUB_ENV"
           echo "E2E_USER_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
 
+      # The widget plugin tests write their packages into a directory the API reads. The
+      # proxy test's upstream runs on the runner with a certificate signed by a CA made
+      # for this run; the API trusts that CA and reaches the upstream by its name.
+      - name: Mount a widget plugins directory
+        run: |
+          mkdir -p "$RUNNER_TEMP/widget-plugins"
+          frontend/tests/e2e/plugins/make-proxy-tls.sh "$RUNNER_TEMP/proxy-tls" proxy-upstream.e2e.test
+          cat > "$RUNNER_TEMP/compose.plugins.yml" <<EOF
+          services:
+            api:
+              environment:
+                WIDGET_PLUGINS_DIR: /opt/widget-plugins
+                WIDGET_PLUGIN_PROXY_CA_FILE: /opt/widget-plugin-ca/ca.pem
+                WIDGET_PLUGIN_BACKENDS: '{"e2e-forecast": "http://plugin-backend.e2e.test:7794"}'
+              volumes:
+                - $RUNNER_TEMP/widget-plugins:/opt/widget-plugins:ro
+                - $RUNNER_TEMP/proxy-tls/ca.pem:/opt/widget-plugin-ca/ca.pem:ro
+              extra_hosts:
+                - "proxy-upstream.e2e.test:host-gateway"
+                - "plugin-backend.e2e.test:host-gateway"
+          EOF
+          echo "E2E_PLUGINS_DIR=$RUNNER_TEMP/widget-plugins" >> "$GITHUB_ENV"
+          echo "E2E_PROXY_TLS_DIR=$RUNNER_TEMP/proxy-tls" >> "$GITHUB_ENV"
+          echo "E2E_BACKENDS=1" >> "$GITHUB_ENV"
+          # The API container reaches the runner through the Docker bridge, not loopback
+          echo "E2E_PROXY_LISTEN=0.0.0.0" >> "$GITHUB_ENV"
+          echo "E2E_BACKEND_LISTEN=0.0.0.0" >> "$GITHUB_ENV"
+
       # docker-compose.e2e.yml adds the stubbed model and points Ines at it, so the tests can ask
       # the Copilot a question without a provider key (a pull request from a fork gets no secrets).
       - name: Build and start the stack
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" up -d --build
 
       # Ines is in this stack and no test here asks her a question, so without this a run where she
       # never started would still be green. /status is hers; the MCP server publishes no port, so the
@@ -74,8 +102,8 @@ jobs:
 
       - name: Show the stack's logs
         if: failure()
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml logs --no-color --tail=200
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" logs --no-color --tail=200
 
       - name: Stop the stack
         if: always()
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" down -v

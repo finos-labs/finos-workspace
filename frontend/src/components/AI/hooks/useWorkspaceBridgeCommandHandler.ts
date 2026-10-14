@@ -40,6 +40,8 @@ import {
   type ManageNavigationBarInputArgumentsT,
 } from "~/lib/utils/ai";
 import { createCustomTemplateTab } from "~/lib/utils/createTemplates";
+import { widgetsSchemaReady } from "~/lib/utils/validateBackend";
+import { dataArgsSchema, paramPlace, uiArgsSchema } from "~/lib/utils/widgetArgsSchema";
 import {
   deserializeDashboardTabId,
   getDashboardInfo,
@@ -346,22 +348,10 @@ function buildWidgetConfigForDashboard(
   };
 }
 
-// ui_args keys the widget config path understands (updateWidgetState routes
-// these onto the widget itself or well-known storage slots). Anything else is
-// written to raw widget storage and may have no effect.
-const KNOWN_UI_ARG_KEYS = new Set([
-  "name",
-  "description",
-  "source",
-  "innerTab",
-  "gridData",
-  "html",
-]);
-
 /**
- * Widget mutations silently ignore data_args keys the widget does not declare
- * and write unrecognized ui_args keys to raw storage. Surface both so the
- * calling agent learns the real contract instead of assuming success.
+ * Widget mutations ignore data_args keys the widget does not declare and values
+ * its params do not accept. Surface both so the calling agent learns the real
+ * contract instead of assuming success.
  */
 function widgetConfigWarnings(
   paramsDef: WidgetT["params"] | null | undefined,
@@ -385,21 +375,23 @@ function widgetConfigWarnings(
 
   if (invalidDataArgs.length > 0) {
     warnings.push(
-      `data_args values that are not a string, number, boolean or a list of them were ignored: ${invalidDataArgs.join(", ")}.`,
-    );
-  }
-
-  const uiArgs = asRecord(config?.ui_args) ?? {};
-  const unknownUiArgs = Object.keys(uiArgs).filter(
-    (key) => !KNOWN_UI_ARG_KEYS.has(key),
-  );
-  if (unknownUiArgs.length > 0) {
-    warnings.push(
-      `ui_args keys not recognized by the widget config contract were written to raw widget storage and may have no effect: ${unknownUiArgs.join(", ")}.`,
+      `data_args values the widget's data_args_schema does not accept were ignored: ${invalidDataArgs.join(", ")}.`,
     );
   }
 
   return warnings;
+}
+
+/** Why the ui_args cannot be applied to this widget: keys or values its schema refuses. */
+function uiArgsProblems(
+  widget: Pick<WidgetT, "type" | "plugin" | "widgetId" | "connectionType">,
+  uiArgs: Record<string, unknown> | undefined,
+): string[] {
+  return workspaceApi.computeWidgetUiUpdates(widget, uiArgs).problems;
+}
+
+function uiArgsRefusal(problems: string[]) {
+  return `ui_args were not applied: ${problems.join("; ")}. Call get_widget_schema for the widget's ui_args_schema.`;
 }
 
 function hasLayoutUiArgs(config?: WorkspaceWidgetConfig | null) {
@@ -462,6 +454,8 @@ function toWidgetCatalogEntry(widget: WidgetT, originOverride?: string) {
     category: widget.category,
     sub_category: widget.subCategory,
     widget_type: widget.type,
+    // The MCP tool of the backend that queries what the widget shows (WIDGETS-JSON 5)
+    ...(widget.mcp_tool ? { mcp_tool: widget.mcp_tool } : {}),
   };
 }
 
@@ -474,11 +468,19 @@ function getWidgetSchemaPayload(
     .getAppWidget(widgetId as WidgetId, origin);
   if (!widget || !isAvailableWidget(widget)) return null;
 
+  const endpointUrl = widget.endpoint?.url;
   return {
     ...toWidgetCatalogEntry(widget, origin),
+    method: widget.endpoint?.method ?? "GET",
     params: Array.isArray(widget.params)
-      ? widget.params.map((param) => toWidgetParamPayload(param))
+      ? widget.params.map((param) => ({
+          ...(toWidgetParamPayload(param) as Record<string, unknown>),
+          // Where the value goes in the widget's request: the path, the query, a header or the body
+          in: paramPlace(param, endpointUrl),
+        }))
       : [],
+    data_args_schema: dataArgsSchema(widget),
+    ui_args_schema: uiArgsSchema(widget),
     grid_data: toGridDataPayload(widget.gridData),
     metadata:
       widget.metadata && typeof widget.metadata === "object" ? widget.metadata : {},
@@ -686,6 +688,7 @@ async function handleDataCommand(
     | "get_widget_data"
     | "list_available_widgets"
     | "get_widget_schema"
+    | "get_widgets_schema"
     | "get_params_options"
   >,
   deps: Pick<CommandHandlerDeps, "getSnapshot" | "getWidgetData" | "getParamOptions">,
@@ -746,6 +749,11 @@ async function handleDataCommand(
       }
 
       return successResult("Widget schema loaded.", { widget });
+    }
+    case "get_widgets_schema": {
+      // The schema backends are validated against here, once the registry has it
+      const schema = await widgetsSchemaReady();
+      return successResult("widgets.json schema loaded.", { schema });
     }
     case "get_params_options": {
       const data = await deps.getParamOptions(
@@ -1076,10 +1084,17 @@ async function handleWidgetCommand(
           config.dataArgs,
         );
         const warnings = widgetConfigWarnings(widgetDefinition.params, command.config);
+        const problems = uiArgsProblems(
+          widgetDefinition,
+          asRecord(config.uiArgs) ?? {},
+        );
         return successResult(
-          "Dry run: widget would be created. Nothing was changed.",
+          problems.length
+            ? "Dry run: the widget would not be created. Nothing was changed."
+            : "Dry run: widget would be created. Nothing was changed.",
           {
-            valid: true,
+            valid: problems.length === 0,
+            ...(problems.length ? { problems } : {}),
             dashboard_id: dashboardId,
             effective_params: {
               ...((widgetDefinition.storage?.params ?? {}) as Record<string, unknown>),
@@ -1091,12 +1106,22 @@ async function handleWidgetCommand(
         );
       }
 
+      const definition = useGetWidgetsStore
+        .getState()
+        .getAppWidget(command.widget_id as WidgetId, command.backend_name);
+      const config = buildWidgetConfigForDashboard(dashboardId, command.config);
+      const problems = definition
+        ? uiArgsProblems(definition, asRecord(config.uiArgs) ?? {})
+        : [];
+      if (problems.length)
+        return errorResult("invalid_request", uiArgsRefusal(problems));
+
       try {
         const widgetUuid = await workspaceApi.createWidget(
           dashboardId,
           command.backend_name,
           command.widget_id,
-          buildWidgetConfigForDashboard(dashboardId, command.config),
+          config,
         );
         const widgetDefinition = useGetWidgetsStore
           .getState()
@@ -1162,10 +1187,16 @@ async function handleWidgetCommand(
           config.dataArgs,
         );
         const warnings = widgetConfigWarnings(widget?.params, command.config);
+        const problems = widget
+          ? uiArgsProblems(widget, asRecord(config.uiArgs) ?? {})
+          : [];
         return successResult(
-          "Dry run: widget would be updated. Nothing was changed.",
+          problems.length
+            ? "Dry run: the widget would not be updated. Nothing was changed."
+            : "Dry run: widget would be updated. Nothing was changed.",
           {
-            valid: true,
+            valid: problems.length === 0,
+            ...(problems.length ? { problems } : {}),
             dashboard_id: dashboardId,
             widget_uuid: widgetUuid,
             effective_params: {
@@ -1178,12 +1209,16 @@ async function handleWidgetCommand(
         );
       }
 
+      const target = useAppStore.getState().getTabWidgetById(dashboardId, widgetUuid);
+      const config = buildWidgetConfigForDashboard(dashboardId, command.config);
+      const problems = target
+        ? uiArgsProblems(target, asRecord(config.uiArgs) ?? {})
+        : [];
+      if (problems.length)
+        return errorResult("invalid_request", uiArgsRefusal(problems));
+
       try {
-        await workspaceApi.updateWidget(
-          dashboardId,
-          widgetUuid,
-          buildWidgetConfigForDashboard(dashboardId, command.config),
-        );
+        await workspaceApi.updateWidget(dashboardId, widgetUuid, config);
         const updatedWidget = useAppStore
           .getState()
           .getTabWidgetById(dashboardId, widgetUuid);
@@ -1848,6 +1883,7 @@ export function useWorkspaceBridgeCommandHandler() {
           case "get_widget_data":
           case "list_available_widgets":
           case "get_widget_schema":
+          case "get_widgets_schema":
           case "get_params_options":
             return await handleDataCommand(command, {
               getSnapshot,

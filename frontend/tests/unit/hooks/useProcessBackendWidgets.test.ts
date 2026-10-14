@@ -7,7 +7,7 @@ import type {
   Source,
   ValidateBackend,
 } from "~/lib/state/backendConnector";
-import type { WidgetType } from "~/utils/zodForms";
+import type { WidgetsType } from "~/utils/zodForms";
 import { type DeepPartial, malformed } from "../mocks";
 
 // Mock getApiSourceWidgets from backendConnector
@@ -101,7 +101,7 @@ function createMockBackend(
 }
 
 // Helper to create mock widgets from backend
-function createMockWidgets(): Record<string, DeepPartial<WidgetType>> {
+function createMockWidgets(): Record<string, DeepPartial<WidgetsType[string]>> {
   return {
     "widget-1": {
       widgetId: "widget-1",

@@ -28,6 +28,9 @@ const mockState = vi.hoisted(() => {
     extraWidgetsEnabled: false,
     generativeUiEnabled: true,
     temporaryWidgets: [] as CopilotWidget[],
+    tools: [] as Record<string, unknown>[],
+    servers: [] as Record<string, unknown>[],
+    catalog: {} as Record<string, Record<string, unknown>>,
   };
 });
 
@@ -94,9 +97,18 @@ vi.mock("~/lib/state/copilotData", () => ({
 vi.mock("~/lib/state/mcpTools", () => ({
   useShallowMcpToolsStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
-      getEnabledToolsForAgent: vi.fn(async () => []),
-      getEnabledToolCount: () => 0,
+      getEnabledToolsForAgent: vi.fn(async () => mockState.tools),
+      getEnabledToolCount: () => mockState.tools.length,
     }),
+  useMcpToolsStore: { getState: () => ({ servers: mockState.servers }) },
+}));
+vi.mock("~/components/AI/hooks/useGetAppWidgets", () => ({
+  useGetWidgetsStore: {
+    getState: () => ({
+      getAppWidget: (widgetId: string, origin: string) =>
+        mockState.catalog[`${origin}/${widgetId}`],
+    }),
+  },
 }));
 vi.mock("~/lib/state/skillsLibrary", () => ({
   useShallowSkillsLibraryStore: (
@@ -149,6 +161,10 @@ describe("useAiFetchRequestInit", () => {
     mockState.extraWidgetsEnabled = false;
     mockState.generativeUiEnabled = true;
     mockState.temporaryWidgets = [];
+    mockState.tools = [];
+    mockState.servers = [];
+    mockState.catalog = {};
+    mockState.selectedCopilot.features["mcp-tools"] = false;
   });
 
   it("does not send extra widgets when only Generative UI is enabled", async () => {
@@ -191,5 +207,53 @@ describe("useAiFetchRequestInit", () => {
         "file-7c11d0aa-3b2f-4d6e-9c8b-2f0e5a1b4c6d",
       ]);
     }
+  });
+
+  it("tells the agent of a widget's MCP link when its tool is in the request", async () => {
+    mockState.extraWidgetsEnabled = true;
+    mockState.selectedCopilot.features["mcp-tools"] = true;
+    mockState.servers = [
+      {
+        id: "srv-1",
+        name: "Renamed by the user",
+        declaredName: "Team data",
+        sourceId: "src-1",
+      },
+    ];
+    mockState.tools = [
+      {
+        server_id: "srv-1",
+        name: "srv-1_get_report",
+        tool_name: "get_report",
+        url: "https://mcp.example",
+      },
+    ];
+    mockState.catalog = {
+      "Sandbox/global_widget": {
+        sourceId: "src-1",
+        mcp_tool: {
+          mcp_server: "Team data",
+          tool_id: "get_report",
+          args: { id: "$team" },
+        },
+      },
+    };
+
+    for (const payload of await getPayloads())
+      expect(payload.widgets.extra).toEqual([
+        {
+          ...mockState.allWidget,
+          mcp_tool: {
+            server_id: "srv-1",
+            tool_name: "get_report",
+            args: { id: "$team" },
+          },
+        },
+      ]);
+
+    // MCP tools off for the agent: no tools, so no link
+    mockState.selectedCopilot.features["mcp-tools"] = false;
+    for (const payload of await getPayloads())
+      expect(payload.widgets.extra).toEqual([mockState.allWidget]);
   });
 });

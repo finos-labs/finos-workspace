@@ -15,6 +15,8 @@ import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn } from "~/lib/utils";
 import { getServerName } from "~/lib/utils/mcp";
+import { buildWidgetRequest, type RequestProblem } from "~/lib/utils/widgetRequest";
+import { placeholders } from "~/lib/utils/widgetsContractChecks";
 import { type urlForm, urlSchema } from "~/utils/zodForms";
 import { Button } from "../ds/atoms/Button";
 import { FormInput } from "../ds/atoms/Input";
@@ -387,20 +389,37 @@ export default function Iframe() {
     [prevIframeParamsRef, persistIframeParams, sendParamsUpdate, updateGroupedParams],
   );
 
-  const addressWithParams = useMemo(() => {
-    if (!state.url) return "";
-    const paramEntries = Object.entries(effectiveIframeParams);
-    if (paramEntries.length === 0) return state.url;
-    try {
-      const url = new URL(state.url);
-      for (const [key, val] of paramEntries) {
-        url.searchParams.set(key, val);
-      }
-      return url.toString();
-    } catch {
-      return state.url;
+  // A backend's page: a `{name}` placeholder takes the value of the param `name`, which then
+  // goes nowhere else (WIDGETS-JSON 4.2); every other value goes in the query
+  const addressWithParams = useMemo<{ src: string; problems: RequestProblem[] }>(() => {
+    if (!state.url) return { src: "", problems: [] };
+    const fromBackend = hasManagedEndpoint && state.url === endpointUrl;
+    const pathNames = new Set(fromBackend ? placeholders(state.url) : []);
+    let page = state.url;
+    if (pathNames.size) {
+      const built = buildWidgetRequest({
+        endpoint: { url: state.url, method: "GET" },
+        params: (widget.params ?? []).filter((param) => pathNames.has(param.paramName)),
+        storage: { params: effectiveIframeParams },
+      });
+      if (!built?.ok) return { src: "", problems: built?.problems ?? [] };
+      page = built.request.url;
     }
-  }, [state.url, effectiveIframeParams]);
+    try {
+      const url = new URL(page);
+      for (const [key, val] of Object.entries(effectiveIframeParams))
+        if (!pathNames.has(key)) url.searchParams.set(key, val);
+      return { src: url.toString(), problems: [] };
+    } catch {
+      return { src: page, problems: [] };
+    }
+  }, [
+    state.url,
+    hasManagedEndpoint,
+    endpointUrl,
+    widget.params,
+    effectiveIframeParams,
+  ]);
 
   // A page that speaks the iframe protocol is told of a parameter change with `workspace-params-update`
   // and applies it with its own code. A new address would reload it instead, and every reload is a new page,
@@ -409,7 +428,7 @@ export default function Iframe() {
   const loadedRef = useRef<{ key: string; src: string } | null>(null);
   const loadKey = `${state.url}|${widget.refreshQuery ?? ""}`;
   if (!hasProtocol || loadedRef.current?.key !== loadKey) {
-    loadedRef.current = { key: loadKey, src: addressWithParams };
+    loadedRef.current = { key: loadKey, src: addressWithParams.src };
   }
   const iframeSrc = loadedRef.current.src;
 
@@ -590,7 +609,12 @@ export default function Iframe() {
           </form>
         </Form>
       </BaseDialog>
-      {state.url ? (
+      {addressWithParams.problems.length ? (
+        <SearchResultsNotFound
+          firstMessage="The page cannot be opened"
+          secondMessage={addressWithParams.problems.map((p) => p.message).join(". ")}
+        />
+      ) : state.url ? (
         <div className="w-full h-full overflow-auto">
           <div
             className="w-full h-full"

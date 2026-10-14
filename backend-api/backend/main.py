@@ -27,6 +27,7 @@ from routers import (
     auth,
     entity,
     run_tasks,
+    widget_plugins,
 )
 from routers.app import (
     dash,
@@ -108,6 +109,7 @@ routers = [
     entity.router,
     admin.router,
     run_tasks.router,
+    *widget_plugins.routers,
 ]
 
 

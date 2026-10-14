@@ -26,10 +26,11 @@ import {
   type WidgetMetadataItem,
 } from "~/lib/state/backendConnector";
 import WIDGETS from "~/lib/widgets.json";
+import { getPluginVizTypes } from "~/plugins/registry";
 import type { WidgetType } from "~/utils/zodForms";
 import { getFileWidgetType } from "../constants";
 import { useAppStore } from "../state/app";
-import { isWidgetVizType } from "../types/app";
+import { isRenderableVizType } from "../types/app";
 import { convertAdvancedBackend, generateRandomName, uuidv4 } from "../utils";
 
 /** What the user picked in My Data Connectors: a widget of a backend, a stored file or a feed, or a whole backend. */
@@ -96,7 +97,7 @@ export const createDashboardWidget = (
       };
     case "backend": {
       const { type, ...backendWidget } = widget;
-      if (!isWidgetVizType(type)) return null;
+      if (!isRenderableVizType(type, getPluginVizTypes())) return null;
       // The widget is a definition the backend returned, which has nulls where a widget has nothing
       return {
         ...backendWidget,

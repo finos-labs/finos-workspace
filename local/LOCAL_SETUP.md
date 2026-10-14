@@ -88,6 +88,17 @@ The frontend uses `frontend/.env`, except that `compose.yaml` points the backend
 
 A new backend setting needs adding in more places than this folder: `envs/.env.example` for local runs, and the values of every environment you deploy to.
 
+## Widget plugins
+
+Widget plugins are packages built outside this repository (`docs/widget-plugins/`). There is no developer mode and nothing installs from the app: on your own stack you are the deployer and the administrator, and the steps are the ones a deployment takes.
+
+1. Pick a directory on your machine for packages. In `compose.yaml`, uncomment the `volumes` example under `backend` and put that directory in place of `<plugins directory>`. In `envs/.env`, set `WIDGET_PLUGINS_DIR=/opt/widget-plugins`. Then `make up`: a new mount needs the container recreated, which `make restart` does not do.
+2. Build the plugin into `<plugins directory>/<plugin-id>/<version>/`, with its `plugin.json`.
+3. Check it with the server's own validator, from `backend-api/backend`: `python -m scripts.plugin_check <plugins directory>/<plugin-id>/<version>`. `--digest` prints the checksum for the manifest and the version digest.
+4. Sign in as the administrator, open Admin, Widgets, Deployment: Rescan, review what the version asks for, approve it, and enable it for your organization. Under Plugin widgets, choose who may use it (everyone, or roles you grant on the Roles page). `backend-api/admin_cli/workspace-admin plugin ...` does the same from a terminal.
+5. Change the plugin by publishing a new version directory and approving it. Editing the files of an approved version blocks it: versions are immutable.
+6. A plugin that calls a keyed service through a proxy needs its secret: set it on the plugin's page under Deployment (the value is never shown again), or put it in a file `<secrets directory>/<plugin-id>/<secret-name>` mounted into the API with `WIDGET_PLUGIN_SECRETS_DIR`. The API refuses to call an address that is not public, which includes your own machine: to let a plugin reach a service there, override its server network on the same page and confirm private hosts. A service whose certificate your own authority signs needs that authority's file mounted and named by `WIDGET_PLUGIN_PROXY_CA_FILE`.
+
 ## What does not work locally
 
 - AI features. They need an AI service, which this setup does not run; `AI_API_URL` stays empty and `AI_COPILOT_ENABLED` stays `false`. The root `docker-compose.yml` runs Ines, the Workspace's agent.

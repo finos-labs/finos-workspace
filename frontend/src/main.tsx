@@ -47,6 +47,7 @@ const AdminGroups = lazy(() => import("./routes/admin/roles"));
 
 const AdminThemeSettings = lazy(() => import("./routes/admin/themeSettings"));
 const AdminUsers = lazy(() => import("./routes/admin/users"));
+const AdminWidgets = lazy(() => import("./routes/admin/widgets"));
 const AILibrary = lazy(() => import("./routes/aiLibrary"));
 const MenuHomePage = lazy(() => import("./routes/appHome"));
 const ConnectionsPage = lazy(() => import("./routes/Connections"));
@@ -239,6 +240,11 @@ const router = createBrowserRouter([
             path: "roles",
             element: <S children={<AdminGroups />} />,
             id: "admin-roles",
+          },
+          {
+            path: "widgets",
+            element: <S children={<AdminWidgets />} />,
+            id: "admin-widgets",
           },
           {
             path: "apps",

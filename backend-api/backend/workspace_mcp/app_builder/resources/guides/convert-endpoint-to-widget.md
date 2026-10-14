@@ -43,11 +43,12 @@ If the shape doesn't match any widget type cleanly, change the endpoint to fit t
 
 - `widget_id` (the dict key in `widgets.json`) should be stable, snake-cased, descriptive. It's referenced from `apps.json` layouts.
 - `name` is the user-visible widget title.
-- `endpoint` is the path Workspace calls. It's typically the same path your existing handler is on; it doesn't have to match the widget id.
+- `endpoint` is the path Workspace calls. It's typically the same path your existing handler is on; it doesn't have to match the widget id. A path parameter becomes a `{name}` placeholder (`/teams/{team}/report`); the path has no `?` or `#`.
+- `method` is `POST` when the handler takes a JSON body; it is `GET` otherwise.
 
 ## 4. Translate query params to widget params
 
-Every query param the endpoint accepts becomes a `params` entry in `widgets.json`. Pick the right `type`:
+Every input the endpoint accepts becomes a `params` entry in `widgets.json`: a path parameter (named by its placeholder, with no `in`), a query param (the default), a header (`"in": "header"`) or a key of the JSON body (`"in": "body"`, with `"method": "POST"`). Credentials are not params: they belong to the backend connection. Pick the right `type`:
 
 - `boolean` for toggles (don't use `text` with `"true"`/`"false"` options).
 - `number` for free-form integers.

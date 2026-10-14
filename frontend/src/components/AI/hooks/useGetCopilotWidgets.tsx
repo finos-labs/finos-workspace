@@ -456,12 +456,12 @@ export function useGetCopilotWidgets() {
 }
 
 const getOptionsParams = (
-  optionsParams: Record<string, string>,
+  optionsParams: Record<string, string | number | boolean>,
   widgetParams: ParamDef[],
 ): Record<string, string>[] => {
   return Object.entries(optionsParams)
     .map(([key, value]) => {
-      if (value?.toString()?.startsWith("$")) {
+      if (typeof value === "string" && value.startsWith("$")) {
         const queryKey = value.slice(1);
         const param = widgetParams.find((p) => p.paramName === queryKey);
         if (param) {

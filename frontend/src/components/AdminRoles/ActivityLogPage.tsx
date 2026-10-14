@@ -309,6 +309,9 @@ const getActivityTypeStyle = (type: string) => {
   if (type.includes("user")) {
     return "bg-tag-blue-bg text-tag-blue-label";
   }
+  if (type.includes("widget plugin")) {
+    return "bg-tag-green-bg text-tag-green-label";
+  }
   return "";
 };
 

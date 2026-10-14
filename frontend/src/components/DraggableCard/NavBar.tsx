@@ -136,6 +136,11 @@ export interface NavBarProps {
     pdfFunction?: (title: string) => void;
     txtFunction?: (title: string) => void;
   };
+  /**
+   * Export decided by the widget itself (a widget plugin's export functions): the Export
+   * entry calls it instead of offering `exportFns` or a picture of the card
+   */
+  onExport?: () => void;
   settingsDialogClassName?: string;
 }
 
@@ -488,6 +493,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
       onSaveSettings = () => {},
       extraSettings = [],
       exportFns = {},
+      onExport,
       settingsModalChildren = null,
       onClose,
       showActionsSettings = false,
@@ -1131,6 +1137,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                       settings={ellipsisSettings}
                       extraSettings={extraSettings}
                       exportFns={ellipsisExportFns}
+                      onExport={onExport}
                       isMinimized={state.isMinimized}
                       onMinimizeToggle={handleMinimizeWidget}
                     />
@@ -1170,6 +1177,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                   settings={ellipsisSettings}
                   extraSettings={extraSettings}
                   exportFns={ellipsisExportFns}
+                  onExport={onExport}
                   isMinimized={state.isMinimized}
                   onMinimizeToggle={handleMinimizeWidget}
                 />

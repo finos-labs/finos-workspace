@@ -1,10 +1,11 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import DraggableCard, { SetLoadingOnResize } from "~/components/DraggableCard";
 import { useWidgetParamsPositions } from "~/components/WidgetParams/QueryParams";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { useJsonData } from "~/lib/api";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { type FileResponse, handleFileResponse } from "~/lib/utils";
+import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
 import { useWidgetContext } from "../Widget.context";
 import {
   type Highlight,
@@ -36,6 +37,10 @@ export default function PdfViewer() {
     pageScale: { x: 1, y: 1 },
   });
 
+  const request = useMemo(
+    () => buildWidgetRequest(widget),
+    [widget.endpoint, widget.params, widget.storage?.params],
+  );
   const {
     data: widgetData,
     isLoading,
@@ -43,9 +48,7 @@ export default function PdfViewer() {
     dataUpdatedAt,
   } = useJsonData<FileResponse>(
     {
-      url: widget.endpoint?.url ?? "",
-      method: widget.endpoint?.method ?? "GET",
-      params: widget.storage?.params,
+      request,
       addBearerToken: widget.connectionType === "file",
       responseCb: (response, resolve) =>
         handleFileResponse(response, {

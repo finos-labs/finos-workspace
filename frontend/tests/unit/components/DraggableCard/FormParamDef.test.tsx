@@ -18,11 +18,6 @@ vi.mock("~/lib/api", () => ({
     error: null,
     dataUpdatedAt: 0,
   }),
-  convertHeadersToRecord: (headers: Record<string, string> = {}) => ({
-    headers,
-    newParams: {},
-  }),
-  cleanSearchParams: (url: string) => url ?? "",
 }));
 
 vi.mock("~/components/ds/molecules/Form", () => ({
@@ -33,6 +28,10 @@ vi.mock("~/components/ds/molecules/Form", () => ({
     render: (props: { field: object }) => ReactNode;
     name?: string;
   }) => renderProp({ field: { value: "", onChange: vi.fn(), name } }),
+}));
+
+vi.mock("~/components/ds/atoms/Input", () => ({
+  FormInput: () => <input />,
 }));
 
 vi.mock("~/components/NewAdvancedSelect", () => ({
@@ -94,24 +93,23 @@ describe("FormParamElement - EndpointType", () => {
     (useWidgetContext as Mock).mockReturnValue(createMockWidgetContext());
   });
 
-  it("passes endpoint headers as endpointHeaders to useJsonData when fetching options", () => {
+  it("requests the options with the backend connection's credentials", () => {
     render(<FormParamElement />);
 
     expect(vi.mocked(useJsonData)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        endpointHeaders: CUSTOM_HEADERS,
-        url: OPTIONS_ENDPOINT,
-        addBearerToken: true,
-      }),
+      {
+        request: {
+          ok: true,
+          request: {
+            url: OPTIONS_ENDPOINT,
+            method: "GET",
+            credentials: CUSTOM_HEADERS,
+            paramHeaders: {},
+          },
+        },
+      },
       expect.anything(),
     );
-  });
-
-  it("does not pass headers under the wrong key name", () => {
-    render(<FormParamElement />);
-
-    const callArgs = vi.mocked(useJsonData).mock.calls[0]?.[0];
-    expect(callArgs).not.toHaveProperty("headers");
   });
 
   it("still fetches options when widget has no endpoint headers", () => {
@@ -126,11 +124,49 @@ describe("FormParamElement - EndpointType", () => {
     render(<FormParamElement />);
 
     expect(vi.mocked(useJsonData)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: OPTIONS_ENDPOINT,
-        endpointHeaders: {},
-      }),
+      {
+        request: expect.objectContaining({
+          ok: true,
+          request: expect.objectContaining({ url: OPTIONS_ENDPOINT, credentials: {} }),
+        }),
+      },
       expect.anything(),
     );
+  });
+
+  it("posts optionsParams as JSON, taking `$name` from another input or the widget", () => {
+    const widget = partial<WidgetT>({
+      ...mockWidget,
+      params: [
+        { type: "text", paramName: "region", value: "eu" },
+        {
+          type: "form",
+          paramName: "form_param",
+          endpoint: "https://my-api.com/submit",
+          method: "POST",
+          inputParams: [
+            { type: "text", paramName: "kind", value: "retail" },
+            {
+              type: "endpoint",
+              paramName: "category",
+              optionsEndpoint: OPTIONS_ENDPOINT,
+              optionsMethod: "POST",
+              optionsParams: { region: "$region", kind: "$kind", active: true },
+            },
+          ],
+        },
+      ],
+    });
+    (useWidgetContext as Mock).mockReturnValue(createMockWidgetContext(widget));
+
+    render(<FormParamElement />);
+
+    const request = vi.mocked(useJsonData).mock.calls[0]?.[0].request;
+    expect(request?.ok && request.request.method).toBe("POST");
+    expect(request?.ok && JSON.parse(request.request.body ?? "")).toEqual({
+      region: "eu",
+      kind: "retail",
+      active: true,
+    });
   });
 });

@@ -4,7 +4,13 @@ import type { WidgetId } from "~/components/Widgets";
 type WidgetState = {
   paramOrder?: string[];
   params?: Record<string, StoredParamValue>;
-  storage?: { text?: string; html?: string; rawDataView?: boolean };
+  storage?: {
+    text?: string;
+    html?: string;
+    rawDataView?: boolean;
+    /** A plugin widget's configuration, which its plugin's settings define */
+    plugin?: { config?: Record<string, unknown> };
+  };
 };
 
 export type TabLayout<Extra = {}> = {

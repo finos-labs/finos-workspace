@@ -113,6 +113,11 @@ const backendNameToWidget: Record<string, DeepPartial<WidgetT>[]> = {
       category: "Equity",
       subCategory: "Fundamental",
       external: true,
+      mcp_tool: {
+        mcp_server: "Filings",
+        tool_id: "search_filings",
+        args: { q: "$query" },
+      },
     },
     {
       widgetId: "live_prices",
@@ -236,6 +241,10 @@ vi.mock("~/lib/state/app", () => ({
 
 import { useWorkspaceBridgeCommandHandler } from "~/components/AI/hooks/useWorkspaceBridgeCommandHandler";
 import type { WidgetT } from "~/components/types";
+import {
+  installWidgetsSchemaFixture,
+  widgetsSchema,
+} from "../../../../mocks/widgetsSchema";
 import type { DeepPartial } from "../../../mocks";
 
 describe("useWorkspaceBridgeCommandHandler", () => {
@@ -1053,6 +1062,90 @@ describe("useWorkspaceBridgeCommandHandler", () => {
     });
   });
 
+  it("names a widget's MCP link in the catalog and the widget schema", async () => {
+    const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
+    const link = {
+      mcp_server: "Filings",
+      tool_id: "search_filings",
+      args: { q: "$query" },
+    };
+
+    let listed: Awaited<ReturnType<typeof result.current>> | undefined;
+    let schema: Awaited<ReturnType<typeof result.current>> | undefined;
+    await act(async () => {
+      listed = await result.current({
+        command: "list_available_widgets",
+        origin: "My Custom Backend",
+      } as never);
+      schema = await result.current({
+        command: "get_widget_schema",
+        origin: "My Custom Backend",
+        widget_id: "company_filings",
+      } as never);
+    });
+
+    const widgets = (listed?.data as { widgets: Record<string, unknown>[] }).widgets;
+    expect(widgets.find((w) => w.widget_id === "company_filings")?.mcp_tool).toEqual(
+      link,
+    );
+    expect(widgets.find((w) => w.widget_id === "live_prices")).not.toHaveProperty(
+      "mcp_tool",
+    );
+    expect((schema?.data as { widget: { mcp_tool: unknown } }).widget.mcp_tool).toEqual(
+      link,
+    );
+  });
+
+  it("returns the widgets.json schema backends are validated against", async () => {
+    installWidgetsSchemaFixture();
+    const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
+
+    let response: Awaited<ReturnType<typeof result.current>> | undefined;
+    await act(async () => {
+      response = await result.current({ command: "get_widgets_schema" } as never);
+    });
+
+    expect(response).toMatchObject({
+      ok: true,
+      command: "get_widgets_schema",
+      data: { schema: widgetsSchema },
+    });
+  });
+
+  it("returns the method, each param's place and the closed data_args and ui_args schemas", async () => {
+    const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
+
+    let response: Awaited<ReturnType<typeof result.current>> | undefined;
+    await act(async () => {
+      response = await result.current({
+        command: "get_widget_schema",
+        origin: "My Custom Backend",
+        widget_id: "live_prices",
+      } as never);
+    });
+
+    const widget = (response?.data as { widget: Record<string, unknown> }).widget;
+    expect(widget.method).toBe("GET");
+    expect(widget.params).toEqual([expect.objectContaining({ in: "query" })]);
+    expect(widget.data_args_schema).toEqual({
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        symbols: {
+          type: ["array", "string"],
+          items: { type: ["string", "number", "boolean"] },
+        },
+      },
+    });
+    expect(widget.ui_args_schema).toMatchObject({
+      type: "object",
+      additionalProperties: false,
+    });
+    expect(
+      Object.keys((widget.ui_args_schema as { properties: object }).properties),
+    ).toEqual(["name", "description", "source", "innerTab", "gridData"]);
+  });
+
   it("marks option-backed params as lookup-required in widget schema responses", async () => {
     const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
 
@@ -1095,7 +1188,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
         widget_id: "price_history",
         config: {
           data_args: { symbol: "MSFT", bogus_param: "x" },
-          ui_args: { name: "Renamed", custom_thing: 1 },
+          ui_args: { name: "Renamed" },
         },
       });
     });
@@ -1111,12 +1204,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
         inner_tab: null,
       },
     });
-    expect(response?.warnings).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining("bogus_param"),
-        expect.stringContaining("custom_thing"),
-      ]),
-    );
+    expect(response?.warnings).toEqual([expect.stringContaining("bogus_param")]);
     // the dropped-key warning must list the declared params for recovery
     expect(
       response?.warnings?.find((warning) => warning.includes("bogus_param")),
@@ -1446,7 +1534,7 @@ describe("useWorkspaceBridgeCommandHandler", () => {
     });
   });
 
-  it("ignores a non-string innerTab from external callers instead of failing", async () => {
+  it("refuses ui_args the widget's ui_args_schema does not define, creating nothing", async () => {
     const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
 
     let response: Awaited<ReturnType<typeof result.current>> | undefined;
@@ -1457,20 +1545,44 @@ describe("useWorkspaceBridgeCommandHandler", () => {
         backend_name: "Workspace",
         widget_id: "price_history",
         config: {
-          ui_args: { innerTab: 42 },
+          ui_args: { innerTab: 42, custom_thing: 1 },
         },
       });
     });
 
-    expect(mockCreateWidget).toHaveBeenCalledWith(
-      "dashboard-1",
-      "Workspace",
-      "price_history",
-      { dataArgs: undefined, uiArgs: { innerTab: 42 } },
+    expect(mockCreateWidget).not.toHaveBeenCalled();
+    expect(response).toMatchObject({
+      ok: false,
+      command: "create_widget",
+      error: { code: "invalid_request" },
+    });
+    expect(response?.message).toBe(
+      "ui_args were not applied: `ui_args.custom_thing` is not a key this widget accepts; `ui_args.innerTab` must be string. Call get_widget_schema for the widget's ui_args_schema.",
     );
+  });
+
+  it("reports refused ui_args in a dry run as invalid", async () => {
+    const { result } = renderHook(() => useWorkspaceBridgeCommandHandler());
+
+    let response: Awaited<ReturnType<typeof result.current>> | undefined;
+    await act(async () => {
+      response = await result.current({
+        command: "create_widget",
+        dashboard_id: "dashboard-1",
+        backend_name: "Workspace",
+        widget_id: "price_history",
+        dry_run: true,
+        config: { ui_args: { custom_thing: 1 } },
+      });
+    });
+
+    expect(mockCreateWidget).not.toHaveBeenCalled();
     expect(response).toMatchObject({
       ok: true,
-      command: "create_widget",
+      data: {
+        valid: false,
+        problems: ["`ui_args.custom_thing` is not a key this widget accepts"],
+      },
     });
   });
 

@@ -197,6 +197,21 @@ def register(
     @server.tool(
         description=describe_tool(
             "Fetch the exact schema for one available widget.",
+            (
+                "data_args_schema and ui_args_schema are closed JSON Schemas for the "
+                "data_args and ui_args of create_widget and update_widget: a ui_args key "
+                "or value they do not accept refuses the call, and a data_args value they "
+                "do not accept is ignored with a warning."
+            ),
+            (
+                "method is the widget's HTTP method, and each param's in says where its "
+                "value goes in the widget's request: path, query, header or body."
+            ),
+            (
+                "mcp_tool, when present, names the MCP tool of the widget's own backend "
+                "that queries what the widget shows, and how its params fill the tool's "
+                "arguments."
+            ),
             "The response includes grid_data when layout defaults or min/max constraints are defined for that widget.",
             (
                 "If a param returns requires_options_lookup=true, call get_params_options "
@@ -334,12 +349,20 @@ def register(
         data_args: Annotated[
             dict[str, Any] | None,
             Field(
-                description=("Object of data parameter values from the widget schema.")
+                description=(
+                    "Object of data parameter values, as data_args_schema from "
+                    "get_widget_schema defines them."
+                )
             ),
         ] = None,
         ui_args: Annotated[
             dict[str, Any] | None,
-            Field(description="Object of UI config values from the widget schema."),
+            Field(
+                description=(
+                    "Object of UI config values, as ui_args_schema from "
+                    "get_widget_schema defines them."
+                )
+            ),
         ] = None,
         dry_run: Annotated[
             bool | None,
@@ -399,12 +422,20 @@ def register(
         data_args: Annotated[
             dict[str, Any] | None,
             Field(
-                description=("Object of data parameter values from the widget schema.")
+                description=(
+                    "Object of data parameter values, as data_args_schema from "
+                    "get_widget_schema defines them."
+                )
             ),
         ] = None,
         ui_args: Annotated[
             dict[str, Any] | None,
-            Field(description="Object of UI config values from the widget schema."),
+            Field(
+                description=(
+                    "Object of UI config values, as ui_args_schema from "
+                    "get_widget_schema defines them."
+                )
+            ),
         ] = None,
         dry_run: Annotated[
             bool | None,

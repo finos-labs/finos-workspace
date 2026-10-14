@@ -25,8 +25,11 @@ import {
   getApiSourceWidgets,
   processWorkerResults,
   type WorkerResult,
+  widgetsSchemaReady,
 } from "~/lib/utils/validateBackend";
 import { addExtraHeaders } from "~/lib/utils/widgetParams";
+import type { ComposedWidgetsSchema } from "~/lib/utils/widgetsSchemaValidation";
+import { getPluginVizTypes } from "~/plugins/registry";
 import { mcpServerUsesTokenAuth } from "~/types/appMcpServer";
 import type { MetaDataWidgetType } from "~/types/auth.type";
 import {
@@ -59,14 +62,17 @@ export function autoRegisterMcpForSource(source: Source) {
   }, {});
 
   for (const entry of mcpEntries) {
-    const alreadyRegistered = store.servers.some(
-      (s) => s.sourceId === sourceId && s.url === entry.url,
-    );
+    // One server per declared name: a widget's mcp_tool names it (WIDGETS-JSON 5.3). The
+    // store is read again, as this loop may have added the server for another app
+    const alreadyRegistered = useMcpToolsStore
+      .getState()
+      .servers.some((s) => s.sourceId === sourceId && s.declaredName === entry.name);
     if (alreadyRegistered) continue;
 
     store.addServer({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name: entry.name,
+      declaredName: entry.name,
       url: entry.url,
       // A token-auth server has no OAuth fallback, so connecting before the user
       // has supplied a token just fails. Stay disabled until `saveToken` runs.
@@ -81,7 +87,7 @@ export function autoRegisterMcpForSource(source: Source) {
 }
 
 // biome-ignore format: off
-export const ConnectionTypes= ["file", "single", "advanced-backend", "database", "widgetMetadata"] as const;
+export const ConnectionTypes= ["file", "single", "advanced-backend", "database", "widgetMetadata", "plugin"] as const;
 
 export type ConnectionType = (typeof ConnectionTypes)[number];
 
@@ -250,8 +256,10 @@ export type ValidateBackend = {
   totalFailed: number;
   templates: BackendTemplate[];
   agents: BackendAgent[];
-  /** IDs of widgets.json entries left out because this Workspace does not render their type */
+  /** IDs of widgets.json entries left out because they have no well-formed widget type */
   unsupportedWidgets?: string[];
+  /** IDs of widgets.json entries kept, but of a type no widget plugin renders for this user */
+  unrenderedWidgets?: string[];
   /** The widgets and apps that pass validation, whatever else is invalid */
   validWidgets?: WidgetsType;
   validTemplates?: BackendTemplate[];
@@ -259,6 +267,8 @@ export type ValidateBackend = {
   invalidItems?: InvalidItem[];
   /** What leaves nothing usable: widgets.json is not a map of widgets, or endpoints fail */
   fatalErrorMessage?: string | null;
+  /** Routes the endpoint probe did not check, and why */
+  uncheckedRoutes?: string[];
 };
 
 export interface BackendConnectorStore {
@@ -439,12 +449,10 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
             const updatedWidgets = Object.entries(widgets).reduce<WidgetsType>(
               (acc, [key, widget]) => {
                 widget.params = createParamDefs(widget, source.url);
-                const subCategory = widget.sub_category ?? widget.subCategory;
 
                 acc[key] = {
                   ...widget,
                   widgetId: key,
-                  subCategory,
                   endpointHeaders: source.endpointHeaders,
                 };
                 return acc;
@@ -557,6 +565,24 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
           set({ apiSources, isLoadingBackends: apiSources.length > 0 });
 
           if (apiSources.length === 0) return true;
+
+          // Backends are validated against the widgets.json schema in force for the user's
+          // entity (docs/widget-plugins/WIDGETS-JSON.md 3.6), which the registry loads
+          let widgetsSchema: ComposedWidgetsSchema;
+          try {
+            widgetsSchema = await widgetsSchemaReady();
+          } catch (error) {
+            set({
+              isLoadingBackends: false,
+              apiSources: apiSources.map((source) => ({ ...source, status: "error" })),
+            });
+            toast.error("Your backends could not be checked", {
+              id: "widgets-schema-unavailable",
+              description: error instanceof Error ? error.message : String(error),
+            });
+            return false;
+          }
+          const pluginVizTypes = [...getPluginVizTypes()];
           const needsSaveState = false;
           const saveState = () => needsSaveState && dispatchSaveState();
 
@@ -619,7 +645,10 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
           const fallbackToMainThread = async () => {
             const results = await Promise.all(
               apiSources.map(async (source) => {
-                const result = await getApiSourceWidgets(source);
+                const result = await getApiSourceWidgets(source, {
+                  widgetsSchema,
+                  pluginVizTypes,
+                });
                 return { source, result };
               }),
             );
@@ -643,7 +672,12 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
           };
 
           const extraHeaders = addExtraHeaders();
-          validateApiSourceWorker.postMessage({ apiSources, extraHeaders });
+          validateApiSourceWorker.postMessage({
+            apiSources,
+            extraHeaders,
+            pluginVizTypes,
+            widgetsSchema,
+          });
 
           return new Promise((resolve) => {
             const checkLoading = () => {

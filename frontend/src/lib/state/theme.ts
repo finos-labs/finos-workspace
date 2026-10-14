@@ -23,6 +23,19 @@ type McpAuthPopup = {
 /** Builds the file of an export format, named after the widget's title. */
 type ExportFormatFn = (title: string) => void;
 
+/** What the Export dialog offers for one widget. */
+export interface ExportWidgetData {
+  widgetId: string;
+  widgetName: string;
+  selectedExportFormat: string;
+  possibleExportFormats: {
+    value: string;
+    /** Shown instead of the upper-cased value, as a widget plugin names its exports */
+    label?: string;
+    fn: ExportFormatFn | null | undefined;
+  }[];
+}
+
 interface ThemeState {
   // Track removed default skills by slug to prevent re-adding them
   removedSkillSlugs: DefaultSkillSlugs[];
@@ -103,26 +116,8 @@ interface ThemeState {
   exportPopup: boolean;
   toggleExportPopup: () => void;
   setExportPopup: (popup: boolean) => void;
-  exportWidgetData: {
-    widgetId: string;
-    widgetName: string;
-    selectedExportFormat: string;
-    possibleExportFormats: {
-      value: string;
-      fn: ExportFormatFn | null | undefined;
-    }[];
-  } | null;
-  setExportWidgetData: (
-    data: {
-      widgetId: string;
-      widgetName: string;
-      selectedExportFormat: string;
-      possibleExportFormats: {
-        value: string;
-        fn: ExportFormatFn | null | undefined;
-      }[];
-    } | null,
-  ) => void;
+  exportWidgetData: ExportWidgetData | null;
+  setExportWidgetData: (data: ExportWidgetData | null) => void;
   changeSearch: (search: boolean) => void;
   toggleSearch: () => void;
   theme: "light" | "dark";

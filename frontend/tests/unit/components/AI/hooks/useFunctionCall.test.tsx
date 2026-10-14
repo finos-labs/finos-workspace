@@ -388,7 +388,7 @@ describe("useFunctionCall", () => {
     it("should throw error when param is not found on widget", async () => {
       mockGetAppWidget.mockReturnValue({
         params: [{ paramName: "other-param", type: "text" }],
-        endpointHeaders: {},
+        endpointHeaders: [],
       });
       const paramOptionsQuery = {
         origin: "Sandbox",
@@ -411,7 +411,7 @@ describe("useFunctionCall", () => {
     it("should throw error when endpoint param has no optionsEndpoint", async () => {
       mockGetAppWidget.mockReturnValue({
         params: [{ paramName: "test-param", type: "endpoint" }],
-        endpointHeaders: {},
+        endpointHeaders: [],
       });
 
       const paramOptionsQuery = {

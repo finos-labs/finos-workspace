@@ -93,7 +93,7 @@ describe("dependent endpoint params of a widget that is not in a group", () => {
 
     expect(fetch).toHaveBeenCalledWith(
       "http://backend.test/api/v1/news/rss_feeds?outlet=bbc",
-      { headers: {} },
+      { method: "GET", headers: {} },
     );
   });
 

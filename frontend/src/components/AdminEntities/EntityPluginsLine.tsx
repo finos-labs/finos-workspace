@@ -1,0 +1,33 @@
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import { getPlatformPlugins } from "~/api/plugins.api";
+import { pluginKeys } from "~/hooks/usePlugins";
+
+/**
+ * The widget plugins enabled for an entity, read-only (docs/widget-plugins/DESIGN.md 8.5).
+ * They are enabled and configured on the Widgets page.
+ */
+export function EntityPluginsLine({ entityUuid }: { entityUuid: string }) {
+  const { data } = useQuery({
+    queryKey: pluginKeys.platform,
+    queryFn: getPlatformPlugins,
+  });
+  if (!data?.enabled) return null;
+  const enabled = data.plugins.flatMap((plugin) =>
+    plugin.enabled_for
+      .filter((use) => use.entity_uuid === entityUuid)
+      .map(
+        (use) =>
+          `${plugin.name} (${use.access_mode === "everyone" ? "everyone" : "roles"})`,
+      ),
+  );
+  return (
+    <p className="body-xs-regular" data-testid="entity-plugins">
+      <span className="body-xs-medium">Widget plugins: </span>
+      {enabled.length ? enabled.join(", ") : "none enabled"}.{" "}
+      <Link to="/admin/widgets" className="ws-hyper-link">
+        Manage them in Widgets
+      </Link>
+    </p>
+  );
+}

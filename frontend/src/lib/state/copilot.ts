@@ -13,6 +13,7 @@ import {
 } from "~/api/auth.api";
 import { showDeprecatedFlagsToast } from "~/components/AI/hooks/utils";
 import { getConfig } from "~/lib/runtimeConfig";
+import type { ActiveMcpLink } from "~/lib/utils/mcpLink";
 import { AI_SUPPORTED_FILE_TYPES, getDefaultCopilot } from "../constants";
 import { type FunctionCallT, mergeDuplicateChats } from "../utils";
 import type { Selector } from "./app";
@@ -280,6 +281,8 @@ export interface CopilotWidget {
   sub_category?: string;
   columns?: string[];
   params: WidgetParam[];
+  /** The MCP tool the widget's backend answers its queries with, when the agent has it */
+  mcp_tool?: ActiveMcpLink;
   metadata?: Record<string, unknown> & {
     tabWidgets?: CopilotWidget[];
     innerTabId?: string;

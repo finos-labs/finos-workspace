@@ -37,6 +37,7 @@ Returning a single object instead of an array is the most common shape mistake �
 | `groups` | Recommended | Array of parameter sync groups. Use `[]` when none are needed — that's the safe default. |
 | `prompts` | Recommended | Array of suggested prompts for the agent. Use `[]` when none. |
 | `id` | Optional | If set, must match `^custom-.+`. Plain strings are rejected. |
+| `mcpServers` | Optional | MCP servers of this backend: see "MCP servers" below. |
 
 Several Workspace validators flag `allowCustomization`, `groups`, or `prompts` as required. Including all three (with empty arrays where applicable) is the safest default.
 
@@ -116,11 +117,33 @@ Optional. Pre-configures how a widget displays inside this app template. Common 
 
 - `params` — pre-set parameter values for this widget.
 - `paramOrder` — render order for the widget's parameter panel.
+- `storage.text` and `storage.html` — the text of a note, the HTML of an HTML widget.
+- `storage.plugin.config` — the configuration of a widget whose type a widget plugin renders. It is checked against that plugin's settings when the backend loads: a key the settings do not define, a value they refuse, or a configuration for a widget no plugin renders leaves the app out, with the path of each problem.
 - `style.borderWidth` (0–24), `style.radius` (0–64), `style.contentPadding` (0–64), `style.shadow` (`none|sm|md|lg`).
 
 `state.style` is closed — typos like `"shadowSize"` fail validation. `state` itself is open, so per-widget extras are tolerated.
 
 > **Schema ≠ runtime.** Some `state.*` fields validate but produce no visible effect (e.g. `state.style.headerMode`). Render in Workspace and confirm before committing speculative state defaults.
+
+## MCP servers
+
+An app can declare MCP servers that belong to this backend. When the backend is connected, Workspace registers each one for the user, with the backend connection's header credentials; the user connects it (an OAuth server asks for consent first), and their roles decide which tools the AI Agent may use.
+
+```json
+"mcpServers": [
+  { "name": "Team data", "url": "https://<mcp-host>/mcp", "authType": "token",
+    "description": "Queries over the team reports" }
+]
+```
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `name` | Yes | The server's name in this backend. A widget's `mcp_tool` names it. Two apps of one backend may declare the same server, but one name cannot name two servers. |
+| `url` | Yes | The server's URL. |
+| `authType` | Optional | `token` for a static token, which the user enters (the server stays off until then); OAuth otherwise. |
+| `description` | Optional | Shown with the server. |
+
+A widget opts in to one tool of these servers with `mcp_tool` (`workspace://specs/widgets-json`).
 
 ## Minimal example
 

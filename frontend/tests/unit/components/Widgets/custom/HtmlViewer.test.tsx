@@ -17,6 +17,12 @@ const jsonData = (
   >,
 ): JsonDataResult => result as JsonDataResult;
 
+/** The `raw` query value of the request a useJsonData call was given. */
+const rawQueryValue = (options: Parameters<typeof useJsonData>[0]) =>
+  options.request?.ok
+    ? new URL(options.request.request.url).searchParams.get("raw")
+    : null;
+
 const appStoreMock = vi.hoisted(() => ({
   getWidgetGroups: vi.fn<(tabId: string, widgetId: string | undefined) => Group[]>(
     () => [],
@@ -152,7 +158,7 @@ describe("HtmlViewer - raw data query", () => {
 
     // The second useJsonData call is the raw-data query
     const [rawOptions, rawQueryOptions] = nthLastCall(useJsonData);
-    expect(rawOptions.params?.raw).toBe(true);
+    expect(rawQueryValue(rawOptions)).toBe("true");
     expect(rawOptions.queryKey).toBeUndefined();
     expect(rawQueryOptions?.staleTime).toBe(0);
   });
@@ -192,7 +198,7 @@ describe("HtmlViewer - raw data query", () => {
     const htmlQueryOptions = nthLastCall(useJsonData, 2)[1];
     const [rawOptions, rawQueryOptions] = nthLastCall(useJsonData);
     expect(htmlQueryOptions?.enabled).toBe(true);
-    expect(rawOptions.params?.raw).toBe(true);
+    expect(rawQueryValue(rawOptions)).toBe("true");
     expect(rawQueryOptions?.enabled).toBe(true);
     expect(screen.getByTitle("Raw Widget")).toHaveAttribute(
       "srcdoc",
@@ -282,10 +288,7 @@ describe("HtmlViewer - iframe params bridge", () => {
     // The html query is the one before the raw-data query
     const [options] = nthLastCall(useJsonData, 2);
     expect(options.queryKey).toContain(
-      JSON.stringify({
-        use_categories: "correctional_facilities",
-        theme: "dark",
-      }),
+      "https://api.example.com/html?use_categories=correctional_facilities&theme=dark",
     );
   });
 

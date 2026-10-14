@@ -53,6 +53,8 @@ const initialState = {
   message: null as null | string,
   errorMessage: null as null | string,
   templateErrorMessage: null as null | string,
+  // What "Validate Widgets" could not check, so a pass is not read as every route valid
+  uncheckedRoutes: [] as string[],
   backendToAdd: null as Partial<Source> | null,
   isLocalhost: false,
   isConnected: false,
@@ -127,8 +129,14 @@ export default function AdvancedWidgetDialog() {
         const cleanUrl = url.trim().replace(/\/+$/, "").trim();
         const source = { name, url: cleanUrl, endpointHeaders } as Source;
 
-        const { widgets, errorMessage, templateErrorMessage, totalFailed, templates } =
-          await validateSource(source, validateWidgets === "true");
+        const {
+          widgets,
+          errorMessage,
+          templateErrorMessage,
+          totalFailed,
+          templates,
+          uncheckedRoutes = [],
+        } = await validateSource(source, validateWidgets === "true");
 
         const widgetsCount = Object.keys(widgets).length;
 
@@ -169,6 +177,7 @@ export default function AdvancedWidgetDialog() {
           message: detailedMessage,
           errorMessage: errorMessage || null,
           templateErrorMessage: templateErrorMessage || null,
+          uncheckedRoutes,
           isSuccess,
           backendToAdd: {
             name,
@@ -344,6 +353,22 @@ export default function AdvancedWidgetDialog() {
               className="mt-2 mb-4 w-full max-w-full"
             >
               {state.message}
+            </Notice>
+          )}
+
+          {state.uncheckedRoutes.length > 0 && (
+            <Notice
+              variant="warning"
+              title="Not every route was checked"
+              className="mt-2 mb-2 w-[560px] max-w-full"
+            >
+              <ul className="list-disc pl-4">
+                {state.uncheckedRoutes.map((line) => (
+                  <li key={line}>
+                    {formatZodErrorMessage(line, "!text-ds-text-body")}
+                  </li>
+                ))}
+              </ul>
             </Notice>
           )}
 

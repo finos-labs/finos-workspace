@@ -40,6 +40,42 @@ describe("autoRegisterMcpForSource authType propagation", () => {
     expect(servers[0].authType).toBe("token");
     expect(servers[0].sourceId).toBe("source-1");
   });
+
+  it("registers every declared server once, under the name a widget's mcp_tool names", () => {
+    const source = {
+      id: "source-1",
+      name: "Custom Backend",
+      url: "https://custom.example.com",
+      uuid: "u-1",
+      endpointHeaders: null,
+      templates: [
+        {
+          name: "One",
+          tabs: {},
+          mcpServers: [
+            { name: "Reports", url: "https://custom.example.com/mcp" },
+            // Another server at the same URL is still another server
+            { name: "Admin", url: "https://custom.example.com/mcp" },
+          ],
+        },
+        // The same server declared by a second app
+        {
+          name: "Two",
+          tabs: {},
+          mcpServers: [{ name: "Reports", url: "https://custom.example.com/mcp" }],
+        },
+      ],
+    } as unknown as Source;
+
+    autoRegisterMcpForSource(source);
+    autoRegisterMcpForSource(source);
+
+    const servers = useMcpToolsStore.getState().servers;
+    expect(servers.map((s) => [s.declaredName, s.sourceId])).toEqual([
+      ["Reports", "source-1"],
+      ["Admin", "source-1"],
+    ]);
+  });
 });
 
 /**

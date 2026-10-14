@@ -122,62 +122,6 @@ export function createURL(
   return url;
 }
 
-const pathUrlRegex = /{([^}]+)}/g;
-
-export function parseMarkdownParams(value: string, params: Record<string, unknown>) {
-  if (!value || typeof value !== "string")
-    return { parsedValue: value, newParams: params };
-
-  const matches = value.match(pathUrlRegex);
-
-  if (!matches) return { parsedValue: value, newParams: params };
-
-  const newParams = { ...params };
-
-  for (const match of matches) {
-    const key = match.slice(1, -1);
-    delete newParams[key];
-    value = value.replace(match, params[key] ? String(params[key]) : "");
-  }
-
-  return { parsedValue: value, newParams };
-}
-
-export function parsePathParams(url: string, params: Record<string, unknown>) {
-  const { parsedValue, newParams } = parseMarkdownParams(url, params);
-  const newUrl = new URL(parsedValue);
-
-  return { newUrl, newParams };
-}
-
-// Helper function to clean the URL and add any query parameters
-export function cleanSearchParams(
-  url: string | WidgetT["endpoint"],
-  params: Record<string, unknown> | undefined = undefined,
-) {
-  url = typeof url === "string" ? url : url?.url;
-  if (!url) return "";
-  if (!url?.toString()?.includes("http")) return url;
-
-  const { newParams, newUrl } = parsePathParams(url, params ?? {});
-
-  // If the url already has the query parameters, dont add them here
-  if (!url?.includes("?")) {
-    for (const [key, value] of Object.entries(newParams)) {
-      if (value !== undefined && value !== "" && value !== null)
-        newUrl.searchParams.set(key, String(value));
-    }
-  }
-
-  // Remove empty query parameters
-  for (const [key, value] of newUrl.searchParams.entries()) {
-    if (value === undefined || value === "" || value === null)
-      newUrl.searchParams.delete(key);
-  }
-
-  return newUrl.toString();
-}
-
 type DateModifier<T = number> = {
   mod: "+" | "-";
   amt: T;
@@ -285,15 +229,21 @@ export function createParamDefs(
   return widget.params as ParamDef[];
 }
 
+/** A widget's endpoint with the backend connection's credentials; GET unless it says. */
 export function createWidgetEndpoint(
-  url: string | WidgetT["endpoint"],
+  url:
+    | string
+    | (Partial<NonNullable<WidgetT["endpoint"]>> & { url: string })
+    | undefined,
   endpointHeaders: WidgetT["endpointHeaders"] = [],
 ): NonNullable<WidgetT["endpoint"]> {
+  const given: Partial<NonNullable<WidgetT["endpoint"]>> =
+    typeof url === "string" ? { url } : (url ?? {});
   const newEndpoint = {
     query: {},
     headers: {},
-    ...(typeof url === "string" ? { url } : url),
-    method: "GET",
+    ...given,
+    method: given?.method ?? "GET",
   } as NonNullable<WidgetT["endpoint"]>;
 
   newEndpoint.url = cleanURL(newEndpoint.url);

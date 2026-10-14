@@ -811,8 +811,48 @@ class GeneralSettings(BaseModel):
         self.IS_WORKER_CONTAINER = is_worker
 
 
+class WidgetPluginSettings(BaseModel):
+    # The directory deployers place widget plugin packages in; unset turns the
+    # feature off. The API only reads it, so mount it read-only.
+    WIDGET_PLUGINS_DIR: str | None = None
+    # Version digests the deployer expects, as {"<id>@<version>": "sha256-..."}
+    WIDGET_PLUGINS_PINS: dict[str, str] = Field(default_factory=dict)
+    # Block every version that has no pin
+    WIDGET_PLUGINS_REQUIRE_PINS: bool = False
+    WIDGET_PLUGINS_MAX_UNPACKED_BYTES: int = 64 * 1024 * 1024
+    WIDGET_PLUGINS_MAX_FILES: int = 200
+    # Values for the secrets plugins declare, as files <dir>/<plugin id>/<secret name>
+    # the deployer mounts. A value set here wins over one a superuser enters.
+    WIDGET_PLUGIN_SECRETS_DIR: str | None = None
+    # Caps on every proxy call, whatever a manifest declares
+    WIDGET_PLUGIN_PROXY_MAX_BYTES: int = 5 * 1024 * 1024
+    WIDGET_PLUGIN_PROXY_TIMEOUT_MS: int = 30_000
+    # Calls of one plugin running at once, per API process
+    WIDGET_PLUGIN_PROXY_CONCURRENCY: int = 8
+    WIDGET_PLUGIN_PROXY_RATE_PER_USER: str = "60/minute"
+    WIDGET_PLUGIN_PROXY_RATE_PER_PLUGIN: str = "600/minute"
+    # A certificate authority file the proxies trust besides the system's, for
+    # upstreams whose certificates a private authority signs
+    WIDGET_PLUGIN_PROXY_CA_FILE: str | None = None
+    # The plugin backends the deployer runs, as {"<plugin id>": "<internal URL>"}: an
+    # http(s) URL on the private network, or unix:<socket path>
+    WIDGET_PLUGIN_BACKENDS: dict[str, str] = Field(default_factory=dict)
+    # Caps on every backend call, whatever a manifest declares
+    WIDGET_PLUGIN_BACKEND_MAX_BYTES: int = 5 * 1024 * 1024
+    WIDGET_PLUGIN_BACKEND_TIMEOUT_MS: int = 30_000
+    WIDGET_PLUGIN_BACKEND_CONCURRENCY: int = 8
+    WIDGET_PLUGIN_BACKEND_RATE_PER_USER: str = "60/minute"
+    WIDGET_PLUGIN_BACKEND_RATE_PER_PLUGIN: str = "600/minute"
+    # The circuit breaker: failures in a row that open it, and for how long
+    WIDGET_PLUGIN_BACKEND_BREAKER_FAILURES: int = 5
+    WIDGET_PLUGIN_BACKEND_BREAKER_SECONDS: int = 30
+    # How long a backend's identity check holds before it is asked again
+    WIDGET_PLUGIN_BACKEND_IDENTITY_SECONDS: int = 60
+
+
 class Settings(
     BaseSettings,
+    WidgetPluginSettings,
     AccessSettings,
     GeneralSettings,
     AppSettings,

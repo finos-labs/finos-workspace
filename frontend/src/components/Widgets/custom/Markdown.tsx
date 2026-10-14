@@ -26,6 +26,7 @@ import type { ArtifactT, Citation as CitationT } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { protectAiMarkers } from "~/lib/utils/citationMarkers";
 import { HTML_SANITIZE_CONFIG } from "~/lib/utils/sanitize";
+import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
 
 const AICitation = lazy(() => import("~/components/AI/Citation"));
 const AIArtifact = lazy(() => import("~/components/AI/Artifact"));
@@ -150,29 +151,14 @@ export default function Markdown() {
   );
   const validEndpoint = !!widget?.endpoint?.url;
 
-  const options = useMemo(() => {
-    const endpoint = widget.endpoint;
-    const newParams = Object.fromEntries(
-      Object.entries({
-        ...(widget?.endpoint?.query ?? {}),
-        ...(widget?.storage?.params ?? {}),
-      }).filter(([_key, value]) => value !== "" && value !== undefined),
-    );
-
-    newParams.theme = theme;
-
-    return {
-      url: endpoint?.url ?? "",
-      endpointHeaders: endpoint?.headers ?? {},
-      method: endpoint?.method ?? "GET",
-      params: newParams,
-      addBearerToken: true,
-    };
-  }, [widget?.endpoint, widget?.storage?.params, theme]);
+  const request = useMemo(
+    () => buildWidgetRequest(widget, { theme }),
+    [widget.endpoint, widget.params, widget.storage?.params, theme],
+  );
 
   const { data, isLoading, error, dataUpdatedAt } = useJsonData(
     {
-      ...options,
+      request,
       responseCb: async (data, resolve) => {
         const clonedData = data.clone();
         if (extension === "docx") {

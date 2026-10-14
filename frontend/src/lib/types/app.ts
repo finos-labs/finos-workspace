@@ -1,5 +1,7 @@
 import { z } from "zod";
 import type { FormInputParamDef, ParamDef } from "~/components/types";
+import { PLUGIN_ID_PATTERN } from "~/plugins/types";
+import { EditorLanguages, HTTP_METHODS, PARAM_LOCATIONS } from "./widgetsContract";
 
 function unionErrorMap(message: string) {
   return {
@@ -57,17 +59,6 @@ export const TickerSchema = z.object({
   has_options: z.boolean().nullish(),
 });
 
-export const EditorLanguages = [
-  "sql",
-  "javascript",
-  "python",
-  "json",
-  "html",
-  "css",
-  "markdown",
-  "xml",
-  "text",
-] as const;
 export type EditorLanguage = (typeof EditorLanguages)[number];
 
 const ParamDefSchemaBase = z
@@ -108,6 +99,7 @@ const ParamDefSchemaBase = z
     multiSelect: z.boolean().default(false).optional(),
     roles: z.array(z.string()).optional(),
     placeholder: z.string().optional(),
+    in: z.enum(PARAM_LOCATIONS).optional(),
   })
   .partial({
     options: true,
@@ -122,6 +114,15 @@ const ParamDefSchemaBase = z
     hidden: true,
   })
   .meta({ id: "ParamDef" });
+
+/** How an `endpoint` param, or an `endpoint` input of a form, loads its options. */
+const OptionsLookup = {
+  optionsEndpoint: z.string().optional(),
+  optionsMethod: z.enum(HTTP_METHODS).optional(),
+  optionsParams: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+    .optional(),
+};
 
 const ParamValueSchema = z.discriminatedUnion("type", [
   ParamDefSchemaBase.extend({
@@ -168,8 +169,7 @@ const ParamValueSchema = z.discriminatedUnion("type", [
   ParamDefSchemaBase.extend({
     type: z.literal("endpoint"),
     value: z.unknown().nullish(),
-    optionsEndpoint: z.string().optional(),
-    optionsParams: z.record(z.string(), z.unknown()).optional(),
+    ...OptionsLookup,
     groupById: z.string().optional(),
   }).meta({ id: "EndpointParamDef" }),
   ParamDefSchemaBase.extend({
@@ -188,6 +188,7 @@ const ParamValueSchema = z.discriminatedUnion("type", [
               ),
             )
             .optional(),
+          ...OptionsLookup,
         }),
       )
       .optional(),
@@ -306,10 +307,25 @@ const supportedTypesError = WidgetVizTypes.filter((v) => v !== "iframe")
   .map((v) => `\`${v}\``)
   .join(", ");
 
-export type WidgetVizType = (typeof WidgetVizTypes)[number] | "custom";
+/** A viz type a widget plugin renders: any well-formed type name that is not built in. */
+export type PluginVizType = string & { readonly __pluginVizType?: never };
+export type BuiltInVizType = (typeof WidgetVizTypes)[number];
+export type WidgetVizType = BuiltInVizType | "custom" | PluginVizType;
 
+/** The form a viz type name takes, built in or rendered by a widget plugin. */
+export const VIZ_TYPE_PATTERN = /^[a-z][a-z0-9_-]{1,31}$/;
+
+/**
+ * Accepts the built-in types and any well-formed type name. Validation runs before the
+ * plugin registry is loaded (and in a worker, which cannot read it), so whether a type
+ * renders is decided by `isRenderableVizType`, not here (docs/widget-plugins/DESIGN.md 5).
+ */
 export const widgetTypesSchema = z
-  .enum(WidgetVizTypes, unionErrorMap(`Supported types are ${supportedTypesError}.`))
+  .string()
+  .regex(
+    VIZ_TYPE_PATTERN,
+    `A widget type is a lowercase name. Built-in types are ${supportedTypesError}; widget plugins add others.`,
+  )
   .nullish()
   .meta({ id: "WidgetType" });
 
@@ -321,6 +337,11 @@ export const WidgetStateSchema = z
       .looseObject({
         text: z.string().optional(),
         html: z.string().optional(),
+        // A plugin widget's configuration, checked against its plugin's settings when the
+        // backend loads (WIDGETS-JSON 3.10)
+        plugin: z
+          .strictObject({ config: z.record(z.string(), z.unknown()).optional() })
+          .optional(),
       })
       .optional(),
   })
@@ -450,14 +471,18 @@ export const WidgetSchemaBase = z.object({
   refetchInterval: RefetchIntervalSchema.nullish(),
   dataUpdateDisplay: CronExpressionSchema.optional(),
   runButton: z.boolean().optional(),
-  copilotParseAs: z
-    .union([z.literal("structured"), z.literal("unstructured")])
-    .optional(),
   raw: z.boolean().optional(),
   exportable: z.boolean().default(true).optional(),
 });
 
 export const InternalWidgetSchema = WidgetSchemaBase.extend({
+  // A standalone widget of a widget plugin: which plugin and which of its widgets
+  plugin: z
+    .strictObject({
+      id: z.string().regex(PLUGIN_ID_PATTERN),
+      widget: z.string().max(48),
+    })
+    .optional(),
   data: z
     .object({
       mainTicker: TickerSchema.optional(),
@@ -504,8 +529,29 @@ export const ExternalWidgetSchema = WidgetSchemaBase.extend({
   return val;
 });
 
-export function isWidgetVizType(
+/** One of the types the Workspace renders itself. */
+export function isBuiltInVizType(
+  type: string | null | undefined,
+): type is BuiltInVizType {
+  return WidgetVizTypes.some((vizType) => vizType === type);
+}
+
+/** A built-in type, or a well-formed name a widget plugin may render. */
+export function isWellFormedVizType(
   type: string | null | undefined,
 ): type is WidgetVizType {
-  return WidgetVizTypes.some((vizType) => vizType === type);
+  return typeof type === "string" && VIZ_TYPE_PATTERN.test(type);
+}
+
+/**
+ * Whether this Workspace renders the type for the signed-in user: a built-in type, or a
+ * type an available widget plugin handles. The caller passes the plugin types, from
+ * `getPluginVizTypes()`, so this module does not depend on the registry and runs in a
+ * worker.
+ */
+export function isRenderableVizType(
+  type: string | null | undefined,
+  pluginTypes: ReadonlySet<string> = new Set(),
+): type is WidgetVizType {
+  return isBuiltInVizType(type) || (typeof type === "string" && pluginTypes.has(type));
 }

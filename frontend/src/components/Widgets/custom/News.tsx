@@ -16,6 +16,7 @@ import { MarkdownContent } from "~/components/Widgets/custom/Markdown";
 import { useJsonData } from "~/lib/api";
 import { useShallowAppStore } from "~/lib/state/app";
 import { cn, formatDate } from "~/lib/utils";
+import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
 
 type NewsData = {
   title: string;
@@ -41,27 +42,14 @@ export default function News() {
   const [popupArticle, setPopupArticle] = useState<NewsData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const options = useMemo(() => {
-    const endpoint = widget.endpoint;
-    const params = Object.fromEntries(
-      Object.entries({
-        ...(endpoint?.query ?? {}),
-        ...(widget?.storage?.params ?? {}),
-      }).filter(([_key, value]) => value !== "" && value !== undefined),
-    );
-
-    return {
-      url: endpoint?.url ?? "",
-      endpointHeaders: endpoint?.headers ?? {},
-      method: endpoint?.method ?? "GET",
-      params,
-      addBearerToken: true,
-    };
-  }, [widget?.endpoint, widget?.storage?.params]);
+  const request = useMemo(
+    () => buildWidgetRequest(widget),
+    [widget.endpoint, widget.params, widget.storage?.params],
+  );
 
   const { data, isLoading, error, dataUpdatedAt } = useJsonData(
     {
-      ...options,
+      request,
       responseCb: async (response, resolve) => {
         const dataKey = widget?.data?.dataKey;
         const json = await response.json();

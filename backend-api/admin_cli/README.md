@@ -350,6 +350,65 @@ docker exec workspace credentials   # admin login, then set the user's password
 The imported account has **no usable password** — none is exported. The Lite
 admin sets one after importing.
 
+### 10. Widget Plugins
+
+Review, approve and enable widget plugins (`docs/widget-plugins/`). **Superuser
+only**, except `grant` and `ungrant`, which act on roles of your own
+organization. There is no `install`: a deployer places a package in the API's
+plugins directory (`WIDGET_PLUGINS_DIR`), and nothing it contains runs until a
+superuser approves a version and an organization enables the plugin.
+
+```bash
+# Check a package before placing it, from backend-api/backend: the full check, or
+# with --digest only the checksum and the version digest
+python -m scripts.plugin_check <plugin-id>/<version> --digest
+
+./workspace-admin plugin rescan                  # read the plugins directory again
+./workspace-admin plugin list
+./workspace-admin plugin show <plugin-id>        # versions, the review, policy, organizations, events
+
+# Shows what approving accepts and approves nothing; add --acknowledge to approve.
+# --digest stops if the server's files are not the ones you checked.
+./workspace-admin plugin approve <plugin-id> <version> --digest <sha256-...> --acknowledge
+
+./workspace-admin plugin enable <plugin-id> --entity <entity-uuid> --everyone
+./workspace-admin plugin enable <plugin-id> --all --roles
+./workspace-admin plugin disable <plugin-id> --all
+./workspace-admin plugin grant <plugin-id> --role <role-uuid> [--widget <widget-id>]
+./workspace-admin plugin ungrant <plugin-id> --role <role-uuid> [--widget <widget-id>]
+
+# The overrides are replaced whole: give every part you want to keep
+./workspace-admin plugin override <plugin-id> --csp-file overrides.json [--confirm private-host]
+./workspace-admin plugin override <plugin-id> --server-network https://<host> [--confirm private-host]
+./workspace-admin plugin override <plugin-id> --clear
+./workspace-admin plugin reports <plugin-id>     # requests the plugin's policy blocked
+./workspace-admin plugin events <plugin-id>
+
+# The values of the secrets a plugin declares for its proxies
+# (docs/widget-plugins/SERVER-SIDE.md 4)
+./workspace-admin plugin secret set <plugin-id> <secret-name>   # prompts without echo
+./workspace-admin plugin secret set <plugin-id> <secret-name> < value-file
+./workspace-admin plugin secret clear <plugin-id> <secret-name>
+
+# A plugin backend you run and list in WIDGET_PLUGIN_BACKENDS: ask for its identity now
+./workspace-admin plugin check-backend <plugin-id>
+
+./workspace-admin plugin revoke <plugin-id>      # kill switch, everywhere
+./workspace-admin plugin restore <plugin-id>
+./workspace-admin plugin forget <plugin-id>      # only once its files are gone
+```
+
+`overrides.json` maps CSP directives to sources, for example
+`{"connect-src": ["https://<host>"]}`. A source an author may not request (an
+insecure scheme, a private host, a remote script) needs the matching `--confirm`.
+
+`--server-network` replaces the hosts a plugin's proxies may call. With it,
+`--confirm private-host` lets those hosts resolve to private addresses; a private
+name or an IP address needs it. `secret set` never takes the value as an argument,
+which would land in the shell's history. `plugin show` says whether each secret is
+set, by whom and when, never the value. A value the deployment sets in
+`WIDGET_PLUGIN_SECRETS_DIR` wins and cannot be changed here.
+
 ## Bulk Provisioning
 
 **Create Entity + Users in one operation:**

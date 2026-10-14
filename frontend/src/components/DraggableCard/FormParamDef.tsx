@@ -1,9 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
-import { FormProvider, useForm, useFormContext } from "react-hook-form";
+import { FormProvider, useForm, useFormContext, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { ToggleSelect } from "~/components/ToggleSelect";
-import { cleanSearchParams, convertHeadersToRecord, useJsonData } from "~/lib/api";
+import { useJsonData } from "~/lib/api";
 import { beautifySlug, cn, currentDateModifier } from "~/lib/utils";
+import {
+  buildFormRequest,
+  buildOptionsRequest,
+  formScope,
+  requestInit,
+} from "~/lib/utils/widgetRequest";
 import { Button } from "../ds/atoms/Button";
 import { FormInput } from "../ds/atoms/Input";
 import { FormField } from "../ds/molecules/Form";
@@ -59,17 +65,17 @@ export function FormParamElement() {
     async (data: ParamsForm) => {
       try {
         if (!formParamDef) return;
+        const built = buildFormRequest(formParamDef, data, widget);
+        if (!built.ok) {
+          toast.error("Error", {
+            description: built.problems.map((p) => p.message).join(". "),
+            id: "form-param",
+          });
+          return;
+        }
         setIsLoading(true);
-        const { headers, newParams } = convertHeadersToRecord(widget.endpoint?.headers);
 
-        const response = await fetch(formParamDef.endpoint, {
-          method: formParamDef.method ?? "POST",
-          headers: {
-            ...headers,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        });
+        const response = await fetch(built.request.url, requestInit(built.request));
 
         const json = await response.json();
 
@@ -100,13 +106,7 @@ export function FormParamElement() {
 
       setIsLoading(false);
     },
-    [
-      formParamDef?.endpoint,
-      formParamDef?.method,
-      widget.endpoint?.headers,
-      widget.endpoint?.url,
-      updateWidget,
-    ],
+    [formParamDef, widget, updateWidget],
   );
 
   return (
@@ -126,7 +126,11 @@ export function FormParamElement() {
               {formParamDef?.inputParams?.map((inputParam) => {
                 if (inputParam.type === "endpoint") {
                   return (
-                    <EndpointType key={inputParam.paramName} inputParam={inputParam} />
+                    <EndpointType
+                      key={inputParam.paramName}
+                      form={formParamDef}
+                      inputParam={inputParam}
+                    />
                   );
                 }
                 return (
@@ -145,33 +149,38 @@ export function FormParamElement() {
   );
 }
 
-function EndpointType(props: { inputParam: FormInputParamDefT<"endpoint"> }) {
+function EndpointType(props: {
+  form: ParamDefT<"form">;
+  inputParam: FormInputParamDefT<"endpoint">;
+}) {
   const { inputParam } = props;
   const form = useFormContext<ParamsForm>();
+  const inputValues = useWatch({ control: form.control });
 
-  const endpoint = useWidgetContext()?.widget?.endpoint;
+  const { widget } = useWidgetContext();
 
   const { paramName, label, description = [], multiSelect = false } = inputParam;
 
   const title = beautifySlug(label ?? paramName);
 
-  const options = useMemo(() => {
-    const { headers, newParams } = convertHeadersToRecord(endpoint?.headers ?? {});
-    const url = cleanSearchParams(inputParam.optionsEndpoint, newParams);
+  // `$name` in optionsParams is another input's entered value, or a widget param's
+  const request = useMemo(
+    () =>
+      buildOptionsRequest(
+        inputParam,
+        formScope(props.form, inputValues, widget),
+        widget.endpoint,
+      ),
+    [inputParam, props.form, inputValues, widget],
+  );
 
-    return {
-      url: url,
-      endpointHeaders: headers,
-      params: newParams,
-      addBearerToken: true,
-    };
-  }, [endpoint]);
-
-  const { data, isLoading, error, dataUpdatedAt } = useJsonData(options, {
-    enabled: true,
-    staleTime: 1000 * 60 * 15,
-    refetchInterval: 1000 * 60 * 15,
-  });
+  const { data, isLoading, error, dataUpdatedAt } = useJsonData(
+    { request },
+    {
+      staleTime: 1000 * 60 * 15,
+      refetchInterval: 1000 * 60 * 15,
+    },
+  );
 
   const { selectOptions, forceExtraInfo } = useMemo(() => {
     const paramOptions = data ?? ["Loading..."];

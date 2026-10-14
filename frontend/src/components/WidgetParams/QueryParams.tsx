@@ -31,11 +31,11 @@ import {
   beautifySlug,
   cn,
   createParamDefs,
+  endpointOptionsRequest,
   endpointParamDependsOnAnotherParam,
   ensureArray,
   ensureString,
   getDependentEndpointParamValues,
-  getEndpointParamRequestArgs,
   getJsonWidget,
   getOfferedEndpointParamValue,
   getUngroupedDependentEndpointParams,
@@ -43,6 +43,11 @@ import {
   useEventListener,
 } from "~/lib/utils";
 import { someTruthy } from "~/lib/utils/values";
+import {
+  RequestProblemsError,
+  requestInit,
+  requestKey,
+} from "~/lib/utils/widgetRequest";
 import CompareTermsParam from "./CompareTermsParam";
 import { TabsParam } from "./TabsParam";
 
@@ -290,22 +295,27 @@ export function useWidgetParamsPositions(enabled = true) {
 
   const queriesMemo = useMemo(() => {
     const queries = Object.values(endpointParams).map((param) => {
-      const { url, reqInit } = getEndpointParamRequestArgs(
-        widget,
-        param,
-        state.localParams,
-      );
+      const built = endpointOptionsRequest(widget, param, state.localParams);
 
       return {
-        queryKey: [url, "endpoint_options", param.groupById],
+        queryKey: [
+          "endpoint_options",
+          param.groupById,
+          ...(built ? requestKey(built) : []),
+        ],
         queryFn: async ({ signal }) => {
-          const res = await fetch(url, { ...reqInit, signal });
+          if (!built) return [];
+          if (!built.ok) throw new RequestProblemsError(built.problems);
+          const res = await fetch(
+            built.request.url,
+            requestInit(built.request, { signal }),
+          );
           if (res.ok) {
             return await res.json();
           }
           throw new Error(res.statusText);
         },
-        enabled,
+        enabled: enabled && !!built,
         refetchOnWindowFocus: false,
         staleTime: 1000 * 60 * 60,
       } as UseQueryOptions<(TSelectValues | string)[]>;
@@ -314,7 +324,8 @@ export function useWidgetParamsPositions(enabled = true) {
     return { queries };
   }, [
     endpointParams,
-    widget.endpoint?.headers,
+    widget.endpoint,
+    widget.params,
     state.localParams,
     widget.refreshQuery,
   ]);

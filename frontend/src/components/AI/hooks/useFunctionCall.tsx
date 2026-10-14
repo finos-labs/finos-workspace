@@ -4,12 +4,8 @@ import { useParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { getPreSignedUrl } from "~/api/auth.api";
 import * as workspaceApi from "~/api/workspace.api";
-import type { ParamDefT, WidgetT } from "~/components/types";
+import type { ParamDefT, StoredParamValue, WidgetT } from "~/components/types";
 import type { WidgetId } from "~/components/Widgets";
-import {
-  cleanSearchParams as createCleanUrl,
-  convertHeadersToRecord as getHeadersAndUrlParams,
-} from "~/lib/api";
 import { getAiApiUrl } from "~/lib/constants";
 import { getIframeWidget } from "~/lib/iframeWidgetRegistry";
 import { getConfig } from "~/lib/runtimeConfig";
@@ -46,6 +42,13 @@ import {
 } from "~/lib/utils";
 import { toError } from "~/lib/utils/utils";
 import { isTruthy, isTruthyRecord } from "~/lib/utils/values";
+import { createWidgetEndpoint } from "~/lib/utils/widgetParams";
+import {
+  buildOptionsRequest,
+  buildWidgetRequest,
+  type RequestProblem,
+  requestInit,
+} from "~/lib/utils/widgetRequest";
 import { buildHtmlWidget, buildNoteWidget } from "./buildWidget";
 import { useShallowAppWidgetsStore } from "./useGetAppWidgets";
 import { findTabMatch } from "./useManageNavigationBar";
@@ -790,15 +793,40 @@ export function useFunctionCall() {
   };
 }
 
-function getRequest(widget: WidgetT, inputArgs: Record<string, unknown>): Request {
-  const baseUrl = widget.endpoint;
-  if (!baseUrl) throw new Error("Missing widget endpoint url.");
-  const { headers, newParams: urlParams } = getHeadersAndUrlParams(
-    widget.endpointHeaders,
-    inputArgs,
+/** A widget of a backend's registry carries its credentials as rows; an instance, as records. */
+function endpointWithCredentials(widget: WidgetT) {
+  return createWidgetEndpoint(widget.endpoint ?? "", widget.endpointHeaders ?? []);
+}
+
+function notSent(problems: RequestProblem[]): CopilotError {
+  return new CopilotError(
+    CopilotErrorType.NOT_FOUND,
+    `The request was not sent: ${problems.map((p) => p.message).join("; ")}.`,
   );
-  const url = createCleanUrl(baseUrl, urlParams);
-  return new Request(url, { method: "GET", headers });
+}
+
+/**
+ * The widget's own request, with the agent's values for its params (WIDGETS-JSON 4.8), so
+ * the agent gets what the widget gets. A param the agent leaves out has its default.
+ */
+function getRequest(widget: WidgetT, inputArgs: Record<string, unknown>): Request {
+  const declared = (widget.params ?? [])
+    .filter((param) => param.type !== "form")
+    .map((param) => param.paramName);
+  const undeclared = Object.keys(inputArgs).filter((name) => !declared.includes(name));
+  if (undeclared.length)
+    throw new CopilotError(
+      CopilotErrorType.NOT_FOUND,
+      `input_args names no param of this widget: ${undeclared.join(", ")}. Its params are: ${declared.join(", ") || "none"}.`,
+    );
+  const built = buildWidgetRequest({
+    endpoint: endpointWithCredentials(widget),
+    params: widget.params,
+    storage: { params: inputArgs as Record<string, StoredParamValue> },
+  });
+  if (!built) throw new Error("Missing widget endpoint url.");
+  if (!built.ok) throw notSent(built.problems);
+  return new Request(built.request.url, requestInit(built.request));
 }
 
 type GetDashboardWidgetData = (widgetId: string) => DashboardWidgetData | undefined;
@@ -968,29 +996,26 @@ export async function getWidgetsParamOptions(
       CopilotErrorType.NOT_FOUND,
       `Widget with id ${paramOptionsQuery.id} not found`,
     );
-  const { headers } = getHeadersAndUrlParams(widget.endpointHeaders);
   // this name should be more explicit like param_name
   const paramName = paramOptionsQuery.param;
-  const widgetParams = (widget.params || []).filter(
-    (p) => p.paramName === paramName && p.type === "endpoint",
-  ) as ParamDefT<"endpoint">[];
-  if (widgetParams.length === 0) throw new Error(`Param ${paramName} not found`);
-  const widgetParam = widgetParams[0];
-  const optionsEndpoint = widgetParam.optionsEndpoint;
-  if (!optionsEndpoint) throw new Error(`Endpoint not found for param ${paramName}`);
-  const optionsEndpointParams = widgetParam.optionsParams || {};
-  const newOptionsEndpointParams = Object.entries(optionsEndpointParams).reduce<
-    Record<string, unknown>
-  >((acc, [key, value]) => {
-    if (typeof value === "string" && value.startsWith("$")) {
-      const queryKey = value.slice(1);
-      acc[key] = paramOptionsQuery.options_endpoint_input_args[queryKey];
-    } else acc[key] = value;
-    return acc;
-  }, {});
-  const url = createCleanUrl(optionsEndpoint, newOptionsEndpointParams);
-  const request = new Request(url, { method: "GET", headers: headers });
-  const response: unknown = await fetch(request).then((res) => res.json());
+  const widgetParam = (widget.params ?? []).find(
+    (p): p is ParamDefT<"endpoint"> =>
+      p.paramName === paramName && p.type === "endpoint",
+  );
+  if (!widgetParam) throw new Error(`Param ${paramName} not found`);
+  const built = buildOptionsRequest(
+    widgetParam,
+    {
+      params: widget.params ?? [],
+      values: paramOptionsQuery.options_endpoint_input_args,
+    },
+    endpointWithCredentials(widget),
+  );
+  if (!built) throw new Error(`Endpoint not found for param ${paramName}`);
+  if (!built.ok) throw notSent(built.problems);
+  const response: unknown = await fetch(
+    new Request(built.request.url, requestInit(built.request)),
+  ).then((res) => res.json());
   if (!Array.isArray(response)) throw new Error("Failed to parse param options result");
   const optionsData = response.map((option: unknown) => {
     if (typeof option === "string") return { label: option, value: option };

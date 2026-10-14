@@ -3,7 +3,7 @@ import {
   _GridDataSchema,
   ExternalWidgetSchema,
   InternalWidgetSchema,
-  isWidgetVizType,
+  isBuiltInVizType,
   ParamDefSchema,
   ParamsSchema,
   StorageSchema,
@@ -282,11 +282,10 @@ describe("Zod Schemas from app.ts", () => {
       }
     });
 
-    it("should reject widget types this Workspace does not render", () => {
-      expect(widgetTypesSchema.safeParse("table").success).toBe(false);
-      expect(widgetTypesSchema.safeParse("chart").success).toBe(false);
-      expect(widgetTypesSchema.safeParse("note").success).toBe(false);
-      expect(widgetTypesSchema.safeParse("rich_note").success).toBe(false);
+    it("should accept other well-formed types, which widget plugins may render", () => {
+      // Whether a type renders is decided by isRenderableVizType, not by the schema
+      for (const type of ["table", "chart", "note", "rich_note"])
+        expect(widgetTypesSchema.safeParse(type).success).toBe(true);
     });
 
     it("should be nullish", () => {
@@ -294,11 +293,13 @@ describe("Zod Schemas from app.ts", () => {
       expect(widgetTypesSchema.safeParse(undefined).success).toBe(true);
     });
 
-    it("should invalidate unknown types", () => {
-      const result = widgetTypesSchema.safeParse("invalidWidgetType");
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0].message).toContain("Supported types are");
+    it("should invalidate malformed types", () => {
+      for (const type of ["invalidWidgetType", "a", "has space", "9lives", ""]) {
+        const result = widgetTypesSchema.safeParse(type);
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error.issues[0].message).toContain("Built-in types are");
+        }
       }
     });
   });
@@ -308,7 +309,6 @@ describe("Zod Schemas from app.ts", () => {
       const shapeKeys = Object.keys(InternalWidgetSchema.shape).sort();
       expect(shapeKeys).toMatchInlineSnapshot(`
         [
-          "copilotParseAs",
           "data",
           "dataUpdateDisplay",
           "description",
@@ -321,6 +321,7 @@ describe("Zod Schemas from app.ts", () => {
           "innerTab",
           "name",
           "params",
+          "plugin",
           "raw",
           "refetchInterval",
           "runButton",
@@ -390,7 +391,6 @@ describe("Zod Schemas from app.ts", () => {
         [
           "category",
           "connectionType",
-          "copilotParseAs",
           "data",
           "dataUpdateDisplay",
           "description",
@@ -488,22 +488,22 @@ describe("Zod Schemas from app.ts", () => {
     });
   });
 
-  describe("isWidgetVizType utility function", () => {
+  describe("isBuiltInVizType utility function", () => {
     it("should return true for valid WidgetVizTypes", () => {
-      expect(isWidgetVizType("html")).toBe(true);
-      expect(isWidgetVizType("markdown")).toBe(true);
-      expect(isWidgetVizType("pdf")).toBe(true);
+      expect(isBuiltInVizType("html")).toBe(true);
+      expect(isBuiltInVizType("markdown")).toBe(true);
+      expect(isBuiltInVizType("pdf")).toBe(true);
     });
 
-    it("should return false for invalid types", () => {
-      expect(isWidgetVizType("unknown_type")).toBe(false);
-      expect(isWidgetVizType("Note")).toBe(false); // Case-sensitive
-      expect(isWidgetVizType("")).toBe(false);
+    it("should return false for other types", () => {
+      expect(isBuiltInVizType("unknown_type")).toBe(false);
+      expect(isBuiltInVizType("Note")).toBe(false); // Case-sensitive
+      expect(isBuiltInVizType("")).toBe(false);
     });
 
     it("should correctly identify all known WidgetVizTypes", () => {
       WidgetVizTypes.forEach((type) => {
-        expect(isWidgetVizType(type)).toBe(true);
+        expect(isBuiltInVizType(type)).toBe(true);
       });
     });
   });
@@ -641,7 +641,6 @@ describe("Zod Schemas from app.ts", () => {
       const shapeKeys = Object.keys(WidgetSchemaBase.shape).sort();
       expect(shapeKeys).toMatchInlineSnapshot(`
         [
-          "copilotParseAs",
           "dataUpdateDisplay",
           "description",
           "disableRetrievalForCopilot",
@@ -694,7 +693,6 @@ describe("Zod Schemas from app.ts", () => {
         staleTime: 10000,
         refetchInterval: 5000,
         runButton: true,
-        copilotParseAs: "structured" as const,
       };
       const result = WidgetSchemaBase.safeParse(fullWidget);
       expect(result.success).toBe(true);

@@ -4,6 +4,7 @@ import type { PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useJsonData } from "~/lib/api";
 import { useAuthStore } from "~/lib/state/auth";
+import { plainRequest } from "~/lib/utils/widgetRequest";
 import { HttpResponse, http, server, setupMSW } from "../../mocks/msw-utils";
 import "../../mocks/runtimeConfig";
 
@@ -44,7 +45,10 @@ describe("useJsonData bearer token on stored file URLs", () => {
     const { result } = renderHook(
       () =>
         useJsonData(
-          { url: `${BACKEND_URL}/app/files/some-file.csv`, asText: true },
+          {
+            request: plainRequest(`${BACKEND_URL}/app/files/some-file.csv`),
+            asText: true,
+          },
           { retry: false },
         ),
       { wrapper: createWrapper() },
@@ -64,7 +68,11 @@ describe("useJsonData bearer token on stored file URLs", () => {
     );
 
     const { result } = renderHook(
-      () => useJsonData({ url: "https://example.com/data" }, { retry: false }),
+      () =>
+        useJsonData(
+          { request: plainRequest("https://example.com/data") },
+          { retry: false },
+        ),
       { wrapper: createWrapper() },
     );
 

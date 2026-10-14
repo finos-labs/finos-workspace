@@ -12,6 +12,7 @@ import {
 } from "~/lib/api";
 import type { Selector } from "~/lib/state/app";
 import type { Source } from "~/lib/state/backendConnector";
+import { plainRequest } from "~/lib/utils/widgetRequest";
 import { Avatar as DSAvatar } from "../ds/atoms/Avatar";
 import { cn } from "../ds/utils";
 
@@ -114,8 +115,7 @@ export const Avatar = memo((props: AvatarProps) => {
 
   const queryOptions = useMemo<QueryOptions<string>>(
     () => ({
-      url: src ?? "",
-      endpointHeaders: headers,
+      request: src ? plainRequest(src, headers) : null,
       queryKey: [cacheKey],
       responseCb,
     }),

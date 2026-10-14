@@ -26,6 +26,12 @@ type LoadingElementProps = {
   failingUrl?: string;
   widgetId?: WidgetId;
   icon?: boolean | IconId;
+  /**
+   * Keep the children mounted and hide them under the loading or error state, instead of
+   * replacing them. A widget plugin's frame is its whole realm: unmounting it restarts
+   * the plugin.
+   */
+  keepMounted?: boolean;
 };
 
 interface ChildrenProps {
@@ -64,6 +70,7 @@ export const LoadingElement = forwardRef<HTMLElement, LoadingElementProps>(
       failingUrl,
       widgetId,
       icon = true,
+      keepMounted = false,
     } = props;
 
     const childrenExist = !!children;
@@ -83,8 +90,9 @@ export const LoadingElement = forwardRef<HTMLElement, LoadingElementProps>(
       );
     }, [props.className]);
 
+    let cover: ReactNode = null;
     if (isExcludedWidgetId(widgetId)) {
-      return (
+      cover = (
         <SearchResultsNotFound
           icon={true}
           iconClassName="text-ds-text-caption"
@@ -92,12 +100,10 @@ export const LoadingElement = forwardRef<HTMLElement, LoadingElementProps>(
           secondMessage={null}
         />
       );
-    }
-
-    if (failingUrl && !isMinimized) return <UnfetchableURL url={failingUrl} />;
-
-    if (errorMessage && !isMinimized) {
-      return (
+    } else if (failingUrl && !isMinimized) {
+      cover = <UnfetchableURL url={failingUrl} />;
+    } else if (errorMessage && !isMinimized) {
+      cover = (
         <SearchResultsNotFound
           icon={Boolean(icon)}
           iconClassName={typeof icon === "string" ? icon : ""}
@@ -107,11 +113,19 @@ export const LoadingElement = forwardRef<HTMLElement, LoadingElementProps>(
           {errorChildren}
         </SearchResultsNotFound>
       );
+    } else if (showLoading) {
+      cover = loadingElement;
     }
 
-    if (childrenExist && !showLoading) return children;
-
-    if (showLoading) return loadingElement;
+    if (keepMounted) {
+      return (
+        <>
+          {cover}
+          <div className={cover ? "hidden" : "contents"}>{children}</div>
+        </>
+      );
+    }
+    return cover ?? children;
   },
 );
 

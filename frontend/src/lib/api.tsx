@@ -1,7 +1,12 @@
-import { type UseQueryOptions, useQueries, useQuery } from "@tanstack/react-query";
+import { type UseQueryOptions, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useWidgetContext } from "~/components/Widget.context";
-import { cleanSearchParams, convertHeadersToRecord } from "~/lib/utils/widgetParams";
+import {
+  type BuiltRequest,
+  RequestProblemsError,
+  requestInit,
+  requestKey,
+} from "~/lib/utils/widgetRequest";
 import { REFRESH_WIDGET_INTERVAL } from "./constants";
 import { getConfig } from "./runtimeConfig";
 import { useAuthStore, useShallowAuthStore } from "./state/auth";
@@ -10,10 +15,7 @@ import { useShallowPermissionsStore } from "./state/permissions";
 import { resolveCronRefetchInterval } from "./utils/cronSchedule";
 import { toError } from "./utils/utils";
 
-export {
-  cleanSearchParams,
-  convertHeadersToRecord,
-} from "~/lib/utils/widgetParams";
+export { convertHeadersToRecord } from "~/lib/utils/widgetParams";
 
 function isBackendOrigin(url: string) {
   return url?.includes(getConfig().urls.backend);
@@ -36,11 +38,8 @@ export type TResponseCb<TData> = (
 ) => Promise<void>;
 
 export interface QueryOptions<TQueryFnData = unknown> {
-  url: string;
-  endpointHeaders?: Record<string, string>;
-  params?: { [key: string]: unknown };
-  method?: "GET" | "POST";
-  body?: object; // If the body is sent it is a POST request, otherwise it is a GET request
+  /** What to send (`widgetRequest.ts`); null sends nothing */
+  request: BuiltRequest | null;
   asText?: boolean; // If asText is true, the response will be returned as text instead of JSON
   responseCb?: TResponseCb<TQueryFnData>; // Custom resolve callback to handle the response before resolving the promise
   addBearerToken?: boolean; // Adds User Bearer token to the request Authorization header
@@ -59,11 +58,7 @@ export function useJsonData<
   options?: Omit<UseQueryOptions<TQueryFnData, TError, TData>, "queryKey">,
 ) {
   const {
-    url,
-    endpointHeaders,
-    params = {},
-    method = "GET",
-    body,
+    request,
     asText = false,
     responseCb,
     addBearerToken = true,
@@ -71,13 +66,10 @@ export function useJsonData<
     onError,
     ignoreRefresh = false,
   } = queryOptions;
-  // Convert endpointHeaders to Record format if necessary
   const userToken = useShallowAuthStore((authState) => authState.user?.token);
-  const { headers, newParams } = convertHeadersToRecord(endpointHeaders, params);
   const {
     widget: {
       id: uuId,
-      external,
       refreshQuery,
       staleTime,
       refetchInterval,
@@ -95,9 +87,8 @@ export function useJsonData<
       ? state.hasAccess(sourceId ?? "", (widgetId ?? "").replace(`${sourceName}-`, ""))
       : true,
   );
-  const removedApp = url === "" && external && sourceName;
-
-  const withAuth = addBearerToken && isBackendOrigin(url);
+  const withAuth =
+    addBearerToken && request?.ok && isBackendOrigin(request.request.url);
   const updateQueuedRefreshId = useShallowBackendConnectorStore(
     (state) => state.updateQueuedRefreshId,
   );
@@ -135,17 +126,10 @@ export function useJsonData<
     [asText, responseCb, onError, sourceId],
   );
 
-  // Clean the URL and add any query parameters
-  const cleanUrl = cleanSearchParams(url, newParams);
-  const headerKeys = Object.keys(headers || {});
-
   const finalQueryKey = queryKey ?? [
     "json",
     activeDashboardId ?? "",
-    cleanUrl || uuId,
-    method,
-    body ? JSON.stringify(body) : "",
-    headerKeys ? JSON.stringify(headerKeys) : "",
+    ...(request ? requestKey(request) : [uuId ?? ""]),
     ...(ignoreRefresh ? [] : [refreshQuery ?? 0]),
     hasAccess,
   ];
@@ -157,16 +141,18 @@ export function useJsonData<
         if (!hasAccess) {
           return reject(new Error("User does not have access to this widget"));
         }
+        if (!request) return reject(new Error("Nothing to request"));
+        // A param needs a value, or has one that cannot be sent: nothing goes out
+        if (!request.ok) return reject(new RequestProblemsError(request.problems));
 
-        fetch(cleanUrl, {
-          headers: {
-            ...headers,
-            ...(withAuth && userToken ? { Authorization: `Bearer ${userToken}` } : {}),
-          },
-          method,
-          signal,
-          body: body && method === "POST" ? JSON.stringify(body) : undefined,
-        })
+        fetch(
+          request.request.url,
+          requestInit(request.request, {
+            signal,
+            headers:
+              withAuth && userToken ? { Authorization: `Bearer ${userToken}` } : {},
+          }),
+        )
           .then(async (r) => {
             const noContent = r.status === 204;
             if (!r.ok || noContent) {
@@ -206,11 +192,13 @@ export function useJsonData<
             reject(error);
           });
       }),
-    enabled: !removedApp && !!cleanUrl && hasAccess,
     staleTime: staleTime ?? 1000 * 60 * 5,
-    retry: 1,
+    retry: (failures, error) =>
+      !(error instanceof RequestProblemsError) && failures < 1,
     retryDelay: 1000,
     ...(options ?? {}),
+    // Nothing to request, or no access: the caller cannot turn it on
+    enabled: !!request && hasAccess && options?.enabled !== false,
     refetchInterval: resolveCronRefetchInterval(
       refetchInterval,
       options?.refetchInterval ?? REFRESH_WIDGET_INTERVAL,
@@ -233,135 +221,5 @@ export function fetchWithToken(
       Authorization: `Bearer ${token}`,
     },
     signal,
-  });
-}
-
-export function useMultipleQueries<
-  TQueryFnData = unknown,
-  TError = Error,
-  TData = TQueryFnData,
->(
-  queriesOptions: QueryOptions<TQueryFnData>[],
-  options?: Omit<UseQueryOptions<TQueryFnData, TError, TData>, "queryKey">,
-) {
-  const {
-    widget: { id: uuId, refreshQuery, staleTime, refetchInterval } = {},
-    activeDashboardId,
-  } = useWidgetContext(true);
-
-  const queries = queriesOptions.map((queryOption) => {
-    const {
-      url,
-      endpointHeaders,
-      params = {},
-      method = "GET",
-      body,
-      asText = false,
-      responseCb,
-      addBearerToken = true,
-      queryKey,
-      onError,
-    } = queryOption;
-    // Convert endpointHeaders to Record format if necessary
-    const userToken = "";
-    const { headers, newParams } = convertHeadersToRecord(endpointHeaders, params);
-    const withAuth = addBearerToken && isBackendOrigin(url);
-
-    const resolveCallback = async (
-      response: Response,
-      resolve: (data: TQueryFnData | Promise<TQueryFnData>) => void,
-      reject: (reason?: unknown) => void,
-    ) => {
-      if (responseCb) {
-        try {
-          await responseCb(response, resolve, reject);
-        } catch (error) {
-          onError?.(toError(error));
-          reject(error);
-        }
-        return;
-      }
-      resolve(asText ? response.text() : response.json());
-    };
-
-    // Clean the URL and add any query parameters
-    const cleanUrl = cleanSearchParams(url, newParams);
-
-    const finalQueryKey = queryKey ?? [
-      "json",
-      activeDashboardId ?? "",
-      cleanUrl || uuId,
-      body ? JSON.stringify(body) : "",
-      refreshQuery ?? 0,
-    ];
-
-    return {
-      queryKey: finalQueryKey,
-      queryFn: ({ signal }) =>
-        new Promise((resolve, reject) =>
-          fetch(cleanUrl, {
-            headers: {
-              ...headers,
-              ...(withAuth && userToken
-                ? { Authorization: `Bearer ${userToken}` }
-                : {}),
-            },
-            method,
-            signal,
-            body: method === "POST" ? JSON.stringify(body) : undefined,
-          })
-            .then(async (r) => {
-              const noContent = r.status === 204;
-              if (!r.ok || noContent) {
-                let error: ApiErrorBody | undefined;
-
-                try {
-                  error = await r.json();
-                } catch (_) {
-                  return reject(r.statusText);
-                }
-
-                const warnings = error?.warnings;
-
-                if (warnings?.length)
-                  for (const warning of warnings) console.warn(warning);
-
-                const errorDetail =
-                  error?.detail || error?.message || error?.error || error;
-
-                const errorMessage =
-                  typeof errorDetail === "string"
-                    ? errorDetail
-                    : JSON.stringify(errorDetail);
-
-                const errorObj = new Error(errorMessage, {
-                  cause: error?.error_kind || error?.status || "unknown",
-                });
-
-                onError?.(errorObj);
-                return reject(errorObj);
-              }
-
-              resolveCallback(r, resolve, reject);
-            })
-            .catch((error) => reject(error)),
-        ),
-      enabled: !!cleanUrl,
-      staleTime: staleTime ?? 1000 * 60 * 5,
-      retry: 1,
-      retryDelay: 1000,
-      ...(options ?? {}),
-      refetchInterval: resolveCronRefetchInterval(
-        refetchInterval,
-        options?.refetchInterval ?? REFRESH_WIDGET_INTERVAL,
-      ),
-    } as UseQueryOptions<TQueryFnData, TError, TData>;
-  });
-
-  const { refetchInterval: _, ...restOptions } = options ?? {};
-
-  return useQueries({
-    queries,
-    ...restOptions,
   });
 }

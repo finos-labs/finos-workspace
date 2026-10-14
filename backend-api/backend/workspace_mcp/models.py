@@ -255,6 +255,13 @@ class GetWidgetSchemaCommand(Model):
     widget_id: str
 
 
+class GetWidgetsSchemaCommand(Model):
+    """Fetch the widgets.json JSON Schema in force for the signed-in user."""
+
+    command: Literal["get_widgets_schema"]
+    request_id: str | None = None
+
+
 class GetParamOptionsCommand(Model):
     """Fetch parameter options for widget input arguments."""
 
@@ -466,6 +473,7 @@ type WorkspaceCommand = Annotated[
     GetWidgetDataCommand
     | ListAvailableWidgetsCommand
     | GetWidgetSchemaCommand
+    | GetWidgetsSchemaCommand
     | GetParamOptionsCommand
     | ReadWidgetCommand
     | CreateWidgetCommand

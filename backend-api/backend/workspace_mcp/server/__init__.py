@@ -16,6 +16,7 @@ from fastmcp.server.auth import AuthProvider
 from starlette.types import Lifespan
 
 from workspace_mcp.app_builder import register_app_builder_resources
+from workspace_mcp.models import GetWidgetsSchemaCommand
 from workspace_mcp.server._guidance import SERVER_INSTRUCTIONS, describe_tool
 from workspace_mcp.server._helpers import (
     RESULT_REF_URI_TEMPLATE,
@@ -43,8 +44,14 @@ from workspace_mcp.server.tools import (
 )
 from workspace_mcp.state import BridgeSessionManager, BrowserUnavailableError
 
+# A resource whose body comes from the user's Workspace session, read when it is asked for
+LIVE_RESOURCE_TAG = "live"
+WIDGETS_JSON_SCHEMA_URI = "workspace://specs/widgets-json-schema"
+
 __all__ = [
+    "LIVE_RESOURCE_TAG",
     "SERVER_INSTRUCTIONS",
+    "WIDGETS_JSON_SCHEMA_URI",
     "ToolResponse",
     "create_mcp_server",
     "data_source_payloads",
@@ -147,6 +154,25 @@ def create_mcp_server(
         return result.model_dump(mode="json")
 
     runner: CommandRunner = run
+
+    @server.resource(
+        WIDGETS_JSON_SCHEMA_URI,
+        name="widgets.json JSON Schema",
+        description=(
+            "The JSON Schema a backend's widgets.json is validated against for the "
+            "signed-in user: the built-in types and the plugin types enabled for their "
+            "organization, every key and value closed. Read from the user's Workspace "
+            "session, so it needs the browser connected."
+        ),
+        mime_type="application/schema+json",
+        tags={LIVE_RESOURCE_TAG},
+    )
+    async def widgets_json_schema() -> str:
+        """Serve the composed widgets.json schema the browser validates backends with."""
+        result = await run(GetWidgetsSchemaCommand(command="get_widgets_schema"))
+        if not result["ok"]:
+            raise ResourceError(result["message"])
+        return json.dumps(result["data"]["schema"])
 
     snapshot_tools.register(server, runner)
     widgets_tools.register(server, runner, offload_store)

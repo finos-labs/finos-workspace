@@ -45,6 +45,8 @@ export type EllipsisDropdownMenuProps = {
   dispatch: (value: Partial<DraggableState>) => void;
   settings?: EllipsisSettings;
   exportFns?: ExportFns;
+  /** Export decided by the widget itself: called instead of offering `exportFns` */
+  onExport?: () => void;
   extraSettings?: ExtraActionT[];
   isMinimized?: boolean;
   onMinimizeToggle?: () => void;

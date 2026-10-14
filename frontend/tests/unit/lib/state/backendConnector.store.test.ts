@@ -2,6 +2,9 @@ import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
+import { installWidgetsSchemaFixture } from "../../../mocks/widgetsSchema";
+
+installWidgetsSchemaFixture();
 
 vi.mock("sonner", () => ({
   toast: {
@@ -22,7 +25,9 @@ const mockSource: Source = {
   endpointHeaders: [],
 };
 
-function mockBackendResponsesWithUnrecognizedWidgetKey() {
+// An unknown key of widgets.json is an error of its widget (the schema is closed); those
+// of apps.json are reported apart, with this warning
+function mockBackendResponsesWithUnrecognizedAppKey() {
   mockFetch
     .mockResolvedValueOnce({
       ok: true,
@@ -34,14 +39,21 @@ function mockBackendResponsesWithUnrecognizedWidgetKey() {
             endpoint: "/test-widget",
             type: "html",
             params: [],
-            unsupported_widget_option: true,
           },
         }),
       headers: new Headers(),
     })
     .mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve([]),
+      url: "https://test-backend.com/apps.json",
+      json: () =>
+        Promise.resolve([
+          {
+            name: "Test App",
+            tabs: { main: { id: "main", name: "Main", layout: [] } },
+            unsupported_app_option: true,
+          },
+        ]),
       headers: new Headers(),
     })
     .mockResolvedValueOnce({
@@ -69,7 +81,7 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
   });
 
   it("shows warning toast during updateApiSource when unrecognized keys are detected", async () => {
-    mockBackendResponsesWithUnrecognizedWidgetKey();
+    mockBackendResponsesWithUnrecognizedAppKey();
 
     const result = await useBackendConnectorStore
       .getState()
@@ -77,13 +89,8 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
 
     expect(result.unrecognizedKeysMessage).toEqual([
       {
-        label: "[widgets.json]",
-        entries: [
-          {
-            name: "Test Widget",
-            keys: ["unsupported_widget_option"],
-          },
-        ],
+        label: "[apps.json]",
+        entries: [{ name: "Test App", keys: ["unsupported_app_option"] }],
       },
     ]);
     expect(toast.warning).toHaveBeenCalledWith(
@@ -95,7 +102,7 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
   });
 
   it("shows warning toast during updateApiSources when showToastOnWarning is true", async () => {
-    mockBackendResponsesWithUnrecognizedWidgetKey();
+    mockBackendResponsesWithUnrecognizedAppKey();
 
     const result = await useBackendConnectorStore
       .getState()

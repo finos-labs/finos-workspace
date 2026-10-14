@@ -16,6 +16,7 @@ import {
 import { entityAdminKeys, useEntityEntitlement } from "~/hooks/useEntityAdmin";
 import type { Entity, EntityType } from "~/types/entity.type";
 import { EntityBaseFields, EntityEntitlementFields } from "./EntityFields";
+import { EntityPluginsLine } from "./EntityPluginsLine";
 import {
   type EditEntityFormValues,
   editEntityFormSchema,
@@ -113,6 +114,7 @@ export function EntityEditDialog({
           </TabsList>
           <TabsContent value="base" className="space-y-6">
             <EntityBaseFields entityTypeOptions={entityTypeOptions} />
+            <EntityPluginsLine entityUuid={entity.uuid} />
           </TabsContent>
           <TabsContent value="entitlements" className="space-y-6">
             {entitlementQuery.isError ? (

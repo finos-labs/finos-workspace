@@ -687,7 +687,7 @@ class TestRoleAuditTypes:
 
     def test_role_resource_type_all_members(self):
         """RoleResourceType should have all expected members"""
-        expected_types = {"ROLE", "BACKEND", "FILE", "PROMPT", "USER"}
+        expected_types = {"ROLE", "BACKEND", "FILE", "PROMPT", "USER", "WIDGET_PLUGIN"}
         actual_types = {member.name for member in RoleResourceType}
         assert actual_types == expected_types
 

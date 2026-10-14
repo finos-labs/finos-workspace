@@ -43,6 +43,9 @@ export function useFilterWidgets(widgets: WidgetItem[], state: SearchDialogState
       .filter((widget) => {
         if (widget?.external && (selectedOption === "external" || showAll)) return true;
 
+        // A standalone widget of a widget plugin the user may use
+        if (widget?.plugin && showAll) return true;
+
         if (
           (selectedOption === "shared" || showAll) &&
           ["shared files", "shared backends"].includes(widget?.category?.toLowerCase())

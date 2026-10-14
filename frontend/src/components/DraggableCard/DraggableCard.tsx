@@ -39,6 +39,8 @@ export interface DraggableCardProps extends NavBarProps {
   failingUrl?: undefined | string;
   isBlocked?: boolean;
   forceAutoHideNavbar?: boolean;
+  /** Hide the content under the loading and error states instead of unmounting it */
+  keepMounted?: boolean;
 }
 
 function PermissionsMask({
@@ -128,6 +130,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
       disableRetrievalForCopilot = false,
       isBlocked = false,
       forceAutoHideNavbar = false,
+      keepMounted = false,
       ...navbarProps
     } = props;
 
@@ -274,6 +277,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
             }
             failingUrl={failingUrl}
             widgetId={widgetRef?.current?.widgetId}
+            keepMounted={keepMounted}
           >
             <div
               id={`widget-content-${widgetRef?.current?.id}`}

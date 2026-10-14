@@ -225,7 +225,7 @@ describe("RenderParamsForRow", () => {
         isLoading: false,
         isFetching: false,
         isError: false,
-        data: String(query.queryKey[0]).includes("rss_providers")
+        data: query.queryKey.join(" ").includes("rss_providers")
           ? [
               { label: "Wire", value: "wire" },
               { label: "BBC", value: "bbc" },
@@ -316,7 +316,7 @@ describe("RenderParamsForRow", () => {
           isFetching: false,
           isError: false,
           isSuccess: true,
-          data: String(query.queryKey[0]).includes("rss_providers")
+          data: query.queryKey.join(" ").includes("rss_providers")
             ? [
                 { label: "Wire", value: "wire" },
                 { label: "BBC", value: "bbc" },

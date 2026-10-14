@@ -29,7 +29,7 @@ import { DEFAULT_TICKERS } from "../types";
 import {
   ExternalWidgetSchema,
   InternalWidgetSchema,
-  isWidgetVizType,
+  isWellFormedVizType,
 } from "../types/app";
 import {
   ensureArray,
@@ -39,12 +39,16 @@ import {
 } from "./utils";
 import { getJsonWidget, getSupportedAssetClasses } from "./widget";
 import {
-  cleanSearchParams,
-  convertHeadersToRecord,
   createParamDefs,
   createWidgetEndpoint,
   createWidgetInitParams,
 } from "./widgetParams";
+import {
+  type BuiltRequest,
+  buildOptionsRequest,
+  requestInit,
+  requestKey,
+} from "./widgetRequest";
 
 export function checkIfWidgetsHaveMainTickerAndAreTheSame(widgets: Widget[]) {
   let mainTicker: Ticker | undefined;
@@ -678,23 +682,17 @@ export function getGroupInfo(group: Group | null, paramDef?: ParamDef) {
   return output;
 }
 
-export function getEndpointParamRequestArgs(
+/** The option lookup of a widget's `endpoint` param, with the widget's current values. */
+export function endpointOptionsRequest(
   widget: Widget,
   param: ParamDefT<"endpoint">,
   currentParams: Record<string, unknown>,
-) {
-  const { headers, newParams } = convertHeadersToRecord(widget.endpoint?.headers ?? {});
-
-  for (const [key, value] of Object.entries(param.optionsParams ?? {})) {
-    if (value?.toString()?.startsWith("$")) {
-      newParams[key] = currentParams?.[value.slice(1)];
-    } else newParams[key] = value;
-  }
-
-  const url = cleanSearchParams(param.optionsEndpoint, newParams);
-  const reqInit = { headers } as RequestInit;
-
-  return { url, reqInit };
+): BuiltRequest | null {
+  return buildOptionsRequest(
+    param,
+    { params: widget.params ?? [], values: currentParams },
+    widget.endpoint,
+  );
 }
 
 export function getEndpointParams(widget: Partial<Widget>): ParamDefT<"endpoint">[] {
@@ -845,35 +843,21 @@ function _getWidgetParamsWithGroupMap(widget: Widget, groupsMap: Map<string, Gro
   return currentParams;
 }
 
-function _getEndpointParamRequestCacheKey(url: string, reqInit: RequestInit) {
-  const headers =
-    reqInit.headers instanceof Headers
-      ? Object.fromEntries(reqInit.headers.entries())
-      : (reqInit.headers ?? {});
-
-  return JSON.stringify({
-    url,
-    method: reqInit.method ?? "GET",
-    headers,
-    body: reqInit.body ?? "",
-  });
-}
-
 async function _fetchEndpointParamOptions(
   widget: Widget,
   param: ParamDefT<"endpoint">,
   currentParams: Record<string, unknown>,
   requestCache?: EndpointParamOptionsRequestCache,
 ) {
-  if (!param.optionsEndpoint) return [];
+  const built = endpointOptionsRequest(widget, param, currentParams);
+  if (!built?.ok) return [];
 
-  const { url, reqInit } = getEndpointParamRequestArgs(widget, param, currentParams);
-  const cacheKey = _getEndpointParamRequestCacheKey(url, reqInit);
+  const cacheKey = JSON.stringify(requestKey(built));
   const cachedRequest = requestCache?.get(cacheKey);
   if (cachedRequest) return cachedRequest;
 
   const request = (async () => {
-    const response = await fetch(url, reqInit);
+    const response = await fetch(built.request.url, requestInit(built.request));
     if (!response.ok) return [];
 
     const data = await response.json();
@@ -1517,14 +1501,11 @@ export function getWidgetData(params: {
     showTitle: widget?.showTitle !== false,
     exportable: widget?.exportable !== false,
     disableRetrievalForCopilot: widget?.disableRetrievalForCopilot,
+    ...(widget.plugin ? { plugin: widget.plugin } : {}),
   };
 
-  if (isWidgetVizType(widget.type)) {
+  if (isWellFormedVizType(widget.type)) {
     finalWidgetData.type = widget.type;
-  }
-
-  if (widget.defaultViz) {
-    finalWidgetData.type = widget.defaultViz;
   }
 
   if (widget.external) {

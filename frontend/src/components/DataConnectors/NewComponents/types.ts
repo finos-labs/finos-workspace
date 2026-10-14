@@ -1,6 +1,6 @@
 import type { IconId } from "~/components/Icon.types";
 import type { BackendTemplate } from "~/lib/state/backendConnector";
-import type { WidgetType } from "~/utils/zodForms";
+import type { WidgetsType } from "~/utils/zodForms";
 
 export type EndpointHeader = {
   key?: string;
@@ -57,7 +57,7 @@ export type BackendItem = BaseItem & {
   id: string;
   selectionId: string;
   templates?: BackendTemplate[];
-  widgets?: (WidgetType & { selectionId: string; shared?: boolean })[];
+  widgets?: (WidgetsType[string] & { selectionId: string; shared?: boolean })[];
 };
 
 export type ItemType<T extends POSSIBLE_SOURCES> = T extends "file"

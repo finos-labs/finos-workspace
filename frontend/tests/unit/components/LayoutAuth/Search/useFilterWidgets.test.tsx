@@ -40,6 +40,25 @@ describe("useFilterWidgets", () => {
       expect(result.current.length).toBe(2);
     });
 
+    it("lists standalone plugin widgets under All, not under My data or Shared", () => {
+      const widgets = [
+        createMockWidget({
+          widgetId: "plugin:chart-kit:clock",
+          name: "Clock",
+          category: "Chart kit",
+          plugin: { id: "chart-kit", widget: "clock" },
+        }),
+      ];
+      const listed = (selectedOption: SearchDialogState["selectedOption"]) =>
+        renderHook(() =>
+          useFilterWidgets(widgets, { ...defaultState, selectedOption }),
+        ).result.current.map((widget) => widget.name);
+
+      expect(listed("all")).toEqual(["Clock"]);
+      expect(listed("external")).toEqual([]);
+      expect(listed("shared")).toEqual([]);
+    });
+
     it("filters widgets by selected category", () => {
       const widgets = [
         createMockWidget({

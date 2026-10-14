@@ -1,7 +1,8 @@
-import type {
-  ActivityLogEntry,
-  RoleAuditLogReturn,
-  RoleT,
+import {
+  type ActivityLogEntry,
+  ROLE_RESOURCE_LABELS,
+  type RoleAuditLogReturn,
+  type RoleT,
 } from "~/components/AdminRoles/types";
 import type { CopilotModelGrant, McpGrant } from "~/lib/state/copilotAccess";
 import { apiClient } from "./api";
@@ -249,7 +250,8 @@ export async function getEntityRoleActivityLog() {
 
   // transform the data to ActivityLogEntry
   const activityLog = data.map((log) => {
-    const activityType = `${log.action.charAt(0).toUpperCase()}${log.action.slice(1)} ${log.resource_type}`;
+    const resource = ROLE_RESOURCE_LABELS[log.resource_type] ?? log.resource_type;
+    const activityType = `${log.action.charAt(0).toUpperCase()}${log.action.slice(1)} ${resource}`;
     return {
       uuid: log.uuid,
       role: log.role_name,

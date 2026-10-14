@@ -10,7 +10,6 @@ import {
 import {
   detectUnrecognizedKeys,
   formatUnrecognizedKeysAsText,
-  KNOWN_WIDGET_KEYS,
   resetSchema,
   totpSchema,
   type UnrecognizedKeysReport,
@@ -267,23 +266,6 @@ describe("resetSchema", () => {
       });
       expect(result.success).toBe(false);
     });
-  });
-});
-
-describe("KNOWN_WIDGET_KEYS", () => {
-  it("contains core widget schema keys", () => {
-    for (const key of [
-      "name",
-      "endpoint",
-      "type",
-      "staleTime",
-      "refetchInterval",
-      "runButton",
-      "params",
-      "gridData",
-    ]) {
-      expect(KNOWN_WIDGET_KEYS.has(key)).toBe(true);
-    }
   });
 });
 

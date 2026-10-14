@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Source } from "~/lib/state/backendConnector";
 import { validateBackend } from "~/lib/utils/validateBackend";
+import { installWidgetsSchemaFixture } from "../../../mocks/widgetsSchema";
+
+installWidgetsSchemaFixture();
 
 // Mock fetch globally
 const mockFetch = vi.fn();

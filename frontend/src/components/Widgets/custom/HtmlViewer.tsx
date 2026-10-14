@@ -10,6 +10,7 @@ import { IFRAME_SRCDOC_SANDBOX_ATTRIBUTES } from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn, triggerCustomEvent, useEventListener } from "~/lib/utils";
+import { buildWidgetRequest, requestKey } from "~/lib/utils/widgetRequest";
 import {
   parseIframeParamsMessage,
   stringifyParamValue,
@@ -90,39 +91,22 @@ export default function HtmlViewer() {
   const [rawData, setRawData] = useState<unknown>(null);
 
   const options = useMemo<QueryOptions<string>>(() => {
-    const newParams = Object.fromEntries(
-      Object.entries({
-        ...(widget?.endpoint?.query ?? {}),
-        ...(widget?.storage?.params ?? {}),
-      }).filter(([_key, value]) => value !== "" && value !== undefined),
-    );
-
-    newParams.theme = theme;
-
+    const request = buildWidgetRequest(widget, { theme });
     return {
-      url: widget.endpoint?.url ?? "",
-      endpointHeaders: widget.endpoint?.headers ?? {},
-      method: widget.endpoint?.method ?? "GET",
-      params: newParams,
+      request,
       asText: true,
-      queryKey: widget.runButton
-        ? [
-            "html",
-            widget.id,
-            widget.endpoint?.url,
-            widget.endpoint?.method ?? "GET",
-            JSON.stringify(newParams),
-            JSON.stringify(widget.endpoint?.headers ?? {}),
-            widget.refreshQuery ?? 0,
-          ]
-        : undefined,
+      queryKey:
+        widget.runButton && request
+          ? ["html", widget.id, ...requestKey(request), widget.refreshQuery ?? 0]
+          : undefined,
     };
   }, [
     widget.id,
     widget.runButton,
     widget.refreshQuery,
-    widget?.endpoint,
-    widget?.storage?.params,
+    widget.endpoint,
+    widget.params,
+    widget.storage?.params,
     theme,
   ]);
 
@@ -275,17 +259,13 @@ export default function HtmlViewer() {
     retryDelay: 1000,
   });
 
-  const rawDataOptions = useMemo<QueryOptions>(() => {
-    // The raw query is not run without the flag, but it still needs valid options.
-    const { queryKey: _queryKey, responseCb: _responseCb, ...baseOptions } = options;
-    if (!hasRawFlag) return baseOptions;
-
-    return {
-      ...baseOptions,
-      params: { ...baseOptions.params, raw: true },
-      asText: false, // Raw data should be JSON, not text
-    };
-  }, [options, hasRawFlag]);
+  // The raw query is not run without the flag; raw data is JSON, not text
+  const rawDataOptions = useMemo<QueryOptions>(
+    () => ({
+      request: hasRawFlag ? buildWidgetRequest(widget, { theme, raw: "true" }) : null,
+    }),
+    [hasRawFlag, widget.endpoint, widget.params, widget.storage?.params, theme],
+  );
 
   // The raw data view sends `raw: true` to the backend; the widget keeps showing the HTML.
   const { data: rawDataResponse } = useJsonData<unknown>(rawDataOptions, {

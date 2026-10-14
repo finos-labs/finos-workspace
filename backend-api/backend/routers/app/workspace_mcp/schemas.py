@@ -73,6 +73,7 @@ class WorkspaceCommandResult(Model):
     message: str
     data: Any | None = None
     error: BridgeError | None = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 class BrowserCommandResultMessage(Model):

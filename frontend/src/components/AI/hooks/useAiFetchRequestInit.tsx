@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
+import type { WidgetId } from "~/components/Widgets";
 import {
   ALL_AI_FEATURES,
   getAiApiUrl,
@@ -18,11 +19,17 @@ import {
 } from "~/lib/state/copilot";
 import { getCopilotAccess, selectModelId } from "~/lib/state/copilotAccess";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
-import { type AgentToolConfig, useShallowMcpToolsStore } from "~/lib/state/mcpTools";
+import {
+  type AgentToolConfig,
+  useMcpToolsStore,
+  useShallowMcpToolsStore,
+} from "~/lib/state/mcpTools";
 import { useShallowSkillsLibraryStore } from "~/lib/state/skillsLibrary";
 import { extractUrlsFromText } from "~/lib/utils";
+import { withMcpLinks } from "~/lib/utils/mcpLink";
 import type { DashboardInfoT } from "~/lib/utils/workspaceDashboard";
 import type { SkillCatalogEntry, SkillPayload } from "~/types/auth.type";
+import { useGetWidgetsStore } from "./useGetAppWidgets";
 import { useGetCopilotRequestHeaders } from "./useGetCopilotRequestHeaders";
 import { useGetCustomApiKeys } from "./useGetCustomApiKeys";
 import { useGetFinalMessagesAndWidgets } from "./useGetFinalMessagesAndWidgets";
@@ -243,11 +250,14 @@ export function useAiFetchRequestInit() {
 
       const payload: HumanQueryPayload = {
         model: selectedModelId,
-        widgets: {
-          primary: expandedPrimaryWidgets,
-          secondary: expandedSecondaryWidgets,
-          extra: extraWidgetsEnabled && extraWidgetsCap ? expandedAllWidgets : [],
-        },
+        widgets: linkRows(
+          {
+            primary: expandedPrimaryWidgets,
+            secondary: expandedSecondaryWidgets,
+            extra: extraWidgetsEnabled && extraWidgetsCap ? expandedAllWidgets : [],
+          },
+          mcpToolsEnabled ? enabledTools : [],
+        ),
         messages: finalMessages,
         context: context,
         urls: extractUrls(incomingMessage, MAX_COPILOT_LINKS),
@@ -371,11 +381,14 @@ export function useAiFetchRequestInit() {
 
       const payload: FunctionCallPayload = {
         model: selectedModelId,
-        widgets: {
-          primary: expandedPrimaryWidgets,
-          secondary: expandedSecondaryWidgets,
-          extra: extraWidgetsEnabled && extraWidgetsCap ? expandedAllWidgets : [],
-        },
+        widgets: linkRows(
+          {
+            primary: expandedPrimaryWidgets,
+            secondary: expandedSecondaryWidgets,
+            extra: extraWidgetsEnabled && extraWidgetsCap ? expandedAllWidgets : [],
+          },
+          mcpToolsEnabled ? enabledTools : [],
+        ),
         messages: finalMessages,
         context: context,
         api_keys: customApiKeys,
@@ -527,6 +540,24 @@ function mutuallyExclude(
     acc.push(newGroup);
     return acc;
   }, [] as CopilotWidget[][]);
+}
+
+/** Each row of a widget whose MCP link is active gains it (WIDGETS-JSON 5.4). */
+function linkRows(widgets: CopilotWidgets, tools: AgentToolConfig[]): CopilotWidgets {
+  if (!tools.length) return widgets;
+  const { servers } = useMcpToolsStore.getState();
+  const { getAppWidget } = useGetWidgetsStore.getState();
+  const link = (rows: CopilotWidget[]) =>
+    withMcpLinks(rows, tools, servers, (row) =>
+      row.origin && row.widget_id
+        ? getAppWidget(row.widget_id as WidgetId, row.origin)
+        : undefined,
+    );
+  return {
+    primary: link(widgets.primary),
+    secondary: link(widgets.secondary),
+    extra: link(widgets.extra),
+  };
 }
 
 function expandTabsToWidgets(widgets: CopilotWidget[]): CopilotWidget[] {

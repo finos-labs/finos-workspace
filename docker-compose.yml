@@ -105,6 +105,12 @@ services:
     volumes:
       - ./backend-api/backend/user_create.json:/opt/code/user_create.json:ro
       - storage:/opt/code/local_storage
+      # Widget plugins (docs/widget-plugins/README.md): mount the directory that holds the
+      # packages, read-only, and set WIDGET_PLUGINS_DIR=/opt/widget-plugins in envs/.env.
+      # - <plugins directory>:/opt/widget-plugins:ro
+      # Optional: values of the secrets plugins declare, one file per secret at
+      # <plugin-id>/<secret-name>, with WIDGET_PLUGIN_SECRETS_DIR=/run/secrets/widget-plugins.
+      # - <plugin secrets directory>:/run/secrets/widget-plugins:ro
     healthcheck:
       test:
         [

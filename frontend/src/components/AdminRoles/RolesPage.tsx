@@ -16,6 +16,7 @@ import RoleCopilotAccessDialog from "./RoleCopilotAccessDialog";
 import { RoleDialog } from "./RoleDialog";
 import RoleMembersCell from "./RoleMembersCell";
 import RolePermissionsDialog from "./RolePermissionsDialog";
+import RolePluginAccessDialog from "./RolePluginAccessDialog";
 import type { RoleT } from "./types";
 
 interface RolesPageProps {
@@ -35,6 +36,7 @@ type RolesPageState = {
   permOpen: boolean;
   permRole: RoleT | null;
   copilotAccessRole: RoleT | null;
+  pluginAccessRole: RoleT | null;
 };
 
 export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
@@ -49,6 +51,7 @@ export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
     permOpen: false,
     permRole: null,
     copilotAccessRole: null,
+    pluginAccessRole: null,
   });
 
   const deleteMutation = useMutation({
@@ -84,6 +87,11 @@ export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
 
   const handleEditCopilotAccess = useCallback(
     (role: RoleT) => dispatch({ copilotAccessRole: role }),
+    [],
+  );
+
+  const handleEditPluginAccess = useCallback(
+    (role: RoleT) => dispatch({ pluginAccessRole: role }),
     [],
   );
 
@@ -162,6 +170,15 @@ export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
             <Icon id="sparkles-icon" className="size-3.5" />
           </button>
         </Tooltip>
+        <Tooltip position="top" message="Widget plugins">
+          <button
+            aria-label="Widget plugins"
+            className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center"
+            onClick={() => handleEditPluginAccess(role)}
+          >
+            <Icon id="cube-01" className="size-3.5" />
+          </button>
+        </Tooltip>
         <Tooltip position="top" message="Edit role">
           <button
             className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center"
@@ -180,7 +197,13 @@ export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
         </Tooltip>
       </>
     ),
-    [handleEditPermissions, handleEditCopilotAccess, handleEdit, handleDelete],
+    [
+      handleEditPermissions,
+      handleEditCopilotAccess,
+      handleEditPluginAccess,
+      handleEdit,
+      handleDelete,
+    ],
   );
 
   if (isLoading) {
@@ -278,6 +301,12 @@ export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
         open={!!state.copilotAccessRole}
         onClose={() => dispatch({ copilotAccessRole: null })}
         role={state.copilotAccessRole}
+      />
+
+      <RolePluginAccessDialog
+        open={!!state.pluginAccessRole}
+        onClose={() => dispatch({ pluginAccessRole: null })}
+        role={state.pluginAccessRole}
       />
 
       <ConfirmDialog

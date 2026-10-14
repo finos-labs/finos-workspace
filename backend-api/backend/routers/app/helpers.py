@@ -1901,6 +1901,13 @@ def create_details_message(action: str, resource_type: str, details: dict) -> st
 
         return f"{prefix_map[resource_type]} {suffix}"
 
+    # Handle plugin widgets a role grants
+    if action in {"assign", "remove"} and resource_type == "widget_plugin":
+        widget = details.get("widget_id")
+        what = "every widget" if widget in {None, "*"} else f"widget '{widget}'"
+        verb = "Granted" if action == "assign" else "Stopped granting"
+        return f"{verb} {what} of plugin '{details.get('name', '')}'."
+
     # Handle user role assignments
     if action in {"add", "remove"} and resource_type == "user":
         message_map = {

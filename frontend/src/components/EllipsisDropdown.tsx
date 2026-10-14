@@ -18,7 +18,8 @@ import { useWidgetContext } from "./Widget.context";
 const excelAddInEnabled = import.meta.env.VITE_EXCEL_ADD_IN_ENABLED === "true";
 
 export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
-  const { dispatch, settings, exportFns, isMinimized, onMinimizeToggle } = props;
+  const { dispatch, settings, exportFns, onExport, isMinimized, onMinimizeToggle } =
+    props;
 
   const extraSettings = useMemo<ExtraActionT[]>(
     () => props.extraSettings || [],
@@ -164,6 +165,10 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
             })}
             disabled={!isExportable}
             onSelect={() => {
+              if (onExport) {
+                onExport();
+                return;
+              }
               setExportWidgetData({
                 possibleExportFormats: exportFns ? exportFunctions : [],
                 widgetId: widget.id,
@@ -186,6 +191,7 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
     isShared,
     exportFunctions,
     exportFns,
+    onExport,
     setExportWidgetData,
     dispatch,
     duplicateWidgetCallback,

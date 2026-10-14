@@ -3,6 +3,11 @@ import type { Layout } from "react-grid-layout";
 import type { InnerTab } from "~/lib/state/app";
 import type { ArtifactT, Citation, QuoteBoundingBox } from "~/lib/state/copilot";
 import type { EditorLanguage, WidgetVizType } from "~/lib/types/app";
+import type {
+  HttpMethod,
+  McpToolContractT,
+  ParamLocation,
+} from "~/lib/types/widgetsContract";
 import type { DateModifierValue } from "~/lib/utils/widgetParams";
 import type { ConnectionType } from "../lib/state/backendConnector";
 import { useGetAppWidgets } from "./AI/hooks/useGetAppWidgets";
@@ -141,12 +146,10 @@ export type Widget = {
   // biome-ignore format: off
   widgetType?: "backend" | "file" | "html"; // Type of widget
   raw?: boolean; // Indicates if the widget supports raw data toggle.
-  /** Backend widgets that front an MCP tool declare which one, so a call to that tool can cite the widget. */
-  mcp_tool?: { mcp_server?: string; tool_id?: string };
+  /** The MCP tool of the widget's own backend the agent queries it with (WIDGETS-JSON 5) */
+  mcp_tool?: McpToolContractT;
   imgUrl?: string; // Image URL for the widget - will show on preview when hovering in search/add widget menu
   innerTab?: string; // if it's from a template it may have a tab assigned. e.g., equity template
-  /** @internal only available before widget {@link useGetAppWidgets | creation} */
-  readonly defaultViz?: WidgetVizType; // Default visualization for the widget. (backward compatibility)
 
   // 🔹 Layout / Grouping
   gridData?: GridData; // Grid data for the widget.
@@ -172,6 +175,8 @@ export type Widget = {
     mainTicker?: Ticker;
     /** Nested reference to the data used in the widget. */
     dataKey?: string;
+    /** `data.<type>`: the configuration of a plugin-rendered type, defined by its plugin. */
+    [vizType: string]: unknown;
   };
 
   // 🔹 API / Data Fetching
@@ -188,7 +193,6 @@ export type Widget = {
       [key: string]: string; // Query for the endpoint.
     };
   };
-  endpointMethod?: "GET" | "POST"; // Endpoint method
   params?: ParamDef[]; // url params to send to endpoint
 
   // 🔹 External Integration
@@ -203,6 +207,9 @@ export type Widget = {
 
   // 🔹 Runtime / Storage
   storage?: WidgetStorage;
+
+  /** A standalone widget of a widget plugin: which plugin and which of its widgets. */
+  plugin?: { id: string; widget: string };
 
   // 🔹 Copilot & Experimental
   disableRetrievalForCopilot?: boolean; // Indicates if the widget can be used by Copilot.
@@ -308,6 +315,8 @@ interface BaseParamDef<PT extends ParamType = "text"> {
   multiple?: boolean;
   language?: EditorLanguage; // language of a code-valued param
   hidden?: boolean; // hide the param in the UI
+  /** Where the param goes in the widget's request; a path param declares none */
+  in?: ParamLocation;
 }
 
 interface TextParamDef extends BaseParamDef<"text"> {
@@ -337,7 +346,10 @@ interface BooleanParamDef extends BaseParamDef<"boolean"> {
 interface EndpointParamDef extends BaseParamDef<"endpoint"> {
   type: "endpoint";
   optionsEndpoint?: string;
-  optionsParams?: Record<string, string>;
+  /** How the options are requested: optionsParams in the query (GET) or a JSON body (POST) */
+  optionsMethod?: HttpMethod;
+  /** A literal, or `$name`: the current value of the param `name` */
+  optionsParams?: Record<string, string | number | boolean>;
   groupById?: string; // enables grouping other widgets by this endpoint param
 }
 

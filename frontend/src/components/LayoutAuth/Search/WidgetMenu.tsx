@@ -793,7 +793,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
             ...widgetItem,
             id: uuidv4(),
             innerTab,
-            type: widgetItem.type ?? widgetItem.defaultViz,
+            type: widgetItem.type,
             data: {
               dataKey: widgetItem.dataKey,
               ...widgetItem.data,
@@ -913,7 +913,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
               .map((w) => ({
                 ...w,
                 id: uuidv4(),
-                type: w.type ?? w.defaultViz,
+                type: w.type,
                 data: {
                   dataKey: w.dataKey,
                   ...w.data,
@@ -942,7 +942,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
               .map((w) => ({
                 ...w,
                 id: uuidv4(),
-                type: w.type ?? w.defaultViz,
+                type: w.type,
                 data: {
                   dataKey: w.dataKey,
                   ...w.data,
@@ -1168,7 +1168,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
               ...widget,
               uniqueId: widget.cleanId,
               id: uuidv4(),
-              type: widget.type ?? widget.defaultViz,
+              type: widget.type,
               data: {
                 dataKey: widget.dataKey,
                 ...widget.data,

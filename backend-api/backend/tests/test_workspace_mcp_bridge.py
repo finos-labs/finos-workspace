@@ -163,6 +163,30 @@ async def test_bridge_executes_connected_browser_command():
     assert result["data"] == {"dashboards": []}
 
 
+def test_a_command_result_keeps_its_warnings():
+    """The browser reports what it ignored as warnings; a result with them is accepted and
+    they reach the agent, instead of the message being refused and the bridge closed."""
+    from routers.app.workspace_mcp.schemas import browser_message_adapter
+
+    message = browser_message_adapter.validate_python(
+        {
+            "type": "command_result",
+            "result": {
+                "ok": True,
+                "command": "create_widget",
+                "request_id": "cmd_1",
+                "message": "Dry run: widget would be created. Nothing was changed.",
+                "data": {"valid": True},
+                "warnings": ["data_args keys not declared by this widget were ignored: bogus."],
+            },
+        }
+    )
+
+    assert message.result.model_dump(mode="json")["warnings"] == [
+        "data_args keys not declared by this widget were ignored: bogus."
+    ]
+
+
 @pytest.mark.asyncio
 async def test_bridge_command_without_browser_is_unavailable():
     from routers.app.workspace_mcp.bridge import (

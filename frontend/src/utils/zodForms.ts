@@ -1,11 +1,7 @@
 import { z } from "zod";
-import {
-  CronExpressionSchema,
-  ParamsSchema,
-  RefetchIntervalSchema,
-  type WidgetVizType,
-  widgetTypesSchema,
-} from "~/lib/types/app";
+import type { ParamDef } from "~/components/types";
+import type { WidgetVizType } from "~/lib/types/app";
+import type { WidgetBaseContractT } from "~/lib/types/widgetsContract";
 
 const passwordRegex = /^(?=\S*[a-z])(?=\S*[A-Z])(?=\S*\d)(?=\S*[^\w\s])\S{8,}$/;
 const invalidPassword =
@@ -87,106 +83,31 @@ export const resetSchema = z
 
 export type resetForm = z.infer<typeof resetSchema>;
 
-const widgetShapeDefinition = {
-  name: z.string(),
-  showTitle: z.boolean().default(true).nullish(),
-  description: z.string(),
-  category: z.string().optional(),
-  subCategory: z.string().optional(),
-  source: z.union([z.string(), z.array(z.string())]).optional(),
-  widgetId: z.string().optional(),
-  widgetType: z.string().optional(),
-  endpoint: z.string(),
-  params: ParamsSchema.optional(),
-  groupById: z.string().optional().nullish(),
-  data: z
-    .object({
-      dataKey: z.string().optional(),
-    })
-    .optional(),
-  type: widgetTypesSchema.optional(),
-  defaultViz: widgetTypesSchema.optional(),
-  gridData: z
-    .object({
-      w: z.number(),
-      h: z.number(),
-    })
-    .optional(),
-  staleTime: z
-    .union([z.number().min(1000), z.literal(false)])
-    .default(1000 * 60 * 15)
-    .optional(),
-  refetchInterval: RefetchIntervalSchema.nullish(),
-  dataUpdateDisplay: CronExpressionSchema.optional(),
-  runButton: z.boolean().optional(),
-  disableRetrievalForCopilot: z.boolean().optional(),
-  copilotParseAs: z
-    .union([z.literal("structured"), z.literal("unstructured")])
-    .optional(),
-  raw: z.boolean().optional(),
-  exportable: z.boolean().optional(),
-  storage: z.record(z.string(), z.unknown()).optional(),
+/**
+ * A widget of a backend's widgets.json once validated against the contract
+ * (`lib/types/widgetsContract.ts`), with its params in the app's normalized form.
+ */
+export type WidgetType = Omit<WidgetBaseContractT, "params"> & {
+  type: WidgetVizType;
+  params?: ParamDef[];
+  /** `dataKey`, and a plugin type's configuration under `data.<type>` */
+  data?: { dataKey?: string } & Record<string, unknown>;
+  /** `html`: the endpoint also answers raw=true with its rows */
+  raw?: boolean;
+  /** `iframe`: an MCP server of the page's own */
+  storage?: { mcpUrl?: string };
 };
-
-const widgetSchemaBase = z.object(widgetShapeDefinition).meta({ id: "Widget" });
-
-export const widgetSchema = z.preprocess(
-  ({
-    subCategory,
-    defaultViz,
-    type,
-    ...rest
-  }: z.output<typeof widgetSchemaBase> & {
-    defaultViz?: WidgetVizType;
-  }) => {
-    if ((rest.runButton && !rest.refetchInterval) || rest.refetchInterval === false) {
-      rest.staleTime = false;
-      rest.refetchInterval = false;
-    } else if (!rest.runButton && rest.refetchInterval === undefined) {
-      rest.refetchInterval = 1000 * 60 * 15;
-    }
-
-    return {
-      subCategory,
-      type: (type ?? defaultViz) as WidgetVizType,
-      defaultViz,
-      ...rest,
-    };
-  },
-  widgetSchemaBase,
-);
-
-export type WidgetType = z.infer<typeof widgetSchema>;
 export type WidgetsType = {
   [key: string]: WidgetType & {
+    /** Set by the app to the widget's key once its backend is connected; not contract */
+    widgetId?: string;
     disabled?: boolean;
-    sub_category?: string;
-    defaultViz?: WidgetVizType;
     /** The headers of the backend the widget came from, added once it is connected. */
     endpointHeaders?:
       | { key: string; value: string; location?: "headers" | "query" }[]
       | null;
   };
 };
-export const specificationSchema = z.record(z.string(), widgetSchema).meta({
-  properties: {
-    $id: {
-      type: "string",
-      format: "uri-reference",
-    },
-    $schema: {
-      type: "string",
-      format: "uri",
-    },
-  },
-});
-
-// console.warn(
-//   z.toJSONSchema(specificationSchema, { reused: "inline", target: "draft-7" }),
-// );
-
-// Derived from the Zod schema shape so it stays in sync automatically.
-export const KNOWN_WIDGET_KEYS = new Set(Object.keys(widgetShapeDefinition));
 
 export interface UnrecognizedKeysEntry {
   name: string;
@@ -197,8 +118,6 @@ export interface UnrecognizedKeysReport {
   label: string;
   entries: UnrecognizedKeysEntry[];
 }
-
-const IGNORE_KEYS = new Set(["mcp_tool", "searchCategory"]);
 
 /**
  * Detects unrecognized top-level keys in a set of named objects.
@@ -222,9 +141,7 @@ export function detectUnrecognizedKeys(
   for (const entry of entries) {
     if (!entry || typeof entry !== "object") continue;
     const obj = entry as Record<string, unknown>;
-    const extraKeys = Object.keys(obj).filter(
-      (k) => !knownKeys.has(k) && !IGNORE_KEYS.has(k),
-    );
+    const extraKeys = Object.keys(obj).filter((k) => !knownKeys.has(k));
     if (extraKeys.length > 0) {
       found.push({
         name: String(obj.name || obj.id || "Unknown"),

@@ -6,6 +6,11 @@ import type { WidgetId } from "~/components/Widgets";
 import { useAppStore } from "~/lib/state/app";
 import { useCopilotDataStore } from "~/lib/state/copilotData";
 import { triggerCustomEvent } from "~/lib/utils";
+import {
+  argsProblems,
+  paramValueSchema,
+  uiArgsSchema,
+} from "~/lib/utils/widgetArgsSchema";
 import { isStoredParamValue } from "~/lib/utils/widgetParams";
 import {
   deserializeDashboardTabId,
@@ -436,9 +441,6 @@ export {
   updateWidget,
 };
 
-// Only allow known grid layout keys with numeric values to prevent arbitrary data leaking onto gridData
-const GRID_DATA_KEYS = new Set(["w", "h", "x", "y", "minW", "minH", "maxW", "maxH"]);
-
 /**
  * Resolve a widget definition from the widget library, throwing the same
  * recovery-hint error createWidget surfaces when the origin/widget_id pair is
@@ -459,8 +461,9 @@ function getWidgetDefinitionOrThrow(backendName: string, widgetId: string): Widg
  * Pure param-merge rule shared by the real mutation path (updateWidgetState)
  * and the dry-run path: copy dataArgs values for declared params, skipping
  * unset sentinels (undefined/null/"null") — falsy values like false, 0, and ""
- * are valid param values and must be applied. dataArgs keys the widget does
- * not declare are collected as droppedKeys.
+ * are valid param values and must be applied. A value its param's schema
+ * (WIDGETS-JSON 3.8) does not accept is collected as an invalidKey, and dataArgs
+ * keys the widget does not declare as droppedKeys.
  */
 function computeWidgetParamUpdates(
   paramsDef: WidgetT["params"] | null | undefined,
@@ -478,14 +481,17 @@ function computeWidgetParamUpdates(
   const declared = new Set<string>();
   for (const paramDef of defs) {
     const paramName = paramDef.paramName;
-    if (typeof paramName === "string" && paramName.length > 0) {
-      declared.add(paramName);
-    }
+    if (paramDef.type === "form" || typeof paramName !== "string" || !paramName)
+      continue;
+    declared.add(paramName);
     const paramValue = args[paramName];
     // Only drop unset values; falsy values like false, 0, and "" are valid
     // param values and must be applied.
     if (paramValue !== undefined && paramValue !== null && paramValue !== "null") {
-      if (isStoredParamValue(paramValue)) params[paramName] = paramValue;
+      const valid =
+        isStoredParamValue(paramValue) &&
+        argsProblems(paramValueSchema(paramDef), paramValue, paramName).length === 0;
+      if (valid) params[paramName] = paramValue;
       else invalidKeys.push(paramName);
     }
   }
@@ -494,40 +500,49 @@ function computeWidgetParamUpdates(
   return { params, droppedKeys, invalidKeys };
 }
 
-/**
- * Pure ui_args rule shared by updateWidgetState and the dry-run path: name,
- * description, and source belong on the widget itself; every other key is
- * written to widget storage. Unset sentinels (undefined/null/"null") are
- * skipped.
- */
-function computeWidgetUiUpdates(uiArgs: Record<string, unknown> | null | undefined): {
+/** What `ui_args` change, once they passed the widget's `ui_args` schema. */
+interface WidgetUiUpdates {
   name?: string;
   description?: string;
   source?: string | string[];
+  innerTab?: string;
+  gridData?: Record<string, number>;
+  /** The keys the widget's type reads from its storage (`text`, `html`) */
   storage: Record<string, unknown>;
-} {
-  const updates: {
-    name?: string;
-    description?: string;
-    source?: string | string[];
-    storage: Record<string, unknown>;
-  } = { storage: {} };
+  /** A plugin widget's configuration */
+  config?: Record<string, unknown>;
+  /** Why the arguments were refused; nothing is applied when there is any */
+  problems: string[];
+}
 
-  for (const [key, value] of Object.entries(uiArgs ?? {})) {
-    if (value !== undefined && value !== null && value !== "null") {
-      if (key === "name") {
-        updates.name = value as string;
-      } else if (key === "description") {
-        updates.description = value as string;
-      } else if (key === "source") {
-        updates.source = value as string | string[];
-      } else {
-        updates.storage[key] = value;
-      }
-    }
-  }
+/**
+ * Pure ui_args rule shared by updateWidgetState and the dry-run path. The keys are the
+ * ones the widget's `ui_args` schema defines (WIDGETS-JSON 3.8); any other key, or a
+ * value of the wrong kind, is a problem instead of being stored. Unset sentinels
+ * (undefined/null/"null") are skipped.
+ */
+function computeWidgetUiUpdates(
+  widget: Pick<WidgetT, "type" | "plugin" | "widgetId" | "connectionType">,
+  uiArgs: Record<string, unknown> | null | undefined,
+): WidgetUiUpdates {
+  const given = Object.fromEntries(
+    Object.entries(uiArgs ?? {}).filter(
+      ([, value]) => value !== undefined && value !== null && value !== "null",
+    ),
+  );
+  const problems = argsProblems(uiArgsSchema(widget), given, "ui_args");
+  if (problems.length) return { storage: {}, problems };
 
-  return updates;
+  const { name, description, source, innerTab, gridData, config, ...storage } =
+    given as {
+      name?: string;
+      description?: string;
+      source?: string | string[];
+      innerTab?: string;
+      gridData?: Record<string, number>;
+      config?: Record<string, unknown>;
+    };
+  return { name, description, source, innerTab, gridData, config, storage, problems };
 }
 
 function updateWidgetState(widget: WidgetT, config: WidgetConfig): WidgetT {
@@ -536,49 +551,36 @@ function updateWidgetState(widget: WidgetT, config: WidgetConfig): WidgetT {
     config.dataArgs,
   );
 
-  // Handle UI args for storage properties (like the text of a markdown note)
-  const uiUpdates = computeWidgetUiUpdates(config.uiArgs);
-  const newStorage = uiUpdates.storage;
-  const widgetName = uiUpdates.name ?? widget.name;
-  const widgetDescription = uiUpdates.description ?? widget.description;
-  const widgetSource = uiUpdates.source ?? widget.source;
-
-  // Extract widget-level overrides from storage — they belong on the widget, not in storage
-  const {
-    gridData: gridDataOverride,
-    innerTab: innerTabOverride,
-    ...restStorage
-  } = newStorage;
-  const validGridData =
-    gridDataOverride &&
-    typeof gridDataOverride === "object" &&
-    !Array.isArray(gridDataOverride);
-
-  const sanitizedGridData = validGridData
-    ? Object.fromEntries(
-        Object.entries(gridDataOverride as Record<string, unknown>).filter(
-          ([k, v]) =>
-            GRID_DATA_KEYS.has(k) && typeof v === "number" && Number.isFinite(v),
-        ),
-      )
-    : null;
+  const ui = computeWidgetUiUpdates(widget, config.uiArgs);
+  if (ui.problems.length)
+    throw new Error(
+      `ui_args were not applied: ${ui.problems.join("; ")}. Call get_widget_schema for the widget's ui_args_schema.`,
+    );
 
   return {
     ...widget,
     storage: {
       ...widget.storage,
-      ...restStorage,
+      ...ui.storage,
       params: {
         ...(widget.storage?.params ?? {}),
         ...newParams,
       },
+      ...(ui.config
+        ? {
+            plugin: {
+              ...(widget.storage?.plugin as Record<string, unknown> | undefined),
+              config: ui.config,
+            },
+          }
+        : {}),
     },
-    ...(sanitizedGridData && Object.keys(sanitizedGridData).length > 0
-      ? { gridData: { ...widget.gridData, ...sanitizedGridData } }
+    ...(ui.gridData && Object.keys(ui.gridData).length > 0
+      ? { gridData: { ...widget.gridData, ...ui.gridData } as WidgetT["gridData"] }
       : {}),
-    ...(typeof innerTabOverride === "string" ? { innerTab: innerTabOverride } : {}),
-    name: widgetName,
-    description: widgetDescription,
-    source: widgetSource,
+    ...(ui.innerTab ? { innerTab: ui.innerTab } : {}),
+    name: ui.name ?? widget.name,
+    description: ui.description ?? widget.description,
+    source: ui.source ?? widget.source,
   };
 }

@@ -17,8 +17,10 @@ import type { WidgetId } from "~/components/Widgets";
 import { getFileWidgetType } from "~/lib/constants";
 import type { BackendConnectorStore, Source } from "~/lib/state/backendConnector";
 import { useBackendConnectorStore } from "~/lib/state/backendConnector";
+import { isRenderableVizType } from "~/lib/types/app";
 import { createURLString } from "~/lib/utils";
 import WIDGETS from "~/lib/widgets.json";
+import { getPluginVizTypes } from "~/plugins/registry";
 import type { WidgetType } from "~/utils/zodForms";
 import type { Widget } from "../state/app";
 import {
@@ -154,12 +156,18 @@ export function getAdvancedBackendChildren(id: string): string[] {
 
 export function convertAdvancedBackend(source: Source): WidgetT[] {
   const widgets = source.widgets ?? {};
-  return Object.keys(widgets).map((widgetId) => {
+  const pluginTypes = getPluginVizTypes();
+  return Object.keys(widgets).flatMap((widgetId) => {
     const widget = widgets[widgetId];
+    // A type nothing renders for this user stays out of the catalog (DESIGN.md 5)
+    if (!isRenderableVizType(widget.type, pluginTypes)) return [];
     const newWidget = {
       ...cloneDeep({ ...widget }),
-      type: widget.type ?? widget.defaultViz,
-      endpoint: createURLString(widget.endpoint, source.url),
+      type: widget.type,
+      endpoint: {
+        url: createURLString(widget.endpoint, source.url),
+        method: widget.method ?? "GET",
+      },
       external: true,
       widgetType: "backend",
       sourceId: source.id,
@@ -168,7 +176,7 @@ export function convertAdvancedBackend(source: Source): WidgetT[] {
       connectionType: "advanced-backend",
     } as unknown as WidgetT;
 
-    return newWidget;
+    return [newWidget];
   });
 }
 
@@ -262,12 +270,14 @@ export function getCleanWidgetId(
   widgetId: string,
   connectionType?: WidgetT["connectionType"],
 ) {
-  if (connectionType === "advanced-backend") return widgetId;
+  if (connectionType === "advanced-backend" || connectionType === "plugin")
+    return widgetId;
+  // Anchored: an id that merely contains one of these words is not one of these widgets
   return widgetId
-    ?.replace(/shared_file-.*/, "file")
-    ?.replace(/file-.*/, "file")
-    ?.replace(/iframe-.*/, "iframe")
-    ?.replace(/html-.*/, "html");
+    ?.replace(/^shared_file-.*/, "file")
+    ?.replace(/^file-.*/, "file")
+    ?.replace(/^iframe-.*/, "iframe")
+    ?.replace(/^html-.*/, "html");
 }
 
 const WIDGET_ID_CLEANING = ["iframe-", "shared_file-", "file-", "html-"];

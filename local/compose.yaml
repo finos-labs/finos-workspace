@@ -71,6 +71,13 @@ services:
 
   backend:
     <<: *backend
+    # Widget plugins (LOCAL_SETUP.md): uncomment, with the source mount kept, and set
+    # WIDGET_PLUGINS_DIR=/opt/widget-plugins in envs/.env.
+    # volumes:
+    #   - ../backend-api/backend:/opt/code
+    #   - <plugins directory>:/opt/widget-plugins:ro
+    #   # Optional, with WIDGET_PLUGIN_SECRETS_DIR=/run/secrets/widget-plugins:
+    #   - <plugin secrets directory>:/run/secrets/widget-plugins:ro
     # Restarts itself when a file under backend-api/backend changes.
     command:
       [

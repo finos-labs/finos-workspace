@@ -77,8 +77,10 @@ class HubAPIClient:
         endpoint: str,
         data: Optional[Dict[str, Any]] = None,
         params: Optional[Dict[str, Any]] = None,
+        withhold_payload: bool = False,
     ) -> Dict[str, Any]:
-        """Make HTTP request with error handling and retries"""
+        """Make HTTP request with error handling and retries. A payload that carries a
+        secret is not logged (withhold_payload)."""
         url = f"{self.base_url}{endpoint}"
 
         if params:
@@ -96,7 +98,11 @@ class HubAPIClient:
         logger.debug(f"{method} {url}")
         logger.debug(f"Headers: {json.dumps(headers, default=str)}")
         if data:
-            logger.debug(f"Payload: {json.dumps(data, indent=2)}")
+            logger.debug(
+                "Payload: (withheld)"
+                if withhold_payload
+                else f"Payload: {json.dumps(data, indent=2)}"
+            )
 
         req_data = json.dumps(data).encode("utf-8") if data else None
         request = urllib.request.Request(
@@ -584,6 +590,85 @@ class HubAPIClient:
                 )
 
         return results
+
+    # WIDGET PLUGINS (docs/widget-plugins/DESIGN.md 8.7). There is no install: packages
+    # reach the server through the plugins directory, the image or configuration.
+    def plugin_list(self) -> Dict[str, Any]:
+        return self._request("GET", "/plugins")
+
+    def plugin_get(self, plugin_id: str) -> Dict[str, Any]:
+        return self._request("GET", f"/plugins/{plugin_id}")
+
+    def plugin_rescan(self) -> Dict[str, Any]:
+        return self._request("POST", "/plugins/rescan")
+
+    def plugin_approve(
+        self, plugin_id: str, version: str, digest: str, acknowledged: List[str]
+    ) -> Dict[str, Any]:
+        return self._request(
+            "POST",
+            f"/plugins/{plugin_id}/versions/{version}/approve",
+            {"digest": digest, "acknowledged": acknowledged},
+        )
+
+    def plugin_set_revoked(self, plugin_id: str, revoked: bool) -> Dict[str, Any]:
+        action = "revoke" if revoked else "restore"
+        return self._request("POST", f"/plugins/{plugin_id}/{action}")
+
+    def plugin_set_entity(
+        self, plugin_id: str, entity_uuid: Optional[str], changes: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        path = f"/plugins/{plugin_id}/entities"
+        if entity_uuid:
+            path = f"{path}/{entity_uuid}"
+        return self._request("PUT", path, changes)
+
+    def plugin_set_overrides(
+        self,
+        plugin_id: str,
+        csp: Optional[Dict[str, List[str]]],
+        server_network: Optional[List[str]],
+        confirmations: List[str],
+    ) -> Dict[str, Any]:
+        return self._request(
+            "PUT",
+            f"/plugins/{plugin_id}/overrides",
+            {"csp": csp, "server_network": server_network, "confirmations": confirmations},
+        )
+
+    def plugin_set_secret(self, plugin_id: str, name: str, value: str) -> Dict[str, Any]:
+        return self._request(
+            "PUT",
+            f"/plugins/{plugin_id}/secrets/{name}",
+            {"value": value},
+            withhold_payload=True,
+        )
+
+    def plugin_check_backend(self, plugin_id: str) -> Dict[str, Any]:
+        return self._request("POST", f"/plugins/{plugin_id}/backend/check")
+
+    def plugin_clear_secret(self, plugin_id: str, name: str) -> Dict[str, Any]:
+        return self._request("DELETE", f"/plugins/{plugin_id}/secrets/{name}")
+
+    def plugin_role_grants(self, role_uuid: str) -> List[Dict[str, str]]:
+        resp = self._request("GET", f"/admin/role/{role_uuid}/plugin-access")
+        return list(resp.get("grants", []))
+
+    def plugin_set_role_grants(
+        self, role_uuid: str, grants: List[Dict[str, str]]
+    ) -> Dict[str, Any]:
+        return self._request(
+            "PUT", f"/admin/role/{role_uuid}/plugin-access", {"grants": grants}
+        )
+
+    def plugin_events(self, plugin_id: str) -> Any:
+        return self._request("GET", f"/plugins/{plugin_id}/events")
+
+    def plugin_reports(self, plugin_id: str) -> Any:
+        return self._request("GET", f"/plugins/{plugin_id}/csp-reports")
+
+    def plugin_forget(self, plugin_id: str) -> Dict[str, Any]:
+        return self._request("DELETE", f"/plugins/{plugin_id}")
 
 
 # ============================================================================
@@ -1292,6 +1377,341 @@ def provision_apply(args: argparse.Namespace) -> None:
 
 
 # ============================================================================
+# WIDGET PLUGINS
+# ============================================================================
+
+
+def _short_digest(digest: Optional[str]) -> str:
+    return f"{digest[:15]}…{digest[-6:]}" if digest else "-"
+
+
+def _plugin_version(plugin: Dict[str, Any], version: str) -> Dict[str, Any]:
+    for v in plugin.get("versions", []):
+        if v["version"] == version:
+            return v
+    print(f"✗ {plugin['plugin_id']} has no version {version}", file=sys.stderr)
+    sys.exit(1)
+
+
+def _print_review(view: Dict[str, Any]) -> List[str]:
+    """Prints what approving a version accepts; returns the keys to acknowledge."""
+    review = view.get("review") or []
+    added = [item["key"] for item in review if item.get("added")]
+    for item in review:
+        mark = "+" if item.get("added") else "-" if item.get("removed") else " "
+        risk = item.get("risk", "none")
+        tag = f" [{risk} risk]" if risk != "none" else ""
+        print(f"  {mark} {item['family']}: {item['label']}{tag}")
+    for warning in view.get("findings", {}).get("warnings", []):
+        print(f"  ! {warning}")
+    return added
+
+
+def plugin_list_cmd(args: argparse.Namespace) -> None:
+    client = get_client()
+    try:
+        resp = client.plugin_list()
+        if args.json:
+            print(json.dumps(resp, indent=2))
+            return
+        if not resp.get("enabled"):
+            print("Widget plugins are off: the API has no WIDGET_PLUGINS_DIR")
+            return
+        if not resp.get("plugins"):
+            print("No plugins found. Place a package in the plugins directory and rescan.")
+            return
+        for p in resp["plugins"]:
+            versions = ", ".join(f"{v['version']} {v['state']}" for v in p["versions"])
+            update = f" | update {p['update_available']}" if p.get("update_available") else ""
+            print(
+                f"{p['plugin_id']} | {p['status']} | active {p.get('active_version') or '-'}"
+                f"{update} | {p['enabled_entities']} organizations | {versions}"
+            )
+    except APIError as e:
+        handle_api_error(e)
+
+
+def plugin_show_cmd(args: argparse.Namespace) -> None:
+    client = get_client()
+    try:
+        p = client.plugin_get(args.plugin_id)
+        if args.json:
+            print(json.dumps(p, indent=2))
+            return
+        print(f"{p['name']} ({p['plugin_id']}) | {p['status']}")
+        print(f"Active version : {p.get('active_version') or '-'}")
+        for v in p["versions"]:
+            reason = f" ({v['blocked_reason']})" if v.get("blocked_reason") else ""
+            print(
+                f"  {v['version']} | {v['state']}{reason} | {_short_digest(v.get('digest'))}"
+                f" | {v.get('pin_status')}"
+            )
+            for error in v.get("findings", {}).get("errors", []):
+                print(f"    ✗ {error}")
+            if v.get("review"):
+                print(f"    To approve {v['version']} (+ added, - removed):")
+                _print_review(v)
+        active = next(
+            (v for v in p["versions"] if v["version"] == p.get("active_version")), None
+        )
+        if active:
+            print("Effective policy:")
+            for directive, sources in active["csp"]["effective"].items():
+                print(f"  {directive} {' '.join(sources)}")
+            server = active.get("server") or {}
+            hosts = server.get("network", {}).get("approved", [])
+            if hosts or server.get("proxies"):
+                private = " (may resolve to private addresses)" if server.get("private") else ""
+                print(f"Server network : {' '.join(hosts) or '-'}{private}")
+                for proxy in server.get("proxies", []):
+                    print(f"  proxy {proxy['id']}: {proxy.get('method', 'GET')} {proxy['url']}")
+            if server.get("backend"):
+                routes = ", ".join(r["id"] for r in server["backend"].get("routes", []))
+                print(f"Backend        : routes {routes or '-'} | {_backend_state(p.get('backend') or {})}")
+                for source in server.get("data_sources", []):
+                    print(f"  data source {source['id']}: {source.get('purpose', '')}")
+                if server.get("identity") == "pseudonymous":
+                    print("  learns an anonymous per-plugin id of the user")
+        for secret in p.get("secrets", []):
+            if secret["source"] == "configuration":
+                state = "set by the deployment's configuration"
+            elif secret["set"]:
+                state = f"set by {secret['set_by_uuid']} at {secret['set_at']}"
+            else:
+                state = "not set"
+            problem = f" ✗ {secret['problem']}" if secret.get("problem") else ""
+            stale = " (no version declares it)" if not secret.get("declared") else ""
+            print(f"Secret {secret['name']}: {state}{problem}{stale}")
+        enabled = [e for e in p.get("entities", []) if e["enabled"]]
+        print(f"Enabled for    : {len(enabled)} of {len(p.get('entities', []))} organizations")
+        for e in enabled:
+            print(f"  {e['name'] or e['entity_uuid']} ({e['access_mode']})")
+        for event in p.get("events", [])[:10]:
+            version = f" {event['version']}" if event.get("version") else ""
+            print(f"  {event['created_date']} {event['action']}{version}")
+    except APIError as e:
+        handle_api_error(e)
+
+
+def _backend_state(backend: Dict[str, Any]) -> str:
+    if not backend.get("registered"):
+        return "not listed in WIDGET_PLUGIN_BACKENDS"
+    identity = backend.get("identity")
+    if not identity:
+        return "registered, not checked yet"
+    paused = " | paused after failures" if backend.get("breaker") == "open" else ""
+    return f"identity {identity['state']} ({identity['detail']}){paused}"
+
+
+def plugin_check_backend_cmd(args: argparse.Namespace) -> None:
+    client = get_client()
+    try:
+        resp = client.plugin_check_backend(args.plugin_id)
+        if args.json:
+            print(json.dumps(resp, indent=2))
+        else:
+            print(f"{args.plugin_id} backend: {_backend_state(resp)}")
+    except APIError as e:
+        handle_api_error(e)
+
+
+def plugin_rescan_cmd(args: argparse.Namespace) -> None:
+    client = get_client()
+    try:
+        resp = client.plugin_rescan()
+        if args.json:
+            print(json.dumps(resp, indent=2))
+            return
+        changes = [(k, v) for k, v in resp.items() if isinstance(v, list) and v]
+        if not changes:
+            print("✓ Rescanned: no changes")
+        for kind, items in changes:
+            print(f"✓ {kind}: {', '.join(str(i) for i in items)}")
+    except APIError as e:
+        handle_api_error(e)
+
+
+def plugin_approve_cmd(args: argparse.Namespace) -> None:
+    client = get_client()
+    try:
+        view = _plugin_version(client.plugin_get(args.plugin_id), args.version)
+        if view["state"] not in {"discovered", "retired"}:
+            print(f"✗ {args.version} is {view['state']}; nothing to approve", file=sys.stderr)
+            sys.exit(1)
+        if args.digest and args.digest != view["digest"]:
+            print(
+                f"✗ The server has {view['digest']} for this version, not {args.digest}: "
+                "the files are not the ones you checked",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        print(f"{args.plugin_id} {args.version} | {view['digest']} | {view['pin_status']}")
+        added = _print_review(view)
+        sys.stdout.flush()
+        if not args.acknowledge:
+            print(
+                f"\nNothing approved. Re-run with --acknowledge to accept the {len(added)} "
+                "added requests above. Approving makes this the active version.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        resp = client.plugin_approve(args.plugin_id, args.version, view["digest"], added)
+        if args.json:
+            print(json.dumps(resp, indent=2))
+        else:
+            print(f"✓ {args.plugin_id} {args.version} approved and active")
+    except APIError as e:
+        handle_api_error(e)
+
+
+def plugin_revoke_cmd(args: argparse.Namespace) -> None:
+    client = get_client()
+    try:
+        resp = client.plugin_set_revoked(args.plugin_id, args.verb == "revoke")
+        if args.json:
+            print(json.dumps(resp, indent=2))
+        else:
+            done = "revoked" if args.verb == "revoke" else "restored"
+            print(f"✓ {args.plugin_id} {done}")
+    except APIError as e:
+        handle_api_error(e)
+
+
+def plugin_enable_cmd(args: argparse.Namespace) -> None:
+    client = get_client()
+    try:
+        changes: Dict[str, Any] = {"enabled": args.verb == "enable"}
+        if getattr(args, "access_mode", None):
+            changes["access_mode"] = args.access_mode
+        resp = client.plugin_set_entity(args.plugin_id, args.entity, changes)
+        if args.json:
+            print(json.dumps(resp, indent=2))
+            return
+        where = f"organization {args.entity}" if args.entity else f"{resp.get('entities')} organizations"
+        done = "enabled" if changes["enabled"] else "disabled"
+        mode = f" for {changes['access_mode']}" if "access_mode" in changes else ""
+        print(f"✓ {args.plugin_id} {done}{mode} in {where}")
+    except APIError as e:
+        handle_api_error(e)
+
+
+def plugin_grant_cmd(args: argparse.Namespace) -> None:
+    client = get_client()
+    try:
+        grant = {"plugin_id": args.plugin_id, "widget_id": args.widget}
+        grants = [g for g in client.plugin_role_grants(args.role) if g != grant]
+        if args.verb == "grant":
+            grants.append(grant)
+        resp = client.plugin_set_role_grants(args.role, grants)
+        if args.json:
+            print(json.dumps(resp, indent=2))
+        else:
+            widget = "every widget" if args.widget == "*" else f"widget {args.widget}"
+            done = "granted to" if args.verb == "grant" else "no longer granted to"
+            print(f"✓ {args.plugin_id} ({widget}) {done} role {args.role}")
+    except APIError as e:
+        handle_api_error(e)
+
+
+def plugin_override_cmd(args: argparse.Namespace) -> None:
+    client = get_client()
+    try:
+        if args.clear == bool(args.csp_file or args.server_network):
+            print(
+                "✗ Give --csp-file and/or --server-network, or --clear alone",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        csp = get_config_json(args.csp_file) if args.csp_file else None
+        network = args.server_network
+        resp = client.plugin_set_overrides(args.plugin_id, csp, network, args.confirm or [])
+        if args.json:
+            print(json.dumps(resp, indent=2))
+        else:
+            print(f"✓ Policy overrides of {args.plugin_id} {'cleared' if args.clear else 'set'}")
+    except FileNotFoundError as e:
+        print(f"✗ {e}", file=sys.stderr)
+        sys.exit(1)
+    except APIError as e:
+        handle_api_error(e)
+
+
+def _read_secret(name: str) -> str:
+    """The value from a prompt that does not echo, or from standard input when it is
+    not a terminal (one trailing line break removed). Never from an argument, which
+    would land in the shell's history and the process list."""
+    if sys.stdin.isatty():
+        return getpass.getpass(f"Value of {name}: ")
+    return sys.stdin.read().removesuffix("\n").removesuffix("\r")
+
+
+def plugin_secret_cmd(args: argparse.Namespace) -> None:
+    client = get_client()
+    try:
+        if args.action == "set":
+            value = _read_secret(args.name)
+            if not value:
+                print("✗ The value is empty", file=sys.stderr)
+                sys.exit(1)
+            resp = client.plugin_set_secret(args.plugin_id, args.name, value)
+            done = "set"
+        else:
+            resp = client.plugin_clear_secret(args.plugin_id, args.name)
+            done = "cleared"
+        if args.json:
+            print(json.dumps(resp, indent=2))
+        else:
+            print(f"✓ Secret {args.name} of {args.plugin_id} {done}")
+    except APIError as e:
+        handle_api_error(e)
+
+
+def plugin_events_cmd(args: argparse.Namespace) -> None:
+    client = get_client()
+    try:
+        events = client.plugin_events(args.plugin_id)
+        if args.json:
+            print(json.dumps(events, indent=2))
+            return
+        for event in events:
+            version = f" {event['version']}" if event.get("version") else ""
+            entity = f" entity {event['entity_uuid']}" if event.get("entity_uuid") else ""
+            print(f"{event['created_date']} | {event['action']}{version}{entity}")
+    except APIError as e:
+        handle_api_error(e)
+
+
+def plugin_reports_cmd(args: argparse.Namespace) -> None:
+    client = get_client()
+    try:
+        reports = client.plugin_reports(args.plugin_id)
+        if args.json:
+            print(json.dumps(reports, indent=2))
+            return
+        if not reports:
+            print("No blocked requests")
+        for r in reports:
+            print(
+                f"{r['directive']} {r['origin']} | {r['count']}x | {r['version']}"
+                f" | entity {r['entity_uuid']} | last {r['last_seen']}"
+            )
+    except APIError as e:
+        handle_api_error(e)
+
+
+def plugin_forget_cmd(args: argparse.Namespace) -> None:
+    client = get_client()
+    try:
+        resp = client.plugin_forget(args.plugin_id)
+        if args.json:
+            print(json.dumps(resp, indent=2))
+        else:
+            print(f"✓ {args.plugin_id} forgotten, with its decisions, grants and secrets")
+    except APIError as e:
+        handle_api_error(e)
+
+
+# ============================================================================
 # MAIN & ARGPARSE
 # ============================================================================
 
@@ -1633,6 +2053,148 @@ def main() -> None:
         help="Output summary of created resources as JSON",
     )
     p_apply.set_defaults(func=provision_apply)
+
+    # ==========================
+    # Widget plugins (superuser)
+    # ==========================
+    plug = subparsers.add_parser(
+        "plugin",
+        help="Review and enable widget plugins (packages are placed on the server, "
+        "never installed from here)",
+    )
+    plug_sub = plug.add_subparsers(dest="verb", required=True, help="Action")
+
+    def plugin_parser(name: str, help_text: str, func: Any, with_id: bool = True):
+        sub = plug_sub.add_parser(name, help=help_text)
+        if with_id:
+            sub.add_argument("plugin_id", help="The plugin's id")
+        sub.add_argument(
+            "--json", action="store_true", help="Output raw API response as JSON"
+        )
+        sub.set_defaults(func=func)
+        return sub
+
+    plugin_parser("list", "List discovered plugins and versions", plugin_list_cmd, False)
+    plugin_parser(
+        "rescan", "Read the plugins directory again", plugin_rescan_cmd, False
+    )
+    plugin_parser(
+        "show",
+        "Show a plugin: versions, what approving accepts, policy, organizations, events",
+        plugin_show_cmd,
+    )
+
+    pl_approve = plugin_parser(
+        "approve", "Review a version and make it the active one", plugin_approve_cmd
+    )
+    pl_approve.add_argument("version", help="The version to approve")
+    pl_approve.add_argument(
+        "--acknowledge",
+        action="store_true",
+        help="Accept every added request the review lists (without it, only the review is shown)",
+    )
+    pl_approve.add_argument(
+        "--digest",
+        help="The version digest you checked with plugin_check; approval stops if the "
+        "server's differs",
+    )
+
+    plugin_parser("revoke", "Stop a plugin everywhere (kill switch)", plugin_revoke_cmd)
+    plugin_parser("restore", "Undo a revoke", plugin_revoke_cmd)
+
+    for verb, help_text in (
+        ("enable", "Enable the plugin for an organization, or for all"),
+        ("disable", "Disable the plugin for an organization, or for all"),
+    ):
+        pl_entity = plugin_parser(verb, help_text, plugin_enable_cmd)
+        target = pl_entity.add_mutually_exclusive_group(required=True)
+        target.add_argument("--entity", help="UUID of the organization (entity)")
+        target.add_argument(
+            "--all",
+            dest="entity",
+            action="store_const",
+            const=None,
+            help="Every organization",
+        )
+        if verb == "enable":
+            mode = pl_entity.add_mutually_exclusive_group()
+            mode.add_argument(
+                "--everyone",
+                dest="access_mode",
+                action="store_const",
+                const="everyone",
+                help="Everyone in the organization may use it",
+            )
+            mode.add_argument(
+                "--roles",
+                dest="access_mode",
+                action="store_const",
+                const="roles",
+                help="Only roles granted it may use it (the default for a new organization)",
+            )
+
+    for verb, help_text in (
+        ("grant", "Grant a role of your organization a plugin's widgets"),
+        ("ungrant", "Take a grant away from a role of your organization"),
+    ):
+        pl_grant = plugin_parser(verb, help_text, plugin_grant_cmd)
+        pl_grant.add_argument("--role", required=True, help="UUID of the role")
+        pl_grant.add_argument(
+            "--widget", default="*", help="One widget id (default: every widget)"
+        )
+
+    pl_override = plugin_parser(
+        "override",
+        "Replace the superuser's overrides: the CSP by directive and the server network",
+        plugin_override_cmd,
+    )
+    pl_override.add_argument(
+        "--csp-file",
+        help='JSON file of directive to sources, e.g. {"connect-src": ["https://<host>"]}',
+    )
+    pl_override.add_argument(
+        "--server-network",
+        action="append",
+        help="An https origin the server may call for the plugin's proxies, replacing the "
+        "hosts it declares (repeatable)",
+    )
+    pl_override.add_argument("--clear", action="store_true", help="Remove the overrides")
+    pl_override.add_argument(
+        "--confirm",
+        action="append",
+        choices=["insecure-scheme", "private-host", "remote-script"],
+        help="Confirm a dangerous source the overrides add (repeatable); private-host with "
+        "--server-network also lets those hosts resolve to private addresses",
+    )
+
+    pl_secret = plug_sub.add_parser(
+        "secret", help="Set or clear the value of a secret the plugin declares"
+    )
+    secret_sub = pl_secret.add_subparsers(dest="action", required=True, help="Action")
+    for action, help_text in (
+        ("set", "Set the value: read without echo, or from standard input, never an argument"),
+        ("clear", "Remove the value a superuser set"),
+    ):
+        sub = secret_sub.add_parser(action, help=help_text)
+        sub.add_argument("plugin_id", help="The plugin's id")
+        sub.add_argument("name", help="The secret's name, as the plugin declares it")
+        sub.add_argument(
+            "--json", action="store_true", help="Output raw API response as JSON"
+        )
+        sub.set_defaults(func=plugin_secret_cmd)
+
+    plugin_parser(
+        "check-backend",
+        "Ask the plugin's backend for its identity now (the deployer runs and lists it)",
+        plugin_check_backend_cmd,
+    )
+    plugin_parser("events", "List the plugin's events", plugin_events_cmd)
+    plugin_parser("reports", "List requests the plugin's policy blocked", plugin_reports_cmd)
+    plugin_parser(
+        "forget",
+        "Forget a plugin whose files are gone, with its decisions, grants and secrets",
+        plugin_forget_cmd,
+    )
 
     args = parser.parse_args()
     if hasattr(args, "func"):

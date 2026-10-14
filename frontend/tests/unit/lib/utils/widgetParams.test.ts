@@ -90,11 +90,11 @@ describe("Widget Params Utility Functions", () => {
       expect(result.query).toEqual({});
     });
 
-    it("should create endpoint from URL object", () => {
+    it("keeps the method the widget declares", () => {
       const urlObj = { url: "https://api.example.com/data", method: "POST" } as const;
       const result = createWidgetEndpoint(urlObj);
       expect(result.url).toBe("https://api.example.com/data");
-      expect(result.method).toBe("GET");
+      expect(result.method).toBe("POST");
     });
 
     it("should add headers from endpointHeaders", () => {

@@ -5,7 +5,7 @@ import type { ParamDef, WidgetT } from "~/components/types";
 import { useAppStore, type Widget } from "~/lib/state/app";
 import type { Source } from "~/lib/state/backendConnector";
 import { useCopilotStore } from "~/lib/state/copilot";
-import { isWidgetVizType } from "~/lib/types/app";
+import { isBuiltInVizType, isWellFormedVizType } from "~/lib/types/app";
 import {
   createParamDefs,
   createURLString,
@@ -15,7 +15,7 @@ import {
   dispatchUpdateWidget,
   generateRandomName,
 } from "~/lib/utils";
-import type { WidgetsType, WidgetType } from "~/utils/zodForms";
+import type { WidgetsType } from "~/utils/zodForms";
 
 export function listToSortedSet(list: string[]): string[] {
   return [...new Set(list)].sort();
@@ -74,7 +74,7 @@ export function addMultipleNewDataConnector(
 }
 
 export function createSourceWidget(
-  widget: WidgetType,
+  widget: WidgetsType[string],
   source: Source,
   withAccess = true,
 ): WidgetT {
@@ -83,14 +83,17 @@ export function createSourceWidget(
 
   const endpoint =
     typeof widget.endpoint === "string"
-      ? { url: createURLString(widget.endpoint, source.url), method: "GET" }
+      ? {
+          url: createURLString(widget.endpoint, source.url),
+          method: widget.method ?? "GET",
+        }
       : widget.endpoint;
 
   const newWidget = {
     ...widget,
     groupById,
     id: uuidv4(),
-    type: widget.type ?? widget.defaultViz,
+    type: widget.type,
     endpoint,
     params,
     external: true,
@@ -223,7 +226,11 @@ export function updateWidgetEndpoints(
       const widgetId = (w.widgetId ?? "").replace(`${sourceName}-`, "");
       const widgetJson = source.widgets?.[widgetId];
       if (!widgetJson) {
-        const newEndpoint = createWidgetEndpoint(w.endpoint?.url, endpointHeaders);
+        // The connection's credentials replace the ones the widget had
+        const newEndpoint = createWidgetEndpoint(
+          w.endpoint && { url: w.endpoint.url, method: w.endpoint.method },
+          endpointHeaders,
+        );
         const updatedWidget = {
           ...w,
           sourceName: source.name,
@@ -241,20 +248,29 @@ export function updateWidgetEndpoints(
       const groupById = params?.find((p) => p?.type === "endpoint")?.groupById;
 
       const newEndpoint = createWidgetEndpoint(
-        createURLString(widgetJson.endpoint, source.url),
+        {
+          url: createURLString(widgetJson.endpoint, source.url),
+          method: widgetJson.method ?? "GET",
+        },
         endpointHeaders,
       );
 
-      const subCategory = widgetJson.sub_category ?? widgetJson.subCategory;
-      const widgetType = widgetJson.type ?? widgetJson.defaultViz;
+      const subCategory = widgetJson.subCategory;
       const dataKey = widgetJson.data?.dataKey ?? w.data?.dataKey;
+      const type = isWellFormedVizType(widgetJson.type) ? widgetJson.type : w.type;
+      // A plugin-rendered type keeps its configuration in data.<type>, which the
+      // definition defines; a refresh takes it from the backend like the rest
+      const typeConfig =
+        type && !isBuiltInVizType(type)
+          ? { [type]: (widgetJson.data as Record<string, unknown> | undefined)?.[type] }
+          : {};
 
       const updatedWidget = {
         ...w,
         name: widgetJson.name ?? w.name,
         description: widgetJson.description ?? "",
         groupById,
-        type: isWidgetVizType(widgetType) ? widgetType : w.type,
+        type,
         sourceName: source.name,
         category: widgetJson.category ?? "",
         subCategory,
@@ -263,6 +279,7 @@ export function updateWidgetEndpoints(
         data: {
           ...(w.data ?? {}),
           dataKey,
+          ...typeConfig,
         },
         endpoint: { ...w.endpoint, ...newEndpoint },
         staleTime: widgetJson.staleTime ?? w.staleTime,

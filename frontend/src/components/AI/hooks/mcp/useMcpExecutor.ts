@@ -3,7 +3,8 @@ import { toast } from "sonner";
 import { getIframeWidget } from "~/lib/iframeWidgetRegistry";
 import type { CopilotDataT } from "~/lib/state/copilot";
 import { CopilotErrorType } from "~/lib/state/copilot";
-import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
+import { type McpServer, useShallowMcpToolsStore } from "~/lib/state/mcpTools";
+import { citeMcpCall } from "~/lib/utils/mcpLink";
 import { toError } from "~/lib/utils/utils";
 import { getAllWidgets } from "~/lib/utils/widget";
 
@@ -18,6 +19,10 @@ interface WidgetCitation {
   source: string;
   name?: string;
   description?: string;
+  /** The call's arguments as the widget's params */
+  inputArgs: Record<string, unknown>;
+  /** The call's arguments that map to no param */
+  details: Record<string, unknown>;
 }
 
 interface IframeMcpCitation {
@@ -30,36 +35,33 @@ interface IframeMcpCitation {
   iframeParams?: Record<string, string>;
 }
 
+/**
+ * The widget a call of a linked tool is cited as: one of the server's own backend that opts
+ * in to this tool (WIDGETS-JSON 5.3 and 5.4).
+ */
 function findEquivalentWidget(
-  mcpServerName: string,
-  mcpToolName: string,
+  server: McpServer,
+  toolName: string,
+  callArgs: Record<string, unknown>,
 ): WidgetCitation | null {
-  // Preserve underscores and spaces; only lowercase + trim
-  const norm = (s: string) => (s || "").trim().toLowerCase();
-
-  const serverKey = norm(mcpServerName);
-  const toolKey = norm(mcpToolName);
-
-  // Get external, backend, advanced-backend widgets that declare mcp_tool
-  const widgets = getAllWidgets(undefined, ["backend"]).filter(
-    (w) => w.mcp_tool?.mcp_server && w.mcp_tool.tool_id,
+  const citation = citeMcpCall(
+    server,
+    toolName,
+    callArgs,
+    getAllWidgets(undefined, ["backend"]),
   );
-
-  for (const w of widgets) {
-    const meta = w.mcp_tool;
-    if (norm(meta?.mcp_server ?? "") !== serverKey) continue;
-    if (norm(meta?.tool_id ?? "") !== toolKey) continue;
-    return {
-      widgetId: w.widgetId || "",
-      source:
-        w.sourceName ||
-        (Array.isArray(w.source) ? w.source.join(", ") : w.source || ""),
-      name: w.name,
-      description: w.description,
-    };
-  }
-
-  return null;
+  if (!citation) return null;
+  const { widget, inputArgs, details } = citation;
+  return {
+    widgetId: widget.widgetId || "",
+    source:
+      widget.sourceName ||
+      (Array.isArray(widget.source) ? widget.source.join(", ") : widget.source || ""),
+    name: widget.name,
+    description: widget.description,
+    inputArgs,
+    details,
+  };
 }
 
 function getErrorContent(
@@ -226,11 +228,11 @@ export function useMcpExecutor() {
         // catalog widget mapping.
         const equivalentWidget = server.iframeWidgetId
           ? null
-          : findEquivalentWidget(server?.clientName || server?.name, actualToolName);
+          : findEquivalentWidget(server, actualToolName, parameters ?? {});
         if (equivalentWidget) {
           const widgetName = equivalentWidget.name || equivalentWidget.widgetId;
           toast.info("Matching widget found", {
-            description: `The widget ${widgetName} has the same id than the MCP tool call ${actualToolName}`,
+            description: `The call to ${actualToolName} is cited as the widget ${widgetName}`,
           });
         }
 
@@ -280,7 +282,13 @@ export function useMcpExecutor() {
           }
 
           if (!match) return [];
-          const details = entries.length > 0 ? [detailsObj] : [];
+          const unmapped = Object.entries(match.details).filter(
+            ([, v]) => v !== null && v !== undefined,
+          );
+          const details =
+            unmapped.length > 0
+              ? [Object.fromEntries(unmapped.map(([k, v]) => [toTitleCase(k), v]))]
+              : [];
           return [
             {
               source_info: {
@@ -292,7 +300,7 @@ export function useMcpExecutor() {
                 citable: true,
                 metadata: {
                   matching: true,
-                  input_args: params || {},
+                  input_args: match.inputArgs,
                 },
               },
               details,

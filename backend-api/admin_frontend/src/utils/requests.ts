@@ -526,3 +526,111 @@ export async function patchAdminUserEntitlement(
   });
   return prettyStatusCodes(res);
 }
+
+// Widget plugins (docs/widget-plugins/DESIGN.md 8.6). Superusers only. There is no
+// install: packages reach the server through the plugins directory.
+
+export interface PluginReviewItem {
+  key: string;
+  family: string;
+  label: string;
+  risk: string;
+  added: boolean;
+  removed?: boolean;
+}
+
+export interface PluginVersion {
+  version: string;
+  state: string;
+  blocked_reason: string | null;
+  digest: string | null;
+  pin_status: string;
+  findings: { errors: string[]; warnings: string[] };
+  review: PluginReviewItem[] | null;
+}
+
+export interface PluginSummary {
+  plugin_id: string;
+  name: string;
+  status: string;
+  active_version: string | null;
+  update_available: string | null;
+  enabled_entities: number;
+  versions: PluginVersion[];
+}
+
+export interface PluginEntityUse {
+  entity_uuid: string;
+  name: string | null;
+  enabled: boolean;
+  access_mode: "everyone" | "roles" | null;
+}
+
+export interface PluginDetail extends PluginSummary {
+  entities: PluginEntityUse[];
+}
+
+export async function getPlugins(
+  accessToken: string,
+): Promise<{ enabled: boolean; plugins: PluginSummary[] } | null> {
+  const res = await fetch(`${baseUrl}/plugins`, getRequestInfo(accessToken));
+  return res.status === 200 ? readJson(res) : null;
+}
+
+export async function getPlugin(
+  pluginId: string,
+  accessToken: string,
+): Promise<PluginDetail | null> {
+  const res = await fetch(`${baseUrl}/plugins/${pluginId}`, getRequestInfo(accessToken));
+  return res.status === 200 ? readJson(res) : null;
+}
+
+export async function rescanPlugins(accessToken: string): Promise<AddResponse> {
+  const res = await fetch(`${baseUrl}/plugins/rescan`, postRequestInfo(accessToken, {}));
+  return prettyStatusCodes(res);
+}
+
+export async function approvePluginVersion(
+  pluginId: string,
+  version: string,
+  digest: string,
+  acknowledged: string[],
+  accessToken: string,
+): Promise<AddResponse> {
+  const res = await fetch(
+    `${baseUrl}/plugins/${pluginId}/versions/${version}/approve`,
+    postRequestInfo(accessToken, { digest, acknowledged }),
+  );
+  return prettyStatusCodes(res);
+}
+
+export async function setPluginRevoked(
+  pluginId: string,
+  revoked: boolean,
+  accessToken: string,
+): Promise<AddResponse> {
+  const action = revoked ? "revoke" : "restore";
+  const res = await fetch(
+    `${baseUrl}/plugins/${pluginId}/${action}`,
+    postRequestInfo(accessToken, {}),
+  );
+  return prettyStatusCodes(res);
+}
+
+/** Enable or disable a plugin for one entity, or for every entity when none is named. */
+export async function setPluginEntity(
+  pluginId: string,
+  entityUuid: string | null,
+  changes: { enabled: boolean; access_mode?: "everyone" | "roles" },
+  accessToken: string,
+): Promise<AddResponse> {
+  const path = entityUuid
+    ? `plugins/${pluginId}/entities/${entityUuid}`
+    : `plugins/${pluginId}/entities`;
+  const res = await fetch(`${baseUrl}/${path}`, {
+    headers: fullHeaders(accessToken),
+    method: "PUT",
+    body: JSON.stringify(changes),
+  });
+  return prettyStatusCodes(res);
+}

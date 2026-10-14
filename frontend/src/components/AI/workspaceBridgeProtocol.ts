@@ -39,6 +39,9 @@ export type GetWidgetSchemaCommand = CommandBase<"get_widget_schema"> & {
   widget_id?: string | null;
 };
 
+/** The widgets.json schema in force for the user (WIDGETS-JSON 3.9). */
+export type GetWidgetsSchemaCommand = CommandBase<"get_widgets_schema">;
+
 export type GetParamsOptionsCommand = CommandBase<"get_params_options"> & {
   param_options_queries?:
     | GetParamOptionsInputArgumentsT["param_options_queries"]
@@ -155,6 +158,7 @@ export type WorkspaceBridgeCommand =
   | GetWidgetDataCommand
   | ListAvailableWidgetsCommand
   | GetWidgetSchemaCommand
+  | GetWidgetsSchemaCommand
   | GetParamsOptionsCommand
   | ManageDashboardCommand
   | UpdateDashboardLayoutCommand

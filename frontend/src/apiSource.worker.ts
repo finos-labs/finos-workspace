@@ -5,10 +5,15 @@ import {
   processWorkerResults,
 } from "~/lib/utils/validateBackend";
 import type { Source, ValidateBackend } from "./lib/state/backendConnector";
+import type { ComposedWidgetsSchema } from "./lib/utils/widgetsSchemaValidation";
 
 interface EventData {
   apiSources: Source[];
   extraHeaders?: Record<string, string>;
+  /** The worker cannot read the plugin registry, so the main thread sends its types */
+  pluginVizTypes?: string[];
+  /** And the widgets.json schema in force for the user's entity */
+  widgetsSchema: ComposedWidgetsSchema;
 }
 
 type ResultT = { source: Source; result: ValidateBackend };
@@ -23,7 +28,7 @@ const debouncedPartialResults = debounce(
 );
 
 self.onmessage = async (e: MessageEvent<EventData>) => {
-  const { apiSources, extraHeaders } = e.data;
+  const { apiSources, extraHeaders, pluginVizTypes = [], widgetsSchema } = e.data;
 
   const results: ResultT[] = [];
   const sliceSize = Math.ceil(apiSources.length / 5); // Adjust the slice size as needed
@@ -31,7 +36,11 @@ self.onmessage = async (e: MessageEvent<EventData>) => {
   const promises = apiSources.map(async (source) => {
     let entry: ResultT;
     try {
-      const result = await getApiSourceWidgets(source, { extraHeaders });
+      const result = await getApiSourceWidgets(source, {
+        extraHeaders,
+        pluginVizTypes,
+        widgetsSchema,
+      });
       entry = { source, result };
     } catch (error) {
       console.error("Error processing backend in worker:", error);

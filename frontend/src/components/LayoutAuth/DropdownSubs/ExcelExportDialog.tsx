@@ -15,6 +15,11 @@ import { type SideBarItem, useAppStore, useShallowAppStore } from "~/lib/state/a
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { dispatchSaveState } from "~/lib/utils";
 import { isTruthyRecord } from "~/lib/utils/values";
+import {
+  buildWidgetRequest,
+  RequestProblemsError,
+  requestInit,
+} from "~/lib/utils/widgetRequest";
 
 const excelDocsHref = docsUrl("excel");
 
@@ -140,7 +145,7 @@ function formatDateForFilename(date: Date): string {
 }
 
 /** What a widget returns when there is nothing to export for the parameters it has. */
-type NoData = { _noData: true; parameters: Record<string, unknown>; message: string };
+type NoData = { _noData: true; message: string };
 
 const isNoData = (data: unknown): data is NoData =>
   isTruthyRecord(data) && data._noData === true;
@@ -170,70 +175,17 @@ async function getWidgetExportData(widget: WidgetT): Promise<unknown> {
 
     // For advanced-backend widgets
     if (widget.connectionType === "advanced-backend") {
-      // Use the widget's endpoint directly
-      let endpoint = widget.endpoint?.url;
-      if (!endpoint) {
+      // The widget's own request (WIDGETS-JSON 4), so the export holds what it shows
+      const built = buildWidgetRequest(widget);
+      if (!built) {
         console.warn("No endpoint found for widget:", widget.name);
         return null;
       }
-
-      // Filter out empty arrays and undefined/null values from parameters
-      const filteredParams = Object.fromEntries(
-        Object.entries({
-          ...(widget.endpoint?.query || {}),
-          ...(widget.storage?.params || {}),
-        }).filter(([_, value]) => {
-          // Skip empty arrays
-          if (Array.isArray(value) && value.length === 0) return false;
-          // Skip undefined, null, or empty strings
-          if (value === undefined || value === null || value === "") return false;
-          return true;
-        }),
-      );
-
-      // Handle GET parameters by appending them to the URL
-      if (widget.endpoint?.method === "GET" || !widget.endpoint?.method) {
-        const queryString = new URLSearchParams(
-          Object.entries(filteredParams).reduce(
-            (acc, [key, value]) => {
-              // Handle array values by joining them with commas
-              if (Array.isArray(value)) {
-                acc[key] = value.join(",");
-              } else {
-                acc[key] = String(value);
-              }
-              return acc;
-            },
-            {} as Record<string, string>,
-          ),
-        ).toString();
-
-        if (queryString) {
-          endpoint = `${endpoint}${endpoint.includes("?") ? "&" : "?"}${queryString}`;
-        }
-      }
-
-      // console.log(`Fetching advanced-backend widget data from: ${endpoint}`, {
-      //   widgetName: widget.name,
-      //   sourceName: widget.sourceName,
-      //   widgetId: widget.widgetId,
-      //   params: filteredParams,
-      //   method: widget.endpoint?.method || "GET",
-      //   headers: widget.endpoint?.headers,
-      // });
+      if (!built.ok) throw new RequestProblemsError(built.problems);
+      const endpoint = built.request.url;
 
       try {
-        const response = await fetch(endpoint, {
-          method: widget.endpoint?.method || "GET",
-          headers: {
-            "Content-Type": "application/json",
-            ...(widget.endpoint?.headers || {}),
-          },
-          body:
-            widget.endpoint?.method === "POST"
-              ? JSON.stringify(filteredParams)
-              : undefined,
-        });
+        const response = await fetch(endpoint, requestInit(built.request));
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -264,10 +216,9 @@ async function getWidgetExportData(widget: WidgetT): Promise<unknown> {
           //   endpoint,
           //   params: filteredParams,
           // });
-          // Return a special object indicating no data but preserving parameters
+          // Return a special object indicating no data
           return {
             _noData: true,
-            parameters: filteredParams,
             message: "No data available for the specified parameters",
           };
         }

@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import { apiClient } from "~/api/api";
 import { getApiSources } from "~/api/auth.api";
 import { saveDashboards } from "~/api/dashboard.api";
+import { usePluginRegistrySync } from "~/hooks/usePlugins";
 import { useCreateRef } from "~/hooks/useRefHooks";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useAuthStore, useShallowAuthStore } from "~/lib/state/auth";
@@ -28,6 +29,7 @@ import { useGetAppWidgets } from "../AI/hooks/useGetAppWidgets";
 export default function useSyncItems() {
   const { pathname } = useLocation();
   useGetAppWidgets(); // Initialize the app widgets store
+  usePluginRegistrySync(); // The widget plugins this user may use
 
   const user = useShallowAuthStore((state) => state.user);
   const updateThemeSettings = useShallowEntityThemeStore(

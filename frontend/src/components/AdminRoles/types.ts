@@ -35,7 +35,23 @@ export type RoleAuditAction =
   | "remove"
   | "add";
 
-export type RoleResourceType = "role" | "backend" | "file" | "prompt" | "user";
+export type RoleResourceType =
+  | "role"
+  | "backend"
+  | "file"
+  | "prompt"
+  | "user"
+  | "widget_plugin";
+
+/** How the activity log names each kind of resource. */
+export const ROLE_RESOURCE_LABELS: Record<RoleResourceType, string> = {
+  role: "role",
+  backend: "backend",
+  file: "file",
+  prompt: "prompt",
+  user: "user",
+  widget_plugin: "widget plugin",
+};
 
 export type RoleAuditLogReturn = {
   uuid: string;

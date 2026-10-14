@@ -26,6 +26,7 @@ from api.models.user_models import (
     User,
     UserRole,
 )
+from api.models.widget_plugin_models import RoleWidgetPlugin, WidgetPlugin
 from api.models.workspace_models import ApiSource, FileWidget
 
 
@@ -452,6 +453,40 @@ def track_role_prompt_insert(mapper, connection: Connection, target: RolePrompt)
     )
 
 
+# RoleWidgetPlugin events
+def _widget_plugin_details(connection: Connection, target: RoleWidgetPlugin) -> dict:
+    plugin_id = connection.execute(
+        select(WidgetPlugin.plugin_id).where(WidgetPlugin.uuid == target.plugin_uuid)
+    ).scalar_one_or_none()
+    return {"name": plugin_id, "widget_id": target.widget_id}
+
+
+def track_role_widget_plugin_insert(
+    mapper, connection: Connection, target: RoleWidgetPlugin
+):
+    """Track a plugin widget granted to a role"""
+    _create_role_audit_entry(
+        target.role_uuid,
+        RoleAuditAction.ASSIGN,
+        RoleResourceType.WIDGET_PLUGIN,
+        target.plugin_uuid,
+        _widget_plugin_details(connection, target),
+    )
+
+
+def track_role_widget_plugin_delete(
+    mapper, connection: Connection, target: RoleWidgetPlugin
+):
+    """Track a plugin widget a role no longer grants"""
+    _create_role_audit_entry(
+        target.role_uuid,
+        RoleAuditAction.REMOVE,
+        RoleResourceType.WIDGET_PLUGIN,
+        target.plugin_uuid,
+        _widget_plugin_details(connection, target),
+    )
+
+
 async def init_audit_listeners():
     """Enable role and permission audit listeners"""
     await asyncio.sleep(5)  # Wait for the database to be ready
@@ -465,3 +500,5 @@ async def init_audit_listeners():
     event.listen(RoleFile, "after_insert", track_role_file_insert)
     event.listen(RolePrompt, "after_update", track_role_prompt_update)
     event.listen(RolePrompt, "after_insert", track_role_prompt_insert)
+    event.listen(RoleWidgetPlugin, "after_insert", track_role_widget_plugin_insert)
+    event.listen(RoleWidgetPlugin, "after_delete", track_role_widget_plugin_delete)

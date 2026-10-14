@@ -253,7 +253,7 @@ describe("Workspace API", () => {
       );
     });
 
-    it("should store arbitrary uiArgs in storage", async () => {
+    it("stores the keys the widget's component reads", async () => {
       const mockWidgetDef = createMockWidget({
         widgetId: "rich-note",
       });
@@ -262,16 +262,13 @@ describe("Workspace API", () => {
       mockAddWidget.mockResolvedValue("widget-id");
 
       await createWidget(dashboardId, backendName, "rich-note", {
-        uiArgs: { html: "<p>Note content</p>", customProp: "value" },
+        uiArgs: { html: "<p>Note content</p>" },
       });
 
       expect(mockAddWidget).toHaveBeenCalledWith(
         dashboardId,
         expect.objectContaining({
-          storage: expect.objectContaining({
-            html: "<p>Note content</p>",
-            customProp: "value",
-          }),
+          storage: expect.objectContaining({ html: "<p>Note content</p>" }),
         }),
       );
     });
@@ -917,57 +914,54 @@ describe("Workspace API", () => {
       mockAddWidget.mockResolvedValue("widget-id");
 
       await createWidget("dashboard-123", "workspace", "test-widget", {
-        uiArgs: { gridData: { w: 40, h: 12 }, customProp: "value" },
+        uiArgs: { gridData: { w: 40, h: 12 } },
       });
 
       expect(mockAddWidget).toHaveBeenCalledWith(
         "dashboard-123",
-        expect.objectContaining({
-          gridData: { x: 0, y: 0, w: 40, h: 12 },
-          storage: expect.objectContaining({ customProp: "value" }),
-        }),
+        expect.objectContaining({ gridData: { x: 0, y: 0, w: 40, h: 12 } }),
       );
       // gridData should NOT be in storage
       const widget = mockAddWidget.mock.calls[0][1];
       expect(widget.storage.gridData).toBeUndefined();
     });
 
-    it("should not apply gridData when it is an array", async () => {
-      const mockWidgetDef = createMockWidget({
-        widgetId: "test-widget",
-        gridData: { x: 0, y: 0, w: 20, h: 10 },
-      });
-
-      mockGetAppWidget.mockReturnValue(mockWidgetDef);
+    it("refuses gridData that is not an object of numbers, and creates nothing", async () => {
+      mockGetAppWidget.mockReturnValue(
+        createMockWidget({ gridData: { x: 0, y: 0, w: 20, h: 10 } }),
+      );
       mockAddWidget.mockResolvedValue("widget-id");
 
-      await createWidget("dashboard-123", "workspace", "test-widget", {
-        uiArgs: { gridData: [1, 2, 3] },
-      });
-
-      const widget = mockAddWidget.mock.calls[0][1];
-      // gridData should remain the original, not overridden
-      expect(widget.gridData).toEqual({ x: 0, y: 0, w: 20, h: 10 });
-      expect(widget.storage.gridData).toBeUndefined();
+      await expect(
+        createWidget("dashboard-123", "workspace", "test-widget", {
+          uiArgs: { gridData: [1, 2, 3] },
+        }),
+      ).rejects.toThrow("`ui_args.gridData` must be object");
+      await expect(
+        createWidget("dashboard-123", "workspace", "test-widget", {
+          uiArgs: { gridData: { w: "not-a-number", h: 12 } },
+        }),
+      ).rejects.toThrow("`ui_args.gridData.w` must be number");
+      await expect(
+        createWidget("dashboard-123", "workspace", "test-widget", {
+          uiArgs: { gridData: { depth: 3 } },
+        }),
+      ).rejects.toThrow("`ui_args.gridData.depth` is not a key this widget accepts");
+      expect(mockAddWidget).not.toHaveBeenCalled();
     });
 
-    it("should filter out non-numeric gridData values", async () => {
-      const mockWidgetDef = createMockWidget({
-        widgetId: "test-widget",
-        gridData: { x: 0, y: 0, w: 20, h: 10 },
-      });
-
-      mockGetAppWidget.mockReturnValue(mockWidgetDef);
+    it("refuses a ui_args key the widget's type does not read", async () => {
+      mockGetAppWidget.mockReturnValue(createMockWidget({ type: "markdown" }));
       mockAddWidget.mockResolvedValue("widget-id");
 
-      await createWidget("dashboard-123", "workspace", "test-widget", {
-        uiArgs: { gridData: { w: "not-a-number", h: 12, x: Number.NaN } },
-      });
-
-      const widget = mockAddWidget.mock.calls[0][1];
-      // Only h: 12 should be applied (w is string, x is NaN)
-      expect(widget.gridData).toEqual({ x: 0, y: 0, w: 20, h: 12 });
-      expect(widget.storage.gridData).toBeUndefined();
+      await expect(
+        createWidget("dashboard-123", "workspace", "test-widget", {
+          uiArgs: { html: "<p>x</p>", customProp: "value" },
+        }),
+      ).rejects.toThrow(
+        "ui_args were not applied: `ui_args.html` is not a key this widget accepts; `ui_args.customProp` is not a key this widget accepts",
+      );
+      expect(mockAddWidget).not.toHaveBeenCalled();
     });
 
     it("should not apply gridData when it is null", async () => {
@@ -996,30 +990,24 @@ describe("Workspace API", () => {
       mockAddWidget.mockResolvedValue("widget-id");
 
       await createWidget("dashboard-123", "workspace", "test-widget", {
-        uiArgs: { innerTab: "overview", customProp: "value" },
+        uiArgs: { innerTab: "overview" },
       });
 
       const widget = mockAddWidget.mock.calls[0][1];
       expect(widget.innerTab).toBe("overview");
       expect(widget.storage.innerTab).toBeUndefined();
-      expect(widget.storage.customProp).toBe("value");
     });
 
-    it("should not set innerTab when value is not a string", async () => {
-      const mockWidgetDef = createMockWidget({
-        widgetId: "test-widget",
-      });
-
-      mockGetAppWidget.mockReturnValue(mockWidgetDef);
+    it("refuses an innerTab that is not a string", async () => {
+      mockGetAppWidget.mockReturnValue(createMockWidget());
       mockAddWidget.mockResolvedValue("widget-id");
 
-      await createWidget("dashboard-123", "workspace", "test-widget", {
-        uiArgs: { innerTab: 123 },
-      });
-
-      const widget = mockAddWidget.mock.calls[0][1];
-      expect(widget.innerTab).toBeUndefined();
-      expect(widget.storage.innerTab).toBeUndefined();
+      await expect(
+        createWidget("dashboard-123", "workspace", "test-widget", {
+          uiArgs: { innerTab: 123 },
+        }),
+      ).rejects.toThrow("`ui_args.innerTab` must be string");
+      expect(mockAddWidget).not.toHaveBeenCalled();
     });
 
     it("should handle gridData and innerTab together", async () => {
@@ -1097,6 +1085,51 @@ describe("Workspace API", () => {
       expect(result.droppedKeys).toEqual(["bogus_param", "another"]);
     });
 
+    it("collects values their param's schema does not accept as invalidKeys", () => {
+      const result = computeWidgetParamUpdates(
+        [
+          ...(paramsDef ?? []),
+          {
+            paramName: "period",
+            type: "text",
+            options: [
+              { label: "Annual", value: "annual" },
+              { label: "Quarter", value: "quarter" },
+            ],
+          },
+          { paramName: "start", type: "date" },
+        ] as WidgetT["params"],
+        {
+          limit: "ten",
+          raw: "maybe",
+          period: "weekly",
+          start: "yesterday",
+          symbol: "AAPL",
+        },
+      );
+
+      expect(result.params).toEqual({ symbol: "AAPL" });
+      expect(result.invalidKeys).toEqual(["raw", "limit", "period", "start"]);
+    });
+
+    it("accepts what the widget's request accepts: numeric strings, $currentDate, lists", () => {
+      const result = computeWidgetParamUpdates(
+        [
+          { paramName: "limit", type: "number" },
+          { paramName: "start", type: "date" },
+          { paramName: "tags", type: "endpoint", multiSelect: true },
+        ] as WidgetT["params"],
+        { limit: "10", start: "$currentDate-1M", tags: ["a", "b"] },
+      );
+
+      expect(result.invalidKeys).toEqual([]);
+      expect(result.params).toEqual({
+        limit: "10",
+        start: "$currentDate-1M",
+        tags: ["a", "b"],
+      });
+    });
+
     it("returns empty params and drops every key when the widget declares no params", () => {
       const result = computeWidgetParamUpdates(undefined, { someArg: "value" });
 
@@ -1113,42 +1146,62 @@ describe("Workspace API", () => {
   });
 
   describe("computeWidgetUiUpdates", () => {
-    it("routes name/description/source onto widget props and the rest to storage", () => {
-      const result = computeWidgetUiUpdates({
+    it("routes name/description/source onto widget props and the type's keys to storage", () => {
+      const result = computeWidgetUiUpdates(
+        { type: "html" },
+        {
+          name: "New Name",
+          description: "New Description",
+          source: ["a", "b"],
+          html: "<p>content</p>",
+        },
+      );
+
+      expect(result).toMatchObject({
         name: "New Name",
         description: "New Description",
         source: ["a", "b"],
-        html: "<p>content</p>",
-        customProp: "value",
-      });
-
-      expect(result.name).toBe("New Name");
-      expect(result.description).toBe("New Description");
-      expect(result.source).toEqual(["a", "b"]);
-      expect(result.storage).toEqual({
-        html: "<p>content</p>",
-        customProp: "value",
+        storage: { html: "<p>content</p>" },
+        problems: [],
       });
     });
 
-    it("skips undefined, null, and 'null' values", () => {
-      const result = computeWidgetUiUpdates({
-        name: "null",
-        description: null,
-        source: undefined,
-        customProp: null,
-      });
+    it("reports a key the widget's type does not read, and applies nothing", () => {
+      const result = computeWidgetUiUpdates(
+        { type: "html" },
+        { name: "New Name", text: "a note", customProp: "value" },
+      );
 
+      expect(result.problems).toEqual([
+        "`ui_args.text` is not a key this widget accepts",
+        "`ui_args.customProp` is not a key this widget accepts",
+      ]);
       expect(result.name).toBeUndefined();
-      expect(result.description).toBeUndefined();
-      expect(result.source).toBeUndefined();
       expect(result.storage).toEqual({});
     });
 
-    it("handles missing uiArgs", () => {
-      const result = computeWidgetUiUpdates(undefined);
+    it("skips undefined, null, and 'null' values", () => {
+      const result = computeWidgetUiUpdates(
+        { type: "html" },
+        {
+          name: "null",
+          description: null,
+          source: undefined,
+          customProp: null,
+        },
+      );
 
-      expect(result).toEqual({ storage: {} });
+      expect(result).toMatchObject({ storage: {}, problems: [] });
+      expect(result.name).toBeUndefined();
+      expect(result.description).toBeUndefined();
+      expect(result.source).toBeUndefined();
+    });
+
+    it("handles missing uiArgs", () => {
+      expect(computeWidgetUiUpdates({ type: "markdown" }, undefined)).toMatchObject({
+        storage: {},
+        problems: [],
+      });
     });
   });
 
