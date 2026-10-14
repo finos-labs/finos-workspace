@@ -1,12 +1,12 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { apiClient } from "~/api/api";
 import { getApiSources } from "~/api/auth.api";
-import { saveDashboards } from "~/api/dashboard.api";
+import { saveDashboards, saveDashboardsOnExit } from "~/api/dashboard.api";
 import { usePluginRegistrySync } from "~/hooks/usePlugins";
 import { useCreateRef } from "~/hooks/useRefHooks";
-import { useShallowAppStore } from "~/lib/state/app";
+import { useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useAuthStore, useShallowAuthStore } from "~/lib/state/auth";
 import {
   useBackendConnectorStore,
@@ -37,10 +37,7 @@ export default function useSyncItems() {
   );
   const updateUserApps = useShallowUserAppsStore((state) => state.updateUserApps);
 
-  const { updateRemoteItems, checkForChanges } = useShallowAppStore((state) => ({
-    updateRemoteItems: state.updateRemoteItems,
-    checkForChanges: state.checkForChanges,
-  }));
+  const updateRemoteItems = useShallowAppStore((state) => state.updateRemoteItems);
   const updateChats = useShallowCopilotStore((state) => state.updateChats);
   const { updateApiSources, updateBackendConnector } = useShallowBackendConnectorStore(
     (state) => ({
@@ -121,14 +118,6 @@ export default function useSyncItems() {
     },
   });
 
-  const handleBeforeUnload = useCallback(
-    (_e: BeforeUnloadEvent) => {
-      const hasDiff = checkForChanges();
-      if (hasDiff) saveDashboards();
-    },
-    [checkForChanges],
-  );
-
   useEffect(() => {
     // Check if the user is logged in and items are null
     if (user && !itemsRef?.current) {
@@ -137,13 +126,26 @@ export default function useSyncItems() {
   }, [user, items, itemsRef]);
 
   useEffect(() => {
-    window.addEventListener("beforeunload", handleBeforeUnload);
+    // Saved as the page is hidden or goes away, with a request that outlives it: one made in
+    // beforeunload is cancelled in WebKit, and a change of the last minute was lost
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") saveDashboardsOnExit();
+    };
+    window.addEventListener("pagehide", saveDashboardsOnExit);
+    document.addEventListener("visibilitychange", onVisibility);
+    // And two seconds after any change, so little waits for the page to go away
+    const unsubscribeItems = useAppStore.subscribe(
+      (state) => state.items,
+      () => useAppStore.getState().debounceSaveDashboards(),
+    );
 
     const debouncedSaveInt = setInterval(() => saveDashboards(), 1000 * 60 * 1); // Save every minute
     const clearInt = setInterval(() => dispatchSaveState(), 1000 * 30); // Save every 30 seconds
 
     return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("pagehide", saveDashboardsOnExit);
+      document.removeEventListener("visibilitychange", onVisibility);
+      unsubscribeItems();
       // Cleanup function: cancel the debounced call and immediately save changes
       clearInterval(debouncedSaveInt);
       clearInterval(clearInt);

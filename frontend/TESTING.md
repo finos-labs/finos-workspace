@@ -152,6 +152,16 @@ The `setup` project signs in once and keeps the session in `playwright/.auth/use
 other projects start from it. `.github/workflows/e2e.yml` runs the same tests in CI against a
 stack of its own, with an administrator whose password is generated for the run.
 
+Every spec runs in the `chromium` project; the widget plugin specs (`plugin*.spec.ts`) also run
+in `firefox` and `webkit`, since a plugin's frame, policy and workers are where the engines
+differ (`bunx playwright install chromium firefox webkit`), and so does
+`dashboard-persistence.spec.ts`, since WebKit cancels a request made as the page goes away. The
+plugin specs need the plugins directory the
+API reads, named on this machine by `E2E_PLUGINS_DIR` (see `.github/workflows/e2e.yml` for the
+compose override). `plugin-interop.spec.ts` runs public Anywidget modules fetched from PyPI at
+pinned versions, so it runs only with `E2E_INTEROP=1`, and nightly in
+`.github/workflows/plugin-interop.yml`.
+
 ### Storybook Accessibility Tests
 
 We use `@storybook/test-runner` and `axe-playwright` to run accessibility (WCAG) checks against our UI components using Storybook.

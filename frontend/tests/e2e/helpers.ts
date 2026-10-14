@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 export const authFile = "playwright/.auth/user.json";
 
@@ -26,4 +26,28 @@ export async function submitLogin(page: Page, email: string, password: string) {
 export async function login(page: Page) {
   const { email, password } = userInfo();
   await submitLogin(page, email, password);
+}
+
+/**
+ * Deletes a dashboard a test made, from its tab's menu, and waits until the server has
+ * deleted it too. A dashboard that was changed asks first.
+ */
+export async function deleteDashboard(page: Page, id: string) {
+  // A test that failed may have left a dialog open over the sidebar
+  await page.keyboard.press("Escape");
+  const deleted = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/app/dash/sync") &&
+      response.request().method() === "POST" &&
+      response.request().postData()?.includes(`"${id}":"DELETE"`) === true,
+  );
+  const tab = page.locator(`#tab-${id}`);
+  await tab.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  const confirm = page.getByRole("button", { name: "Yes, delete" });
+  await expect(async () => {
+    if (await confirm.isVisible()) await confirm.click();
+    await expect(tab).toHaveCount(0, { timeout: 500 });
+  }).toPass({ timeout: 10000 });
+  expect((await deleted).ok()).toBe(true);
 }

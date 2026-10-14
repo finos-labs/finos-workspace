@@ -44,8 +44,58 @@ function until(check: () => boolean, ms = 2000) {
   return vi.waitFor(() => expect(check()).toBe(true), { timeout: ms, interval: 5 });
 }
 
+/** Stands in for the browser's Worker: records how it was started and what it was sent. */
+class FakeWorker extends EventTarget {
+  static started: FakeWorker[] = [];
+  posted: { message: unknown; transfer: unknown[] }[] = [];
+  terminated = false;
+  constructor(
+    readonly url: string,
+    readonly options?: { type?: string },
+  ) {
+    super();
+    FakeWorker.started.push(this);
+  }
+  postMessage(message: unknown, transfer: unknown[] = []) {
+    this.posted.push({ message, transfer });
+  }
+  terminate() {
+    this.terminated = true;
+  }
+}
+
+/** Object URLs of the frame's own scope, for the workers it starts. */
+function workerScope() {
+  const texts = new Map<string, string>();
+  const revoked: string[] = [];
+  let next = 0;
+  const URLs = {
+    createObjectURL(blob: EntryBlob) {
+      next += 1;
+      const url = `blob:null/${next}`;
+      texts.set(url, blob.parts.join(""));
+      return url;
+    },
+    revokeObjectURL(url: string) {
+      revoked.push(url);
+    },
+  };
+  return {
+    texts,
+    revoked,
+    globals: {
+      Worker: FakeWorker,
+      URL: URLs,
+      Blob: EntryBlob,
+      MessageChannel,
+      atob,
+      TextDecoder,
+    },
+  };
+}
+
 /** One frame: the shell running against a fake window, and the port the host holds. */
-async function startShell() {
+async function startShell(globals: Record<string, unknown> = {}) {
   const root = document.createElement("div");
   root.id = "root";
   document.body.replaceChildren(root);
@@ -53,7 +103,8 @@ async function startShell() {
 
   const listeners = new Map<string, (event: unknown) => void>();
   const parent = { postMessage: vi.fn() };
-  const fakeWindow = {
+  const fakeWindow: Record<string, unknown> = {
+    ...globals,
     parent,
     addEventListener: (type: string, listener: (event: unknown) => void) =>
       listeners.set(type, listener),
@@ -96,6 +147,7 @@ async function startShell() {
     sent,
     posted,
     deliver,
+    window: fakeWindow,
     /** Sends the bundle and waits until it loaded or failed. */
     async load(entry: string, options: { state?: object; writable?: string[] } = {}) {
       deliver({
@@ -445,5 +497,202 @@ describe("the guest contract, negative cases", () => {
       conformance.invoke("core:download:save", {}, { buffers: ["text"] }),
     ).rejects.toMatchObject({ name: "invalid_args" });
     expect(shell.posted("invoke")).toEqual([]);
+  });
+});
+
+describe("workers the plugin starts", () => {
+  type WorkerClass = new (url: string, options?: { type?: string }) => FakeWorker;
+
+  async function frame() {
+    FakeWorker.started = [];
+    const scope = workerScope();
+    const shell = await startShell(scope.globals);
+    const Worker = shell.window.Worker as WorkerClass;
+    const URLs = shell.window.URL as typeof scope.globals.URL;
+    return { ...scope, shell, Worker, URLs };
+  }
+
+  /** The port the shell handed the worker, and what arrives on it as the worker. */
+  function handedPort(worker: FakeWorker) {
+    const [first] = worker.posted;
+    expect(first.message).toEqual({ type: "ws-worker-port" });
+    return first.transfer[0] as MessagePort;
+  }
+
+  it("starts a blob: worker with the reporter, and its port comes before the plugin's messages", async () => {
+    const { Worker, URLs, texts } = await frame();
+    const own = URLs.createObjectURL(new EntryBlob(["self.onmessage = () => {};"]));
+    const worker = new Worker(own);
+    worker.postMessage("go");
+
+    expect(worker).toBeInstanceOf(FakeWorker);
+    const started = FakeWorker.started[0];
+    const text = texts.get(started.url) ?? "";
+    expect(text).toContain("(function reportWorkers(scope, source, deliver)");
+    expect(text.endsWith(`importScripts(${JSON.stringify(own)});`)).toBe(true);
+    expect(started.posted.map((p) => p.message)).toEqual([
+      { type: "ws-worker-port" },
+      "go",
+    ]);
+    handedPort(started).close();
+  });
+
+  it("holds the revocation of the worker's URL until the worker started", async () => {
+    const { Worker, URLs, revoked } = await frame();
+    const own = URLs.createObjectURL(new EntryBlob(["x"]));
+    new Worker(own);
+    URLs.revokeObjectURL(own);
+    expect(revoked).not.toContain(own);
+
+    const port = handedPort(FakeWorker.started[0]);
+    port.postMessage({ t: "started" });
+    await until(() => revoked.includes(own));
+    // Its own script goes with it
+    expect(revoked).toContain(FakeWorker.started[0].url);
+    // An URL no worker is loading is revoked at once
+    const other = URLs.createObjectURL(new EntryBlob(["y"]));
+    URLs.revokeObjectURL(other);
+    expect(revoked).toContain(other);
+    port.close();
+  });
+
+  it("releases a held revocation when the worker fails or is terminated", async () => {
+    const { Worker, URLs, revoked } = await frame();
+    const failing = URLs.createObjectURL(new EntryBlob(["x"]));
+    new Worker(failing);
+    URLs.revokeObjectURL(failing);
+    FakeWorker.started[0].dispatchEvent(new Event("error"));
+    expect(revoked).toContain(failing);
+
+    const ended = URLs.createObjectURL(new EntryBlob(["y"]));
+    const worker = new Worker(ended);
+    URLs.revokeObjectURL(ended);
+    worker.terminate();
+    expect(revoked).toContain(ended);
+    expect(FakeWorker.started[1].terminated).toBe(true);
+  });
+
+  it("hands the host what a worker's policy blocked, as the document's reports", async () => {
+    const { Worker, URLs, shell } = await frame();
+    await shell.load("export default { render() {} };");
+    new Worker(URLs.createObjectURL(new EntryBlob(["x"])));
+    const port = handedPort(FakeWorker.started[0]);
+    port.postMessage({ t: "started" });
+    port.postMessage({
+      t: "csp",
+      directive: "connect-src",
+      blocked: "https://worker.example.org/beacon",
+    });
+    port.postMessage({
+      t: "csp",
+      directive: "connect-src",
+      blocked: "https://worker.example.org/again",
+    });
+    await until(() => shell.posted("csp").length > 0);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(shell.posted("csp")).toEqual([
+      { t: "csp", directive: "connect-src", origin: "https://worker.example.org" },
+    ]);
+    port.close();
+  });
+
+  it("starts a module worker with the reporter imported first", async () => {
+    const { Worker, URLs, texts } = await frame();
+    const own = URLs.createObjectURL(new EntryBlob(["export {};"]));
+    new Worker(own, { type: "module" });
+    const started = FakeWorker.started[0];
+    expect(started.options).toEqual({ type: "module" });
+    const [reporter, rest] = (texts.get(started.url) ?? "").split("\n");
+    expect(rest).toBe(`import ${JSON.stringify(own)};`);
+    const reporterUrl = JSON.parse(reporter.replace(/^import /, "").replace(/;$/, ""));
+    expect(texts.get(reporterUrl)).toContain("(function reportWorkers(");
+    handedPort(started).close();
+  });
+
+  it("keeps a data: worker a data: URL, with the reporter in front", async () => {
+    const { Worker } = await frame();
+    new Worker("data:text/javascript,postMessage(%22ran%22)");
+    new Worker(`data:text/javascript;base64,${btoa('"use strict";\npostMessage(1);')}`);
+    const [plain, strict] = FakeWorker.started.map((w) => {
+      expect(w.url.startsWith("data:text/javascript;charset=utf-8,")).toBe(true);
+      return decodeURIComponent(w.url.slice(w.url.indexOf(",") + 1));
+    });
+    expect(plain).toContain("(function reportWorkers(");
+    expect(plain.endsWith('\npostMessage("ran")')).toBe(true);
+    // A strict script stays strict: the directive still comes first
+    expect(strict.startsWith('"use strict";(function reportWorkers(')).toBe(true);
+    for (const worker of FakeWorker.started) handedPort(worker).close();
+  });
+
+  it("starts other URLs as the browser would, with nothing added", async () => {
+    const { Worker } = await frame();
+    new Worker("https://example.org/worker.js");
+    new Worker("data:text/javascript,%E0%A4%A");
+    expect(FakeWorker.started.map((w) => [w.url, w.posted])).toEqual([
+      ["https://example.org/worker.js", []],
+      ["data:text/javascript,%E0%A4%A", []],
+    ]);
+  });
+
+  describe("inside the worker", () => {
+    /** Runs the reporter as a worker does, against a fake worker scope. */
+    async function inWorker() {
+      const { Worker, URLs, texts } = await frame();
+      new Worker(URLs.createObjectURL(new EntryBlob(["x"])));
+      const text = texts.get(FakeWorker.started[0].url) ?? "";
+      handedPort(FakeWorker.started[0]).close();
+      const start = text.slice(0, text.lastIndexOf("\nimportScripts("));
+      const listeners = new Map<string, (event: unknown) => void>();
+      const self = {
+        addEventListener: (type: string, listener: (event: unknown) => void) =>
+          listeners.set(type, listener),
+        removeEventListener: (type: string) => listeners.delete(type),
+      };
+      new Function("self", start)(self);
+      const violation = (blockedURI: string, isTrusted = true) =>
+        listeners.get("securitypolicyviolation")?.({
+          isTrusted,
+          effectiveDirective: "connect-src",
+          blockedURI,
+        });
+      return { listeners, violation };
+    }
+
+    it("takes the shell's port from the first message and holds reports until then", async () => {
+      const { listeners, violation } = await inWorker();
+      violation("https://early.example.org/x");
+      violation("https://forged.example.org/x", false);
+
+      const channel = new MessageChannel();
+      const received: unknown[] = [];
+      channel.port1.onmessage = (event) => received.push(event.data);
+      const stop = vi.fn();
+      // A message the plugin forged does not hand over a port
+      listeners.get("message")?.({
+        isTrusted: false,
+        data: { type: "ws-worker-port" },
+        ports: [new MessageChannel().port2],
+        stopImmediatePropagation: stop,
+      });
+      expect(stop).not.toHaveBeenCalled();
+      listeners.get("message")?.({
+        isTrusted: true,
+        data: { type: "ws-worker-port" },
+        ports: [channel.port2],
+        stopImmediatePropagation: stop,
+      });
+      // The plugin's listeners never see it, and the reporter stops listening
+      expect(stop).toHaveBeenCalledOnce();
+      expect(listeners.has("message")).toBe(false);
+      violation("https://late.example.org/x");
+
+      await until(() => received.length === 3);
+      expect(received).toEqual([
+        { t: "started" },
+        { t: "csp", directive: "connect-src", blocked: "https://early.example.org/x" },
+        { t: "csp", directive: "connect-src", blocked: "https://late.example.org/x" },
+      ]);
+      channel.port1.close();
+    });
   });
 });

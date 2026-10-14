@@ -43,6 +43,7 @@ import { mountBridgeRoutes } from "./bridge/routes";
 import { bridgeManager } from "./bridge/singleton";
 import { registerWorkspacePrompts } from "./prompts/workspace";
 import { registerAppBuilderResources } from "./resources/app-builder";
+import { registerWidgetsSchemaResource } from "./resources/widgets-schema";
 import {
   getWorkspaceSnapshotSchema,
   getWorkspaceSnapshotHandler,
@@ -349,8 +350,10 @@ async function buildMcpServer(): Promise<McpServer> {
     // Workspace MCP prompts (workspace_tool_usage + workspace_session_context).
     registerWorkspacePrompts(mcp);
 
-    // App-builder MCP resources (16 markdown documents under workspace://*).
+    // App-builder MCP resources (16 markdown documents under workspace://*), and the widgets.json schema in
+    // force for the user, read from their browser.
     await registerAppBuilderResources(mcp);
+    registerWidgetsSchemaResource(mcp);
   }
 
   return mcp;

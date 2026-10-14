@@ -2,7 +2,7 @@
 //
 //   dist/<plugin id>/<version>/plugin.json, entry.js, entry.css, assets/, backend/, licenses/
 //
-// entry.js is src/widget.js bundled by esbuild into the one module a plugin frame loads,
+// entry.js is src/entry.js bundled by esbuild into the one module a plugin frame loads,
 // with the completion engine's client: DuckDB-WASM's browser build and the Arrow code it
 // uses. DuckDB itself runs in a worker: its script is assets/duckdb-browser-eh.worker.js
 // and its WebAssembly binary (the exception-handling build) assets/duckdb-eh.wasm, which
@@ -79,7 +79,7 @@ for (const [target, source] of Object.entries(FILES)) {
 }
 
 const bundled = await build({
-  entryPoints: [join(root, "src/widget.js")],
+  entryPoints: [join(root, "src/entry.js")],
   outfile: join(out, "entry.js"),
   bundle: true,
   format: "esm",

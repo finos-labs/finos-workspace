@@ -6,7 +6,7 @@ import {
   type Page,
   test,
 } from "@playwright/test";
-import { authFile } from "./helpers";
+import { authFile, deleteDashboard } from "./helpers";
 import {
   QUOTES_ENTRY,
   quotesManifest,
@@ -94,11 +94,7 @@ test.beforeAll(async ({ browser, playwright }, testInfo) => {
 });
 
 test.afterAll(async () => {
-  if (page && dashboardId) {
-    await page.keyboard.press("Escape");
-    await page.locator(`#tab-${dashboardId}`).click({ button: "right" });
-    await page.getByRole("menuitem", { name: "Delete" }).click();
-  }
+  if (page && dashboardId) await deleteDashboard(page, dashboardId);
   if (api) {
     await api.post(`/plugins/${PLUGIN}/restore`);
     await api.delete(`/plugins/${PLUGIN}/secrets/api_key`);

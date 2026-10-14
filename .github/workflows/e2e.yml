@@ -19,7 +19,7 @@ jobs:
   playwright:
     name: Playwright against the compose stack
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -87,11 +87,13 @@ jobs:
         working-directory: frontend
         run: |
           bun install --frozen-lockfile
-          bunx playwright install --with-deps chromium
+          bunx playwright install --with-deps chromium firefox webkit
 
+      # Every spec in Chromium; the widget plugin specs in Firefox and WebKit as well, since a
+      # plugin's frame, policy and workers are where the engines differ (playwright.config.ts)
       - name: Playwright tests
         working-directory: frontend
-        run: bunx playwright test --project=chromium
+        run: bunx playwright test --project=chromium --project=firefox --project=webkit
 
       - name: Upload the report
         if: always()

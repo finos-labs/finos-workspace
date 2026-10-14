@@ -1003,3 +1003,55 @@ class TestDashboardSharesGet:
                 assert shares[emails[0]]["permissions"] == "view"
             if emails[1] in shares:
                 assert shares[emails[1]]["permissions"] == "comment"
+
+
+class TestDashboardSavesSentTwice:
+    """A page that leaves sends its last save in a request it never hears back from
+    (frontend/src/api/dashboard.api.ts, saveDashboardsOnExit), so a save can arrive twice,
+    or at the same time as another. Neither may fail the whole save."""
+
+    @staticmethod
+    async def owned(client) -> dict:
+        response = await client.get("/app/dash/sync")
+        assert response.status_code == 200
+        return response.json()["owned"]
+
+    @pytest.mark.asyncio
+    async def test_a_dashboard_deleted_again_is_no_error(self, auth_client):
+        dashboard = str(uuid4())
+        content = {"name": "Deleted twice", "widgets": {}}
+        assert (await auth_client.post("/app/dash/sync", json={"items": {dashboard: content}})).status_code == 200
+        for _ in range(2):
+            response = await auth_client.post("/app/dash/sync", json={"items": {dashboard: "DELETE"}})
+            assert response.status_code == 200, response.text
+        assert dashboard not in await self.owned(auth_client)
+
+    @pytest.mark.asyncio
+    async def test_another_users_dashboard_is_still_refused(self, auth_client, second_user_client):
+        dashboard = str(uuid4())
+        await auth_client.post("/app/dash/sync", json={"items": {dashboard: {"name": "Mine", "widgets": {}}}})
+        response = await second_user_client.post("/app/dash/sync", json={"items": {dashboard: "DELETE"}})
+        assert response.status_code == 400
+        response = await second_user_client.post(
+            "/app/dash/sync", json={"items": {dashboard: {"name": "Taken", "widgets": {}}}}
+        )
+        assert response.status_code == 400
+        assert (await self.owned(auth_client))[dashboard]["content"]["name"] == "Mine"
+
+    @pytest.mark.asyncio
+    async def test_a_new_dashboard_saved_twice_at_once_is_kept(self, auth_client, monkeypatch):
+        from api import crud
+
+        # As if the second save read the user's dashboards before the first one committed
+        async def none_yet(db, owner_uuid):
+            return []
+
+        monkeypatch.setattr(crud, "owned_dashboard_uuids", none_yet)
+        dashboard = str(uuid4())
+        first = {"name": "First", "widgets": {}}
+        latest = {"name": "Latest", "widgets": {"w1": {"widgetId": "iframe"}}}
+        assert (await auth_client.post("/app/dash/sync", json={"items": {dashboard: first}})).status_code == 200
+        response = await auth_client.post("/app/dash/sync", json={"items": {dashboard: latest}})
+        assert response.status_code == 200, response.text
+        monkeypatch.undo()
+        assert (await self.owned(auth_client))[dashboard]["content"] == latest

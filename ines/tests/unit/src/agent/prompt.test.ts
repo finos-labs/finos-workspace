@@ -129,6 +129,23 @@ describe("buildSystemPrompt — base content", () => {
     expect(out).toContain("a widget_id is never an origin");
   });
 
+  it("tags a listed widget with the tool of its own backend that it opted in to", () => {
+    const linked = w({ uuid: "w-1", name: "Team report", widget_id: "team_report", mcp_tool: { server_id: "s", tool_name: "get_team_report" } });
+    const plain = w({ uuid: "w-2", name: "Prices", widget_id: "prices" });
+    const out = buildSystemPrompt(req({ widgets: { primary: [linked], secondary: [plain], extra: [] } }), {
+      linkedTool: (widget) => (widget.mcp_tool ? "Team_data_get_team_report" : undefined),
+    });
+    expect(out).toContain(
+      "- Team report (team_report) [origin: example] [uuid: w-1]: [query tool: Team_data_get_team_report] Sample description",
+    );
+    expect(out).toContain("- Prices (prices) [origin: example] [uuid: w-2]: Sample description");
+    expect(out).toContain("a widget tagged [query tool: name] names the one for it");
+    // Without the request's tools there is no tag
+    expect(buildSystemPrompt(req({ widgets: { primary: [linked], secondary: [], extra: [] } }))).toContain(
+      "- Team report (team_report) [origin: example] [uuid: w-1]: Sample description",
+    );
+  });
+
   it("tells an iframe widget from the others, and what to do with it", () => {
     const iframe = w({ uuid: "w-1", name: "Asset Info", widget_id: "asset_info", widget_type: "iframe" });
     const table = w({ uuid: "w-2", name: "Prices", widget_id: "prices", widget_type: "table" });

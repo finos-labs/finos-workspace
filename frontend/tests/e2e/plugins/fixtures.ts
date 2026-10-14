@@ -149,7 +149,11 @@ export default {
     // 2: storage of any kind
     attempt("local-storage", () => window.localStorage.setItem("x", "1"));
     attempt("session-storage", () => window.sessionStorage.getItem("x"));
-    attempt("cookie", () => document.cookie);
+    // A cookie it can keep (WebKit reads an empty jar instead of refusing, and keeps nothing)
+    attempt("cookie", () => {
+      document.cookie = "e2e=1";
+      return document.cookie.includes("e2e=1") ? "allowed" : "blocked";
+    });
     // 5: popups, top navigation, dialogs
     attempt("window-open", () => (window.open("https://example.com") ? "allowed" : "blocked"));
     attempt("top-navigation", () => { window.top.location.href = "https://example.com"; });
@@ -166,6 +170,35 @@ export default {
     await import("https://example.com/module.js").catch(() => undefined);
     await new Promise((resolve) => setTimeout(resolve, 500));
     results["network"] = violations.length - before >= 3 ? "blocked" : "allowed";
+    // 3 and 4 from workers: a worker's requests, and its own worker's, are refused and
+    // reported from there; its URL is revoked at once, as bundlers do
+    results["worker-network"] = await new Promise((resolve) => {
+      const code = \`self.onmessage = async () => {
+        const url = URL.createObjectURL(new Blob(['fetch("https://nested.example.com/beacon").then(() => postMessage("allowed"), () => postMessage("blocked"))'], { type: "text/javascript" }));
+        const inner = new Worker(url);
+        URL.revokeObjectURL(url);
+        const nested = new Promise((done) => { inner.onmessage = (event) => done(event.data); setTimeout(() => done("silent"), 4000); });
+        const own = await fetch("https://worker.example.com/beacon").then(() => "allowed", () => "blocked");
+        postMessage(own === "blocked" && (await nested) === "blocked" ? "blocked" : "allowed");
+      };\`;
+      const url = URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+      const worker = new Worker(url);
+      URL.revokeObjectURL(url);
+      worker.onmessage = (event) => resolve(event.data);
+      worker.onerror = () => resolve("error");
+      worker.postMessage("go");
+      setTimeout(() => resolve("silent"), 6000);
+    });
+    results["data-worker"] = await new Promise((resolve) => {
+      try {
+        const worker = new Worker("data:text/javascript,postMessage('ran')");
+        worker.onmessage = () => resolve("allowed");
+        worker.onerror = () => resolve("blocked");
+        setTimeout(() => resolve("blocked"), 3000);
+      } catch {
+        resolve("blocked");
+      }
+    });
     // 7: forged host messages to the parent are ignored by the host
     window.parent.postMessage({ type: "ws-shell-ready" }, "*");
     window.parent.postMessage({ t: "write", traits: { params: { region: "forged" } } }, "*");

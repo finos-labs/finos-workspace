@@ -1,0 +1,88 @@
+name: Widget plugin interop
+
+# Public Anywidget front-end modules, at the versions frontend/tests/e2e/plugins/
+# interop-modules.json pins, run in plugin frames on the compose stack, in Chromium, Firefox
+# and WebKit (docs/widget-plugins/GUEST-CONTRACT.md 8). The modules are fetched from PyPI
+# when the tests run, so this runs nightly rather than on every pull request.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  interop:
+    name: Public modules in plugin frames
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure the stack
+        working-directory: backend-api/backend
+        run: |
+          EMAIL="e2e-admin@example.com"
+          python3 -m scripts.create_local_env --admin-email "$EMAIL" --entity-name "End-to-end"
+          PASSWORD="$(python3 -c "import tomllib; print(tomllib.load(open('scripts/cfgs/config.toml', 'rb'))['admins'][0]['password'])")"
+          echo "::add-mask::$PASSWORD"
+          echo "E2E_USER_EMAIL=$EMAIL" >> "$GITHUB_ENV"
+          echo "E2E_USER_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
+
+      # The tests write the modules' packages into a directory the API reads
+      - name: Mount a widget plugins directory
+        run: |
+          mkdir -p "$RUNNER_TEMP/widget-plugins"
+          cat > "$RUNNER_TEMP/compose.plugins.yml" <<EOF
+          services:
+            api:
+              environment:
+                WIDGET_PLUGINS_DIR: /opt/widget-plugins
+              volumes:
+                - $RUNNER_TEMP/widget-plugins:/opt/widget-plugins:ro
+          EOF
+          echo "E2E_PLUGINS_DIR=$RUNNER_TEMP/widget-plugins" >> "$GITHUB_ENV"
+          echo "E2E_INTEROP=1" >> "$GITHUB_ENV"
+
+      - name: Build and start the stack
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" up -d --build
+
+      - name: Wait for the stack
+        run: |
+          for url in http://localhost:8000/health http://localhost:3000/; do
+            for _ in $(seq 1 60); do
+              curl -fsS -o /dev/null "$url" && break
+              sleep 5
+            done
+            curl -fsS -o /dev/null "$url"
+          done
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: |
+          bun install --frozen-lockfile
+          bunx playwright install --with-deps chromium firefox webkit
+
+      - name: Interop smoke tests
+        working-directory: frontend
+        run: bunx playwright test plugin-interop.spec.ts --project=chromium --project=firefox --project=webkit
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-interop-report
+          path: frontend/playwright-report/
+
+      - name: Show the stack's logs
+        if: failure()
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" logs --no-color --tail=200
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" down -v

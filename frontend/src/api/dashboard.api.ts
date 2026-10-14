@@ -1,5 +1,6 @@
 import axiosRetry from "axios-retry";
-import { type Item, useAppStore } from "~/lib/state/app";
+import { getConfig } from "~/lib/runtimeConfig";
+import { type Item, type Items, useAppStore } from "~/lib/state/app";
 import { useAuthStore } from "~/lib/state/auth";
 import { useFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useSharedAppStore } from "~/lib/state/sharedApp";
@@ -10,12 +11,57 @@ import { apiClient } from "./api";
 
 axiosRetry(apiClient, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
+// One save at a time: two at once that both carry a new dashboard would both insert it
+let saving: Promise<unknown> = Promise.resolve();
+
 /* Post dashboard */
-export async function postDashboards(dashboardData: Record<string, Item | "DELETE">) {
-  const { data } = await apiClient.post("/app/dash/sync", {
-    items: dashboardData,
-  });
-  return data;
+export function postDashboards(dashboardData: Record<string, Item | "DELETE">) {
+  const send = async () => {
+    const { data } = await apiClient.post("/app/dash/sync", {
+      items: dashboardData,
+    });
+    return data;
+  };
+  const sent = saving.then(send, send);
+  saving = sent.catch(() => undefined);
+  return sent;
+}
+
+// What browsers let a request carry when it outlives its page (keepalive, 64 KiB in all)
+const KEEPALIVE_BYTES = 60 * 1024;
+let sentOnExit: Items | null = null;
+
+/**
+ * Saves what changed as the page is hidden or goes away (closed, reloaded, navigated). A
+ * request made then is cancelled with the page in WebKit, so this one is `keepalive`: the
+ * browser completes it after the page is gone. A change too large for that has normally
+ * been saved already, two seconds after it was made (useSyncItems).
+ */
+export function saveDashboardsOnExit() {
+  dispatchSaveState();
+  const { items, itemsStoredInCloud, updateItemsStoredInCloud } =
+    useAppStore.getState();
+  if (!(items && itemsStoredInCloud) || items === sentOnExit) return;
+  const diff = diffItemsWithRemote(items, itemsStoredInCloud);
+  if (Object.keys(diff).length === 0) return;
+  sentOnExit = items;
+  const body = JSON.stringify({ items: diff });
+  const token = useAuthStore.getState().user?.token;
+  fetch(`${getConfig().urls.backend.replace(/\/$/, "")}/app/dash/sync`, {
+    method: "POST",
+    keepalive: new TextEncoder().encode(body).length <= KEEPALIVE_BYTES,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body,
+  }).then(
+    // When the page stays (only hidden), what was saved is what the server holds
+    (response) => {
+      if (response.ok) updateItemsStoredInCloud(items);
+    },
+    () => undefined,
+  );
 }
 
 /* Get dashboard */

@@ -5,6 +5,7 @@ on:
     paths:
       - "backend-api/backend/**"
       - "backend-api/admin_cli/**"
+      - "lite/plugin-runner-seccomp.json"
       - ".github/workflows/backend-checks.yml"
   workflow_dispatch:
 
@@ -48,3 +49,30 @@ jobs:
           poetry config virtualenvs.create false
           poetry install --with dev
       - run: pytest tests -q
+
+  # The plugin runner's sandbox (docs/widget-plugins/SERVER-SIDE.md 5.4, recipe B) on Linux:
+  # a probe backend in a container started as the single image is, then the refusal in a
+  # container that does not allow the sandbox.
+  plugin-runner-sandbox:
+    name: Plugin runner sandbox
+    runs-on: ubuntu-latest
+    env:
+      TEST: >-
+        pip install -q --root-user-action=ignore pytest==8.4.2 pydantic==2.13.4 httpx==0.28.1
+        && python -m pytest -p no:cacheprovider --noconftest -c /dev/null --rootdir /code -v
+        tests/test_plugin_runner_sandbox.py
+    steps:
+      - uses: actions/checkout@v4
+      # Ubuntu keeps unconfined processes from using the user namespaces they make, which the
+      # sandbox needs (lite/README.md, Plugin backends)
+      - name: Allow user namespaces
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+      - name: In a container that allows the sandbox
+        run: >-
+          docker run --rm --security-opt seccomp=lite/plugin-runner-seccomp.json
+          --security-opt apparmor=unconfined -e PLUGIN_RUNNER_SANDBOX=1
+          -v "$PWD/backend-api/backend:/code:ro" -w /code python:3.13-slim sh -c "$TEST"
+      - name: In a container that does not
+        run: >-
+          docker run --rm -e PLUGIN_RUNNER_SANDBOX=refused
+          -v "$PWD/backend-api/backend:/code:ro" -w /code python:3.13-slim sh -c "$TEST"

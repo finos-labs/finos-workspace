@@ -29,7 +29,7 @@ const baseCommand = {
   request_id: z.string().nullable().optional(),
 };
 
-// 18 command variants — keep ordering aligned with models.py:359-379
+// 19 command variants — keep ordering aligned with the WorkspaceCommand union of models.py
 
 export const GetWidgetDataCommandSchema = z.object({
   command: z.literal("get_widget_data"),
@@ -49,6 +49,11 @@ export const GetWidgetSchemaCommandSchema = z.object({
   ...baseCommand,
   origin: z.string().nullable().optional(),
   widget_id: z.string(),
+});
+
+export const GetWidgetsSchemaCommandSchema = z.object({
+  command: z.literal("get_widgets_schema"),
+  ...baseCommand,
 });
 
 export const GetParamOptionsCommandSchema = z.object({
@@ -195,6 +200,7 @@ export const WorkspaceCommandSchema = z.discriminatedUnion("command", [
   GetWidgetDataCommandSchema,
   ListAvailableWidgetsCommandSchema,
   GetWidgetSchemaCommandSchema,
+  GetWidgetsSchemaCommandSchema,
   GetParamOptionsCommandSchema,
   ReadWidgetCommandSchema,
   CreateWidgetCommandSchema,
@@ -220,6 +226,7 @@ export const WorkspaceCommandResultSchema = z.object({
   message: z.string(),
   data: z.unknown().nullable().optional(),
   error: BridgeErrorSchema.nullable().optional(),
+  warnings: z.array(z.string()).default([]),
 });
 export type WorkspaceCommandResult = z.infer<
   typeof WorkspaceCommandResultSchema

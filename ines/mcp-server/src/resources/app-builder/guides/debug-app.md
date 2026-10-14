@@ -46,19 +46,20 @@ Walk these checks before debugging individual widgets:
 - `widgets.json` is an object. Every entry has `name`, `type`, `endpoint`.
 - `apps.json` is an array. Every layout item uses `i`, not `id`. Every `i` matches a `widgets.json` key.
 - Layout coordinates are on the 40-column grid; widgets don't overlap.
-- Every `type` is one of `markdown`, `html`, `newsfeed`, `pdf`, `iframe`. A widget of another type is left out of the catalog; Workspace names it in a warning.
+- Every `type` is one of `markdown`, `html`, `newsfeed`, `pdf`, `iframe`, or a plugin type enabled for the organization. A widget of another type is left out of the catalog; Workspace names it in a warning.
+- Every key is one the contract defines (`workspace://specs/widgets-json`): a widget with an unknown key, or a value out of bounds, is left out and named with the path of each problem.
 
 See `workspace://validation/common-errors`.
 
 ## 4. Hit each widget endpoint with default params
 
-For each widget in `widgets.json`, request:
+For each widget in `widgets.json`, send the request Workspace would send (`workspace://specs/widgets-json`, "The request"):
 
 ```text
-GET <backend-url><widget.endpoint>
+<widget.method, GET by default> <backend-url><widget.endpoint, placeholders filled>?<query params>
 ```
 
-(plus the default values of any required params). What you should see depends on the widget `type`:
+with the default values of its params, its header params as headers and its body params as a JSON body. What you should see depends on the widget `type`:
 
 - `markdown` → a markdown string.
 - `html` → an HTML document; if the widget sets `raw`, `?raw=true` should return the underlying rows as JSON.

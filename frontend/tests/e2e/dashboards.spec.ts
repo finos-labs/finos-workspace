@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
+import { deleteDashboard } from "./helpers";
 
 /** Creates a dashboard from the "My Dashboards" menu and returns its id. */
 async function createNewDashboard(page: Page): Promise<string> {
@@ -42,6 +43,7 @@ test("dashboards-rename", async ({ page }) => {
   await page.getByRole("button", { name: "Rename" }).click();
 
   await expect(dashboardItem(page, id)).toContainText("Renamed Dashboard");
+  await deleteDashboard(page, id);
 });
 
 test("dashboards-delete", async ({ page }) => {
@@ -49,10 +51,7 @@ test("dashboards-delete", async ({ page }) => {
   await page.waitForLoadState("networkidle");
   const id = await createNewDashboard(page);
 
-  await openDashboardContextMenu(page, id);
-  await page.getByRole("menuitem", { name: "Delete" }).click();
-
-  await expect(dashboardItem(page, id)).toHaveCount(0);
+  await deleteDashboard(page, id);
 });
 
 test("dashboards-export", async ({ page }) => {
@@ -78,4 +77,5 @@ test("dashboards-export", async ({ page }) => {
   if (downloadPath) {
     fs.unlinkSync(downloadPath);
   }
+  await deleteDashboard(page, id);
 });

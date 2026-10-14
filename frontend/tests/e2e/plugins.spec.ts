@@ -7,7 +7,7 @@ import {
   type Page,
   test,
 } from "@playwright/test";
-import { authFile } from "./helpers";
+import { authFile, deleteDashboard } from "./helpers";
 import {
   HOSTILE_ENTRY,
   hostileManifest,
@@ -178,12 +178,7 @@ test.beforeAll(async ({ browser, playwright }, testInfo) => {
 });
 
 test.afterAll(async () => {
-  if (page && dashboardId) {
-    // A test that failed may have left a dialog open over the sidebar
-    await page.keyboard.press("Escape");
-    await page.locator(`#tab-${dashboardId}`).click({ button: "right" });
-    await page.getByRole("menuitem", { name: "Delete" }).click();
-  }
+  if (page && dashboardId) await deleteDashboard(page, dashboardId);
   if (api && sourceUuid)
     await api.delete(`/app/data-connectors/api-source/${sourceUuid}`);
   await api?.dispose();
@@ -233,7 +228,7 @@ test("plugin-cannot-leave-its-frame", async () => {
   expect(toasts[0]).toContain("|img:false");
 });
 
-test("plugin-policy-violations-reach-the-administrator", async () => {
+test("plugin-policy-violations-reach-the-administrator", async ({ browserName }) => {
   type Report = {
     directive: string;
     origin: string;
@@ -258,6 +253,15 @@ test("plugin-policy-violations-reach-the-administrator", async () => {
         "connect-src https://example.com",
         "connect-src wss://example.com",
         "img-src https://example.com",
+        "worker-src data",
+        // From a worker, and from the worker it started. WebKit refuses a worker's
+        // requests too, but raises no violation event there, so none can be reported
+        ...(browserName === "webkit"
+          ? []
+          : [
+              "connect-src https://worker.example.com",
+              "connect-src https://nested.example.com",
+            ]),
       ]),
     );
 });
@@ -280,7 +284,10 @@ test("plugin-exports-what-its-code-offers", async () => {
 
   // The file is what its exportData delivered, named and typed as the option says
   expect(download.suggestedFilename()).toBe("e2e-rows.json");
-  expect(JSON.parse(readFileSync((await download.path()) ?? "", "utf8"))).toEqual({
+  // A copy of its own: a browser driven remotely has no local path
+  const saved = test.info().outputPath("e2e-rows.json");
+  await download.saveAs(saved);
+  expect(JSON.parse(readFileSync(saved, "utf8"))).toEqual({
     title: "e2e-rows",
     rows: [
       { country: "Japan", sales: 12 },

@@ -20,6 +20,24 @@ export interface Widget {
   sub_category?: string;
   source?: string | null;
   metadata?: Record<string, unknown>;
+  /** The widget's opt-in to a tool of its own backend, present only while that tool is in the request's `tools`. */
+  mcp_tool?: WidgetMcpLink;
+}
+
+/**
+ * A widget's link to one MCP tool of its own backend (docs/widget-plugins/WIDGETS-JSON.md 5.4): the tool the
+ * agent uses to query that backend beyond the widget's params. The web app names it as the request's `tools`
+ * list it, from its registry, never from the widget's own strings.
+ */
+export interface WidgetMcpLink {
+  server_id: string;
+  /** The tool's own name on its server, as `AgentTool.tool_name`. */
+  tool_name: string;
+  /**
+   * How the widget's params fill the tool's arguments: an argument maps to `$<param>` (the widget's value of
+   * that param) or to a fixed value. Absent, each param fills the argument of the same name.
+   */
+  args?: Record<string, string | number | boolean>;
 }
 
 export interface ChatMessage {

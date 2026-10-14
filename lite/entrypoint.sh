@@ -183,6 +183,27 @@ print_summary "starting"
 ) &
 
 ###############################################
-# 5. Hand off to supervisord (redis + uvicorn + nginx).
+# 5. Plugin backends (docs/widget-plugins/SERVER-SIDE.md 5.4, recipe B): the runner starts
+#    when its configuration is mounted. It gives the API its settings; what the deployer set
+#    with -e wins.
+###############################################
+PLUGIN_RUNNER_CONFIG=/etc/workspace/plugin-runner.toml
+PLUGIN_RUNNER=false
+if [[ -f "$PLUGIN_RUNNER_CONFIG" ]]; then
+  if ! runner_settings="$(cd /opt/plugin-runner && python -m plugin_runner --environment "$PLUGIN_RUNNER_CONFIG")"; then
+    echo "[entrypoint] $PLUGIN_RUNNER_CONFIG cannot be used; the message above says why." >&2
+    exit 1
+  fi
+  while IFS='=' read -r key value; do
+    if [[ -z "${!key:-}" ]]; then
+      export "$key=$value"
+    fi
+  done <<< "$runner_settings"
+  PLUGIN_RUNNER=true
+fi
+export PLUGIN_RUNNER
+
+###############################################
+# 6. Hand off to supervisord (redis + uvicorn + nginx, and the plugin runner).
 ###############################################
 exec /usr/local/bin/supervisord -c /etc/supervisor/supervisord.conf

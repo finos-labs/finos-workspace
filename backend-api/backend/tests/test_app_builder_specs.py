@@ -2,7 +2,8 @@
 
 import pytest
 
-from scripts.generate_app_builder_specs import BLOCKS, main, render
+import scripts.generate_app_builder_specs as specs
+from scripts.generate_app_builder_specs import BLOCKS, RESOURCES, main, render
 
 KIT = {
     "types": {
@@ -40,3 +41,28 @@ def test_a_block_belongs_to_its_page():
     with pytest.raises(SystemExit, match="no generated block named types"):
         render("specs/widgets-json.md", page, KIT)
     assert set(BLOCKS) == {"types", "returns", "widget-fields", "param-fields", "header-names"}
+
+
+def test_ines_serves_the_same_pages(tmp_path, monkeypatch, capsys):
+    """Ines's MCP server keeps a copy of the pages: it is written from them and checked."""
+    copy = tmp_path / "app-builder"
+    monkeypatch.setattr(specs, "INES_COPY", copy)
+    assert main(["--check"]) == 1
+    assert "ines:specs/widgets-json.md" in capsys.readouterr().err
+
+    assert main([]) == 0
+    pages = sorted(path.relative_to(RESOURCES).as_posix() for path in RESOURCES.rglob("*.md"))
+    assert sorted(path.relative_to(copy).as_posix() for path in copy.rglob("*.md")) == pages
+    for page in pages:
+        assert (copy / page).read_bytes() == (RESOURCES / page).read_bytes()
+    assert main(["--check"]) == 0
+
+    # A page of its own, or a page edited there, is stale; writing removes or replaces it
+    (copy / "extra.md").write_text("mine", encoding="utf-8")
+    (copy / "specs" / "widgets-json.md").write_text("edited", encoding="utf-8")
+    capsys.readouterr()
+    assert main(["--check"]) == 1
+    assert "ines:extra.md, ines:specs/widgets-json.md" in capsys.readouterr().err
+    assert main([]) == 0
+    assert not (copy / "extra.md").exists()
+    assert main(["--check"]) == 0

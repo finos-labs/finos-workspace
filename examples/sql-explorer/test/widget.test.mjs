@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import widget, { contextOf, csvOf, identifier, isNumeric, SOURCES, stateOf } from "../src/widget.js";
+import widget, { contextOf, csvOf, identifier, isNumeric, SOURCES, stateOf } from "../src/entry.js";
 
 test("a name is quoted only when it has to be", () => {
   assert.equal(identifier("readings"), "readings");

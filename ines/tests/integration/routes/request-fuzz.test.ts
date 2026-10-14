@@ -62,7 +62,12 @@ const valid = () => ({
     { role: "ai", content: "hi there" },
     { role: "human", content: "what do I have?" },
   ],
-  widgets: { primary: [widget(1)], secondary: [widget(2)], extra: [] },
+  widgets: {
+    // One widget linked to a tool of its backend (docs/widget-plugins/WIDGETS-JSON.md 5.4)
+    primary: [{ ...widget(1), mcp_tool: { server_id: "s", tool_name: "web_search", args: { query: "$q", region: "eu" } } }],
+    secondary: [widget(2)],
+    extra: [],
+  },
   context: [{ type: "text", text: "notes" }],
   urls: [],
   timezone: "Europe/Madrid",

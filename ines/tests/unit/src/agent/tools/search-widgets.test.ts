@@ -26,6 +26,7 @@ interface SearchResult {
   kind: "data" | "note" | "display";
   location: "added_to_context" | "on_dashboard" | "connected";
   params?: string[];
+  mcp_tool?: { tool: string; args?: Record<string, unknown> };
 }
 
 interface SearchOutput {
@@ -192,5 +193,26 @@ describe("makeSearchWidgetsTool — result shape", () => {
     expect(byUuid["P thing"]).toBe("added_to_context");
     expect(byUuid["S thing"]).toBe("on_dashboard");
     expect(byUuid["E thing"]).toBe("connected");
+  });
+
+  it("names the tool a widget opted in to, as the model calls it, with the mapping", async () => {
+    const link = { server_id: "team-data", tool_name: "get_team_report", args: { team_id: "$team", period: "month" } };
+    const linked = w({ uuid: "l", name: "Team report", mcp_tool: link });
+    const unlinked = w({ uuid: "n", name: "Team notes" });
+    const tool = makeSearchWidgetsTool([t(linked), t(unlinked)], (widget) =>
+      widget.mcp_tool?.tool_name === "get_team_report" ? "Team_data_get_team_report" : undefined,
+    );
+    const out = (await tool.execute!({ query: "team" }, {} as never)) as SearchOutput;
+    const byName = Object.fromEntries(out.matches.map((m) => [m.name, m.mcp_tool]));
+    expect(byName["Team report"]).toEqual({ tool: "Team_data_get_team_report", args: link.args });
+    expect(byName["Team notes"]).toBeUndefined();
+    expect(tool.description).toContain("`mcp_tool`");
+  });
+
+  it("leaves a link out when the request did not register its tool", async () => {
+    const linked = w({ name: "Team report", mcp_tool: { server_id: "s", tool_name: "x" } });
+    const tool = makeSearchWidgetsTool([t(linked)]);
+    const out = (await tool.execute!({ query: "team" }, {} as never)) as SearchOutput;
+    expect(out.matches[0].mcp_tool).toBeUndefined();
   });
 });

@@ -8,7 +8,7 @@ import {
   type Page,
   test,
 } from "@playwright/test";
-import { authFile, userInfo } from "./helpers";
+import { authFile, deleteDashboard, userInfo } from "./helpers";
 import {
   journeyEntry,
   journeyManifest,
@@ -82,9 +82,18 @@ async function openDeployment() {
 async function approveInTheUi(version: string) {
   const summary = page.getByTestId(`trust-summary-${version}`);
   for (const box of await summary.getByRole("checkbox").all()) await box.check();
+  // Done when the API answered: WebKit cancels a request still going when the page leaves
+  const approved = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname.endsWith(
+        `/plugins/${PLUGIN}/versions/${version}/approve`,
+      ),
+  );
   await summary
     .getByRole("button", { name: new RegExp(`^Approve ${version}`) })
     .click();
+  expect((await approved).ok()).toBe(true);
 }
 
 async function reports(): Promise<{ directive: string; origin: string }[]> {
@@ -116,8 +125,7 @@ test.beforeAll(async ({ browser, playwright }, testInfo) => {
 test.afterAll(async () => {
   if (page && dashboardId) {
     await page.goto("/app");
-    await page.locator(`#tab-${dashboardId}`).click({ button: "right" });
-    await page.getByRole("menuitem", { name: "Delete" }).click();
+    await deleteDashboard(page, dashboardId);
   }
   if (api) {
     if (roleUuid) await api.delete(`/admin/role/${roleUuid}`);

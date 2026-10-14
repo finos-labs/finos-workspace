@@ -183,8 +183,12 @@ def check_policy(
 
 def approved_policy(declared: dict | None, overrides: dict | None) -> dict[str, list[str]]:
     """What a superuser accepted: an override replaces the declared list per directive."""
-    result = {d: list(s) for d, s in (declared or {}).items() if d in POLICY_DIRECTIVES}
-    for directive, sources in (overrides or {}).items():
+    # Each bound first: Cython 3.3 crashes inferring `(x or {}).items()` (the single image
+    # compiles this module)
+    declared_policy = declared or {}
+    replaced = overrides or {}
+    result = {d: list(s) for d, s in declared_policy.items() if d in POLICY_DIRECTIVES}
+    for directive, sources in replaced.items():
         if directive in POLICY_DIRECTIVES:
             result[directive] = list(sources)
     return result

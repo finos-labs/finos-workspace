@@ -5,7 +5,7 @@ import { test } from "node:test";
 
 // Nothing is drawn outside a browser, so the module finds no chart
 globalThis.document = { querySelector: () => null };
-const { default: widget } = await import("../src/widget.js");
+const { default: widget } = await import("../src/entry.js");
 
 function start(data) {
   const model = { get: (name) => structuredClone({ data }[name]), on() {} };

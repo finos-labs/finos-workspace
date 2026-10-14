@@ -5,6 +5,11 @@ import { defineConfig, devices } from "@playwright/test";
  * port 3000). They sign in as an account that exists there, which they name through
  * E2E_USER_EMAIL and E2E_USER_PASSWORD; see TESTING.md.
  */
+
+// Specs that also run in Firefox and WebKit: the widget plugins' (a plugin's frame, its
+// policy and its workers are where the engines differ, docs/widget-plugins/SPIKE.md), and
+// keeping a dashboard's changes as the page goes away (WebKit cancels requests made then)
+const CROSS_ENGINE_SPECS = [/plugins?[-.][^/]*spec\.ts$/, /dashboard-persistence\.spec\.ts$/];
 export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: ["**/*.spec.ts", "**/global.setup.ts"],
@@ -36,6 +41,18 @@ export default defineConfig({
       name: "chromium",
       testIgnore: /global\.setup\.ts/,
       use: { ...devices["Desktop Chrome"], storageState: "playwright/.auth/user.json" },
+      dependencies: ["setup"],
+    },
+    {
+      name: "firefox",
+      testMatch: CROSS_ENGINE_SPECS,
+      use: { ...devices["Desktop Firefox"], storageState: "playwright/.auth/user.json" },
+      dependencies: ["setup"],
+    },
+    {
+      name: "webkit",
+      testMatch: CROSS_ENGINE_SPECS,
+      use: { ...devices["Desktop Safari"], storageState: "playwright/.auth/user.json" },
       dependencies: ["setup"],
     },
   ],

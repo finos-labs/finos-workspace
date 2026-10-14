@@ -42,7 +42,7 @@ import { buildSystemPrompt } from "./prompt";
 import { applyParamOverrides, type TieredWidget } from "../widgets/tiers";
 import { extractWidgetItems, type WidgetItem } from "../widgets/parse";
 import { analyzeTable, sanitizeName, sanitizeRowKeys, type TableInfo } from "../sql/loader";
-import { makeMcpTools, type McpToolsResult } from "../mcp/factory";
+import { linkedToolName, makeMcpTools, type McpToolsResult } from "../mcp/factory";
 import { type McpCitation } from "../mcp/results";
 import { readExtraState, COMPUTE_PERMANENTLY_UNAVAILABLE } from "../protocol/extra-state";
 import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server";
@@ -551,6 +551,8 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
   const agentTools = (request.tools ?? []) as AgentTool[];
   const mcpToolsResult: McpToolsResult | null =
     agentTools.length > 0 ? makeMcpTools(agentTools, { generativeUiEnabled }) : null;
+  // The registered tool a widget opted in to, as the model calls it (docs/widget-plugins/WIDGETS-JSON.md 5.4)
+  const linkedTool = (widget: Widget) => linkedToolName(widget.mcp_tool, mcpToolsResult?.entries ?? []);
   const hasCodeTool = mcpToolsResult?.entries.some((entry) =>
     isCodeTool(entry.sanitizedName) || isCodeTool(entry.toolName)
   ) ?? false;
@@ -728,6 +730,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
       workspaceState,
       timezone: turnTimezone,
       disabledCapabilities,
+      linkedTool,
     };
     const messages = buildMessages(request, promptOptions);
 
@@ -1034,7 +1037,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         : `I couldn't finish the response because the model returned an error: ${conciseError}`;
     }
     let suppressWidgetDataToolForCachedRetry = false;
-    const searchTool = makeSearchWidgetsTool(tieredWidgets);
+    const searchTool = makeSearchWidgetsTool(tieredWidgets, linkedTool);
     const createAppTool = makeCreateAppTool({ allWidgets, artifactQueue });
 
     for (let loopIdx = 0; loopIdx < MAX_LOOPS; loopIdx++) {

@@ -29,10 +29,10 @@ export const updateWidgetSchema = {
     "Target dashboard UUID. Omit to target the current Workspace route.",
   ),
   data_args_json: z.string().optional().describe(
-    "JSON object string of widget data inputs.",
+    "JSON object string of widget data inputs, as data_args_schema from get_widget_schema defines them.",
   ),
   ui_args_json: z.string().optional().describe(
-    "JSON object string of widget UI inputs. Layout fields rejected — use update_widget_layout.",
+    "JSON object string of widget UI inputs, as ui_args_schema from get_widget_schema defines them. Layout fields rejected — use update_widget_layout.",
   ),
 } as const;
 

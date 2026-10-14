@@ -12,6 +12,7 @@ from fastapi import HTTPException
 from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import Select, and_, case, delete, func, insert, or_, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import contains_eager, defer
 
@@ -66,6 +67,12 @@ async def get_shared_dashboard_file_uuids(
     return (await db.execute(select_query)).scalar_one_or_none() or []
 
 
+async def owned_dashboard_uuids(db: AsyncSession, owner_uuid: UUID) -> list[UUID]:
+    """The uuids of the dashboards the user owns."""
+    result = await db.execute(select(DashboardItem.uuid).where(DashboardItem.owner_uuid == owner_uuid))
+    return list(result.scalars().all())
+
+
 async def bulk_dashboard_insert_update(  # noqa: PLR0912
     db: AsyncSession,
     dashboards: schemas.DashboardsCreate,
@@ -96,17 +103,16 @@ async def bulk_dashboard_insert_update(  # noqa: PLR0912
     to_delete: list[UUID] = []
 
     user_entity_uuid = await get_user_entity_uuid(db, permissions_uuid)
-
-    dash_query = select(DashboardItem.uuid).where(
-        DashboardItem.owner_uuid == owner_uuid
-    )
-    dashes = await db.execute(dash_query)
-    dash_uuids = dashes.scalars().all()
+    dash_uuids = await owned_dashboard_uuids(db, owner_uuid)
 
     for key, value in dashboards.items.items():
         if key not in dash_uuids:
             if value == "DELETE":
-                raise HTTPException(400, detail="User does not own dashboard")
+                # A save sent twice (the page left before its answer) deletes what is
+                # already gone; someone else's dashboard is refused
+                if await db.scalar(select(DashboardItem.uuid).where(DashboardItem.uuid == key)):
+                    raise HTTPException(400, detail="User does not own dashboard")
+                continue
             to_insert.append(Dashboard(uuid=key, content=value))
         elif key in dash_uuids:
             if value == "DELETE":
@@ -119,18 +125,26 @@ async def bulk_dashboard_insert_update(  # noqa: PLR0912
         if dashboard_uuid not in dash_uuids:
             raise HTTPException(status_code=400, detail="User does not own dashboard")
 
-    if to_insert:
-        cleaned_insert = [
-            {
-                "uuid": x.uuid,
-                "owner_uuid": owner_uuid,
-                "creator_uuid": owner_uuid,
-                "content": x.content,
-                "entity_uuid": user_entity_uuid,
-            }
-            for x in to_insert
-        ]
-        await db.execute(insert(DashboardItem), cleaned_insert)
+    for item in to_insert:
+        # Two saves at once may both carry a new dashboard: the second one updates it
+        try:
+            async with db.begin_nested():
+                await db.execute(
+                    insert(DashboardItem).values(
+                        uuid=item.uuid,
+                        owner_uuid=owner_uuid,
+                        creator_uuid=owner_uuid,
+                        content=item.content,
+                        entity_uuid=user_entity_uuid,
+                    )
+                )
+        except IntegrityError:
+            owner = await db.scalar(
+                select(DashboardItem.owner_uuid).where(DashboardItem.uuid == item.uuid)
+            )
+            if owner != owner_uuid:
+                raise HTTPException(status_code=400, detail="User does not own dashboard") from None
+            to_update.append(item)
     # We need to insert the saves now since they are on a separate table
     # Temporarily commented out because the saves take a lot of space and are not used
     # for item in to_insert:

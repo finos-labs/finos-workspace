@@ -77,7 +77,7 @@ npm run build
 
 The build writes `dist/plotly-charts/<version>/`, with the version from `package.json`:
 
-- `entry.js`: `src/widget.js` with the bundle inlined. A plugin frame loads one module and
+- `entry.js`: `src/entry.js` with the bundle inlined. A plugin frame loads one module and
   its styles, nothing else. plotly.js is loaded as a classic script from a Blob URL,
   because its bundle expects a sloppy-mode script.
 - `entry.css`, `assets/icon.svg`.

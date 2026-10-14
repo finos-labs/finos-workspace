@@ -250,6 +250,7 @@ The frame starts with no network: `connect-src`, `frame-src` and remote images, 
 - An author cannot ask for plain `http:` or `ws:`, an IP address or a private host (`localhost`, a name ending in `.localhost`, `.local`, `.internal`, `.home.arpa` or `.lan`, or a name without a dot), or a remote `script-src` host. A superuser can allow them in an override; the package cannot.
 - What the frame can reach, it can send the data it shows to. Admins see that in the review. When a call needs a key, or returns data that should not show in the browser's network panel, use a proxy instead.
 - Remote `import` and `import()` fail unless `script-src` allows the origin. Bundle instead.
+- **Workers.** Start them from a `blob:` URL (`worker-src` has `blob:`; a `data:` URL needs `worker-src data:`). Use classic workers: a module worker from a `blob:` URL does not start in Chromium in an opaque-origin frame, though Firefox and WebKit start one. What a worker's policy blocks is reported to the admin like the frame's (in Chromium and Firefox; WebKit reports nothing from workers, though it refuses the same requests). You may revoke the worker's URL right after `new Worker(url)`.
 
 ## 7. Proxies and secrets
 
@@ -350,6 +351,14 @@ The backend answers three requests, over HTTP on its internal address:
 - **Limits.** A route's `maxBytes` is at most 5 MiB (default 1 MiB) and `timeoutMs` at most 30 seconds (default 10); the deployment caps both. Calls are rate limited and at most 8 of a plugin run at once. After repeated failures (time-outs, errors, a 5xx) the API pauses calls to the backend for a short time. A 4xx you return is passed on as a refusal and does not count.
 - **In the frame,** a refused call rejects with `out_of_scope` for a route the widget does not list, `invalid_args`, `not_granted`, `rate_limited`, `timeout`, `too_large`, and otherwise `unavailable` (not registered, another version, paused, a secret not set, your error).
 - **The admin reviews** that code runs on the server, each route and the secrets it sends, each data source and the pseudonymous id.
+
+**In a single-image deployment** (Lite, SERVER-SIDE 5.4) the image's plugin runner starts your backend in a sandbox, with a command the deployer configures. Write it so that it runs there:
+
+- Listen on the unix socket the runner names, in `WORKSPACE_BACKEND_SOCKET` (the deployer can also pass it as an argument), not on a TCP port. With uvicorn: `--uds <path>`.
+- Your package is at `/plugin`, read-only, and the command starts in `/plugin/backend`. Your dependencies come from a runtime the deployer installs and mounts read-only; data the deployer gives you is mounted read-only at the path they choose.
+- Write only to `/tmp`, which is small, private and cannot run programs. There is no `HOME` but `/tmp`.
+- There is no DNS and no route out. Each host of your `server.network` resolves, through the sandbox's own `/etc/hosts`, to a relay that reaches that host and port only, so connect by the name and port as you would anywhere; nothing else connects. With the broker allowed, it is at `http://workspace-broker`.
+- Your process cannot create namespaces, mount, trace, or start anything with more rights, and has the limits the deployer set (memory, processes, files).
 
 ## 9. Schemas
 

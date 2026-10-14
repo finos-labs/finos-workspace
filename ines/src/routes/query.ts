@@ -38,6 +38,16 @@ const WidgetSchema = z
     sub_category: z.string().max(500).optional(),
     source: z.string().max(500).nullish(),
     metadata: z.record(z.string(), z.unknown()).optional(),
+    mcp_tool: z
+      .object({
+        server_id: z.string().max(500),
+        tool_name: z.string().max(500),
+        args: z
+          .record(z.string().max(200), z.union([z.string().max(256), z.number(), z.boolean()]))
+          .refine((args) => Object.keys(args).length <= 32, "Too many arguments")
+          .optional(),
+      })
+      .optional(),
   })
   .passthrough();
 

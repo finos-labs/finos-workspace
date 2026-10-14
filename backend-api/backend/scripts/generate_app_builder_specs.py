@@ -4,7 +4,8 @@ The type catalog, the widget and param field tables and the header-name rules in
 ``workspace_mcp/app_builder/resources`` come from the same kit the API composes the
 widgets.json schema from (docs/widget-plugins/WIDGETS-JSON.md 3.9), so the pages cannot
 drift from what Workspace accepts. Each list sits between two markers; the prose around
-it is hand-written.
+it is hand-written. Ines's MCP server serves the same pages, so its copy
+(``ines/mcp-server/src/resources/app-builder``) is written from them too.
 
     python -m scripts.generate_app_builder_specs           # rewrite the pages
     python -m scripts.generate_app_builder_specs --check   # fail when a page is stale
@@ -23,6 +24,7 @@ from typing import Any
 from api.widget_plugins.widgets_schema import load_kit
 
 RESOURCES = Path(__file__).resolve().parents[1] / "workspace_mcp" / "app_builder" / "resources"
+INES_COPY = Path(__file__).resolve().parents[3] / "ines" / "mcp-server" / "src" / "resources" / "app-builder"
 MARKER = re.compile(
     r"(<!-- generated:(?P<name>[a-z-]+) -->\n)(?:.*?\n)?(<!-- /generated:(?P=name) -->)",
     re.DOTALL,
@@ -223,17 +225,34 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     kit = load_kit()
     stale = []
+    pages = {path.relative_to(RESOURCES).as_posix(): path.read_text(encoding="utf-8") for path in RESOURCES.rglob("*.md")}
     for page in sorted({page for page, _ in BLOCKS.values()}):
         path = RESOURCES / page
-        text = path.read_text(encoding="utf-8")
+        text = pages[page]
         for name, (block_page, _) in BLOCKS.items():
             if block_page == page and f"<!-- generated:{name} -->" not in text:
                 raise SystemExit(f"{page}: the block {name} has no markers")
         current = render(page, text, kit)
+        pages[page] = current
         if current != text:
             stale.append(page)
             if not args.check:
                 path.write_text(current, encoding="utf-8")
+    # Ines's copy, where the repository has it: every page as it is here, and nothing else
+    if INES_COPY.parent.is_dir():
+        copies = {path.relative_to(INES_COPY).as_posix() for path in INES_COPY.rglob("*.md")}
+        for page in sorted(copies - pages.keys()):
+            stale.append(f"ines:{page}")
+            if not args.check:
+                (INES_COPY / page).unlink()
+        for page, text in sorted(pages.items()):
+            copy = INES_COPY / page
+            if page in copies and copy.read_text(encoding="utf-8") == text:
+                continue
+            stale.append(f"ines:{page}")
+            if not args.check:
+                copy.parent.mkdir(parents=True, exist_ok=True)
+                copy.write_text(text, encoding="utf-8")
     if args.check and stale:
         sys.stderr.write(f"stale: {', '.join(stale)}; run python -m scripts.generate_app_builder_specs\n")
         return 1

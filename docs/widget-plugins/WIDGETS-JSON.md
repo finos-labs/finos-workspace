@@ -196,7 +196,7 @@ The type catalog and the field tables in the spec pages are generated from the c
 - `backend-api/backend/scripts/generate_app_builder_specs.py` writes, from the kit, the type catalog (`specs/widget-types.md`), the per-type responses (`backend-contract.md`), the widget fields (`specs/widgets-json.md`), and the param fields and header-name rules (`specs/widget-parameters.md`). Each list sits between `<!-- generated:<name> -->` markers, and a pytest test fails when a page is stale. The notes come from the descriptions in the Zod contract, which now describes every field. A plugin's types vary by organization, so the pages list the built-in types and point to the schema resource.
 - `workspace://specs/widgets-json-schema` is answered by the user's Workspace tab over the bridge (`get_widgets_schema`), so it is the composed schema for their organization, plugin types included. It is tagged `live`, so the surface fixture lists it without a body. Without a connected browser, reading it fails with the bridge's message.
 - The pages' prose now follows the contract: unknown keys are refused, the request mapping of section 4 (with the 4.9 example), the CORS preflight, how values are written, the header rules, and the new validation messages in `validation/common-errors.md`.
-- The copy under `ines/mcp-server/src/resources/app-builder/` is not on this branch, so it is still to be replaced by these pages.
+- Ines's MCP server serves the same pages from its own copy (`ines/mcp-server/src/resources/app-builder/`), which the generator writes from these and `--check` compares, so the two cannot drift; it serves `workspace://specs/widgets-json-schema` from the connected browser as well (`resources/widgets-schema.ts`, the bridge's `get_widgets_schema`). Its bridge keeps a result's `warnings`, and its widget tools describe `data_args_schema`, `ui_args_schema`, `in` and `mcp_tool` as the Workspace MCP's do.
 
 ### 3.10 `apps.json`
 
@@ -470,7 +470,7 @@ With `team` set to `platform` and `period` to `month`, the agent's row for the w
 - **The Workspace MCP** returns the declared link in `list_available_widgets` and `get_widget_schema`, and its tool description says what the field is.
 - **Plugins.** The link is host-only: no trait source and no host command reach it. The hostile e2e plugin tries to read `mcp_tool` and to call `core:mcp:call`, and both are refused (abuse case 38).
 - **Docs.** `specs/widgets-json.md` documents `mcp_tool`, and `specs/apps-json.md` documents `mcpServers` and a layout item's `storage`.
-- **Not on this branch:** the Ines side (5.4, item 2), which lives on the Ines branch.
+- **Ines** (5.4, item 2). A request's widget rows carry the link as the web app sends it (`Widget.mcp_tool` in `ines/src/protocol/types.ts`, checked and bounded in `routes/query.ts`). `linkedToolName` (`ines/src/mcp/factory.ts`) finds the registered tool by its server and its own name, never by the widget's strings, and names it as the model calls it; a `search_widgets` row then carries `mcp_tool: { tool, args }`, and the prompt's lists tag the widget `[query tool: <name>]`. The tool's description and the prompt say what the field is for. Nothing is routed by it: the model chooses.
 
 ## 6. Changes to existing code
 

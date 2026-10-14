@@ -1,5 +1,5 @@
 import { tool, type ToolSet, type StopCondition } from "ai";
-import type { AgentTool } from "../protocol/types";
+import type { AgentTool, WidgetMcpLink } from "../protocol/types";
 import { sanitizeMcpToolName, buildToolInputSchema } from "./schema";
 import {
   WORKSPACE_BRIDGE_COMMAND_NAMES,
@@ -13,8 +13,20 @@ import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server";
 export interface McpToolEntry {
   serverId: string;
   toolName: string;
+  /** The tool's own name on its server, when the request gives it (`AgentTool.tool_name`). */
+  serverToolName?: string;
   sanitizedName: string;
   description: string;
+}
+
+/** The name the model calls a widget's linked tool by, when this request registered that tool. */
+export function linkedToolName(
+  link: WidgetMcpLink | undefined,
+  entries: readonly McpToolEntry[],
+): string | undefined {
+  if (!link) return undefined;
+  return entries.find((entry) => entry.serverId === link.server_id && entry.serverToolName === link.tool_name)
+    ?.sanitizedName;
 }
 
 export interface McpToolsResult {
@@ -111,6 +123,7 @@ export function makeMcpTools(agentTools: AgentTool[], options: McpToolsOptions =
     const entry: McpToolEntry = {
       serverId: agentTool.server_id,
       toolName: agentTool.name,
+      ...(agentTool.tool_name ? { serverToolName: agentTool.tool_name } : {}),
       sanitizedName: sanitized,
       description,
     };

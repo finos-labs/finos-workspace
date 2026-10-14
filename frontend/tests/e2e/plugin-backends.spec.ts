@@ -6,7 +6,7 @@ import {
   type Page,
   test,
 } from "@playwright/test";
-import { authFile } from "./helpers";
+import { authFile, deleteDashboard } from "./helpers";
 import {
   type BackendRequest,
   FORECAST_ENTRY,
@@ -158,8 +158,7 @@ test.beforeAll(async ({ browser, playwright }, testInfo) => {
 test.afterAll(async () => {
   if (page && dashboardId) {
     await page.goto("/app");
-    await page.locator(`#tab-${dashboardId}`).click({ button: "right" });
-    await page.getByRole("menuitem", { name: "Delete" }).click();
+    await deleteDashboard(page, dashboardId);
   }
   if (api) {
     await api.put(`/admin/plugins/${PLUGIN}`, {

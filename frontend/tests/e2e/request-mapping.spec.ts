@@ -7,7 +7,7 @@ import {
   test,
 } from "@playwright/test";
 import { type ReceivedRequest, startEchoBackend } from "./echoBackend";
-import { authFile } from "./helpers";
+import { authFile, deleteDashboard } from "./helpers";
 
 /**
  * The request mapping of `widgets.json` (docs/widget-plugins/WIDGETS-JSON.md 4) on the
@@ -84,11 +84,7 @@ test.beforeAll(async ({ browser, playwright }, testInfo) => {
 });
 
 test.afterAll(async () => {
-  if (page && dashboardId) {
-    await page.keyboard.press("Escape");
-    await page.locator(`#tab-${dashboardId}`).click({ button: "right" });
-    await page.getByRole("menuitem", { name: "Delete" }).click();
-  }
+  if (page && dashboardId) await deleteDashboard(page, dashboardId);
   if (api && sourceUuid)
     await api.delete(`/app/data-connectors/api-source/${sourceUuid}`);
   await api?.dispose();

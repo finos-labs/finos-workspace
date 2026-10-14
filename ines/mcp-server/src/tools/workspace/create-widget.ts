@@ -44,13 +44,13 @@ export const createWidgetSchema = {
     .string()
     .optional()
     .describe(
-      "JSON object string. Widget data inputs from get_widget_schema params.",
+      "JSON object string. Widget data inputs, as data_args_schema from get_widget_schema defines them.",
     ),
   ui_args_json: z
     .string()
     .optional()
     .describe(
-      "JSON object string. Widget UI inputs from get_widget_schema. " +
+      "JSON object string. Widget UI inputs, as ui_args_schema from get_widget_schema defines them. " +
         "Do not include layout fields (x/y/w/h/grid_data) — use update_widget_layout.",
     ),
 } as const;

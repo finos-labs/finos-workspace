@@ -29,7 +29,7 @@ const BASE_PROMPT =
   "search_widgets returns `location` (added_to_context / on_dashboard / connected) and `kind` ('data' is fetchable, 'note' is user text, 'display' is embedded). " +
   "The connected count below is authoritative for 'how many widgets are connected'; for 'what widgets do I have' call search_widgets with an empty query \"\".\n" +
   "- get_widget_data is only for a task that needs the widget's data (its numbers, rows, text or file). Never call it to change a widget, to find out what a widget is set to (its parameters in the lists say: symbol, interval, ...), or before an update: none of that needs data.\n" +
-  "- get_widget_data reads what a widget shows now. For data the widget does not show (other symbols, more history, details), use the MCP tools of that widget's own backend (they are in your tool list, with their descriptions and parameters) instead of asking the widget for it.\n" +
+  "- get_widget_data reads what a widget shows now. For data the widget does not show (other symbols, more history, details), use the MCP tools of that widget's own backend (they are in your tool list, with their descriptions and parameters) instead of asking the widget for it; a widget tagged [query tool: name] names the one for it.\n" +
   "- A widget tagged [iframe] embeds a page of its own backend. Its parameters in the lists are what it shows now: that is its state, so do not fetch the widget, and do not fetch its page (get_widget_data on it returns HTML, not data; what the page publishes is its `::iframe::` entry in the lists). To change a parameter of it, update the widget: the page gets the value and the result confirms it. The tools of the widget's own backend are for what parameters cannot say (indicators, drawings, chart type...): their descriptions and parameters say how to use them, including how to find the one they act on.\n" +
   "- A result that says a call was not dispatched, not confirmed, or failed means that nothing is known to have changed: say exactly that, and never say a widget changed because you asked for it. After a change, the widget's parameters in the next list are the proof.\n" +
   "- In get_widget_data the argument key is `widget_uuid`, never `uuid`. Copy the EXACT value of the `uuid` field from search_widgets, or of the [uuid: ...] tag in the lists below; these are usually slugs (e.g. 'home_cards'), not UUID-shaped. Never fabricate or guess an identifier. " +
@@ -98,7 +98,11 @@ function getFileTag(w: Widget): string {
 /** The most widgets of one list that are described in the prompt; the rest are found with search_widgets. */
 export const MAX_LISTED_WIDGETS = 60;
 
-function describeWidgets(label: string, widgets: Widget[]): string {
+function describeWidgets(
+  label: string,
+  widgets: Widget[],
+  linkedTool: (widget: Widget) => string | undefined = () => undefined,
+): string {
   if (!widgets.length) return "";
   const listed = widgets.slice(0, MAX_LISTED_WIDGETS);
   const more = widgets.length - listed.length;
@@ -107,7 +111,9 @@ function describeWidgets(label: string, widgets: Widget[]): string {
       const params = w.params.map(describeParam).join(", ");
       const fileTag = getFileTag(w);
       const iframeTag = w.widget_type === "iframe" ? " [iframe]" : "";
-      return `- ${w.name} (${w.widget_id}) [origin: ${w.origin}] [uuid: ${w.uuid}]:${fileTag}${iframeTag} ${w.description}${params ? ` [${params}]` : ""}`;
+      const tool = linkedTool(w);
+      const toolTag = tool ? ` [query tool: ${tool}]` : "";
+      return `- ${w.name} (${w.widget_id}) [origin: ${w.origin}] [uuid: ${w.uuid}]:${fileTag}${iframeTag}${toolTag} ${w.description}${params ? ` [${params}]` : ""}`;
     })
     .join("\n");
   const rest = more > 0 ? `\n- …and ${more} more: use search_widgets to see them.` : "";
@@ -253,6 +259,11 @@ export interface PromptOptions {
   codeExecutionAvailable?: boolean;
   /** The tools that exist beyond the core ones, by group (src/agent/tool-groups.ts). */
   toolCatalog?: ToolCatalog;
+  /**
+   * The registered tool, as the model calls it, that a widget opted in to: the tool of its own backend that
+   * queries it beyond its params (src/mcp/factory.ts `linkedToolName`). Listed widgets are tagged with it.
+   */
+  linkedTool?: (widget: Widget) => string | undefined;
   /** The groups of the catalog that are loaded: their instructions are part of the prompt. */
   loadedGroups?: ReadonlySet<string>;
   /**
@@ -299,8 +310,8 @@ export function buildSystemPrompt(
     const parts: string[] = [];
     if (hasPrimaryOrSecondary) {
       parts.push(
-        describeWidgets("Widgets added to this conversation", primary),
-        describeWidgets("Widgets on the current dashboard", secondary),
+        describeWidgets("Widgets added to this conversation", primary, options?.linkedTool),
+        describeWidgets("Widgets on the current dashboard", secondary, options?.linkedTool),
       );
     }
     if (hasExtra) {

@@ -7,7 +7,7 @@ import {
   type Page,
   test,
 } from "@playwright/test";
-import { authFile } from "./helpers";
+import { authFile, deleteDashboard } from "./helpers";
 import {
   CONFORMANCE_ENTRY,
   conformanceManifest,
@@ -102,11 +102,7 @@ test.beforeAll(async ({ browser, playwright }, testInfo) => {
 });
 
 test.afterAll(async () => {
-  if (page && dashboardId) {
-    await page.keyboard.press("Escape");
-    await page.locator(`#tab-${dashboardId}`).click({ button: "right" });
-    await page.getByRole("menuitem", { name: "Delete" }).click();
-  }
+  if (page && dashboardId) await deleteDashboard(page, dashboardId);
   if (api) {
     rmSync(join(PLUGINS_DIR ?? "", PLUGIN), { recursive: true, force: true });
     await api.post("/plugins/rescan");

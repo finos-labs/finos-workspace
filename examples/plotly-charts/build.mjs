@@ -2,7 +2,7 @@
 //
 //   dist/<plugin id>/<version>/plugin.json, entry.js, entry.css, assets/icon.svg
 //
-// entry.js is src/widget.js with plotly.js inlined, because a plugin frame receives one
+// entry.js is src/entry.js with plotly.js inlined, because a plugin frame receives one
 // module and its styles, nothing else. The bundle is plotly.js's strict one: every trace
 // type, built without function constructors, which the frame's policy refuses.
 // plugin.json gets the version from package.json and the checksum Workspace verifies: the
@@ -29,14 +29,14 @@ const bundle =
 const plotly = readFileSync(bundle, "utf8");
 
 const placeholder = '"__PLOTLY_SOURCE__"';
-const widget = readFileSync(join(root, "src/widget.js"), "utf8");
-if (widget.split(placeholder).length !== 2) throw new Error("src/widget.js needs one plotly placeholder");
+const entry = readFileSync(join(root, "src/entry.js"), "utf8");
+if (entry.split(placeholder).length !== 2) throw new Error("src/entry.js needs one plotly placeholder");
 
 const out = join(root, "dist", manifest.id, pkg.version);
 rmSync(out, { recursive: true, force: true });
 mkdirSync(join(out, "assets"), { recursive: true });
 // A function, so "$&" and the like in the bundle are not read as replacement patterns
-writeFileSync(join(out, "entry.js"), widget.replace(placeholder, () => JSON.stringify(plotly)));
+writeFileSync(join(out, "entry.js"), entry.replace(placeholder, () => JSON.stringify(plotly)));
 copyFileSync(join(root, "src/entry.css"), join(out, "entry.css"));
 copyFileSync(join(root, "src/assets/icon.svg"), join(out, "assets/icon.svg"));
 

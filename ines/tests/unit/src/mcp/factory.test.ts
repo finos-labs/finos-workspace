@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { makeMcpTools } from "../../../../src/mcp/factory";
+import { linkedToolName, makeMcpTools } from "../../../../src/mcp/factory";
 import type { AgentTool } from "../../../../src/protocol/types";
 
 function tool(overrides: Partial<AgentTool>): AgentTool {
@@ -44,6 +44,32 @@ describe("makeMcpTools — entries", () => {
   it("falls back description to the original tool name when missing", () => {
     const out = makeMcpTools([tool({ name: "x", description: undefined })]);
     expect(out.entries[0].description).toBe("x");
+  });
+});
+
+describe("linkedToolName — a widget's link to a tool of its own backend", () => {
+  const entries = makeMcpTools([
+    tool({ name: "Team_data_get_team_report", tool_name: "get_team_report", server_id: "team-data" }),
+    tool({ name: "Other_get_team_report", tool_name: "get_team_report", server_id: "other" }),
+    tool({ name: "Team_data_unnamed", server_id: "team-data" }),
+  ]).entries;
+
+  it("names the registered tool by its server and its own name, as the model calls it", () => {
+    expect(entries[0].serverToolName).toBe("get_team_report");
+    expect(linkedToolName({ server_id: "team-data", tool_name: "get_team_report" }, entries)).toBe(
+      "Team_data_get_team_report",
+    );
+    expect(linkedToolName({ server_id: "other", tool_name: "get_team_report" }, entries)).toBe(
+      "Other_get_team_report",
+    );
+  });
+
+  it("names nothing for a tool this request did not register, or no link", () => {
+    expect(linkedToolName({ server_id: "team-data", tool_name: "missing" }, entries)).toBeUndefined();
+    expect(linkedToolName({ server_id: "gone", tool_name: "get_team_report" }, entries)).toBeUndefined();
+    // A tool without its own name cannot be matched to a link
+    expect(linkedToolName({ server_id: "team-data", tool_name: "Team_data_unnamed" }, entries)).toBeUndefined();
+    expect(linkedToolName(undefined, entries)).toBeUndefined();
   });
 });
 

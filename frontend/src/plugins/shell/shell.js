@@ -103,11 +103,8 @@
     }
   }
 
-  document.addEventListener("securitypolicyviolation", (event) => {
-    // Only what the browser blocked: plugin code can dispatch an event of its own
-    if (!event.isTrusted) return;
-    const directive = event.effectiveDirective || event.violatedDirective || "";
-    const blocked = origin(event.blockedURI);
+  function record(directive, blockedURI) {
+    const blocked = origin(blockedURI);
     violations.push({ directive, origin: blocked });
     if (probing || blocked === PROBE_HOST) return;
     const key = `${directive} ${blocked}`;
@@ -118,7 +115,176 @@
       directive: directive.slice(0, 32),
       origin: blocked.slice(0, 255),
     });
+  }
+
+  document.addEventListener("securitypolicyviolation", (event) => {
+    // Only what the browser blocked: plugin code can dispatch an event of its own
+    if (!event.isTrusted) return;
+    record(event.effectiveDirective || event.violatedDirective || "", event.blockedURI);
   });
+
+  /*
+   * A worker has a global scope of its own: what the policy blocks there is reported to
+   * the worker and never reaches the document's listener. So every worker the plugin
+   * starts from a blob: or data: URL first runs this function, from its own text, and
+   * hands over what the browser blocked on a port the shell gave it; the workers that
+   * worker starts do the same through it. It runs in the frame too, with `deliver`, and
+   * uses nothing from around it. Other URLs go to the browser's Worker unchanged, which
+   * refuses them in an opaque-origin frame as before.
+   *
+   * Reports are for the administrator, not a boundary: a worker that evades this still
+   * has every request the policy blocks refused.
+   */
+  function reportWorkers(scope, source, deliver) {
+    // In a worker: reports wait for the shell's port, which is the worker's first message
+    function toShell() {
+      const held = [];
+      let port = null;
+      const send = (report) => {
+        if (port) port.postMessage(report);
+        else if (held.length < 200) held.push(report);
+      };
+      scope.addEventListener("securitypolicyviolation", (event) => {
+        if (!event.isTrusted) return;
+        send({
+          t: "csp",
+          directive: String(event.effectiveDirective || event.violatedDirective || ""),
+          blocked: String(event.blockedURI || ""),
+        });
+      });
+      const take = (event) => {
+        if (!event.isTrusted) return;
+        scope.removeEventListener("message", take, true);
+        const data = event.data;
+        if (!data || data.type !== "ws-worker-port" || !event.ports?.[0]) return;
+        // The plugin's own listeners never see it
+        event.stopImmediatePropagation();
+        port = event.ports[0];
+        port.postMessage({ t: "started" });
+        for (const report of held.splice(0)) port.postMessage(report);
+      };
+      scope.addEventListener("message", take, true);
+      return send;
+    }
+    const report = deliver || toShell();
+
+    const Native = scope.Worker;
+    if (typeof Native !== "function") return;
+    const urls = scope.URL;
+    const create = urls.createObjectURL.bind(urls);
+    const revoke = urls.revokeObjectURL.bind(urls);
+    const nativePost = Native.prototype.postMessage;
+    const nativeTerminate = Native.prototype.terminate;
+
+    // A plugin may revoke its worker's URL right after `new Worker(url)`, as the browser
+    // allows; the worker here loads it later, so the revocation waits until it started
+    const loading = new Map();
+    const revokeLater = new Set();
+    urls.revokeObjectURL = function revokeObjectURL(url) {
+      const key = String(url);
+      if (loading.has(key)) revokeLater.add(key);
+      else revoke(key);
+    };
+    const settle = (url) => {
+      const left = (loading.get(url) || 1) - 1;
+      if (left > 0) {
+        loading.set(url, left);
+        return;
+      }
+      loading.delete(url);
+      if (revokeLater.delete(url)) revoke(url);
+    };
+
+    const start = `(${source})(self, ${JSON.stringify(source)}, null);`;
+    const script = (text) =>
+      create(new scope.Blob([text], { type: "text/javascript" }));
+
+    // The text of a data: URL, or null when it cannot be read
+    function dataText(address) {
+      const comma = address.indexOf(",");
+      if (comma < 0) return null;
+      const body = address.slice(comma + 1);
+      try {
+        if (/;base64$/i.test(address.slice(0, comma))) {
+          const binary = scope.atob(body);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+          return new scope.TextDecoder().decode(bytes);
+        }
+        return decodeURIComponent(body);
+      } catch {
+        return null;
+      }
+    }
+
+    class Worker extends Native {
+      constructor(url, options) {
+        const address = String(url);
+        const module = Boolean(options && options.type === "module");
+        const made = [];
+        let target = url;
+        let pending = null;
+        if (address.startsWith("blob:")) {
+          if (module) {
+            made.push(script(start));
+            target = script(
+              `import ${JSON.stringify(made[0])};\nimport ${JSON.stringify(address)};`,
+            );
+          } else {
+            target = script(`${start}\nimportScripts(${JSON.stringify(address)});`);
+          }
+          made.push(target);
+          pending = address;
+          loading.set(address, (loading.get(address) || 0) + 1);
+        } else if (address.startsWith("data:")) {
+          // Still a data: URL, so the policy's worker-src decides as it would have
+          const text = dataText(address);
+          if (text !== null) {
+            const strict = !module && /^\s*(['"])use strict\1/.test(text);
+            target = `data:text/javascript;charset=utf-8,${encodeURIComponent(
+              `${strict ? '"use strict";' : ""}${start}\n${text}`,
+            )}`;
+          }
+        }
+        super(target, options);
+        if (target === url) return;
+
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          for (const own of made) revoke(own);
+          if (pending) settle(pending);
+        };
+        finishers.set(this, finish);
+        const channel = new scope.MessageChannel();
+        channel.port1.onmessage = (event) => {
+          const message = event.data;
+          if (!message || typeof message !== "object") return;
+          if (message.t === "started") finish();
+          else if (message.t === "csp")
+            report({
+              t: "csp",
+              directive: String(message.directive).slice(0, 64),
+              blocked: String(message.blocked).slice(0, 2048),
+            });
+        };
+        this.addEventListener("error", finish);
+        nativePost.call(this, { type: "ws-worker-port" }, [channel.port2]);
+      }
+
+      terminate() {
+        finishers.get(this)?.();
+        nativeTerminate.call(this);
+      }
+    }
+    const finishers = new WeakMap();
+    scope.Worker = Worker;
+  }
+
+  reportWorkers(window, reportWorkers.toString(), (report) =>
+    record(report.directive, report.blocked),
+  );
 
   window.addEventListener("error", (event) => log("error", event.message || "error"));
   window.addEventListener("unhandledrejection", (event) =>
@@ -133,6 +299,29 @@
       return { name, ok: false, detail: "was readable" };
     } catch {
       return { name, ok: true };
+    }
+  }
+
+  // No cookies: Chromium and Firefox refuse document.cookie in an opaque origin, WebKit
+  // reads it as empty and keeps nothing written to it
+  function cookieCheck() {
+    let jar;
+    try {
+      jar = document.cookie;
+    } catch {
+      return { name: "cookie", ok: true };
+    }
+    // Written to only in an opaque origin, never into a jar the frame could share
+    if (jar || self.origin !== "null")
+      return { name: "cookie", ok: false, detail: "was readable" };
+    try {
+      // biome-ignore lint/suspicious/noDocumentCookie: the canary proves a cookie cannot be kept
+      document.cookie = "ws-canary=1";
+      return document.cookie.includes("ws-canary")
+        ? { name: "cookie", ok: false, detail: "kept a cookie" }
+        : { name: "cookie", ok: true };
+    } catch {
+      return { name: "cookie", ok: true };
     }
   }
 
@@ -166,11 +355,14 @@
     },
     eval: {
       directives: ["script-src"],
+      // A refused eval throws an EvalError, which proves the policy as the event does:
+      // WebKit throws it and raises no event
       run: () => {
         try {
           new Function("return 1")();
-        } catch {
-          // a refused eval throws; the violation event is what the check waits for
+          return false;
+        } catch (error) {
+          return error instanceof EvalError;
         }
       },
     },
@@ -190,7 +382,7 @@
       { name: "opaque-origin", ok: self.origin === "null", detail: self.origin },
       expectThrow("local-storage", () => window.localStorage),
       expectThrow("session-storage", () => window.sessionStorage),
-      expectThrow("cookie", () => document.cookie),
+      cookieCheck(),
       expectThrow("parent-document", () => window.parent.document.body),
       await indexedDbCheck(),
     ];
@@ -202,29 +394,34 @@
         continue;
       }
       const before = violations.length;
+      let refused = false;
       try {
-        await probe.run();
+        refused = (await probe.run()) === true;
       } catch {
-        // only the violation event counts
+        // only the violation event, or a refusal the probe proves, counts
       }
-      const seen = await new Promise((resolve) => {
-        const deadline = Date.now() + 2000;
-        const poll = () => {
-          const found = violations
-            .slice(before)
-            .some((v) => probe.directives.includes(v.directive));
-          if (found) resolve(true);
-          else if (Date.now() > deadline) resolve(false);
-          else setTimeout(poll, 25);
-        };
-        poll();
-      });
+      const seen =
+        refused ||
+        (await new Promise((resolve) => {
+          const deadline = Date.now() + 2000;
+          const poll = () => {
+            const found = violations
+              .slice(before)
+              .some((v) => probe.directives.includes(v.directive));
+            if (found) resolve(true);
+            else if (Date.now() > deadline) resolve(false);
+            else setTimeout(poll, 25);
+          };
+          poll();
+        }));
       checks.push({
         name: `policy-${name}`,
         ok: seen && window.__wsInlineProbe !== true,
         detail: seen ? undefined : "the frame's policy was not applied",
       });
     }
+    // The events of probes proven otherwise arrive late: they are the canary's, not the plugin's
+    if (probes.length) await new Promise((resolve) => setTimeout(resolve, 50));
     return checks;
   }
 

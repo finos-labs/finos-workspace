@@ -84,7 +84,7 @@ follow the site's mode.
 | Path | |
 |---|---|
 | `src/plugin.json` | The manifest: the widget, its permissions (`core:backend:call`, `core:state:write`, `core:export:provide`, `core:copilot:context`), the four routes, the `postgres_url` secret, `identity: "pseudonymous"`. |
-| `src/widget.js`, `src/entry.css`, `src/assets/` | The widget, an Anywidget front-end module. |
+| `src/entry.js`, `src/entry.css`, `src/assets/` | The widget, an Anywidget front-end module. |
 | `src/completion.js`, `src/duckdb.js` | Completion: the schema DuckDB mirrors and what it suggests, and DuckDB-WASM started in the frame from the package's assets. |
 | `third-party/` | Licence texts the DuckDB-WASM npm package does not carry. |
 | `backend/server.py` | The three requests a Workspace backend answers: `GET /.workspace/identity`, `GET /.workspace/health`, `POST /.workspace/routes/<route>`. |

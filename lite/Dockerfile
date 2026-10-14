@@ -154,6 +154,13 @@ COPY --chown=appuser:appuser backend/scripts ./scripts
 # like api/routers/utilities.
 COPY --chown=appuser:appuser backend/workspace_mcp ./workspace_mcp
 
+# The plugin runner (docs/widget-plugins/SERVER-SIDE.md 5.4, recipe B) runs as root, so its
+# code and the API modules it imports are a copy of root's own: the API's user, who owns
+# /opt/code, cannot change what root runs.
+COPY --from=backend-compile $PYSETUP_PATH/code/api /opt/plugin-runner/api
+COPY --from=backend-compile $PYSETUP_PATH/code/utilities /opt/plugin-runner/utilities
+COPY backend/plugin_runner /opt/plugin-runner/plugin_runner
+
 # Frontend bundle. The config.js that the build wrote, and the names of the variables that
 # set each of its settings, move aside: render-frontend-config writes config.js again at every
 # start, from these and from the environment.

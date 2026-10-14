@@ -108,6 +108,7 @@ export function makeBridgeSessionManager(opts: {
         request_id: requestId,
         message,
         data: null,
+        warnings: [],
         error: { code, message, retryable: code === "timeout", details },
       });
     }
@@ -145,6 +146,7 @@ export function makeBridgeSessionManager(opts: {
           request_id: normalized.request_id ?? null,
           message,
           data: null,
+          warnings: [],
           error: {
             code: "invalid_request",
             message,
@@ -349,6 +351,7 @@ export function makeBridgeSessionManager(opts: {
             request_id: requestId,
             message: "Workspace command timed out waiting for the browser.",
             data: null,
+            warnings: [],
             error: {
               code: "timeout",
               message: `No response within ${opts.commandTimeoutMs}ms.`,
@@ -378,6 +381,7 @@ export function makeBridgeSessionManager(opts: {
             request_id: requestId,
             message: `Failed to send command to browser: ${msg}`,
             data: null,
+            warnings: [],
             error: {
               code: "unavailable",
               message: msg,

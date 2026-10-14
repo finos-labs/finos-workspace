@@ -109,6 +109,56 @@ docker run -d -p 3000:3000 \
   <image>
 ```
 
+## Plugin backends
+
+Widget plugins with a backend (docs/widget-plugins/SERVER-SIDE.md 5.4, recipe B) run in this image under the plugin runner, each in a sandbox of its own: its own unprivileged user; user, mount, network and process namespaces; a private root with nothing of the deployment's; Landlock; a seccomp filter; resource limits; and a network that reaches only the hosts you list, through the runner. The runner refuses to start a backend when any of that cannot be applied, and says which part.
+
+**The container must be allowed to make namespaces.** Docker's default seccomp profile refuses it, so run the image with [`plugin-runner-seccomp.json`](./plugin-runner-seccomp.json), the default's refusals minus the calls that make namespaces and mounts. Every process of the container can then make namespaces, which widens what the kernel exposes to it: that is the cost of running backends in one image. Where you can run containers of their own, run backends that way instead (SERVER-SIDE 5.3).
+
+- On hosts with AppArmor (Ubuntu, Debian), Docker's own AppArmor profile refuses mounts: add `--security-opt apparmor=unconfined`.
+- Ubuntu 23.10 and later also keep unconfined processes from using the user namespaces they make: set `sysctl kernel.apparmor_restrict_unprivileged_userns=0` on the host.
+
+```bash
+docker run -d -p 3000:3000 \
+  --security-opt seccomp=plugin-runner-seccomp.json \
+  --security-opt apparmor=unconfined \
+  -v workspace-data:/data \
+  -v <plugins directory>:/opt/widget-plugins:ro \
+  -v <runner configuration>:/etc/workspace/plugin-runner.toml:ro \
+  -e WORKSPACE_ADMIN_EMAIL=<your-email> \
+  <image with the backends' runtimes>
+```
+
+**The configuration** lists each backend the runner starts. The runner checks the version's files against the digest before it starts it (`python -m scripts.plugin_check --digest <version directory>` prints it), and the entrypoint gives the API the settings that match (`WIDGET_PLUGINS_DIR`, and `WIDGET_PLUGIN_BACKENDS` naming each backend's socket). Nothing in it is secret: a superuser sets secrets on the plugin's page.
+
+```toml
+plugins_dir = "/opt/widget-plugins"
+
+[backends.<plugin id>]
+version = "<version>"
+digest = "<the version digest>"
+# {socket} is the unix socket the backend listens on
+command = ["/opt/plugin-envs/<plugin id>/bin/python", "-m", "uvicorn", "server:app", "--uds", "{socket}"]
+runtime = ["/opt/plugin-envs/<plugin id>"]                   # read-only, may run programs
+readonly = [{ source = "<a directory>", target = "/data" }]   # read-only, at a path of its own
+network = ["https://<host>", "tcp://<database host>:5432"]   # names, as the plugin's page lists them
+broker = false                                               # true: http://workspace-broker reaches the broker
+environment = { SETTING = "value" }
+memory_mb = 1024
+processes = 128
+```
+
+**Runtimes** are the deployer's: build them into an image of your own from this one, for example a Python environment from the backend's requirements:
+
+```dockerfile
+FROM <this image>
+COPY requirements.txt /tmp/requirements.txt
+RUN python3 -m venv /opt/plugin-envs/<plugin id> \
+ && /opt/plugin-envs/<plugin id>/bin/pip install --no-cache-dir -r /tmp/requirements.txt
+```
+
+The runner's log lines start with `plugin-runner:`; `sandbox ready` means a backend started with every layer, `refused to start` names what stopped it.
+
 ## Building the image
 
 The Dockerfile and container config live here; the backend comes from `backend-api/backend` and the frontend from `frontend/` in this repository. The build copies both source trees next to the Dockerfile, then builds.
@@ -145,8 +195,9 @@ The assembled `backend/` and `frontend/` directories are git-ignored, so they wo
 - `uvicorn` running the FastAPI backend on `127.0.0.1:8000`.
 - `redis-server` on `127.0.0.1:6379`, dumping to `/data/redis`.
 - `supervisord` as the child of tini (PID 1).
+- With `/etc/workspace/plugin-runner.toml` mounted, the plugin runner, as root, and the plugin backends it starts.
 
-All three are managed by [supervisord.conf](./supervisord.conf). nginx and redis log to stdout and stderr, so `docker logs` shows everything.
+All of them are managed by [supervisord.conf](./supervisord.conf). nginx and redis log to stdout and stderr, so `docker logs` shows everything.
 
 ## Files
 
@@ -154,7 +205,8 @@ All three are managed by [supervisord.conf](./supervisord.conf). nginx and redis
 | --- | --- |
 | `Dockerfile` | Multi-stage build (frontend, backend, runtime) |
 | `entrypoint.sh` | Secret bootstrap, migrations, administrator, then supervisord |
-| `supervisord.conf` | Runs redis, uvicorn and nginx |
+| `supervisord.conf` | Runs redis, uvicorn and nginx, and the plugin runner when it has a configuration |
+| `plugin-runner-seccomp.json` | The seccomp profile that lets plugin backends run in sandboxes of their own |
 | `nginx.conf.template` | Site config; `${PORT}` is substituted on start |
 | `render_frontend_config.py` | Writes `/usr/share/nginx/html/config.js` from the environment |
 | `credentials.sh` | `docker exec <container> credentials`: prints the administrator's login |
