@@ -1117,7 +1117,7 @@ export const TabGroupElement = memo((props: TabGroupElementProps) => {
         <div className="font-bold text-[12px] leading-[18px] text-[#070707] dark:text-white">
           {widget.name}
         </div>
-        <span className="text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#909094]">
+        <span className="text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8]">
           ({widgetCount} widget{widgetCount !== 1 ? "s" : ""})
         </span>
       </div>
@@ -1211,7 +1211,7 @@ export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
         </Tooltip>
         {widgetInfo.source && (
           <Tooltip message={widgetInfo.source} position="top">
-            <span className="block truncate whitespace-nowrap min-w-0 max-w-[140px] text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90]">
+            <span className="block truncate whitespace-nowrap min-w-0 max-w-[140px] text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8]">
               {widgetInfo.source}
             </span>
           </Tooltip>
@@ -1228,14 +1228,14 @@ export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
 
       {/* Category and subcategory */}
       {(widgetInfo.category || widgetInfo.subCategory) && (
-        <div className="text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90] mb-1">
+        <div className="text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8] mb-1">
           {[widgetInfo.category, widgetInfo.subCategory].filter(Boolean).join(" • ")}
         </div>
       )}
 
       {/* Description */}
       {widgetInfo.description && (
-        <div className="text-[12px] leading-[18px] text-[#151518] dark:text-white mt-2 max-h-[150px] overflow-y-auto">
+        <div className="text-[12px] leading-[18px] text-[#0b2432] dark:text-white mt-2 max-h-[150px] overflow-y-auto">
           {widgetInfo.description}
         </div>
       )}

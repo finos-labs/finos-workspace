@@ -453,7 +453,7 @@ export default function NavigationBar() {
           </div>
         </DialogFooter>
       </BaseDialog>
-      <div className="group/widget flex overflow-auto h-full relative dark:bg-[#151518] bg-white shadow-xs rounded gap-3 text-sm p-2.5">
+      <div className="group/widget flex overflow-auto h-full relative dark:bg-[#0b2432] bg-white shadow-xs rounded gap-3 text-sm p-2.5">
         {widget?.storage?.tabs?.map((tab) => {
           const isCurrentTab = currentTab === tab.id;
           const isHighlighted = hoveredWidgetTabId === tab.id;

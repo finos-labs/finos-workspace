@@ -958,7 +958,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                             </Tooltip>
                             {source && (
                               <Tooltip message={source} position="top">
-                                <span className="block truncate whitespace-nowrap min-w-0 max-w-[140px] text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90]">
+                                <span className="block truncate whitespace-nowrap min-w-0 max-w-[140px] text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8]">
                                   {source}
                                 </span>
                               </Tooltip>
@@ -972,20 +972,20 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                           <hr className="border-[#EBEBED] dark:border-[#454550] mb-2" />
 
                           {category && (
-                            <div className="text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90] mb-1">
+                            <div className="text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8] mb-1">
                               {[category, subCategory].filter(Boolean).join(" • ") ||
                                 ""}
                             </div>
                           )}
 
                           {description && (
-                            <div className="text-[12px] leading-[18px] text-[#151518] dark:text-white  max-h-[200px] overflow-y-auto">
+                            <div className="text-[12px] leading-[18px] text-[#0b2432] dark:text-white  max-h-[200px] overflow-y-auto">
                               {linkifyText(description)}
                             </div>
                           )}
 
                           {createdAt && (
-                            <div className="mt-2 text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90]">
+                            <div className="mt-2 text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8]">
                               <div>
                                 Created:{" "}
                                 {dayjs(createdAt).format("MMM D, YYYY, h:mm A")}

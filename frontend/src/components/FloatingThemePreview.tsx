@@ -9,9 +9,9 @@ import { applyBrandColors, applyFontFamily } from "~/utils/colorUtils";
 const showFloatingPreview = getConfig().whiteLabel.showFloatingThemePreview;
 
 const FloatingThemePreview = () => {
-  const [color, setColor] = useState(getConfig().whiteLabel.mainColor || "#3F51B5");
+  const [color, setColor] = useState(getConfig().whiteLabel.mainColor || "#0086BF");
   const [fontFamily, setFontFamily] = useState(
-    getConfig().whiteLabel.fontFamily || "Inter",
+    getConfig().whiteLabel.fontFamily || "Montserrat",
   );
   const [debouncedColor] = useDebounceValue(color, 300);
   const [showPreview, setShowPreview] = useState(false);
@@ -90,6 +90,7 @@ const FloatingThemePreview = () => {
             </label>
             <Select
               options={[
+                { label: "Montserrat", value: "Montserrat" },
                 { label: "Inter", value: "Inter" },
                 { label: "Roboto", value: "Roboto" },
               ]}

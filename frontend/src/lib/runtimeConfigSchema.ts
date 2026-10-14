@@ -111,8 +111,8 @@ export const RuntimeConfigSchema = z.object({
     favicon: z.string().default("/favicon/favicon.ico"),
     description: z.string().default(""),
     keywords: z.string().default(""),
-    mainColor: z.string().default("#0088CC"),
-    fontFamily: z.string().default("Inter"),
+    mainColor: z.string().default("#0086BF"),
+    fontFamily: z.string().default("Montserrat"),
     showFloatingThemePreview: boolField(false),
   }),
 });

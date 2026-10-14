@@ -158,6 +158,7 @@ describe("CopilotChat", () => {
       render(<CopilotChat />);
 
       expect(screen.getByText("No copilot selected")).toBeInTheDocument();
+      expect(screen.getByTestId("header")).toBeInTheDocument();
     });
 
     it("renders Add Copilot button", () => {

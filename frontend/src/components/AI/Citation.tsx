@@ -1040,7 +1040,7 @@ const highlightElement = (element: HTMLElement | null) => {
 
   // Inject custom CSS for fade-out animation if not already present
   if (!document.getElementById("citation-highlight-styles")) {
-    const mainColor = getConfig().whiteLabel.mainColor ?? "#0088CC";
+    const mainColor = getConfig().whiteLabel.mainColor ?? "#0086BF";
     const style = document.createElement("style");
     style.id = "citation-highlight-styles";
     style.textContent = `
