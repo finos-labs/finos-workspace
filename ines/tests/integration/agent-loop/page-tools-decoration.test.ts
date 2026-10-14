@@ -51,7 +51,6 @@ async function run(tool: string, input: Record<string, unknown>, conversationId:
       model: makeMockLlm(llmCallsTool(tool, input)),
       allWidgets: [],
       workspaceState: null,
-      generativeUiEnabled: false,
       conversationId,
       scopeSecret: SECRET,
     }),

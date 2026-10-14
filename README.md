@@ -186,8 +186,7 @@ Workspace describes them to the agent with its other tools (the same names, desc
 the same server: `GET /app/workspace-tools`), and when the agent calls one, the user's own tab runs it, as the user who is signed
 in: nothing is handed to the agent but the call's result, and no token or bridge session is involved. The API checks every call
 (`POST /app/workspace-tools/prepare`) against what the user's roles grant, as it does for any MCP tool, with the address of the
-tools' endpoint as the server's. The tools that change something are offered while the user lets the agent change the Workspace
-(the generative UI switch of the Copilot settings), and reading a widget always. Each widget in a request advertises its current
+tools' endpoint as the server's. The agent always has all of them, whatever page the user is on. Each widget in a request advertises its current
 parameters, and these are what the widget is showing: a parameter that belongs to one of the dashboard's parameter groups is
 advertised with the group's value, which is what the widget shows, not with the value it stored. A widget that embeds a page of its
 own backend (`iframe`) is advertised as such, and Ines reads its state from those parameters and changes it with the Workspace's `update_widget`, which

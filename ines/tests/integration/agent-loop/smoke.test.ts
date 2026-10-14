@@ -24,7 +24,6 @@ async function run(
       model: makeMockLlm(llmEmitsText("hi back")),
       allWidgets: [],
       workspaceState: null,
-      generativeUiEnabled: false,
       conversationId: "smoke-1",
       ...options,
     }),

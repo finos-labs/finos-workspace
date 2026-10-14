@@ -388,7 +388,6 @@ export interface AgentRunOptions {
    */
   tieredWidgets?: TieredWidget[];
   workspaceState: WorkspaceState | null;
-  generativeUiEnabled: boolean;
   /**
    * The chat's scope key: the workspace's per-chat X-Trace-Id header, filed under the user it belongs
    * to (see lib/scope.ts). Threaded into the MCP calls that keep state per chat (via decoration) so
@@ -520,7 +519,6 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
     model,
     allWidgets,
     workspaceState,
-    generativeUiEnabled,
     promptSuggestionsEnabled = false,
     suggestionsVia = "inline",
     conversationId,
@@ -536,7 +534,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
   const dashboardNameByUuid = buildDashboardNameByUuid(workspaceState);
   const agentTools = (request.tools ?? []) as AgentTool[];
   const mcpToolsResult: McpToolsResult | null =
-    agentTools.length > 0 ? makeMcpTools(agentTools, { generativeUiEnabled }) : null;
+    agentTools.length > 0 ? makeMcpTools(agentTools) : null;
   // The model is served the current turn only, so what was said before reaches it through this tool.
   const earlierMessages = earlierEntries(request.messages);
 
@@ -678,7 +676,6 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
     // What the system prompt is built from. It is built again at every step of the model call (prepareStep),
     // with the catalog of the tools and the groups loaded by then.
     const promptOptions = {
-      generativeUiEnabled,
       promptSuggestionsEnabled,
       suggestionsVia,
       workspaceState,
@@ -876,13 +873,6 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
       const queuedBridgeCalls = (rebootExtra.pending_bridge_calls ?? []).filter((c) =>
         SSE_BRIDGE_COMMANDS.has(c.function),
       );
-      if (queuedBridgeCalls.length > 0 && !generativeUiEnabled) {
-        // Toggle flipped off mid-drain: respect it (stop mutating the
-        // dashboard) but log so the stranded queue is traceable, not silent.
-        logger.warn("Queued bridge calls stranded — generative UI disabled mid-drain", {
-          stranded: queuedBridgeCalls.map((c) => c.function),
-        });
-      }
       // Make the next queued call of a Workspace tool, one per re-POST (the browser runs one function call each),
       // before the model is consulted: it composes the final answer only once the queue is empty.
       if (queuedWorkspaceCalls.length > 0) {
@@ -902,9 +892,8 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         yield executeAgentTool(next.entry.serverId, next.entry.toolName, next.parameters, drainExtraState);
         return;
       }
-      const pendingBridgeCalls = generativeUiEnabled ? queuedBridgeCalls : [];
-      if (pendingBridgeCalls.length > 0) {
-        const [next, ...remaining] = pendingBridgeCalls;
+      if (queuedBridgeCalls.length > 0) {
+        const [next, ...remaining] = queuedBridgeCalls;
         const drainExtraState = await buildContinuationExtraState();
         if (remaining.length > 0) drainExtraState.pending_bridge_calls = remaining;
         logger.info("Draining queued bridge call", {
@@ -964,7 +953,6 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
       // The agent's own function calls for the Workspace are for a request that does not have the Workspace's
       // tools: with them, there is one way to do each thing, and it is the tool the Workspace describes.
       const workspaceToolSet =
-        generativeUiEnabled &&
         !suppressWidgetDiscoveryToolsForEmptyWidgetRetry &&
         !mcpToolsResult?.workspaceToolsOffered
           ? makeWorkspaceTools(SSE_BRIDGE_COMMANDS)

@@ -6,7 +6,7 @@
  * graders can introspect.
  *
  * The eval runner stops at the FIRST round-trip emit (executeAgentTool /
- * getWidgetData / get_skill_content / generative UI
+ * getWidgetData / get_skill_content / Workspace
  * function call) or at the final-answer text. Multi-turn evals (re-POST
  * with simulated tool results) are deferred to a later iteration — most
  * useful first-action graders only need this single shot.
@@ -58,7 +58,6 @@ export interface RunCaseInput {
   widgets?: { primary?: Widget[]; secondary?: Widget[]; extra?: Widget[] };
   workspaceState?: WorkspaceState | null;
   tools?: AgentTool[];
-  generativeUiEnabled?: boolean;
   conversationId?: string;
   rawModelId?: string;
   promptSuggestionsEnabled?: boolean;
@@ -174,7 +173,6 @@ export async function runEvalCase(input: RunCaseInput): Promise<Trace> {
         ...(input.widgets?.extra ?? []),
       ],
       workspaceState: input.workspaceState ?? null,
-      generativeUiEnabled: input.generativeUiEnabled ?? false,
       promptSuggestionsEnabled: input.promptSuggestionsEnabled ?? false,
       suggestionsVia: input.suggestionsVia ?? "inline",
       conversationId: input.conversationId ?? `eval-${input.caseId}-${input.trial}`,

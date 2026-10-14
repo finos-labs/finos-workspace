@@ -62,7 +62,6 @@ describe("GET /agents.json", () => {
     const features = body.default_agent.features;
     expect(features.streaming).toBe(true);
     expect(features["mcp-tools"]).toBe(true);
-    expect(features["generative-ui"]).toBe(true);
     expect(features["prompt-suggestions"]).toHaveProperty("label");
     expect(features["model"]).toHaveProperty("type", "select");
   });

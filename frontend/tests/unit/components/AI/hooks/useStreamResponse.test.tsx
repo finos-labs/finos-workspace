@@ -59,11 +59,6 @@ vi.mock("~/lib/state/backendConnector", () => ({
     selector: (s: { apiSources: never[] }) => unknown,
   ) => selector({ apiSources: [] }),
 }));
-vi.mock("~/lib/state/copilotData", () => ({
-  useShallowCopilotDataStore: (
-    selector: (s: { generativeUiEnabled: boolean }) => unknown,
-  ) => selector({ generativeUiEnabled: false }),
-}));
 vi.mock("~/lib/state/skillsLibrary", () => ({
   useShallowSkillsLibraryStore: (
     selector: (s: { getSkillBySlug: () => void }) => unknown,

@@ -28,7 +28,6 @@ import {
   useCopilotStore,
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
-import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowSkillsLibraryStore } from "~/lib/state/skillsLibrary";
 import { useShallowThemeStore, useThemeStore } from "~/lib/state/theme";
 import { WORKSPACE_SERVER_ID } from "~/lib/state/workspaceTools";
@@ -133,7 +132,6 @@ function useStreamResponse(stopSubmit: () => void) {
   const userToken = useShallowAuthStore((s) => s.user?.token);
   const addTab = useShallowAppStore((s) => s.addTab);
   const apiSources = useShallowBackendConnectorStore((s) => s.apiSources);
-  const generativeUiEnabled = useShallowCopilotDataStore((s) => s.generativeUiEnabled);
 
   const copilot = useShallowCopilotStore((s) => ({
     addArtifactToCurrentChat: s.addArtifactToCurrentChat,
@@ -188,21 +186,12 @@ function useStreamResponse(stopSubmit: () => void) {
   const focusInputRef = useRef<ReturnType<typeof setTimeout>>();
 
   const autoOpenAppArtifact = useCallback(
-    async (artifact: AppArtifactT, targetAgent?: Copilot) => {
-      const features = targetAgent?.features || copilot.selectedCopilot?.features;
+    async (artifact: AppArtifactT) => {
       // Read items imperatively: back-to-back artifacts in one stream must see the dashboard
       // state left by the previous auto-open, which the render closure would not reflect.
       const items = useAppStore.getState().items;
       const currentDashboardItem = currentDashboard ? items?.[currentDashboard] : null;
-      if (
-        !shouldAutoOpenAppArtifact({
-          generativeUiEnabled,
-          features,
-          currentDashboardItem,
-        })
-      ) {
-        return;
-      }
+      if (!shouldAutoOpenAppArtifact({ currentDashboardItem })) return;
 
       try {
         await createCustomTemplateTab({
@@ -224,14 +213,7 @@ function useStreamResponse(stopSubmit: () => void) {
         });
       }
     },
-    [
-      addTab,
-      navigate,
-      currentDashboard,
-      apiSources,
-      generativeUiEnabled,
-      copilot.selectedCopilot?.features,
-    ],
+    [addTab, navigate, currentDashboard, apiSources],
   );
 
   const updateCopilotTitle = useCallback(
@@ -727,7 +709,7 @@ function useStreamResponse(stopSubmit: () => void) {
           aiMessageBuffer += artifactMarker;
           copilot.addArtifactToCurrentChat(artifact);
           setStreamedData((prevData) => prevData + artifactMarker);
-          if (artifact.type === "app") void autoOpenAppArtifact(artifact, targetAgent);
+          if (artifact.type === "app") void autoOpenAppArtifact(artifact);
 
           break;
         }

@@ -46,7 +46,6 @@ interface RunOptions {
   widgets?: QueryRequest["widgets"];
   tools?: AgentTool[];
   context?: unknown[];
-  generativeUi?: boolean;
   workspaceState?: WorkspaceState | null;
 }
 
@@ -64,7 +63,6 @@ async function run(model: ReturnType<typeof makeSpyMockLlm>["model"], options: R
       model,
       allWidgets: [...(widgets?.primary ?? []), ...(widgets?.secondary ?? [])],
       workspaceState: options.workspaceState ?? null,
-      generativeUiEnabled: options.generativeUi ?? false,
       conversationId: "lazy-tools",
     }),
   );
@@ -75,7 +73,7 @@ const sizeOf = (call: { tools?: unknown }) => JSON.stringify(call.tools ?? []).l
 describe("a question that needs no tool", () => {
   it("is given the core tools and a catalog of the rest, not their definitions", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("Tokyo."));
-    await run(spy.model, { generativeUi: true });
+    await run(spy.model);
     const names = toolNamesOf(spy.calls[0]);
     expect(names.sort()).toEqual(["get_widget_data", "load_tools", "search_widgets"]);
 
@@ -91,7 +89,7 @@ describe("a question that needs no tool", () => {
 
   it("costs a fraction of what offering every tool did", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("Tokyo."));
-    await run(spy.model, { generativeUi: true });
+    await run(spy.model);
     const tokens = (systemPromptOf(spy.calls[0]).length + sizeOf(spy.calls[0])) / 4;
     // Every tool, with every instruction, was ~10k tokens before the question.
     expect(tokens).toBeLessThan(4_500);
@@ -99,7 +97,7 @@ describe("a question that needs no tool", () => {
 
   it("is not given the instructions of the tools it was not given", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("Tokyo."));
-    await run(spy.model, { generativeUi: true });
+    await run(spy.model);
     const prompt = systemPromptOf(spy.calls[0]);
     for (const heading of ["SQL TOOLS:", "DASHBOARD TOOLS:", "RENDER TOOLS:", "WEB TOOLS:", "DOCUMENTS TOOLS:"]) {
       expect(prompt).not.toContain(heading);
@@ -110,18 +108,13 @@ describe("a question that needs no tool", () => {
     const spy = makeSpyMockLlm(llmEmitsText("Tokyo."));
     await run(spy.model, { tools: [] });
     const catalog = catalogToolNamesOf(spy.calls[0]);
-    // The agent's own tools are there; the MCP tools, and the dashboard tools of Generative UI, are not.
+    // The agent's own tools are there, its dashboard tools among them (the request has none of the
+    // Workspace's); the MCP tools are not.
     expect(catalog).toContain("execute_sql");
     expect(catalog).toContain("create_app");
+    expect(catalog).toContain("update_widget_in_dashboard");
     expect(catalog.some((n) => n.endsWith("web_search"))).toBe(false);
     expect(catalog.some((n) => n.endsWith("query_documents"))).toBe(false);
-    expect(catalog).not.toContain("update_widget_in_dashboard");
-  });
-
-  it("lists the dashboard tools when Generative UI is on", async () => {
-    const spy = makeSpyMockLlm(llmEmitsText("Tokyo."));
-    await run(spy.model, { tools: [], generativeUi: true });
-    expect(catalogToolNamesOf(spy.calls[0])).toContain("update_widget_in_dashboard");
   });
 });
 
@@ -229,7 +222,7 @@ describe("what is carried from one request of a turn to the next", () => {
       llmCallsTool("load_tools", { groups: ["dashboard"] }),
       llmCallsTool("manage_navigation_bar", { operation: "create", tabs: [{ name: "New" }] }),
     ]);
-    const events = await run(spy.model, { generativeUi: true, workspaceState: STATE });
+    const events = await run(spy.model, { workspaceState: STATE });
     const call = events.find((e) => e.event === "copilotFunctionCall" && (e.data as { function?: string }).function === "manage_navigation_bar");
     expect((call?.data as { extra_state?: { loaded_tool_groups?: string[] } }).extra_state?.loaded_tool_groups).toEqual(["dashboard"]);
   });
@@ -237,7 +230,6 @@ describe("what is carried from one request of a turn to the next", () => {
   it("restores them: the request after the round trip starts with the tools and instructions", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("Added the tab."));
     await run(spy.model, {
-      generativeUi: true,
       workspaceState: STATE,
       messages: [
         { role: "human", content: "Add a tab" },

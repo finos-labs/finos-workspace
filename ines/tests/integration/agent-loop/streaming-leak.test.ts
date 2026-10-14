@@ -45,7 +45,6 @@ describe("streaming — placeholder tags never reach the user", () => {
         ),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "leak-1",
       }),
     );
@@ -70,7 +69,6 @@ describe("streaming — placeholder tags never reach the user", () => {
         ),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "leak-2",
       }),
     );
@@ -95,7 +93,6 @@ describe("streaming — placeholder tags never reach the user", () => {
         ),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "leak-3",
       }),
     );
@@ -118,7 +115,6 @@ describe("streaming — placeholder tags never reach the user", () => {
         ),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "leak-4",
       }),
     );

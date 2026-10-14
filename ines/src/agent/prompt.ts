@@ -237,7 +237,6 @@ export function describeDisabledCapabilities(disabled: readonly string[]): strin
 export interface PromptOptions {
   /** What an administrator has switched off for this user (see describeDisabledCapabilities). */
   disabledCapabilities?: readonly string[];
-  generativeUiEnabled?: boolean;
   promptSuggestionsEnabled?: boolean;
   /**
    * How the model should produce follow-up suggestions when
@@ -306,7 +305,7 @@ export function buildSystemPrompt(
     sections.push("\nNo widgets or data sources are currently available in this session.");
   }
 
-  if (options?.generativeUiEnabled && options.workspaceState) {
+  if (options?.workspaceState) {
     sections.push(describeDashboardContext(options.workspaceState));
   }
 

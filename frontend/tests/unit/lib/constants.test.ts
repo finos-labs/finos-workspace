@@ -41,7 +41,6 @@ describe("getDefaultCopilot", () => {
     expect(copilot.features?.["file-upload"]).toBe(true);
     expect(copilot.features?.["widget-dashboard-select"]).toBe(true);
     expect(copilot.features?.["widget-global-search"]).toBe(true);
-    expect(copilot.features?.["generative-ui"]).toBe(true);
     expect(copilot.features?.["mcp-tools"]).toBe(true);
     expect(copilot.features?.["agent-orchestration"]).toBe(true);
   });

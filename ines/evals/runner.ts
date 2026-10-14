@@ -46,7 +46,6 @@ export interface EvalCase {
   workspace?: { primary?: Widget[]; secondary?: Widget[]; extra?: Widget[] };
   workspaceState?: WorkspaceState | null;
   tools?: AgentTool[];
-  generativeUiEnabled?: boolean;
   promptSuggestionsEnabled?: boolean;
   suggestionsVia?: "inline" | "tool";
   skillsCatalog?: SkillCatalogEntry[];
@@ -161,7 +160,6 @@ async function runCase(
       widgets: ec.workspace,
       workspaceState: ec.workspaceState ?? null,
       tools: ec.tools,
-      generativeUiEnabled: ec.generativeUiEnabled,
       promptSuggestionsEnabled: ec.promptSuggestionsEnabled,
       suggestionsVia: ec.suggestionsVia,
       skillsCatalog: ec.skillsCatalog,

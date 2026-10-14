@@ -159,8 +159,6 @@ export function useWorkspaceBridgeSnapshot() {
       enabledOptions.add("widget-global-search");
     if (features["agent-orchestration"] && copilotState.orchestrationModeEnabled)
       enabledOptions.add("agent-orchestration");
-    if (features["generative-ui"] && copilotDataState.generativeUiEnabled)
-      enabledOptions.add("generative-ui");
     if (features["mcp-tools"] && mcpToolsState.getEnabledToolCount() > 0)
       enabledOptions.add("mcp-tools");
 

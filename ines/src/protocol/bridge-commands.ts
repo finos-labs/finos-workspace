@@ -479,8 +479,7 @@ export const WORKSPACE_BRIDGE_COMMAND_NAMES: ReadonlySet<string> = new Set(
  *     agent round-trip paths (widget tier resolution, skill payload injection),
  *     deliberately excluded from the table above.
  * The MCP factory drops user-supplied wrappers with these names so they never
- * double-register against the native tools — and so `update_widget_layout`
- * cannot expose a dashboard-mutation path while generative UI is disabled.
+ * double-register against the native tools.
  */
 export const BRIDGE_MOUNT_EXTRA_NAMES: ReadonlySet<string> = new Set([
   "update_widget_layout",

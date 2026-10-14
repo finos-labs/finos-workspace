@@ -39,7 +39,6 @@ async function run(messages: Message[], model: ReturnType<typeof makeSpyMockLlm>
       model,
       allWidgets: [],
       workspaceState: null,
-      generativeUiEnabled: false,
       conversationId: "chat-1",
     }),
   );

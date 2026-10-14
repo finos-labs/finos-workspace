@@ -470,7 +470,7 @@ describe("buildSystemPrompt — tool groups", () => {
         tabs: [{ tab_id: "t1", widgets: [{ widget_uuid: "w-1", name: "W1" }] }],
       },
     };
-    const out = buildSystemPrompt(req(), { generativeUiEnabled: true, workspaceState: ws });
+    const out = buildSystemPrompt(req(), { workspaceState: ws });
     expect(out).toContain('Current dashboard: "My Dash" [dashboard_id: d-1]');
     expect(out).toContain("dashboard_id may be omitted unless the tool explicitly requires it");
     expect(out).toContain("[current]");

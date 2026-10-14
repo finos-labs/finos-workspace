@@ -2,7 +2,7 @@
  * Tier 2 — agent-loop round-trip scenarios.
  *
  * Pinned to CLAUDE.md gotchas:
- * - Generative UI tools are terminal (no re-POST data injection expected)
+ * - Workspace bridge calls are terminal (no re-POST data injection expected)
  * - Cache-resolved widget re-fetch within MAX_LOOPS=3 without HTTP round-trip
  * - Citations forwarded across round-trips (commit 63272c8)
  */
@@ -20,13 +20,12 @@ import { clearAllModuleState } from "../../helpers/clear-state";
 
 beforeEach(() => clearAllModuleState());
 
-describe("generative UI is terminal — emits SSE then returns, no continuing loop", () => {
+describe("a Workspace bridge call is terminal — emits SSE then returns, no continuing loop", () => {
   it("add_generative_widget emits a function call and ends the turn", async () => {
     const events = await collectGenerator(
       runAgentLoop({
         request: {
           messages: [{ role: "human", content: "make a widget" }],
-          workspace_options: ["generative-ui"],
         } as unknown as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeMockLlm(
@@ -39,7 +38,6 @@ describe("generative UI is terminal — emits SSE then returns, no continuing lo
         ),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: true,
         conversationId: "gu-1",
       }),
     );
@@ -87,7 +85,6 @@ describe("citations — forwarded across round-trips via extra_state.intermediat
         model: makeMockLlm(llmEmitsText("here is the summary")),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "cit-c",
       }),
     );

@@ -127,7 +127,6 @@ describe("document RAG — decoration on first query_documents call", () => {
         ),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-doc-1",
       }),
     );
@@ -155,7 +154,6 @@ describe("document RAG — decoration on first query_documents call", () => {
         model: makeMockLlm(llmCallsTool("list_documents", {})),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-doc-1b",
       }),
     );
@@ -179,7 +177,6 @@ describe("document RAG — decoration on first query_documents call", () => {
         model: makeMockLlm(llmCallsTool("web_search", { query: "example" })),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-doc-2",
       }),
     );
@@ -216,7 +213,6 @@ describe("document RAG — delta shipping on subsequent calls", () => {
         ),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-doc-3",
       }),
     );
@@ -254,7 +250,6 @@ describe("document RAG — delta shipping on subsequent calls", () => {
         model: makeMockLlm(llmCallsTool("query_documents", { query: "foo" })),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-doc-4",
       }),
     );
@@ -279,7 +274,6 @@ describe("document RAG — x-ines-* never reaches the model", () => {
         model: spy.model,
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-doc-5",
       }),
     );
@@ -342,7 +336,6 @@ describe("document RAG — file-tier widget bridge", () => {
         ),
         allWidgets: [fileWidget],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-file-rag-1",
       }),
     );
@@ -400,7 +393,6 @@ describe("document RAG — file-tier widget bridge", () => {
         ),
         allWidgets: [csvFileWidget],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-file-rag-2",
       }),
     );
@@ -424,7 +416,6 @@ describe("document RAG — uploaded docs section in system prompt", () => {
         model: spy.model,
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-doc-6",
       }),
     );

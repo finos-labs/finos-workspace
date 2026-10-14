@@ -316,8 +316,6 @@ async function answerQuery(
     return modelFailure(err instanceof Error ? err.message : String(err));
   }
   const workspaceState = parseWorkspaceState(body.workspace_state);
-  const generativeUiEnabled = hasOption("generative-ui")
-    && workspaceState?.current_page_context === "dashboard";
 
   // X-Trace-Id is the workspace-managed per-chat identifier (set in
   // useGetCopilotRequestHeaders.tsx), stable across re-POSTs in the same chat.
@@ -443,7 +441,6 @@ async function answerQuery(
         allWidgets,
         tieredWidgets,
         workspaceState,
-        generativeUiEnabled,
         promptSuggestionsEnabled,
         conversationId,
         scopeSecret: services?.config.scopeSecret ?? null,

@@ -29,17 +29,12 @@ export function useEnhancePrompt() {
     (s) => s.getCurrentChatArtifacts,
   );
 
-  const {
-    getCopilotWidgets,
-    widgetSubsetData,
-    extraWidgetsEnabled,
-    generativeUiEnabled,
-  } = useShallowCopilotDataStore((s) => ({
-    widgetSubsetData: s.widgetSubsetData,
-    extraWidgetsEnabled: s.extraWidgetsEnabled,
-    generativeUiEnabled: s.generativeUiEnabled,
-    getCopilotWidgets: s.getCopilotWidgets,
-  }));
+  const { getCopilotWidgets, widgetSubsetData, extraWidgetsEnabled } =
+    useShallowCopilotDataStore((s) => ({
+      widgetSubsetData: s.widgetSubsetData,
+      extraWidgetsEnabled: s.extraWidgetsEnabled,
+      getCopilotWidgets: s.getCopilotWidgets,
+    }));
 
   const customFeatureStates = useShallowCopilotStore((s) => s.customFeatureStates);
 
@@ -60,8 +55,6 @@ export function useEnhancePrompt() {
     // Built-in options controlled by UI toggles and agent capability
     if (features?.["widget-global-search"] && extraWidgetsEnabled)
       options["widget-global-search"] = true;
-    if (features?.["generative-ui"] && generativeUiEnabled)
-      options["generative-ui"] = true;
     if (features?.["mcp-tools"] && getEnabledToolCount() > 0)
       options["mcp-tools"] = true;
 
@@ -87,12 +80,7 @@ export function useEnhancePrompt() {
     }
 
     return options;
-  }, [
-    extraWidgetsEnabled,
-    generativeUiEnabled,
-    getEnabledToolCount,
-    customFeatureStates,
-  ]);
+  }, [extraWidgetsEnabled, getEnabledToolCount, customFeatureStates]);
 
   const enhancePrompt = useCallback(
     async (promptText: string): Promise<string> => {
@@ -210,7 +198,6 @@ export function useEnhancePrompt() {
       getCurrentChatArtifacts,
       widgetSubsetData,
       extraWidgetsEnabled,
-      generativeUiEnabled,
       getCopilotRequestHeaders,
       workspaceOptions,
       getEnabledToolsForAgent,

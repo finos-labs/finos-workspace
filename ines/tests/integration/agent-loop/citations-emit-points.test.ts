@@ -94,7 +94,6 @@ describe("citations bake into extra_state at every round-trip emit point", () =>
         model: makeMockLlm(llmCallsTool("fetch_webpage", { url: "https://x" })),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "emit-mcp",
       }),
     );
@@ -118,7 +117,6 @@ describe("citations bake into extra_state at every round-trip emit point", () =>
         model: makeMockLlm(llmCallsTool("get_skill_content", { slug: "intro" })),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "emit-skill",
       }),
     );
@@ -145,7 +143,6 @@ describe("citations bake into extra_state at every round-trip emit point", () =>
         ),
         allWidgets: [widget],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "emit-widget",
       }),
     );
@@ -168,7 +165,6 @@ describe("citations bake into extra_state at every round-trip emit point", () =>
         model: makeMockLlm(llmEmitsText("summary")),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "emit-final",
       }),
     );
@@ -197,7 +193,6 @@ describe("citations baked: regression — no double-bake on identical re-POSTs",
         model: makeMockLlm(llmEmitsText("done")),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "emit-dupe",
       }),
     );

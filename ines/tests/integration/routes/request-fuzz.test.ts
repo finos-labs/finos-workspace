@@ -67,7 +67,7 @@ const valid = () => ({
   urls: [],
   timezone: "Europe/Madrid",
   workspace_state: { current_page_context: "dashboard" },
-  workspace_options: { "prompt-suggestions": true, "generative-ui": true },
+  workspace_options: { "prompt-suggestions": true },
   tools: [{ name: "Ines Tools_web_search", tool_name: "web_search", server_id: "s", url: "http://ines-mcp:8787/mcp", description: "d", input_schema: { properties: { query: { type: "string" } }, required: ["query"] } }],
   documents: [],
 });

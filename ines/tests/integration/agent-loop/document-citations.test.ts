@@ -68,7 +68,6 @@ async function run(messages: unknown[], model: ReturnType<typeof makeMockLlm>, t
       model,
       allWidgets: [pdf],
       workspaceState: null,
-      generativeUiEnabled: false,
       conversationId: "doc-cites",
       promptSuggestionsEnabled: true,
     }),

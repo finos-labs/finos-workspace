@@ -49,7 +49,6 @@ describe("SQL family — in-process execution", () => {
         ]),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "sql-1",
       }),
     );
@@ -78,7 +77,6 @@ describe("SQL family — in-process execution", () => {
         ]),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "sql-2",
       }),
     );

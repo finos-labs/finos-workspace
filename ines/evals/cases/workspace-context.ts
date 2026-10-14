@@ -262,7 +262,6 @@ export const workspaceContextCases: EvalCase[] = [
     messages: [{ role: "human", content: "update parameter sector to technology" }],
     workspace: sectorDashboardWorkspace,
     workspaceState: sectorDashboardState,
-    generativeUiEnabled: true,
     trials: 3,
     passRate: 0.6,
     graders: [
@@ -279,7 +278,6 @@ export const workspaceContextCases: EvalCase[] = [
     ],
     workspace: sectorDashboardWorkspace,
     workspaceState: sectorDashboardState,
-    generativeUiEnabled: true,
     trials: 3,
     passRate: 0.6,
     graders: [

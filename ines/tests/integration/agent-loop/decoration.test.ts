@@ -80,7 +80,6 @@ describe("decoration — the SQL family needs none", () => {
         model: makeMockLlm(llmEmitsText("nothing to do")),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "",
       }),
     );
@@ -118,7 +117,6 @@ describe("round-trip extra_state — continuation state survives every emission"
         ),
         allWidgets: [widget],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-cont-1",
       }),
     );
@@ -154,7 +152,6 @@ describe("round-trip extra_state — continuation state survives every emission"
         model: makeMockLlm(llmCallsTool("mermaid_diagram", { code: "flowchart TD\n  A --> B" })),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-cont-2",
       }),
     );
@@ -193,7 +190,6 @@ describe("history — earlier MCP results from the turn stay visible to the mode
         model: spy.model,
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-hist-1",
       }),
     );
@@ -232,7 +228,6 @@ describe("MCP artifacts — land in the message stream, not the status timeline"
         model: makeMockLlm(llmEmitsText("Here is the analysis.")),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-art-1",
       }),
     );
@@ -273,7 +268,6 @@ describe("MCP artifacts — land in the message stream, not the status timeline"
         ),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-art-mermaid-strip",
       }),
     );
@@ -303,7 +297,6 @@ describe("MCP artifacts — land in the message stream, not the status timeline"
         model: makeMockLlm(llmCallsTool("mermaid_diagram", { code: "flowchart TD\n  A --> B" })),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-art-2",
       }),
     );
@@ -343,7 +336,6 @@ describe("decoration — x-ines-* never reaches the model", () => {
         model: spy.model,
         allWidgets: [widget],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "conv-5",
       }),
     );

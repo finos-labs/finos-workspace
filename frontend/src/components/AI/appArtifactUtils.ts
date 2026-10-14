@@ -1,6 +1,6 @@
 import type { Item } from "~/lib/state/app";
 import type { Source } from "~/lib/state/backendConnector";
-import type { AppArtifactT, AppArtifactWidgetRef, Copilot } from "~/lib/state/copilot";
+import type { AppArtifactT, AppArtifactWidgetRef } from "~/lib/state/copilot";
 
 /**
  * Build a per-widget Source resolver from an app artifact's widget refs and the user's
@@ -46,20 +46,14 @@ export function buildAppArtifactSource(artifact: AppArtifactT): Source {
 }
 
 /**
- * Auto-open applies only when the agent has Generative UI enabled and the user is sitting on an
- * empty dashboard. We never replace a dashboard that already holds widgets, and folders are not
- * dashboards.
+ * Auto-open applies only when the user is sitting on an empty dashboard. We never replace a
+ * dashboard that already holds widgets, and folders are not dashboards.
  */
 export function shouldAutoOpenAppArtifact({
-  generativeUiEnabled,
-  features,
   currentDashboardItem,
 }: {
-  generativeUiEnabled: boolean;
-  features: Copilot["features"];
   currentDashboardItem: Item | null | undefined;
 }): boolean {
-  if (!generativeUiEnabled || features?.["generative-ui"] !== true) return false;
   return (
     !!currentDashboardItem?.data &&
     !currentDashboardItem.isFolder &&

@@ -62,7 +62,6 @@ describe("create_app — in-process execution", () => {
         ]),
         allWidgets: widgets,
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "app-1",
       }),
     );
@@ -99,7 +98,6 @@ describe("create_app — in-process execution", () => {
         ]),
         allWidgets: widgets,
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "app-2",
       }),
     );
