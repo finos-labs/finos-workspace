@@ -1,21 +1,25 @@
 name: Deploy to dev
 
-# A push to develop builds the changed app and pushes the image to ECR as
-# dev-<commit>. Then .github/scripts/pin-dev-tags.sh sets that tag in the dev
-# values file of the infrastructure repository and pushes it to main, where that
-# repository's Apps workflow deploys it to the dev cluster. The job waits for
-# that deploy. If it fails, helm has already put the previous release back, and
-# the script sets the tag in the values file back too, so the file always
-# matches the cluster.
+# A push to develop builds the changed images and pushes them to ECR as
+# dev-<commit>. Then .github/scripts/request-dev-deploy.sh asks the
+# infrastructure repository's Apps workflow to deploy the dev cluster, and waits
+# for the result. The message holds what the deploy needs from this repository:
+# deploy/dev.yaml (the app settings) and the newest backend and frontend images
+# on develop. Nothing is written to the infrastructure repository. A push that
+# changes only deploy/dev.yaml deploys the settings without a build, and the
+# workflow can also be run by hand to deploy the latest state again. If the
+# deploy fails, helm has already put the previous release back.
+# .github/scripts/check-deploy-config.sh checks deploy/dev.yaml against the code
+# first, and a problem stops the deploy.
 #
 # Repository variables: AWS_REGION, AWS_IMAGE_PUSH_ROLE_ARN (the role that may
 # push to ECR), ECR_REGISTRY (<account>.dkr.ecr.<region>.amazonaws.com),
 # INFRA_REPO (<owner>/<infrastructure repository>), DEV_VALUES_FILE (the dev
-# values file in that repository) and INFRA_APP_ID.
+# environment's values file in that repository, which names its folder) and
+# INFRA_APP_ID.
 #
-# Pushing to the infrastructure repository uses a GitHub App installed on it
-# with contents write and actions read: INFRA_APP_ID (variable) and
-# INFRA_APP_PRIVATE_KEY (secret).
+# The message is sent with a GitHub App installed on the infrastructure
+# repository: INFRA_APP_ID (variable) and INFRA_APP_PRIVATE_KEY (secret).
 on:
   push:
     branches:
@@ -23,8 +27,8 @@ on:
     paths:
       - "backend-api/backend/**"
       - "frontend/**"
-      - ".github/workflows/deploy-dev.yml"
-      - ".github/scripts/pin-dev-tags.sh"
+      - "deploy/dev.yaml"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -35,6 +39,7 @@ env:
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
   INFRA_REPO: ${{ vars.INFRA_REPO }}
   VALUES_FILE: ${{ vars.DEV_VALUES_FILE }}
+  SETTINGS_FILE: deploy/dev.yaml
 
 jobs:
   changes:
@@ -45,18 +50,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check the app settings
+        run: .github/scripts/check-deploy-config.sh "$SETTINGS_FILE"
+
+      # A manual run builds nothing and deploys the latest state.
       - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
+        if: github.event_name == 'push'
         id: filter
         with:
           filters: |
             backend:
               - "backend-api/backend/**"
-              - ".github/workflows/deploy-dev.yml"
-              - ".github/scripts/pin-dev-tags.sh"
             frontend:
               - "frontend/**"
-              - ".github/workflows/deploy-dev.yml"
-              - ".github/scripts/pin-dev-tags.sh"
 
   backend:
     needs: changes
@@ -94,34 +100,6 @@ jobs:
             fi
           done
 
-      - name: Name the infrastructure repository
-        id: infra
-        run: |
-          echo "owner=${INFRA_REPO%%/*}" >> "$GITHUB_OUTPUT"
-          echo "name=${INFRA_REPO#*/}" >> "$GITHUB_OUTPUT"
-
-      - name: Get a token for the infrastructure repository
-        id: infra-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ vars.INFRA_APP_ID }}
-          private-key: ${{ secrets.INFRA_APP_PRIVATE_KEY }}
-          owner: ${{ steps.infra.outputs.owner }}
-          repositories: ${{ steps.infra.outputs.name }}
-          permission-contents: write
-          permission-actions: read
-
-      - name: Pin the tag in the infrastructure repository and wait for the deploy
-        env:
-          GH_TOKEN: ${{ steps.infra-token.outputs.token }}
-        run: >-
-          .github/scripts/pin-dev-tags.sh
-          --repo "$INFRA_REPO"
-          --values "$VALUES_FILE"
-          --keys backend,backendWorker
-          --tag "$IMAGE_TAG"
-          --source "$GITHUB_REPOSITORY@$GITHUB_SHA"
-
   frontend:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
@@ -155,11 +133,46 @@ jobs:
             exit 1
           fi
 
-      - name: Name the infrastructure repository
+  deploy:
+    needs: [changes, backend, frontend]
+    # Runs when nothing failed, whether or not an image was built: a push that
+    # changes only deploy/dev.yaml, or a manual run, deploys the latest state.
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.backend.result != 'failure' && needs.frontend.result != 'failure' }}
+    runs-on: ubuntu-latest
+    # A newer deploy replaces one that is still waiting. Its message describes
+    # the newest state, so nothing is lost.
+    concurrency:
+      group: deploy-dev
+      cancel-in-progress: true
+    steps:
+      # The full history, to find the newest commit that has an image.
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Check the app settings
+        run: .github/scripts/check-deploy-config.sh "$SETTINGS_FILE"
+
+      - name: Log in to AWS to read the images
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        with:
+          role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # The environment is the folder of its values file: FINOS/dev.
+      - name: Name the infrastructure repository and the environment
         id: infra
         run: |
-          echo "owner=${INFRA_REPO%%/*}" >> "$GITHUB_OUTPUT"
-          echo "name=${INFRA_REPO#*/}" >> "$GITHUB_OUTPUT"
+          if [[ $VALUES_FILE != */apps/values.yaml ]]; then
+            echo "::error::DEV_VALUES_FILE must end with /apps/values.yaml: $VALUES_FILE"
+            exit 1
+          fi
+          {
+            echo "owner=${INFRA_REPO%%/*}"
+            echo "name=${INFRA_REPO#*/}"
+            echo "environment=${VALUES_FILE%/apps/values.yaml}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Get a token for the infrastructure repository
         id: infra-token
@@ -172,13 +185,13 @@ jobs:
           permission-contents: write
           permission-actions: read
 
-      - name: Pin the tag in the infrastructure repository and wait for the deploy
+      - name: Ask the infrastructure repository to deploy and wait for the result
         env:
           GH_TOKEN: ${{ steps.infra-token.outputs.token }}
         run: >-
-          .github/scripts/pin-dev-tags.sh
+          .github/scripts/request-dev-deploy.sh
           --repo "$INFRA_REPO"
-          --values "$VALUES_FILE"
-          --keys frontend
-          --tag "$IMAGE_TAG"
-          --source "$GITHUB_REPOSITORY@$GITHUB_SHA"
+          --environment "${{ steps.infra.outputs.environment }}"
+          --backend-repository finos/backend
+          --frontend-repository finos/frontend
+          --settings "$SETTINGS_FILE"
