@@ -41,7 +41,16 @@ vi.mock("~/components/AI", () => ({
     <div data-testid="dropzone">{children}</div>
   ),
   CopilotFooter: () => <div data-testid="footer">Footer</div>,
-  CopilotHeader: () => <div data-testid="header">Header</div>,
+  CopilotHeader: ({ showChatActions = true }: { showChatActions?: boolean }) => (
+    <div data-testid="header">
+      {showChatActions && (
+        <>
+          <button type="button">Create a new chat</button>
+          <button type="button">Clear messages from this chat</button>
+        </>
+      )}
+    </div>
+  ),
   CopilotMessageGroupRoot: () => <div data-testid="message-group-root">Messages</div>,
   CopilotWelcome: () => <div data-testid="welcome">Welcome</div>,
   CopilotWrapper: ({ children }: { children: React.ReactNode }) => (
@@ -107,6 +116,12 @@ describe("CopilotChat", () => {
 
       expect(screen.getByTestId("wrapper")).toBeInTheDocument();
       expect(screen.getByTestId("header")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Create a new chat" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Clear messages from this chat" }),
+      ).toBeInTheDocument();
       expect(screen.getByTestId("welcome")).toBeInTheDocument();
       expect(screen.getByTestId("message-group-root")).toBeInTheDocument();
       expect(screen.getByTestId("footer")).toBeInTheDocument();
@@ -159,6 +174,12 @@ describe("CopilotChat", () => {
 
       expect(screen.getByText("No copilot selected")).toBeInTheDocument();
       expect(screen.getByTestId("header")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Create a new chat" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Clear messages from this chat" }),
+      ).not.toBeInTheDocument();
     });
 
     it("renders Add Copilot button", () => {
