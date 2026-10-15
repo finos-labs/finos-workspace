@@ -15,7 +15,6 @@ import { useThemeStore } from "~/lib/state/theme";
 import { CopilotSetLoadingOnResize } from "../DraggableCard/SetLoadingOnResize";
 import { Button } from "../ds/atoms/Button";
 import { cn } from "../ds/utils";
-import { AddCopilotDialog } from "./AddCopilotDialog";
 import { AgentConfigDialog } from "./AgentConfigDialog";
 import { CopilotContext } from "./CopilotContext";
 import { ExternalLinkProvider } from "./ExternalLinkProvider";
@@ -59,7 +58,6 @@ export function CopilotChat() {
         <div className="flex flex-col h-full overflow-hidden">
           {!isFullscreen && <CopilotHeader />}
           <AgentConfigDialog />
-          <AddCopilotDialog />
 
           <div className="relative flex-1 overflow-hidden px-1">
             <CopilotDropzone messagesRef={messagesRef}>

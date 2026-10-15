@@ -127,11 +127,11 @@ describe("CopilotChat", () => {
       expect(screen.getByTestId("footer")).toBeInTheDocument();
     });
 
-    it("renders all dialog components", () => {
+    it("renders the agent config dialog and leaves add-copilot to the app shell", () => {
       render(<CopilotChat />);
 
       expect(screen.getByTestId("agent-config-dialog")).toBeInTheDocument();
-      expect(screen.getByTestId("add-copilot-dialog")).toBeInTheDocument();
+      expect(screen.queryByTestId("add-copilot-dialog")).not.toBeInTheDocument();
     });
 
     it("renders dropzone for file uploads", () => {
