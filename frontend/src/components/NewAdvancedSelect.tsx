@@ -194,7 +194,7 @@ const Row = memo(
         }}
         className="w-full whitespace-nowrap p-1 rounded
           cursor-pointer text-left text-xs text-light-900 hover:bg-[#CCDEEE]
-          dark:text-white dark:hover:bg-[#36363F] flex justify-between items-center gap-2"
+          dark:text-white dark:hover:bg-dark-500 flex justify-between items-center gap-2"
       >
         <span
           ref={(el) =>
@@ -212,7 +212,7 @@ const Row = memo(
         )}
         {showExtraInfo && item.extraInfo && (
           <span className="uppercase tracking-wide flex gap-1">
-            <span className="text-light-500 dark:text-[#8A8A90]">
+            <span className="text-light-500 dark:text-dark-50">
               {item.extraInfo.description}
             </span>
             <span className="text-light-900 dark:text-white">

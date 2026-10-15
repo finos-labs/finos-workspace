@@ -1114,10 +1114,10 @@ export const TabGroupElement = memo((props: TabGroupElementProps) => {
         className="flex items-center justify-between mb-4"
         onMouseEnter={() => onMouseEnter?.(widget.metadata?.innerTabId)}
       >
-        <div className="font-bold text-[12px] leading-[18px] text-[#070707] dark:text-white">
+        <div className="font-bold text-[12px] leading-[18px] text-light-900 dark:text-white">
           {widget.name}
         </div>
-        <span className="text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#909094]">
+        <span className="text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8]">
           ({widgetCount} widget{widgetCount !== 1 ? "s" : ""})
         </span>
       </div>
@@ -1203,7 +1203,7 @@ export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
         <Tooltip message={widgetInfo.backend} position="top">
           <div className="bg-[rgba(188,188,188,0.3)] dark:bg-[rgba(90,89,97,0.3)] rounded-xl min-w-0 max-w-[140px]">
             <div className="px-1.5 py-0">
-              <span className="block truncate whitespace-nowrap text-2xs leading-[1.5] text-[#717177] dark:text-[#b8b9bc]">
+              <span className="block truncate whitespace-nowrap text-2xs leading-[1.5] text-light-600 dark:text-dark-50">
                 {widgetInfo.backend}
               </span>
             </div>
@@ -1211,7 +1211,7 @@ export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
         </Tooltip>
         {widgetInfo.source && (
           <Tooltip message={widgetInfo.source} position="top">
-            <span className="block truncate whitespace-nowrap min-w-0 max-w-[140px] text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90]">
+            <span className="block truncate whitespace-nowrap min-w-0 max-w-[140px] text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8]">
               {widgetInfo.source}
             </span>
           </Tooltip>
@@ -1219,23 +1219,23 @@ export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
       </div>
 
       {/* Widget title/name */}
-      <div className="font-bold text-[12px] leading-[18px] text-[#070707] dark:text-white mb-2">
+      <div className="font-bold text-[12px] leading-[18px] text-light-900 dark:text-white mb-2">
         {widgetInfo.title}
       </div>
 
       {/* Horizontal line */}
-      <hr className="border-[#EBEBED] dark:border-[#454550] mb-2" />
+      <hr className="border-light-200 dark:border-dark-400 mb-2" />
 
       {/* Category and subcategory */}
       {(widgetInfo.category || widgetInfo.subCategory) && (
-        <div className="text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90] mb-1">
+        <div className="text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8] mb-1">
           {[widgetInfo.category, widgetInfo.subCategory].filter(Boolean).join(" • ")}
         </div>
       )}
 
       {/* Description */}
       {widgetInfo.description && (
-        <div className="text-[12px] leading-[18px] text-[#151518] dark:text-white mt-2 max-h-[150px] overflow-y-auto">
+        <div className="text-[12px] leading-[18px] text-dark-900 dark:text-white mt-2 max-h-[150px] overflow-y-auto">
           {widgetInfo.description}
         </div>
       )}

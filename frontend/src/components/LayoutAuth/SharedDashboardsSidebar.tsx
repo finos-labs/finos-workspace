@@ -184,7 +184,7 @@ export function SharedDashboardItem({ item }: { item: Item }) {
                       <span className="grow">Delete</span>
                     </DropdownMenuPrimitive.Item>
 
-                    <DropdownMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-[#36363F]" />
+                    <DropdownMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-dark-500" />
                     {item.index === id ? (
                       <>
                         <DropdownMenuPrimitive.Item
