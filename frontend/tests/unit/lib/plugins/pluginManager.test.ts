@@ -1,8 +1,9 @@
-// Tests the Plugin Manager: registry loading and caching, URL building with theme and
-// settings, unknown/inactive/no-access plugins, and plugin host validation.
+// Tests the Plugin Manager: registry loading and caching, URL building, global
+// enable/disable, unknown/inactive/disabled/no-access plugins, and host validation.
 import { describe, expect, it, vi } from "vitest";
 import {
   allowAllEntitlements,
+  createLocalPluginEnablement,
   createPluginManager,
   type EntitlementService,
   PluginHostNotConfiguredError,
@@ -31,8 +32,21 @@ function setup(
     host?: string;
     entitlements?: EntitlementService;
     registry?: unknown;
+    /** Plugins enabled before the test. Default: the active plugin. */
+    enabledIds?: string[];
   } = {},
 ) {
+  const storage = new Map<string, string>();
+  const enablement = createLocalPluginEnablement(
+    () =>
+      ({
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+      }) as unknown as Storage,
+  );
+  for (const id of options.enabledIds ?? [active.id]) {
+    void enablement.setPluginEnabled(id, true);
+  }
   const fetchFn = vi.fn(async () =>
     Response.json(options.registry ?? [active, inactive]),
   );
@@ -40,10 +54,11 @@ function setup(
   const manager = createPluginManager({
     pluginHostUrl: options.host ?? "http://localhost:5173",
     entitlements: options.entitlements ?? allowAllEntitlements,
+    enablement,
     open,
     fetchFn: fetchFn as unknown as typeof fetch,
   });
-  return { manager, fetchFn, open };
+  return { manager, fetchFn, open, storage };
 }
 
 describe("createPluginManager", () => {
@@ -68,51 +83,6 @@ describe("createPluginManager", () => {
     );
     expect(manager.resolvePluginUrl(active, { theme: "dark" })).toBe(
       "https://plugins.brightquery.com/plugins/advanced-grouping?theme=dark",
-    );
-  });
-
-  it("passes declared settings as query parameters and drops the rest", () => {
-    const { manager } = setup();
-    const withSettings = {
-      ...active,
-      settings: [
-        {
-          key: "dataSource",
-          label: "Data source",
-          type: "select" as const,
-          options: [{ value: "api", label: "API" }],
-        },
-        { key: "apiUrl", label: "API URL", type: "url" as const },
-      ],
-    };
-    const url = new URL(
-      manager.resolvePluginUrl(withSettings, {
-        theme: "dark",
-        settings: {
-          dataSource: "api",
-          apiUrl: " https://api.example.com/companies?x=1 ",
-          enableExport: "true", // not declared
-        },
-      }),
-    );
-    expect(url.origin + url.pathname).toBe(
-      "http://localhost:5173/plugins/advanced-grouping",
-    );
-    expect(Object.fromEntries(url.searchParams)).toEqual({
-      theme: "dark",
-      dataSource: "api",
-      apiUrl: "https://api.example.com/companies?x=1",
-    });
-  });
-
-  it("leaves out empty setting values", () => {
-    const { manager } = setup();
-    const withSettings = {
-      ...active,
-      settings: [{ key: "apiUrl", label: "API URL", type: "url" as const }],
-    };
-    expect(manager.resolvePluginUrl(withSettings, { settings: { apiUrl: "  " } })).toBe(
-      "http://localhost:5173/plugins/advanced-grouping",
     );
   });
 
@@ -146,6 +116,61 @@ describe("createPluginManager", () => {
       ok: false,
       reason: "inactive",
     });
+  });
+
+  it("refuses a disabled plugin", async () => {
+    const { manager } = setup({ enabledIds: [] });
+    expect(await manager.checkAvailability("bq-advanced-grouping")).toMatchObject({
+      ok: false,
+      reason: "disabled",
+    });
+  });
+
+  it("enables and disables a plugin globally", async () => {
+    const { manager } = setup({ enabledIds: [] });
+    expect(await manager.isPluginEnabled("bq-advanced-grouping")).toBe(false);
+
+    await manager.enablePlugin("bq-advanced-grouping");
+    expect(await manager.isPluginEnabled("bq-advanced-grouping")).toBe(true);
+    expect(await manager.getEnabledPluginIds()).toEqual(["bq-advanced-grouping"]);
+    expect(await manager.checkAvailability("bq-advanced-grouping")).toMatchObject({
+      ok: true,
+    });
+
+    await manager.disablePlugin("bq-advanced-grouping");
+    expect(await manager.isPluginEnabled("bq-advanced-grouping")).toBe(false);
+    expect(await manager.getEnabledPluginIds()).toEqual([]);
+  });
+
+  it("only enables registered, active plugins", async () => {
+    const { manager } = setup({ enabledIds: [] });
+    await expect(manager.enablePlugin("nope")).rejects.toThrow("No plugin");
+    await expect(manager.enablePlugin("bq-pivot")).rejects.toThrow("inactive");
+    expect(await manager.getEnabledPluginIds()).toEqual([]);
+  });
+
+  it("treats unreadable stored state as nothing enabled", async () => {
+    const { manager, storage } = setup({ enabledIds: [] });
+    storage.set("bq-plugins:enabled", "{not json");
+    expect(await manager.getEnabledPluginIds()).toEqual([]);
+    storage.set("bq-plugins:enabled", JSON.stringify({ old: "dashboard state" }));
+    expect(await manager.getEnabledPluginIds()).toEqual([]);
+  });
+
+  it("finds the plugin for a widget URL on the plugin host", async () => {
+    const { manager } = setup();
+    expect(
+      await manager.findPluginForUrl(
+        "http://localhost:5173/plugins/advanced-grouping?theme=dark&apiUrl=x",
+      ),
+    ).toMatchObject({ id: "bq-advanced-grouping" });
+    expect(
+      await manager.findPluginForUrl("http://localhost:5173/plugins/unknown"),
+    ).toBeUndefined();
+    expect(
+      await manager.findPluginForUrl("https://other.example/plugins/advanced-grouping"),
+    ).toBeUndefined();
+    expect(await manager.findPluginForUrl("not a url")).toBeUndefined();
   });
 
   it("checks entitlements", async () => {

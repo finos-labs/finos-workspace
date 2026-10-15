@@ -40,6 +40,23 @@ describe("useFilterWidgets", () => {
       expect(result.current.length).toBe(2);
     });
 
+    it("lists enabled plugin widgets, which are iframe widgets", () => {
+      const widgets = [
+        createMockWidget({
+          widgetId: "iframe-plugin-bq-advanced-grouping",
+          name: "BQ Advanced Grouping",
+          category: "Plugins",
+          subCategory: "Data Grid",
+        }),
+      ];
+
+      const { result } = renderHook(() => useFilterWidgets(widgets, defaultState));
+
+      expect(result.current.map((widget) => widget.name)).toEqual([
+        "BQ Advanced Grouping",
+      ]);
+    });
+
     it("filters widgets by selected category", () => {
       const widgets = [
         createMockWidget({

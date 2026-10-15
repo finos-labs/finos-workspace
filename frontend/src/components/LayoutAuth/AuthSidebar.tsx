@@ -73,12 +73,6 @@ const TABS_LINKS: Record<string, TabLinkProps[]> = {
       label: "AI",
       icon: "stars-02",
     },
-    {
-      id: "plugins",
-      href: "/app/plugins",
-      label: "Plugins",
-      icon: "solar-widget-add-outline",
-    },
   ],
 };
 

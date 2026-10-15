@@ -1,6 +1,7 @@
 /**
- * Card for one plugin on the Plugins page: name, description, version, category and
- * status, with "Open" and "Add to dashboard" actions. Presentational only.
+ * Card for one plugin on the Admin Portal Plugins page: name, description, version,
+ * category, registry status and global Enabled/Disabled state, with "Enable"/"Disable"
+ * and "Open" actions. Presentational only.
  */
 import { Button } from "~/components/ds/atoms/Button";
 import { Tag } from "~/components/ds/atoms/Tag";
@@ -14,11 +15,21 @@ const STATUS_TAG = {
 
 interface PluginCardProps {
   plugin: PluginMetadata;
+  /** Enabled for all users and dashboards. */
+  enabled: boolean;
+  /** The enabled state is being changed. */
+  updating?: boolean;
   onOpen: (plugin: PluginMetadata) => void;
-  onAddToDashboard: (plugin: PluginMetadata) => void;
+  onToggleEnabled: (plugin: PluginMetadata, enabled: boolean) => void;
 }
 
-export function PluginCard({ plugin, onOpen, onAddToDashboard }: PluginCardProps) {
+export function PluginCard({
+  plugin,
+  enabled,
+  updating = false,
+  onOpen,
+  onToggleEnabled,
+}: PluginCardProps) {
   const status = STATUS_TAG[plugin.status];
   const active = plugin.status === "active";
 
@@ -29,7 +40,12 @@ export function PluginCard({ plugin, onOpen, onAddToDashboard }: PluginCardProps
     >
       <div className="flex items-start justify-between gap-2">
         <h2 className="body-sm-medium text-ds-text-heading">{plugin.name}</h2>
-        {status && <Tag color={status.color}>{status.label}</Tag>}
+        <div className="flex gap-1">
+          {status && <Tag color={status.color}>{status.label}</Tag>}
+          <Tag color={enabled ? "success" : "grey"}>
+            {enabled ? "Enabled" : "Disabled"}
+          </Tag>
+        </div>
       </div>
       <p className="text-xs text-ds-text-body line-clamp-3 flex-1">
         {plugin.description}
@@ -41,18 +57,20 @@ export function PluginCard({ plugin, onOpen, onAddToDashboard }: PluginCardProps
         <dd className="text-ds-text-body">{plugin.category}</dd>
       </dl>
       <div className="flex justify-end gap-2">
+        {/* An enabled plugin can always be disabled; only active plugins can be enabled. */}
         <Button
           variant="outlined"
           size="xs"
-          disabled={!active}
-          onClick={() => onAddToDashboard(plugin)}
+          loading={updating}
+          disabled={updating || (!enabled && !active)}
+          onClick={() => onToggleEnabled(plugin, !enabled)}
         >
-          Add to dashboard
+          {enabled ? "Disable" : "Enable"}
         </Button>
         <Button
           variant="secondary"
           size="xs"
-          disabled={!active}
+          disabled={!active || !enabled}
           onClick={() => onOpen(plugin)}
         >
           Open Plugin

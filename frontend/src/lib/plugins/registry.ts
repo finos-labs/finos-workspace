@@ -77,7 +77,7 @@ export const PluginMetadataSchema = z.object({
     .string()
     .regex(/^\/plugins\/[a-z0-9]+(?:-[a-z0-9]+)*$/, 'route must be "/plugins/<slug>"'),
   status: z.enum(PLUGIN_STATUSES),
-  /** Per-instance settings Workspace collects when the plugin is added to a dashboard. */
+  /** Settings the plugin declares. Parsed so the registry format stays valid; Workspace does not collect them. */
   settings: z
     .array(PluginSettingSchema)
     .max(MAX_SETTINGS)
@@ -90,8 +90,6 @@ export const PluginMetadataSchema = z.object({
 
 export type PluginMetadata = z.infer<typeof PluginMetadataSchema>;
 export type PluginSetting = z.infer<typeof PluginSettingSchema>;
-/** Values for a plugin's declared settings, by setting key. */
-export type PluginSettingValues = Record<string, string>;
 export type PluginStatus = PluginMetadata["status"];
 
 export type PluginRegistryErrorKind = "network" | "http" | "format";

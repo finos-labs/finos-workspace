@@ -51,6 +51,11 @@ function AdminSidebar({
           />
         )}
         <SidebarNavButton
+          to="/admin/plugins"
+          title="Plugins"
+          icon="solar-widget-add-outline"
+        />
+        <SidebarNavButton
           to="/admin/theme-settings"
           title="Theme"
           icon="solar-palette-2-linear"

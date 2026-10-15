@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { useIframeProtocol as UseIframeProtocol } from "~/components/Widgets/Helpers/useIframeProtocol";
 import Iframe from "~/components/Widgets/Iframe";
+import type { PluginFrameStatus } from "~/hooks/usePluginManager";
 import type { Group } from "~/lib/state/app";
 import { useThemeStore } from "~/lib/state/theme";
 import { makeEndpointParamGroup } from "../../factories";
@@ -32,6 +33,14 @@ const sharedAppStoreMock = vi.hoisted(() => ({
   getWidgetGroups: vi.fn<(tabId: string, widgetId: string | undefined) => Group[]>(
     () => [],
   ),
+}));
+
+const pluginFrameMock = vi.hoisted(() => ({
+  status: { state: "not-plugin" } as PluginFrameStatus,
+}));
+
+vi.mock("~/hooks/usePluginManager", () => ({
+  usePluginFrameStatus: () => pluginFrameMock.status,
 }));
 
 const queryParamsMock = vi.hoisted(() => ({
@@ -141,6 +150,46 @@ describe("Iframe Widget", () => {
     sharedAppStoreMock.getWidgetGroups.mockReturnValue([]);
     queryParamsMock.renderRow0Params = null;
     queryParamsMock.renderBelowNavbarRows = null;
+    pluginFrameMock.status = { state: "not-plugin" };
+  });
+
+  describe("plugin pages", () => {
+    const pluginUrl = "http://localhost:5173/plugins/advanced-grouping";
+
+    it("hides a plugin page while its plugin is disabled", () => {
+      pluginFrameMock.status = {
+        state: "unavailable",
+        message: "BQ Advanced Grouping is disabled.",
+      };
+      renderWidget(<Iframe />, { widgetOverrides: { storage: { html: pluginUrl } } });
+
+      expect(screen.getByText("Plugin unavailable")).toBeInTheDocument();
+      expect(document.querySelector("iframe")).toBeNull();
+    });
+
+    it("shows an enabled plugin page with scripts allowed", () => {
+      pluginFrameMock.status = { state: "available" };
+      renderWidget(<Iframe />, { widgetOverrides: { storage: { html: pluginUrl } } });
+
+      expect(document.querySelector("iframe")?.getAttribute("sandbox")).toContain(
+        "allow-scripts",
+      );
+    });
+
+    it("waits for the plugin check before loading the page", () => {
+      pluginFrameMock.status = { state: "checking" };
+      renderWidget(<Iframe />, { widgetOverrides: { storage: { html: pluginUrl } } });
+
+      expect(document.querySelector("iframe")).toBeNull();
+    });
+
+    it("keeps other pages fully sandboxed", () => {
+      renderWidget(<Iframe />, {
+        widgetOverrides: { storage: { html: "https://example.com" } },
+      });
+
+      expect(document.querySelector("iframe")).toHaveAttribute("sandbox", "");
+    });
   });
 
   it("renders empty state when no URL is provided", () => {

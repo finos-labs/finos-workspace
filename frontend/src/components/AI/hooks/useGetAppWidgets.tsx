@@ -9,6 +9,7 @@ import { getCleanedCategory } from "~/components/DataConnectors/common/helpers";
 import useSharedResources from "~/components/LayoutAuth/Search/hooks/useSharedResources";
 import type { WidgetJsonT, WidgetT } from "~/components/types";
 import type { WidgetId } from "~/components/Widgets";
+import { useEnabledPluginWidgets } from "~/hooks/usePluginManager";
 import { getFileWidgetType } from "~/lib/constants";
 import type { Selector } from "~/lib/state/app";
 import {
@@ -62,6 +63,13 @@ export function useGetAppWidgets() {
 
   const sharedWidgets = useSharedResources();
 
+  // Plugins an administrator enabled: addable on every dashboard (Admin Portal → Plugins).
+  const enabledPluginWidgets = useEnabledPluginWidgets();
+  const pluginWidgets = useMemo(
+    () => jsonWidgetsToWidgets(enabledPluginWidgets),
+    [enabledPluginWidgets],
+  );
+
   const backendNameToWidgetMap = useMemo(() => {
     const map = new Map<BackendName, Map<string, WidgetT>>();
 
@@ -81,7 +89,11 @@ export function useGetAppWidgets() {
     }
 
     addWidgets("the backend", hubWidgets);
-    addWidgets("Workspace", [...builtInJsonWidgets, ...workspaceWidgets]);
+    addWidgets("Workspace", [
+      ...builtInJsonWidgets,
+      ...workspaceWidgets,
+      ...pluginWidgets,
+    ]);
 
     // Handle custom backends dynamically
     for (const widget of customBackendWidgets) {
@@ -133,6 +145,7 @@ export function useGetAppWidgets() {
     customBackendWidgets,
     sharedUserAppWidgets,
     sharedWidgets,
+    pluginWidgets,
   ]);
 
   useEffect(() => {

@@ -1,29 +1,41 @@
 /**
- * Route /app/plugins. Lists the plugins from the plugin host's registry as cards, with
- * loading, empty, error/retry and "not configured" states.
+ * Route /admin/plugins (Admin Portal). Lists the plugins from the plugin host's registry
+ * as cards, with loading, empty, error/retry and "not configured" states, and lets an
+ * administrator enable or disable each plugin for all users and dashboards.
  */
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { Button } from "~/components/ds/atoms/Button";
 import { Notice } from "~/components/ds/molecules/Notice";
 import SearchResultsNotFound from "~/components/General/SearchResultsNotFound";
 import { SettingsLayout } from "~/components/LayoutAuth/Skeleton/SettingsLayout";
-import { AddPluginToDashboardDialog } from "~/components/Plugins/AddPluginToDashboardDialog";
 import { PluginCard } from "~/components/Plugins/PluginCard";
-import { usePlugins } from "~/hooks/usePluginManager";
+import { usePluginEnablement, usePlugins } from "~/hooks/usePluginManager";
 import type { PluginMetadata } from "~/lib/plugins";
-import { useShallowThemeStore } from "~/lib/state/theme";
 
 const TABS = [{ label: "All Plugins", id: "all-plugins" }];
 
 export default function PluginsPage() {
   const { manager, data, error, isLoading, isFetching, refetch } = usePlugins();
-  const theme = useShallowThemeStore((state) => state.theme);
-  const [pluginToAdd, setPluginToAdd] = useState<PluginMetadata | null>(null);
+  const enablement = usePluginEnablement(manager);
 
   const retry = () => {
     manager.refresh();
     refetch();
+  };
+
+  const setEnabled = async (plugin: PluginMetadata, enabled: boolean) => {
+    try {
+      await enablement.setPluginEnabled({ pluginId: plugin.id, enabled });
+      toast.success(`${plugin.name} ${enabled ? "enabled" : "disabled"} for all users`);
+    } catch (setError) {
+      toast.error(
+        setError instanceof Error
+          ? setError.message
+          : `Could not update ${plugin.name}`,
+      );
+    }
   };
 
   let content: ReactNode;
@@ -33,7 +45,7 @@ export default function PluginsPage() {
         {manager.host.message}
       </Notice>
     );
-  } else if (isLoading) {
+  } else if (isLoading || enablement.isLoading) {
     content = (
       <div
         role="status"
@@ -48,11 +60,11 @@ export default function PluginsPage() {
         ))}
       </div>
     );
-  } else if (error) {
+  } else if (error || enablement.error) {
     content = (
       <Notice variant="error" title="Could not load plugins">
         <span className="flex flex-col items-start gap-2">
-          {error.message}
+          {(error ?? enablement.error)?.message}
           <Button variant="outlined" size="xs" onClick={retry} loading={isFetching}>
             Retry
           </Button>
@@ -81,8 +93,10 @@ export default function PluginsPage() {
             <PluginCard
               key={plugin.id}
               plugin={plugin}
+              enabled={enablement.enabledIds.has(plugin.id)}
+              updating={enablement.pendingPluginId === plugin.id}
               onOpen={(selected) => manager.openPlugin(selected.id)}
-              onAddToDashboard={setPluginToAdd}
+              onToggleEnabled={setEnabled}
             />
           ))}
         </div>
@@ -91,26 +105,15 @@ export default function PluginsPage() {
   }
 
   return (
-    <>
-      <SettingsLayout
-        title="Plugins"
-        description="BrightQuery plugins served by the configured plugin host."
-        tabs={TABS}
-        defaultTab="all-plugins"
-      >
-        <TabsPrimitive.Content value="all-plugins" className="p-6 flex flex-col gap-4">
-          {content}
-        </TabsPrimitive.Content>
-      </SettingsLayout>
-      {pluginToAdd && (
-        <AddPluginToDashboardDialog
-          plugin={pluginToAdd}
-          resolveUrl={(settings) =>
-            manager.resolvePluginUrl(pluginToAdd, { theme, settings })
-          }
-          onClose={() => setPluginToAdd(null)}
-        />
-      )}
-    </>
+    <SettingsLayout
+      title="Plugins"
+      description="BrightQuery plugins served by the configured plugin host. Enabled plugins are available to all users and dashboards."
+      tabs={TABS}
+      defaultTab="all-plugins"
+    >
+      <TabsPrimitive.Content value="all-plugins" className="p-6 flex flex-col gap-4">
+        {content}
+      </TabsPrimitive.Content>
+    </SettingsLayout>
   );
 }

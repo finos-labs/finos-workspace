@@ -13,7 +13,7 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 import queryClient from "./queryClient";
 import "react-resizable/css/styles.css";
-import { createBrowserRouter, Link, useRouteError } from "react-router-dom";
+import { createBrowserRouter, Link, Navigate, useRouteError } from "react-router-dom";
 import Icon from "~/components/Icon";
 import "./index.css";
 import { registerSW } from "virtual:pwa-register";
@@ -45,11 +45,11 @@ const AdminAccountSettings = lazy(() => import("./routes/admin/account"));
 const AdminApps = lazy(() => import("./routes/admin/apps"));
 const AdminGroups = lazy(() => import("./routes/admin/roles"));
 const AdminMarketplace = lazy(() => import("./routes/admin/marketplace"));
+const AdminPlugins = lazy(() => import("./routes/admin/plugins"));
 
 const AdminThemeSettings = lazy(() => import("./routes/admin/themeSettings"));
 const AdminUsers = lazy(() => import("./routes/admin/users"));
 const AILibrary = lazy(() => import("./routes/aiLibrary"));
-const PluginsPage = lazy(() => import("./routes/plugins"));
 const PluginRuntimePage = lazy(() => import("./routes/pluginRuntime"));
 const MenuHomePage = lazy(() => import("./routes/appHome"));
 const ConnectionsPage = lazy(() => import("./routes/Connections"));
@@ -203,9 +203,9 @@ const router = createBrowserRouter([
             id: "app-ai",
           },
           {
+            // Plugins are managed in the Admin Portal; keep old links working.
             path: "plugins",
-            element: <S children={<PluginsPage />} />,
-            id: "app-plugins",
+            element: <Navigate to="/admin/plugins" replace />,
           },
           {
             path: "plugins/:pluginId",
@@ -263,6 +263,11 @@ const router = createBrowserRouter([
             path: "marketplace",
             element: <S children={<AdminMarketplace />} />,
             id: "admin-marketplace",
+          },
+          {
+            path: "plugins",
+            element: <S children={<AdminPlugins />} />,
+            id: "admin-plugins",
           },
           {
             path: "theme-settings",

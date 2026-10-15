@@ -4,13 +4,13 @@ import { useForm } from "react-hook-form";
 import { useDebounceValue } from "usehooks-ts";
 import DraggableCard from "~/components/DraggableCard";
 import { useWidgetParamsPositions } from "~/components/WidgetParams/QueryParams";
+import { usePluginFrameStatus } from "~/hooks/usePluginManager";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { IFRAME_SANDBOX_ATTRIBUTES } from "~/lib/constants";
 import {
   registerIframeWidget,
   unregisterIframeWidget,
 } from "~/lib/iframeWidgetRegistry";
-import { isPluginHostUrl } from "~/lib/plugins";
 import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
@@ -32,8 +32,7 @@ import { IframeParamControls } from "./Helpers/IframeParamControls";
 import { useIframeProtocol } from "./Helpers/useIframeProtocol";
 import { useParamGroupBindings } from "./Helpers/useParamGroupBindings";
 
-const { data: dataConfig, urls: urlsConfig } = getConfig();
-const allowJsExecution = dataConfig.allowHtmlJsExecution;
+const allowJsExecution = getConfig().data.allowHtmlJsExecution;
 
 function normalizeParamRecord(params?: Record<string, unknown>) {
   return Object.fromEntries(
@@ -407,6 +406,9 @@ export default function Iframe() {
     }
   }, [state.url, effectiveIframeParams]);
 
+  // Plugin pages show only while their plugin is enabled (globally, by an administrator).
+  const pluginFrame = usePluginFrameStatus(iframeSrc);
+
   const onOpenChange = useCallback((open: boolean) => dispatch({ open }), []);
 
   const onSubmit = useCallback(
@@ -584,7 +586,14 @@ export default function Iframe() {
           </form>
         </Form>
       </BaseDialog>
-      {state.url ? (
+      {state.url && pluginFrame.state === "unavailable" ? (
+        <SearchResultsNotFound
+          firstMessage="Plugin unavailable"
+          secondMessage={pluginFrame.message}
+        />
+      ) : state.url && pluginFrame.state === "checking" ? (
+        <div className="w-full h-full" />
+      ) : state.url ? (
         <div className="w-full h-full overflow-auto">
           <div
             className="w-full h-full"
@@ -602,9 +611,9 @@ export default function Iframe() {
               width="100%"
               height="100%"
               sandbox={
-                // Plugin host pages are trusted and need scripts, even when
+                // Enabled plugin pages are trusted and need scripts, even when
                 // other external frames are fully sandboxed.
-                allowJsExecution || isPluginHostUrl(iframeSrc, urlsConfig.pluginHost)
+                allowJsExecution || pluginFrame.state === "available"
                   ? IFRAME_SANDBOX_ATTRIBUTES
                   : ""
               }
