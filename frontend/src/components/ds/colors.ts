@@ -9,8 +9,7 @@ export const transparent = "transparent" as const;
 /* FINOS Brand Visual Guidelines, 5 April 2018 (finos/branding):
    Light Blue #00B5E2, Dark Blue #0086BF.
    Light theme: white plus tints of those blues.
-   Dark theme: Dark Blue darkened toward black, with Light Blue and white.
-   The OpenBB step structure is unchanged. */
+   Dark theme: Dark Blue darkened toward black, with Light Blue and white. */
 export const base = {
   0: "#FFFFFF",
   100: "#071820",
