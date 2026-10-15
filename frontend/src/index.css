@@ -666,11 +666,7 @@ body {
 }
 
 .dark .title-container:hover::after {
-  background: linear-gradient(
-    to right,
-    transparent,
-    #36363f
-  ); /* Adjust the color to match your background */
+  background: linear-gradient(to right, transparent, var(--color-dark-500));
 }
 
 input[type="color"] {
@@ -726,7 +722,7 @@ input[type="color"]::-webkit-color-swatch-wrapper {
 }
 
 /*.dark .react-grid-item > .react-resizable-handle::after {
-  border-color: #a2a2a2 !important;
+  border-color: var(--color-dark-50) !important;
 }*/
 
 .react-grid-item > .react-resizable-handler {
@@ -784,7 +780,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   align-items: flex-start;
 }
 .roadmap ul li {
-  color: #a2a2a2;
+  color: var(--color-dark-50);
   display: block;
   width: 350px;
   position: relative;
@@ -846,7 +842,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   border-color: transparent;
 }
 .roadmap ul li.planned:after {
-  background: #5a5961;
+  background: var(--color-dark-200);
   margin-left: -5.5px;
 }
 

@@ -122,7 +122,7 @@ function TabContent({ id }: { id: string }) {
 
   const emptyDashMemo = useMemo(() => {
     return isShared ? (
-      <div className="mx-4 my-3 h-[calc(100vh-1.6rem)] rounded bg-white p-5 dark:bg-[#0b2432]">
+      <div className="mx-4 my-3 h-[calc(100vh-1.6rem)] rounded bg-white p-5 dark:bg-dark-900">
         <SearchResultsNotFound
           icon={true}
           firstMessage="Empty shared dashboard"

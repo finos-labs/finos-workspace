@@ -582,16 +582,16 @@ export function LastUsedMethod() {
         height="16"
         viewBox="0 0 8 16"
         fill="none"
-        className="absolute -left-2"
+        className="absolute -left-2 text-dark-500"
       >
         <path
           fillRule="evenodd"
           clipRule="evenodd"
           d="M1.41421 9.41421C0.633164 8.63316 0.633165 7.36684 1.41421 6.58579L8 0V16L1.41421 9.41421Z"
-          fill="#36363F"
+          fill="currentColor"
         />
       </svg>
-      <span className="bg-[#36363F] text-white text-xs px-2 py-1">Last Used</span>
+      <span className="bg-dark-500 text-white text-xs px-2 py-1">Last Used</span>
     </div>
   );
 }

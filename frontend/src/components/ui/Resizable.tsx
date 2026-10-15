@@ -116,7 +116,7 @@ const ResizableHandle = memo(
             }
           }}
           className={cn("z-50 flex h-5 w-5 items-center justify-center rounded-sm", {
-            "border border-[#c1c3c5b4] dark:border-[#5a5a5ab4] hidden group-hover:flex":
+            "border border-[#c1c3c5b4] dark:border-dark-200/70 hidden group-hover:flex":
               !isCollapsed ||
               (isCollapsed && collapsedPanelExpandOnHover && !edgeHovered),
             "!flex": (!collapsed && isDragging) || (isCollapsed && edgeHovered),

@@ -950,7 +950,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                             <Tooltip message={backend} position="top">
                               <div className="bg-[rgba(188,188,188,0.3)] dark:bg-[rgba(90,89,97,0.3)] rounded-xl min-w-0 max-w-[140px]">
                                 <div className="px-1.5 py-0">
-                                  <span className="block truncate whitespace-nowrap text-2xs leading-[1.5] text-[#717177] dark:text-[#b8b9bc]">
+                                  <span className="block truncate whitespace-nowrap text-2xs leading-[1.5] text-light-600 dark:text-dark-50">
                                     {backend}
                                   </span>
                                 </div>
@@ -965,11 +965,11 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                             )}
                           </div>
 
-                          <div className="font-bold text-[12px] leading-[18px] text-[#070707] dark:text-white mb-2">
+                          <div className="font-bold text-[12px] leading-[18px] text-light-900 dark:text-white mb-2">
                             {title}
                           </div>
 
-                          <hr className="border-[#EBEBED] dark:border-[#454550] mb-2" />
+                          <hr className="border-light-200 dark:border-dark-400 mb-2" />
 
                           {category && (
                             <div className="text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8] mb-1">
@@ -979,7 +979,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                           )}
 
                           {description && (
-                            <div className="text-[12px] leading-[18px] text-[#0b2432] dark:text-white  max-h-[200px] overflow-y-auto">
+                            <div className="text-[12px] leading-[18px] text-dark-900 dark:text-white  max-h-[200px] overflow-y-auto">
                               {linkifyText(description)}
                             </div>
                           )}

@@ -32,7 +32,7 @@ export const TabDropdownMenu = (props: Omit<InnerTabsMenuProps, "gridLayout">) =
       key={uniqueKey}
       className={cn("ws-dropdown-item", {
         "opacity-30": isShared,
-        "bg-light-50 dark:bg-[#303038]": isCurrentDashboard,
+        "bg-light-50 dark:bg-dark-600": isCurrentDashboard,
       })}
       onSelect={async () => {
         await dispatchSaveState();
@@ -75,7 +75,7 @@ const InnerTabsMenu = (props: InnerTabsMenuProps) => {
       <DropdownMenu.SubTrigger
         key={`${key}-trigger`}
         className={cn("ws-dropdown-item", {
-          "bg-light-50 dark:bg-[#303038]": isCurrentDashboard,
+          "bg-light-50 dark:bg-dark-600": isCurrentDashboard,
         })}
       >
         <span className="truncate grow">
@@ -93,7 +93,7 @@ const InnerTabsMenu = (props: InnerTabsMenuProps) => {
             key={`${key}-${innerTab}-item`}
             className={cn("ws-dropdown-item truncate", {
               "opacity-30": isShared,
-              "bg-light-50 dark:bg-[#303038]":
+              "bg-light-50 dark:bg-dark-600":
                 isCurrentDashboard && innerTab === widget.innerTab,
             })}
             onSelect={async () => {

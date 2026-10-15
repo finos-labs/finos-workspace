@@ -161,7 +161,7 @@ export function CreateWidgetMetadataDialog() {
                   label={
                     <p>
                       Description
-                      <span className="text-[#5A5961] italic"> (optional)</span>
+                      <span className="text-dark-200 italic"> (optional)</span>
                     </p>
                   }
                   {...field}
@@ -176,7 +176,7 @@ export function CreateWidgetMetadataDialog() {
                   label={
                     <p>
                       Category
-                      <span className="text-[#5A5961] italic"> (optional)</span>
+                      <span className="text-dark-200 italic"> (optional)</span>
                     </p>
                   }
                   options={CATEGORY_OPTIONS}
@@ -192,7 +192,7 @@ export function CreateWidgetMetadataDialog() {
                   label={
                     <p>
                       Sub Category
-                      <span className="text-[#5A5961] italic"> (optional)</span>
+                      <span className="text-dark-200 italic"> (optional)</span>
                     </p>
                   }
                   {...field}
@@ -206,7 +206,7 @@ export function CreateWidgetMetadataDialog() {
                 <FormInput
                   label={
                     <p>
-                      Source<span className="text-[#5A5961] italic"> (optional)</span>
+                      Source<span className="text-dark-200 italic"> (optional)</span>
                     </p>
                   }
                   {...field}

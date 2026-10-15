@@ -292,7 +292,7 @@ export function MetadataDialog(props: Props) {
                   label={
                     <p>
                       Description
-                      <span className="text-[#5A5961] italic"> (optional)</span>
+                      <span className="text-dark-200 italic"> (optional)</span>
                     </p>
                   }
                   {...field}
@@ -307,7 +307,7 @@ export function MetadataDialog(props: Props) {
                   label={
                     <p>
                       Category
-                      <span className="text-[#5A5961] italic"> (optional)</span>
+                      <span className="text-dark-200 italic"> (optional)</span>
                     </p>
                   }
                   {...field}
@@ -321,7 +321,7 @@ export function MetadataDialog(props: Props) {
                   label={
                     <p>
                       Sub Category
-                      <span className="text-[#5A5961] italic"> (optional)</span>
+                      <span className="text-dark-200 italic"> (optional)</span>
                     </p>
                   }
                   {...field}
@@ -335,7 +335,7 @@ export function MetadataDialog(props: Props) {
                   maxLength={50}
                   label={
                     <p>
-                      Source<span className="text-[#5A5961] italic"> (optional)</span>
+                      Source<span className="text-dark-200 italic"> (optional)</span>
                     </p>
                   }
                   {...field}

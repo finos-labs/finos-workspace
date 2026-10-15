@@ -1,7 +1,7 @@
 import SearchResultsNotFound from "~/components/General/SearchResultsNotFound";
 export default function AuthedAppNotFound() {
   return (
-    <div className="mx-4 my-3 h-[96.5vh] rounded bg-white p-5 dark:bg-[#0b2432]">
+    <div className="mx-4 my-3 h-[96.5vh] rounded bg-white p-5 dark:bg-dark-900">
       <SearchResultsNotFound
         icon={true}
         firstMessage="Page not found"

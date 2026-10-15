@@ -1114,7 +1114,7 @@ export const TabGroupElement = memo((props: TabGroupElementProps) => {
         className="flex items-center justify-between mb-4"
         onMouseEnter={() => onMouseEnter?.(widget.metadata?.innerTabId)}
       >
-        <div className="font-bold text-[12px] leading-[18px] text-[#070707] dark:text-white">
+        <div className="font-bold text-[12px] leading-[18px] text-light-900 dark:text-white">
           {widget.name}
         </div>
         <span className="text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8]">
@@ -1203,7 +1203,7 @@ export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
         <Tooltip message={widgetInfo.backend} position="top">
           <div className="bg-[rgba(188,188,188,0.3)] dark:bg-[rgba(90,89,97,0.3)] rounded-xl min-w-0 max-w-[140px]">
             <div className="px-1.5 py-0">
-              <span className="block truncate whitespace-nowrap text-2xs leading-[1.5] text-[#717177] dark:text-[#b8b9bc]">
+              <span className="block truncate whitespace-nowrap text-2xs leading-[1.5] text-light-600 dark:text-dark-50">
                 {widgetInfo.backend}
               </span>
             </div>
@@ -1219,12 +1219,12 @@ export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
       </div>
 
       {/* Widget title/name */}
-      <div className="font-bold text-[12px] leading-[18px] text-[#070707] dark:text-white mb-2">
+      <div className="font-bold text-[12px] leading-[18px] text-light-900 dark:text-white mb-2">
         {widgetInfo.title}
       </div>
 
       {/* Horizontal line */}
-      <hr className="border-[#EBEBED] dark:border-[#454550] mb-2" />
+      <hr className="border-light-200 dark:border-dark-400 mb-2" />
 
       {/* Category and subcategory */}
       {(widgetInfo.category || widgetInfo.subCategory) && (
@@ -1235,7 +1235,7 @@ export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
 
       {/* Description */}
       {widgetInfo.description && (
-        <div className="text-[12px] leading-[18px] text-[#0b2432] dark:text-white mt-2 max-h-[150px] overflow-y-auto">
+        <div className="text-[12px] leading-[18px] text-dark-900 dark:text-white mt-2 max-h-[150px] overflow-y-auto">
           {widgetInfo.description}
         </div>
       )}

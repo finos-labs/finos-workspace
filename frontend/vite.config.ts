@@ -6,6 +6,7 @@ import { Mode, plugin as mdPlugin } from "vite-plugin-markdown";
 import { VitePWA } from "vite-plugin-pwa";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import { defineConfig } from "vitest/config";
+import { dark } from "./src/components/ds/colors.ts";
 import { configFromEnv, ENV_NAMES } from "./src/lib/runtimeConfigSchema.ts";
 
 // plugin so it always forces reload because hmr breaks the dev app
@@ -145,8 +146,8 @@ export default defineConfig(({ mode }) => {
           name: APP_NAME,
           short_name: APP_SHORT_NAME,
           description: APP_DESCRIPTION,
-          theme_color: "#161618",
-          background_color: "#161618",
+          theme_color: dark[900],
+          background_color: dark[900],
           display: "fullscreen",
           orientation: "portrait",
           start_url: "/",
