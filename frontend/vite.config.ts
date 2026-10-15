@@ -21,7 +21,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), ""); // we need to do this so we can use the env variables in the config
 
   const APP_NAME = env.VITE_WL_NAME;
-  const APP_DESCRIPTION = env.VITE_WL_DESCRIPTION;
+  const APP_DESCRIPTION =
+    env.VITE_WL_DESCRIPTION || configFromEnv({}).whiteLabel.description;
   const APP_SHORT_NAME = env.VITE_WL_SHORT_NAME;
 
   // Runtime builds load config.js before the bundle, so that window.__APP_CONFIG__ is set when

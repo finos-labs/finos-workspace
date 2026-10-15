@@ -109,8 +109,16 @@ export const RuntimeConfigSchema = z.object({
     leftSidebarLogo: z.string().default(""),
     leftSidebarLogoDark: z.string().default(""),
     favicon: z.string().default("/favicon/favicon.ico"),
-    description: z.string().default(""),
-    keywords: z.string().default(""),
+    description: z
+      .string()
+      .default(
+        "An open, self-hosted analytics workspace for financial institutions to connect data, tools, and AI agents.",
+      ),
+    keywords: z
+      .string()
+      .default(
+        "FINOS Workspace, open source financial analytics, self-hosted analytics, financial data workspace, AI agents",
+      ),
     mainColor: z.string().default("#0086BF"),
     fontFamily: z.string().default("Montserrat"),
     showFloatingThemePreview: boolField(false),

@@ -114,6 +114,9 @@ export function applyWhiteLabelMeta(whiteLabel: {
   }
   if (whiteLabel.description) {
     document
+      .querySelector('meta[name="description"]')
+      ?.setAttribute("content", whiteLabel.description);
+    document
       .querySelector('meta[property="og:description"]')
       ?.setAttribute("content", whiteLabel.description);
     document

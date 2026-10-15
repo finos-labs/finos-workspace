@@ -520,6 +520,7 @@ describe("applyFontFamily", () => {
 describe("applyWhiteLabelMeta", () => {
   let ogTitle: HTMLMetaElement;
   let twitterTitle: HTMLMetaElement;
+  let descriptionMeta: HTMLMetaElement;
   let ogDescription: HTMLMetaElement;
   let twitterDescription: HTMLMetaElement;
   let keywordsMeta: HTMLMetaElement;
@@ -537,6 +538,11 @@ describe("applyWhiteLabelMeta", () => {
     twitterTitle.setAttribute("property", "twitter:title");
     twitterTitle.setAttribute("content", "");
     document.head.appendChild(twitterTitle);
+
+    descriptionMeta = document.createElement("meta");
+    descriptionMeta.setAttribute("name", "description");
+    descriptionMeta.setAttribute("content", "");
+    document.head.appendChild(descriptionMeta);
 
     ogDescription = document.createElement("meta");
     ogDescription.setAttribute("property", "og:description");
@@ -567,6 +573,7 @@ describe("applyWhiteLabelMeta", () => {
   afterEach(() => {
     ogTitle.remove();
     twitterTitle.remove();
+    descriptionMeta.remove();
     ogDescription.remove();
     twitterDescription.remove();
     keywordsMeta.remove();
@@ -583,9 +590,10 @@ describe("applyWhiteLabelMeta", () => {
     expect(twitterTitle.getAttribute("content")).toBe("Acme Corp");
   });
 
-  it("should set og and twitter description when description is provided", () => {
+  it("should set the description tag search engines read, plus og and twitter", () => {
     applyWhiteLabelMeta({ description: "Best platform ever" });
 
+    expect(descriptionMeta.getAttribute("content")).toBe("Best platform ever");
     expect(ogDescription.getAttribute("content")).toBe("Best platform ever");
     expect(twitterDescription.getAttribute("content")).toBe("Best platform ever");
   });
@@ -613,6 +621,7 @@ describe("applyWhiteLabelMeta", () => {
 
     expect(document.title).toBe("Acme Corp");
     expect(ogTitle.getAttribute("content")).toBe("Acme Corp");
+    expect(descriptionMeta.getAttribute("content")).toBe("Financial analytics");
     expect(ogDescription.getAttribute("content")).toBe("Financial analytics");
     expect(keywordsMeta.getAttribute("content")).toBe("finance, data");
     expect(iconLink.getAttribute("href")).toBe("/acme.ico");
