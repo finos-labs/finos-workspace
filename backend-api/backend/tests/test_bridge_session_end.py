@@ -282,11 +282,13 @@ class TestTheSocketClosesWhenItsSessionEnds:
                 async with _browser(WEB_HEADERS) as other:
                     await _sign_in(other, user.email)
             elif how == "password change":
-                # From the admin CLI, whose session the change keeps
-                async with _browser() as cli:
-                    token = (await _sign_in(cli, user.email, "cli")).json()["access_token"]
-                async with bearer_client(token, origin=None) as cli:
-                    response = await cli.put(
+                # From the Excel add-in, whose session the change keeps
+                await organization.role(user.uuid, excel_add_in=True)
+                async with _browser({"Origin": TEST_ORIGIN}) as add_in:
+                    sign_in = await _sign_in(add_in, user.email, "excel")
+                    token = sign_in.json()["access_token"]
+                async with bearer_client(token) as add_in:
+                    response = await add_in.put(
                         "/user",
                         json={"old_password": PASSWORD, "new_password": "NewPassword456!"},
                     )

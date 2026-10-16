@@ -18,9 +18,8 @@ from api.models import (
     PermissionsEntityMap,
     User,
 )
-from api.notifications import notify_admins
 from api.rate_limit import LIMIT_DEFAULT, exempt_service_token, limiter
-from routers import app_helpers, routers_helpers
+from routers import administration, app_helpers, routers_helpers
 
 router = APIRouter(prefix="/entity", tags=["entity"])
 
@@ -43,20 +42,8 @@ async def add_entity_type(
     db: AsyncSession = Depends(aget_write_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
-    try:
-        query = insert(EntityType).values(
-            entity_type=entity_type.entity_type,
-            code=entity_type.code,
-            active=entity_type.active,
-            permission_hierarchy=entity_type.permission_hierarchy,
-        )
-        await db.execute(query)
-        await db.commit()
-        return {"success": True}
-    except IntegrityError as exc:
-        raise HTTPException(409, detail="Entity type already exists") from exc
-    except DataError as exc:
-        raise HTTPException(400, detail="Bad data submitted") from exc
+    await administration.create_entity_type(db, entity_type)
+    return {"success": True}
 
 
 @router.put("/entity-type/{type_uuid}", response_model=schemas.SuccessReturn)
@@ -92,14 +79,7 @@ async def get_entity_types(
     db: AsyncSession = Depends(aget_read_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
-    query = select(
-        EntityType.entity_type,
-        EntityType.code,
-        EntityType.active,
-        EntityType.permission_hierarchy,
-        EntityType.uuid,
-    )
-    return await paginate(db, query)
+    return await paginate(db, administration.entity_types_query())
 
 
 @router.post("/entity", response_model=schemas.AddEntityReturn)
@@ -111,53 +91,9 @@ async def add_entity(
     db: AsyncSession = Depends(aget_write_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
-    try:
-        query = insert(Entity).values(
-            name=entity.name,
-            entity_type_uuid=entity.entity_code,
-            email=entity.email,
-            company_type=entity.company_type,
-            organization_size=entity.organization_size,
-            aum=entity.aum,
-            country=entity.country,
-            sharing_enabled=entity.sharing_enabled,
-        )
-        response = await db.execute(query)
-        entity_uuid = response.inserted_primary_key[0]
-    except IntegrityError as exc:
-        detail = (
-            exc.orig.args[1]
-            if exc.orig.args and len(exc.orig.args) > 1
-            else "Invalid code"
-        )
-        raise HTTPException(409, detail=detail) from exc
-
-    # Create the user types of the entity, the admin first
-    i_query = insert(PermissionsEntityMap).values(
-        name=models.ADMIN_TYPE,
-        entity_uuid=entity_uuid,
-    )
-    result = await db.execute(i_query)
-    await db.execute(
-        insert(PermissionsEntityMap),
-        [
-            {"entity_uuid": entity_uuid, "name": user_type}
-            for user_type in (models.DEVELOPER_TYPE, models.USER_TYPE)
-        ],
-    )
-
-    await db.commit()
-    background_tasks.add_task(
-        notify_admins,
-        "entity.created",
-        f"New entity: {entity.name}",
-        f"The entity {entity.name} was created with {entity.admin_email} as its admin.",
-        {"entity_name": entity.name, "admin_email": entity.admin_email},
-    )
-    return {
-        "entity_uuid": entity_uuid,
-        "permission_map_uuid": result.inserted_primary_key[0],
-    }
+    answer = await administration.create_entity(db, entity)
+    background_tasks.add_task(administration.notify_entity_created, entity)
+    return answer
 
 
 @router.put("/entity/{entity_uuid}", response_model=schemas.SuccessReturn)
@@ -169,40 +105,7 @@ async def put_entity(
     db: AsyncSession = Depends(aget_write_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
-    sharing_query = select(Entity.sharing_enabled).where(Entity.uuid == entity_uuid)
-    sharing_was_enabled = (await db.execute(sharing_query)).scalar_one_or_none()
-    query = (
-        update(Entity)
-        .where(Entity.uuid == entity_uuid)
-        .values(
-            name=entity.name,
-            entity_type_uuid=entity.entity_code,
-            email=entity.email,
-            company_type=entity.company_type,
-            organization_size=entity.organization_size,
-            aum=entity.aum,
-            country=entity.country,
-            sharing_enabled=entity.sharing_enabled,
-        )
-    )
-    try:
-        response = await db.execute(query)
-        await db.commit()
-        if response.rowcount == 0:  # type: ignore
-            raise HTTPException(404, detail="Entity not found")
-    except IntegrityError as exc:
-        detail = (
-            exc.orig.args[1]
-            if exc.orig.args and len(exc.orig.args) > 1
-            else "Invalid code"
-        )
-        raise HTTPException(409, detail=detail) from exc
-
-    # Switching sharing off revokes the shares of the entity's users
-    if sharing_was_enabled and not entity.sharing_enabled:
-        await crud.revoke_disallowed_shares(
-            db, list(await app_helpers.get_entity_users(db, entity_uuid))
-        )
+    await administration.update_entity(db, entity_uuid, entity)
     return {"success": True}
 
 
@@ -214,38 +117,9 @@ async def get_entities(
     _=Depends(auth_helpers.get_current_superuser),
 ):
     def transformer(items: list[Entity]):
-        cleaned = []
-        for item in items:
-            temp = schemas.EntityReturn(
-                uuid=item.uuid,
-                name=item.name,
-                entity_type=item[2].__dict__,
-                email=item.email,
-                company_type=item.company_type,
-                organization_size=item.organization_size,
-                aum=item.aum,
-                country=item.country,
-                sharing_enabled=item.sharing_enabled,
-            )
-            cleaned.append(temp)
-        return cleaned
+        return [administration.entity_return(item) for item in items]
 
-    query = (
-        select(
-            Entity.uuid,
-            Entity.name,
-            EntityType,
-            Entity.email,
-            Entity.company_type,
-            Entity.organization_size,
-            Entity.aum,
-            Entity.country,
-            Entity.sharing_enabled,
-        )
-        .select_from(Entity)
-        .join(EntityType, Entity.entity_type_uuid == EntityType.uuid)
-    )
-    return await paginate(db, query, transformer=transformer)
+    return await paginate(db, administration.entities_query(), transformer=transformer)
 
 
 @router.post("/entity-relationship", response_model=schemas.EntityRelationshipReturn)
@@ -402,39 +276,7 @@ async def put_user(
     db: AsyncSession = Depends(aget_write_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
-    # Old entity
-    old_entity_query = (
-        select(PermissionsEntityMap.entity_uuid)
-        .join(User, User.permissions_uuid == PermissionsEntityMap.uuid)
-        .where(User.uuid == user_uuid)
-    )
-    old_entity_uuid = (await db.execute(old_entity_query)).scalar_one_or_none()
-    new_entity_query = select(PermissionsEntityMap.entity_uuid).where(
-        PermissionsEntityMap.uuid == user.permissions_uuid
-    )
-    new_entity_uuid = (await db.execute(new_entity_query)).scalar_one_or_none()
-    query = (
-        update(User)
-        .where(User.uuid == user_uuid)
-        .values(permissions_uuid=user.permissions_uuid)
-    )
-    response = await db.execute(query)
-    await db.commit()
-    if response.rowcount == 0:  # type: ignore
-        raise HTTPException(404, detail="User not found")
-    # A user's type sets their limits (a developer has none)
-    app_helpers.invalidate_usage_cache(user_uuid)
-
-    # Handle shared dashboards
-    if old_entity_uuid != new_entity_uuid:
-        await crud.remove_shares_both_ways(db, user_uuid)
-        await crud.update_user_dashboards_new_entity(db, user_uuid, new_entity_uuid)
-        await app_helpers.left_organization(db, user_uuid)
-
-    # Destroy all other app sessions for the user
-    await auth_helpers.delete_user_app_sessions(
-        db, user_uuid, ["app", "oauth-app", "excel"]
-    )
+    await administration.move_user(db, user_uuid, user.permissions_uuid)
     return {"success": True}
 
 
@@ -446,29 +288,10 @@ async def get_users(
     db: AsyncSession = Depends(aget_read_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
-    query = select(User.uuid, User.email, User.permissions_uuid)
-    if email:
-        query = query.where(User.email.contains(email))
-
     async def transformer(items: list[User]):
-        cleaned = []
-        for item in items:
-            permissions_query = (
-                select(PermissionsEntityMap)
-                .where(PermissionsEntityMap.uuid == item.permissions_uuid)
-                .limit(1)
-            )
-            permissions = (await db.execute(permissions_query)).scalar_one_or_none()
-            cleaned.append(
-                schemas.EntityUserReturn(
-                    uuid=item.uuid,
-                    email=item.email,
-                    permissions=permissions,
-                )
-            )
-        return cleaned
+        return [await administration.user_return(db, item) for item in items]
 
-    return await paginate(db, query, transformer=transformer)
+    return await paginate(db, administration.users_query(email), transformer=transformer)
 
 
 @router.delete("/entity/{entity_uuid}", response_model=schemas.SuccessReturn)
@@ -480,16 +303,7 @@ async def delete_entity(
     _=Depends(auth_helpers.get_current_superuser),
 ):
     """Delete an entity by uuid if it has no users"""
-    users_in_entity = await app_helpers.get_entity_users(db, entity_uuid)
-    if users_in_entity:
-        raise HTTPException(
-            status_code=400, detail="Cannot delete entity with existing users"
-        )
-    delete_query = delete(models.Entity).where(models.Entity.uuid == entity_uuid)
-    result = await db.execute(delete_query)
-    if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="Entity not found")
-    await db.commit()
+    await administration.delete_entity(db, entity_uuid)
     return schemas.SuccessReturn.success_instance()
 
 
@@ -711,13 +525,7 @@ async def add_data_backend(
     _: User = Depends(auth_helpers.get_current_superuser),
 ):
     """Add a data backend to the entity"""
-
-    insert_query = insert(models.ApiSource).values(
-        **data_backend.model_dump(), entity_uuid=entity_uuid
-    )
-
-    await db.execute(insert_query)
-    await db.commit()
+    await administration.add_data_backend(db, entity_uuid, data_backend)
     return schemas.SuccessReturn.success_instance()
 
 
@@ -729,15 +537,7 @@ async def delete_data_backend(
     _: User = Depends(auth_helpers.get_current_superuser),
 ):
     """Delete a data backend from the entity"""
-    delete_query = delete(models.ApiSource).where(
-        models.ApiSource.entity_uuid == entity_uuid,
-        models.ApiSource.name == backend_name,
-    )
-    result = await db.execute(delete_query)
-    if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="Data backend not found")
-
-    await db.commit()
+    await administration.delete_data_backend(db, entity_uuid, backend_name)
     return schemas.SuccessReturn.success_instance()
 
 
@@ -750,7 +550,4 @@ async def get_data_backends(
     _: User = Depends(auth_helpers.get_current_superuser),
 ):
     """Get the data backends for the entity"""
-    query = select(models.ApiSource).where(models.ApiSource.entity_uuid == entity_uuid)
-    data_backends = await db.execute(query)
-
-    return data_backends.scalars().all()
+    return await administration.data_backends(db, entity_uuid)

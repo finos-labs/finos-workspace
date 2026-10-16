@@ -291,6 +291,27 @@ export async function updatePassword(
   return status;
 }
 
+/** Sets a new password with the link an admin gave: the HTTP status, and what the API
+ * said went wrong. */
+export async function resetPassword(
+  token: string,
+  newPassword: string,
+): Promise<{ status: number; detail?: string }> {
+  try {
+    const { status } = await apiClient.post("/app/reset-password", {
+      token,
+      new_password: newPassword,
+    });
+    return { status };
+  } catch (e) {
+    const { status, data } = getErrorResponse(e);
+    return {
+      status: status || 500,
+      detail: typeof data.detail === "string" ? data.detail : undefined,
+    };
+  }
+}
+
 export async function generateQRCode(): Promise<{
   uri: string;
   secret: string;

@@ -127,10 +127,11 @@ bun run test:integration
 The tests run against a running stack and sign in as an account that exists there. Start the
 whole stack from the repository root (`docker compose up --build`, see the root README) and name
 the administrator it created: the address in `backend-api/backend/scripts/cfgs/config.toml`, and
-the password that the `init` service printed once when it created the account (no file keeps it):
+the password you set for it:
 
 ```bash
-docker compose logs --no-log-prefix init | grep 'was created'   # from the repository root
+# from the repository root, once
+docker compose run --rm init python -m scripts.init_users --new-password <the administrator's email>
 export E2E_USER_EMAIL=<the administrator's email>
 export E2E_USER_PASSWORD=<their password>
 # E2E_BASE_URL defaults to http://localhost:3000

@@ -33,7 +33,6 @@ from utilities.config import settings
 router = APIRouter(
     prefix="/app",
     tags=["app-file-storage"],
-    dependencies=[Depends(auth_helpers.check_origin)],
 )
 # The pre-signed downloads: the URL's signature is their whole credential, and agents fetch
 # them server to server, with no Origin and no client header

@@ -4,9 +4,8 @@
 # Goal: `docker run -d -p 3000:3000 -e WORKSPACE_ADMIN_EMAIL=<your-email> <image>` is all it
 # takes. A key passed with -e is used as given and is not written to the volume; any other
 # key is generated once per /data volume and kept in /data/secrets.env (secrets.sh), so it
-# stays the same across restarts. The administrator's password is kept nowhere:
-# scripts.init_users prints it once when it creates the account, and
-# `docker exec <container> credentials` sets a new one-time password.
+# stays the same across restarts. The administrator's password is never printed or kept
+# in a file: `docker exec -it <container> credentials` sets it.
 set -euo pipefail
 
 DATA_DIR="${DATA_DIR:-/data}"
@@ -75,7 +74,7 @@ fi
 
 # Re-render the seed config.toml with the organization and the administrator's address so
 # init_users picks them up. init_users is idempotent (select-before-insert), so we run it on
-# every start; it prints the administrator's password once, when it creates the account.
+# every start. It creates the administrator without a password that anyone knows.
 (cd /opt/code && python -c "
 import os
 from scripts.create_local_env import seed_config
@@ -108,8 +107,7 @@ print_summary() {
  The Workspace is ${1} on port ${PORT}.
    URL:      http://localhost:${PORT}
    Admin:    ${WORKSPACE_ADMIN_EMAIL}
-   Password: printed once, when the first start created the account; nothing keeps it.
-             For a new one-time password:  docker exec workspace credentials
+   Password: set it with  docker exec -it workspace credentials
 ================================================================
 EOF
 }

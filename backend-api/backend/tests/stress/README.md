@@ -59,8 +59,8 @@ cd backend/tests/stress
 
 The simulator authenticates as the administrator that `ADMIN_EMAIL` and `ADMIN_PASSWORD` name; both
 are required. With `--seed`, that is the administrator listed in `scripts/cfgs/config.toml`
-(write it with `python -m scripts.create_local_env --admin-email <your-email>`); a new
-administrator's password is printed once by the seed step, so pass that as `ADMIN_PASSWORD`. Every
+(write it with `python -m scripts.create_local_env --admin-email <your-email>`), and the seed step
+sets their password to `ADMIN_PASSWORD` (read from standard input, never printed). Every
 simulated user comes from one address, so they send the stack's `WORKSPACE_AUTH_TOKEN` as
 `X-Workspace-Authorization` and the stress overlay sets `RATE_LIMIT_EXEMPT_ENABLED=1`, which lets
 that token skip rate limiting (development stacks only; set both yourself for a stack you started

@@ -145,9 +145,8 @@ def main():
             last_name="User",
             role="admin",
         )
-        admin_password = admin_resp.get("temporary_password")
         log_success(f"Admin created: {admin_email}")
-        print(f"    Temp password: {admin_password}")
+        print(f"    Link that sets the password: {admin_resp.get('link')}")
         print(f"    Role: {admin_resp.get('role')}")
     except APIError as e:  # noqa: F821  # type: ignore[unresolved-reference]
         log_error(f"Failed to create admin: {e}")
@@ -168,9 +167,8 @@ def main():
             last_name="One",
             role="user",
         )
-        user_password = user_resp.get("temporary_password")
         log_success(f"User created: {user_email}")
-        print(f"    Temp password: {user_password}")
+        print(f"    Link that sets the password: {user_resp.get('link')}")
         print(f"    Role: {user_resp.get('role')}")
     except APIError as e:  # noqa: F821  # type: ignore[unresolved-reference]
         log_error(f"Failed to create user: {e}")
@@ -271,9 +269,8 @@ def main():
     if user_uuid:
         try:
             reset_resp = client.user_reset_password(user_uuid)
-            new_password = reset_resp.get("temporary_password")
             log_success(f"Password reset for {user_email}")
-            print(f"    New temp password: {new_password}")
+            print(f"    Link that sets a new password: {reset_resp.get('link')}")
         except APIError as e:  # noqa: F821  # type: ignore[unresolved-reference]
             log_error(f"Failed to reset password: {e}")
 

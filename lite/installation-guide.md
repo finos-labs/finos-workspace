@@ -63,19 +63,13 @@ Open your browser and go to `http://localhost:3000`.
 
 ## Step 5 — Get your admin login
 
-The first start creates the administrator with a random password and prints it once in the startup log:
+The first start creates the administrator without a password. Set it (typed twice, not shown):
 
 ```bash
-docker logs workspace
+docker exec -it workspace credentials
 ```
 
-Sign in at `http://localhost:3000` with your email and that password, and change the password: nothing keeps a copy of it. If you lose it, give the administrator a new one-time password, printed on your terminal only:
-
-```bash
-docker exec workspace credentials
-```
-
-The Workspace asks you to choose your own password when you sign in with it.
+Sign in at `http://localhost:3000` with your email and that password. If you lose it, run the same command again; every session of the account ends.
 
 ---
 

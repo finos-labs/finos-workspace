@@ -20,7 +20,6 @@ from utilities.config import settings
 router = APIRouter(
     prefix="/app/data-connectors",
     tags=["app-data-connectors"],
-    dependencies=[Depends(auth_helpers.check_origin)],
 )
 
 

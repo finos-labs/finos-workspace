@@ -191,6 +191,14 @@ describe("LoginPage", () => {
     expect(screen.getByRole("button", { name: "Login" })).toBeInTheDocument();
   });
 
+  it("sends a user who forgot their password to their admin", () => {
+    renderLoginPage();
+
+    expect(
+      screen.getByText("Forgot your password? Ask your admin to reset your password."),
+    ).toBeInTheDocument();
+  });
+
   it("asks to set up an authenticator when the organization requires one", async () => {
     vi.mocked(authApi.login).mockResolvedValue({
       status: 202,

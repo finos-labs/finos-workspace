@@ -249,7 +249,6 @@ app.add_middleware(GZipMiddleware)
 # No cache keeps an answer to a request that carried a credential
 app.add_middleware(auth_helpers.NoStoreMiddleware)
 
-# Added last so it is the outermost middleware: it answers the CORS preflight
-# for the public marketplace paths before the restrictive global CORSMiddleware
-# can reject a non-allowlisted origin (e.g. localhost).
-app.add_middleware(auth_helpers.PublicCORSMiddleware)
+# Added last so it is the outermost middleware: a request or websocket that does not name
+# an allowed origin reaches nothing else
+app.add_middleware(auth_helpers.AllowedOriginMiddleware)

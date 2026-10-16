@@ -39,16 +39,14 @@ It refuses to overwrite the first two unless you pass `--force`.
 
 The web app is on <http://localhost:3000>, the admin panel on <http://localhost:3001> and the API on <http://localhost:8000>. The first start
 creates the organization and the administrator listed in
-`backend-api/backend/scripts/cfgs/config.toml`, with a random password that the `init` service prints
-once in its log and no file keeps:
+`backend-api/backend/scripts/cfgs/config.toml`, without a password. Set it (typed twice, not shown):
 
 ```bash
-docker compose logs init
+docker compose run --rm init python -m scripts.init_users --new-password <your-email>
 ```
 
-Sign in with that email and password, and change the password. For a new one-time password
-(the web app asks you to replace it when you sign in), run
-`docker compose run --rm init python -m scripts.init_users --new-password <your-email>`.
+Then sign in with that email and password. Run the same command to set a new password; every
+session of the account ends. No password is printed, logged or kept in a file.
 `docker compose down -v` removes the databases too.
 
 The web image is configured when the container starts: `BACKEND_URL` and `AI_API_URL` in `docker-compose.yml` become the

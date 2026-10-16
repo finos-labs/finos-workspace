@@ -99,9 +99,9 @@ async def logout(
     response: Response,
     db: AsyncSession = Depends(aget_write_db),
 ):
-    """Ends the session of the request: the admin panel's cookie, or the bearer of the
-    admin CLI or another client that is not a browser. A browser's cookie is cleared
-    even when its session had already ended."""
+    """Ends the session of the request: the admin panel's cookie, or the bearer of a
+    client that is not a browser. A browser's cookie is cleared even when its session had
+    already ended."""
     credential = auth_helpers.read_credential(request)
     session_uuid = (
         await db.execute(

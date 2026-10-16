@@ -40,7 +40,7 @@ from routers.routers_helpers import register_app_user
 from utilities.config import BaseModel, settings
 
 router = APIRouter(
-    prefix="/app", tags=["app"], dependencies=[Depends(auth_helpers.check_origin)]
+    prefix="/app", tags=["app"]
 )
 
 
@@ -193,21 +193,15 @@ async def _start_session(  # noqa: PLR0913, PLR0917
     remember: bool,
 ) -> tuple[str, timedelta]:
     """A new session and its lifetime. The web app's ends its other sessions and is set
-    as the session cookie; the Excel add-in's ends the add-in's other sessions; the admin
-    CLI's lasts 12 hours and ends none."""
-    if source == auth_helpers.CLI_SOURCE:
-        lifetime = auth_helpers.CLI_SESSION_LIFETIME
-    else:
-        lifetime = helpers.get_app_session_expiration(remember)
-        await auth_helpers.delete_user_app_sessions(
-            db, user_uuid, same_kind_sources(source)
-        )
+    as the session cookie; the Excel add-in's ends the add-in's other sessions."""
+    lifetime = helpers.get_app_session_expiration(remember)
+    await auth_helpers.delete_user_app_sessions(db, user_uuid, same_kind_sources(source))
 
     token = await auth_helpers.create_login_token(
         db=db,
         user_uuid=user_uuid,
         expires_delta=lifetime,
-        app_session=source != auth_helpers.CLI_SOURCE,
+        app_session=True,
         source=source,
     )
     if source in auth_helpers.WEB_SOURCES:
@@ -228,8 +222,7 @@ async def login(
     db: AsyncSession = Depends(aget_write_db),
 ):
     """Signs in. The web app's session is the `__Host-ws_session` cookie and the answer
-    carries no token; the Excel add-in and the admin CLI (source "cli": 12 hours, and the
-    user's other sessions stay) get theirs in the answer, as a bearer."""
+    carries no token; the Excel add-in gets its own in the answer, as a bearer."""
     source = user.source or "app"
     web = source in auth_helpers.WEB_SOURCES
     if web:
@@ -488,6 +481,37 @@ async def handle_oauth_user(
         )
         await db.commit()
     return answer
+
+
+@router.post("/reset-password", response_model=SuccessReturn)
+@limiter.limit(LIMIT_FEW)
+async def post_reset_password(
+    request: Request,
+    reset: schemas.PasswordReset,
+    db: AsyncSession = Depends(aget_write_db),
+):
+    """Sets the password of the user an administrator's password reset link was issued
+    for (POST /admin/reset-password/{user_uuid}). The link is used up, every session of
+    the user ends, and the user signs in with the new password."""
+    auth_helpers.check_browser_sign_in(request, auth_helpers.WEB_CLIENT)
+    user_uuid = await auth_helpers.take_password_reset(reset.token)
+    result = (
+        None
+        if user_uuid is None
+        else await db.execute(
+            update(User)
+            .where(User.uuid == user_uuid, User.deleted.is_(False))
+            .values(password=reset.new_password, temporary_password=False)
+        )
+    )
+    if result is None or result.rowcount == 0:
+        raise HTTPException(
+            400,
+            detail="This link has expired or was used already. Ask your admin for a new one.",
+        )
+    await db.execute(delete(models.Session).where(models.Session.user_uuid == user_uuid))
+    await db.commit()
+    return SuccessReturn.success_instance()
 
 
 @router.post("/sign-in/nonce", response_model=schemas.SignInNonce)

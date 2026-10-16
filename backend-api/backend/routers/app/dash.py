@@ -24,7 +24,6 @@ from utilities.config import settings
 router = APIRouter(
     prefix="/app/dash",
     tags=["app-dash"],
-    dependencies=[Depends(auth_helpers.check_origin)],
 )
 
 

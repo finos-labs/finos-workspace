@@ -896,7 +896,11 @@ def user_create(args: argparse.Namespace) -> None:
         if args.json:
             print(json.dumps(resp, indent=2))
         else:
-            print(f"✓ User created. Temp password: {resp.get('temporary_password')}")
+            print(
+                f"✓ User created. Give {args.email} this link to set their password."
+                f" It works once, until {resp['expires_at']}:"
+            )
+            print(f"  {resp['link']}")
     except APIError as e:
         handle_api_error(e)
 
@@ -941,7 +945,11 @@ def user_reset_password(args: argparse.Namespace) -> None:
         if args.json:
             print(json.dumps(res, indent=2))
         else:
-            print(f"✓ Password reset. Temp password: {res.get('temporary_password')}")
+            print(
+                f"✓ Password reset; {args.email} is signed out everywhere. Give them this"
+                f" link to set a new password. It works once, until {res['expires_at']}:"
+            )
+            print(f"  {res['link']}")
     except APIError as e:
         handle_api_error(e)
 
@@ -1489,7 +1497,8 @@ def main() -> None:
     u_del.set_defaults(func=user_delete)
 
     u_reset = user_sub.add_parser(
-        "reset-password", help="Trigger password reset for a user"
+        "reset-password",
+        help="Reset a user's password and print the link that sets a new one",
     )
     u_reset.add_argument("email", help="Email address of the user")
     u_reset.add_argument(

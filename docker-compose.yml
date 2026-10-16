@@ -5,8 +5,8 @@
 #
 # Web app http://localhost:3000, admin panel http://localhost:3001, API http://localhost:8000.
 # The first start creates the organization and the administrator listed in
-# backend-api/backend/scripts/cfgs/config.toml; the administrator's password is printed once,
-# in the log of the init service (docker compose logs init), and no file keeps it.
+# backend-api/backend/scripts/cfgs/config.toml, without a password. Set it with
+#   docker compose run --rm init python -m scripts.init_users --new-password <email>
 #
 # On Apple silicon build for the host's architecture: PLATFORM=linux/arm64 docker compose up --build
 name: workspace

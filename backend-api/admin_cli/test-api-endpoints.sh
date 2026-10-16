@@ -186,13 +186,13 @@ ADMIN_USER_RESPONSE=$(api_request POST "/admin/create-user" "{
     \"last_name\": \"User\"
 }")
 
-ADMIN_TEMP_PASSWORD=$(json_val "$ADMIN_USER_RESPONSE" "temporary_password")
+ADMIN_LINK=$(json_val "$ADMIN_USER_RESPONSE" "link")
 
-if [ -z "$ADMIN_TEMP_PASSWORD" ]; then
+if [ -z "$ADMIN_LINK" ]; then
     log_error "Failed to create admin user"
     echo "$ADMIN_USER_RESPONSE"
 else
-    log_success "Admin created: $ADMIN_EMAIL (password: $ADMIN_TEMP_PASSWORD)"
+    log_success "Admin created: $ADMIN_EMAIL (password link: $ADMIN_LINK)"
 fi
 
 # =============================================================================
@@ -210,13 +210,13 @@ USER_RESPONSE=$(api_request POST "/admin/create-user" "{
     \"last_name\": \"One\"
 }")
 
-USER_TEMP_PASSWORD=$(json_val "$USER_RESPONSE" "temporary_password")
+USER_LINK=$(json_val "$USER_RESPONSE" "link")
 
-if [ -z "$USER_TEMP_PASSWORD" ]; then
+if [ -z "$USER_LINK" ]; then
     log_error "Failed to create regular user"
     echo "$USER_RESPONSE"
 else
-    log_success "User created: $USER_EMAIL (password: $USER_TEMP_PASSWORD)"
+    log_success "User created: $USER_EMAIL (password link: $USER_LINK)"
 fi
 
 # =============================================================================
@@ -292,8 +292,8 @@ echo "Endpoint: POST /admin/reset-password/{user_uuid}"
 
 if [ -n "$USER_UUID" ]; then
     RESET_RESPONSE=$(api_request POST "/admin/reset-password/$USER_UUID")
-    NEW_PASSWORD=$(json_val "$RESET_RESPONSE" "temporary_password")
-    log_success "Password reset: $USER_EMAIL (new: $NEW_PASSWORD)"
+    RESET_LINK=$(json_val "$RESET_RESPONSE" "link")
+    log_success "Password reset: $USER_EMAIL (password link: $RESET_LINK)"
 fi
 
 # =============================================================================

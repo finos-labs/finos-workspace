@@ -140,12 +140,12 @@ echo "API Response:"
 echo "$ADMIN_RESPONSE"
 echo ""
 
-ADMIN_TEMP_PASSWORD=$(echo "$ADMIN_RESPONSE" | grep -o '"temporary_password": *"[^"]*"' | awk -F'"' '{print $4}')
-if [ -z "$ADMIN_TEMP_PASSWORD" ]; then
-    log_error "Failed to create additional admin user - no temporary password in response"
+ADMIN_LINK=$(echo "$ADMIN_RESPONSE" | grep -o '"link": *"[^"]*"' | awk -F'"' '{print $4}')
+if [ -z "$ADMIN_LINK" ]; then
+    log_error "Failed to create additional admin user - no password link in response"
     exit 1
 fi
-log_success "Additional admin user created: $ADMIN_EMAIL (temp password: $ADMIN_TEMP_PASSWORD)"
+log_success "Additional admin user created: $ADMIN_EMAIL (password link: $ADMIN_LINK)"
 
 # 3. ADD ANOTHER REGULAR USER
 log_step "Step 3: Adding another regular user to the entity..."
@@ -161,12 +161,12 @@ echo "API Response:"
 echo "$USER_RESPONSE"
 echo ""
 
-USER_TEMP_PASSWORD=$(echo "$USER_RESPONSE" | grep -o '"temporary_password": *"[^"]*"' | awk -F'"' '{print $4}')
-if [ -z "$USER_TEMP_PASSWORD" ]; then
-    log_error "Failed to create additional regular user - no temporary password in response"
+USER_LINK=$(echo "$USER_RESPONSE" | grep -o '"link": *"[^"]*"' | awk -F'"' '{print $4}')
+if [ -z "$USER_LINK" ]; then
+    log_error "Failed to create additional regular user - no password link in response"
     exit 1
 fi
-log_success "Additional regular user created: $USER_EMAIL (temp password: $USER_TEMP_PASSWORD)"
+log_success "Additional regular user created: $USER_EMAIL (password link: $USER_LINK)"
 
 # 4. UPDATE ENTITY
 log_step "Step 4: Updating entity (turning sharing on)..."
@@ -231,25 +231,20 @@ fi
 # 9. UPDATE USERS (reset passwords for all users)
 log_step "Step 9: Resetting passwords for all users..."
 
-# Reset initial admin password
-INITIAL_ADMIN_RESET=$($ADMIN_CLI user reset-password "$INITIAL_ADMIN_EMAIL" --json)
-INITIAL_ADMIN_NEW_PASSWORD=$(echo "$INITIAL_ADMIN_RESET" | grep -o '"temporary_password": *"[^"]*"' | awk -F'"' '{print $4}')
-log_success "Initial admin password reset: $INITIAL_ADMIN_EMAIL"
+reset_password() {
+    local email="$1" label="$2" response
+    response=$($ADMIN_CLI user reset-password "$email" --json)
+    if ! echo "$response" | grep -q '"link": *"[^"]*/reset-password#'; then
+        log_error "$label password reset: no link in the response"
+        exit 1
+    fi
+    log_success "$label password reset: $email"
+}
 
-# Reset additional admin password
-ADMIN_RESET=$($ADMIN_CLI user reset-password "$ADMIN_EMAIL" --json)
-ADMIN_NEW_PASSWORD=$(echo "$ADMIN_RESET" | grep -o '"temporary_password": *"[^"]*"' | awk -F'"' '{print $4}')
-log_success "Additional admin password reset: $ADMIN_EMAIL"
-
-# Reset initial user password
-INITIAL_USER_RESET=$($ADMIN_CLI user reset-password "$INITIAL_USER_EMAIL" --json)
-INITIAL_USER_NEW_PASSWORD=$(echo "$INITIAL_USER_RESET" | grep -o '"temporary_password": *"[^"]*"' | awk -F'"' '{print $4}')
-log_success "Initial user password reset: $INITIAL_USER_EMAIL"
-
-# Reset additional user password
-USER_RESET=$($ADMIN_CLI user reset-password "$USER_EMAIL" --json)
-USER_NEW_PASSWORD=$(echo "$USER_RESET" | grep -o '"temporary_password": *"[^"]*"' | awk -F'"' '{print $4}')
-log_success "Additional user password reset: $USER_EMAIL"
+reset_password "$INITIAL_ADMIN_EMAIL" "Initial admin"
+reset_password "$ADMIN_EMAIL" "Additional admin"
+reset_password "$INITIAL_USER_EMAIL" "Initial user"
+reset_password "$USER_EMAIL" "Additional user"
 
 # 10. DELETE ALL USERS (Note: May fail due to permissions)
 log_step "Step 10: Attempting to delete all users..."

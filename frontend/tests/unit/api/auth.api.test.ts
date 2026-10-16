@@ -28,6 +28,7 @@ import {
   postFileWidget,
   postUserChats,
   postWidgetMetadata,
+  resetPassword,
   SIGN_IN_EXPIRED,
   searchChats,
   updatePassword,
@@ -432,6 +433,40 @@ describe("API Client Functions", () => {
         new_password: "newPass",
       });
       expect(response).toEqual(200);
+    });
+  });
+
+  describe("resetPassword", () => {
+    it("sends the link's token and the new password in the body", async () => {
+      vi.spyOn(apiClient, "post").mockResolvedValue({ status: 200 });
+
+      const response = await resetPassword("the-token", "NewPassword456!");
+
+      expect(apiClient.post).toHaveBeenCalledWith("/app/reset-password", {
+        token: "the-token",
+        new_password: "NewPassword456!",
+      });
+      expect(response).toEqual({ status: 200 });
+    });
+
+    it("returns the status and what the API said went wrong", async () => {
+      vi.spyOn(apiClient, "post").mockRejectedValue({
+        response: { status: 400, data: { detail: "This link has expired." } },
+      });
+
+      expect(await resetPassword("used", "NewPassword456!")).toEqual({
+        status: 400,
+        detail: "This link has expired.",
+      });
+    });
+
+    it("returns 500 when the API never answered", async () => {
+      vi.spyOn(apiClient, "post").mockRejectedValue(new Error("Network Error"));
+
+      expect(await resetPassword("token", "NewPassword456!")).toEqual({
+        status: 500,
+        detail: undefined,
+      });
     });
   });
 

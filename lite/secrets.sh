@@ -5,8 +5,7 @@
 # not passed is generated at the first start and kept in $SECRETS_FILE, so that it stays the
 # same across restarts and upgrades; a copy of the volume then holds it too, and with
 # WORKSPACE_AES_KEY whatever decrypts the credentials stored in the database. No password is
-# written here or anywhere else: scripts.init_users prints the administrator's once, when it
-# creates the account.
+# written here or anywhere else: the administrator sets theirs with `credentials`.
 
 SECRETS_FILE="${DATA_DIR:-/data}/secrets.env"
 # The keys the volume keeps when they are not passed

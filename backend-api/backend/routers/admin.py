@@ -9,23 +9,21 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from loguru import logger
-from sqlalchemy import Row, delete, insert, or_, select, update
+from sqlalchemy import Row, delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from api import auth_helpers, crud, helpers, models, schemas
-from api.base import clean_email, get_now, random_password
 from api.database import aget_read_db, aget_write_db
 from api.models import (
     Entity,
     PermissionsEntityMap,
     User,
     UserInvite,
-    UserRole,
 )
 from api.rate_limit import LIMIT_DEFAULT, exempt_service_token, limiter
-from api.schemas import ResetPasswordReturn, SuccessReturn
-from routers import app_helpers, routers_helpers
+from api.schemas import SuccessReturn
+from routers import administration, app_helpers, routers_helpers
 from scripts import export_user_data
 from utilities.config import BaseModel
 
@@ -180,31 +178,14 @@ async def remove_user(
     """This endpoint is used to remove a user from an entity."""
     await ensure_user_in_admin_entity(db, admin, user_uuid)
     await ensure_not_superuser_target(db, admin, user_uuid)
-    if admin.is_superuser:
-        query = update(User).where(User.uuid == user_uuid).values(permissions_uuid=None)
-        response = await db.execute(query)
-    else:
+    maps = None
+    if not admin.is_superuser:
         admin_result = await get_admin_entity(db, admin.permissions_uuid)
         maps_query = select(PermissionsEntityMap.uuid).where(
             PermissionsEntityMap.entity_uuid == admin_result
         )
-        maps_result = (await db.execute(maps_query)).all()
-        maps_clean = [item.uuid for item in maps_result]
-        query = (
-            update(User)
-            .where(User.uuid == user_uuid, User.permissions_uuid.in_(maps_clean))
-            .values(permissions_uuid=None)
-        )
-        response = await db.execute(query)
-    # Nothing of a user outside the organization is touched
-    if response.rowcount == 0:
-        raise HTTPException(404, detail="Matching user not found")
-
-    await crud.remove_shares_both_ways(db, user_uuid)
-    await crud.update_user_dashboards_new_entity(db, user_uuid)
-
-    await db.commit()
-    await app_helpers.left_organization(db, user_uuid)
+        maps = list((await db.execute(maps_query)).scalars())
+    await administration.remove_from_entity(db, user_uuid, maps)
     return SuccessReturn.success_instance()
 
 
@@ -439,7 +420,7 @@ async def post_reset_usage(
     return SuccessReturn.success_instance()
 
 
-@router.post("/reset-password/{user_uuid}", response_model=ResetPasswordReturn)
+@router.post("/reset-password/{user_uuid}", response_model=schemas.PasswordResetLink)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def post_reset_password(
     request: Request,
@@ -447,7 +428,8 @@ async def post_reset_password(
     user_uuid: UUID,
     admin: Annotated[User, Depends(auth_helpers.get_current_admin)],
 ):
-    """Endpoint to reset the password for a user."""
+    """Resets the password of a user: the password stops working, every session of the
+    user ends, and the answer is the link with which the user sets a new one."""
     if not admin.is_superuser:
         admin_entity_uuid = await get_admin_entity(db, admin.permissions_uuid)
         target_entity_query = (
@@ -463,25 +445,7 @@ async def post_reset_password(
                 403, detail="Cannot reset password for users outside your organization"
             )
     await ensure_not_superuser_target(db, admin, user_uuid)
-
-    new_password = random_password()
-    update_query = (
-        update(User)
-        .where(User.uuid == user_uuid)
-        .values(password=new_password, temporary_password=True)
-    )
-    await db.execute(update_query)
-    await db.commit()
-
-    # Remove all sessions for the user
-    delete_query = delete(models.Session).where(models.Session.user_uuid == user_uuid)
-    await db.execute(delete_query)
-    await db.commit()
-
-    return ResetPasswordReturn(
-        success=True,
-        temporary_password=new_password,
-    )
+    return await administration.reset_password(db, user_uuid)
 
 
 @router.post("/users/{user_uuid}/export")
@@ -590,7 +554,7 @@ async def post_reset_2fa(
     return SuccessReturn.success_instance()
 
 
-@router.post("/create-user", response_model=schemas.ResetPasswordReturn)
+@router.post("/create-user", response_model=schemas.PasswordResetLink)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def create_user(
     request: Request,
@@ -598,60 +562,15 @@ async def create_user(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """Allows an admin to register a new user, if the user isn't already registered or invited"""
+    """Allows an admin to register a new user, if the user isn't already registered or
+    invited. The answer is the link with which the user sets their password."""
     # The user joins the admin's organization, with a role of it
     entity_uuid = await get_admin_entity(db, user.permissions_uuid)
     if not admin.is_superuser and entity_uuid != await get_admin_entity(
         db, admin.permissions_uuid
     ):
         raise HTTPException(403, detail="Cannot add users to another organization")
-    if user.role and not await app_helpers.role_exists(db, user.role, entity_uuid):
-        raise HTTPException(404, detail="Role not found")
-
-    # Check if the user is already invited
-    query_invite = select(UserInvite.uuid).where(UserInvite.email == user.email)
-    invite_result = (await db.execute(query_invite)).first()
-    if invite_result:
-        raise HTTPException(409, detail="User is already invited")
-
-    # Check if the user is already registered
-    if await crud.check_new_user(db, user.email):
-        raise HTTPException(409, detail="A user with this email already exists")
-
-    # Create user
-    random_pw = random_password()
-    insert_query = insert(User).values(
-        email=user.email,
-        clean_email=clean_email(user.email),
-        permissions_uuid=user.permissions_uuid,
-        password=random_pw,
-        first_name=user.first_name,
-        last_name=user.last_name,
-        app_start=get_now(),
-        confirmed=1,
-        temporary_password=True,
-    )
-    response = await db.execute(insert_query)
-
-    if response.rowcount == 0:
-        raise HTTPException(404, detail="User was not created")
-    user_uuid = response.inserted_primary_key[0]
-
-    # Add role if provided
-    if role := user.role:
-        role_insert = insert(UserRole).values(
-            user_uuid=user_uuid,
-            role_uuid=role,
-        )
-        await db.execute(role_insert)
-
-    await db.commit()
-    if user.role:
-        await app_helpers.roles_changed(db, [user_uuid])
-    return schemas.ResetPasswordReturn(
-        success=True,
-        temporary_password=random_pw,
-    )
+    return await administration.create_user(db, user, entity_uuid)
 
 
 @router.post("/role", response_model=schemas.SuccessReturn)

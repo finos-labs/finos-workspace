@@ -43,12 +43,13 @@ jobs:
             curl -fsS -o /dev/null "$url"
           done
 
-      # The first start's init service prints the new administrator's password, once
-      - name: Read the administrator's password
+      # The administrator has no password until one is set, as an operator sets it: read
+      # from standard input, never printed
+      - name: Set the administrator's password
         run: |
-          PASSWORD="$(docker compose logs --no-log-prefix init | sed -n "s/^The administrator $E2E_USER_EMAIL was created\. Password, shown only this once: //p")"
-          test -n "$PASSWORD"
+          PASSWORD="$(python3 -c 'import secrets; print("E2e-" + secrets.token_urlsafe(24) + "!1a")')"
           echo "::add-mask::$PASSWORD"
+          printf '%s\n' "$PASSWORD" | docker compose run --rm -T init python -m scripts.init_users --new-password "$E2E_USER_EMAIL"
           echo "E2E_USER_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
 
       - uses: oven-sh/setup-bun@v2

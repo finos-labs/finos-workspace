@@ -7,6 +7,7 @@ import {
   getEntityMap,
   getUsers,
   inviteUser,
+  resetUserPassword,
   updateEntity,
   updateUser,
 } from "~/api/admin.api";
@@ -47,7 +48,11 @@ const mockData = {
     },
   ],
   baseResponse: { success: true, message: "Success" },
-  resetPasswordResponse: { success: true, temporary_password: "random-password" },
+  passwordLinkResponse: {
+    success: true,
+    link: "http://localhost:3000/reset-password#the-token",
+    expires_at: "2026-10-17T12:00:00Z",
+  },
   entitySettings: { require_authenticator: true },
   entityMap: [{ uuid: "1", name: "Admin" }],
 };
@@ -79,11 +84,22 @@ describe("API functions", () => {
   it("should create a user", async () => {
     const newUser = { email: "test@example.com" };
     (apiClient.post as MockedAxiosMethod).mockResolvedValueOnce({
-      data: mockData.resetPasswordResponse,
+      data: mockData.passwordLinkResponse,
     });
     const response = await createUser(newUser);
     expect(apiClient.post).toHaveBeenCalledWith("/admin/create-user", newUser);
-    expect(response).toEqual(mockData.resetPasswordResponse);
+    expect(response).toEqual(mockData.passwordLinkResponse);
+  });
+
+  it("resets a user's password to a link that sets a new one", async () => {
+    (apiClient.post as MockedAxiosMethod).mockResolvedValueOnce({
+      data: mockData.passwordLinkResponse,
+    });
+
+    const response = await resetUserPassword("1");
+
+    expect(apiClient.post).toHaveBeenCalledWith("/admin/reset-password/1");
+    expect(response).toEqual(mockData.passwordLinkResponse);
   });
 
   it("should update a user", async () => {

@@ -168,7 +168,7 @@ COPY entrypoint.sh /entrypoint.sh
 # The keys of the container and the file of the data volume that keeps the generated ones
 COPY secrets.sh /usr/local/lib/workspace/secrets.sh
 COPY render_frontend_config.py /usr/local/bin/render-frontend-config
-# A new one-time password for the administrator: `docker exec workspace credentials`
+# Sets the administrator's password: `docker exec -it workspace credentials`
 COPY credentials.sh /usr/local/bin/credentials
 
 # Account import helper: `docker exec -it workspace workspace-import /import/<file>.zip`

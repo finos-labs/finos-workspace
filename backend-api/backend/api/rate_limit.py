@@ -45,7 +45,7 @@ def exempt_service_token(request: Request) -> bool:
         service_scheme, service_param = get_authorization_scheme_param(service_auth)
 
         if service_scheme.lower() == "bearer":
-            auth_helpers.check_origin(service_param)
+            auth_helpers.check_service_token(service_param)
             return True
     except HTTPException:
         return False

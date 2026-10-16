@@ -239,6 +239,11 @@ export default function LoginPage() {
                   />
                 </div>
               )}
+              {authenticationAllowEmailLoginFF && (
+                <p className="text-light-800 body-xs-regular">
+                  Forgot your password? Ask {contactTarget} to reset your password.
+                </p>
+              )}
               <div className="mt-[42px] flex flex-col gap-4 items-center justify-center">
                 {authenticationAllowEmailLoginFF && (
                   <div className="relative w-full max-w-[240px]">

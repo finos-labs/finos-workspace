@@ -3,10 +3,10 @@
 ``envs/.env`` holds the settings that compose hands to the API and the worker. It starts from
 ``envs/.env.example``, points the settings at the compose services and fills the secrets with
 random values. ``scripts/cfgs/config.toml`` names the organization and the administrator that
-the first start creates (``scripts.init_users`` reads it). No file holds the administrator's
-password: ``scripts.init_users`` makes it up when it creates the account and prints it once,
-in the log of compose's ``init`` service. ``user_create.json`` starts empty: compose mounts
-it into the containers, and without a file on the host Docker would put a directory there.
+the first start creates (``scripts.init_users`` reads it), without a password; nothing prints
+or keeps one, and ``scripts.init_users --new-password`` sets it. ``user_create.json`` starts
+empty: compose mounts it into the containers, and without a file on the host Docker would put
+a directory there.
 
     python -m scripts.create_local_env --admin-email <your-email>   # refuses to overwrite
     python -m scripts.create_local_env --admin-email <your-email> --force
@@ -161,9 +161,9 @@ def main(argv: list[str] | None = None) -> int:
         USER_CREATE.write_text("{}\n")
     sys.stdout.write(
         f"Wrote {CONFIG if args.config_only else f'{target} and {CONFIG}'}\n"
-        f"Sign in as {args.admin_email}. scripts.init_users creates the account on the first "
-        "start and prints its password once; with docker compose it is in the log of the init "
-        "service (docker compose logs init).\n"
+        f"The first start creates the administrator {args.admin_email} without a password. "
+        "Set it with: docker compose run --rm init python -m scripts.init_users "
+        f"--new-password {args.admin_email}\n"
     )
     return 0
 

@@ -73,6 +73,5 @@ cat <<EOF
 [build-local] Built $IMAGE
 Run it:
   docker run -d -p 3000:3000 -v workspace-data:/data -e WORKSPACE_ADMIN_EMAIL=<your-email> --name workspace $IMAGE
-  docker logs workspace               # the administrator's password, printed once at the first start
-  docker exec workspace credentials   # a new one-time password for the administrator
+  docker exec -it workspace credentials   # set the administrator's password
 EOF

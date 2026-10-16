@@ -25,9 +25,8 @@ Usage: docker exec -it workspace workspace-import <archive.zip> [--force] [--des
 The import asks for the export key that was shown when the archive was made, so run it
 with -it, which gives it a terminal.
 
-After importing, sign in as the administrator (`docker exec workspace credentials`
-gives them a new one-time password if needed) and set a password for the imported
-account.
+After importing, sign in as the administrator (`docker exec -it workspace credentials`
+sets their password if needed) and set a password for the imported account.
 EOF
   exit 1
 }

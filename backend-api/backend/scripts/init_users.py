@@ -1,17 +1,18 @@
 """Create the organizations and administrators that ``scripts/cfgs/*.toml`` name.
 
     python -m scripts.init_users                         # what the configs name; safe to rerun
-    python -m scripts.init_users --new-password <email>  # a new one-time password for an admin
+    python -m scripts.init_users --new-password <email>  # set an administrator's password
 
-A config names an administrator by address only. When the account does not exist yet, it is
-created with a random password, which is printed once, here, and kept nowhere. An
-administrator who exists keeps the password they have. One who has lost it gets a new
-one-time password with ``--new-password``: it is printed once, every session of the account
-ends, and the web app asks for a password of their own when they sign in with it.
+A config names an administrator by address only. A new account has no password that anyone
+knows; ``--new-password`` sets one, for a new administrator or one who lost theirs. It reads
+the password from the terminal without echoing it, or the first line of standard input when
+that is not a terminal, so no password is ever printed, logged or kept in a file. Every
+session of the account ends.
 """
 
 import argparse
 import asyncio
+import getpass
 import json
 import sys
 import tomllib
@@ -133,8 +134,9 @@ class SetupConfig:
         self.admin_user = admin_users[0]
 
     async def create_admin(self, admin_user: AdminUser, permissions_uuid: UUID) -> User:
-        """The administrator the config names. A new account gets a random password, shown
-        once and kept nowhere; an account that exists keeps its password."""
+        """The administrator the config names. A new account gets a random password that
+        nobody sees, until ``--new-password`` sets theirs; an account that exists keeps its
+        password."""
         logger.info(f"Checking for admin: {admin_user.email}")
         query = select(User).where(User.email == admin_user.email)
         result = await self.db.execute(query)
@@ -155,8 +157,8 @@ class SetupConfig:
             result = await self.db.execute(query)
             await self.db.commit()
             show(
-                f"The administrator {admin_user.email} was created. "
-                f"Password, shown only this once: {password}"
+                f"The administrator {admin_user.email} was created. Set their password with: "
+                f"python -m scripts.init_users --new-password {admin_user.email}"
             )
 
             return await self.create_admin(admin_user, permissions_uuid)
@@ -269,37 +271,57 @@ async def setup_configs():
             await SetupConfig(config, db).run()
 
 
-async def new_password(db: AsyncSession, email: str) -> str | None:
-    """Give an administrator a new one-time password and end every session of theirs. The
-    web app asks for a password of their own when they sign in with it. None when ``email``
-    is not an administrator's."""
+async def get_administrator(db: AsyncSession, email: str) -> User | None:
+    "The administrator with this address, or None."
     user = (await db.execute(select(User).where(User.email == email))).scalars().first()
-    if user is None or not user.is_superuser:
-        return None
+    return user if user is not None and user.is_superuser else None
 
-    password = base.random_password()
+
+def read_password() -> str:
+    """The new password: typed twice on the terminal without echo, or the first line of
+    standard input when that is not a terminal. Raises ValueError for one that does not
+    pass the password rules."""
+    if sys.stdin.isatty():
+        password = getpass.getpass("New password: ")
+        if getpass.getpass("Repeat the new password: ") != password:
+            raise ValueError("The two passwords differ.")
+    else:
+        password = sys.stdin.readline().rstrip("\r\n")
+    return schemas.check_password(password)
+
+
+async def set_password(db: AsyncSession, user: User, password: str) -> None:
+    "Give the administrator this password and end every session of theirs."
     await db.execute(
         update(User)
         .where(User.uuid == user.uuid)
-        .values(password=password, temporary_password=True)
+        .values(password=password, temporary_password=False)
     )
     await db.execute(delete(Session).where(Session.user_uuid == user.uuid))
     await db.commit()
-    return password
 
 
-async def show_new_password(email: str) -> int:
-    async for db in aget_write_db():
-        password = await new_password(db, email)
-    if password is None:
+async def change_password(db: AsyncSession, email: str) -> int:
+    """Set the password of the administrator with this address; the exit status."""
+    user = await get_administrator(db, email)
+    if user is None:
         sys.stderr.write(f"{email} is not an administrator of this Workspace.\n")
         return 1
-    show(
-        f"New one-time password of {email}: {password}\n"
-        "It is shown only this once and kept nowhere. Sign in with it, and the Workspace "
-        "asks you to choose your own."
-    )
+    try:
+        password = read_password()
+    except ValueError as exc:
+        sys.stderr.write(f"{exc}\n")
+        return 2
+    await set_password(db, user, password)
+    show(f"The password of {email} is set. Every session of the account has ended.")
     return 0
+
+
+async def set_new_password(email: str) -> int:
+    status = 1
+    async for db in aget_write_db():
+        status = await change_password(db, email)
+    return status
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -309,11 +331,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--new-password",
         metavar="EMAIL",
-        help="Instead, give the administrator EMAIL a new one-time password and print it",
+        help="Instead, set the password of the administrator EMAIL, read from the terminal "
+        "without echo, or from standard input",
     )
     args = parser.parse_args(argv)
     if args.new_password:
-        return asyncio.run(show_new_password(args.new_password))
+        return asyncio.run(set_new_password(args.new_password))
     asyncio.run(setup_configs())
     return 0
 

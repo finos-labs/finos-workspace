@@ -1,16 +1,19 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { type JSX, useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-import { createUser, inviteUser } from "~/api/admin.api";
+import { createUser, inviteUser, type PasswordLinkAnswer } from "~/api/admin.api";
 import { getEntityRoles } from "~/api/entity_roles.api";
 import { getErrorResponse } from "~/api/errors";
 import AdminDialogFooter from "~/components/AdminUsers/common/AdminDialogFooter";
+import PasswordLink from "~/components/AdminUsers/PasswordLink";
+import { Button } from "~/components/ds/atoms/Button";
 import { Checkbox } from "~/components/ds/atoms/Checkbox";
 import { FormInput } from "~/components/ds/atoms/Input";
 import { FormSelect } from "~/components/ds/atoms/Select";
+import { DialogFooter } from "~/components/ds/dialogs/Dialog";
 import { Form, FormField } from "~/components/ds/molecules/Form";
 import { TabsContent } from "~/components/ds/molecules/Tabs";
 import Icon from "~/components/Icon";
@@ -36,6 +39,11 @@ export default function InviteSingleUser({
 }) {
   const userFormRef = useRef<HTMLFormElement>(null);
   const [errorMessage, setErrorMessage] = useState<null | string>(null);
+  // The user added without an invitation, and the link to give them
+  const [added, setAdded] = useState<{
+    name: string;
+    answer: PasswordLinkAnswer;
+  } | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -73,48 +81,27 @@ export default function InviteSingleUser({
         permissions_uuid: permissions,
         role: values.role || null,
       };
+      const name = `${values.first_name} ${values.last_name}`;
+      const refetch = () => {
+        queryClient.refetchQueries({ queryKey: ["admin", "users"] });
+        queryClient.refetchQueries({ queryKey: ["roles"] });
+      };
       try {
-        let toast_msg: string;
-        let toast_description: string | JSX.Element;
-        let res: { success: boolean };
         if (values.bypass_invitation) {
-          const { success, temporary_password } = await createUser(dto);
-          res = { success };
-          if (import.meta.env.DEV) {
-            console.log("success: ", success);
+          const answer = await createUser(dto);
+          if (answer.success) {
+            refetch();
+            // The dialog shows the link until the admin is done with it
+            setAdded({ name, answer });
           }
-          toast_msg = "User added";
-          toast_description = (
-            <div className="flex flex-col gap-2">
-              <p>
-                User {values.first_name} {values.last_name} has been added to the
-                organization.
-              </p>
-              <div className="flex items-center gap-2">
-                <span>Temporary password: {temporary_password}</span>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(temporary_password);
-                    toast.success("Password copied to clipboard");
-                  }}
-                  className="hover:text-primary-500"
-                >
-                  <Icon id="clipboard-icon" className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          );
-        } else {
-          res = await inviteUser(dto);
-          toast_msg = "User invited";
-          toast_description = `User ${values.first_name} ${values.last_name} has been invited.`;
+          return;
         }
+        const res = await inviteUser(dto);
         if (res.success) {
-          toast.success(toast_msg, {
-            description: toast_description,
+          refetch();
+          toast.success("User invited", {
+            description: `User ${name} has been invited.`,
           });
-          queryClient.refetchQueries({ queryKey: ["admin", "users"] });
-          queryClient.refetchQueries({ queryKey: ["roles"] });
           onClose();
         }
       } catch (error) {
@@ -125,6 +112,25 @@ export default function InviteSingleUser({
     },
     [onClose, permissions, queryClient.refetchQueries],
   );
+
+  if (added) {
+    return (
+      <TabsContent value="single">
+        <div
+          data-testid="added-user"
+          className="flex flex-col gap-3 pb-6 body-xs-medium"
+        >
+          <p>{added.name} has been added to the organization.</p>
+          <PasswordLink link={added.answer.link} expiresAt={added.answer.expires_at} />
+        </div>
+        <DialogFooter className="pr-0">
+          <Button size="sm" variant="primary" onClick={onClose}>
+            Done
+          </Button>
+        </DialogFooter>
+      </TabsContent>
+    );
+  }
 
   return (
     <TabsContent value="single">

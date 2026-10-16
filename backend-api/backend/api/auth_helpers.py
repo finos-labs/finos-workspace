@@ -5,14 +5,15 @@ session table stores. How a request carries it depends on the client:
 
 - The web app and the admin panel are browsers: their session is an HttpOnly cookie,
   `__Host-ws_session` and `__Host-ws_admin`. Every request that rides one names its client
-  in the `X-Workspace-Client` header ("web" or "admin"), which picks the cookie. A request
-  riding a cookie that has an Origin (always one that changes anything) must come from one
-  of BACKEND_CORS_ORIGINS. The header needs a CORS preflight from any other origin, which
-  only those origins pass.
-- The Excel add-in and the admin CLI send `Authorization: Bearer <token>`. A session of
-  the web app or the admin panel is never accepted as a bearer.
+  in the `X-Workspace-Client` header ("web" or "admin"), which picks the cookie.
+- The Excel add-in sends `Authorization: Bearer <token>`. A session of the web app or the
+  admin panel is never accepted as a bearer.
 - The default Copilot acts for the signed-in user with an agent token, a bearer that GET
   /app/user, PUT /app/usage and POST /app/copilot/authorize accept and nothing else.
+
+Every request names one of BACKEND_CORS_ORIGINS in its Origin header, on every path
+(AllowedOriginMiddleware): a browser sends its page's origin, and a service that is not a
+browser sends the origin it is configured with (WORKSPACE_ORIGIN).
 """
 
 import asyncio
@@ -22,19 +23,18 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Literal, override
+from typing import Any, Literal
 from uuid import UUID
 
 import jwt
-from fastapi import Depends, HTTPException, Request, Response, WebSocket, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import HTTPException, Request, Response, WebSocket, status
+from fastapi.responses import JSONResponse
 from fastapi.security.utils import get_authorization_scheme_param
 from jwt import PyJWTError
 from sqlalchemy import ColumnElement, delete, insert, select
 from sqlalchemy.engine.row import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import Headers, MutableHeaders
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from utilities.config import settings
@@ -66,9 +66,8 @@ WEB_SOURCES = ("app", "oauth-app")
 ADMIN_SOURCE = "admin"
 # A pending two-factor enrollment, by the web app's sign-in it finishes
 TOTP_ENROLL_SOURCES = {"app": "totp-enroll", "oauth-app": "totp-enroll-oauth"}
-CLI_SOURCE = "cli"
 # The clients that are not browsers, whose sessions are bearer tokens
-BEARER_SOURCES = ("excel", CLI_SOURCE)
+BEARER_SOURCES = ("excel",)
 
 CredentialKind = Literal["web", "admin", "totp", "bearer"]
 # The sessions each way of carrying a token may hold
@@ -80,58 +79,10 @@ CREDENTIAL_SOURCES: dict[CredentialKind, tuple[str, ...]] = {
 }
 
 TOTP_ENROLL_LIFETIME = timedelta(minutes=5)
-CLI_SESSION_LIFETIME = timedelta(hours=12)
 AGENT_TOKEN_LIFETIME = timedelta(minutes=30)
+PASSWORD_RESET_LIFETIME = timedelta(hours=24)
 # The routes on which an agent token is accepted
 AGENT_PATHS = frozenset({"/app/user", "/app/usage", "/app/copilot/authorize"})
-
-UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
-
-SIGN_IN_PROVIDERS = ("microsoft", "google", "okta")
-OAUTH_PATHS = [f"/app/{provider}-auth" for provider in SIGN_IN_PROVIDERS]
-
-
-VALID_PATHS = [
-    "/app/login",
-    "/app/dash/validate-and-sync",
-    *OAUTH_PATHS,
-]
-
-# Public, unauthenticated, read-only endpoints that anyone may call from any
-# origin (including localhost). The global CORSMiddleware only permits the
-# clients' origins, so these paths are handled separately by
-# PublicCORSMiddleware. Matched exactly to avoid loosening sub-routes such as
-# /marketplace/apps/{app_id}/rate.
-PUBLIC_CORS_PATHS = frozenset({"/marketplace/apps"})
-
-
-class PublicCORSMiddleware(BaseHTTPMiddleware):
-    """CORS for the public paths in PUBLIC_CORS_PATHS: any origin may read them, without
-    credentials.
-
-    Registered as the outermost middleware: it answers their preflight itself, before the
-    global CORSMiddleware would refuse an origin that is not a client's, and gives their
-    answers `Access-Control-Allow-Origin: *` with no `Access-Control-Allow-Credentials`
-    (browsers refuse that pair, and a public listing needs no credentials). All other
-    paths fall through untouched.
-    """
-
-    @override
-    async def dispatch(self, request: Request, call_next):
-        if request.url.path not in PUBLIC_CORS_PATHS:
-            return await call_next(request)
-
-        if request.method == "OPTIONS" and "access-control-request-method" in request.headers:
-            response = Response(status_code=status.HTTP_200_OK)
-        else:
-            response = await call_next(request)
-        del response.headers["Access-Control-Allow-Credentials"]
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "*"
-        response.headers["Access-Control-Max-Age"] = "86400"
-        return response
-
 
 # The headers that carry a credential: a session cookie, or a token
 CREDENTIAL_HEADERS = (
@@ -173,43 +124,28 @@ def is_allowed_origin(origin: str | None) -> bool:
     return origin is not None and origin in settings.BACKEND_CORS_ORIGINS
 
 
-def check_valid(request: Request) -> bool:
-    """Whether a request may reach the /app routes without a service token: from an
-    allowed origin, to a sign-in path, or without an Origin from the page itself (the
-    client header needs a CORS preflight from any other origin) or from the default
-    Copilot on its routes (an agent token, server to server)."""
-    if any(request.url.path.startswith(path) for path in VALID_PATHS):
-        return True
+class AllowedOriginMiddleware:
+    """Refuses every request and websocket whose Origin header is not one of
+    BACKEND_CORS_ORIGINS, on every path, before anything else sees it: 403 for a request,
+    and a websocket is closed before its handshake is accepted."""
 
-    origin = request.headers.get("Origin")
-    if origin is not None:
-        return is_allowed_origin(origin)
+    def __init__(self, app: ASGIApp):
+        self.app = app
 
-    return CLIENT_HEADER in request.headers or request.url.path in AGENT_PATHS
-
-
-class OriginOAuth2Token(OAuth2PasswordBearer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    async def __call__(self, request: Request) -> str | None:
-        service_auth = request.headers.get("X-Workspace-Authorization")
-        service_scheme, service_param = get_authorization_scheme_param(service_auth)
-
-        is_bearer = service_scheme.lower() == "bearer"
-        if not check_valid(request) and not is_bearer:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not allowed to access this endpoint",
-            )
-
-        if is_bearer and not service_param:
-            raise credentials_exception
-
-        return service_param or settings.WORKSPACE_AUTH_TOKEN
-
-
-origin_oauth2_scheme = OriginOAuth2Token(tokenUrl="token")
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] not in {"http", "websocket"} or is_allowed_origin(
+            Headers(scope=scope).get("origin")
+        ):
+            await self.app(scope, receive, send)
+            return
+        if scope["type"] == "websocket":
+            await send({"type": "websocket.close", "code": status.WS_1008_POLICY_VIOLATION})
+            return
+        refusal = JSONResponse(
+            {"detail": "Requests must come from an allowed origin"},
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+        await refusal(scope, receive, send)
 
 
 # --- Sessions -------------------------------------------------------------------------
@@ -307,12 +243,10 @@ def clearing_cookie(refusal: HTTPException, name: str) -> HTTPException:
 
 
 def check_browser_sign_in(request: Request, client: str) -> None:
-    """A sign-in that hands out a session cookie comes from the client's page: it names
-    the client, from an allowed origin, so that no other site can sign a browser in."""
+    """A sign-in that hands out a session cookie comes from the client's page, which names
+    the client (its origin is an allowed one, as every request's is)."""
     if request.headers.get(CLIENT_HEADER) != client:
         raise HTTPException(400, detail=f'Sign in with the {CLIENT_HEADER} header "{client}"')
-    if not is_allowed_origin(request.headers.get("Origin")):
-        raise HTTPException(403, detail="This origin may not sign in")
 
 
 @dataclass(frozen=True, slots=True)
@@ -325,19 +259,6 @@ class Credential:
     @property
     def sources(self) -> tuple[str, ...]:
         return CREDENTIAL_SOURCES[self.kind]
-
-
-def check_cookie_origin(request: Request) -> None:
-    """A request riding a session cookie comes from an allowed origin when it has an
-    Origin, and always when it would change anything. With the client header and SameSite
-    cookies, that is the CSRF defence."""
-    origin = request.headers.get("Origin")
-    if origin is None and request.method not in UNSAFE_METHODS:
-        return
-    if not is_allowed_origin(origin):
-        if request.method in UNSAFE_METHODS:
-            raise HTTPException(403, detail="This origin may not change anything")
-        raise HTTPException(403, detail="This origin may not use this session")
 
 
 def read_credential(request: Request, *, enrollment: bool = False) -> Credential:
@@ -353,7 +274,6 @@ def read_credential(request: Request, *, enrollment: bool = False) -> Credential
 
     if client not in CLIENT_COOKIES:
         raise credentials_exception
-    check_cookie_origin(request)
     if enrollment and client == WEB_CLIENT and (token := request.cookies.get(TOTP_COOKIE)):
         return Credential("totp", token)
     if not (token := request.cookies.get(CLIENT_COOKIES[client])):
@@ -735,6 +655,49 @@ async def revoke_agent_tokens(session_uuid: UUID) -> None:
         await redis.delete(tokens_key)
 
 
+# --- Password reset links -------------------------------------------------------------
+
+
+def _password_reset_key(token_hash: str) -> str:
+    return app_redis_key(f"password_reset:{token_hash}")
+
+
+def _user_password_reset_key(user_uuid: UUID) -> str:
+    return app_redis_key(f"password_reset_user:{user_uuid}")
+
+
+def _text(value: bytes | str) -> str:
+    return value.decode() if isinstance(value, bytes) else value
+
+
+async def issue_password_reset(user_uuid: UUID) -> str:
+    """The token of a new link with which the user sets their password: it works once,
+    within PASSWORD_RESET_LIFETIME. Only its hash is kept, in Redis, and the user's
+    earlier link stops working."""
+    token = secrets.token_urlsafe(32)
+    token_hash = crypto.hash_token(token)
+    lifetime = int(PASSWORD_RESET_LIFETIME.total_seconds())
+    async with app_redis() as redis:
+        earlier = await redis.set(
+            _user_password_reset_key(user_uuid), token_hash, ex=lifetime, get=True
+        )
+        if earlier is not None:
+            await redis.delete(_password_reset_key(_text(earlier)))
+        await redis.set(_password_reset_key(token_hash), str(user_uuid), ex=lifetime)
+    return token
+
+
+async def take_password_reset(token: str) -> UUID | None:
+    """The user a password reset link was issued for, and the link is used up: None when
+    it expired, was used already or a newer link replaced it."""
+    async with app_redis() as redis:
+        user_uuid = await redis.getdel(_password_reset_key(crypto.hash_token(token)))
+        if user_uuid is None:
+            return None
+        await redis.delete(_user_password_reset_key(UUID(_text(user_uuid))))
+    return UUID(_text(user_uuid))
+
+
 # --- The bridge websocket -------------------------------------------------------------
 
 
@@ -748,11 +711,9 @@ class WebSocketSession:
 
 
 async def websocket_session(websocket: WebSocket) -> WebSocketSession | None:
-    """The web session of a websocket handshake from the web app: from one of its origins,
-    with a valid web session cookie. A browser cannot set the client header on a websocket,
-    so the cookie is read directly; the Origin check is what CORS does for other requests."""
-    if not is_allowed_origin(websocket.headers.get("origin")):
-        return None
+    """The web session of a websocket handshake from the web app, with a valid web session
+    cookie. A browser cannot set the client header on a websocket, so the cookie is read
+    directly; its origin is an allowed one, as every websocket's is."""
     if not (token := websocket.cookies.get(SESSION_COOKIE)):
         return None
     filters = session_filters(Credential(WEB_CLIENT, token), app_session=True)
@@ -831,14 +792,8 @@ def token_checker(token: str, requirement: dict[str, str]) -> None:
         raise credentials_exception from e
 
 
-def check_origin(token: str = Depends(origin_oauth2_scheme)) -> None:
-    """Checks that the given token is a workspace service token
-
-    Parameters
-    ----------
-    token : str
-        The token to be checked
-    """
+def check_service_token(token: str) -> None:
+    """Checks that the given token is a workspace service token (WORKSPACE_AUTH_TOKEN)."""
     for sub in ["workspace", "copilot", "excel", "app"]:
         with suppress(Exception):
             return token_checker(token, {"sub": sub})

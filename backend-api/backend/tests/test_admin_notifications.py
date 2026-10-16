@@ -176,7 +176,7 @@ class TestEntityCreatedEvent:
     async def test_entity_creation_notifies_the_admins(self, auth_client):
         name = f"Notify Entity {uuid4().hex[:8]}"
         mock = AsyncMock(return_value=None)
-        with superuser_override(), patch("routers.entity.notify_admins", mock):
+        with superuser_override(), patch("routers.administration.notify_admins", mock):
             response = await auth_client.post(
                 "/entity/entity",
                 json={

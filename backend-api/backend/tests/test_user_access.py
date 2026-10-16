@@ -431,7 +431,7 @@ class TestOrganizations:
     ):
         with (
             superuser_override(),
-            patch("routers.entity.notify_admins", AsyncMock(return_value=None)),
+            patch("routers.administration.notify_admins", AsyncMock(return_value=None)),
         ):
             response = await auth_client.post(
                 "/entity/entity",

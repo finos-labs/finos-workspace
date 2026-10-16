@@ -93,9 +93,9 @@ The API reaches users' MCP servers only at public internet addresses. An MCP ser
 private network (an internal host, a compose service) has to be listed by host name in
 `ALLOWED_MCP_HOSTNAMES`, a JSON list.
 
-No file keeps the first administrator's password: `scripts.init_users` makes it up when it
-creates the account and prints it once. `python -m scripts.init_users --new-password <email>`
-gives an administrator a new one-time password, which the web app asks them to replace.
+No password is printed, logged or kept in a file: `scripts.init_users` creates the first
+administrator without one, and `python -m scripts.init_users --new-password <email>` sets it,
+read from the terminal without echo or from standard input.
 
 Rate limits count requests per client address. The API takes that address from
 `X-Forwarded-For` only when the request comes from loopback or a private network

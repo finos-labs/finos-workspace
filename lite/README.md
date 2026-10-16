@@ -14,13 +14,13 @@ docker run -d -p 3000:3000 \
   <image>
 ```
 
-Open <http://localhost:3000> and sign in as the address you gave. The first start creates that account with a random password and prints it once in the startup log (`docker logs workspace`). Nothing keeps it, so change it once you are signed in. To give the administrator a new one-time password, which the web app asks you to replace when you sign in with it:
+The first start creates that account without a password. Set it (typed twice, not shown):
 
 ```bash
-docker exec workspace credentials
+docker exec -it workspace credentials
 ```
 
-It is printed on your terminal only, and every session of the account ends.
+Then open <http://localhost:3000> and sign in. Run the same command to set a new password; every session of the account ends. No password is printed, logged or kept in a file.
 
 `WORKSPACE_ADMIN_EMAIL` has no default: the container stops with a message if it is missing.
 
@@ -40,7 +40,7 @@ docker run -d -p 3000:3000 \
   <image>
 ```
 
-`WORKSPACE_ENTITY_NAME` defaults to `Workspace`. The volume remembers both, so later starts can leave them out. There is no setting for the administrator's password: the first start makes it up, and `docker exec workspace credentials` replaces it.
+`WORKSPACE_ENTITY_NAME` defaults to `Workspace`. The volume remembers both, so later starts can leave them out. There is no setting for the administrator's password: `docker exec -it workspace credentials` sets it.
 
 ### Sign-in providers
 
@@ -172,7 +172,7 @@ All three are managed by [supervisord.conf](./supervisord.conf), and their outpu
 | `supervisord.conf` | Runs redis, uvicorn and nginx |
 | `nginx.conf.template` | Site config; `${PORT}` is substituted on start. Its access log keeps no query strings |
 | `render_frontend_config.py` | Writes `/usr/share/nginx/html/config.js` from the environment |
-| `credentials.sh` | `docker exec <container> credentials`: gives the administrator a new one-time password |
+| `credentials.sh` | `docker exec -it <container> credentials`: sets the administrator's password |
 | `tests/` | `bash tests/test_secrets.sh` (the keys) and `bash tests/test_nginx_log.sh` (the access log; needs Docker) |
 | `import.sh` | `docker exec -it <container> workspace-import <archive>`: imports an exported account, asking for its export key |
 | `installation-guide.md`, `enduser-steps.md` | Pulling the image from a private registry, and running it |

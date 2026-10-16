@@ -77,7 +77,7 @@ code changes.
 
 Name the organization and its first administrator once, in the generated
 `backend/scripts/cfgs/config.toml`, which git ignores. It holds no password: `init_users`
-makes one up when it creates the account and prints it once, on the terminal it runs in.
+creates the account without one, and `init_users --new-password` sets it (below).
 (`create_local_env` also writes `backend/envs/.env` for the full compose stack;
 `--config-only` writes just the seed config, which is what this local-development setup
 needs.)
@@ -102,11 +102,11 @@ cd backend
 This reads entity/admin configuration from `backend/scripts/cfgs/config.toml` and:
 
 - Creates the entity named there, with Admin, Developer and User permission maps
-- Creates the administrator named there as a superuser, and prints their password once
-  (an administrator who exists keeps theirs)
+- Creates the administrator named there as a superuser, without a password (an administrator
+  who exists keeps theirs)
 - Writes `user_create.json` with UUIDs needed by the running app
 
-For a new one-time password, which the web app asks you to replace when you sign in with it:
+Set the administrator's password (typed twice, not shown; the same command sets a new one):
 `../.venv/bin/python -m scripts.init_users --new-password <your-email>`.
 
 ### 3. Verify authentication

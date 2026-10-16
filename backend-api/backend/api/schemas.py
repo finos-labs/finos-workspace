@@ -31,8 +31,8 @@ StoredFileT = TypeVar("StoredFileT", bound="StoredFile")
 
 main_config = ConfigDict(extra="forbid", from_attributes=True)
 # Who signs in at POST /app/login: the web app ("app", and "oauth-app" after a sign-in
-# provider), the Excel add-in or the admin CLI
-AppLoginSource = Literal["app", "oauth-app", "excel", "cli"]
+# provider) or the Excel add-in
+AppLoginSource = Literal["app", "oauth-app", "excel"]
 MetaDataWidgetType = Literal[
     "iframe",
     "copilot_table",
@@ -261,8 +261,19 @@ class SuccessReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
         return cls(success=value)
 
 
-class ResetPasswordReturn(SuccessReturn):
-    temporary_password: str
+class PasswordResetLink(SuccessReturn):
+    """The link an administrator gives a new user, or one whose password they reset, with
+    which the user sets their password. It works once, until expires_at."""
+
+    link: str
+    expires_at: datetime
+
+
+class PasswordReset(BaseModel, extra="forbid"):  # type: ignore[call-arg]
+    """The token of a password reset link, and the user's new password."""
+
+    token: Annotated[str, Field(min_length=1, max_length=128)]
+    new_password: Annotated[str, AfterValidator(check_password)]
 
 
 class DashboardShareReturn(BaseModel):
@@ -1640,8 +1651,8 @@ class EntityThemeSettings(BaseModel):
 class AppToken(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     uuid: UUID
     email: EmailStr
-    # The session token, for the clients that are not browsers only (the Excel add-in and
-    # the admin CLI). The web app's session is an HttpOnly cookie it never sees.
+    # The session token, for the client that is not a browser only (the Excel add-in).
+    # The web app's session is an HttpOnly cookie it never sees.
     access_token: str | None = Field(default=None, exclude_if=lambda value: value is None)
     username: str | None
     expiration_date: datetime

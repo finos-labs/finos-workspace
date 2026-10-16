@@ -26,7 +26,7 @@ The first run builds the backend images and installs the frontend packages, so i
 
 - App: <http://localhost:1420>
 - Backend: <http://localhost:8000>
-- Sign in as the administrator in `backend-api/backend/scripts/cfgs/config.toml`. The `init` step makes up their password when it creates the account and prints it once: `make logs s=init` shows it. No file keeps it, so change it once you are in. For a new one-time password: `docker compose run --rm init python -m scripts.init_users --new-password <your-email>` in this folder.
+- Sign in as the administrator in `backend-api/backend/scripts/cfgs/config.toml`. The `init` step creates the account without a password; set it, typed twice and not shown, with `docker compose run --rm init python -m scripts.init_users --new-password <your-email>` in this folder. The same command sets a new one.
 
 ## Commands
 

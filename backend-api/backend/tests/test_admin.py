@@ -613,23 +613,14 @@ class TestAdminPasswordReset:
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_reset_password_returns_new_password(self, admin_client):
-        """Password reset should return a usable new password"""
-        # Get an existing user from the system
-        users_response = await admin_client.get("/admin/user")
-        if users_response.status_code == 200:
-            users = users_response.json()
-            if users and len(users) > 0:
-                user_uuid = users[0].get("uuid")
-                if user_uuid:
-                    # Reset password
-                    response = await admin_client.post(f"/admin/reset-password/{user_uuid}")
-                    # Should succeed and return password
-                    if response.status_code == 200:
-                        data = response.json()
-                        assert isinstance(data, dict)
-                        # Should contain a password field
-                        assert "password" in data or "success" in data or "message" in data
+    async def test_reset_password_returns_a_link(self, organization, admin_client):
+        """Password reset returns the link that sets a new password, and no password"""
+        user = await organization.add_user()
+        response = await admin_client.post(f"/admin/reset-password/{user.uuid}")
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["link"].startswith("http://localhost:3000/reset-password#")
+        assert "temporary_password" not in data
 
 
 # =============================================================================

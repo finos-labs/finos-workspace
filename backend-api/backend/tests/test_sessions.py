@@ -400,33 +400,14 @@ class TestTheAdminPanelsCookie:
 
 class TestClientsThatAreNotBrowsers:
     @pytest.mark.asyncio
-    async def test_the_admin_cli_gets_a_twelve_hour_bearer_without_an_origin(
-        self, organization, app_client, db_session
-    ):
+    async def test_the_admin_cli_does_not_sign_in(self, organization, db_session):
+        # It runs inside the API container and works on the database (scripts.workspace_admin)
         user = await organization.add_user(password=PASSWORD)
-        await app_client.post("/app/login", json=_login(user.email))
-
-        async with _browser() as cli:
+        async with _browser({"Origin": TEST_ORIGIN}) as cli:
             response = await cli.post("/app/login", json=_login(user.email, source="cli"))
-            assert response.status_code == 200, response.text
-            token = response.json()["access_token"]
-            assert "set-cookie" not in response.headers
 
-        sessions = {session.source: session for session in await _sessions(db_session, user.uuid)}
-        # Signing in with the CLI leaves the web app signed in
-        assert set(sessions) == {"app", "cli"}
-        assert sessions["cli"].app_session is False
-        lifetime = sessions["cli"].expiration_date - datetime.now(UTC)
-        # The database keeps whole seconds
-        assert timedelta(hours=11, minutes=59) < lifetime <= timedelta(hours=12, seconds=1)
-
-        async with bearer_client(token, origin=None) as cli:
-            # A bearer, and no app session
-            assert (await cli.get("/admin/role")).status_code == 403
-            assert (await cli.get("/app/user")).status_code == 401
-            assert (await cli.post("/logout")).status_code == 200
-            assert (await cli.post("/logout")).status_code == 401
-        assert {session.source for session in await _sessions(db_session, user.uuid)} == {"app"}
+        assert response.status_code == 422
+        assert await _sessions(db_session, user.uuid) == []
 
     @pytest.mark.asyncio
     async def test_the_excel_add_in_keeps_its_bearer(self, organization, app_client):
@@ -564,8 +545,9 @@ class TestTwoFactorEnrollment:
         self, organization, authenticator_required, db_session
     ):
         user = await organization.add_user(password=PASSWORD)
-        async with _browser() as cli:
-            response = await cli.post("/app/login", json=_login(user.email, source="cli"))
+        await organization.role(user.uuid, excel_add_in=True)
+        async with _browser({"Origin": TEST_ORIGIN}) as add_in:
+            response = await add_in.post("/app/login", json=_login(user.email, source="excel"))
         assert response.status_code == 202
         assert response.json()["two_factor_required"] is True
         assert "access_token" not in response.json()

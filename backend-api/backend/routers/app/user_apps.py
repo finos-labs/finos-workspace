@@ -13,7 +13,6 @@ from routers import app_helpers
 router = APIRouter(
     prefix="/app/user-apps",
     tags=["app-user-apps"],
-    dependencies=[Depends(auth_helpers.check_origin)],
 )
 
 

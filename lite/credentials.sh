@@ -1,14 +1,14 @@
 #!/bin/bash
-# Gives the administrator a new one-time password and prints it:
-#   docker exec workspace credentials [<email>]
+# Sets the administrator's password, typed twice without echo:
+#   docker exec -it workspace credentials [<email>]
 #
-# No password is kept anywhere to print: this sets a new one, shown only here. Every session
-# of the account ends, and the web app asks for a password of its own at the next sign-in.
+# Or from standard input, without -t: `docker exec -i workspace credentials < <file>`. The
+# password is never printed, logged or kept in a file. Every session of the account ends.
 # Without <email>, the administrator the container was started with.
 set -euo pipefail
 
 usage() {
-  echo "Usage: docker exec workspace credentials [<administrator's email>]" >&2
+  echo "Usage: docker exec -it workspace credentials [<administrator's email>]" >&2
   exit 1
 }
 case "${1:-}" in

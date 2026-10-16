@@ -4,52 +4,21 @@ import { toast } from "sonner";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { resetUserPassword } from "~/api/admin.api";
 import AdminResetUserPasswordDialog from "~/components/AdminUsers/AdminResetUserPasswordDialog";
-import { showNotification } from "~/lib/utils/toast";
 import { makeUser } from "../../factories";
 
-// Define mockNavigate at the top level
-const mockNavigate = vi.fn();
-
-// Mock react-router-dom
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
-
-// Mock dependencies
 vi.mock("~/api/admin.api", () => ({
   resetUserPassword: vi.fn(),
-}));
-
-vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({
-    invalidateQueries: vi.fn(),
-    refetchQueries: vi.fn(),
-  }),
 }));
 
 vi.mock("sonner", () => ({
   toast: {
     error: vi.fn(),
+    success: vi.fn(),
   },
 }));
 
-vi.mock("~/lib/utils/toast", () => ({
-  NotificationId: {
-    AccountResetPassword: "account-reset-password",
-  },
-  showNotification: vi.fn(),
-}));
-
-// Mock clipboard API
-Object.assign(navigator, {
-  clipboard: {
-    writeText: vi.fn(),
-  },
-});
+const LINK = "http://localhost:3000/reset-password#the-token";
+const EXPIRES_AT = "2026-10-17T12:00:00Z";
 
 describe("AdminResetUserPasswordDialog", () => {
   const mockUser = makeUser({ uuid: "123", email: "test@example.com" });
@@ -65,7 +34,7 @@ describe("AdminResetUserPasswordDialog", () => {
     vi.clearAllMocks();
   });
 
-  it("renders the dialog with correct user information", () => {
+  it("asks before it resets the password", () => {
     render(<AdminResetUserPasswordDialog {...defaultProps} />);
 
     expect(
@@ -74,41 +43,38 @@ describe("AdminResetUserPasswordDialog", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Yes, reset password")).toBeInTheDocument();
+    expect(resetUserPassword).not.toHaveBeenCalled();
   });
 
-  it("handles successful password reset", async () => {
-    const temporaryPassword = "temp123";
+  it("shows the link to give the user, and when it stops working", async () => {
     vi.mocked(resetUserPassword).mockResolvedValueOnce({
       success: true,
-      temporary_password: temporaryPassword,
+      link: LINK,
+      expires_at: EXPIRES_AT,
     });
 
     render(<AdminResetUserPasswordDialog {...defaultProps} />);
+    fireEvent.click(screen.getByText(/Yes, reset password/i));
 
-    const resetButton = screen.getByText(/Yes, reset password/i);
-    fireEvent.click(resetButton);
+    expect(await screen.findByLabelText("Password link")).toHaveValue(LINK);
+    expect(resetUserPassword).toHaveBeenCalledWith(mockUser.uuid);
+    expect(
+      screen.getByText(
+        `The password of ${mockUser.email} no longer works, and every session of the account has ended.`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `Give them this link to set their password. It works once, until ${new Date(EXPIRES_AT).toLocaleString()}.`,
+      ),
+    ).toBeInTheDocument();
+    expect(defaultProps.onConfirm).toHaveBeenCalled();
+    // The admin closes the dialog once the link is copied
+    expect(defaultProps.onClose).not.toHaveBeenCalled();
+    expect(screen.queryByText("Yes, reset password")).not.toBeInTheDocument();
 
-    await waitFor(() => {
-      // Check if API was called
-      expect(resetUserPassword).toHaveBeenCalledWith(mockUser.uuid);
-
-      // Check if password was copied to clipboard
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(temporaryPassword);
-
-      // Check if notification was shown
-      expect(showNotification).toHaveBeenCalledWith({
-        id: "account-reset-password",
-        message: "Account reset password",
-        description: expect.stringContaining(
-          `Password has been reset for ${defaultProps.user.email}. Temporary password was copied to your clipboard.`,
-        ),
-        toastType: "success",
-      });
-
-      // Check if callbacks were called
-      expect(defaultProps.onConfirm).toHaveBeenCalledWith(temporaryPassword);
-      expect(defaultProps.onClose).toHaveBeenCalled();
-    });
+    fireEvent.click(screen.getByText("Done"));
+    expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
   it("shows error toast on reset password failure", async () => {
@@ -125,6 +91,8 @@ describe("AdminResetUserPasswordDialog", () => {
         description: "Error resetting user password",
       });
     });
+    expect(screen.queryByLabelText("Password link")).not.toBeInTheDocument();
+    expect(defaultProps.onConfirm).not.toHaveBeenCalled();
   });
 
   it("closes dialog when cancel is clicked", () => {

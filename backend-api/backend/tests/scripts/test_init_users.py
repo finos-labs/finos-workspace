@@ -1,11 +1,12 @@
 """The bootstrap that creates the first entity and admin of a fresh installation.
 
 The image runs it on every start. When it fails, the app comes up with no account to
-sign in with, and nothing else in the suite notices. The administrator's password is made
-up when the account is created and shown once; no file holds it, and a later run never
-changes it.
+sign in with, and nothing else in the suite notices. A new administrator has no password
+that anyone knows: ``--new-password`` sets one, read from the terminal or from standard
+input. No password is ever printed, and a later run never changes it.
 """
 
+import io
 import re
 import secrets
 from datetime import timedelta
@@ -22,10 +23,19 @@ ENTITY_NAME = "Initial Organization"
 ADMIN_EMAIL = "bootstrap-admin@example.com"
 OTHER_EMAIL = "bootstrap-member@example.com"
 CREATED = re.compile(
-    rf"^The administrator {re.escape(ADMIN_EMAIL)} was created\. "
-    r"Password, shown only this once: (\S+)$",
+    rf"^The administrator {re.escape(ADMIN_EMAIL)} was created\. Set their password with: "
+    rf"python -m scripts\.init_users --new-password {re.escape(ADMIN_EMAIL)}$",
     re.MULTILINE,
 )
+
+
+def _password() -> str:
+    return "Ch0sen!" + secrets.token_urlsafe(8)
+
+
+def _type(monkeypatch, text: str) -> None:
+    "Standard input that is not a terminal, holding ``text``."
+    monkeypatch.setattr(init_users.sys, "stdin", io.StringIO(text))
 
 
 def _config() -> Config:
@@ -95,7 +105,7 @@ async def test_bootstrap_creates_the_entity_and_a_working_admin(
     db_session, bootstrap_cleanup, capsys
 ):
     await SetupConfig(_config(), db_session).run()
-    shown = CREATED.findall(capsys.readouterr().out)
+    out = capsys.readouterr().out
 
     entity = (
         await db_session.execute(
@@ -118,10 +128,13 @@ async def test_bootstrap_creates_the_entity_and_a_working_admin(
 
     admin = await _admin(db_session)
     assert admin.is_superuser
-    # The password is shown once, and it is the one that signs in
-    assert len(shown) == 1
-    assert base.verify_password(shown[0], admin.password)
-    assert not admin.temporary_password
+    # The only output says how to set the password, and shows none
+    created = CREATED.search(out)
+    assert created
+    # (The JSON lines are the logger's)
+    printed = [line for line in out.splitlines() if line.strip() and not line.startswith("{")]
+    assert printed == [created.group(0)]
+    assert admin.password
 
 
 def test_a_config_names_no_password():
@@ -130,7 +143,7 @@ def test_a_config_names_no_password():
 
 
 @pytest.mark.asyncio
-async def test_a_later_run_shows_no_password_and_keeps_the_one_the_admin_chose(
+async def test_a_later_run_says_nothing_and_keeps_the_admins_password(
     db_session, bootstrap_cleanup, capsys
 ):
     await SetupConfig(_config(), db_session).run()
@@ -143,7 +156,7 @@ async def test_a_later_run_shows_no_password_and_keeps_the_one_the_admin_chose(
 
     await SetupConfig(_config(), db_session).run()
 
-    assert "Password" not in capsys.readouterr().out
+    assert not CREATED.findall(capsys.readouterr().out)
     assert base.verify_password(chosen, (await _admin(db_session)).password)
 
 
@@ -185,29 +198,66 @@ async def _sessions(db_session, user_uuid) -> int:
 
 
 @pytest.mark.asyncio
-async def test_a_new_password_is_one_time_and_ends_every_session(
-    db_session, bootstrap_cleanup, capsys
+async def test_a_new_password_is_read_from_standard_input_and_ends_every_session(
+    db_session, bootstrap_cleanup, capsys, monkeypatch
 ):
     await SetupConfig(_config(), db_session).run()
-    first = CREATED.findall(capsys.readouterr().out)[0]
     admin = await _admin(db_session)
     await _sign_in(db_session, admin.uuid)
+    capsys.readouterr()
+    password = _password()
+    _type(monkeypatch, password + "\n")
 
-    password = await init_users.new_password(db_session, ADMIN_EMAIL)
+    assert await init_users.change_password(db_session, ADMIN_EMAIL) == 0
 
     admin = await _admin(db_session)
-    assert password and password != first
     assert base.verify_password(password, admin.password)
-    assert not base.verify_password(first, admin.password)
-    # The web app asks for a password of the admin's own at the next sign-in
-    assert admin.temporary_password
+    # The admin chose it: the web app does not ask for another one
+    assert not admin.temporary_password
     assert await _sessions(db_session, admin.uuid) == 0
+    shown = capsys.readouterr()
+    assert f"The password of {ADMIN_EMAIL} is set" in shown.out
+    assert password not in shown.out + shown.err
 
 
 @pytest.mark.asyncio
-async def test_a_new_password_is_only_for_an_administrator(db_session, bootstrap_cleanup):
+async def test_on_a_terminal_the_password_is_typed_twice_without_echo(
+    db_session, bootstrap_cleanup, capsys, monkeypatch
+):
+    await SetupConfig(_config(), db_session).run()
+    password = _password()
+    monkeypatch.setattr(init_users.sys.stdin, "isatty", lambda: True, raising=False)
+
+    typed = iter([password, password + "x"])
+    monkeypatch.setattr(init_users.getpass, "getpass", lambda prompt: next(typed))
+    assert await init_users.change_password(db_session, ADMIN_EMAIL) == 2
+    assert "The two passwords differ." in capsys.readouterr().err
+    assert not base.verify_password(password, (await _admin(db_session)).password)
+
+    typed = iter([password, password])
+    assert await init_users.change_password(db_session, ADMIN_EMAIL) == 0
+    assert base.verify_password(password, (await _admin(db_session)).password)
+
+
+@pytest.mark.asyncio
+async def test_a_weak_password_is_refused(db_session, bootstrap_cleanup, capsys, monkeypatch):
+    await SetupConfig(_config(), db_session).run()
+    before = (await _admin(db_session)).password
+    _type(monkeypatch, "weak\n")
+
+    assert await init_users.change_password(db_session, ADMIN_EMAIL) == 2
+
+    assert "Password must be at least 8 characters long" in capsys.readouterr().err
+    assert (await _admin(db_session)).password == before
+
+
+@pytest.mark.asyncio
+async def test_a_new_password_is_only_for_an_administrator(
+    db_session, bootstrap_cleanup, capsys, monkeypatch
+):
     await SetupConfig(_config(), db_session).run()
     admin = await _admin(db_session)
+    member_password = _password()
     await db_session.execute(
         insert(models.User).values(
             email=OTHER_EMAIL,
@@ -215,19 +265,27 @@ async def test_a_new_password_is_only_for_an_administrator(db_session, bootstrap
             confirmed=1,
             is_superuser=0,
             permissions_uuid=admin.permissions_uuid,
-            password="Memb3r!" + secrets.token_urlsafe(8),
+            password=member_password,
         )
     )
     await db_session.commit()
 
-    assert await init_users.new_password(db_session, OTHER_EMAIL) is None
-    assert await init_users.new_password(db_session, "nobody@example.com") is None
+    for email in (OTHER_EMAIL, "nobody@example.com"):
+        _type(monkeypatch, _password() + "\n")
+        assert await init_users.change_password(db_session, email) == 1
+        assert f"{email} is not an administrator" in capsys.readouterr().err
+    member = (
+        await db_session.execute(
+            select(models.User)
+            .where(models.User.email == OTHER_EMAIL)
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one()
+    assert base.verify_password(member_password, member.password)
 
 
 @pytest.mark.asyncio
-async def test_the_new_password_command_prints_it_once(
-    db_session, bootstrap_cleanup, capsys, monkeypatch
-):
+async def test_the_new_password_command(db_session, bootstrap_cleanup, capsys, monkeypatch):
     await SetupConfig(_config(), db_session).run()
     capsys.readouterr()
 
@@ -235,12 +293,10 @@ async def test_the_new_password_command_prints_it_once(
         yield db_session
 
     monkeypatch.setattr(init_users, "aget_write_db", the_test_database)
+    password = _password()
+    _type(monkeypatch, password + "\n")
 
-    assert await init_users.show_new_password(ADMIN_EMAIL) == 0
-    out = capsys.readouterr().out
-    password = re.search(rf"^New one-time password of {re.escape(ADMIN_EMAIL)}: (\S+)$", out, re.M)
-    assert password
-    assert base.verify_password(password.group(1), (await _admin(db_session)).password)
-
-    assert await init_users.show_new_password("nobody@example.com") == 1
-    assert "nobody@example.com is not an administrator" in capsys.readouterr().err
+    assert await init_users.set_new_password(ADMIN_EMAIL) == 0
+    assert base.verify_password(password, (await _admin(db_session)).password)
+    shown = capsys.readouterr()
+    assert password not in shown.out + shown.err

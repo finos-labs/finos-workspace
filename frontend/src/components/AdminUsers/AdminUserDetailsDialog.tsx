@@ -46,7 +46,6 @@ interface BaseState extends UserInfo {
   openRemove: boolean;
   openResetPassword: boolean;
   openReset2FA: boolean;
-  temporaryPassword: string | null;
 }
 
 const initialState = {
@@ -56,7 +55,6 @@ const initialState = {
   openRemove: false,
   openResetPassword: false,
   openReset2FA: false,
-  temporaryPassword: null,
 };
 
 export function getBaseState(user: User | UserInfo, initial?: Partial<BaseState>) {
@@ -281,15 +279,6 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
               invited={user.source === "invite"}
             />
           </SettingsMenu>
-
-          <div className="hidden">
-            {state.temporaryPassword && (
-              <div className="flex items-center gap-1">
-                <span className="body-xs-medium">Temporary password:</span>
-                <span className="body-xs-regular">{state.temporaryPassword}</span>
-              </div>
-            )}
-          </div>
         </div>
         <AdminDialogFooter
           primaryButtonName="Save"
@@ -321,8 +310,7 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
           open={state.openResetPassword}
           onClose={() => dispatch({ openResetPassword: false })}
           user={user}
-          onConfirm={(temporaryPassword) => {
-            dispatch({ temporaryPassword });
+          onConfirm={() => {
             queryClient.invalidateQueries({
               queryKey: ["admin", "users"],
             });

@@ -80,7 +80,6 @@ from utilities.config import settings
 router = APIRouter(
     prefix="/app/mcp-oauth",
     tags=["app"],
-    dependencies=[Depends(auth_helpers.check_origin)],
 )
 
 # --- Network access ---------------------------------------------------------------------

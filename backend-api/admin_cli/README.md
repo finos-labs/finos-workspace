@@ -218,7 +218,9 @@ Create `update-entity.json`:
 - `--last-name` (string, required) - Last name
 - `--role` (admin|developer|user, optional) - User type (default: user). Admins administer the entity; admins and developers may add their own connections (data backends, MCP servers, custom Copilots, file uploads); users work with what the entity's roles give them.
 
-The command returns a temporary password for the new user.
+The command prints the link with which the new user sets their password, to give to
+them: it works once, within 24 hours. Until then the account has no password anyone
+knows.
 
 ### 6. Remove a User
 
@@ -250,7 +252,9 @@ The command returns a temporary password for the new user.
 ./workspace-admin user reset-password <user-email>
 ```
 
-Returns a new temporary password.
+The user's password stops working and every session of the user ends. Prints the link
+that sets a new password, to give to the user: it works once, within 24 hours, and a newer
+link replaces it.
 
 ### 9. Export a User's Data
 
@@ -343,7 +347,7 @@ docker run -d --name workspace -p 3000:3000 \
     lite
 
 docker exec -it workspace workspace-import /import/workspace-export-<email>-<stamp>.zip
-docker exec workspace credentials   # admin login, then set the user's password
+docker exec -it workspace credentials   # set the admin's password, then the user's
 ```
 
 The imported account has **no usable password** — none is exported. The Lite
@@ -547,7 +551,7 @@ user = client.user_create(
     last_name="<last name>",
     role="user",  # or "developer" or "admin"
 )
-print(f"Temp password: {user['temporary_password']}")
+print(f"Link that sets the password: {user['link']}")
 
 # List users
 users = client.user_list(page=1, size=100)
@@ -557,7 +561,7 @@ user = client.user_get_by_email("<user-email>")
 
 # Reset password
 result = client.user_reset_password("user-uuid")
-print(f"New password: {result['temporary_password']}")
+print(f"Link that sets a new password: {result['link']}")
 
 # Delete user
 client.user_delete("user-uuid")
@@ -677,7 +681,7 @@ admin = client.user_create(
     last_name="<last name>",
     role="admin",
 )
-print(f"Admin password: {admin['temporary_password']}")
+print(f"Admin's password link: {admin['link']}")
 
 analyst = client.user_create(
     entity_uuid=entity["entity_uuid"],
@@ -686,7 +690,7 @@ analyst = client.user_create(
     last_name="<last name>",
     role="user",
 )
-print(f"Analyst password: {analyst['temporary_password']}")
+print(f"Analyst's password link: {analyst['link']}")
 
 # Update entity
 client.entity_update(entity["entity_uuid"], sharing_enabled=True)

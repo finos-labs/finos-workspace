@@ -86,9 +86,12 @@ done
 
 if [ "$SEED" = 1 ]; then
   echo ">> seeding admin user (init_users)"
-  # A new administrator's password is printed once: show that line, pass it as ADMIN_PASSWORD
-  docker exec fastapi sh -c "cd /opt/code && python -m scripts.init_users" 2>/dev/null | \
-    grep "shown only this once" || echo "   (no new administrator — DB may already be seeded)"
+  docker exec fastapi sh -c "cd /opt/code && python -m scripts.init_users" >/dev/null 2>&1 || \
+    echo "   (init_users failed)"
+  # The administrator gets the password the simulator signs in with, read from standard input
+  printf '%s\n' "${ADMIN_PASSWORD:?set ADMIN_EMAIL and ADMIN_PASSWORD}" | \
+    docker exec -i fastapi sh -c 'cd /opt/code && python -m scripts.init_users --new-password "$1"' \
+      _ "${ADMIN_EMAIL:?set ADMIN_EMAIL and ADMIN_PASSWORD}"
 fi
 
 if [ "$NORUN" = 1 ]; then
