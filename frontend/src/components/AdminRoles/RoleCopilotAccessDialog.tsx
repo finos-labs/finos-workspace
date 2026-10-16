@@ -1,9 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { fetchDefaultAgent } from "~/api/auth.api";
 import { getRoleCopilotAccess, putRoleCopilotAccess } from "~/api/entity_roles.api";
-import { useShallowCopilotStore } from "~/lib/state/copilot";
-import { ALL_MCP_TOOLS, normalizeMcpUrl } from "~/lib/state/copilotAccess";
+import { copilotModels, useShallowCopilotStore } from "~/lib/state/copilot";
+import {
+  ALL_MCP_TOOLS,
+  grantAgentId,
+  normalizeMcpUrl,
+} from "~/lib/state/copilotAccess";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import { Button } from "../ds/atoms/Button";
 import { Checkbox } from "../ds/atoms/Checkbox";
@@ -31,7 +36,7 @@ const splitKey = (key: string) => key.split("\u0000") as [string, string];
 
 /**
  * Lets an admin choose the Copilot models and the MCP servers and tools that the users of
- * a role may use. A role that grants nothing of a kind leaves that kind unrestricted.
+ * a role may use. Users may use only what one of their roles grants.
  */
 export default function RoleCopilotAccessDialog({ open, onClose, role }: Props) {
   const queryClient = useQueryClient();
@@ -50,6 +55,13 @@ export default function RoleCopilotAccessDialog({ open, onClose, role }: Props) 
     staleTime: 0,
   });
 
+  // The chat loads the default agent's descriptor; this page has to read it itself
+  const { data: defaultAgent } = useQuery({
+    queryKey: ["defaultAgent"],
+    queryFn: ({ signal }) => fetchDefaultAgent(signal),
+    enabled: open,
+  });
+
   const [models, setModels] = useState<Set<string>>(new Set());
   const [mcp, setMcp] = useState<Set<string>>(new Set());
 
@@ -63,16 +75,16 @@ export default function RoleCopilotAccessDialog({ open, onClose, role }: Props) 
   const agents = useMemo<AgentModels[]>(() => {
     const byId = new Map<string, AgentModels>();
     const copilots = [
+      defaultAgent,
       selectedCopilot,
       ...externalCopilotHolders.flatMap((holder) => holder.copilots),
     ];
     for (const copilot of copilots) {
-      if (!copilot?.models?.length || byId.has(copilot.id)) continue;
-      byId.set(copilot.id, {
-        agentId: copilot.id,
-        name: copilot.name,
-        models: copilot.models,
-      });
+      const models = copilotModels(copilot);
+      if (!copilot || !models.length) continue;
+      const agentId = grantAgentId(copilot.id);
+      if (byId.has(agentId)) continue;
+      byId.set(agentId, { agentId, name: copilot.name, models });
     }
     for (const g of granted?.models ?? []) {
       const agent = byId.get(g.agent_id) ?? {
@@ -86,7 +98,7 @@ export default function RoleCopilotAccessDialog({ open, onClose, role }: Props) 
       byId.set(g.agent_id, agent);
     }
     return [...byId.values()];
-  }, [selectedCopilot, externalCopilotHolders, granted]);
+  }, [defaultAgent, selectedCopilot, externalCopilotHolders, granted]);
 
   const mcpServers = useMemo<McpServerTools[]>(() => {
     const byUrl = new Map<string, McpServerTools>();
@@ -151,9 +163,8 @@ export default function RoleCopilotAccessDialog({ open, onClose, role }: Props) 
     >
       <DialogTitle>Copilot access - {role.name}</DialogTitle>
       <p className="body-xs-regular text-ds-text-caption">
-        Choose what the members of this role may use in the Copilot. When no model or no
-        tool is chosen, that kind stays open to them. When their roles choose some, they
-        may use those and nothing else.
+        Choose what the members of this role may use in the Copilot. They may use the
+        models and tools that one of their roles grants, and nothing else.
       </p>
 
       {!granted ? (

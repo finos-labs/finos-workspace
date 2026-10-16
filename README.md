@@ -27,17 +27,28 @@ docker compose up --build        # on Apple silicon: PLATFORM=linux/arm64 docker
 `create_local_env` writes three files, none of which git tracks:
 
 - `envs/.env` starts from `envs/.env.example`, points it at the compose services and fills in
-  `JWT_SECRET`, `WORKSPACE_AUTH_TOKEN` (a JWT signed with it) and `WORKSPACE_AES_KEY` (16 characters).
+  random keys: `JWT_SECRET`, `WORKSPACE_AUTH_TOKEN` (a JWT signed with it), `WORKSPACE_AES_KEY`
+  (32 bytes, base64url: it encrypts the credentials stored in the database) and
+  `LOCAL_STORAGE_SECRET_KEY`. It names the origins of the web app and the admin panel in
+  `BACKEND_CORS_ORIGINS`.
 - `scripts/cfgs/config.toml` names the organization (`--entity-name`) and the administrator that
-  the first start creates. The administrator's password is random and is kept in that file;
-  `--admin-password` chooses one instead.
+  the first start creates. It holds no password.
 - `user_create.json` starts empty. Compose mounts it into the containers and the first start fills it in.
 
 It refuses to overwrite the first two unless you pass `--force`.
 
 The web app is on <http://localhost:3000>, the admin panel on <http://localhost:3001> and the API on <http://localhost:8000>. The first start
 creates the organization and the administrator listed in
-`backend-api/backend/scripts/cfgs/config.toml`; sign in with that email and password.
+`backend-api/backend/scripts/cfgs/config.toml`, with a random password that the `init` service prints
+once in its log and no file keeps:
+
+```bash
+docker compose logs init
+```
+
+Sign in with that email and password, and change the password. For a new one-time password
+(the web app asks you to replace it when you sign in), run
+`docker compose run --rm init python -m scripts.init_users --new-password <your-email>`.
 `docker compose down -v` removes the databases too.
 
 The web image is configured when the container starts: `BACKEND_URL` and `AI_API_URL` in `docker-compose.yml` become the

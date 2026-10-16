@@ -20,8 +20,24 @@ For local Docker development the important host-facing values are:
 
 ```ini
 MODE=onprem
-DISABLE_CORS=1
+BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:3001","http://localhost:1420","http://localhost:5173"]
 ```
+
+`BACKEND_CORS_ORIGINS` names the origins of the web app and the admin panel exactly as the
+browser sends them (here: the compose stack's web app and admin panel, and their dev
+servers); it is required. Only these origins pass CORS, and the session cookies are accepted
+only from them. To use the Excel add-in against this stack, add its `https` origin (its
+`VITE_ADDIN_BASE_URL`, e.g. `https://localhost:1420`) to `BACKEND_CORS_ORIGINS`. An MCP server on a
+private network (a compose service, a host on your LAN) must be listed by host name in
+`ALLOWED_MCP_HOSTNAMES`, because the API reaches users' MCP servers only at public
+addresses.
+
+The web app and the admin panel keep their sessions in HttpOnly cookies
+(`__Host-ws_session`, `__Host-ws_admin`), which browsers send to the API only when it is
+on the same site as the page. In a deployment, serve the API under the web app's
+registrable domain (for example `api.<your-domain>` beside `app.<your-domain>`), or under
+`/api` of the web app's own origin as Lite does, and use HTTPS. On `http://localhost`,
+Chromium and Firefox accept these secure cookies.
 
 `docker-compose-local-dev.yml` overrides `DB_HOST` and `REDIS_HOST` inside the
 API and RQ worker containers to use Docker networking (`mysql`, `redis`), so the
@@ -59,11 +75,12 @@ code changes.
 
 ### 2. Initialize admin users and entities
 
-Name the organization and its first administrator once. The administrator's password is
-random unless you pass `--admin-password`; it is kept in the generated
-`backend/scripts/cfgs/config.toml`, which git ignores. (`create_local_env` also writes
-`backend/envs/.env` for the full compose stack; `--config-only` writes just the seed config, which
-is what this local-development setup needs.)
+Name the organization and its first administrator once, in the generated
+`backend/scripts/cfgs/config.toml`, which git ignores. It holds no password: `init_users`
+makes one up when it creates the account and prints it once, on the terminal it runs in.
+(`create_local_env` also writes `backend/envs/.env` for the full compose stack;
+`--config-only` writes just the seed config, which is what this local-development setup
+needs.)
 
 ```bash
 cd backend
@@ -84,26 +101,40 @@ cd backend
 
 This reads entity/admin configuration from `backend/scripts/cfgs/config.toml` and:
 
-- Creates the entity named there, with Admin and User permission maps
-- Creates the administrator named there as a superuser
+- Creates the entity named there, with Admin, Developer and User permission maps
+- Creates the administrator named there as a superuser, and prints their password once
+  (an administrator who exists keeps theirs)
 - Writes `user_create.json` with UUIDs needed by the running app
+
+For a new one-time password, which the web app asks you to replace when you sign in with it:
+`../.venv/bin/python -m scripts.init_users --new-password <your-email>`.
 
 ### 3. Verify authentication
 
+Sign in as a tool that is not a browser (`"source":"cli"`), which gets its session as a
+bearer token; the password is read from the terminal, so it stays out of the shell
+history:
+
 ```bash
-curl -s http://localhost:8000/app/login \
-  -X POST \
-  -H "Content-Type: application/json" \
-  -d '{"email":"<your-email>","password":"<the password in config.toml>","remember":false}'
+read -rs -p "Password: " PASSWORD && echo
+jq -n --arg email "<your-email>" --arg password "$PASSWORD" \
+  '{email: $email, password: $password, source: "cli"}' |
+  curl -s http://localhost:8000/app/login \
+    -X POST \
+    -H "Content-Type: application/json" \
+    --data-binary @-
 ```
 
-A successful response returns JSON with `access_token`, `uuid`, etc.
+A successful response returns JSON with `access_token` (a bearer for 12 hours), `uuid`,
+etc. The web app's own sign-in returns no token: it sets the session cookie. End the
+session with `POST /logout` and the header `Authorization: Bearer <access_token>`.
 
-You can also use the admin CLI:
+You can also use the admin CLI, which signs in the same way and keeps the token in the
+shell's environment only:
 
 ```bash
 cd admin_cli
-./workspace-admin auth login --api-url http://localhost:8000
+eval "$(./workspace-admin auth login --api-url http://localhost:8000)"
 ```
 
 ## UI Testing Workflow
@@ -116,7 +147,8 @@ docker compose -f docker-compose-local-dev.yml up --build --watch
 
 2. Keep that command running in its own shell window.
 
-3. Start the frontend separately and point it at `http://localhost:8000`.
+3. Start the frontend separately and point it at `http://localhost:8000`. Its dev
+   server's origin (`http://localhost:1420`) must be one of `BACKEND_CORS_ORIGINS`.
 
 4. Edit files under `backend/` normally. The FastAPI container reloads
 automatically, and Compose restarts the RQ worker container when backend files
@@ -182,9 +214,15 @@ cd backend
   that automatically bcrypt-hashes values on write. Code that inserts or updates
   passwords must pass the **plaintext** password — never pre-hash it.
 
-- The `WORKSPACE_AUTH_TOKEN` in `.env` is the service-to-service auth token. When
-  `DISABLE_CORS=1`, the `/app/*` endpoints auto-authenticate using this token,
-  so no `X-Workspace-Authorization` header is needed from localhost clients.
+- The `WORKSPACE_AUTH_TOKEN` in `.env` is the service-to-service auth token. The
+  `/app/*` endpoints validate it for requests from `BACKEND_CORS_ORIGINS` (and from the
+  page itself, without an Origin), so browsers send no `X-Workspace-Authorization`
+  header; a service from anywhere else sends it.
+
+- Sessions are random tokens whose SHA-256 hash the `session` table stores. The web app
+  (`X-Workspace-Client: web`) and the admin panel (`X-Workspace-Client: admin`) ride
+  their HttpOnly cookies; the Excel add-in and the admin CLI send
+  `Authorization: Bearer`. A session expires when its time is up, with no grace period.
 
 - `user_create.json` is both an output of `init_users.py` and an input to
   `AppSettings.__init__` (which sets `DEVELOPER_MAPPING` and `ON_PREM_ADMIN_MAPPING`).

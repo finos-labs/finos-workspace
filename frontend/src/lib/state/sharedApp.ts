@@ -4,6 +4,7 @@ import { persist, subscribeWithSelector } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
+import { withoutEndpointCredentials } from "~/lib/utils/endpointCredentials";
 import type { Group, Item, Selector, Widget } from "./app";
 
 export type SharedItem = {
@@ -117,6 +118,25 @@ export const useSharedAppStore = createWithEqualityFn<SharedAppState>()(
       }),
       {
         name: "shared-app-storage",
+        // Another user's dashboard is persisted without any data backend credentials
+        partialize: ({ sharedItems }) => ({
+          sharedItems:
+            sharedItems &&
+            Object.fromEntries(
+              Object.entries(sharedItems).map(([id, item]) => [
+                id,
+                item.data?.widgets
+                  ? {
+                      ...item,
+                      data: {
+                        ...item.data,
+                        widgets: item.data.widgets.map(withoutEndpointCredentials),
+                      },
+                    }
+                  : item,
+              ]),
+            ),
+        }),
       },
     ),
   ),

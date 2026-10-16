@@ -31,7 +31,7 @@ export default function AdminEntities() {
   return (
     <SettingsLayout
       title="Entity Management"
-      description="Organizations, their seats and entitlements, and how they relate."
+      description="Organizations, whether they may share, and how they relate."
       tabs={TABS}
       defaultTab="entities"
     >

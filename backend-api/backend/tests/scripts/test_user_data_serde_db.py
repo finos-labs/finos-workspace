@@ -15,6 +15,8 @@ module's contract and is covered in ``test_user_data_scope.py``. This file is
 only about value fidelity.
 """
 
+import json
+import secrets
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -23,9 +25,12 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
 from api import base, models
+from api.crypto import AtRestCipher
 from api.models.model_helpers import Base
 from scripts import user_data_scope as scope
 from scripts import user_data_serde as serde
+
+SEALER = AtRestCipher(secrets.token_urlsafe(32))
 
 USER_UUID = uuid4()
 CHAT_UUID = uuid4()
@@ -171,7 +176,7 @@ def archive(source_db) -> dict[str, str]:
         spec = scope.spec_by_table(table)
         original = source_db.get(spec.model, SAMPLES[table].uuid)
         assert original is not None, f"{table} was not persisted to the source DB"
-        lines[table] = serde.dumps_line(serde.encode_row(spec, original))
+        lines[table] = serde.dumps_line(serde.encode_row(spec, original, SEALER))
     return lines
 
 
@@ -187,7 +192,7 @@ def target_db(archive):
     with Session(engine) as session:
         for table, line in archive.items():
             spec = scope.spec_by_table(table)
-            kwargs = serde.decode_row(spec, serde.loads_line(line))
+            kwargs = serde.decode_row(spec, serde.loads_line(line), SEALER)
             kwargs |= scope.import_overrides(spec)
             session.add(spec.model(**kwargs))
         session.commit()
@@ -209,16 +214,28 @@ def test_row_survives_export_and_reimport(table, source_db, target_db):
     assert reimported is not None, "row did not land in the target database"
 
     forced = set(scope.import_overrides(spec))
-    before = serde.encode_row(spec, original)
-    after = serde.encode_row(spec, reimported)
+    before = _opened(table, serde.encode_row(spec, original, SEALER))
+    after = _opened(table, serde.encode_row(spec, reimported, SEALER))
 
     assert {k: v for k, v in after.items() if k not in forced} == {
         k: v for k, v in before.items() if k not in forced
     }
 
 
-def test_encrypted_column_is_ciphertext_at_rest_but_plaintext_in_the_archive(source_db):
-    """The archive must be portable across instances with different AES keys."""
+def _opened(table: str, encoded: dict) -> dict:
+    """An encoded row with its sealed credentials opened: a seal differs on every
+    encoding (fresh nonce), what it holds must not."""
+    return {
+        k: json.loads(SEALER.decrypt(v["__sealed__"], f"{table}.{k}"))
+        if isinstance(v, dict) and set(v) == {"__sealed__"}
+        else v
+        for k, v in encoded.items()
+    }
+
+
+def test_credential_is_ciphertext_in_the_database_and_in_the_archive(source_db):
+    """Encrypted under the instance key at rest, sealed under the export key in the
+    archive, and readable again with the export key."""
     spec = scope.spec_by_table("custom_copilot")
     row = source_db.get(models.CustomCopilot, SAMPLES["custom_copilot"].uuid)
 
@@ -228,7 +245,9 @@ def test_encrypted_column_is_ciphertext_at_rest_but_plaintext_in_the_archive(sou
     ).scalar_one()
 
     assert "sk-copilot-secret" not in str(at_rest), "should be encrypted in the DB"
-    assert serde.encode_row(spec, row)["headers"] == {
+    line = serde.dumps_line(serde.encode_row(spec, row, SEALER))
+    assert "sk-copilot-secret" not in line, "should be sealed in the archive"
+    assert serde.decode_row(spec, serde.loads_line(line), SEALER)["headers"] == {
         "Authorization": "Bearer sk-copilot-secret"
     }
 
@@ -248,7 +267,7 @@ def test_password_never_reaches_the_archive(source_db):
     spec = scope.spec_by_table("user")
     user = source_db.get(models.User, USER_UUID)
 
-    encoded = serde.encode_row(spec, user)
+    encoded = serde.encode_row(spec, user, SEALER)
     line = serde.dumps_line(encoded)
 
     assert "password" not in encoded, "the column itself must not be exported"
@@ -293,7 +312,7 @@ def test_stored_file_survives_the_codec_even_though_it_is_never_imported():
     assert "stored_file" in scope.NOT_IMPORTED
 
     spec = scope.spec_by_table("stored_file")
-    encoded = serde.encode_row(spec, SAMPLES["stored_file"])
+    encoded = serde.encode_row(spec, SAMPLES["stored_file"], SEALER)
 
     assert encoded["s3_file_name"] == "7f3a-report.pdf"
     assert encoded["original_file_name"] == "report.pdf"

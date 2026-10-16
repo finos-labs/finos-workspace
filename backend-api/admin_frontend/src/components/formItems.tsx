@@ -1,9 +1,9 @@
 import { Form } from "ui/Form";
-import React, { FormEvent } from "react";
+import React, { FormEvent, type ReactNode } from "react";
 import type { FieldValues, SubmitHandler, UseFormReturn } from "react-hook-form";
 
 interface FormProps<T extends FieldValues> {
-  children: JSX.Element[];
+  children: ReactNode;
   onSubmit: SubmitHandler<T>;
   warning: string;
   form: UseFormReturn<T>;

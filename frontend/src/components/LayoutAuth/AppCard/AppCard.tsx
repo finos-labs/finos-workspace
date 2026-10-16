@@ -17,15 +17,14 @@ import { Button } from "~/components/ds/atoms/Button";
 import { ConfirmDialog } from "~/components/ds/dialogs/ConfirmDialog";
 import { cn } from "~/components/ds/utils";
 import { AuthenticatedAvatar } from "~/components/General/Avatar";
-import FeatureLock from "~/components/General/FeatureLock";
 import { HoverPopover } from "~/components/HoverPopover";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { useCanSubmitApp } from "~/lib/appSubmissionFlag";
 import { getConfig } from "~/lib/runtimeConfig";
+import { canShare, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { slugify } from "~/lib/utils/utils";
@@ -52,13 +51,9 @@ const AppCard = memo<AppCardProps>((props) => {
       setShareUserAppsPopupId: state.setShareUserAppsPopupId,
     }),
   );
-  const isFullTier = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.tier === "full",
-  );
+  const mayShare = useShallowAccessStore((state) => canShare(state.access));
   const navigate = useNavigate();
   const canSubmitApp = useCanSubmitApp();
-
-  const isSaveAppLocked = !isFullTier;
 
   const { source, refreshApiSourceById } = useShallowBackendConnectorStore((state) => ({
     source: template.source?.id ? state.getApiSourceById(template.source.id) : null,
@@ -246,7 +241,6 @@ const AppCard = memo<AppCardProps>((props) => {
     if (template.creator && isPersonalApp) {
       elements.unshift({
         label: "Edit",
-        locked: isSaveAppLocked,
         onClick: () =>
           setEditAppDialog({
             isOpen: true,
@@ -290,7 +284,6 @@ const AppCard = memo<AppCardProps>((props) => {
   }, [
     isBackendApp,
     isPersonalApp,
-    isSaveAppLocked,
     setDeleteConfirm,
     template,
     navigate,
@@ -562,23 +555,20 @@ const AppCard = memo<AppCardProps>((props) => {
           )}
           {bottomRight ?? (
             <div className="flex items-center gap-0.5">
-              {isPersonalApp && template.onDelete && template.creator && (
-                <FeatureLock isLocked={isSaveAppLocked} tooltipPosition="top">
-                  <Tooltip message="Share app" position="top">
-                    <Button
-                      variant="secondary"
-                      size="xs"
-                      icon
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (isSaveAppLocked) return;
-                        setShareUserAppsPopupId(template.id);
-                      }}
-                    >
-                      <Icon id="share-07" className="size-3.5 text-ds-text-body" />
-                    </Button>
-                  </Tooltip>
-                </FeatureLock>
+              {mayShare && isPersonalApp && template.onDelete && template.creator && (
+                <Tooltip message="Share app" position="top">
+                  <Button
+                    variant="secondary"
+                    size="xs"
+                    icon
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShareUserAppsPopupId(template.id);
+                    }}
+                  >
+                    <Icon id="share-07" className="size-3.5 text-ds-text-body" />
+                  </Button>
+                </Tooltip>
               )}
               {isBackendApp && template.type !== "shared" && (
                 <Tooltip

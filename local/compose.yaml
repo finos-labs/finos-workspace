@@ -54,7 +54,8 @@ services:
       retries: 20
 
   # Runs to completion before the backend starts: applies the migrations, then
-  # creates the organization and administrator from scripts/cfgs/config.toml and
+  # creates the organization and administrator from scripts/cfgs/config.toml
+  # (printing the administrator's password once, in this service's log) and
   # writes user_create.json, which the backend reads at start. Safe to re-run;
   # it keeps what exists.
   init:

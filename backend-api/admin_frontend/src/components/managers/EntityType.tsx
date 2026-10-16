@@ -17,7 +17,6 @@ const entityTypeSchema = z.object({
 type TEntityType = z.infer<typeof entityTypeSchema>;
 
 export function EntityTypeSubmitForm({
-  user,
   setShowAdd,
   retrieveItems,
   data,
@@ -42,7 +41,6 @@ export function EntityTypeSubmitForm({
         values.entityType,
         values.code,
         values.permissions,
-        user.accessToken,
       );
       await handleRequest(response, setWarning, setShowAdd, retrieveItems);
     } else {
@@ -50,7 +48,6 @@ export function EntityTypeSubmitForm({
         values.entityType,
         values.code,
         values.permissions,
-        user.accessToken,
       );
       await handleRequest(response, setWarning, setShowAdd, retrieveItems);
     }

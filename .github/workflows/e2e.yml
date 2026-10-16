@@ -28,10 +28,7 @@ jobs:
         run: |
           EMAIL="e2e-admin@example.com"
           python3 -m scripts.create_local_env --admin-email "$EMAIL" --entity-name "End-to-end"
-          PASSWORD="$(python3 -c "import tomllib; print(tomllib.load(open('scripts/cfgs/config.toml', 'rb'))['admins'][0]['password'])")"
-          echo "::add-mask::$PASSWORD"
           echo "E2E_USER_EMAIL=$EMAIL" >> "$GITHUB_ENV"
-          echo "E2E_USER_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
 
       - name: Build and start the stack
         run: docker compose up -d --build
@@ -45,6 +42,14 @@ jobs:
             done
             curl -fsS -o /dev/null "$url"
           done
+
+      # The first start's init service prints the new administrator's password, once
+      - name: Read the administrator's password
+        run: |
+          PASSWORD="$(docker compose logs --no-log-prefix init | sed -n "s/^The administrator $E2E_USER_EMAIL was created\. Password, shown only this once: //p")"
+          test -n "$PASSWORD"
+          echo "::add-mask::$PASSWORD"
+          echo "E2E_USER_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
 
       - uses: oven-sh/setup-bun@v2
 

@@ -5,6 +5,7 @@ import {
   getDefaultCopilot,
   MAX_COPILOT_LINKS,
 } from "~/lib/constants";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import type { CopilotContextItem } from "~/lib/state/copilot";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
@@ -18,13 +19,12 @@ import {
   extractUrls,
 } from "./useAiFetchRequestInit";
 import { useGetCopilotRequestHeaders } from "./useGetCopilotRequestHeaders";
-import { useGetCustomApiKeys } from "./useGetCustomApiKeys";
 import { useGetFinalMessagesAndWidgets } from "./useGetFinalMessagesAndWidgets";
 
 export function useEnhancePrompt() {
   const [isEnhancing, setIsEnhancing] = useState(false);
 
-  const userToken = useShallowAuthStore((s) => s.user?.token);
+  const signedIn = useShallowAuthStore((s) => s.user !== null);
   const getCurrentChatArtifacts = useShallowCopilotStore(
     (s) => s.getCurrentChatArtifacts,
   );
@@ -44,7 +44,6 @@ export function useEnhancePrompt() {
   const customFeatureStates = useShallowCopilotStore((s) => s.customFeatureStates);
 
   const getCopilotRequestHeaders = useGetCopilotRequestHeaders();
-  const getCustomApiKeys = useGetCustomApiKeys();
   const getFinalMessagesAndWidgets = useGetFinalMessagesAndWidgets();
   const getEnabledToolsForAgent = useShallowMcpToolsStore(
     (s) => s.getEnabledToolsForAgent,
@@ -96,7 +95,7 @@ export function useEnhancePrompt() {
 
   const enhancePrompt = useCallback(
     async (promptText: string): Promise<string> => {
-      if (!userToken) {
+      if (!signedIn) {
         throw new Error("User not authenticated");
       }
 
@@ -105,7 +104,6 @@ export function useEnhancePrompt() {
       try {
         const { selectedWidgets, temporaryWidgets, allWidgets, workspaceState } =
           getCopilotWidgets();
-        const customApiKeys = getCustomApiKeys();
 
         // Always use getDefaultCopilot() features for prompt enhancement
         const features = getDefaultCopilot().features;
@@ -167,14 +165,13 @@ export function useEnhancePrompt() {
           ],
           context: context,
           urls: extractUrls(promptText, MAX_COPILOT_LINKS),
-          api_keys: customApiKeys,
           workspace_state: workspaceState,
           workspace_options: workspaceOptions,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           tools: enabledTools,
         };
 
-        const response = await fetch(`${getAiApiUrl()}/v1/enhance_prompt`, {
+        const response = await fetchAgent(`${getAiApiUrl()}/v1/enhance_prompt`, {
           method: "POST",
           headers: getCopilotRequestHeaders(undefined, getDefaultCopilot()),
           body: JSON.stringify(payload),
@@ -203,9 +200,8 @@ export function useEnhancePrompt() {
       }
     },
     [
-      userToken,
+      signedIn,
       getCopilotWidgets,
-      getCustomApiKeys,
       getFinalMessagesAndWidgets,
       getCurrentChatArtifacts,
       widgetSubsetData,

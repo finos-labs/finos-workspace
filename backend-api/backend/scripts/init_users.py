@@ -1,8 +1,22 @@
+"""Create the organizations and administrators that ``scripts/cfgs/*.toml`` name.
+
+    python -m scripts.init_users                         # what the configs name; safe to rerun
+    python -m scripts.init_users --new-password <email>  # a new one-time password for an admin
+
+A config names an administrator by address only. When the account does not exist yet, it is
+created with a random password, which is printed once, here, and kept nowhere. An
+administrator who exists keeps the password they have. One who has lost it gets a new
+one-time password with ``--new-password``: it is printed once, every session of the account
+ends, and the web app asks for a password of their own when they sign in with it.
+"""
+
+import argparse
+import asyncio
 import json
+import sys
 import tomllib
 from collections.abc import Callable, Coroutine
 from contextlib import suppress
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -10,15 +24,22 @@ from uuid import UUID
 from fastapi import BackgroundTasks
 from fastapi.encoders import jsonable_encoder
 from loguru import logger
-from pydantic import BaseModel, Field, SecretStr, field_validator
-from sqlalchemy import insert, select, update
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import base, schemas
 from api.base import clean_email
 from api.helpers import create_developer_mapping
-from api.models import Entity, EntityType, PermissionsEntityMap, User
-from routers.app.helpers import insert_entity_data_bundle
+from api.models import (
+    ADMIN_TYPE,
+    USER_TYPE,
+    Entity,
+    EntityType,
+    PermissionsEntityMap,
+    Session,
+    User,
+)
 from routers.app.index import process_create_user, register_app_user
 from routers.entity import add_entity, aget_write_db
 
@@ -32,6 +53,13 @@ USER_CREATE_JSON_PATH = BACKEND_DIR / "user_create.json"
 USER_CREATE_JSON_PATH.touch(exist_ok=True)
 
 
+def show(text: str) -> None:
+    """Prints a line for the person running the script: on their terminal, or once in the
+    log of the container that ran it. Never through the logger, which may ship lines on."""
+    sys.stdout.write(f"{text}\n")
+    sys.stdout.flush()
+
+
 class UserConfig(BaseModel):
     email: str
     first_name: str
@@ -39,13 +67,11 @@ class UserConfig(BaseModel):
 
 
 class AdminUser(UserConfig):
-    password: SecretStr
     uuid: UUID | None = None
 
 
 class EntityConfig(BaseModel):
     name: str
-    seats: int
     aum: int
     company_type: str
     organization_size: str
@@ -73,22 +99,6 @@ async def call_func[**P, T](
         func = func.__wrapped__
 
     return await func(*args, **kwargs)
-
-
-DEFAULT_DATA_BUNDLE = schemas.DataBundle(
-    bundle_name="On-Premise",
-    except_widgets=[],
-    except_dashboard_templates=[],
-    except_team_collaboration=None,
-    excel_add_in=1,
-    data_export=1,
-    providers=None,
-    dashboards_at_launch=[],
-    my_dashboards=[],
-    invite_your_colleagues=0,
-    number_copilot_calls_day=10_000,
-    total_file_upload_size_gb=10,
-)
 
 
 class SetupConfig:
@@ -123,12 +133,15 @@ class SetupConfig:
         self.admin_user = admin_users[0]
 
     async def create_admin(self, admin_user: AdminUser, permissions_uuid: UUID) -> User:
+        """The administrator the config names. A new account gets a random password, shown
+        once and kept nowhere; an account that exists keeps its password."""
         logger.info(f"Checking for admin: {admin_user.email}")
         query = select(User).where(User.email == admin_user.email)
         result = await self.db.execute(query)
 
         if (user := result.scalars().first()) is None:
             logger.info(f"Creating admin: {admin_user.email} with is_superuser=1")
+            password = base.random_password()
             query = insert(User).values(
                 email=admin_user.email,
                 first_name=admin_user.first_name,
@@ -137,32 +150,25 @@ class SetupConfig:
                 clean_email=clean_email(admin_user.email),
                 permissions_uuid=permissions_uuid,
                 is_superuser=1,
-                password=admin_user.password.get_secret_value(),
-                billing_active=1,
+                password=password,
             )
             result = await self.db.execute(query)
             await self.db.commit()
+            show(
+                f"The administrator {admin_user.email} was created. "
+                f"Password, shown only this once: {password}"
+            )
 
             return await self.create_admin(admin_user, permissions_uuid)
 
-        password_ok = False
-        if user.password:
-            with suppress(Exception):
-                password_ok = base.verify_password(
-                    admin_user.password.get_secret_value(), user.password
-                )
-        if not user.is_superuser or not password_ok:
+        if not (user.is_superuser and user.confirmed):
             logger.info(
                 f"Updating admin: {admin_user.email} (is_superuser={user.is_superuser})"
             )
             stmt = (
                 update(User)
                 .where(User.uuid == user.uuid)
-                .values(
-                    is_superuser=1,
-                    confirmed=1,
-                    password=admin_user.password.get_secret_value(),
-                )
+                .values(is_superuser=1, confirmed=1)
             )
             await self.db.execute(stmt)
             await self.db.commit()
@@ -197,7 +203,6 @@ class SetupConfig:
                 email=main_admin.email,
                 admin_email=main_admin.email,
                 entity_code=str(entity_type_uuid),
-                expiration_date=datetime.now() + timedelta(days=365 * 50),
                 **self.config.entity.model_dump(),
             ),
         )
@@ -209,7 +214,6 @@ class SetupConfig:
         if (entity_uuid := result.scalars().first()) is None:
             entity_data = await self.create_entity()
             entity_uuid = entity_data["entity_uuid"]
-            await insert_entity_data_bundle(self.db, entity_uuid, DEFAULT_DATA_BUNDLE)
 
         query = select(PermissionsEntityMap).where(
             PermissionsEntityMap.entity_uuid == entity_uuid
@@ -221,11 +225,11 @@ class SetupConfig:
         for permission in result.scalars().all():
             permissions_map[permission.name] = permission.uuid
 
-        await self.init_admins(permissions_map["Admin"])
+        await self.init_admins(permissions_map[ADMIN_TYPE])
 
         user_create = {
-            "on_prem_admin_uuid": permissions_map["Admin"],
-            "permissions_uuid": permissions_map["User"],
+            "on_prem_admin_uuid": permissions_map[ADMIN_TYPE],
+            "permissions_uuid": permissions_map[USER_TYPE],
         }
         with USER_CREATE_JSON_PATH.open("w", encoding="utf-8", newline="\n") as f:
             f.write(json.dumps(jsonable_encoder(user_create), indent=4))
@@ -233,7 +237,7 @@ class SetupConfig:
         for user in self.config.users:
             user_create = schemas.UserCreateAppAdmin(
                 email=user.email,
-                permissions_uuid=permissions_map["User"],
+                permissions_uuid=permissions_map[USER_TYPE],
                 first_name=user.first_name,
                 last_name=user.last_name,
             )
@@ -265,7 +269,54 @@ async def setup_configs():
             await SetupConfig(config, db).run()
 
 
-if __name__ == "__main__":
-    import asyncio
+async def new_password(db: AsyncSession, email: str) -> str | None:
+    """Give an administrator a new one-time password and end every session of theirs. The
+    web app asks for a password of their own when they sign in with it. None when ``email``
+    is not an administrator's."""
+    user = (await db.execute(select(User).where(User.email == email))).scalars().first()
+    if user is None or not user.is_superuser:
+        return None
 
+    password = base.random_password()
+    await db.execute(
+        update(User)
+        .where(User.uuid == user.uuid)
+        .values(password=password, temporary_password=True)
+    )
+    await db.execute(delete(Session).where(Session.user_uuid == user.uuid))
+    await db.commit()
+    return password
+
+
+async def show_new_password(email: str) -> int:
+    async for db in aget_write_db():
+        password = await new_password(db, email)
+    if password is None:
+        sys.stderr.write(f"{email} is not an administrator of this Workspace.\n")
+        return 1
+    show(
+        f"New one-time password of {email}: {password}\n"
+        "It is shown only this once and kept nowhere. Sign in with it, and the Workspace "
+        "asks you to choose your own."
+    )
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Create the organizations and administrators that scripts/cfgs/*.toml name."
+    )
+    parser.add_argument(
+        "--new-password",
+        metavar="EMAIL",
+        help="Instead, give the administrator EMAIL a new one-time password and print it",
+    )
+    args = parser.parse_args(argv)
+    if args.new_password:
+        return asyncio.run(show_new_password(args.new_password))
     asyncio.run(setup_configs())
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

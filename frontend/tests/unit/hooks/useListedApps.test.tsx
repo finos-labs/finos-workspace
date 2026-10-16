@@ -31,35 +31,54 @@ describe("useListedApps marketplace request", () => {
     );
   }
 
+  const fetchMock = vi.fn(async () => Response.json([]));
+
   beforeEach(() => {
-    vi.mocked(apiClient.get).mockResolvedValue({ data: [] });
+    vi.stubGlobal("fetch", fetchMock);
   });
 
   afterEach(() => {
     mockConfig.urls.marketplace = "";
-    vi.mocked(apiClient.get).mockReset();
+    vi.unstubAllGlobals();
+    fetchMock.mockClear();
   });
 
-  it("requests a remote marketplace cross-origin without auth", async () => {
+  /** The one request the hook made: its URL and init. */
+  async function listingRequest() {
+    const { result } = renderHook(() => useListedApps(), {
+      wrapper: createWrapper(),
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 3000 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    return { url, init, headers: new Headers(init.headers) };
+  }
+
+  it("asks the API for its public listing without Workspace credentials", async () => {
+    const { url, init, headers } = await listingRequest();
+
+    expect(url).toBe("http://localhost:3000/marketplace/apps");
+    expect(init.credentials).toBe("omit");
+    expect(headers.get("X-Workspace-Client")).toBeNull();
+    expect(headers.get("Authorization")).toBeNull();
+    expect(apiClient.get).not.toHaveBeenCalled();
+  });
+
+  it("asks a remote marketplace by its own base URL, without credentials too", async () => {
     mockConfig.urls.marketplace = "https://marketplace.test";
 
-    const { result } = renderHook(() => useListedApps(), {
-      wrapper: createWrapper(),
-    });
+    const { url, init } = await listingRequest();
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 3000 });
-    expect(apiClient.get).toHaveBeenCalledWith("/marketplace/apps", {
-      baseURL: "https://marketplace.test",
-      headers: { authorization: "" },
-    });
+    expect(url).toBe("https://marketplace.test/marketplace/apps");
+    expect(init.credentials).toBe("omit");
   });
 
-  it("requests the configured backend with default (authed) config without a remote marketplace", async () => {
+  it("fails the query when the listing is refused", async () => {
+    fetchMock.mockResolvedValueOnce(new Response("nope", { status: 503 }));
     const { result } = renderHook(() => useListedApps(), {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 3000 });
-    expect(apiClient.get).toHaveBeenCalledWith("/marketplace/apps", undefined);
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 3000 });
   });
 });

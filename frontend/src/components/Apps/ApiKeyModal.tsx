@@ -23,8 +23,8 @@ export type ApiKeySaveResult = { success: boolean; error?: string };
 
 /** Optional static-token MCP credential rendered alongside the API key fields. */
 export interface McpTokenAuth {
-  /** Existing token (already stripped of the `Bearer ` prefix). */
-  currentToken?: string;
+  /** Whether a token is saved; its value never comes back to the page. */
+  hasToken: boolean;
   /** Connection error to surface (e.g. an invalid-token failure). */
   error?: string;
   /** Receives the cleaned token (no `Bearer ` prefix). */
@@ -75,7 +75,7 @@ export function ApiKeyModal({
 
   const [state, dispatch] = useStateReducer({
     authValues: currentAuthValues,
-    mcpTokenValue: mcpToken?.currentToken ?? "",
+    mcpTokenValue: "",
     mcpErrorDismissed: false,
     isLoading: false,
     connectionError: null as string | null,
@@ -86,13 +86,13 @@ export function ApiKeyModal({
     (close?: boolean) => {
       dispatch({
         authValues: close ? {} : currentAuthValues,
-        mcpTokenValue: close ? "" : (mcpToken?.currentToken ?? ""),
+        mcpTokenValue: "",
         mcpErrorDismissed: false,
         connectionError: null,
       });
       if (close) onClose();
     },
-    [onClose, currentAuthValues, mcpToken?.currentToken],
+    [onClose, currentAuthValues],
   );
 
   const handleSave = useCallback(async () => {
@@ -111,11 +111,11 @@ export function ApiKeyModal({
           return;
         }
       }
-      // The MCP token is optional when an API key is also present; persist it
-      // only when the user actually entered or changed it.
+      // The MCP token is optional when an API key is also present; a new one
+      // entered here replaces the saved one.
       if (mcpToken) {
         const cleaned = stripBearerPrefix(state.mcpTokenValue);
-        if (cleaned && cleaned !== mcpToken.currentToken) mcpToken.onSave(cleaned);
+        if (cleaned) mcpToken.onSave(cleaned);
       }
       onClose();
     } finally {
@@ -249,7 +249,9 @@ export function ApiKeyModal({
                 label={hasApiFields ? "MCP token (optional)" : "MCP token"}
                 size="sm"
                 placeholder={
-                  mcpToken.currentToken ? "•••••••• (saved)" : "Paste your access token"
+                  mcpToken.hasToken
+                    ? "•••••••• (saved): paste a new one to replace it"
+                    : "Paste your access token"
                 }
                 value={state.mcpTokenValue}
                 onChange={(value) => {

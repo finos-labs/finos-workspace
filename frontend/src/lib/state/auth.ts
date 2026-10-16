@@ -1,25 +1,32 @@
 import { isEqual } from "lodash";
-import { persist, subscribeWithSelector } from "zustand/middleware";
+import { subscribeWithSelector } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { shallow } from "zustand/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
-import { logout } from "~/api/auth.api";
-import { getConfig } from "~/lib/runtimeConfig";
+import { setOnSessionRefused } from "~/api/api";
+import { getSession, logout } from "~/api/auth.api";
+import { getEnabledIdentityProviders } from "~/lib/identityProviders";
+import { useAccessStore } from "~/lib/state/access";
+import { clearAgentToken } from "~/lib/state/agentToken";
 import type { Selector } from "~/lib/state/app";
 import { useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
+import { clearIdpTokens, setIdpTokens } from "~/lib/state/idpTokens";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
 import { showNotification } from "~/lib/utils/toast";
-import type { LoginResponse } from "~/types/auth.type";
-import { useCopilotStore } from "./copilot";
+import type { LoginResponse, SessionResponse } from "~/types/auth.type";
+import { refreshExternalCopilotHolders, useCopilotStore } from "./copilot";
+import { useCopilotDataStore } from "./copilotData";
+import { usePromptLibraryStore } from "./promptLibrary";
 import { useSharedAppStore } from "./sharedApp";
+import { useSidebarStore } from "./sidebar";
 import { useThemeStore } from "./theme";
+import { useToastStore } from "./toast";
+import { useUserAppsStore } from "./userApps";
 import { useWorkspaceBridgeStore } from "./workspaceBridge";
 
 interface User {
   email: string;
-  username: string;
-  token: string;
   entity_name: null | string;
   role: null | string;
   uuid: string;
@@ -30,136 +37,165 @@ interface Name {
   last: string;
 }
 
+/** What a sign-in (POST /app/login and the identity providers) or GET /app/session says about the user. */
+type SignedInProfile = Pick<
+  LoginResponse | SessionResponse,
+  "uuid" | "email" | "entity_name" | "role" | "user"
+> & { show_changelog?: boolean };
+
 export interface AuthState {
-  microsoftIdToken: string;
-  oktaIdToken: string;
-  perplexityApiKey: string;
-  setPerplexityApiKey: (value: string) => void;
-  openaiApiKey: string;
-  setOpenaiApiKey: (value: string) => void;
-  setCopilotApiKeys: (params: {
-    perplexityApiKey?: string;
-    openaiApiKey?: string;
-  }) => void;
   lastVisitedPage: string;
   updateLastVisitedPage: (value: string) => void;
-  login: (data: LoginResponse) => void;
-  logout: () => void;
-  isFirstLogin: boolean;
+  login: (data: SignedInProfile) => void;
+  /** Takes the session GET /app/session describes into the page. */
+  startSession: (session: SessionResponse) => void;
+  /** Restores the signed-in user from the session cookie; true when there is one. */
+  restoreSession: () => Promise<boolean>;
+  logout: () => Promise<void>;
   showChangelog: boolean;
   updateShowChangelog: (value: boolean) => void;
   user: User | null;
-  updateUser: (user: Partial<User>) => void;
   name: Name;
-  updateName: (value: Name) => void;
-  promptHistory: PromptHistory[];
-  updatePromptHistory: (value: PromptHistory[]) => void;
-  alphaWarning: boolean;
-  updateAlphaWarning: (value: boolean) => void;
 }
 
-type PromptHistory = {
-  prompt: string;
-  widgetId: string;
-};
+// Empties every persisted store, awaited so the page reloads only once they are gone
+async function clearPersistedStores() {
+  const stores = [
+    useBackendConnectorStore,
+    useThemeStore,
+    useSharedAppStore,
+    useCopilotStore,
+    useCopilotDataStore,
+    usePromptLibraryStore,
+    useSidebarStore,
+    useToastStore,
+    useUserAppsStore,
+    useWorkspaceBridgeStore,
+  ];
+  await Promise.all(
+    stores.map(async (store) => {
+      const { name, storage } = store.persist.getOptions();
+      if (name && storage) await storage.removeItem(name);
+    }),
+  );
+}
 
-export const useAuthStore = createWithEqualityFn<AuthState>()(
-  subscribeWithSelector(
-    persist(
-      (set, get) => ({
-        microsoftIdToken: "",
-        oktaIdToken: "",
-        perplexityApiKey: "",
-        setPerplexityApiKey: (value) => set({ perplexityApiKey: value }),
-        openaiApiKey: "",
-        setOpenaiApiKey: (value) => set({ openaiApiKey: value }),
-        setCopilotApiKeys: ({ perplexityApiKey = "", openaiApiKey = "" }) =>
-          set({ perplexityApiKey, openaiApiKey }),
-        lastVisitedPage: "/app",
-        updateLastVisitedPage: (value) => set({ lastVisitedPage: value }),
-        showChangelog: false,
-        updateShowChangelog: (value) => set({ showChangelog: value }),
-        promptHistory: [],
-        updatePromptHistory: (value) => set({ promptHistory: value }),
-        alphaWarning: true,
-        updateAlphaWarning: (value) => set({ alphaWarning: value }),
-        isFirstLogin: false,
-        updateName: (value) => set({ name: { ...get().name, ...value } }),
-        name: { first: "", last: "" },
-        login: (data: LoginResponse) => {
-          const { sendMicrosoftIdToken, sendOktaIdToken } = getConfig().authentication;
+// MSAL keeps its cache in page memory; clear it too, in case anything outlives the reload
+async function clearMicrosoftCache() {
+  if (!getEnabledIdentityProviders().includes("microsoft")) return;
+  const { getMsalInstance } = await import("~/lib/microsoft-auth-config");
+  await getMsalInstance().clearCache();
+}
 
-          const {
-            lastVisitedPage = "/app/data-connectors",
-            openaiApiKey,
-            perplexityApiKey,
-            ...displaySettings
-          } = data.user.display_settings;
-
-          data.user.display_settings = displaySettings;
-
-          set((state) => ({
-            ...state,
-            ...(sendMicrosoftIdToken && {
-              microsoftIdToken: data.microsoftIdToken ?? "",
-            }),
-            ...(sendOktaIdToken && {
-              oktaIdToken: data.oktaIdToken ?? "",
-            }),
-            user: {
-              email: data.email,
-              username: data.username,
-              token: data.access_token,
-              entity_name: data.entity_name,
-              role: data.role,
-              uuid: data.uuid,
-            },
-            isFirstLogin: data.is_first_login,
-            showChangelog: data.show_changelog,
-            lastVisitedPage,
-            openaiApiKey: openaiApiKey || state.openaiApiKey,
-            perplexityApiKey: perplexityApiKey || state.perplexityApiKey,
-          }));
-
-          const user = data.user;
-          set({
-            name: { first: user.first_name ?? "", last: user.last_name ?? "" },
-          });
-        },
-        logout: async () => {
-          const data = await logout();
-          if (!data?.success) {
-            return showNotification({
-              message: "Logout Failed",
-              description: "An error occurred while logging out. Please try again.",
-              toastType: "error",
-            });
-          }
-          useMcpToolsStore.getState().clearAllStorage();
-          useCopilotAccessStore.getState().setAccess(null);
-          window.sessionStorage.clear();
-          useBackendConnectorStore.persist.clearStorage();
-          useThemeStore.persist.clearStorage();
-          useSharedAppStore.persist.clearStorage();
-          useCopilotStore.persist.clearStorage();
-          useAuthStore.persist.clearStorage();
-          useWorkspaceBridgeStore.persist.clearStorage();
-          window.history.pushState(null, "", "/login");
-          window.location.reload();
-        },
-        user: null,
-        updateUser: (user) =>
-          set((state) => ({ user: { ...(state.user ?? ({} as User)), ...user } })),
-      }),
-      {
-        name: "auth-storage",
-      },
+/**
+ * Ends the session (when the page has one) and wipes what the page kept: in-memory
+ * credentials, the persisted stores, sessionStorage and the MSAL cache. Then reloads on
+ * the login page, which drops everything else held in memory.
+ */
+async function signOut(signedIn: boolean) {
+  if (signedIn) {
+    const data = await logout();
+    if (!data.success) {
+      showNotification({
+        message: "Logout Failed",
+        description: "An error occurred while logging out. Please try again.",
+        toastType: "error",
+      });
+      return;
+    }
+  }
+  clearAgentToken();
+  clearIdpTokens();
+  useMcpToolsStore.getState().clearAllStorage();
+  useCopilotAccessStore.getState().setAccess(null);
+  window.sessionStorage.clear();
+  await Promise.all([
+    clearPersistedStores(),
+    clearMicrosoftCache().catch((error) =>
+      console.error("Could not clear the Microsoft sign-in cache:", error),
     ),
-  ),
+  ]);
+  window.history.pushState(null, "", "/login");
+  window.location.reload();
+}
+
+let restoring: Promise<boolean> | null = null;
+let signingOut: Promise<void> | null = null;
+
+/**
+ * Who is signed in. The session itself is an HttpOnly cookie the page never sees, so this
+ * holds the profile only, in memory: after a reload restoreSession asks the API again.
+ */
+export const useAuthStore = createWithEqualityFn<AuthState>()(
+  subscribeWithSelector((set, get) => ({
+    lastVisitedPage: "/app",
+    updateLastVisitedPage: (value) => set({ lastVisitedPage: value }),
+    showChangelog: false,
+    updateShowChangelog: (value) => set({ showChangelog: value }),
+    name: { first: "", last: "" },
+    login: (data) => {
+      const { lastVisitedPage = "/app", ...displaySettings } =
+        data.user.display_settings ?? {};
+      data.user.display_settings = displaySettings;
+
+      setIdpTokens({ email: data.email });
+      set({
+        user: {
+          email: data.email,
+          entity_name: data.entity_name,
+          role: data.role,
+          uuid: data.uuid,
+        },
+        showChangelog: data.show_changelog ?? false,
+        lastVisitedPage,
+        name: { first: data.user.first_name ?? "", last: data.user.last_name ?? "" },
+      });
+    },
+    startSession: (session) => {
+      get().login(session);
+      useAccessStore
+        .getState()
+        .setAccessAndUsage(
+          session.access,
+          session.can_submit_marketplace ?? false,
+          session.usage ?? null,
+        );
+      // The custom agents' headers are never persisted: load them again
+      refreshExternalCopilotHolders().catch((error) =>
+        console.error("Could not load the custom agents:", error),
+      );
+    },
+    restoreSession: () => {
+      if (get().user) return Promise.resolve(true);
+      restoring ??= getSession()
+        .then((session) => {
+          if (!session) return false;
+          get().startSession(session);
+          return true;
+        })
+        .finally(() => {
+          restoring = null;
+        });
+      return restoring;
+    },
+    logout: () => {
+      // Concurrent calls (several refused requests at once) share one sign-out
+      signingOut ??= signOut(get().user !== null).finally(() => {
+        signingOut = null;
+      });
+      return signingOut;
+    },
+    user: null,
+  })),
   shallow,
 );
 
-export type AuthStore = typeof useAuthStore;
+// The API refused the session: sign out the user in memory. While no user is in memory a
+// 401 says nothing about a session.
+setOnSessionRefused(() => {
+  const { user, logout } = useAuthStore.getState();
+  if (user) logout();
+});
 
 export function useShallowAuthStore<T>(selector: Selector<AuthState, T>): T {
   return useAuthStore(useShallow(selector), (prev, next) => isEqual(prev, next));

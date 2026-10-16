@@ -147,7 +147,7 @@ describe("ApiKeyModal", () => {
         onClose={vi.fn()}
         onSave={vi.fn().mockResolvedValue({ success: true })}
         onRemove={vi.fn()}
-        mcpToken={{ onSave: vi.fn() }}
+        mcpToken={{ hasToken: false, onSave: vi.fn() }}
       />,
     );
 
@@ -170,7 +170,7 @@ describe("ApiKeyModal", () => {
         onClose={onClose}
         onSave={onSave}
         onRemove={vi.fn()}
-        mcpToken={{ onSave: onSaveToken }}
+        mcpToken={{ hasToken: false, onSave: onSaveToken }}
       />,
     );
 

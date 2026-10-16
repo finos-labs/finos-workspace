@@ -14,6 +14,7 @@ from api.models import ApiSource, FileWidget
 from api.models.workspace_models import StoredFile
 from api.schemas import SuccessReturn
 from api.storage import FileStorage
+from routers import app_helpers
 from utilities.config import settings
 
 router = APIRouter(
@@ -29,6 +30,8 @@ async def get_user_file_widgets(
     db: AsyncSession = Depends(aget_read_db),
 ):
     """Get all file widgets for a user"""
+    if not await app_helpers.may_add_connections(db, user.uuid):
+        return []
     select_query = select(FileWidget).where(FileWidget.user_uuid == user.uuid)
     return (await db.execute(select_query)).scalars().all()
 
@@ -43,6 +46,7 @@ async def post_user_file_widget(
     db: AsyncSession = Depends(aget_write_db),
 ):
     """Add or update a file widget for a user"""
+    await app_helpers.check_may_add_connections(db, user.uuid)
     cache = settings.redis_cache(payload.stored_file_uuid)
     query = await db.execute(
         select(StoredFile).where(StoredFile.file_widget_uuid == widget_uuid)
@@ -120,6 +124,8 @@ async def get_stored_files(
     db: AsyncSession = Depends(aget_read_db),
 ):
     """Get all stored files for a user."""
+    if not await app_helpers.may_add_connections(db, user.uuid):
+        return []
     select_query = select(StoredFile).where(StoredFile.creater_uuid == user.uuid)
     return (await db.execute(select_query)).scalars().all()
 
@@ -129,18 +135,19 @@ async def get_user_api_sources(
     user=Depends(auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_read_db),
 ):
-    """Get all API sources for a user"""
-    filters = (ApiSource.user_uuid == user.uuid,)
+    """Get all API sources for a user: their own, if they may bring connections, and on
+    premises the backends of their organization"""
+    filters = ()
+    if await app_helpers.may_add_connections(db, user.uuid):
+        filters += (ApiSource.user_uuid == user.uuid,)
     if settings.is_onprem():
         entity_uuid = await crud.get_user_entity_uuid(db, user.permissions_uuid)
         filters += (ApiSource.entity_uuid == entity_uuid,)
+    if not filters:
+        return []
 
     select_query = (
-        select(ApiSource)
-        .where(
-            or_(*filters) if settings.is_onprem() else ApiSource.user_uuid == user.uuid
-        )
-        .order_by(ApiSource.updated_date.desc())
+        select(ApiSource).where(or_(*filters)).order_by(ApiSource.updated_date.desc())
     )
     return (await db.execute(select_query)).scalars().all()
 
@@ -155,6 +162,7 @@ async def post_user_api_source(
     db: AsyncSession = Depends(aget_write_db),
 ):
     """Create or update an Data Connector API Source"""
+    await app_helpers.check_may_add_connections(db, user.uuid)
     insert_query = insert(ApiSource).values(
         uuid=source_uuid, user_uuid=user.uuid, **payload.model_dump()
     )

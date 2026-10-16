@@ -13,6 +13,7 @@ import {
 import { getAiApiUrl } from "~/lib/constants";
 import { getIframeWidget } from "~/lib/iframeWidgetRegistry";
 import { getConfig } from "~/lib/runtimeConfig";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useAppStore } from "~/lib/state/app";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import {
@@ -234,7 +235,7 @@ export function useFunctionCall() {
   );
 
   const getAppWidget = useShallowAppWidgetsStore((s) => s.getAppWidget);
-  const userToken = useShallowAuthStore((s) => s.user?.token);
+  const signedIn = useShallowAuthStore((s) => s.user !== null);
   const aiEnhancementsEnabled = useShallowThemeStore(
     (state) => state.aiEnhancements && aiCopilotAiEnhancementsFF,
   );
@@ -402,17 +403,14 @@ export function useFunctionCall() {
 
   const fetchWidgetInfo = useCallback(
     async (widgetData: string): Promise<{ title?: string; description?: string }> => {
-      if (!(aiEnhancementsEnabled && userToken)) {
+      if (!(aiEnhancementsEnabled && signedIn)) {
         return {};
       }
 
       try {
-        const response = await fetch(`${getAiApiUrl()}/v1/generate/widget_info`, {
+        const response = await fetchAgent(`${getAiApiUrl()}/v1/generate/widget_info`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${userToken}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             widget_generation_request: {
               widget_data: widgetData,
@@ -431,7 +429,7 @@ export function useFunctionCall() {
         return {};
       }
     },
-    [aiEnhancementsEnabled, userToken],
+    [aiEnhancementsEnabled, signedIn],
   );
 
   /**
@@ -699,20 +697,20 @@ export function useFunctionCall() {
 
         // Fetch AI-generated title/description before adding to dashboard
         try {
-          const response = await fetch(`${getAiApiUrl()}/v1/generate/widget_info`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${userToken}`,
+          const response = await fetchAgent(
+            `${getAiApiUrl()}/v1/generate/widget_info`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                widget_generation_request: {
+                  name,
+                  description,
+                  widget_data: data,
+                },
+              }),
             },
-            body: JSON.stringify({
-              widget_generation_request: {
-                name,
-                description,
-                widget_data: data,
-              },
-            }),
-          });
+          );
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const aiInfo = await response.json();
           if (aiInfo?.title) {
@@ -777,7 +775,7 @@ export function useFunctionCall() {
         ];
       }
     },
-    [currentDashboardId, resolveInnerTabId, userToken],
+    [currentDashboardId, resolveInnerTabId],
   );
 
   return {

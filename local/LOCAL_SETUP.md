@@ -20,13 +20,13 @@ cd local
 ADMIN_EMAIL=<your-email> make up
 ```
 
-`ADMIN_EMAIL` names the first administrator. It is needed only while `backend-api/backend/envs/.env` does not exist; the first `make up` creates that file with random secrets, and `backend-api/backend/scripts/cfgs/config.toml` with the organization and the administrator, whose password is random. Both files are yours: neither is for git. Later runs only need `make up`.
+`ADMIN_EMAIL` names the first administrator. It is needed only while `backend-api/backend/envs/.env` does not exist; the first `make up` creates that file with random secrets, and `backend-api/backend/scripts/cfgs/config.toml` with the organization and the administrator's address. Both files are yours: neither is for git. Later runs only need `make up`.
 
 The first run builds the backend images and installs the frontend packages, so it takes several minutes. Later runs reuse the images and start much faster. `make up` waits until the app answers and then prints where to go:
 
 - App: <http://localhost:1420>
 - Backend: <http://localhost:8000>
-- Sign in as the administrator in `backend-api/backend/scripts/cfgs/config.toml` (email and password).
+- Sign in as the administrator in `backend-api/backend/scripts/cfgs/config.toml`. The `init` step makes up their password when it creates the account and prints it once: `make logs s=init` shows it. No file keeps it, so change it once you are in. For a new one-time password: `docker compose run --rm init python -m scripts.init_users --new-password <your-email>` in this folder.
 
 ## Commands
 
@@ -78,9 +78,10 @@ The backend reads `backend-api/backend/envs/.env`, the same file the root `docke
 | `DB_HOST`, `REDIS_HOST` | `mysql`, `redis` | The container names |
 | `DB_NAME` | `workspace` | The database the MySQL container creates |
 | `STORAGE_PROVIDER` | `folder` | Uploaded files go to `backend-api/backend/local_storage/` instead of cloud storage |
-| `JWT_SECRET`, `WORKSPACE_AES_KEY`, `WORKSPACE_AUTH_TOKEN`, `LOCAL_STORAGE_SECRET_KEY` | generated | `WORKSPACE_AUTH_TOKEN` is a JWT signed with `JWT_SECRET`; the example's values are placeholders |
+| `JWT_SECRET`, `WORKSPACE_AES_KEY`, `WORKSPACE_AUTH_TOKEN`, `LOCAL_STORAGE_SECRET_KEY` | generated | `WORKSPACE_AUTH_TOKEN` is a JWT signed with `JWT_SECRET`; the example leaves them blank, and the API refuses to start without strong values |
+| `BACKEND_CORS_ORIGINS` | `http://localhost:3000`, `:3001`, `:1420`, `:5173` | The origins of the web app and the admin panel: the root `docker-compose.yml`'s, this stack's dev server and the admin panel's. Add the Excel add-in's `https` origin to use it against this stack |
 
-`compose.yaml` overrides `FRONTENDURL` and `APPURL` with `http://localhost:1420`, the address of the dev server, so links and redirects point at it. The example file turns CORS off (`DISABLE_CORS=1`), which the dev server on another port relies on.
+`compose.yaml` overrides `FRONTENDURL` and `APPURL` with `http://localhost:1420`, the address of the dev server, so links and redirects point at it. The dev server on another port reaches the API because `http://localhost:1420` is one of `BACKEND_CORS_ORIGINS`. An MCP server on your machine or network that the API should reach goes in `ALLOWED_MCP_HOSTNAMES` (see `envs/.env.example`).
 
 Edit `envs/.env` freely, then `make restart s=backend`. To get a fresh one, delete it, and `config.toml` next to it, and run `ADMIN_EMAIL=<your-email> make up`; if the database already holds the old administrator, run `make reset` instead.
 

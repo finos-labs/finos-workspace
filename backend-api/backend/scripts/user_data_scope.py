@@ -39,7 +39,7 @@ SCOPE_VERSION = 1
 # hashes on *every* write, so a hash round-tripped through the ORM would be
 # double-hashed and the account would be permanently unloggable. The importer
 # sets an unknown random password instead and the Lite admin assigns a real one.
-GLOBAL_REDACT = ("password", "auth_token", "totp_secret")
+GLOBAL_REDACT = ("password", "totp_secret", "totp_last_step")
 
 
 @dataclass(frozen=True)
@@ -102,7 +102,7 @@ INCLUDED: list[TableSpec] = [
         note=(
             "Personal backends only (user_uuid IS NOT NULL); entity-owned "
             "backends are org property and stay behind. endpointHeaders is "
-            "EncryptedType -- exported as plaintext, re-encrypted on import "
+            "a credential: sealed under the export key, encrypted on import "
             "under the target instance's WORKSPACE_AES_KEY."
         ),
     ),
@@ -164,14 +164,18 @@ INCLUDED: list[TableSpec] = [
         link_column="user_uuid",
         label="Custom copilots / BYO agents",
         note=(
-            "headers and copilots are EncryptedType -- exported plaintext, "
-            "re-encrypted on import. UNIQUE on (user_uuid, url)."
+            "headers and copilots are credentials: sealed under the export "
+            "key, encrypted on import. UNIQUE on (user_uuid, url)."
         ),
     ),
     TableSpec(
         model=models.MCPServers,
         link_column="user_uuid",
         label="MCP server configurations",
+        note=(
+            "servers and headers are credentials (a server URL may carry one): sealed "
+            "under the export key, encrypted on import."
+        ),
     ),
     TableSpec(
         model=models.CopilotChat,
@@ -215,7 +219,7 @@ EXCLUDED: list[ExcludedTable] = [
     ExcludedTable(
         "session", "user_uuid", "Live bearer tokens for a service being shut down."
     ),
-    ExcludedTable("login", "user_uuid", "Login audit trail with IP addresses."),
+    ExcludedTable("login", "user_uuid", "Login audit trail."),
     ExcludedTable(
         "personal_access_token",
         "user_uuid",
@@ -225,8 +229,8 @@ EXCLUDED: list[ExcludedTable] = [
     ExcludedTable(
         "user_role",
         "user_uuid",
-        "Org RBAC. Lite bootstraps its own entity and Admin/User permission "
-        "maps, so Hub role rows would dangle.",
+        "Org RBAC. Lite bootstraps its own entity and Admin/Developer/User "
+        "permission maps, so Hub role rows would dangle.",
     ),
     ExcludedTable(
         "user_invite", "inviting_user_uuid", "Invitations the user sent to others."
@@ -244,9 +248,18 @@ EXCLUDED: list[ExcludedTable] = [
         "stored_file_share", "creater_uuid", "File shares to other accounts; see above."
     ),
     ExcludedTable(
-        "entitlement", "user_uuid", "Hub billing tier. Meaningless in Lite."
+        "share_request",
+        "requester_uuid",
+        "Shares waiting for an admin of this deployment's organization to approve "
+        "them; the developer shares again where the account is imported.",
     ),
-    ExcludedTable("entitlement_usage", "user_uuid", "Hub quota counters."),
+    ExcludedTable("user_usage", "user_uuid", "Hub quota counters."),
+    ExcludedTable(
+        "mcp_oauth_grant",
+        "user_uuid",
+        "MCP sign-ins are bound to this deployment's registered OAuth client and "
+        "callback; the user signs in to the server again.",
+    ),
     ExcludedTable(
         "user_app_subscription", "user_uuid", "Marketplace subscriptions; no "
         "marketplace in Lite."
@@ -286,7 +299,6 @@ IMPORT_OVERRIDE_REASONS: dict[str, dict[str, str]] = {
         ),
         "is_superuser": "Hub superuser status does not transfer to a new instance.",
         "deleted": "A soft-deleted Hub account imports as a live Lite account.",
-        "billing_active": "No billing in Lite.",
     },
     "api_source": {
         "vendor_app_uuid": (
@@ -319,7 +331,6 @@ def import_overrides(spec: TableSpec) -> dict[str, Any]:
             "confirmed": True,
             "is_superuser": False,
             "deleted": False,
-            "billing_active": False,
         }
     if spec.table == "api_source":
         return {"vendor_app_uuid": None, "entity_uuid": None}

@@ -1,5 +1,4 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { apiClient } from "~/api/api";
 import { getUserSubscriptions, SUBSCRIPTIONS_QUERY_KEY } from "~/api/auth.api";
 import { getConfig } from "~/lib/runtimeConfig";
 import { createURLString } from "~/lib/utils/widgetParams";
@@ -14,13 +13,16 @@ export function getMarketplaceBaseUrl(): string | undefined {
 }
 
 async function fetchListedApps(): Promise<ListedApp[]> {
-  const baseURL = getMarketplaceBaseUrl();
-  // A remote marketplace does not know this deployment's session token, so the
-  // cross-origin request goes out unauthenticated.
-  const { data } = await apiClient.get<ListedApp[]>(
-    "/marketplace/apps",
-    baseURL ? { baseURL, headers: { authorization: "" } } : undefined,
-  );
+  const baseURL = getMarketplaceBaseUrl() ?? getConfig().urls.backend;
+  // The listing is public, and the API answers it to any origin: the request carries no
+  // Workspace credentials (the browser would refuse that answer to a request with them)
+  const response = await fetch(createURLString("marketplace/apps", baseURL), {
+    credentials: "omit",
+  });
+  if (!response.ok) {
+    throw new Error(`The marketplace listing failed with status ${response.status}`);
+  }
+  const data: ListedApp[] = await response.json();
   for (const app of data) {
     for (const img_key of ["img", "img_dark", "img_light"] as const) {
       const image = app?.appImages?.[img_key];

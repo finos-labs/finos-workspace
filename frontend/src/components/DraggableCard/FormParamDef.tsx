@@ -3,6 +3,7 @@ import { FormProvider, useForm, useFormContext } from "react-hook-form";
 import { toast } from "sonner";
 import { ToggleSelect } from "~/components/ToggleSelect";
 import { cleanSearchParams, convertHeadersToRecord, useJsonData } from "~/lib/api";
+import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { beautifySlug, cn, currentDateModifier } from "~/lib/utils";
 import { Button } from "../ds/atoms/Button";
 import { FormInput } from "../ds/atoms/Input";
@@ -26,6 +27,7 @@ export function FormParamElement() {
       (param): param is ParamDefT<"form"> => param.type === "form",
     );
   }, [widget?.params]);
+  const credentials = useSourceCredentials(widget.sourceId, formParamDef?.endpoint);
 
   const initialFormValues = useMemo(() => {
     if (!formParamDef?.inputParams) return {};
@@ -60,7 +62,7 @@ export function FormParamElement() {
       try {
         if (!formParamDef) return;
         setIsLoading(true);
-        const { headers, newParams } = convertHeadersToRecord(widget.endpoint?.headers);
+        const { headers } = convertHeadersToRecord(credentials.headers);
 
         const response = await fetch(formParamDef.endpoint, {
           method: formParamDef.method ?? "POST",
@@ -100,13 +102,7 @@ export function FormParamElement() {
 
       setIsLoading(false);
     },
-    [
-      formParamDef?.endpoint,
-      formParamDef?.method,
-      widget.endpoint?.headers,
-      widget.endpoint?.url,
-      updateWidget,
-    ],
+    [formParamDef?.endpoint, formParamDef?.method, credentials, updateWidget],
   );
 
   return (
@@ -149,23 +145,25 @@ function EndpointType(props: { inputParam: FormInputParamDefT<"endpoint"> }) {
   const { inputParam } = props;
   const form = useFormContext<ParamsForm>();
 
-  const endpoint = useWidgetContext()?.widget?.endpoint;
+  const credentials = useSourceCredentials(
+    useWidgetContext()?.widget?.sourceId,
+    inputParam.optionsEndpoint,
+  );
 
   const { paramName, label, description = [], multiSelect = false } = inputParam;
 
   const title = beautifySlug(label ?? paramName);
 
   const options = useMemo(() => {
-    const { headers, newParams } = convertHeadersToRecord(endpoint?.headers ?? {});
+    const { headers, newParams } = convertHeadersToRecord(credentials.headers);
     const url = cleanSearchParams(inputParam.optionsEndpoint, newParams);
 
     return {
       url: url,
       endpointHeaders: headers,
       params: newParams,
-      addBearerToken: true,
     };
-  }, [endpoint]);
+  }, [credentials, inputParam.optionsEndpoint]);
 
   const { data, isLoading, error, dataUpdatedAt } = useJsonData(options, {
     enabled: true,

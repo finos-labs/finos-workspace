@@ -165,11 +165,13 @@ RUN mkdir -p /usr/local/share/workspace \
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY supervisord.conf /etc/supervisor/supervisord.conf
 COPY entrypoint.sh /entrypoint.sh
+# The keys of the container and the file of the data volume that keeps the generated ones
+COPY secrets.sh /usr/local/lib/workspace/secrets.sh
 COPY render_frontend_config.py /usr/local/bin/render-frontend-config
-# Admin-login helper: `docker exec workspace credentials`
+# A new one-time password for the administrator: `docker exec workspace credentials`
 COPY credentials.sh /usr/local/bin/credentials
 
-# Account import helper: `docker exec workspace workspace-import /import/<file>.zip`
+# Account import helper: `docker exec -it workspace workspace-import /import/<file>.zip`
 COPY import.sh /usr/local/bin/workspace-import
 RUN chmod +x /entrypoint.sh /usr/local/bin/render-frontend-config /usr/local/bin/credentials /usr/local/bin/workspace-import
 
@@ -183,11 +185,11 @@ ENV PATH="$VENV_PATH/bin:$PATH" \
     REDIS_PORT=6379 \
     REDIS_PASS="" \
     MODE=lite \
-    DISABLE_CORS=1 \
+    BACKEND_CORS_ORIGINS='["http://localhost:3000"]' \
     STORAGE_PROVIDER=folder \
     PROMETHEUS=0 \
     WORKERS=1 \
-    SUPPRESSED_API_ROUTERS='["sdk", "run_tasks"]' \
+    SUPPRESSED_API_ROUTERS='[]' \
     SUPPRESSED_API_ROUTES='[]' \
     SELFURL=http://localhost:3000/api \
     FRONTENDURL=http://localhost:3000 \

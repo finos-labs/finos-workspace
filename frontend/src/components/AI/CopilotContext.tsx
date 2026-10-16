@@ -10,15 +10,21 @@ import {
   useState,
 } from "react";
 import { useParams } from "react-router-dom";
-import { fetchAgentsData } from "~/api/auth.api";
+import { fetchDefaultAgent } from "~/api/auth.api";
 import useIsMobile from "~/hooks/useIsMobile";
-import { getConfig } from "~/lib/runtimeConfig";
 import {
   type Copilot,
   type CopilotWidget,
   type HierarchicalMention,
+  MODEL_SETTING,
+  modelSettingModels,
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
+import {
+  allowedModels,
+  selectModelId,
+  useCopilotAccessStore,
+} from "~/lib/state/copilotAccess";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { cn } from "~/lib/utils";
 import { showNotification } from "~/lib/utils/toast";
@@ -37,7 +43,6 @@ import { Switch } from "../ds/atoms/Switch";
 import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import { useCopilotContextSuggestions } from "./hooks/useCopilotAddToContext";
-import { useGetCopilotRequestHeaders } from "./hooks/useGetCopilotRequestHeaders";
 import { McpToolsButton } from "./McpToolsButton";
 
 export function CopilotContext() {
@@ -89,8 +94,6 @@ export function CopilotContext() {
     setIsDropdownOpen: setPopoverOpen,
   });
 
-  const getCopilotRequestHeaders = useGetCopilotRequestHeaders();
-
   // Ensure custom features default state is initialized globally (not only when settings open)
 
   useEffect(() => {
@@ -102,11 +105,9 @@ export function CopilotContext() {
     const ctrl = new AbortController();
 
     async function hydrateDefaultAgentFeatures() {
-      const headers = getCopilotRequestHeaders();
       try {
-        const apiUrl = getConfig().urls.ai as string;
-        const data = await fetchAgentsData({ url: apiUrl, headers }, ctrl.signal);
-        const ada = data.find((agent) => agent.id === "default_agent");
+        // agents.json is public: no agent token, no Workspace credential
+        const ada = await fetchDefaultAgent(ctrl.signal);
         if (!ada) return;
         ada.id = "default-copilot"; // Ensure id matches default copilot id
 
@@ -474,7 +475,13 @@ function SettingsContent() {
     customFeatureStates: state.customFeatureStates,
     toggleCustomFeature: state.toggleCustomFeature,
     setCustomFeatureValue: state.setCustomFeatureValue,
+    selectedCopilot: state.selectedCopilot,
   }));
+  const access = useCopilotAccessStore((s) => s.access);
+  const settingModels = useMemo(
+    () => modelSettingModels(copilot.selectedCopilot),
+    [copilot.selectedCopilot],
+  );
 
   const { customEntries, widgetGlobalSearchFF, generativeUiFF } =
     useShallowCopilotStore((s) => {
@@ -539,6 +546,32 @@ function SettingsContent() {
                   featureKey={key}
                   meta={val}
                   value={String(copilot.customFeatureStates?.[key] ?? "")}
+                  onChange={handleSetCustomFeatureValue}
+                />
+              );
+            }
+
+            // An agent's model setting offers only the models the user's roles grant
+            if (key === MODEL_SETTING && settingModels.length) {
+              const agentId = copilot.selectedCopilot?.id ?? "";
+              const granted = allowedModels(access, agentId, settingModels);
+              if (!granted.length) return null;
+              return (
+                <CustomFeatureSelect
+                  key={`custom-feature-select-${key}`}
+                  featureKey={key}
+                  meta={{
+                    ...val,
+                    options: granted.map((m) => ({ label: m.name, value: m.id })),
+                  }}
+                  value={
+                    selectModelId(
+                      access,
+                      agentId,
+                      settingModels,
+                      String(copilot.customFeatureStates?.[key] ?? ""),
+                    ) ?? ""
+                  }
                   onChange={handleSetCustomFeatureValue}
                 />
               );

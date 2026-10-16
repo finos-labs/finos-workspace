@@ -1,29 +1,30 @@
 import { useEffect, useMemo } from "react";
 import { Button } from "~/components/ds/atoms/Button";
-import { useShallowAuthStore } from "~/lib/state/auth";
+import { type Usage, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
-import { type Usage, useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowThemeStore } from "~/lib/state/theme";
+import { useCopilotKeys } from "./useCopilotKeys";
 import { useShallowStreamingStore } from "./useStreaming";
 
 export default function useQueriesLeft(fromUsageInfo = false): {
   queriesLeft: number | null;
   usage: Partial<Usage> | null;
 } {
-  const openaiApiKey = useShallowAuthStore((s) => s.openaiApiKey);
+  const { has_openai_key } = useCopilotKeys();
   const selectedCopilot = useShallowCopilotStore((s) => s.selectedCopilot);
-  const usage = useShallowFeatureFlagsStore((state) => state.usage);
+  const usage = useShallowAccessStore((state) => state.usage);
 
-  if (openaiApiKey) return { queriesLeft: null, usage };
+  if (has_openai_key) return { queriesLeft: null, usage };
 
   // Only apply limits to the default copilot (Ada)
   // default-copilot is the only copilot without a holderUuid
-  const callsLimit = usage?.copilot_calls_limit;
+  // A null limit is no limit; 0 allows nothing
+  const callsLimit = usage?.copilot_calls_limit ?? null;
   const tokensLimit = usage?.copilot_tokens_limit ?? null;
   if (
     !usage ||
     (!fromUsageInfo && selectedCopilot?.holderUuid) ||
-    !(callsLimit || tokensLimit !== null)
+    (callsLimit === null && tokensLimit === null)
   )
     return { queriesLeft: null, usage: {} };
 
@@ -35,7 +36,7 @@ export default function useQueriesLeft(fromUsageInfo = false): {
   return {
     queriesLeft: tokensUsedUp
       ? 0
-      : callsLimit
+      : callsLimit !== null
         ? Math.max(0, callsLimit - usage.number_copilot_calls_day_count)
         : null,
     usage,

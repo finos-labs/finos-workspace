@@ -13,6 +13,22 @@ describe("Artifact HTML JavaScript execution", () => {
     mockConfig.data.allowHtmlJsExecution = false;
   });
 
+  it("runs the artifact's scripts in an opaque origin, apart from the page", () => {
+    const artifact: ArtifactT = {
+      uuid: "html-js-sandbox",
+      type: "html",
+      content: "<html><body><script>1</script></body></html>",
+      name: "Sandboxed HTML",
+      description: "Scripts run apart from the page",
+    };
+
+    const { container } = render(<Artifact artifact={artifact} inAiMessage={true} />);
+    const sandbox = container.querySelector("iframe")?.getAttribute("sandbox") ?? "";
+
+    expect(sandbox.split(" ")).toContain("allow-scripts");
+    expect(sandbox.split(" ")).not.toContain("allow-same-origin");
+  });
+
   it("measures html artifact height on iframe load when JavaScript execution is enabled", async () => {
     const artifact: ArtifactT = {
       uuid: "html-js-123",

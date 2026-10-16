@@ -5,7 +5,8 @@
 #
 # Web app http://localhost:3000, admin panel http://localhost:3001, API http://localhost:8000.
 # The first start creates the organization and the administrator listed in
-# backend-api/backend/scripts/cfgs/config.toml.
+# backend-api/backend/scripts/cfgs/config.toml; the administrator's password is printed once,
+# in the log of the init service (docker compose logs init), and no file keeps it.
 #
 # On Apple silicon build for the host's architecture: PLATFORM=linux/arm64 docker compose up --build
 name: workspace
@@ -71,9 +72,9 @@ services:
       args:
         PLATFORM: ${PLATFORM:-linux/amd64}
     image: workspace-api:local
-    # Runs as root because the files mounted below belong to whoever checked the repository out
-    # (uid 1001 on a GitHub runner), and the image's own user, uid 1000, can neither write
-    # user_create.json nor read the seed config.toml (mode 600).
+    # Runs as root because user_create.json, mounted below, belongs to whoever checked the
+    # repository out (uid 1001 on a GitHub runner), and the image's own user, uid 1000, cannot
+    # write it.
     user: root
     command:
       - sh

@@ -4,12 +4,10 @@ export type CopilotModelGrant = { agent_id: string; model_id: string };
 
 export type McpGrant = { server_url: string; tool_name: string };
 
-/** What the user may use in the Copilot, as the roles an admin assigned them grant. */
+/** What the user may use in the Copilot: only what the roles an admin assigned them grant. */
 export type CopilotAccess = {
   models: CopilotModelGrant[];
   mcp: McpGrant[];
-  models_restricted: boolean;
-  mcp_restricted: boolean;
 };
 
 export const ALL_MCP_TOOLS = "*";
@@ -22,13 +20,25 @@ export function normalizeMcpUrl(url: string): string {
   return `${scheme.toLowerCase()}://${host.toLowerCase()}${path.replace(/\/+$/, "")}`;
 }
 
+/**
+ * The id an agent's model grants are filed under: the id the agent gives itself in its
+ * agents.json, which it names when it asks the API whether the user may use a model. The
+ * web app knows the default agent, "default_agent" in agents.json, as "default-copilot".
+ */
+export function grantAgentId(agentId: string): string {
+  return agentId === "default-copilot" ? "default_agent" : agentId;
+}
+
 export function isModelAllowed(
   access: CopilotAccess | null | undefined,
   agentId: string,
   modelId: string,
 ): boolean {
-  if (!access?.models_restricted) return true;
-  return access.models.some((g) => g.agent_id === agentId && g.model_id === modelId);
+  const grantId = grantAgentId(agentId);
+  return (
+    access?.models.some((g) => g.agent_id === grantId && g.model_id === modelId) ??
+    false
+  );
 }
 
 export function isMcpToolAllowed(
@@ -36,12 +46,13 @@ export function isMcpToolAllowed(
   serverUrl: string,
   toolName: string,
 ): boolean {
-  if (!access?.mcp_restricted) return true;
   const url = normalizeMcpUrl(serverUrl);
-  return access.mcp.some(
-    (g) =>
-      g.server_url === url &&
-      (g.tool_name === ALL_MCP_TOOLS || g.tool_name === toolName),
+  return (
+    access?.mcp.some(
+      (g) =>
+        g.server_url === url &&
+        (g.tool_name === ALL_MCP_TOOLS || g.tool_name === toolName),
+    ) ?? false
   );
 }
 

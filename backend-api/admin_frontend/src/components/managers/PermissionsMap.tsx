@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { FormField, FormInput, FormSelect } from "ui/Form";
+import { FormField, FormSelect } from "ui/Form";
 import { useForm } from "react-hook-form";
 import { ManagerForm } from "components/formItems";
 import type { SubmitFormProps } from "components/managers/Base";
@@ -8,6 +8,7 @@ import React, { useState } from "react";
 import {
   type Entity,
   type PermissionMap,
+  USER_TYPES,
   addPermissionMap,
   editPermissionMap,
 } from "utils/requests";
@@ -18,13 +19,12 @@ interface FormData {
 }
 
 const permissionsSchema = z.object({
-  name: z.string().min(1, "This field is required"),
+  name: z.enum(USER_TYPES),
   entity: z.string().uuid().min(1, "This field is required"),
 });
 type TPermissionsSchema = z.infer<typeof permissionsSchema>;
 
 export function PermissionsMapSubmitForm({
-  user,
   setShowAdd,
   retrieveItems,
   data,
@@ -36,7 +36,7 @@ export function PermissionsMapSubmitForm({
   const form = useForm<TPermissionsSchema>({
     resolver: zodResolver(permissionsSchema),
     defaultValues: {
-      name: item?.name || "",
+      name: item?.name,
       entity: item?.entity.uuid ?? "",
     },
   });
@@ -47,11 +47,10 @@ export function PermissionsMapSubmitForm({
         item.uuid,
         values.entity,
         values.name,
-        user.accessToken,
       );
       await handleRequest(response, setWarning, setShowAdd, retrieveItems);
     } else {
-      const response = await addPermissionMap(values.entity, values.name, user.accessToken);
+      const response = await addPermissionMap(values.entity, values.name);
       await handleRequest(response, setWarning, setShowAdd, retrieveItems);
     }
   };
@@ -60,6 +59,7 @@ export function PermissionsMapSubmitForm({
     value: obj.uuid,
     label: obj.name,
   }));
+  const typeOptions = USER_TYPES.map((type) => ({ value: type, label: type }));
 
   return (
     <ManagerForm onSubmit={handleSubmit} warning={warning} form={form}>
@@ -73,9 +73,9 @@ export function PermissionsMapSubmitForm({
       <FormField
         name="name"
         control={form.control}
-        render={({ field }) => {
-          return <FormInput label="Name" {...field} />;
-        }}
+        render={({ field }) => (
+          <FormSelect label="Name" options={typeOptions} {...field} />
+        )}
       />
       <button type="submit" className="ws-btn-blue mt-2">Submit</button>
     </ManagerForm>

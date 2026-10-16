@@ -8,12 +8,6 @@ interface BaseResponse {
   message?: string;
 }
 
-interface EntityInfo {
-  expiration_date: null | string;
-  used_seats: number;
-  seats: number;
-}
-
 interface App {
   uuid: string;
   name: string;
@@ -95,15 +89,46 @@ export async function createUser(user: CreateUserDTO) {
   return data;
 }
 
+/* Share requests */
+
+export type ShareRequestUser = {
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+};
+
+/** A share a developer asked for; an admin of their organization approves or declines it. */
+export type ShareRequest = {
+  uuid: string;
+  created_date: string | null;
+  requester: ShareRequestUser;
+  item_type: "dashboard" | "app";
+  item_uuid: string;
+  item_name: string;
+  /** Null: the whole organization */
+  recipient: ShareRequestUser | null;
+  permissions: string | null;
+};
+
+export async function getShareRequests() {
+  const { data } = await apiClient.get<ShareRequest[]>("/admin/share-requests");
+  return data;
+}
+
+export async function decideShareRequest(
+  uuid: string,
+  decision: "approve" | "decline",
+) {
+  const { data } = await apiClient.post<BaseResponse>(
+    `/admin/share-requests/${uuid}/${decision}`,
+  );
+  return data;
+}
+
 /* Entities */
 
 export async function getEntity() {
   const { data } = await apiClient.get<EntitySettings>("/admin/entity");
-  return data;
-}
-
-export async function getEntityInfo() {
-  const { data } = await apiClient.get<EntityInfo>("/admin/entity-info");
   return data;
 }
 

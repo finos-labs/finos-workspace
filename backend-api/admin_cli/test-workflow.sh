@@ -25,16 +25,16 @@ log_error() {
     echo -e "${RED}✗${NC} $1"
 }
 
-# Check if authenticated
-log_step "Checking authentication status..."
-AUTH_STATUS=$($ADMIN_CLI auth status --json)
-IS_AUTHENTICATED=$(echo "$AUTH_STATUS" | grep -o '"authenticated": *[^,}]*' | awk -F': ' '{print $2}')
-
-if [ "$IS_AUTHENTICATED" != "true" ]; then
-    log_error "Not authenticated. Run: $ADMIN_CLI auth login"
-    exit 1
+# Sign in once for the whole run, unless a session is already loaded with
+# eval "$(workspace-admin auth login)". The token stays in this shell's memory,
+# and a session opened here is ended when the script exits.
+if [ -z "${WORKSPACE_ADMIN_TOKEN:-}" ]; then
+    log_step "Signing in..."
+    SESSION=$($ADMIN_CLI auth login)
+    eval "$SESSION"
+    trap '$ADMIN_CLI auth logout > /dev/null' EXIT
 fi
-log_success "Authenticated"
+log_success "Signed in"
 
 # Get entity type UUID (using the first one available)
 log_step "Fetching entity types..."
@@ -55,13 +55,11 @@ PROVISION_CONFIG=$(cat <<EOF
   "entity": {
     "name": "Test Entity $TIMESTAMP",
     "entity_type_uuid": "$ENTITY_TYPE_UUID",
-    "email": "billing-test-$TIMESTAMP@example.com",
+    "email": "contact-test-$TIMESTAMP@example.com",
     "company_type": "Investment Firm",
     "organization_size": "10-50",
     "aum": 10000000,
     "country": "USA",
-    "seats": 50,
-    "expiration_date": "2025-12-31T00:00:00Z",
     "admin_email": "admin-test-$TIMESTAMP@example.com"
   },
   "admins": [
@@ -171,15 +169,15 @@ fi
 log_success "Additional regular user created: $USER_EMAIL (temp password: $USER_TEMP_PASSWORD)"
 
 # 4. UPDATE ENTITY
-log_step "Step 4: Updating entity (increasing seats to 100)..."
-$ADMIN_CLI entity update "$ENTITY_UUID" --d '{"seats": 100}'
-log_success "Entity updated (seats: 50 → 100)"
+log_step "Step 4: Updating entity (turning sharing on)..."
+$ADMIN_CLI entity update "$ENTITY_UUID" --d '{"sharing_enabled": true}'
+log_success "Entity updated (sharing_enabled: false → true)"
 
 # Verify update
 ENTITY_DETAILS=$($ADMIN_CLI entity show "$ENTITY_UUID" --json)
-SEATS=$(echo "$ENTITY_DETAILS" | grep -o '"seats": *[^,}]*' | awk -F': ' '{print $2}')
-if [ "$SEATS" != "100" ]; then
-    log_error "Entity update verification failed (expected seats: 100, got: $SEATS)"
+SHARING=$(echo "$ENTITY_DETAILS" | grep -o '"sharing_enabled": *[^,}]*' | awk -F': ' '{print $2}')
+if [ "$SHARING" != "true" ]; then
+    log_error "Entity update verification failed (expected sharing_enabled: true, got: $SHARING)"
 else
     log_success "Entity update verified"
 fi
@@ -205,19 +203,8 @@ echo "$DB_LIST_RESPONSE"
 echo ""
 log_success "Data backends listed"
 
-# 7. UPDATE ENTITLEMENT (disable custom backends)
-log_step "Step 7: Disabling custom backends for entity..."
-echo "Running: $ADMIN_CLI entitlement update $ENTITY_UUID --data '{\"allow_custom_backends\": false}' --json"
-ENT_RESPONSE=$($ADMIN_CLI entitlement update "$ENTITY_UUID" \
-    --data '{"allow_custom_backends": false}' \
-    --json 2>&1)
-echo "API Response:"
-echo "$ENT_RESPONSE"
-echo ""
-log_success "Custom backends disabled for entity"
-
-# 8. DELETE DATA BACKEND
-log_step "Step 8: Deleting the data backend..."
+# 7. DELETE DATA BACKEND
+log_step "Step 7: Deleting the data backend..."
 echo "Running: $ADMIN_CLI data-backend delete $ENTITY_UUID --name test-backend --json"
 DB_DEL_RESPONSE=$($ADMIN_CLI data-backend delete "$ENTITY_UUID" \
     --name "test-backend" \
@@ -227,8 +214,8 @@ echo "$DB_DEL_RESPONSE"
 echo ""
 log_success "Data backend deleted"
 
-# 9. VERIFY DATA BACKENDS EMPTY
-log_step "Step 9: Verifying data backends removed..."
+# 8. VERIFY DATA BACKENDS EMPTY
+log_step "Step 8: Verifying data backends removed..."
 echo "Running: $ADMIN_CLI data-backend list $ENTITY_UUID --json"
 DB_VERIFY_RESPONSE=$($ADMIN_CLI data-backend list "$ENTITY_UUID" --json 2>&1)
 echo "API Response:"
@@ -241,8 +228,8 @@ else
     log_error "Expected 0 data backends after deletion"
 fi
 
-# 10. UPDATE USERS (reset passwords for all users)
-log_step "Step 10: Resetting passwords for all users..."
+# 9. UPDATE USERS (reset passwords for all users)
+log_step "Step 9: Resetting passwords for all users..."
 
 # Reset initial admin password
 INITIAL_ADMIN_RESET=$($ADMIN_CLI user reset-password "$INITIAL_ADMIN_EMAIL" --json)
@@ -264,8 +251,8 @@ USER_RESET=$($ADMIN_CLI user reset-password "$USER_EMAIL" --json)
 USER_NEW_PASSWORD=$(echo "$USER_RESET" | grep -o '"temporary_password": *"[^"]*"' | awk -F'"' '{print $4}')
 log_success "Additional user password reset: $USER_EMAIL"
 
-# 11. DELETE ALL USERS (Note: May fail due to permissions)
-log_step "Step 11: Attempting to delete all users..."
+# 10. DELETE ALL USERS (Note: May fail due to permissions)
+log_step "Step 10: Attempting to delete all users..."
 echo "Note: Deletion may fail if authenticated admin is not part of the test entity"
 echo ""
 
@@ -327,8 +314,8 @@ fi
 
 set -e  # Re-enable exit on error
 
-# 12. CLEANUP SUMMARY
-log_step "Step 12: Cleanup summary..."
+# 11. CLEANUP SUMMARY
+log_step "Step 11: Cleanup summary..."
 
 # Cleanup temp files
 rm -f /tmp/test-provision-$TIMESTAMP.json
@@ -343,8 +330,7 @@ echo "  Method: provision apply (matches README Bulk Provisioning)"
 echo "  Entity UUID: $ENTITY_UUID"
 echo "  Name: Test Entity $TIMESTAMP"
 echo "  AUM: 10000000 (matches README)"
-echo "  Seats: 50 → 100 (updated, matches README Section 3)"
-echo "  Expiration: 2025-12-31T00:00:00Z"
+echo "  Sharing enabled: false → true (updated, matches README Section 3)"
 echo ""
 echo "✓ Initial users (via provisioning):"
 echo "  - Admin: $INITIAL_ADMIN_EMAIL"
@@ -362,9 +348,6 @@ echo "✓ Data backend operations tested:"
 echo "  - Add backend: test-backend (matches README Section 9)"
 echo "  - List backends"
 echo "  - Delete backend: test-backend"
-echo ""
-echo "✓ Entitlement operations tested:"
-echo "  - Disable custom backends (allow_custom_backends: false)"
 echo ""
 echo "✓ User operations tested:"
 echo "  - Password reset: 4/4 users (matches README Section 8)"

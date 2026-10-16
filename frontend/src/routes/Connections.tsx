@@ -31,6 +31,7 @@ import { TabPageFilterGroup, TabPageSearchInput } from "~/components/shared/TabP
 import Tooltip from "~/components/Tooltip";
 import { useUserSubscriptions } from "~/hooks/useListedApps";
 import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import {
   type Source,
   useShallowBackendConnectorStore,
@@ -115,7 +116,8 @@ type ConnectionsToolbarProps = {
   filterBy: FilterOption["value"];
   dispatch: StateDispatch<ConnectionsState>;
   selectedCount: number;
-  onConnectBackend: () => void;
+  /** Left out for users who may not bring connections */
+  onConnectBackend?: () => void;
   inputRef: RefObject<HTMLInputElement>;
   onRefresh: () => void;
   isRefreshing: boolean;
@@ -197,14 +199,16 @@ const ConnectionsToolbar = memo(
               />
             </Button>
           </Tooltip>
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={onConnectBackend}
-            disabled={selectedCount > 0}
-          >
-            Connect Backend
-          </Button>
+          {onConnectBackend && (
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={onConnectBackend}
+              disabled={selectedCount > 0}
+            >
+              Connect Backend
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -659,6 +663,7 @@ export default function ConnectionsPage() {
 
   const permissions = useShallowPermissionsStore((s) => s.permissions);
   const setManageAppDialog = useShallowThemeStore((s) => s.setManageAppDialog);
+  const mayAdd = useShallowAccessStore((s) => canAddConnections(s.access));
 
   const { isFetching, refetch } = useQuery({
     queryKey: ["apiSources"],
@@ -988,7 +993,7 @@ export default function ConnectionsPage() {
           filterBy={state.filterBy}
           selectedCount={state.selectedConnections.size}
           dispatch={dispatch}
-          onConnectBackend={handleConnectBackend}
+          onConnectBackend={mayAdd ? handleConnectBackend : undefined}
           inputRef={inputRef}
           onRefresh={handleRefresh}
           isRefreshing={state.isRefreshing || isFetching}
@@ -1068,16 +1073,18 @@ export default function ConnectionsPage() {
             extraClassName="col-span-full rounded-lg bg-general-bg-primary p-12 h-[200px]"
             icon={true}
             firstMessage="No connections added"
-            secondMessage="Please connect your first backend"
+            secondMessage={mayAdd ? "Please connect your first backend" : null}
           >
-            <Button
-              variant="secondary"
-              size="sm"
-              className="mt-4"
-              onClick={handleConnectBackend}
-            >
-              Connect Backend
-            </Button>
+            {mayAdd && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="mt-4"
+                onClick={handleConnectBackend}
+              >
+                Connect Backend
+              </Button>
+            )}
           </SearchResultsNotFound>
         )}
       </div>

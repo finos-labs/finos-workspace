@@ -20,9 +20,19 @@ if BACKEND_DIR not in sys.path:
 import pytest
 from uuid import uuid4
 
+from tests.fixtures.base import ADMIN_HEADERS, WEB_HEADERS
+
 
 class TestErrorResponseFormat401:
     """Tests for 401 Unauthorized error response format"""
+
+    @pytest.mark.asyncio
+    async def test_401_keeps_the_headers_of_its_exception(self, client):
+        """The exception handler sends an exception's headers: a refused credential names
+        the scheme it expects (WWW-Authenticate)"""
+        response = await client.get("/app/user", headers=WEB_HEADERS)
+        assert response.status_code == 401
+        assert response.headers["www-authenticate"] == "Bearer"
 
     @pytest.mark.asyncio
     async def test_401_contains_detail_field(self, client):
@@ -198,6 +208,7 @@ class TestRateLimitingBehavior:
                     "email": f"ratelimit_{i}@test.com",
                     "password": "ValidPassword123!",
                 },
+                headers=ADMIN_HEADERS,
             )
             responses.append(response.status_code)
 
@@ -207,6 +218,24 @@ class TestRateLimitingBehavior:
             assert code in valid_codes
 
     @pytest.mark.asyncio
+    async def test_no_header_a_client_chooses_lifts_the_limit(self, client):
+        """Sign-in (5/minute) is limited for every caller, whatever user agent it claims."""
+        codes = []
+        for i in range(7):
+            response = await client.post(
+                "/login",
+                json={"email": f"limited_{i}@test.com", "password": "ValidPassword123!"},
+                headers={
+                    **ADMIN_HEADERS,
+                    "User-Agent": "app",
+                    "X-Workspace-User-Agent": "app",
+                },
+            )
+            codes.append(response.status_code)
+
+        assert 429 in codes
+
+    @pytest.mark.asyncio
     async def test_rate_limit_returns_429(self, client):
         """Rate limiting should return 429 status code"""
         # This is a behavioral test - we can't easily trigger rate limit
@@ -214,6 +243,7 @@ class TestRateLimitingBehavior:
         response = await client.post(
             "/login",
             json={"email": "test@test.com", "password": "ValidPassword123!"},
+            headers=ADMIN_HEADERS,
         )
         # Should return 401 (wrong creds) or 429 (rate limited)
         assert response.status_code in {401, 429}

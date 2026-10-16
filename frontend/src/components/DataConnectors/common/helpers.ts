@@ -217,17 +217,17 @@ export function updateWidgetEndpoints(
     updateWidget(dashId, widget);
   };
 
-  const endpointHeaders = source.endpointHeaders ?? [];
+  // The widgets keep the URL and method; the source's credentials are looked up when they fetch
   for (const [dashId, widgets] of Object.entries(selectedWidgets)) {
     for (const w of widgets) {
       const widgetId = (w.widgetId ?? "").replace(`${sourceName}-`, "");
       const widgetJson = source.widgets?.[widgetId];
       if (!widgetJson) {
-        const newEndpoint = createWidgetEndpoint(w.endpoint?.url, endpointHeaders);
+        const { url, method } = createWidgetEndpoint(w.endpoint?.url);
         const updatedWidget = {
           ...w,
           sourceName: source.name,
-          endpoint: { ...w.endpoint, ...newEndpoint },
+          endpoint: { url, method },
         };
         onUpdatedWidget(dashId, updatedWidget, w.innerTab);
 
@@ -240,9 +240,8 @@ export function updateWidgetEndpoints(
       );
       const groupById = params?.find((p) => p?.type === "endpoint")?.groupById;
 
-      const newEndpoint = createWidgetEndpoint(
+      const { url, method } = createWidgetEndpoint(
         createURLString(widgetJson.endpoint, source.url),
-        endpointHeaders,
       );
 
       const subCategory = widgetJson.sub_category ?? widgetJson.subCategory;
@@ -264,7 +263,7 @@ export function updateWidgetEndpoints(
           ...(w.data ?? {}),
           dataKey,
         },
-        endpoint: { ...w.endpoint, ...newEndpoint },
+        endpoint: { url, method },
         staleTime: widgetJson.staleTime ?? w.staleTime,
         refetchInterval: widgetJson.refetchInterval ?? w.refetchInterval,
         dataUpdateDisplay: widgetJson.dataUpdateDisplay ?? w.dataUpdateDisplay,

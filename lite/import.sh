@@ -1,6 +1,9 @@
 #!/bin/bash
 # Imports an exported account into this container:
-#   docker exec <container> workspace-import /import/<archive>.zip
+#   docker exec -it <container> workspace-import /import/<archive>.zip
+#
+# The archive's credentials are sealed under the export key shown when it was made;
+# the import asks for it on the terminal.
 #
 # The archive comes from `workspace-admin user export` on the deployment that the account
 # lives on. Mount the folder holding it when starting the container, e.g.
@@ -9,7 +12,7 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-Usage: docker exec workspace workspace-import <archive.zip> [--force] [--describe-scope]
+Usage: docker exec -it workspace workspace-import <archive.zip> [--force] [--describe-scope]
 
   <archive.zip>      Path to the export, as seen from inside the container.
                      Mount it when starting the container:
@@ -19,8 +22,12 @@ Usage: docker exec workspace workspace-import <archive.zip> [--force] [--describ
   --force            Replace a previously imported copy of this account.
   --describe-scope   Print exactly what is imported and what is reset, then exit.
 
-After importing, run `docker exec workspace credentials` to get the admin login,
-sign in, and set a password for the imported account.
+The import asks for the export key that was shown when the archive was made, so run it
+with -it, which gives it a terminal.
+
+After importing, sign in as the administrator (`docker exec workspace credentials`
+gives them a new one-time password if needed) and set a password for the imported
+account.
 EOF
   exit 1
 }
@@ -50,21 +57,17 @@ if [[ "$1" != "--describe-scope" ]]; then
   fi
 fi
 
-# `docker exec` starts a fresh process that inherits only the image's ENV, not
-# the environment the entrypoint assembled for supervisord. The settings module
-# requires JWT_SECRET and WORKSPACE_AES_KEY, and the AES key in particular has to
-# be the *same* one the running app uses -- the import re-encrypts backend and
-# copilot credentials with it, and a different key would store credentials the
-# app cannot read back. So load the same file the entrypoint does, using the
-# same "don't clobber anything the caller set" rule.
-SECRETS_FILE="${DATA_DIR:-/data}/secrets.env"
+# `docker exec` starts a fresh process that inherits only the image's ENV and the
+# -e values, not the environment the entrypoint assembled for supervisord. The
+# settings module requires JWT_SECRET and WORKSPACE_AES_KEY, and the AES key in
+# particular has to be the *same* one the running app uses -- the import
+# re-encrypts backend and copilot credentials with it, and a different key would
+# store credentials the app cannot read back. So load the keys the volume keeps,
+# as the entrypoint does, without overriding anything passed with -e.
+# shellcheck source=secrets.sh
+source /usr/local/lib/workspace/secrets.sh
 if [[ -f "$SECRETS_FILE" ]]; then
-  while IFS='=' read -r key value; do
-    [[ -z "$key" || "$key" =~ ^# ]] && continue
-    if [[ -z "${!key:-}" ]]; then
-      export "$key=$value"
-    fi
-  done < "$SECRETS_FILE"
+  load_secrets
 else
   echo "No $SECRETS_FILE -- the container has not finished first-time setup." >&2
   echo "Start it once, wait for it to come up, then retry." >&2

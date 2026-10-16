@@ -9,8 +9,11 @@ import {
   patchEntityRole,
   postEntityRole,
 } from "~/api/entity_roles.api";
+import type { SharingLevel } from "~/lib/state/access";
 import { Button } from "../ds/atoms/Button";
+import { Checkbox } from "../ds/atoms/Checkbox";
 import { FormInput, Input } from "../ds/atoms/Input";
+import { FormSelect } from "../ds/atoms/Select";
 import { Tag } from "../ds/atoms/Tag";
 import { FormTextarea } from "../ds/atoms/TextArea";
 import { BaseDialog } from "../ds/dialogs/BaseDialog";
@@ -22,7 +25,7 @@ import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import AddUsersSelect, { colorForEmail, getUserInitials } from "./AddUsersSelect";
 import { useUsers } from "./adminUseQueries";
-import type { RoleT } from "./types";
+import type { RoleSettings, RoleT } from "./types";
 
 interface User {
   name: string;
@@ -37,12 +40,31 @@ interface Props {
   roles: string[];
 }
 
+const SHARING_OPTIONS: { value: SharingLevel; label: string }[] = [
+  { value: "none", label: "None" },
+  { value: "receive", label: "Receive only" },
+  { value: "share", label: "Can share" },
+];
+
+// A daily limit: none, or the whole number the admin typed
+const limit = z
+  .object({ none: z.boolean(), value: z.string().trim() })
+  .refine((l) => l.none || /^\d+$/.test(l.value), {
+    message: "Enter a whole number",
+    path: ["value"],
+  });
+
 const createRoleSchema = (initialData: RoleT | undefined, roles: string[]) =>
   z
     .object({
       name: z.string().min(1, "Name is required"),
       description: z.string().optional(),
       users: z.array(z.string()).optional(),
+      sharing: z.enum(["none", "receive", "share"]),
+      copilot_calls_day: limit,
+      copilot_tokens_day: limit,
+      upload_size_gb: limit,
+      excel_add_in: z.boolean(),
     })
     .refine(
       (data) => {
@@ -64,7 +86,44 @@ const createRoleSchema = (initialData: RoleT | undefined, roles: string[]) =>
 
 type RoleForm = z.infer<ReturnType<typeof createRoleSchema>>;
 
-const emptyDefaults: RoleForm = { name: "", description: "", users: [] };
+type LimitForm = RoleForm["copilot_calls_day"];
+
+const limitForm = (value: number | null | undefined): LimitForm =>
+  value == null ? { none: true, value: "" } : { none: false, value: String(value) };
+const limitValue = (limit: LimitForm) => (limit.none ? null : Number(limit.value));
+
+/**
+ * The form for `role`. A new role shares nothing and has no limits: its members may use
+ * whatever the admin grants it.
+ */
+function roleFormValues(role: RoleT | undefined): RoleForm {
+  return {
+    name: role?.name ?? "",
+    description: role?.description ?? "",
+    users: role?.users ?? [],
+    sharing: role?.sharing ?? "none",
+    copilot_calls_day: limitForm(role?.copilot_calls_day),
+    copilot_tokens_day: limitForm(role?.copilot_tokens_day),
+    upload_size_gb: limitForm(role?.upload_size_gb),
+    excel_add_in: role?.excel_add_in ?? false,
+  };
+}
+
+function roleSettings(values: RoleForm): RoleSettings {
+  return {
+    sharing: values.sharing,
+    copilot_calls_day: limitValue(values.copilot_calls_day),
+    copilot_tokens_day: limitValue(values.copilot_tokens_day),
+    upload_size_gb: limitValue(values.upload_size_gb),
+    excel_add_in: values.excel_add_in,
+  };
+}
+
+const LIMIT_FIELDS = [
+  { name: "copilot_calls_day", label: "Copilot calls per day" },
+  { name: "copilot_tokens_day", label: "Copilot tokens per day" },
+  { name: "upload_size_gb", label: "Upload size (GB)" },
+] as const;
 
 export function RoleDialog(props: Props) {
   const { open, onClose, mode, initialData, roles } = props;
@@ -98,24 +157,16 @@ export function RoleDialog(props: Props) {
   const form = useForm<RoleForm>({
     resolver,
     mode: "onChange",
-    defaultValues: {
-      name: initialData?.name ?? "",
-      description: initialData?.description ?? "",
-      users: initialData?.users ?? [],
-    },
+    defaultValues: roleFormValues(initialData),
   });
 
   useEffect(() => {
     if (mode === "edit" && initialData) {
-      form.reset({
-        name: initialData.name,
-        description: initialData.description ?? "",
-        users: initialData.users ?? [],
-      });
+      form.reset(roleFormValues(initialData));
       // Settle isValid on mount for prefilled edit forms.
       form.trigger();
     } else if (mode === "create") {
-      form.reset(emptyDefaults);
+      form.reset(roleFormValues(undefined));
     }
   }, [mode, initialData, open, form]);
 
@@ -123,11 +174,7 @@ export function RoleDialog(props: Props) {
     mutationFn: postEntityRole,
     onSuccess: (_data, variables) => {
       queryClient.refetchQueries({ queryKey: ["roles"] });
-      form.reset({
-        name: variables.name,
-        description: variables.description ?? "",
-        users: variables.users ?? [],
-      });
+      form.reset(roleFormValues(variables));
       toast.success("Role created");
       onClose();
     },
@@ -138,11 +185,7 @@ export function RoleDialog(props: Props) {
     mutationFn: patchEntityRole,
     onSuccess: (_data, variables) => {
       queryClient.refetchQueries({ queryKey: ["roles"] });
-      form.reset({
-        name: variables.name,
-        description: variables.description ?? "",
-        users: variables.users ?? [],
-      });
+      form.reset(roleFormValues(variables));
       toast.success("Role updated");
       onClose();
     },
@@ -161,18 +204,20 @@ export function RoleDialog(props: Props) {
 
   const handleSubmit = useCallback(
     async (data: RoleForm) => {
+      const role = {
+        name: data.name,
+        description: data.description ?? "",
+        users: data.users ?? [],
+        ...roleSettings(data),
+      };
       if (mode === "edit" && initialData) {
-        const updatedRole = { ...initialData, ...data };
-        await updateMutation.mutateAsync(updatedRole);
+        await updateMutation.mutateAsync({ ...initialData, ...role });
       } else {
-        const newRole = {
+        await createMutation.mutateAsync({
+          ...role,
           uuid: crypto.randomUUID(),
-          name: data.name,
-          description: data.description ?? "",
-          users: data.users ?? [],
           createdAt: Date.now(),
-        };
-        await createMutation.mutateAsync(newRole);
+        });
       }
     },
     [mode, initialData, updateMutation.mutateAsync, createMutation.mutateAsync],
@@ -216,15 +261,7 @@ export function RoleDialog(props: Props) {
   }, [form, onClose]);
 
   const handleDiscard = useCallback(() => {
-    form.reset(
-      initialData
-        ? {
-            name: initialData.name,
-            description: initialData.description ?? "",
-            users: initialData.users ?? [],
-          }
-        : emptyDefaults,
-    );
+    form.reset(roleFormValues(initialData));
     setDiscardConfirmOpen(false);
     onClose();
   }, [form, initialData, onClose]);
@@ -319,6 +356,73 @@ export function RoleDialog(props: Props) {
                     }
                     placeholder="Describe the purpose of this role"
                     {...field}
+                  />
+                )}
+              />
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-2">
+                <FormField
+                  name="sharing"
+                  control={form.control}
+                  render={({ field }) => (
+                    <FormSelect label="Sharing" options={SHARING_OPTIONS} {...field} />
+                  )}
+                />
+                {LIMIT_FIELDS.map(({ name, label }) => {
+                  const none = form.watch(`${name}.none`);
+                  return (
+                    <div key={name} className="flex flex-col gap-1">
+                      <FormField
+                        name={`${name}.value`}
+                        control={form.control}
+                        render={({ field }) => (
+                          <FormInput
+                            type="number"
+                            label={label}
+                            className="h-8"
+                            disabled={none}
+                            placeholder={none ? "No limit" : "Enter a whole number"}
+                            error={!none && !!form.formState.errors[name]?.value}
+                            message={
+                              none
+                                ? undefined
+                                : form.formState.errors[name]?.value?.message
+                            }
+                            {...field}
+                            value={none ? "" : field.value}
+                          />
+                        )}
+                      />
+                      <FormField
+                        name={`${name}.none`}
+                        control={form.control}
+                        render={({ field }) => (
+                          <Checkbox
+                            label="No limit"
+                            aria-label={`${label}: no limit`}
+                            labelClassName="max-w-none whitespace-nowrap ml-1"
+                            checked={field.value}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked === true);
+                              form.trigger(name);
+                            }}
+                          />
+                        )}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              <FormField
+                name="excel_add_in"
+                control={form.control}
+                render={({ field }) => (
+                  <Checkbox
+                    label="Excel add-in"
+                    labelClassName="max-w-none whitespace-nowrap ml-1"
+                    checked={field.value}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
                   />
                 )}
               />

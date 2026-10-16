@@ -2,21 +2,17 @@ import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useCanSubmitApp } from "~/lib/appSubmissionFlag";
-import type { FeatureFlags } from "~/lib/state/featureFlags";
-import { useFeatureFlagsStore } from "~/lib/state/featureFlags";
+import { useAccessStore } from "~/lib/state/access";
 import { mockConfig } from "../../mocks/runtimeConfig";
 
-function setCanSubmit(can_submit_marketplace: boolean | undefined) {
-  // Only the field under test matters; the rest is irrelevant to the gate.
-  useFeatureFlagsStore.setState({
-    featureFlags: { can_submit_marketplace } as FeatureFlags,
-  });
+function setCanSubmit(canSubmitMarketplace: boolean) {
+  useAccessStore.setState({ canSubmitMarketplace });
 }
 
 describe("useCanSubmitApp", () => {
   beforeEach(() => {
     mockConfig.urls.marketplace = "";
-    useFeatureFlagsStore.setState({ featureFlags: null });
+    useAccessStore.setState({ canSubmitMarketplace: false });
   });
 
   afterEach(() => {
@@ -29,7 +25,7 @@ describe("useCanSubmitApp", () => {
     expect(result.current).toBe(true);
   });
 
-  it("is false when the flag is absent (store not yet hydrated)", () => {
+  it("is false before the store is filled", () => {
     const { result } = renderHook(() => useCanSubmitApp());
     expect(result.current).toBe(false);
   });

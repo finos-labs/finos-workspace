@@ -55,7 +55,7 @@ docker pull <registry>/<repository>:latest
 docker run -d -p 3000:3000 -v workspace-data:/data -e WORKSPACE_ADMIN_EMAIL=<your-email> --name workspace <registry>/<repository>:latest
 ```
 
-`WORKSPACE_ADMIN_EMAIL` is the address of the first administrator; the password is generated. The `-v workspace-data:/data` volume stores your data and that password so they survive restarts and upgrades.
+`WORKSPACE_ADMIN_EMAIL` is the address of the first administrator. The `-v workspace-data:/data` volume stores your data so it survives restarts and upgrades.
 
 Open your browser and go to `http://localhost:3000`.
 
@@ -63,17 +63,25 @@ Open your browser and go to `http://localhost:3000`.
 
 ## Step 5 — Get your admin login
 
+The first start creates the administrator with a random password and prints it once in the startup log:
+
+```bash
+docker logs workspace
+```
+
+Sign in at `http://localhost:3000` with your email and that password, and change the password: nothing keeps a copy of it. If you lose it, give the administrator a new one-time password, printed on your terminal only:
+
 ```bash
 docker exec workspace credentials
 ```
 
-This prints your admin email and password. Use them to sign in at `http://localhost:3000`.
+The Workspace asks you to choose your own password when you sign in with it.
 
 ---
 
 ## Updating to a newer version
 
-Your data and admin password live in the `workspace-data` volume, so they survive the upgrade. The explicit `docker pull` is required — Docker reuses the locally cached `latest` otherwise.
+Your data lives in the `workspace-data` volume, so it survives the upgrade, and your password stays the one you chose. The explicit `docker pull` is required — Docker reuses the locally cached `latest` otherwise.
 
 ```bash
 docker stop workspace && docker rm workspace
@@ -97,7 +105,7 @@ docker run --platform linux/amd64 -d -p 3000:3000 -v workspace-data:/data -e WOR
 ```
 
 **Port 3000 is already in use**
-Map a different host port — for example `-p 8080:3000` (then visit `http://localhost:8080`). The container always listens on 3000 internally.
+Map a different host port and name the address your browser opens — for example `-p 8080:3000 -e BACKEND_CORS_ORIGINS='["http://localhost:8080"]'` (then visit `http://localhost:8080`). The container always listens on 3000 internally; without the address, sign-in is refused.
 
 **Authentication error after 12 hours**
 ECR login tokens expire every 12 hours. Re-run the login command from Step 2.

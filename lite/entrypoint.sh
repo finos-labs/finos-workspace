@@ -2,14 +2,14 @@
 # One-box entrypoint.
 #
 # Goal: `docker run -d -p 3000:3000 -e WORKSPACE_ADMIN_EMAIL=<your-email> <image>` is all it
-# takes. Anything the user supplies via -e is preserved; everything else is generated
-# once per /data volume and persisted to /data/secrets.env so values stay
-# stable across container restarts and the JWT_SECRET / WORKSPACE_AUTH_TOKEN
-# pair remains consistent.
+# takes. A key passed with -e is used as given and is not written to the volume; any other
+# key is generated once per /data volume and kept in /data/secrets.env (secrets.sh), so it
+# stays the same across restarts. The administrator's password is kept nowhere:
+# scripts.init_users prints it once when it creates the account, and
+# `docker exec <container> credentials` sets a new one-time password.
 set -euo pipefail
 
 DATA_DIR="${DATA_DIR:-/data}"
-SECRETS_FILE="${DATA_DIR}/secrets.env"
 STATE_DIR="${DATA_DIR}/state"
 STATE_INITIALISED="${STATE_DIR}/initialised"
 
@@ -17,84 +17,32 @@ mkdir -p "$DATA_DIR" "$DATA_DIR/storage" "$DATA_DIR/redis" "$STATE_DIR"
 chown -R appuser:appuser "$DATA_DIR"
 
 ###############################################
-# 1. Bootstrap secrets on first run.
+# 1. Keys and the administrator's address.
 ###############################################
-# Generate any value the user didn't pass via -e, store in /data/secrets.env,
-# then re-source so the rest of the entrypoint (and supervisord children) see
-# the resolved environment. PyJWT lives in the backend venv, so we use it for
-# the JWT_SECRET / WORKSPACE_AUTH_TOKEN pair.
-gen_hex() { python -c "import secrets; print(secrets.token_hex($1))"; }
-gen_b64() { python -c "import secrets; print(secrets.token_urlsafe($1))"; }
-
-# A password that the sign-in form accepts (the same generator that scripts.create_local_env uses).
-gen_password() { (cd /opt/code && python -c "from scripts.create_local_env import admin_password; print(admin_password())"); }
-
-# Defaults applied only if the variable is unset/empty.
-: "${JWT_SECRET:=}"
-: "${WORKSPACE_AUTH_TOKEN:=}"
-: "${WORKSPACE_AES_KEY:=}"
-: "${LOCAL_STORAGE_SECRET_KEY:=}"
-: "${WORKSPACE_ADMIN_EMAIL:=}"
-: "${WORKSPACE_ENTITY_NAME:=Workspace}"
-: "${WORKSPACE_ADMIN_PASSWORD:=}"
-: "${WORKSPACE_FRONTEND_USER_AGENT:=}"
-
-if [[ -f "$SECRETS_FILE" ]]; then
-  # Load only the vars the caller did NOT already set. Filters out comments
-  # and blank lines, then `export -n` first so we don't accidentally clobber
-  # caller-supplied values.
-  while IFS='=' read -r key value; do
-    [[ -z "$key" || "$key" =~ ^# ]] && continue
-    if [[ -z "${!key:-}" ]]; then
-      export "$key=$value"
-    fi
-  done < "$SECRETS_FILE"
-fi
+# The rest of the entrypoint, and supervisord's children, see the resolved environment.
+# shellcheck source=secrets.sh
+source /usr/local/lib/workspace/secrets.sh
+resolve_secrets
 
 # The administrator's address has no default: it is the account you sign in with.
-if [[ -z "$WORKSPACE_ADMIN_EMAIL" ]]; then
+if [[ -z "${WORKSPACE_ADMIN_EMAIL:-}" ]]; then
   echo "[entrypoint] WORKSPACE_ADMIN_EMAIL is not set. Start the container with" >&2
   echo "[entrypoint]   -e WORKSPACE_ADMIN_EMAIL=<the address of the first administrator>" >&2
   exit 1
 fi
 
-# Generate anything still missing.
-[[ -z "$JWT_SECRET" ]]               && JWT_SECRET="$(gen_hex 48)"
-[[ -z "$WORKSPACE_AES_KEY" ]]           && WORKSPACE_AES_KEY="$(gen_hex 8)"  # 16-char hex
-[[ -z "$LOCAL_STORAGE_SECRET_KEY" ]] && LOCAL_STORAGE_SECRET_KEY="$(gen_b64 24)"
-[[ -z "$WORKSPACE_ADMIN_PASSWORD" ]]    && WORKSPACE_ADMIN_PASSWORD="$(gen_password)"
-[[ -z "$WORKSPACE_FRONTEND_USER_AGENT" ]] && WORKSPACE_FRONTEND_USER_AGENT="$(gen_hex 8)"
+write_secrets
 
-# WORKSPACE_AUTH_TOKEN must be a JWT signed with JWT_SECRET (HS256). The backend
-# decodes it on startup; mismatched secret => permanent 401s on /app/* routes.
-if [[ -z "$WORKSPACE_AUTH_TOKEN" ]]; then
-  WORKSPACE_AUTH_TOKEN="$(JWT_SECRET="$JWT_SECRET" python -c "
+# WORKSPACE_AUTH_TOKEN must be a JWT signed with JWT_SECRET (HS256). The same secret always
+# mints the same token, so it is minted at every start rather than kept. PyJWT lives in the
+# backend venv.
+if [[ -z "${WORKSPACE_AUTH_TOKEN:-}" ]]; then
+  WORKSPACE_AUTH_TOKEN="$(python -c "
 import jwt, os
 print(jwt.encode({'sub': 'workspace'}, os.environ['JWT_SECRET'], algorithm='HS256'))
 ")"
 fi
-
-export JWT_SECRET WORKSPACE_AUTH_TOKEN WORKSPACE_AES_KEY LOCAL_STORAGE_SECRET_KEY
-export WORKSPACE_ADMIN_EMAIL WORKSPACE_ADMIN_PASSWORD WORKSPACE_ENTITY_NAME
-
-# Persist (chmod 600). Generated values stay stable across restarts; the
-# admin password is included so the user can recover it after losing the
-# initial container logs.
-umask 077
-cat > "$SECRETS_FILE" <<EOF
-# Generated on first start. Override any of these via
-# docker run -e ... — caller-supplied values always win.
-JWT_SECRET=$JWT_SECRET
-WORKSPACE_AUTH_TOKEN=$WORKSPACE_AUTH_TOKEN
-WORKSPACE_AES_KEY=$WORKSPACE_AES_KEY
-LOCAL_STORAGE_SECRET_KEY=$LOCAL_STORAGE_SECRET_KEY
-WORKSPACE_ADMIN_EMAIL=$WORKSPACE_ADMIN_EMAIL
-WORKSPACE_ADMIN_PASSWORD=$WORKSPACE_ADMIN_PASSWORD
-WORKSPACE_FRONTEND_USER_AGENT=$WORKSPACE_FRONTEND_USER_AGENT
-WORKSPACE_ENTITY_NAME=$WORKSPACE_ENTITY_NAME
-EOF
-chown appuser:appuser "$SECRETS_FILE"
-umask 022
+export WORKSPACE_AUTH_TOKEN
 
 ###############################################
 # 2. Render frontend runtime config + nginx conf.
@@ -125,13 +73,13 @@ if [[ "${DATABASE_TYPE}" != "sqlite" ]]; then
   runuser -u appuser -- python /opt/code/init-db.py || true
 fi
 
-# Re-render the seed config.toml with our admin email/password so init_users
-# picks them up. init_users is idempotent (select-before-insert), so we run it
-# on every start.
+# Re-render the seed config.toml with the organization and the administrator's address so
+# init_users picks them up. init_users is idempotent (select-before-insert), so we run it on
+# every start; it prints the administrator's password once, when it creates the account.
 (cd /opt/code && python -c "
 import os
 from scripts.create_local_env import seed_config
-print(seed_config(os.environ['WORKSPACE_ENTITY_NAME'], os.environ['WORKSPACE_ADMIN_EMAIL'], os.environ['WORKSPACE_ADMIN_PASSWORD'], seats=10000), end='')
+print(seed_config(os.environ['WORKSPACE_ENTITY_NAME'], os.environ['WORKSPACE_ADMIN_EMAIL']), end='')
 ") > /opt/code/scripts/cfgs/config.toml
 chown -R appuser:appuser /opt/code/scripts/cfgs
 
@@ -160,8 +108,8 @@ print_summary() {
  The Workspace is ${1} on port ${PORT}.
    URL:      http://localhost:${PORT}
    Admin:    ${WORKSPACE_ADMIN_EMAIL}
-   Password: ${WORKSPACE_ADMIN_PASSWORD}
-   Print this again anytime with:  docker exec workspace credentials
+   Password: printed once, when the first start created the account; nothing keeps it.
+             For a new one-time password:  docker exec workspace credentials
 ================================================================
 EOF
 }

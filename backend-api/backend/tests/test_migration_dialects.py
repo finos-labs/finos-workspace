@@ -38,9 +38,6 @@ needs_docker = pytest.mark.skipif(not _DOCKER_AVAILABLE, reason="Docker not avai
 
 _BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Tables seeded by 0002_seed_data
-_SEED_TABLES = {"tier": 2, "default_tier": 2, "data_bundle": 2}
-
 # Minimum expected tables (model-created tables)
 _MIN_TABLES = 40
 
@@ -49,11 +46,11 @@ def _base_env() -> dict[str, str]:
     """Return minimal env vars shared across all dialects."""
     return {
         "MODE": "test",
-        "JWT_SECRET": "testsecretfortesting12345678",
-        "WORKSPACE_AES_KEY": "sixteenbytekey!!",
+        "JWT_SECRET": "testsecretfortesting12345678901234",
+        "WORKSPACE_AES_KEY": "d29ya3NwYWNlLXRlc3Qtc3VpdGUtYXQtcmVzdC1rZXk",
         "APPURL": "http://localhost:3000",
         "SELFURL": "http://localhost:8000",
-        "DISABLE_CORS": "true",
+        "BACKEND_CORS_ORIGINS": "http://localhost:3000",
         "PROMETHEUS": "0",
         "WORKERS": "1",
         "STORAGE_PROVIDER": "aws",
@@ -63,8 +60,8 @@ def _base_env() -> dict[str, str]:
         "S3_FILE_BUCKET": "test",
         "S3_ENDPOINT_URL": "http://localhost",
         "FRONTENDURL": "http://localhost",
-        "WORKSPACE_FRONTEND_USER_AGENT": "test",
-        "SUPPRESSED_API_ROUTERS": '["sdk", "run_tasks"]',
+
+        "SUPPRESSED_API_ROUTERS": "[]",
         "SUPPRESSED_API_ROUTES": "[]",
         "WORKSPACE_AUTH_TOKEN": "test-token",
     }
@@ -137,20 +134,6 @@ def _inspect_and_verify(engine: sa.engine.Engine, dialect_name: str):
                 result.fetchall()
             except Exception as exc:
                 errors.append(f"{dialect_name}: SELECT failed on {table_name}: {exc}")
-
-        # Verify seed data
-        for table_name, expected_count in _SEED_TABLES.items():
-            try:
-                count = conn.execute(
-                    sa.text(f"SELECT COUNT(*) FROM {_quote(table_name, dialect_name)}")
-                ).scalar()
-                assert (
-                    count == expected_count
-                ), f"{dialect_name}: {table_name} expected {expected_count} rows, got {count}"
-            except Exception as exc:
-                errors.append(
-                    f"{dialect_name}: Seed check failed on {table_name}: {exc}"
-                )
 
         # Verify alembic version is at head
         expected_head = _alembic_head()

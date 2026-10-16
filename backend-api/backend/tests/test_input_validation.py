@@ -6,7 +6,6 @@ Tests cover:
 - Password validation (length, requirements)
 - UUID validation (format, injection attempts)
 - JSON payload validation (size limits, structure)
-- Username validation (length, allowed characters, bad words)
 """
 
 import os
@@ -22,6 +21,8 @@ if BACKEND_DIR not in sys.path:
 import pytest
 from uuid import uuid4
 from sqlalchemy import text
+
+from tests.fixtures.base import ADMIN_HEADERS
 
 
 class TestEmailValidation:
@@ -149,6 +150,7 @@ class TestPasswordValidation:
                 "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "Valid12!",  # 8 chars
             },
+            headers=ADMIN_HEADERS,
         )
         # Passes validation and reaches the credential check
         assert response.status_code == 401
@@ -273,7 +275,8 @@ class TestJSONPayloadValidation:
         response = await auth_client.put(
             "/user",
             json={
-                "first_name": "Test",
+                "old_password": "OldPassword123!",
+                "new_password": "NewPassword123!",
                 "unknown_field": "should_be_ignored",
                 "another_unknown": 12345,
             },
@@ -341,59 +344,6 @@ class TestJSONPayloadValidation:
         )
         # Should return 400 (bad request) or 422 (unprocessable)
         assert response.status_code in {400, 422}
-
-
-class TestUsernameValidation:
-    """Tests for username validation (PUT /user)"""
-
-    @pytest.mark.asyncio
-    async def test_username_min_length_3_chars_fails(self, auth_client):
-        """Username with 3 chars should fail (min is 4)"""
-        response = await auth_client.put("/user", json={"username": "abc"})
-        assert response.status_code == 422
-
-    @pytest.mark.asyncio
-    async def test_username_min_length_4_chars_succeeds(self, auth_client):
-        """Username with 4 chars should pass validation"""
-        response = await auth_client.put("/user", json={"username": uuid4().hex[:4]})
-        # 409 if the username is taken
-        assert response.status_code in {200, 409}
-
-    @pytest.mark.asyncio
-    async def test_username_max_length_51_chars_fails(self, auth_client):
-        """Username with 51 chars should fail (max is 50)"""
-        response = await auth_client.put("/user", json={"username": "a" * 51})
-        assert response.status_code == 422
-
-    @pytest.mark.asyncio
-    async def test_username_special_chars_rejected(self, auth_client):
-        """Username with special characters should be rejected"""
-        invalid_usernames = [
-            "user@name",
-            "user!name",
-            "user name",  # space
-            "user#name",
-            "user$name",
-        ]
-
-        for username in invalid_usernames:
-            response = await auth_client.put("/user", json={"username": username})
-            assert response.status_code == 422, f"Failed for username: {username}"
-
-    @pytest.mark.asyncio
-    async def test_username_valid_characters_allowed(self, auth_client):
-        """Username with letters, numbers, underscores should be allowed"""
-        suffix = uuid4().hex[:6]
-        valid_usernames = [
-            f"user_name_{suffix}",
-            f"UserName123{suffix}",
-            f"user123{suffix}",
-            f"USER_NAME_123_{suffix}",
-        ]
-
-        for username in valid_usernames:
-            response = await auth_client.put("/user", json={"username": username})
-            assert response.status_code in {200, 409}, f"Failed for username: {username}"
 
 
 class TestContentTypeValidation:

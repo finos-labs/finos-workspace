@@ -28,15 +28,16 @@ const mockState = vi.hoisted(() => {
     extraWidgetsEnabled: false,
     generativeUiEnabled: true,
     temporaryWidgets: [] as CopilotWidget[],
+    customFeatureStates: {} as Record<string, boolean | string>,
   };
 });
 
 vi.mock("react-router-dom", () => ({ useParams: () => ({ id: "dashboard-1" }) }));
 vi.mock("~/components/AI/hooks/useGetCopilotRequestHeaders", () => ({
-  useGetCopilotRequestHeaders: () => () => ({ Authorization: "Bearer token" }),
-}));
-vi.mock("~/components/AI/hooks/useGetCustomApiKeys", () => ({
-  useGetCustomApiKeys: () => () => ({}),
+  useGetCopilotRequestHeaders: () => () => ({
+    "Content-Type": "application/json",
+    "X-Trace-Id": "chat-1",
+  }),
 }));
 vi.mock("~/components/AI/hooks/useGetFinalMessagesAndWidgets", () => ({
   useGetFinalMessagesAndWidgets: () => async () => ({
@@ -45,7 +46,8 @@ vi.mock("~/components/AI/hooks/useGetFinalMessagesAndWidgets", () => ({
     mentionWidgets: [],
   }),
 }));
-vi.mock("~/lib/constants", () => ({
+vi.mock("~/lib/constants", async (importOriginal) => ({
+  ...((await importOriginal()) as Record<string, unknown>),
   ALL_AI_FEATURES: new Set([
     "widget-global-search",
     "generative-ui",
@@ -56,17 +58,14 @@ vi.mock("~/lib/constants", () => ({
   getDefaultCopilot: () => mockState.selectedCopilot,
   MAX_COPILOT_LINKS: 4,
 }));
-vi.mock("~/lib/state/auth", () => ({
-  useShallowAuthStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({ user: { token: "token" } }),
-}));
-vi.mock("~/lib/state/copilot", () => ({
+vi.mock("~/lib/state/copilot", async (importOriginal) => ({
+  ...((await importOriginal()) as Record<string, unknown>),
   useShallowCopilotStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       selectedCopilot: mockState.selectedCopilot,
       getCurrentChat: () => ({ id: "chat-1" }),
       getCurrentChatArtifacts: () => [],
-      customFeatureStates: {},
+      customFeatureStates: mockState.customFeatureStates,
       orchestrationModeEnabled: false,
     }),
 }));
@@ -112,6 +111,7 @@ vi.mock("~/lib/utils", () => ({ extractUrlsFromText: () => [] }));
 
 import { useAiFetchRequestInit } from "~/components/AI/hooks/useAiFetchRequestInit";
 import type { CopilotWidget } from "~/lib/state/copilot";
+import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
 
 async function getPayloads() {
   const { result } = renderHook(() => useAiFetchRequestInit());
@@ -149,6 +149,60 @@ describe("useAiFetchRequestInit", () => {
     mockState.extraWidgetsEnabled = false;
     mockState.generativeUiEnabled = true;
     mockState.temporaryWidgets = [];
+    mockState.customFeatureStates = {};
+    delete (mockState.selectedCopilot.features as Record<string, unknown>).model;
+    useCopilotAccessStore.setState({ access: null });
+  });
+
+  describe("an agent that offers its models through its model setting", () => {
+    const grant = (...modelIds: string[]) =>
+      useCopilotAccessStore.setState({
+        access: {
+          models: modelIds.map((model_id) => ({
+            agent_id: "default_agent",
+            model_id,
+          })),
+          mcp: [],
+        },
+      });
+
+    beforeEach(() => {
+      (mockState.selectedCopilot.features as Record<string, unknown>).model = {
+        label: "Model",
+        type: "select",
+        default: "large",
+        options: [
+          { label: "Large", value: "large" },
+          { label: "Small", value: "small" },
+        ],
+      };
+    });
+
+    it("sends the model the user picked when their roles grant it", async () => {
+      grant("large", "small");
+      mockState.customFeatureStates = { model: "small" };
+
+      for (const payload of await getPayloads()) {
+        expect(payload.workspace_options.model).toBe("small");
+      }
+    });
+
+    it("sends a model their roles grant in place of one they do not", async () => {
+      grant("small");
+      mockState.customFeatureStates = { model: "large" };
+
+      for (const payload of await getPayloads()) {
+        expect(payload.workspace_options.model).toBe("small");
+      }
+    });
+  });
+
+  it("sends no provider keys: the agent gets them from the API", async () => {
+    const payloads = await getPayloads();
+
+    for (const payload of payloads) {
+      expect(payload).not.toHaveProperty("api_keys");
+    }
   });
 
   it("does not send extra widgets when only Generative UI is enabled", async () => {

@@ -5,11 +5,10 @@ Tests the real workspace flows using actual payloads from the frontend.
 No mocking of internal logic - tests hit the real database.
 
 Flow tested:
-1. Login with temp password: POST /app/login
+1. Login with temp password: POST /app/login (the session is an HttpOnly cookie)
 2. Change password: PUT /user
-3. Set profile: PUT /user (first_name, last_name)
-4. Logout: GET /logout
-5. Delete account: DELETE /user
+3. Logout: POST /logout
+4. Delete account: DELETE /user
 
 Additional tests:
 - 2FA/TOTP activation
@@ -27,13 +26,11 @@ if BACKEND_DIR not in sys.path:
 import pytest
 
 from tests.fixtures.utils import skip
-import jwt
 from uuid import uuid4
-from datetime import datetime, timedelta, UTC
 from sqlalchemy import delete
 
+from api.auth_helpers import SESSION_COOKIE
 from api.models import User, Session as SessionModel, UserInvite
-from utilities.config import settings
 
 
 # =============================================================================
@@ -51,7 +48,6 @@ class WorkspacePayloads:
             "email": email,
             "password": password,
             "remember": False,
-            "ip_address": "",
             "source": "app",
             "totp_token": None,
             "version": version,
@@ -65,28 +61,10 @@ class WorkspacePayloads:
             "new_password": new_password,
         }
 
-    @staticmethod
-    def set_profile(first_name: str, last_name: str):
-        """PUT /user payload for profile update"""
-        return {
-            "first_name": first_name,
-            "last_name": last_name,
-        }
-
 
 # =============================================================================
 # Helper Functions
 # =============================================================================
-
-
-def create_service_jwt():
-    """Create a service JWT for X-Workspace-Authorization header"""
-    payload = {
-        "sub": "app",
-        "iss": "workspace",
-        "exp": datetime.now(UTC) + timedelta(hours=1),
-    }
-    return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
 
 
 async def cleanup_test_user(
@@ -135,12 +113,10 @@ class TestAppLogin:
 
     @pytest.mark.asyncio
     async def test_login_valid_credentials(self, app_client, db_session):
-        """Login with valid credentials should return 200 with access_token
+        """Login with valid credentials should return 200 and set the session cookie,
+        with no token in the body
 
-        Note: /app/login requires users to have entity associations. Users without
-        entity associations will get 404 when the system tries to associate them.
-        This test verifies the login attempt doesn't cause a 500 error.
-        For full login testing, use auth_client which has proper entity setup.
+        A user without an organization is put into the default one, as a developer.
         """
         test_password = "TestPassword123!"
         test_user_uuid = str(uuid4())
@@ -160,18 +136,17 @@ class TestAppLogin:
         try:
             response = await app_client.post("/app/login", json=WorkspacePayloads.login(test_email, test_password))
 
-            # Without entity setup, returns 404 (entity not found)
-            # With entity setup, returns 200/206
-            # Should never return 500
-            assert response.status_code in {200, 206, 404}
-            assert response.status_code != 500
-
-            if response.status_code in {200, 206}:
-                data = response.json()
-                assert "access_token" in data
-                assert data["email"] == test_email
-                assert data["token_type"] == "bearer"
-                assert "uuid" in data
+            assert response.status_code == 200
+            data = response.json()
+            assert "access_token" not in data
+            assert app_client.cookies.get(SESSION_COOKIE)
+            assert data["email"] == test_email
+            assert data["uuid"] == test_user_uuid
+            assert data["access"] == {
+                "user_type": "Developer",
+                "sharing": "none",
+                "excel_add_in": False,
+            }
         finally:
             await cleanup_test_user(db_session, user_uuid=test_user_uuid)
 
@@ -239,12 +214,12 @@ class TestAppLogin:
 
 
 class TestLogout:
-    """Tests for GET /logout endpoint"""
+    """Tests for POST /logout endpoint"""
 
     @pytest.mark.asyncio
     async def test_logout_unauthenticated(self, client):
         """Logout without auth should return 401 or 403"""
-        response = await client.get("/logout")
+        response = await client.post("/logout")
         assert response.status_code in {401, 403}
         data = response.json()
         assert "detail" in data
@@ -252,10 +227,17 @@ class TestLogout:
     @pytest.mark.asyncio
     async def test_logout_authenticated(self, auth_client):
         """Logout with valid session should return 200 with success=True"""
-        response = await auth_client.get("/logout")
+        response = await auth_client.post("/logout")
         assert response.status_code == 200
         data = response.json()
         assert data.get("success") is True
+
+    @pytest.mark.asyncio
+    async def test_logout_is_not_a_get(self, auth_client):
+        """Signing out changes state, so it is never a GET: there is no such route"""
+        response = await auth_client.get("/logout")
+        assert response.status_code in {404, 405}
+        assert (await auth_client.get("/app/user")).status_code == 200
 
 
 # =============================================================================
@@ -264,7 +246,7 @@ class TestLogout:
 
 
 class TestUserProfile:
-    """Tests for /user and /app/user endpoints"""
+    """Tests for the /app/user endpoint"""
 
     @pytest.mark.asyncio
     async def test_get_user_unauthenticated(self, client):
@@ -285,14 +267,6 @@ class TestUserProfile:
 
         # Should not expose sensitive fields
         assert "password" not in str(data).lower() or "password_hash" not in str(data)
-
-    @pytest.mark.asyncio
-    async def test_update_user_profile(self, auth_client):
-        """Updating user profile should return 200"""
-        response = await auth_client.put("/user", json=WorkspacePayloads.set_profile("IntegrationTest", "User"))
-        assert response.status_code == 200
-        data = response.json()
-        assert data.get("success") is True
 
 
 # =============================================================================
@@ -331,16 +305,6 @@ class TestPasswordChange:
             login_response = await app_client.post("/app/login", json=WorkspacePayloads.login(test_email, test_password))
             if login_response.status_code not in {200, 206}:
                 skip("Could not login for password change test")
-
-            token = login_response.json()["access_token"]
-            service_jwt = create_service_jwt()
-
-            app_client.headers.update(
-                {
-                    "Authorization": f"Bearer {token}",
-                    "X-Workspace-Authorization": f"Bearer {service_jwt}",
-                }
-            )
 
             # Try to change with wrong old password
             response = await app_client.put(
@@ -417,16 +381,6 @@ class TestTwoFactorAuth:
             if login_response.status_code not in {200, 206}:
                 skip("Could not login for TOTP test")
 
-            token = login_response.json()["access_token"]
-            service_jwt = create_service_jwt()
-
-            app_client.headers.update(
-                {
-                    "Authorization": f"Bearer {token}",
-                    "X-Workspace-Authorization": f"Bearer {service_jwt}",
-                }
-            )
-
             # Generate TOTP secret
             generate_response = await app_client.post("/totp", json={})
             if generate_response.status_code == 200:
@@ -481,24 +435,14 @@ class TestUserDeletion:
             if login_response.status_code not in {200, 206}:
                 skip("Could not login for delete test")
 
-            token = login_response.json()["access_token"]
-            service_jwt = create_service_jwt()
-
-            app_client.headers.update(
-                {
-                    "Authorization": f"Bearer {token}",
-                    "X-Workspace-Authorization": f"Bearer {service_jwt}",
-                }
-            )
-
             # Delete user
             delete_response = await app_client.delete("/user")
             assert delete_response.status_code == 200
             assert delete_response.json().get("success") is True
 
-            # Verify can't login anymore
+            # Verify can't login anymore: a deleted account is like one that never existed
             login_again = await app_client.post("/app/login", json=WorkspacePayloads.login(test_email, test_password))
-            assert login_again.status_code == 404
+            assert login_again.status_code == 401
         finally:
             # Cleanup any remaining sessions
             await db_session.execute(delete(SessionModel).where(SessionModel.user_uuid == test_user_uuid))

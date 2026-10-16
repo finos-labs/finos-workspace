@@ -19,6 +19,7 @@ import {
 import Tooltip from "~/components/Tooltip";
 import { getDefaultCopilot } from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import { cn } from "~/lib/utils";
 
 export function AIAgentsTab() {
@@ -41,6 +42,7 @@ export function AIAgentsTab() {
     inputRef,
     setShowAddAgentsDialog,
   } = useAgentManagement();
+  const mayAdd = useShallowAccessStore((s) => canAddConnections(s.access));
 
   const defaultCopilot = getDefaultCopilot();
   const searchTerm = debouncedSearch.toLowerCase().trim();
@@ -82,13 +84,15 @@ export function AIAgentsTab() {
                 </Button>
               </Tooltip>
             )}
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => setShowAddAgentsDialog(true)}
-            >
-              Add Agent
-            </Button>
+            {mayAdd && (
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => setShowAddAgentsDialog(true)}
+              >
+                Add Agent
+              </Button>
+            )}
           </div>
         </TabPageToolbar>
 

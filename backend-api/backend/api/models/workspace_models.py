@@ -29,6 +29,7 @@ from api.models.model_helpers import (
     AwareDateTime,
     Base,
     DateMixin,
+    EncryptedMediumType,
     EncryptedType,
     GzipJsonLongType,
     GzipJsonType,
@@ -104,7 +105,9 @@ class ApiSource(Base, UUIDMixin, DateMixin):
     user_uuid: Mapped[None | UUID] = mapped_column(
         UUIDType, ForeignKey("user.uuid"), index=True
     )
-    endpointHeaders: Mapped[list[dict[str, str]] | None] = mapped_column(EncryptedType)
+    endpointHeaders: Mapped[list[dict[str, str]] | None] = mapped_column(
+        EncryptedType("api_source.endpointHeaders")
+    )
     entity_uuid: Mapped[None | UUID] = mapped_column(
         ForeignKey("entity.uuid", ondelete="CASCADE"), index=True
     )
@@ -366,6 +369,35 @@ class UserAppShare(Base, UUIDMixin, DateMixin):
     viewed: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
 
+class ShareRequest(Base, UUIDMixin, DateMixin):
+    """A developer's share of a dashboard or an app, waiting for an admin of their
+    organization to approve it. Without a recipient it shares a dashboard with the whole
+    organization."""
+
+    __tablename__ = "share_request"
+    __table_args__ = (
+        CheckConstraint(
+            "(dashboard_item_uuid IS NULL) <> (user_app_uuid IS NULL)",
+            name="check_share_request_item",
+        ),
+    )
+
+    requester_uuid: Mapped[UUID] = mapped_column(
+        UUIDType, ForeignKey("user.uuid", ondelete="CASCADE"), index=True
+    )
+    dashboard_item_uuid: Mapped[UUID | None] = mapped_column(
+        UUIDType, ForeignKey("dashboard_item.uuid", ondelete="CASCADE"), index=True
+    )
+    user_app_uuid: Mapped[UUID | None] = mapped_column(
+        UUIDType, ForeignKey("user_app.uuid", ondelete="CASCADE"), index=True
+    )
+    recipient_uuid: Mapped[UUID | None] = mapped_column(
+        UUIDType, ForeignKey("user.uuid", ondelete="CASCADE"), index=True
+    )
+    # The permission the recipient gets (schemas.permissions_type); none for the organization
+    permissions: Mapped[str | None] = mapped_column(String(10))
+
+
 class CustomCopilot(Base, UUIDMixin, DateMixin):
     __tablename__ = "custom_copilot"
 
@@ -373,8 +405,12 @@ class CustomCopilot(Base, UUIDMixin, DateMixin):
         UUIDType, ForeignKey("user.uuid"), nullable=False, index=True
     )
     url: Mapped[str] = mapped_column(String(200), nullable=False)
-    headers: Mapped[dict[str, str] | None] = mapped_column(EncryptedType)
-    copilots: Mapped[list[dict] | None] = mapped_column(EncryptedType)
+    headers: Mapped[dict[str, str] | None] = mapped_column(
+        EncryptedType("custom_copilot.headers")
+    )
+    copilots: Mapped[list[dict] | None] = mapped_column(
+        EncryptedType("custom_copilot.copilots")
+    )
 
     __table_args__ = (
         UniqueConstraint("user_uuid", "url", name="uix_user_url_custom_copilot"),
@@ -387,4 +423,36 @@ class MCPServers(Base, UUIDMixin, DateMixin):
     user_uuid: Mapped[UUID] = mapped_column(
         UUIDType, ForeignKey("user.uuid"), nullable=False, index=True
     )
-    servers: Mapped[list[dict] | None] = mapped_column(GzipJsonType)
+    # The server list, without the headers. Encrypted too: a server's URL may carry a
+    # credential (in its path or query)
+    servers: Mapped[list[dict] | None] = mapped_column(
+        EncryptedMediumType("mcp_servers.servers")
+    )
+    # The servers' custom headers: {normalized server URL: {header name: value}}
+    headers: Mapped[dict[str, dict[str, str]] | None] = mapped_column(
+        EncryptedType("mcp_servers.headers")
+    )
+
+
+class MCPOAuthGrant(Base, UUIDMixin, DateMixin):
+    """What a user got by signing in to a remote MCP server (routers/app/mcp_oauth.py),
+    per user and server: the tokens, and the client the API registered with the
+    authorization server. Encrypted; the MCP proxy attaches the access token, and the
+    browser never receives any of it.
+
+    A server's URL may carry a credential, so the row names the server by the SHA-256 of
+    its normalized URL. The URL itself, and the user, are inside the encrypted credentials,
+    which are refused when they name another user or server than the row."""
+
+    __tablename__ = "mcp_oauth_grant"
+    __table_args__ = (
+        UniqueConstraint("user_uuid", "server_hash", name="uix_mcp_oauth_grant_server"),
+    )
+
+    user_uuid: Mapped[UUID] = mapped_column(
+        UUIDType, ForeignKey("user.uuid", ondelete="CASCADE"), nullable=False
+    )
+    server_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    credentials: Mapped[dict] = mapped_column(
+        EncryptedType("mcp_oauth_grant.credentials"), nullable=False
+    )

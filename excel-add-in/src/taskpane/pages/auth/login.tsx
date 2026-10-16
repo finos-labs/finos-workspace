@@ -35,6 +35,16 @@ interface ErrorAlert {
   message?: string;
 }
 
+/** The reason an error response gives: its `detail`, or its `message`. */
+function responseReason(data: unknown): string | undefined {
+  if (typeof data !== "object" || data === null) return undefined;
+  for (const key of ["detail", "message"]) {
+    const value = Reflect.get(data, key);
+    if (typeof value === "string" && value !== "") return value;
+  }
+  return undefined;
+}
+
 export default function Page() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -54,24 +64,15 @@ export default function Page() {
   async function handleSubmit(values: TForm) {
     try {
       const user = await backend.login(values.email, values.password, values.remember);
-      if (user.feature_entitlements?.tier === "full") {
-        authStore.login(
-          user.uuid,
-          user.email,
-          user.username || user.email,
-          user.access_token,
-          user.expiration_date,
-          user.profile,
-        );
-        const from = location.state?.from || "/account";
-        navigate(from);
-      } else {
-        setAlert({
-          title: "Access denied",
-          message:
-            "Full tier access is required to sign in. Ask the administrator of your Workspace.",
-        });
-      }
+      authStore.login(
+        user.email,
+        user.username || user.email,
+        user.access_token,
+        user.expiration_date,
+        user.profile,
+      );
+      const from = location.state?.from || "/account";
+      navigate(from);
     } catch (error) {
       if (error instanceof AxiosError) {
         if (error.response && error.response.status) {
@@ -83,10 +84,10 @@ export default function Page() {
               title: "Credentials are incorrect",
               message: "Enter a valid email and password",
             });
-          } else if (status === 402) {
+          } else if (status === 403) {
             setAlert({
               title: "Access denied",
-              message: "Full tier access is required to sign in",
+              message: responseReason(error.response.data),
             });
           } else {
             setAlert({ title: "Something went wrong" });

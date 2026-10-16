@@ -24,7 +24,6 @@ const entityRelationshipSchema = z.object({
 type TEntityRelationship = z.infer<typeof entityRelationshipSchema>;
 
 export function EntityRelationshipSubmitForm({
-  user,
   setShowAdd,
   retrieveItems,
   data,
@@ -48,15 +47,10 @@ export function EntityRelationshipSubmitForm({
         item.uuid,
         values.parent,
         values.child,
-        user.accessToken,
       );
       await handleRequest(response, setWarning, setShowAdd, retrieveItems);
     } else {
-      const response = await addEntityRelationship(
-        values.parent,
-        values.child,
-        user.accessToken,
-      );
+      const response = await addEntityRelationship(values.parent, values.child);
       await handleRequest(response, setWarning, setShowAdd, retrieveItems);
     }
   };

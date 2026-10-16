@@ -2,8 +2,8 @@ import cloneDeep from "lodash/cloneDeep";
 import { useMemo, useState } from "react";
 import CodeSnippet from "~/components/CodeSnippet";
 import { docsUrl } from "~/lib/docsUrl";
+import { useShallowAccessStore } from "~/lib/state/access";
 import type { Widget } from "~/lib/state/app";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { cn } from "~/lib/utils";
 import { showNotification } from "~/lib/utils/toast";
 import { Button } from "./ds/atoms/Button";
@@ -221,9 +221,7 @@ export default function FunctionsDialog({
   setOpen: (open: boolean) => void;
 }) {
   const [useExplicitParams, setUseExplicitParams] = useState(false);
-  const isFullTier = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.tier === "full",
-  );
+  const excelAddIn = useShallowAccessStore((state) => !!state.access?.excel_add_in);
   const { widget, widgetFromJSON } = useWidgetContext();
   const excelDataFunction = widget.external
     ? ["WORKSPACE.WIDGET"]
@@ -239,7 +237,7 @@ export default function FunctionsDialog({
         <div key={index} className="flex flex-col gap-4 mb-2">
           <div className="flex gap-2">
             <CodeSnippet
-              disabled={!isFullTier}
+              disabled={!excelAddIn}
               text={useExplicitParams ? (explicitParamsDisplay ?? display) : display}
               className="grow w-32"
               hideCopy={true}
@@ -277,7 +275,7 @@ export default function FunctionsDialog({
             <Button
               variant="primary"
               size="sm"
-              disabled={!isFullTier}
+              disabled={!excelAddIn}
               onClick={() => {
                 navigator.clipboard.writeText(
                   useExplicitParams ? (explicitParamsCopy ?? copy) : copy,
@@ -314,7 +312,7 @@ export default function FunctionsDialog({
             <Checkbox
               checked={useExplicitParams}
               onCheckedChange={(checked) => setUseExplicitParams(checked === true)}
-              disabled={!isFullTier}
+              disabled={!excelAddIn}
               label="with explicit parameters"
               labelClassName="whitespace-nowrap"
             />
@@ -322,7 +320,7 @@ export default function FunctionsDialog({
         </div>
       );
     });
-  }, [excelDataFunction, widget, isFullTier, useExplicitParams]);
+  }, [excelDataFunction, widget, excelAddIn, useExplicitParams]);
 
   return (
     <BaseDialog
@@ -337,7 +335,7 @@ export default function FunctionsDialog({
             <div className="flex gap-1 items-center flex-wrap">
               <DialogDescription
                 className={cn("text-ds-text-body", {
-                  "text-general-label-disabled": !isFullTier,
+                  "text-general-label-disabled": !excelAddIn,
                 })}
               >
                 Access <strong className="text-ds-text-heading">{widget.name}</strong>

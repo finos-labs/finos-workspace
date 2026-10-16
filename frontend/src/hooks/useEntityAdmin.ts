@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import {
   getEntities,
-  getEntityEntitlement,
   getEntityMaps,
   getEntityRelationships,
   getEntityTypes,
@@ -18,7 +17,6 @@ export const entityAdminKeys = {
   entityTypes: [...ROOT, "entityTypes"] as const,
   relationships: [...ROOT, "relationships"] as const,
   maps: [...ROOT, "maps"] as const,
-  entitlement: (entityUuid: string) => [...ROOT, "entitlement", entityUuid] as const,
 };
 
 const STALE_TIME = 1000 * 60;
@@ -68,10 +66,4 @@ export const useEntityMaps = () =>
     queryKey: entityAdminKeys.maps,
     queryFn: getEntityMaps,
     staleTime: STALE_TIME,
-  });
-
-export const useEntityEntitlement = (entityUuid: string) =>
-  useQuery({
-    queryKey: entityAdminKeys.entitlement(entityUuid),
-    queryFn: () => getEntityEntitlement(entityUuid),
   });

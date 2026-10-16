@@ -9,9 +9,9 @@ import AdminDialogFooter from "~/components/AdminUsers/common/AdminDialogFooter"
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowAuthStore } from "~/lib/state/auth";
+import { USER_TYPES } from "~/types/entity.type";
 import type { User } from "~/types/user.type";
 import { Button } from "../ds/atoms/Button";
-import { Checkbox } from "../ds/atoms/Checkbox";
 import { Select } from "../ds/atoms/Select";
 import { Tag } from "../ds/atoms/Tag";
 import { BaseDialog } from "../ds/dialogs/BaseDialog";
@@ -37,7 +37,6 @@ interface Props {
 
 interface UserInfo {
   permissions_uuid: User["permissions_uuid"];
-  billing_active: User["billing_active"];
 }
 
 interface BaseState extends UserInfo {
@@ -63,7 +62,6 @@ const initialState = {
 export function getBaseState(user: User | UserInfo, initial?: Partial<BaseState>) {
   return {
     permissions_uuid: user.permissions_uuid,
-    billing_active: user.billing_active,
     ...(initial || {}),
   } as BaseState;
 }
@@ -99,9 +97,6 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
       queryClient.invalidateQueries({
         queryKey: ["admin", "users"],
       });
-      queryClient.invalidateQueries({
-        queryKey: ["admin", "entityInfo"],
-      });
       onClose();
     },
     onError: (err: { response: { data: { detail?: string } } }) => {
@@ -111,8 +106,13 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
     },
   });
   const { data: entityMap = [] } = useEntityMap();
-  const rolesOptions = useMemo(
-    () => entityMap.map((item) => ({ label: item.name, value: item.uuid })),
+  const typeOptions = useMemo(
+    () =>
+      USER_TYPES.flatMap((type) =>
+        entityMap
+          .filter((item) => item.name === type)
+          .map((item) => ({ label: item.name, value: item.uuid })),
+      ),
     [entityMap],
   );
 
@@ -218,8 +218,8 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
               <div className="[&>.BB-Select]:inline">
                 <Select
                   className="inline-flex h-7 w-[120px] rounded-sm px-2"
-                  options={rolesOptions}
-                  placeholder="Select role"
+                  options={typeOptions}
+                  placeholder="Select type"
                   disabled={!userInfo.activeUser || userInfo.sameUser}
                   value={state.permissions_uuid}
                   onValueChange={(permissions_uuid) => dispatch({ permissions_uuid })}
@@ -276,18 +276,13 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
               </Button>
             }
           >
-            <AdminUserPermissionsSection userUuid={user.uuid} />
+            <AdminUserPermissionsSection
+              userUuid={user.uuid}
+              invited={user.source === "invite"}
+            />
           </SettingsMenu>
 
           <div className="hidden">
-            <Checkbox
-              label="Seat Assigned"
-              defaultChecked={state.billing_active}
-              onCheckedChange={(billing_active) =>
-                typeof billing_active === "boolean" && dispatch({ billing_active })
-              }
-              disabled={!userInfo.activeUser || userInfo.sameUser}
-            />
             {state.temporaryPassword && (
               <div className="flex items-center gap-1">
                 <span className="body-xs-medium">Temporary password:</span>

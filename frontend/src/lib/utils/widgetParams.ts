@@ -9,7 +9,7 @@ import type {
   WidgetT,
 } from "~/components/types";
 import { getConfig } from "~/lib/runtimeConfig";
-import type { AuthStore } from "~/lib/state/auth";
+import { getIdpTokens } from "~/lib/state/idpTokens";
 import { DEFAULT_TICKERS } from "~/lib/types";
 import { newParamDef, ParamsSchema } from "~/lib/types/app";
 import { isDate } from "~/lib/utils/format";
@@ -22,17 +22,6 @@ function getAuthFlags() {
     sendOktaIdToken: cfg.authentication.sendOktaIdToken,
     sendUserEmailAsHeader: cfg.authentication.sendUserEmailAsHeader,
   };
-}
-
-// Avoids importing the entire auth store in this utils file, which causes `heap out of memory` on build.
-export function getAuthStore() {
-  const AuthStore = {
-    getState: () => {
-      const localState = localStorage.getItem("auth-storage");
-      return localState ? (JSON.parse(localState).state ?? {}) : {};
-    },
-  } as AuthStore;
-  return AuthStore;
 }
 
 // Converts header rows (`{ key, value, location }`) to a header record; rows located in the query become params
@@ -62,25 +51,23 @@ export function convertHeadersToRecord<PT extends object = Record<string, unknow
   return { headers, newParams: params };
 }
 
+/**
+ * A copy of `headers` plus the identity headers the deployment forwards (from page
+ * memory). It never changes `headers` itself, so a saved header set (a custom agent's,
+ * an MCP server's) never picks up an ID token or the email.
+ */
 export function addExtraHeaders(
   headers: Record<string, string> = {},
 ): Record<string, string> {
   const flags = getAuthFlags();
-  if (typeof window === "undefined") return headers; // Ensure this code only runs in the browser
-  const useAuthStore = getAuthStore();
-  if (flags.sendMicrosoftIdToken) {
-    const microsoftIdToken = useAuthStore.getState().microsoftIdToken;
-    if (microsoftIdToken) headers["X-Microsoft-Id-Token"] = microsoftIdToken;
+  const { microsoftIdToken, oktaIdToken, email } = getIdpTokens();
+  const withExtras = { ...headers };
+  if (flags.sendMicrosoftIdToken && microsoftIdToken) {
+    withExtras["X-Microsoft-Id-Token"] = microsoftIdToken;
   }
-  if (flags.sendOktaIdToken) {
-    const oktaIdToken = useAuthStore.getState().oktaIdToken;
-    if (oktaIdToken) headers["X-Okta-Id-Token"] = oktaIdToken;
-  }
-  if (flags.sendUserEmailAsHeader) {
-    const email = useAuthStore.getState().user?.email;
-    if (email) headers["X-Workspace-User"] = email;
-  }
-  return headers;
+  if (flags.sendOktaIdToken && oktaIdToken) withExtras["X-Okta-Id-Token"] = oktaIdToken;
+  if (flags.sendUserEmailAsHeader && email) withExtras["X-Workspace-User"] = email;
+  return withExtras;
 }
 
 export function cleanURL(url: string) {
@@ -285,31 +272,17 @@ export function createParamDefs(
   return widget.params as ParamDef[];
 }
 
+/**
+ * A widget's endpoint as dashboards and apps save it: the URL and the method, never a
+ * data backend's credentials, which widgets look up in their source when they fetch.
+ */
 export function createWidgetEndpoint(
   url: string | WidgetT["endpoint"],
-  endpointHeaders: WidgetT["endpointHeaders"] = [],
 ): NonNullable<WidgetT["endpoint"]> {
-  const newEndpoint = {
-    query: {},
-    headers: {},
-    ...(typeof url === "string" ? { url } : url),
+  return {
+    url: cleanURL(typeof url === "string" ? url : (url?.url ?? "")),
     method: "GET",
-  } as NonNullable<WidgetT["endpoint"]>;
-
-  newEndpoint.url = cleanURL(newEndpoint.url);
-
-  const { headers = {}, query = {} } = endpointHeaders.reduce<{
-    headers: Record<string, string>;
-    query: Record<string, string>;
-  }>(
-    (acc, { key, value, location = "headers" }) => {
-      acc[location][key] = value;
-      return acc;
-    },
-    { headers: newEndpoint.headers ?? {}, query: newEndpoint.query ?? {} },
-  );
-
-  return { ...newEndpoint, headers, query };
+  };
 }
 
 /** Whether a value, such as one an AI tool call supplies, is one a widget parameter can hold. */

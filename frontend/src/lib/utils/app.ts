@@ -22,6 +22,7 @@ import { formatZodErrorMessage } from "~/utils/zodErrors";
 import type { AppState, Group, InnerTab, Item, Items } from "../state/app";
 import {
   type ConnectionType,
+  getSourceCredentials,
   useBackendConnectorStore,
 } from "../state/backendConnector";
 import { useCopilotDataStore } from "../state/copilotData";
@@ -683,7 +684,9 @@ export function getEndpointParamRequestArgs(
   param: ParamDefT<"endpoint">,
   currentParams: Record<string, unknown>,
 ) {
-  const { headers, newParams } = convertHeadersToRecord(widget.endpoint?.headers ?? {});
+  const { headers, newParams } = convertHeadersToRecord(
+    getSourceCredentials(widget.sourceId, param.optionsEndpoint).headers,
+  );
 
   for (const [key, value] of Object.entries(param.optionsParams ?? {})) {
     if (value?.toString()?.startsWith("$")) {
@@ -1544,10 +1547,9 @@ export function getWidgetData(params: {
       }
     }
     if (widget.endpoint) {
-      finalWidgetData.endpoint = createWidgetEndpoint(
-        widget.endpoint,
-        widget?.endpointHeaders || [],
-      );
+      // The source's credentials are looked up when the widget fetches, never saved with it
+      const { url, method } = createWidgetEndpoint(widget.endpoint);
+      finalWidgetData.endpoint = { url, method };
     }
 
     const uniqueParam = widget?.params?.find((param) => param.type === "ticker");

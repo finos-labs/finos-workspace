@@ -22,6 +22,7 @@ import { useWidgetParamsPositions } from "~/components/WidgetParams/QueryParams"
 import { buildIframeWidget } from "~/components/Widgets/custom/buildIframeWidget";
 import { useJsonData } from "~/lib/api";
 import { useShallowAppStore } from "~/lib/state/app";
+import { useSourceCredentials } from "~/lib/state/backendConnector";
 import type { ArtifactT, Citation as CitationT } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { protectAiMarkers } from "~/lib/utils/citationMarkers";
@@ -149,12 +150,13 @@ export default function Markdown() {
     [widget.endpoint?.url],
   );
   const validEndpoint = !!widget?.endpoint?.url;
+  const credentials = useSourceCredentials(widget.sourceId, widget.endpoint?.url);
 
   const options = useMemo(() => {
     const endpoint = widget.endpoint;
     const newParams = Object.fromEntries(
       Object.entries({
-        ...(widget?.endpoint?.query ?? {}),
+        ...credentials.query,
         ...(widget?.storage?.params ?? {}),
       }).filter(([_key, value]) => value !== "" && value !== undefined),
     );
@@ -163,12 +165,11 @@ export default function Markdown() {
 
     return {
       url: endpoint?.url ?? "",
-      endpointHeaders: endpoint?.headers ?? {},
+      endpointHeaders: credentials.headers,
       method: endpoint?.method ?? "GET",
       params: newParams,
-      addBearerToken: true,
     };
-  }, [widget?.endpoint, widget?.storage?.params, theme]);
+  }, [widget?.endpoint, widget?.storage?.params, theme, credentials]);
 
   const { data, isLoading, error, dataUpdatedAt } = useJsonData(
     {

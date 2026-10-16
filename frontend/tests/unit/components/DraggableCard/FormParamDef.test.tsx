@@ -5,6 +5,7 @@ import { FormParamElement } from "~/components/DraggableCard/FormParamDef";
 import type { WidgetT } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useJsonData } from "~/lib/api";
+import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { partial } from "../../mocks";
 
 vi.mock("~/components/Widget.context", () => ({
@@ -53,12 +54,22 @@ const CUSTOM_HEADERS = {
   "X-Custom-Header": "custom-value",
 };
 
+// The data backend's credentials live on its source in page memory, never on the widget
+const SOURCE = partial<Source>({
+  id: "src-1",
+  name: "My API",
+  url: "https://my-api.com",
+  endpointHeaders: Object.entries(CUSTOM_HEADERS).map(([key, value]) => ({
+    key,
+    value,
+    location: "headers" as const,
+  })),
+});
+
 const mockWidget = partial<WidgetT>({
   id: "test-widget",
-  endpoint: {
-    url: "https://my-api.com/data",
-    headers: CUSTOM_HEADERS,
-  },
+  sourceId: "src-1",
+  endpoint: { url: "https://my-api.com/data", method: "GET" },
   params: [
     {
       type: "form",
@@ -92,16 +103,16 @@ describe("FormParamElement - EndpointType", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (useWidgetContext as Mock).mockReturnValue(createMockWidgetContext());
+    useBackendConnectorStore.setState({ apiSources: [SOURCE] });
   });
 
-  it("passes endpoint headers as endpointHeaders to useJsonData when fetching options", () => {
+  it("passes the source's headers as endpointHeaders to useJsonData when fetching options", () => {
     render(<FormParamElement />);
 
     expect(vi.mocked(useJsonData)).toHaveBeenCalledWith(
       expect.objectContaining({
         endpointHeaders: CUSTOM_HEADERS,
         url: OPTIONS_ENDPOINT,
-        addBearerToken: true,
       }),
       expect.anything(),
     );
@@ -114,14 +125,32 @@ describe("FormParamElement - EndpointType", () => {
     expect(callArgs).not.toHaveProperty("headers");
   });
 
-  it("still fetches options when widget has no endpoint headers", () => {
-    const widgetWithoutHeaders = partial<WidgetT>({
+  it("ignores headers saved on the widget itself", () => {
+    const widgetWithHeaders = partial<WidgetT>({
       ...mockWidget,
-      endpoint: { url: "https://my-api.com/data", headers: {} },
+      // Saved widgets carry no credentials; one that does is not trusted
+      endpoint: {
+        url: "https://my-api.com/data",
+        method: "GET",
+        headers: { "X-Api-Key": "stale-saved-key" },
+      } as WidgetT["endpoint"],
     });
     (useWidgetContext as Mock).mockReturnValue(
-      createMockWidgetContext(widgetWithoutHeaders),
+      createMockWidgetContext(widgetWithHeaders),
     );
+
+    render(<FormParamElement />);
+
+    expect(vi.mocked(useJsonData)).toHaveBeenCalledWith(
+      expect.objectContaining({ endpointHeaders: CUSTOM_HEADERS }),
+      expect.anything(),
+    );
+  });
+
+  it("still fetches options when the source has no headers", () => {
+    useBackendConnectorStore.setState({
+      apiSources: [{ ...SOURCE, endpointHeaders: [] }],
+    });
 
     render(<FormParamElement />);
 

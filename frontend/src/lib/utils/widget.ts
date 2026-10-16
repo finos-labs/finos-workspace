@@ -28,7 +28,6 @@ import {
   type DataUrl,
   MultipleCopilotDataItemSchema,
 } from "../state/copilot";
-import { isExcludedWidgetId } from "../state/featureFlags";
 
 /** The built-in widgets every entity can add (the widget search shows them under "All"). */
 export const CORE_WIDGET_IDS = ["navigation_bar", "iframe", "html"];
@@ -209,10 +208,9 @@ export function getAllWidgets(
 
   if (connectionTypes.includes("individual")) {
     result.push(
-      // Built-in widgets that the entity's data bundle does not exclude
-      ...WIDGETS_WITHOUT_DISABLED.filter(
-        (widget) => !isExcludedWidgetId(widget.widgetId),
-      ).map((widget) => cloneDeep({ ...widget }) as unknown as WidgetT),
+      ...WIDGETS_WITHOUT_DISABLED.map(
+        (widget) => cloneDeep({ ...widget }) as unknown as WidgetT,
+      ),
     );
   }
   if (connectionTypes.includes("backend")) {

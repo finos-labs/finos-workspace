@@ -7,7 +7,6 @@ import { EntityRelationshipSubmitForm } from "components/managers/EntityRelation
 import { EntityTypeSubmitForm } from "components/managers/EntityType";
 import { PermissionsMapSubmitForm } from "components/managers/PermissionsMap";
 import { UserSearchBar, UserSubmitForm } from "components/managers/User";
-import { type AuthStore, useAuthStore } from "utils/auth";
 import {
   type Entity,
   type EntityRelationship,
@@ -44,7 +43,6 @@ const TABS: TAB[] = [
 ];
 
 export default function ManageEntities(): JSX.Element {
-  const user = useAuthStore((state: AuthStore) => state.user);
   const paginatedDefault = {
     items: [],
     page: 0,
@@ -62,13 +60,11 @@ export default function ManageEntities(): JSX.Element {
   const [fullUsers, setFullUsers] = useState<Paginated<FullUser>>(paginatedDefault);
 
   const dataGetter = async <T,>(
-    getter: (accessToken: string) => Promise<ListResponse<T>>,
+    getter: () => Promise<ListResponse<T>>,
   ): Promise<Paginated<T>> => {
-    if (user !== null) {
-      const data = await getter(user.accessToken);
-      if (data.data !== undefined) {
-        return data.data;
-      }
+    const data = await getter();
+    if (data.data !== undefined) {
+      return data.data;
     }
     return paginatedDefault;
   };
@@ -94,12 +90,10 @@ export default function ManageEntities(): JSX.Element {
   };
 
   const retrieveFullUsers = async (email?: string): Promise<void> => {
-    if (user !== null) {
-      const data = await getUsers(user.accessToken, 50, 1, email);
-      if (data.data !== undefined) {
-        setFullUsers(data.data);
-        return;
-      }
+    const data = await getUsers(50, 1, email);
+    if (data.data !== undefined) {
+      setFullUsers(data.data);
+      return;
     }
     setFullUsers(paginatedDefault);
   };
@@ -132,7 +126,6 @@ export default function ManageEntities(): JSX.Element {
           </TabsTrigger>
         ))}
       </TabsList>
-      {user !== null && (
         <div>
           <TabsContent value="user">
             <ManageBase
@@ -140,7 +133,6 @@ export default function ManageEntities(): JSX.Element {
               headers={["Name", "Entity"]}
               SubmitForm={UserSubmitForm}
               columns={["email", "permissions.entity.name"]}
-              user={user}
               formData={{ permissionMaps: permissionMaps.items }}
               retrieveItems={retrieveFullUsers}
               items={fullUsers}
@@ -153,7 +145,6 @@ export default function ManageEntities(): JSX.Element {
               headers={["Name", "Code"]}
               columns={["name", "entity_type.code"]}
               SubmitForm={EntitySubmitForm}
-              user={user}
               formData={{ entityTypes: entityTypes.items }}
               retrieveItems={retrieveEntities}
               items={entities}
@@ -165,7 +156,6 @@ export default function ManageEntities(): JSX.Element {
               headers={["Entity Type", "Code", "Active", "Permissions"]}
               SubmitForm={EntityTypeSubmitForm}
               columns={["entity_type", "code", "active", "permission_hierarchy"]}
-              user={user}
               retrieveItems={retrieveEntityTypes}
               items={entityTypes}
               formData={{}}
@@ -177,7 +167,6 @@ export default function ManageEntities(): JSX.Element {
               headers={["Parent", "Child"]}
               SubmitForm={EntityRelationshipSubmitForm}
               columns={["parent.name", "child.name"]}
-              user={user}
               formData={{ entities: entities.items }}
               retrieveItems={retrieveRelationships}
               items={entityRelationships}
@@ -186,17 +175,15 @@ export default function ManageEntities(): JSX.Element {
           <TabsContent value="permissionMap">
             <ManageBase
               title="Permissions Map"
-              headers={["Entity", "User Role"]}
+              headers={["Entity", "Name"]}
               SubmitForm={PermissionsMapSubmitForm}
-              columns={["entity.name", "user_permission.name"]}
-              user={user}
+              columns={["entity.name", "name"]}
               formData={{ entities: entities.items }}
               retrieveItems={retrievePermissionMaps}
               items={permissionMaps}
             />
           </TabsContent>
         </div>
-      )}
       </Tabs>
     </div>
   );

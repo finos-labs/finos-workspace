@@ -34,7 +34,11 @@ class TestEntityValidate:
     @pytest.mark.asyncio
     async def test_validate_rejects_a_user_who_is_not_a_superuser(self, auth_client):
         response = await auth_client.get("/entity/validate")
-        assert response.status_code == 401
+        assert response.status_code == 403
+        assert response.json()["detail"] == "User is not a superuser"
+
+        # The user stays signed in
+        assert (await auth_client.get("/app/access")).status_code == 200
 
     @pytest.mark.asyncio
     async def test_validate_accepts_a_superuser(self, auth_client):

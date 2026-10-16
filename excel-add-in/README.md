@@ -10,7 +10,8 @@ functions and a task pane:
 
 Users sign in to the task pane with their Workspace account. The backends that the account has
 connected in Workspace show up in the **Account** page, together with a button that copies a
-ready-made `WIDGET` formula for each widget. The add-in works for accounts on the full tier.
+ready-made `WIDGET` formula for each widget. The add-in works for accounts that one of their roles
+in Workspace gives the Excel add-in; Workspace refuses the sign-in of any other account.
 
 ## Installation
 

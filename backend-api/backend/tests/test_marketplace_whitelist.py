@@ -1,7 +1,7 @@
 """Integration tests for the marketplace submitter whitelist.
 
 Covers the additions for the admin whitelist + submission gating feature:
-  - GET  /admin/marketplace/validate (superuser probe; 401 otherwise)
+  - GET  /admin/marketplace/validate (superuser probe; 403 otherwise)
   - GET/POST/DELETE /admin/marketplace/whitelist (flag toggles on User)
   - 403 enforcement on create/update/submit for non-whitelisted developers
 
@@ -164,17 +164,17 @@ async def test_dewhitelist_blocks_writes_but_keeps_reads(auth_client):
 
 @pytest.mark.asyncio
 async def test_admin_endpoints_reject_non_superuser(auth_client):
-    """validate + whitelist endpoints 401 for a non-superuser (no override)."""
-    assert (await auth_client.get("/admin/marketplace/validate")).status_code == 401
-    assert (await auth_client.get("/admin/marketplace/whitelist")).status_code == 401
+    """validate + whitelist endpoints 403 for a non-superuser (no override)."""
+    assert (await auth_client.get("/admin/marketplace/validate")).status_code == 403
+    assert (await auth_client.get("/admin/marketplace/whitelist")).status_code == 403
     post = await auth_client.post(
         "/admin/marketplace/whitelist", json={"email": _AUTH_USER["email"]}
     )
-    assert post.status_code == 401
+    assert post.status_code == 403
     delete = await auth_client.delete(
         f"/admin/marketplace/whitelist/{_AUTH_USER['user_uuid']}"
     )
-    assert delete.status_code == 401
+    assert delete.status_code == 403
 
 
 @pytest.mark.asyncio

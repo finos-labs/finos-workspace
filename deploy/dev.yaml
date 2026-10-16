@@ -44,3 +44,5 @@ frontend:
 backend:
   MODE: production
   DISABLE_REGISTRATION: "0"
+  # The API accepts Google sign-in tokens issued to this client only (the frontend's value)
+  GOOGLE_OAUTH_CLIENT_ID: "508662717287-ls9frq1ohf1tvug8vm91ofhmbraiuegu.apps.googleusercontent.com"

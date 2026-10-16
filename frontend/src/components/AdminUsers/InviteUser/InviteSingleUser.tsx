@@ -114,7 +114,6 @@ export default function InviteSingleUser({
             description: toast_description,
           });
           queryClient.refetchQueries({ queryKey: ["admin", "users"] });
-          queryClient.refetchQueries({ queryKey: ["admin", "entityInfo"] });
           queryClient.refetchQueries({ queryKey: ["roles"] });
           onClose();
         }

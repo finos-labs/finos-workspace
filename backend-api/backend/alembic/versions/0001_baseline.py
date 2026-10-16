@@ -500,8 +500,8 @@ def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
         "custom_copilot",
         sa.Column("user_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
         sa.Column("url", sa.String(length=200), nullable=False),
-        sa.Column("headers", api.models.model_helpers.EncryptedType(), nullable=True),
-        sa.Column("copilots", api.models.model_helpers.EncryptedType(), nullable=True),
+        sa.Column("headers", sa.Text(), nullable=True),
+        sa.Column("copilots", sa.Text(), nullable=True),
         sa.Column("uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
         sa.Column(
             "created_date", api.models.model_helpers.AwareDateTime(), nullable=True
@@ -1399,9 +1399,7 @@ def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("url", api.models.model_helpers.HttpUrlType(), nullable=False),
         sa.Column("user_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=True),
-        sa.Column(
-            "endpointHeaders", api.models.model_helpers.EncryptedType(), nullable=True
-        ),
+        sa.Column("endpointHeaders", sa.Text(), nullable=True),
         sa.Column("entity_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=True),
         sa.Column(
             "vendor_app_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=True

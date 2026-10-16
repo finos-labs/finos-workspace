@@ -2,40 +2,45 @@ import { v4 as uuidv4 } from "uuid";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "~/api/api";
 import {
-  activateQRCode,
+  activateTotp,
   deleteApiSource,
   deleteFileWidget,
   deleteUploadedFile,
   deleteUploadedFiles,
   deleteWidgetMetadata,
+  fetchDefaultAgent,
   generateQRCode,
   getAgentConnectionErrorMessage,
   getApiSources,
   getCopilotChat,
   getFileWidgets,
-  getStoredFiles,
+  getSession,
+  getSignInNonce,
   getUsage,
-  getUser,
-  getUserChats,
   getWidgetMetadata,
   googleLogin,
   login,
   logout,
+  microsoftLogin,
+  oktaLogin,
   patchWidgetMetadata,
   postApiSource,
   postFileWidget,
   postUserChats,
   postWidgetMetadata,
+  SIGN_IN_EXPIRED,
   searchChats,
-  updateFullName,
   updatePassword,
-  userHasEntity,
   validateUser,
+  withSignInNonce,
 } from "~/api/auth.api";
+import { VERSION } from "~/lib/constants";
+import { mockConfig } from "../../mocks/runtimeConfig";
 import { malformed } from "../mocks";
 
 // Mock the apiClient
 vi.mock("~/api/api", () => ({
+  setOnSessionRefused: vi.fn(),
   apiClient: {
     get: vi.fn(),
     post: vi.fn(),
@@ -102,6 +107,22 @@ describe("API Client Functions", () => {
     });
   });
 
+  describe("getSession", () => {
+    it("returns the signed-in user the session cookie stands for", async () => {
+      const session = { uuid: "u-1", email: "a@b.test" };
+      vi.spyOn(apiClient, "get").mockResolvedValue({ data: session });
+
+      await expect(getSession()).resolves.toEqual(session);
+      expect(apiClient.get).toHaveBeenCalledWith("/app/session");
+    });
+
+    it("returns null when there is no session", async () => {
+      vi.spyOn(apiClient, "get").mockRejectedValue({ response: { status: 401 } });
+
+      await expect(getSession()).resolves.toBeNull();
+    });
+  });
+
   describe("logout", () => {
     it("should return data on successful logout", async () => {
       const mockResponse = { status: 200, data: { success: true } };
@@ -110,6 +131,170 @@ describe("API Client Functions", () => {
       const response = await logout();
       expect(apiClient.post).toHaveBeenCalledWith("/app/logout");
       expect(response).toEqual({ success: true });
+    });
+
+    it("counts a session the API no longer knows as ended", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.spyOn(apiClient, "post").mockRejectedValue({ response: { status: 401 } });
+
+      await expect(logout()).resolves.toEqual({ success: true });
+    });
+
+    it("reports any other failure, so the page keeps the session", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.spyOn(apiClient, "post").mockRejectedValue({ response: { status: 500 } });
+
+      await expect(logout()).resolves.toEqual({ success: false });
+    });
+  });
+
+  describe("identity provider sign-in", () => {
+    it("sends Microsoft's ID token for the API to verify", async () => {
+      vi.spyOn(apiClient, "post").mockResolvedValue({ status: 200, data: {} });
+
+      await microsoftLogin("graph-access-token", "ms-id-token");
+
+      expect(apiClient.post).toHaveBeenCalledWith(
+        "/app/microsoft-auth",
+        expect.objectContaining({
+          token: "graph-access-token",
+          id_token: "ms-id-token",
+        }),
+      );
+    });
+
+    it("sends Okta's ID token for the API to verify", async () => {
+      vi.spyOn(apiClient, "post").mockResolvedValue({ status: 200, data: {} });
+
+      await oktaLogin("okta-access-token", "okta-id-token");
+
+      expect(apiClient.post).toHaveBeenCalledWith(
+        "/app/okta-auth",
+        expect.objectContaining({
+          token: "okta-access-token",
+          id_token: "okta-id-token",
+        }),
+      );
+    });
+  });
+
+  describe("activateTotp", () => {
+    it("activates with the session (or enrollment) cookie and returns the status", async () => {
+      const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(activateTotp(123456)).resolves.toBe(200);
+
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+      expect(url).toBe("http://localhost:3000/totp/activate");
+      expect(init.credentials).toBe("include");
+      expect(new Headers(init.headers).get("X-Workspace-Client")).toBe("web");
+      expect(new Headers(init.headers).get("Authorization")).toBeNull();
+      expect(JSON.parse(init.body as string)).toEqual({ totp_token: 123456 });
+      vi.unstubAllGlobals();
+    });
+
+    it("at sign-in sends the sign-in's remember and version with the code", async () => {
+      const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(activateTotp(123456, { remember: true })).resolves.toBe(200);
+
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+      expect(JSON.parse(init.body as string)).toEqual({
+        totp_token: 123456,
+        remember: true,
+        version: VERSION,
+      });
+      vi.unstubAllGlobals();
+    });
+
+    it("returns a wrong code's 401 without touching the session", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => new Response("{}", { status: 401 })),
+      );
+
+      await expect(activateTotp(999999)).resolves.toBe(401);
+      vi.unstubAllGlobals();
+    });
+  });
+
+  describe("fetchDefaultAgent", () => {
+    it("reads the default agent from the AI API's public agents.json", async () => {
+      const descriptor = { description: "", endpoints: { query: "/v1/query" } };
+      const fetchMock = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              other_agent: { ...descriptor, name: "Other" },
+              default_agent: { ...descriptor, name: "Ines" },
+            }),
+            { status: 200 },
+          ),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      const agent = await fetchDefaultAgent();
+
+      expect(agent?.id).toBe("default_agent");
+      expect(agent?.name).toBe("Ines");
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit];
+      expect(String(url)).toBe(`${mockConfig.urls.ai}/agents.json`);
+      expect(init.credentials).toBeUndefined();
+      vi.unstubAllGlobals();
+    });
+
+    it("reads nothing when no AI API is configured", async () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      const ai = mockConfig.urls.ai;
+      mockConfig.urls.ai = "";
+
+      try {
+        await expect(fetchDefaultAgent()).resolves.toBeUndefined();
+        expect(fetchMock).not.toHaveBeenCalled();
+      } finally {
+        mockConfig.urls.ai = ai;
+        vi.unstubAllGlobals();
+      }
+    });
+  });
+
+  describe("getSignInNonce", () => {
+    it("gets a nonce from the API, which binds it to this browser", async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: { nonce: "n-1" } });
+
+      await expect(getSignInNonce()).resolves.toBe("n-1");
+      expect(apiClient.post).toHaveBeenCalledWith("/app/sign-in/nonce");
+    });
+  });
+
+  describe("withSignInNonce", () => {
+    it("starts the sign-in once more, with a new nonce, when the first one expired", async () => {
+      vi.mocked(apiClient.post)
+        .mockResolvedValueOnce({ data: { nonce: "old" } })
+        .mockResolvedValueOnce({ data: { nonce: "new" } });
+      const signIn = vi
+        .fn()
+        .mockResolvedValueOnce({ response: { status: 400, detail: SIGN_IN_EXPIRED } })
+        .mockResolvedValueOnce({ response: { status: 202, detail: "" } });
+
+      await expect(withSignInNonce(signIn)).resolves.toEqual({
+        response: { status: 202, detail: "" },
+      });
+      expect(signIn.mock.calls).toEqual([["old"], ["new"]]);
+    });
+
+    it("does not start again for any other refusal", async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: { nonce: "n" } });
+      const signIn = vi
+        .fn()
+        .mockResolvedValue({ response: { status: 400, detail: "Invalid ID token" } });
+
+      await withSignInNonce(signIn);
+
+      expect(signIn).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -124,17 +309,6 @@ describe("API Client Functions", () => {
         expect.any(Object),
       );
       expect(response).toEqual({ token: "googleToken", status: 200 });
-    });
-  });
-
-  describe("getUserChats", () => {
-    it("should return user chats", async () => {
-      const mockResponse = { data: { chats: [{ id: 1, message: "Hello" }] } };
-      vi.spyOn(apiClient, "get").mockResolvedValue(mockResponse);
-
-      const data = await getUserChats();
-      expect(apiClient.get).toHaveBeenCalledWith("/app/copilot-chats");
-      expect(data).toEqual({ chats: [{ id: 1, message: "Hello" }] });
     });
   });
 
@@ -247,17 +421,6 @@ describe("API Client Functions", () => {
     });
   });
 
-  describe("getUser", () => {
-    it("should return user data", async () => {
-      const mockResponse = { data: { user: "testUser" } };
-      vi.spyOn(apiClient, "get").mockResolvedValue(mockResponse);
-
-      const data = await getUser();
-      expect(apiClient.get).toHaveBeenCalledWith("/app/user");
-      expect(data).toEqual({ user: "testUser" });
-    });
-  });
-
   describe("updatePassword", () => {
     it("should return status on successful password update", async () => {
       const mockResponse = { status: 200 };
@@ -272,20 +435,6 @@ describe("API Client Functions", () => {
     });
   });
 
-  describe("updateFullName", () => {
-    it("should return status on successful full name update", async () => {
-      const mockResponse = { status: 200 };
-      vi.spyOn(apiClient, "put").mockResolvedValue(mockResponse);
-
-      const response = await updateFullName("John", "Doe");
-      expect(apiClient.put).toHaveBeenCalledWith("/user", {
-        first_name: "John",
-        last_name: "Doe",
-      });
-      expect(response).toEqual(200);
-    });
-  });
-
   describe("generateQRCode", () => {
     it("should return QR code data on successful generation", async () => {
       const mockResponse = { data: { uri: "someUri", secret: "someSecret" } };
@@ -294,19 +443,6 @@ describe("API Client Functions", () => {
       const response = await generateQRCode();
       expect(apiClient.post).toHaveBeenCalledWith("/totp");
       expect(response).toEqual(mockResponse.data);
-    });
-  });
-
-  describe("activateQRCode", () => {
-    it("should return status on successful QR code activation", async () => {
-      const mockResponse = { status: 200 };
-      vi.spyOn(apiClient, "post").mockResolvedValue(mockResponse);
-
-      const response = await activateQRCode(123456);
-      expect(apiClient.post).toHaveBeenCalledWith("/totp/activate", {
-        totp_token: 123456,
-      });
-      expect(response).toEqual(200);
     });
   });
 
@@ -346,17 +482,6 @@ describe("API Client Functions", () => {
         "/app/data-connectors/api-source/sourceUuid",
       );
       expect(response).toEqual({ status: 204 });
-    });
-  });
-
-  describe("getStoredFiles", () => {
-    it("should return stored files", async () => {
-      const mockResponse = { data: [{ uuid: "file1" }] };
-      vi.spyOn(apiClient, "get").mockResolvedValue(mockResponse);
-
-      const data = await getStoredFiles();
-      expect(apiClient.get).toHaveBeenCalledWith("/app/files");
-      expect(data).toEqual(mockResponse.data);
     });
   });
 
@@ -430,14 +555,8 @@ describe("API Client Functions", () => {
       const mockResponse = { data: [{ id: "metadata1" }] };
       vi.spyOn(apiClient, "get").mockResolvedValue(mockResponse);
 
-      const data = await getWidgetMetadata("iframe", "widgetName", "widgetId");
-      expect(apiClient.get).toHaveBeenCalledWith("/app/widget-metadata", {
-        params: new URLSearchParams({
-          widget_type: "iframe",
-          name: "widgetName",
-          widget_id: "widgetId",
-        }),
-      });
+      const data = await getWidgetMetadata();
+      expect(apiClient.get).toHaveBeenCalledWith("/app/widget-metadata");
       expect(data).toEqual(mockResponse.data);
     });
   });
@@ -470,18 +589,9 @@ describe("API Client Functions", () => {
 
       const metadata = { id: "metadata1" };
 
-      const response = await patchWidgetMetadata(
-        malformed(metadata),
-        "widgetId",
-        "iframe",
-        "name",
-      );
+      const response = await patchWidgetMetadata(malformed(metadata), "widgetId");
       expect(apiClient.patch).toHaveBeenCalledWith("/app/widget-metadata", metadata, {
-        params: new URLSearchParams({
-          widget_id: "widgetId",
-          widget_type: "iframe",
-          name: "name",
-        }),
+        params: new URLSearchParams({ widget_id: "widgetId" }),
       });
       expect(response).toEqual(mockResponse);
     });
@@ -494,17 +604,6 @@ describe("API Client Functions", () => {
 
       const data = await deleteWidgetMetadata("widgetId");
       expect(apiClient.delete).toHaveBeenCalledWith("/app/widget-metadata/widgetId");
-      expect(data).toEqual(mockResponse.data);
-    });
-  });
-
-  describe("userHasEntity", () => {
-    it("should return if user has entity", async () => {
-      const mockResponse = { data: { success: true } };
-      vi.spyOn(apiClient, "get").mockResolvedValue(mockResponse);
-
-      const data = await userHasEntity();
-      expect(apiClient.get).toHaveBeenCalledWith("/app/user-has-entity");
       expect(data).toEqual(mockResponse.data);
     });
   });

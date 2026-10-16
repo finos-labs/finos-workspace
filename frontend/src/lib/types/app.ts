@@ -480,8 +480,6 @@ export const ExternalWidgetSchema = WidgetSchemaBase.extend({
     .object({
       url: z.string(),
       method: z.enum(["GET", "POST"]),
-      headers: z.record(z.string(), z.string()).optional(),
-      query: z.record(z.string(), z.string()).optional(),
     })
     .optional(),
   data: z

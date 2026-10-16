@@ -12,7 +12,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.sql import quoted_name
 
 from api import base, crud, database, models, schemas
-from api.auth_helpers import CustomRow
+from api.auth_helpers import CustomRow, delete_user_app_sessions
 from utilities.config import settings
 
 EXCEPTION_401 = HTTPException(
@@ -21,51 +21,22 @@ EXCEPTION_401 = HTTPException(
     headers={"WWW-Authenticate": "Bearer"},
 )
 
-TierType = Literal["full", "basic"]
-
-
-ON_PREM_DATA_BUNDLE = schemas.DataBundle(
-    bundle_name="On-Premise",
-    except_widgets=[],
-    except_dashboard_templates=[],
-    except_team_collaboration=None,
-    excel_add_in=1,
-    data_export=1,
-    providers=None,
-    dashboards_at_launch=[],
-    my_dashboards=[],
-    invite_your_colleagues=0,
-    number_copilot_calls_day=10_000,
-    total_file_upload_size_gb=10,
-)
-
-
-async def is_developer_entity(db: AsyncSession, entity_uuid: UUID) -> bool:
-    """
-    Check if the given entity UUID corresponds to the developer entity.
-
-    Args:
-        db (AsyncSession): The database session.
-        entity_uuid (UUID): The UUID of the entity to check.
-
-    Returns:
-        bool: True if the entity is the developer entity, False otherwise.
-    """
-    query = select(models.PermissionsEntityMap.entity_uuid).where(
-        models.PermissionsEntityMap.uuid == settings.DEVELOPER_MAPPING,
-    )
-    result = (await db.execute(query)).scalar_one_or_none()
-    return result == entity_uuid
-
 
 async def set_app_user_data(user, db: AsyncSession) -> schemas.AppUserReturn:
+    # Users who may not bring connections are not served the ones they have; the
+    # backends of their organization they still get
+    own_connections = await may_add_connections(db, user.uuid)
     return schemas.AppUserReturn(
         expiration_date=user.expiration_date,
         first_name=user.first_name,
         last_name=user.last_name,
         display_settings=user.display_settings,
-        file_widgets=[x.__dict__ for x in user.FileWidget],
-        api_sources=[x.__dict__ for x in user.ApiSource],
+        file_widgets=[x.__dict__ for x in user.FileWidget] if own_connections else [],
+        api_sources=[
+            x.__dict__
+            for x in user.ApiSource
+            if own_connections or x.entity_uuid is not None
+        ],
         username=user.username,
         email=user.email,
         uuid=user.uuid,
@@ -74,14 +45,156 @@ async def set_app_user_data(user, db: AsyncSession) -> schemas.AppUserReturn:
 
 
 async def get_mcp_servers(db: AsyncSession, user: models.User) -> schemas.MCPServers:
+    """The user's MCP servers, each with the names of its stored headers and never their
+    values."""
+    if not await may_add_connections(db, user.uuid):
+        return schemas.MCPServers()
     query = (
-        select(models.MCPServers.servers)
+        select(models.MCPServers.servers, models.MCPServers.headers)
         .where(models.MCPServers.user_uuid == user.uuid)
         .limit(1)
     )
-    results = (await db.execute(query)).scalar_one_or_none()
+    row = (await db.execute(query)).first()
+    if row is None:
+        return schemas.MCPServers()
 
-    return schemas.MCPServers(servers=results or [])
+    headers = row.headers or {}
+    return schemas.MCPServers(
+        servers=[
+            {
+                **server,
+                **schemas.mcp_header_flags(
+                    headers.get(schemas.normalize_mcp_url(server["url"]))
+                ),
+            }
+            for server in row.servers or []
+        ]
+    )
+
+
+def merge_mcp_server_headers(
+    stored: dict[str, dict[str, str]], servers: list[schemas.MCPServer]
+) -> dict[str, dict[str, str]]:
+    """The headers to store after a client sends its server list.
+
+    Headers are kept per normalized server URL, so they never follow a server to another
+    URL. A value replaces the stored header of that name (in any case), null removes it,
+    a header the client leaves out keeps its stored value. Servers that are no longer in
+    the list lose their headers.
+    """
+    merged: dict[str, dict[str, str]] = {}
+    for server in servers:
+        key = schemas.normalize_mcp_url(server.url)
+        current = dict(merged.get(key) or stored.get(key) or {})
+        for name, value in (server.custom_headers or {}).items():
+            current = {k: v for k, v in current.items() if k.lower() != name.lower()}
+            if value is not None:
+                current[name] = value
+        if current:
+            merged[key] = current
+    return merged
+
+
+async def save_mcp_servers(
+    db: AsyncSession, user_uuid: UUID, servers: list[schemas.MCPServer]
+) -> None:
+    """Store the user's server list, and their custom headers encrypted apart from it."""
+    row = (
+        await db.execute(
+            select(models.MCPServers.uuid, models.MCPServers.headers)
+            .where(models.MCPServers.user_uuid == user_uuid)
+            .limit(1)
+        )
+    ).first()
+    values = {
+        "servers": [server.stored_fields() for server in servers],
+        "headers": merge_mcp_server_headers(row.headers or {} if row else {}, servers)
+        or None,
+    }
+    if row is None:
+        await db.execute(insert(models.MCPServers).values(user_uuid=user_uuid, **values))
+    else:
+        await db.execute(
+            update(models.MCPServers)
+            .where(models.MCPServers.user_uuid == user_uuid)
+            .values(**values)
+        )
+    await db.commit()
+
+
+async def get_mcp_server_headers(
+    db: AsyncSession, user_uuid: UUID, url: str
+) -> dict[str, str] | None:
+    """The stored custom headers of the user's saved MCP server at this URL (compared in
+    normalized form), or None when the user has saved no server there. For the server
+    side only: the values are credentials and never go back to a browser."""
+    row = (
+        await db.execute(
+            select(models.MCPServers.servers, models.MCPServers.headers)
+            .where(models.MCPServers.user_uuid == user_uuid)
+            .limit(1)
+        )
+    ).first()
+    if row is None:
+        return None
+    target = schemas.normalize_mcp_url(url)
+    if not any(
+        schemas.normalize_mcp_url(server["url"]) == target for server in row.servers or []
+    ):
+        return None
+    return dict((row.headers or {}).get(target) or {})
+
+
+async def get_copilot_key_status(
+    db: AsyncSession, user_uuid: UUID
+) -> schemas.CopilotKeysStatus:
+    """Which of the user's own Copilot provider keys are stored (nothing is decrypted)."""
+    row = (
+        await db.execute(
+            select(
+                models.User.openai_api_key.is_not(None).label("has_openai_key"),
+                models.User.perplexity_api_key.is_not(None).label("has_perplexity_key"),
+            ).where(models.User.uuid == user_uuid)
+        )
+    ).first()
+    if row is None:
+        return schemas.CopilotKeysStatus()
+    return schemas.CopilotKeysStatus(
+        has_openai_key=bool(row.has_openai_key),
+        has_perplexity_key=bool(row.has_perplexity_key),
+    )
+
+
+async def get_copilot_provider_keys(
+    db: AsyncSession, user_uuid: UUID
+) -> schemas.CopilotProviderKeys:
+    """The user's own Copilot provider keys, decrypted. For the service that serves the
+    Copilot only (the /app/copilot/authorize answer to an agent token); a browser never
+    receives them."""
+    row = (
+        await db.execute(
+            select(models.User.openai_api_key, models.User.perplexity_api_key).where(
+                models.User.uuid == user_uuid
+            )
+        )
+    ).first()
+    if row is None:
+        return schemas.CopilotProviderKeys()
+    return schemas.CopilotProviderKeys(
+        openai_api_key=row.openai_api_key, perplexity_api_key=row.perplexity_api_key
+    )
+
+
+async def set_copilot_provider_keys(
+    db: AsyncSession, user_uuid: UUID, keys: schemas.CopilotProviderKeys
+) -> None:
+    """Store the keys the client sent (null clears one); keys it left out stay."""
+    values = {name: getattr(keys, name) for name in keys.model_fields_set}
+    if values:
+        await db.execute(
+            update(models.User).where(models.User.uuid == user_uuid).values(**values)
+        )
+        await db.commit()
 
 
 async def get_copilot_chats(
@@ -229,9 +342,7 @@ async def get_dashboards_complete(user: models.User) -> schemas.DashboardComplet
     return schemas.DashboardComplete(owned=owned, shared={}, entity_shared={})
 
 
-async def check_login(
-    db: AsyncSession, user: schemas.UserLogin, db_user: schemas.AppUserSchema | None
-):
+def check_login(user: schemas.UserLogin, db_user: schemas.AppUserSchema | None):
     if not db_user:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
@@ -242,133 +353,6 @@ async def check_login(
         user.password, db_user.password
     ):
         raise EXCEPTION_401
-
-    is_developer = await is_developer_entity(db, db_user.entity_uuid)
-    if not is_developer and not db_user.billing_active:
-        raise HTTPException(
-            status_code=402, detail="User is not currently assigned a seat"
-        )
-
-    if not db_user.expiration_date or db_user.expiration_date < base.get_now():
-        raise HTTPException(
-            status_code=402, detail="Entity expiration date has expired"
-        )
-
-
-async def has_entitlement(db: AsyncSession, user_uuid: UUID):
-    query_check_has_entitlement = (
-        select(models.Entitlement.uuid)
-        .where(models.Entitlement.user_uuid == user_uuid)
-        .limit(1)
-    )
-    return (await db.execute(query_check_has_entitlement)).scalar_one_or_none()
-
-
-async def _get_tier_defaults(db: AsyncSession, tier: TierType):
-    tiers_match = {
-        "full": models.FULL_TIER_ID,
-        "basic": models.BASIC_TIER_ID,
-    }
-    tier_id = tiers_match.get(tier)
-    if tier_id is None:
-        raise HTTPException(status_code=422, detail="Invalid tier")
-    tier_defaults = (
-        await db.execute(
-            select(models.TierDefaults).where(models.TierDefaults.tier_id == tier_id)
-        )
-    ).scalar_one_or_none()
-    if tier_defaults is None:
-        raise HTTPException(status_code=422, detail="Invalid tier")
-    return tier_id, tier_defaults
-
-
-async def _handle_data_bundle(db: AsyncSession, tier: TierType):
-    if settings.is_onprem() and tier == "full":
-        return await get_data_bundle_uuid(db, "On-Premise")
-    if tier == "basic":
-        return await get_data_bundle_uuid(db, models.DATA_BUNDLE_DEFAULT)
-    return None
-
-
-async def get_data_bundle_uuid(db: AsyncSession, bundle_name: str):
-    if not isinstance(bundle_name, str):
-        raise ValueError(
-            f"bundle_name must be a string, got {type(bundle_name).__name__}"
-        )
-
-    return (
-        await db.execute(
-            select(models.DataBundle.uuid).where(
-                models.DataBundle.bundle_name == bundle_name
-            )
-        )
-    ).scalar_one_or_none()
-
-
-async def check_against_entity_tier(db: AsyncSession, user_uuid: UUID, tier: TierType):
-    entity_uuid = await get_entity_uuid(db, user_uuid)
-    entity_entitlement = await get_entity_entitlement(db, entity_uuid)
-
-    if entity_entitlement.tier != tier:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Entity and user tier do not match. Entity tier is `{entity_entitlement.tier}`,"
-            f" request had tier `{tier}`",
-        )
-
-
-async def insert_entitlement(db: AsyncSession, user_uuid: UUID, tier: TierType):
-    await check_against_entity_tier(db, user_uuid, tier)
-
-    tier_id, tier_defaults = await _get_tier_defaults(db, tier)
-    data_bundle_uuid = await _handle_data_bundle(db, tier)
-
-    query = insert(models.Entitlement).values(
-        user_uuid=user_uuid,
-        tier_id=tier_id,
-        number_copilot_calls_day=tier_defaults.number_copilot_calls_day,
-        number_copilot_tokens_day=tier_defaults.number_copilot_tokens_day,
-        total_file_upload_size_gb=tier_defaults.total_file_upload_size_gb,
-        share_widgets=tier_defaults.share_widgets,
-        bring_your_own_data=tier_defaults.bring_your_own_data,
-        bring_your_own_copilot=tier_defaults.bring_your_own_copilot,
-        admin_access=tier_defaults.admin_access,
-        support=tier_defaults.support,
-        excel_add_in=tier_defaults.excel_add_in,
-        data_add_ons_redistribution=tier_defaults.data_add_ons_redistribution,
-        data_bundle_uuid=data_bundle_uuid,
-    )
-    await db.execute(query)
-    await db.commit()
-
-
-async def update_entitlement(db: AsyncSession, user_uuid: UUID, tier: TierType):
-    await check_against_entity_tier(db, user_uuid, tier)
-
-    tier_id, tier_defaults = await _get_tier_defaults(db, tier)
-    data_bundle_uuid = await _handle_data_bundle(db, tier)
-
-    query = (
-        update(models.Entitlement)
-        .where(models.Entitlement.user_uuid == user_uuid)
-        .values(
-            tier_id=tier_id,
-            number_copilot_calls_day=tier_defaults.number_copilot_calls_day,
-            number_copilot_tokens_day=tier_defaults.number_copilot_tokens_day,
-            total_file_upload_size_gb=tier_defaults.total_file_upload_size_gb,
-            share_widgets=tier_defaults.share_widgets,
-            bring_your_own_data=tier_defaults.bring_your_own_data,
-            bring_your_own_copilot=tier_defaults.bring_your_own_copilot,
-            admin_access=tier_defaults.admin_access,
-            support=tier_defaults.support,
-            excel_add_in=tier_defaults.excel_add_in,
-            data_add_ons_redistribution=tier_defaults.data_add_ons_redistribution,
-            data_bundle_uuid=data_bundle_uuid,
-        )
-    )
-    await db.execute(query)
-    await db.commit()
-    invalidate_usage_cache(user_uuid)
 
 
 async def get_entity_uuid(db: AsyncSession, user_uuid: UUID) -> UUID:
@@ -409,350 +393,106 @@ async def get_entity_users(db: AsyncSession, entity_uuid: UUID):
     return (await db.execute(query)).scalars().all()
 
 
-async def get_entitlement(db: AsyncSession, user_uuid: UUID):
-    has_entitlement_ = await has_entitlement(db, user_uuid)
-
-    if not has_entitlement_:
-        # If the user does not have an entitlement, return the entity entitlement
-        entity_uuid = await get_entity_uuid(db, user_uuid)
-        if entity_uuid:
-            return await get_entity_entitlement(db, entity_uuid)
-
+async def get_user_type(db: AsyncSession, user_uuid: UUID) -> str | None:
+    """The user's type: the name of their permissions map."""
     query = (
-        select(
-            case(
-                (models.Entitlement.tier_id == models.FULL_TIER_ID, literal("full")),
-                (
-                    models.Entitlement.tier_id == models.BASIC_TIER_ID,
-                    literal("basic"),
-                ),
-                else_=None,
-            ).label("tier"),
-            models.Entitlement.number_copilot_calls_day,
-            models.Entitlement.number_copilot_tokens_day,
-            models.Entitlement.total_file_upload_size_gb,
-            models.Entitlement.share_widgets,
-            models.Entitlement.bring_your_own_data,
-            models.Entitlement.bring_your_own_copilot,
-            models.Entitlement.admin_access,
-            models.Entitlement.support,
-            models.Entitlement.excel_add_in,
-            models.Entitlement.data_add_ons_redistribution,
-            models.Entitlement.data_bundle_uuid,
-            models.Entitlement.allow_custom_backends,
-            # DataBundle fields
-            models.DataBundle.bundle_name,
-            models.DataBundle.except_widgets,
-            models.DataBundle.except_dashboard_templates,
-            models.DataBundle.except_team_collaboration,
-            models.DataBundle.excel_add_in.label("data_bundle_excel_add_in"),
-            models.DataBundle.data_export,
-            models.DataBundle.providers,
-            models.DataBundle.dashboards_at_launch,
-            models.DataBundle.my_dashboards,
-            models.DataBundle.invite_your_colleagues,
-            models.DataBundle.number_copilot_calls_day.label(
-                "data_bundle_number_copilot_calls_day"
-            ),
-            models.DataBundle.total_file_upload_size_gb.label(
-                "data_bundle_total_file_upload_size_gb"
-            ),
-        )
-        .select_from(models.Entitlement)
+        select(models.PermissionsEntityMap.name)
         .join(
-            models.DataBundle,
-            models.Entitlement.data_bundle_uuid == models.DataBundle.uuid,
-            isouter=True,
+            models.User,
+            models.User.permissions_uuid == models.PermissionsEntityMap.uuid,
         )
-        .where(models.Entitlement.user_uuid == user_uuid)
+        .where(models.User.uuid == user_uuid)
+    )
+    user_type = (await db.execute(query)).scalar_one_or_none()
+    return user_type if user_type in models.USER_TYPES else None
+
+
+async def may_add_connections(db: AsyncSession, user_uuid: UUID) -> bool:
+    """Whether the user may bring their own connections: data connectors, MCP servers,
+    custom Copilots and files."""
+    return await get_user_type(db, user_uuid) in models.CONNECTION_TYPES
+
+
+async def check_may_add_connections(db: AsyncSession, user_uuid: UUID) -> None:
+    if not await may_add_connections(db, user_uuid):
+        raise HTTPException(403, detail="Your account type cannot add connections")
+
+
+async def shares_need_approval(db: AsyncSession, user_uuid: UUID) -> bool:
+    """Whether the user's shares wait for an admin of their organization to approve them:
+    a developer's do."""
+    return await get_user_type(db, user_uuid) == models.DEVELOPER_TYPE
+
+
+def _user_roles(user_uuid: UUID, *columns):
+    "Selects the given columns of the roles a user has in their organization."
+    return (
+        select(*columns)
+        .select_from(models.UserRole)
+        .join(models.Role, models.Role.uuid == models.UserRole.role_uuid)
+        .join(models.User, models.User.uuid == models.UserRole.user_uuid)
+        .join(
+            models.PermissionsEntityMap,
+            models.PermissionsEntityMap.uuid == models.User.permissions_uuid,
+        )
+        .where(
+            models.UserRole.user_uuid == user_uuid,
+            models.Role.deleted_at.is_(None),
+            models.Role.entity_uuid == models.PermissionsEntityMap.entity_uuid,
+        )
+    )
+
+
+async def has_excel_add_in(db: AsyncSession, user_uuid: UUID) -> bool:
+    query = (
+        _user_roles(user_uuid, models.Role.uuid)
+        .where(models.Role.excel_add_in.is_(True))
         .limit(1)
     )
-    entitlement = (await db.execute(query)).first()
+    return (await db.execute(query)).first() is not None
 
-    if not entitlement:
-        return entitlement
 
-    entitlement_dict = entitlement._asdict()
-    data_bundle_uuid = entitlement_dict.pop("data_bundle_uuid", None)
-    data_bundle_dict = {
-        k: entitlement_dict.pop(k)
-        for k in [
-            "bundle_name",
-            "except_widgets",
-            "except_dashboard_templates",
-            "except_team_collaboration",
-            "data_bundle_excel_add_in",
-            "data_export",
-            "providers",
-            "dashboards_at_launch",
-            "my_dashboards",
-            "invite_your_colleagues",
-            "data_bundle_number_copilot_calls_day",
-            "data_bundle_total_file_upload_size_gb",
-        ]
-        if k in entitlement_dict
-    }
-    data_bundle_dict["excel_add_in"] = data_bundle_dict.pop(
-        "data_bundle_excel_add_in", None
-    )
-    data_bundle_dict["number_copilot_calls_day"] = data_bundle_dict.pop(
-        "data_bundle_number_copilot_calls_day", None
-    )
-    data_bundle_dict["total_file_upload_size_gb"] = data_bundle_dict.pop(
-        "data_bundle_total_file_upload_size_gb", None
+async def get_user_access(db: AsyncSession, user_uuid: UUID) -> schemas.UserAccess:
+    """What the user may do: their type, and what the roles an admin assigned them give."""
+    return schemas.UserAccess(
+        user_type=await get_user_type(db, user_uuid),
+        sharing=(await crud.get_users_sharing(db, [user_uuid]))[user_uuid],
+        excel_add_in=await has_excel_add_in(db, user_uuid),
     )
 
-    entitlement_get = schemas.EntitlementGet(**entitlement_dict)
 
-    if data_bundle_uuid and data_bundle_dict:
-        entitlement_get.bundle_name = data_bundle_dict["bundle_name"]
-        entitlement_get.data_bundle_info = schemas.DataBundle(**data_bundle_dict)
+async def get_user_limits(db: AsyncSession, user_uuid: UUID) -> schemas.UserLimits:
+    """The user's daily limits: none for a developer; for anyone else the highest of
+    their roles, where a role without a limit lifts it. A user without roles may use
+    nothing."""
+    if await get_user_type(db, user_uuid) == models.DEVELOPER_TYPE:
+        return schemas.UserLimits(
+            copilot_calls_day=None, copilot_tokens_day=None, upload_size_gb=None
+        )
 
-    return entitlement_get
-
-
-async def has_usage(db: AsyncSession, user_uuid: UUID):
-    query = select(models.EntitlementUsage.uuid).where(
-        models.EntitlementUsage.user_uuid == user_uuid
-    )
-    return (await db.execute(query)).scalar_one_or_none()
-
-
-async def check_usage_validity(
-    db: AsyncSession, usage: schemas.EntitlementUsagePut, user_uuid: UUID
-):
-    query = select(models.Entitlement).where(models.Entitlement.user_uuid == user_uuid)
-    result = (await db.execute(query)).scalar_one_or_none()
-    if not result:
-        raise HTTPException(status_code=404, detail="Entitlement not found")
-
-    for key, value in usage.entitlement_match_dump().items():
-        if value > result.__dict__[key]:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Usage not valid for `{key}`. Maximum allowed is {result.__dict__[key]}",
+    roles = (
+        await db.execute(
+            _user_roles(
+                user_uuid,
+                models.Role.copilot_calls_day,
+                models.Role.copilot_tokens_day,
+                models.Role.upload_size_gb,
             )
-
-    return result
-
-
-async def insert_entity_entitlement(
-    db: AsyncSession, entity_uuid: UUID, tier: TierType
-):
-    tier_id, tier_defaults = await _get_tier_defaults(db, tier)
-    data_bundle_uuid = await _handle_data_bundle(db, tier)
-
-    query = insert(models.EntityEntitlement).values(
-        entity_uuid=entity_uuid,
-        tier_id=tier_id,
-        number_copilot_calls_day=tier_defaults.number_copilot_calls_day,
-        number_copilot_tokens_day=tier_defaults.number_copilot_tokens_day,
-        total_file_upload_size_gb=tier_defaults.total_file_upload_size_gb,
-        share_widgets=tier_defaults.share_widgets,
-        bring_your_own_data=tier_defaults.bring_your_own_data,
-        bring_your_own_copilot=tier_defaults.bring_your_own_copilot,
-        admin_access=tier_defaults.admin_access,
-        support=tier_defaults.support,
-        excel_add_in=tier_defaults.excel_add_in,
-        data_add_ons_redistribution=tier_defaults.data_add_ons_redistribution,
-        data_bundle_uuid=data_bundle_uuid,
-    )
-    await db.execute(query)
-    await db.commit()
-
-    if not data_bundle_uuid and settings.is_onprem() and tier == "full":
-        await insert_entity_data_bundle(db, entity_uuid, ON_PREM_DATA_BUNDLE)
-
-
-async def insert_entity_data_bundle(
-    db: AsyncSession, entity_uuid: UUID, data_bundle: schemas.DataBundle
-):
-    data_bundle_uuid = await get_data_bundle_uuid(db, data_bundle.bundle_name)
-
-    if data_bundle_uuid is None:
-        query = insert(models.DataBundle).values(
-            bundle_name=data_bundle.bundle_name,
-            except_widgets=data_bundle.except_widgets,
-            except_dashboard_templates=data_bundle.except_dashboard_templates,
-            except_team_collaboration=data_bundle.except_team_collaboration,
-            excel_add_in=data_bundle.excel_add_in,
-            data_export=data_bundle.data_export,
-            providers=data_bundle.providers,
-            dashboards_at_launch=data_bundle.dashboards_at_launch,
-            my_dashboards=data_bundle.my_dashboards,
-            invite_your_colleagues=data_bundle.invite_your_colleagues,
-            number_copilot_calls_day=data_bundle.number_copilot_calls_day,
-            total_file_upload_size_gb=data_bundle.total_file_upload_size_gb,
-            allow_custom_backends=data_bundle.allow_custom_backends,
         )
-        result = await db.execute(query)
-        data_bundle_uuid = result.inserted_primary_key[0]
+    ).all()
 
-    query = (
-        update(models.EntityEntitlement)
-        .where(models.EntityEntitlement.entity_uuid == entity_uuid)
-        .values(
-            number_copilot_calls_day=data_bundle.number_copilot_calls_day,
-            total_file_upload_size_gb=data_bundle.total_file_upload_size_gb,
-            excel_add_in=data_bundle.excel_add_in,
-            data_bundle_uuid=data_bundle_uuid,
-            allow_custom_backends=data_bundle.allow_custom_backends,
-        )
+    def highest(values: list[int | None]) -> int | None:
+        if not values:
+            return 0
+        if any(value is None for value in values):
+            return None
+        return max(values)
+
+    return schemas.UserLimits(
+        copilot_calls_day=highest([role.copilot_calls_day for role in roles]),
+        copilot_tokens_day=highest([role.copilot_tokens_day for role in roles]),
+        upload_size_gb=highest([role.upload_size_gb for role in roles]),
     )
-    await db.execute(query)
-    await db.commit()
-
-
-async def get_entity_entitlement(db: AsyncSession, entity_uuid: UUID):
-    query = (
-        select(
-            case(
-                (
-                    models.EntityEntitlement.tier_id == models.FULL_TIER_ID,
-                    literal("full"),
-                ),
-                (
-                    models.EntityEntitlement.tier_id == models.BASIC_TIER_ID,
-                    literal("basic"),
-                ),
-                else_=None,
-            ).label("tier"),
-            models.EntityEntitlement.number_copilot_calls_day,
-            models.EntityEntitlement.number_copilot_tokens_day,
-            models.EntityEntitlement.total_file_upload_size_gb,
-            models.EntityEntitlement.share_widgets,
-            models.EntityEntitlement.bring_your_own_data,
-            models.EntityEntitlement.bring_your_own_copilot,
-            models.EntityEntitlement.admin_access,
-            models.EntityEntitlement.support,
-            models.EntityEntitlement.excel_add_in,
-            models.EntityEntitlement.data_add_ons_redistribution,
-            models.EntityEntitlement.data_bundle_uuid,
-            models.EntityEntitlement.allow_custom_backends,
-            # DataBundle fields
-            models.DataBundle.bundle_name,
-            models.DataBundle.except_widgets,
-            models.DataBundle.except_dashboard_templates,
-            models.DataBundle.except_team_collaboration,
-            models.DataBundle.excel_add_in.label("data_bundle_excel_add_in"),
-            models.DataBundle.data_export,
-            models.DataBundle.providers,
-            models.DataBundle.dashboards_at_launch,
-            models.DataBundle.my_dashboards,
-            models.DataBundle.invite_your_colleagues,
-            models.DataBundle.number_copilot_calls_day.label(
-                "data_bundle_number_copilot_calls_day"
-            ),
-            models.DataBundle.total_file_upload_size_gb.label(
-                "data_bundle_total_file_upload_size_gb"
-            ),
-        )
-        .select_from(models.EntityEntitlement)
-        .join(
-            models.DataBundle,
-            models.EntityEntitlement.data_bundle_uuid == models.DataBundle.uuid,
-            isouter=True,
-        )
-        .where(models.EntityEntitlement.entity_uuid == entity_uuid)
-        .limit(1)
-    )
-
-    entitlement = (await db.execute(query)).first()
-
-    if not entitlement:
-        return entitlement
-
-    entitlement_dict = entitlement._asdict()
-    data_bundle_uuid = entitlement_dict.pop("data_bundle_uuid", None)
-    data_bundle_dict = {
-        k: entitlement_dict.pop(k)
-        for k in [
-            "bundle_name",
-            "except_widgets",
-            "except_dashboard_templates",
-            "except_team_collaboration",
-            "data_bundle_excel_add_in",
-            "data_export",
-            "providers",
-            "dashboards_at_launch",
-            "my_dashboards",
-            "invite_your_colleagues",
-            "data_bundle_number_copilot_calls_day",
-            "data_bundle_total_file_upload_size_gb",
-        ]
-        if k in entitlement_dict
-    }
-    data_bundle_dict["excel_add_in"] = data_bundle_dict.pop(
-        "data_bundle_excel_add_in", None
-    )
-    data_bundle_dict["number_copilot_calls_day"] = data_bundle_dict.pop(
-        "data_bundle_number_copilot_calls_day", None
-    )
-    data_bundle_dict["total_file_upload_size_gb"] = data_bundle_dict.pop(
-        "data_bundle_total_file_upload_size_gb", None
-    )
-
-    entitlement_get = schemas.EntitlementGet(**entitlement_dict)
-
-    if data_bundle_uuid and data_bundle_dict:
-        entitlement_get.bundle_name = data_bundle_dict["bundle_name"]
-        entitlement_get.data_bundle_info = schemas.DataBundle(**data_bundle_dict)
-
-    return entitlement_get
-
-
-async def has_entity_entitlement(db: AsyncSession, entity_uuid: UUID):
-    query = (
-        select(models.EntityEntitlement.uuid)
-        .where(models.EntityEntitlement.entity_uuid == entity_uuid)
-        .limit(1)
-    )
-    return (await db.execute(query)).scalar_one_or_none()
-
-
-async def update_user_entitlement_with_entity_entitlement(
-    db: AsyncSession, user_uuid: UUID
-):
-    entity_uuid = await get_entity_uuid(db, user_uuid)
-    entity_entitlements_query = (
-        select(models.EntityEntitlement)
-        .where(models.EntityEntitlement.entity_uuid == entity_uuid)
-        .limit(1)
-    )
-    entity_entitlements = (
-        await db.execute(entity_entitlements_query)
-    ).scalar_one_or_none()
-
-    if not entity_entitlements:
-        raise HTTPException(404, detail="Entity entitlements not found")
-
-    has_entitlement_ = await has_entitlement(db, user_uuid)
-    values = dict(
-        tier_id=entity_entitlements.tier_id,
-        number_copilot_calls_day=entity_entitlements.number_copilot_calls_day,
-        number_copilot_tokens_day=entity_entitlements.number_copilot_tokens_day,
-        total_file_upload_size_gb=entity_entitlements.total_file_upload_size_gb,
-        share_widgets=entity_entitlements.share_widgets,
-        bring_your_own_data=entity_entitlements.bring_your_own_data,
-        bring_your_own_copilot=entity_entitlements.bring_your_own_copilot,
-        admin_access=entity_entitlements.admin_access,
-        support=entity_entitlements.support,
-        excel_add_in=entity_entitlements.excel_add_in,
-        data_add_ons_redistribution=entity_entitlements.data_add_ons_redistribution,
-        data_bundle_uuid=entity_entitlements.data_bundle_uuid,
-        allow_custom_backends=entity_entitlements.allow_custom_backends,
-    )
-    if has_entitlement_:
-        query = (
-            update(models.Entitlement)
-            .where(models.Entitlement.user_uuid == user_uuid)
-            .values(**values)
-        )
-    else:
-        query = insert(models.Entitlement).values(user_uuid=user_uuid, **values)
-    await db.execute(query)
-    await db.commit()
-    invalidate_usage_cache(user_uuid)
 
 
 def invalidate_usage_cache(user_uuid: UUID) -> None:
@@ -760,15 +500,31 @@ def invalidate_usage_cache(user_uuid: UUID) -> None:
     settings.redis_cache(f"usage:{user_uuid}", delete=True)
 
 
-async def check_usage_cache(
-    db: AsyncSession, user: models.User
-) -> None | models.EntitlementUsage:
+async def roles_changed(db: AsyncSession, user_uuids: list[UUID]) -> None:
+    """After the roles of users, or the settings of their roles, changed: their limits are
+    read again, and the shares their sharing no longer allows and the Excel add-in
+    sessions of users without the add-in are revoked."""
+    for user_uuid in user_uuids:
+        invalidate_usage_cache(user_uuid)
+        if not await has_excel_add_in(db, user_uuid):
+            await delete_user_app_sessions(db, user_uuid, ["excel"])
+    await crud.revoke_disallowed_shares(db, user_uuids)
+
+
+async def left_organization(db: AsyncSession, user_uuid: UUID) -> None:
+    """After a user left their organization or moved to another: they are taken out of
+    the roles of organizations they are no longer in, and so is what they brought."""
+    await crud.leave_other_organizations(db, user_uuid)
+    await roles_changed(db, [user_uuid])
+
+
+async def check_usage_cache(db: AsyncSession, user: models.User) -> schemas.UsageGet:
     from api.worker_tasks import update_user_usage_cache  # noqa: PLC0415
 
     cache_key = f"usage:{user.uuid}"
 
     if usage := settings.redis_cache(cache_key):
-        return schemas.EntitlementUsageGet.model_validate(usage)
+        return schemas.UsageGet.model_validate(usage)
 
     if (user_usage := await update_user_usage_cache(user.uuid)) is None:
         user_usage = await _create_usage(user, db)
@@ -776,13 +532,8 @@ async def check_usage_cache(
     return settings.redis_cache(cache_key, user_usage, update=True)
 
 
-async def _create_usage(
-    user: models.User, db: AsyncSession
-) -> schemas.EntitlementUsageGet:
-    limits = await get_entitlement(db, user.uuid)
-
-    if not limits:
-        raise HTTPException(status_code=404, detail="Entitlement not found")
+async def _create_usage(user: models.User, db: AsyncSession) -> schemas.UsageGet:
+    limits = await get_user_limits(db, user.uuid)
 
     select_query = select(func.sum(models.StoredFile.size)).where(
         models.StoredFile.creater_uuid == user.uuid
@@ -793,7 +544,7 @@ async def _create_usage(
         (total_file_bytes / (1024**3)) if total_file_bytes else 0
     )
 
-    usage = models.EntitlementUsage(
+    usage = models.UserUsage(
         user_uuid=user.uuid,
         number_copilot_calls_day_count=0,
         total_file_upload_size_gb_count=total_file_upload_size_gb_count,
@@ -803,30 +554,27 @@ async def _create_usage(
     await db.commit()
 
     user_usage = {
-        "copilot_calls_limit": limits.number_copilot_calls_day,
-        "copilot_tokens_limit": limits.number_copilot_tokens_day,
-        "file_upload_size_limit": limits.total_file_upload_size_gb,
+        "copilot_calls_limit": limits.copilot_calls_day,
+        "copilot_tokens_limit": limits.copilot_tokens_day,
+        "file_upload_size_limit": limits.upload_size_gb,
         "number_copilot_calls_day_count": 0,
         "number_copilot_tokens_day_count": 0,
         "total_file_upload_size_gb_count": total_file_upload_size_gb_count or 0,
     }
 
-    return schemas.EntitlementUsageGet.model_validate(user_usage)
+    return schemas.UsageGet.model_validate(user_usage)
 
 
 async def assign_default_mapping(db: AsyncSession, user_uuid: UUID):
-    """Puts a user that has no permissions mapping into the default one, with its entitlements."""
-    billing_active = await crud.total_user_count_full(db, settings.DEVELOPER_MAPPING)
+    """Puts a user that has no permissions mapping into the default one."""
     update_query = (
         update(models.User)
         .where(models.User.uuid == user_uuid)
-        .values(
-            permissions_uuid=settings.DEVELOPER_MAPPING, billing_active=billing_active
-        )
+        .values(permissions_uuid=settings.DEVELOPER_MAPPING)
     )
     await db.execute(update_query)
     await db.commit()
-    await update_user_entitlement_with_entity_entitlement(db, user_uuid)
+    await left_organization(db, user_uuid)
 
 
 async def get_widget_metadata(
@@ -883,26 +631,6 @@ async def _get_user_entity_info(
     )
 
 
-async def _deactivate_user_platforms(db: AsyncSession, user_uuid: UUID):
-    subscriptions_query = (
-        select(models.Subscription)
-        .options(selectinload(models.Subscription.platforms))
-        .where(models.Subscription.user_uuid == user_uuid)
-    )
-    subscriptions = (await db.execute(subscriptions_query)).scalars().all()
-
-    for sub in subscriptions:
-        for plat in sub.platforms:
-            up_query = (
-                update(models.Platform)
-                .where(models.Platform.uuid == plat.uuid)
-                .values(active=False)
-            )
-            await db.execute(up_query)
-            await db.commit()
-            base.remove_redis(plat.name, plat.platform_id)
-
-
 async def delete_user(db: AsyncSession, user_uuid: UUID) -> bool:
     """This function is used to soft delete a user."""
 
@@ -916,8 +644,6 @@ async def delete_user(db: AsyncSession, user_uuid: UUID) -> bool:
     if not user_details:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Deactivate user platforms
-    await _deactivate_user_platforms(db, user_uuid)
     # Delete user sessions
     query = delete(models.Session).where(models.Session.user_uuid == user_uuid)
     await db.execute(query)
@@ -937,6 +663,7 @@ async def delete_user(db: AsyncSession, user_uuid: UUID) -> bool:
     )
     response = await db.execute(query2)
     await db.commit()
+    await left_organization(db, user_uuid)
     return response.rowcount == 1
 
 
@@ -980,6 +707,8 @@ async def get_custom_copilots(
     """
     Get all custom copilots for a user.
     """
+    if not await may_add_connections(db, user_uuid):
+        return []
     query = select(models.CustomCopilot).where(
         models.CustomCopilot.user_uuid == user_uuid
     )
@@ -1265,33 +994,10 @@ async def get_role_copilot_access(
 async def get_user_copilot_access(
     db: AsyncSession, user_uuid: UUID
 ) -> schemas.CopilotAccess:
-    """What a user may use in the Copilot.
-
-    Roles grant models and MCP tools. A user with no grant of a kind in any of their roles
-    is unrestricted for that kind, so access is open until an admin narrows it down. Once
-    a role grants something, the user may use what their roles grant, and nothing else.
-    """
-    role_uuids = (
-        (
-            await db.execute(
-                select(models.UserRole.role_uuid)
-                .join(models.Role, models.Role.uuid == models.UserRole.role_uuid)
-                .where(
-                    models.UserRole.user_uuid == user_uuid,
-                    models.Role.deleted_at.is_(None),
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    granted = await get_role_copilot_access(db, list(role_uuids))
-    return schemas.CopilotAccess(
-        models=granted.models,
-        mcp=granted.mcp,
-        models_restricted=bool(granted.models),
-        mcp_restricted=bool(granted.mcp),
-    )
+    """What a user may use in the Copilot: the models and MCP tools their roles grant,
+    and nothing else."""
+    granted = await get_role_copilot_access(db, list(await _get_user_roles(db, user_uuid)))
+    return schemas.CopilotAccess(models=granted.models, mcp=granted.mcp)
 
 
 async def set_role_copilot_access(
@@ -1324,8 +1030,6 @@ async def set_role_copilot_access(
 def is_mcp_tool_allowed(
     access: schemas.CopilotAccess, server_url: str, tool_name: str
 ) -> bool:
-    if not access.mcp_restricted:
-        return True
     url = schemas.normalize_mcp_url(server_url)
     return any(
         grant.server_url == url and grant.tool_name in {schemas.ALL_MCP_TOOLS, tool_name}
@@ -1338,10 +1042,13 @@ def check_copilot_access(
 ) -> schemas.CopilotAuthorizeResult:
     """Check a Copilot request against what the user may use.
 
-    A request without a model leaves the choice to the agent, so there is nothing to check.
+    A request that names a model must name one granted for its agent. A request without
+    a model leaves the choice to the agent, which the user may use only with a model of
+    it granted.
     """
+    agent_allowed = any(m.agent_id == request.agent_id for m in access.models)
     denied_model = None
-    if access.models_restricted and request.model:
+    if request.model:
         granted = {(m.agent_id, m.model_id) for m in access.models}
         if (request.agent_id, request.model) not in granted:
             denied_model = request.model
@@ -1352,7 +1059,7 @@ def check_copilot_access(
         if not is_mcp_tool_allowed(access, tool.url, tool.tool_name)
     ]
     return schemas.CopilotAuthorizeResult(
-        allowed=denied_model is None and not denied_tools,
+        allowed=agent_allowed and denied_model is None and not denied_tools,
         denied_model=denied_model,
         denied_tools=denied_tools,
     )
@@ -1366,6 +1073,13 @@ async def get_role_users(db: AsyncSession, role_uuid: UUID) -> list[str]:
     )
     result = (await db.execute(query)).scalars().all()
     return result
+
+
+async def get_role_user_uuids(db: AsyncSession, role_uuid: UUID) -> list[UUID]:
+    query = select(models.UserRole.user_uuid).where(
+        models.UserRole.role_uuid == role_uuid
+    )
+    return list((await db.execute(query)).scalars().all())
 
 
 async def update_role_users(db: AsyncSession, role_uuid: UUID, new_users: list[str]):
@@ -1563,11 +1277,7 @@ async def insert_or_update_prompt_template_permissions(
 
 
 async def _get_user_roles(db: AsyncSession, user_uuid: UUID) -> list[UUID]:
-    query = (
-        select(models.UserRole.role_uuid)
-        .join(models.Role, models.Role.uuid == models.UserRole.role_uuid)
-        .where(models.UserRole.user_uuid == user_uuid, models.Role.deleted_at.is_(None))
-    )
+    query = _user_roles(user_uuid, models.UserRole.role_uuid)
     result = (await db.execute(query)).scalars().all()
     return result
 
@@ -2095,23 +1805,3 @@ async def get_shared_file_uuids(
             )
 
     return list(set(shared_uuids))
-
-
-async def get_dashboard_shared_file_uuids(
-    db: AsyncSession, user: models.User, dashboard_uuid: UUID | None = None
-) -> list[UUID]:
-    if dashboard_uuid is None:
-        return []
-
-    dashboard_file_uuids = await crud.get_dashboard_storedfile_uuids(
-        db, dashboard_uuid, user.uuid
-    )
-
-    if not dashboard_file_uuids:
-        return await crud.get_shared_dashboard_file_uuids(db, user, dashboard_uuid)
-
-    shared_file_uuids = await get_shared_file_uuids(db, user)
-
-    return list(
-        set([uuid for uuid in dashboard_file_uuids if uuid in shared_file_uuids])
-    )

@@ -20,7 +20,8 @@ the Microsoft 365 organization who hosts and distributes it.
 **Prerequisites**
 
 - A place to host the static bundle (HTML, JS and CSS files) under the address that was used in the build.
-- A Workspace deployment that users can sign in to. Their plan has to be the full tier.
+- A Workspace deployment that users can sign in to. One of their roles there has to have the Excel
+  add-in setting turned on; the organization's Workspace administrator sets it under Roles and Access.
 
 **Steps**
 

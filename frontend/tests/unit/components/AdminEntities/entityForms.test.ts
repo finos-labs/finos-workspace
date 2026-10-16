@@ -3,17 +3,11 @@ import { mapFormSchema } from "~/components/AdminEntities/EntityMapDialog";
 import { relationshipFormSchema } from "~/components/AdminEntities/EntityRelationshipDialog";
 import { entityTypeFormSchema } from "~/components/AdminEntities/EntityTypeDialog";
 import {
-  type EditEntityFormValues,
-  editEntityFormSchema,
-  entitlementBody,
-  entitlementFormDefaults,
-  entitlementFormSchema,
   entityBody,
   entityFormDefaults,
   entityFormSchema,
   newEntityFormDefaults,
   newEntityFormSchema,
-  oneYearFrom,
 } from "~/components/AdminEntities/entityForms";
 import type { Entity } from "~/types/entity.type";
 
@@ -35,8 +29,7 @@ const ENTITY: Entity = {
   country: "USA",
   aum: 5,
   organization_size: "Small",
-  seats: 12,
-  expiration_date: "2030-03-04T00:00:00",
+  sharing_enabled: true,
 };
 
 describe("entity form", () => {
@@ -51,24 +44,17 @@ describe("entity form", () => {
       organizationSize: "Small",
       aum: "5",
       country: "USA",
-      seats: "12",
-      expirationDate: "2030-03-04",
+      sharingEnabled: true,
     });
     expect(entityFormSchema.safeParse(valid).success).toBe(true);
   });
 
-  it("starts a new entity for a year, with a seat, and without an administrator", () => {
-    const defaults = newEntityFormDefaults(new Date(2026, 9, 7));
+  it("starts a new entity with sharing on and without an administrator", () => {
+    const defaults = newEntityFormDefaults();
 
-    expect(defaults.expirationDate).toBe("2027-10-07");
-    expect(defaults.seats).toBe("1");
+    expect(defaults.sharingEnabled).toBe(true);
     expect(defaults.adminEmail).toBe("");
     expect(newEntityFormSchema.safeParse(defaults).success).toBe(false);
-  });
-
-  it("counts a year from the day, whatever the month", () => {
-    expect(oneYearFrom(new Date(2026, 0, 31))).toBe("2027-01-31");
-    expect(oneYearFrom(new Date(2026, 11, 31))).toBe("2027-12-31");
   });
 
   it("asks for what is missing", () => {
@@ -84,19 +70,9 @@ describe("entity form", () => {
     expect(fields).toEqual(expect.arrayContaining(["name", "entityTypeUuid", "email"]));
   });
 
-  it("refuses more seats than the backend takes, and text that is not a number", () => {
-    expect(entityFormSchema.safeParse({ ...valid, seats: "10000" }).success).toBe(true);
-    expect(entityFormSchema.safeParse({ ...valid, seats: "10001" }).success).toBe(
-      false,
-    );
-    expect(entityFormSchema.safeParse({ ...valid, seats: "ten" }).success).toBe(false);
+  it("refuses an AUM that is not a whole number", () => {
     expect(entityFormSchema.safeParse({ ...valid, aum: "1.5" }).success).toBe(false);
-  });
-
-  it("wants a date as YYYY-MM-DD", () => {
-    expect(
-      entityFormSchema.safeParse({ ...valid, expirationDate: "03/04/2030" }).success,
-    ).toBe(false);
+    expect(entityFormSchema.safeParse({ ...valid, aum: "ten" }).success).toBe(false);
   });
 
   it("makes the request body out of the typed text", () => {
@@ -108,9 +84,9 @@ describe("entity form", () => {
       organization_size: "Small",
       aum: 5,
       country: "USA",
-      seats: 12,
-      expiration_date: "2030-03-04",
+      sharing_enabled: true,
     });
+    expect(entityBody({ ...valid, sharingEnabled: false }).sharing_enabled).toBe(false);
   });
 
   it("needs an administrator for a new entity", () => {
@@ -125,94 +101,6 @@ describe("entity form", () => {
     expect(
       newEntityFormSchema.safeParse({ ...withAdmin, adminEmail: "ada" }).success,
     ).toBe(false);
-  });
-});
-
-describe("entitlement form", () => {
-  const entitlements = entitlementFormDefaults({
-    tier: "basic",
-    number_copilot_calls_day: 40,
-    number_copilot_tokens_day: null,
-    total_file_upload_size_gb: 3,
-    share_widgets: "public",
-    bring_your_own_data: true,
-    bring_your_own_copilot: false,
-    admin_access: true,
-    support: false,
-    excel_add_in: true,
-    data_add_ons_redistribution: false,
-    allow_custom_backends: true,
-    bundle_name: "On-Premise",
-  });
-
-  it("shows what the entity has", () => {
-    expect(entitlements.tier).toBe("basic");
-    expect(entitlements.number_copilot_calls_day).toBe("40");
-    expect(entitlements.number_copilot_tokens_day).toBe("");
-    expect(entitlements.bundle_name).toBe("On-Premise");
-  });
-
-  it("reads an entity without entitlements as having none, but custom backends allowed", () => {
-    const none = entitlementFormDefaults(undefined);
-
-    expect(none.admin_access).toBe(false);
-    expect(none.allow_custom_backends).toBe(true);
-    expect(entitlementFormSchema.safeParse(none).success).toBe(true);
-  });
-
-  it("sends no token limit as null and the rest as numbers", () => {
-    const body = entitlementBody(entitlements);
-
-    expect(body.number_copilot_tokens_day).toBeNull();
-    expect(body.number_copilot_calls_day).toBe(40);
-    expect(body.total_file_upload_size_gb).toBe(3);
-    expect(
-      entitlementBody({ ...entitlements, number_copilot_tokens_day: "9000" })
-        .number_copilot_tokens_day,
-    ).toBe(9000);
-  });
-
-  it("refuses a token limit that is not a whole number", () => {
-    expect(
-      entitlementFormSchema.safeParse({
-        ...entitlements,
-        number_copilot_tokens_day: "1.5",
-      }).success,
-    ).toBe(false);
-    expect(
-      entitlementFormSchema.safeParse({
-        ...entitlements,
-        number_copilot_tokens_day: "",
-      }).success,
-    ).toBe(true);
-  });
-
-  it("sends only entitlement fields when the entity's own fields are in the same form", () => {
-    const editing: EditEntityFormValues = {
-      ...entityFormDefaults(ENTITY),
-      ...entitlements,
-    };
-    expect(editEntityFormSchema.safeParse(editing).success).toBe(true);
-
-    const body = entitlementBody(editing);
-
-    expect(Object.keys(body).sort()).toEqual(
-      [
-        "tier",
-        "number_copilot_calls_day",
-        "number_copilot_tokens_day",
-        "total_file_upload_size_gb",
-        "share_widgets",
-        "bring_your_own_data",
-        "bring_your_own_copilot",
-        "admin_access",
-        "support",
-        "excel_add_in",
-        "data_add_ons_redistribution",
-        "allow_custom_backends",
-        "bundle_name",
-      ].sort(),
-    );
   });
 });
 
@@ -247,10 +135,15 @@ describe("the smaller forms", () => {
     expect(same.error?.issues[0]?.path).toEqual(["child"]);
   });
 
-  it("wants an entity and a name for a permission map", () => {
+  it("names a permission map after one of the three user types", () => {
+    for (const name of ["Admin", "Developer", "User"]) {
+      expect(mapFormSchema.safeParse({ entityUuid: TYPE_UUID, name }).success).toBe(
+        true,
+      );
+    }
     expect(
       mapFormSchema.safeParse({ entityUuid: TYPE_UUID, name: "Reviewers" }).success,
-    ).toBe(true);
+    ).toBe(false);
     expect(mapFormSchema.safeParse({ entityUuid: "", name: "" }).success).toBe(false);
   });
 });

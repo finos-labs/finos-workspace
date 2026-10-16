@@ -26,6 +26,7 @@ import GroupDropdown from "~/components/Widgets/Helpers/GroupDropdown";
 import { useParamGroupBindings } from "~/components/Widgets/Helpers/useParamGroupBindings";
 import { useIsFirstRender } from "~/hooks/useIsFirstRender";
 import { useStateReducer } from "~/hooks/useStateReducer";
+import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import {
   beautifySlug,
@@ -89,6 +90,8 @@ function replaceFailed(
 
 export function useWidgetParamsPositions(enabled = true) {
   const { widget, updateWidget } = useWidgetContext();
+  // The option endpoints are called with the source's credentials, read when they run
+  const credentials = useSourceCredentials(widget.sourceId, widget.endpoint?.url);
   const { setWidgetCopilotDraftParams, beginWidgetCopilotExecution } =
     useShallowCopilotDataStore((s) => ({
       setWidgetCopilotDraftParams: s.setWidgetCopilotDraftParams,
@@ -312,12 +315,7 @@ export function useWidgetParamsPositions(enabled = true) {
     });
 
     return { queries };
-  }, [
-    endpointParams,
-    widget.endpoint?.headers,
-    state.localParams,
-    widget.refreshQuery,
-  ]);
+  }, [endpointParams, credentials, state.localParams, widget.refreshQuery]);
 
   const endpointQueries = useQueries(queriesMemo);
   const isFirstRender = useIsFirstRender();

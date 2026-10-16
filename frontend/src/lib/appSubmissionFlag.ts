@@ -1,5 +1,5 @@
 import { getConfig } from "~/lib/runtimeConfig";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
+import { useShallowAccessStore } from "~/lib/state/access";
 
 /**
  * Gates the developer marketplace submission flow (List app -> fill listing ->
@@ -11,8 +11,6 @@ import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
  * backend, not in the marketplace it lists.
  */
 export function useCanSubmitApp(): boolean {
-  const canSubmit = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.can_submit_marketplace ?? false,
-  );
+  const canSubmit = useShallowAccessStore((state) => state.canSubmitMarketplace);
   return canSubmit && !getConfig().urls.marketplace;
 }

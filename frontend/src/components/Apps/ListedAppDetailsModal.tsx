@@ -100,7 +100,7 @@ export const ListedAppDetailsModal = memo((props: ListedAppDetailsModalProps) =>
   // MCP server, both credentials live in one place and the label goes plural.
   const showAuthButton = requiresAuth || hasOptionalAuth || !!tokenMcpServer;
   const credentialLabel = tokenMcpServer ? "API Keys" : authButtonLabel;
-  const hasSavedCredentials = hasSavedAuth || !!mcpToken.currentToken;
+  const hasSavedCredentials = hasSavedAuth || mcpToken.hasToken;
 
   const showDisconnectMenu = !app.isBuiltIn && isSubscribed && !!onDisconnect;
 
@@ -304,7 +304,7 @@ export const ListedAppDetailsModal = memo((props: ListedAppDetailsModalProps) =>
         mcpToken={
           tokenMcpServer
             ? {
-                currentToken: mcpToken.currentToken,
+                hasToken: mcpToken.hasToken,
                 error: mcpToken.isFailed ? mcpToken.connectionError : undefined,
                 onSave: mcpToken.saveToken,
               }

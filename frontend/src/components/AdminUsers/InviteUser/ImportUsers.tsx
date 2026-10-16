@@ -89,9 +89,6 @@ export default function ImportUsers({
         queryClient.invalidateQueries({
           queryKey: ["admin", "users"],
         });
-        queryClient.invalidateQueries({
-          queryKey: ["admin", "entityInfo"],
-        });
         onClose();
         return;
       }

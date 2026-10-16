@@ -126,9 +126,11 @@ bun run test:integration
 
 The tests run against a running stack and sign in as an account that exists there. Start the
 whole stack from the repository root (`docker compose up --build`, see the root README) and name
-the administrator it created, from `backend-api/backend/scripts/cfgs/config.toml`:
+the administrator it created: the address in `backend-api/backend/scripts/cfgs/config.toml`, and
+the password that the `init` service printed once when it created the account (no file keeps it):
 
 ```bash
+docker compose logs --no-log-prefix init | grep 'was created'   # from the repository root
 export E2E_USER_EMAIL=<the administrator's email>
 export E2E_USER_PASSWORD=<their password>
 # E2E_BASE_URL defaults to http://localhost:3000
@@ -150,7 +152,8 @@ The entity-type test adds a row each run (entity types cannot be deleted), so ru
 
 The `setup` project signs in once and keeps the session in `playwright/.auth/user.json`; the
 other projects start from it. `.github/workflows/e2e.yml` runs the same tests in CI against a
-stack of its own, with an administrator whose password is generated for the run.
+stack of its own, with an administrator whose password the run reads from the `init` service's
+log.
 
 ### Storybook Accessibility Tests
 
@@ -393,7 +396,7 @@ import {
   mockValidateResponse,
   mockDashboardData,
   mockUsage,
-  mockFeatureFlags,
+  mockAccess,
 } from "~/tests/mocks/handlers";
 ```
 
@@ -403,7 +406,7 @@ import {
 | `mockValidateResponse` | Token validation response |
 | `mockDashboardData` | Dashboard sync response (owned/shared) |
 | `mockUsage` | Usage limits and current usage |
-| `mockFeatureFlags` | Feature tier and enabled features |
+| `mockAccess` | What the user's roles let them do (`GET /app/access`) |
 
 ### Handler Organization
 
@@ -419,14 +422,15 @@ http.post(`${BASE_URL}/app/logout`, ...)
 http.get(`${BASE_URL}/app/dash/sync`, ...)
 http.post(`${BASE_URL}/app/dash/sync`, ...)
 
-// ============ Usage & Tier Endpoints ============
+// ============ Usage & Access Endpoints ============
 http.get(`${BASE_URL}/app/usage`, ...)
+http.get(`${BASE_URL}/app/access`, ...)
 
 // ============ Data Connector Endpoints ============
 http.get(`${BASE_URL}/app/data-connectors/api-source`, ...)
 
 // ============ Copilot Endpoints ============
-http.get(`${BASE_URL}/app/copilot-chats`, ...)
+http.post(`${BASE_URL}/app/copilot-chats`, ...)
 
 // ============ Passthrough Handlers ============
 http.all("https://test-backend.com/*", () => passthrough())

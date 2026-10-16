@@ -40,14 +40,13 @@ test("an entity type can be added and renamed", async ({ page }) => {
   await expect(rowWith(page, `${name} renamed`)).toBeVisible();
 });
 
-test("an entity opens with its entitlements", async ({ page }) => {
+test("an entity opens with its sharing switch", async ({ page }) => {
   await page.goto("/admin/entities");
 
   await page.getByRole("button", { name: "Edit entity" }).first().click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("tab", { name: "Entitlements" }).click();
 
-  await expect(dialog.getByText("Copilot queries per day")).toBeVisible();
+  await expect(dialog.getByRole("switch", { name: "Sharing enabled" })).toBeVisible();
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await expect(dialog).toBeHidden();
 });

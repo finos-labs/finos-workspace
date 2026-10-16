@@ -190,9 +190,9 @@ export interface WorkspaceBridgeCommandResult {
   };
 }
 
+/** The page's bridge session. The websocket authenticates with the session cookie. */
 export interface BrowserSession {
   session_id: string;
-  token: string;
   client_name: string;
   current_dashboard_id?: string | null;
   current_tab_id?: string | null;

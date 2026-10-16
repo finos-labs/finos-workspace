@@ -4,7 +4,6 @@ from datetime import (
     date as dateType,
     datetime,
 )
-from time import time
 from typing import Any, Literal, TypedDict, TypeVar
 from uuid import UUID
 
@@ -24,6 +23,7 @@ from api.models import (
     Entity,
     Login,
     PermissionsEntityMap,
+    ShareRequest,
     User,
     UserApp,
     UserAppShare,
@@ -50,20 +50,6 @@ async def get_user_entity_uuid(db: AsyncSession, permissions_uuid: UUID) -> UUID
     )
 
     return (await db.execute(user_entity_query)).scalar_one_or_none()
-
-
-async def get_shared_dashboard_file_uuids(
-    db: AsyncSession, user: models.User, dashboard_uuid: UUID | None = None
-):
-    if dashboard_uuid is None:
-        return []
-
-    select_query = select(models.StoredFileShare.stored_file_uuids).where(
-        models.StoredFileShare.shared_user_uuid == user.uuid,
-        models.StoredFileShare.dashboard_item_uuid == dashboard_uuid,
-    )
-
-    return (await db.execute(select_query)).scalar_one_or_none() or []
 
 
 async def bulk_dashboard_insert_update(  # noqa: PLR0912
@@ -812,42 +798,6 @@ async def get_user_dashboards_shared(
         return {}
 
 
-async def get_user_dashboards_entity_shared_noex(
-    db: AsyncSession, user_uuid: UUID, permissions_uuid: UUID
-) -> UserDashboards:
-    "Gets all dashboards that are shared with all user's in the current user's entity"
-    start_time = time()
-    query = (
-        select(
-            DashboardItem.uuid,
-            DashboardItem.content,
-            DashboardItem.creator_uuid,
-            DashboardItem.created_date,
-            DashboardItem.updated_date,
-            case(
-                (
-                    and_(User.first_name.is_not(None), User.last_name.is_not(None)),
-                    func.concat(User.first_name, " ", User.last_name),
-                ),
-                else_=User.email,
-            ).label("created_by"),
-        )
-        .join(User, User.uuid == DashboardItem.owner_uuid)
-        .join(PermissionsEntityMap, User.permissions_uuid == PermissionsEntityMap.uuid)
-        .where(
-            DashboardItem.entity_share.is_(True),
-            PermissionsEntityMap.uuid == permissions_uuid,
-            DashboardItem.owner_uuid != user_uuid,
-        )
-    )
-    results = await db.execute(query)
-    data = {x.uuid: get_value(x, user_uuid) for x in results.all()}
-    logger.warning(
-        f"Time to get user entity dashboards: {(time() - start_time) * 1000:.2f}"
-    )
-    return data
-
-
 async def get_user_dashboards_entity_shared(
     db: AsyncSession,
     user_uuid: UUID,
@@ -856,6 +806,9 @@ async def get_user_dashboards_entity_shared(
 ) -> UserDashboards:
     "Gets all dashboards that are shared with all user's in the current user's entity"
     if permissions_uuid == settings.DEVELOPER_MAPPING and not settings.is_onprem():
+        return {}
+
+    if (await get_users_sharing(db, [user_uuid]))[user_uuid] == models.SHARING_NONE:
         return {}
 
     user_entity_uuid = await get_user_entity_uuid(db, permissions_uuid)
@@ -877,20 +830,24 @@ async def get_user_dashboards_entity_shared(
     if not shared_uuids:
         return {}
 
-    query = select(
-        DashboardItem.uuid,
-        DashboardItem.content,
-        DashboardItem.creator_uuid,
-        DashboardItem.created_date,
-        DashboardItem.updated_date,
-        case(
-            (
-                and_(User.first_name.is_not(None), User.last_name.is_not(None)),
-                func.concat(User.first_name, " ", User.last_name),
-            ),
-            else_=User.email,
-        ).label("created_by"),
-    ).where(DashboardItem.uuid.in_(shared_uuids))
+    query = (
+        select(
+            DashboardItem.uuid,
+            DashboardItem.content,
+            DashboardItem.creator_uuid,
+            DashboardItem.created_date,
+            DashboardItem.updated_date,
+            case(
+                (
+                    and_(User.first_name.is_not(None), User.last_name.is_not(None)),
+                    func.concat(User.first_name, " ", User.last_name),
+                ),
+                else_=User.email,
+            ).label("created_by"),
+        )
+        .join(User, User.uuid == DashboardItem.creator_uuid)
+        .where(DashboardItem.uuid.in_(shared_uuids))
+    )
 
     results = await db.execute(query)
     return {x.uuid: get_value(x, user_uuid) for x in results.all()}
@@ -950,44 +907,6 @@ async def get_dashboard_saves_to_delete(
     return [x for x in results.scalars().all()]
 
 
-async def get_total_user_count(db: AsyncSession, admin_uuid: UUID) -> int:
-    "The total amount of active users in the entity of a given user."
-    active_query = (
-        select(func.count(User.uuid.distinct()))
-        .join(
-            models.PermissionsEntityMap,
-            models.PermissionsEntityMap.uuid == User.permissions_uuid,
-        )
-        .join(
-            models.Entity, models.Entity.uuid == models.PermissionsEntityMap.entity_uuid
-        )
-        .where(User.billing_active.is_(True), models.Entity.uuid == admin_uuid)
-    ).limit(1)
-    response = (await db.execute(active_query)).scalar_one_or_none()
-    if response is None:
-        raise HTTPException(
-            404, detail="Could not find the entity associated with the given admin"
-        )
-    return response
-
-
-async def total_user_count_full(db: AsyncSession, permissions_uuid: UUID) -> bool:
-    "Returns true if there is a free seat for the entity"
-    admin_query = (
-        select(Entity.uuid, Entity.seats)
-        .select_from(PermissionsEntityMap)
-        .join(Entity, Entity.uuid == PermissionsEntityMap.entity_uuid)
-        .where(PermissionsEntityMap.uuid == permissions_uuid)
-    ).limit(1)
-    admin_result = (await db.execute(admin_query)).first()
-    if not admin_result:
-        raise HTTPException(
-            404, detail="Could not find the entity associated with the given admin"
-        )
-    total_count = await get_total_user_count(db, admin_result.uuid)
-    return total_count < (admin_result.seats or 0)
-
-
 async def check_new_user(db: AsyncSession, email: str) -> bool:
     cleaned = base.clean_email(email)
     if cleaned in settings.SPECIAL_EMAILS:
@@ -1029,14 +948,8 @@ async def remove_app_data(db: AsyncSession, user_uuid: UUID):
         models.WidgetMetadata.user_uuid == user_uuid
     )
     await db.execute(meta_data)
-    entitlements = delete(models.Entitlement).where(
-        models.Entitlement.user_uuid == user_uuid
-    )
-    await db.execute(entitlements)
-    entitlements_usage = delete(models.EntitlementUsage).where(
-        models.EntitlementUsage.user_uuid == user_uuid
-    )
-    await db.execute(entitlements_usage)
+    user_usage = delete(models.UserUsage).where(models.UserUsage.user_uuid == user_uuid)
+    await db.execute(user_usage)
     copilot_chats = delete(models.CopilotChat).where(
         models.CopilotChat.user_uuid == user_uuid
     )
@@ -1168,6 +1081,235 @@ async def get_new_sharing_permissions(
     return permissions, [x.uuid for x in user_uuids_response]
 
 
+def _share_item(dashboard_uuid: UUID | None, app_uuid: UUID | None):
+    "The share model, its item column and the item, for a dashboard or an app."
+    if dashboard_uuid:
+        return DashboardShare, DashboardShare.dashboard_item_uuid, dashboard_uuid
+    return UserAppShare, UserAppShare.user_app_uuid, app_uuid
+
+
+def _request_item(dashboard_uuid: UUID | None, app_uuid: UUID | None):
+    "The condition that picks the share requests of a dashboard or an app."
+    if dashboard_uuid:
+        return ShareRequest.dashboard_item_uuid == dashboard_uuid
+    return ShareRequest.user_app_uuid == app_uuid
+
+
+async def apply_shares(
+    db: AsyncSession,
+    owner_uuid: UUID,
+    shares: list[NewSharingPermission],
+    dashboard_uuid: UUID | None = None,
+    app_uuid: UUID | None = None,
+) -> None:
+    """Shares the owner's dashboard or app: each recipient gets the permission, a current
+    share of theirs takes the new one, and new recipients get the item's files."""
+    share_model, item_column, item_uuid = _share_item(dashboard_uuid, app_uuid)
+    recipients = [share["shared_user_uuid"] for share in shares]
+    existing = dict(
+        (
+            await db.execute(
+                select(share_model.shared_user_uuid, share_model.uuid).where(
+                    item_column == item_uuid,
+                    share_model.active.is_(True),
+                    share_model.shared_user_uuid.in_(recipients),
+                )
+            )
+        ).all()
+    )
+    new = [share for share in shares if share["shared_user_uuid"] not in existing]
+    if new:
+        await db.execute(insert(share_model), new)
+    changed = [
+        {
+            "uuid": existing[share["shared_user_uuid"]],
+            "permissions": share["permissions"],
+        }
+        for share in shares
+        if share["shared_user_uuid"] in existing
+    ]
+    if changed:
+        await db.execute(update(share_model), changed)
+    if dashboard_uuid:
+        await db.execute(
+            update(DashboardItem)
+            .where(
+                DashboardItem.uuid == dashboard_uuid,
+                DashboardItem.owner_uuid == owner_uuid,
+            )
+            .values(is_shared=True)
+        )
+    else:
+        await db.execute(
+            update(UserApp)
+            .where(UserApp.uuid == app_uuid, UserApp.user_uuid == owner_uuid)
+            .values(is_shared=True)
+        )
+    await db.commit()
+    await share_files(
+        db,
+        owner_uuid,
+        [share["shared_user_uuid"] for share in new],
+        dashboard_uuid=dashboard_uuid,
+        user_app_uuid=app_uuid,
+    )
+
+
+async def request_shares(
+    db: AsyncSession,
+    requester_uuid: UUID,
+    shares: list[NewSharingPermission],
+    dashboard_uuid: UUID | None = None,
+    app_uuid: UUID | None = None,
+) -> None:
+    """Keeps a developer's shares for an admin to approve, one request per recipient; a
+    new request replaces the one the recipient had waiting."""
+    recipients = [share["shared_user_uuid"] for share in shares]
+    await db.execute(
+        delete(ShareRequest).where(
+            _request_item(dashboard_uuid, app_uuid),
+            ShareRequest.recipient_uuid.in_(recipients),
+        )
+    )
+    await db.execute(
+        insert(ShareRequest),
+        [
+            {
+                "requester_uuid": requester_uuid,
+                "dashboard_item_uuid": dashboard_uuid,
+                "user_app_uuid": app_uuid,
+                "recipient_uuid": share["shared_user_uuid"],
+                "permissions": share["permissions"],
+            }
+            for share in shares
+        ],
+    )
+    await db.commit()
+
+
+async def request_entity_share(
+    db: AsyncSession, requester_uuid: UUID, dashboard_uuid: UUID
+) -> None:
+    "Keeps a developer's share of a dashboard with their organization for an admin to approve."
+    await db.execute(
+        delete(ShareRequest).where(
+            ShareRequest.dashboard_item_uuid == dashboard_uuid,
+            ShareRequest.recipient_uuid.is_(None),
+        )
+    )
+    await db.execute(
+        insert(ShareRequest).values(
+            requester_uuid=requester_uuid, dashboard_item_uuid=dashboard_uuid
+        )
+    )
+    await db.commit()
+
+
+async def cancel_share_requests(
+    db: AsyncSession,
+    requester_uuid: UUID,
+    emails: list[str],
+    dashboard_uuid: UUID | None = None,
+    app_uuid: UUID | None = None,
+) -> None:
+    "Withdraws the requester's waiting shares of the item with the given users."
+    await db.execute(
+        delete(ShareRequest).where(
+            _request_item(dashboard_uuid, app_uuid),
+            ShareRequest.requester_uuid == requester_uuid,
+            ShareRequest.recipient_uuid.in_(
+                select(User.uuid).where(User.email.in_(emails))
+            ),
+        )
+    )
+    await db.commit()
+
+
+async def get_waiting_shares(
+    db: AsyncSession,
+    requester_uuid: UUID,
+    dashboard_uuid: UUID | None = None,
+    app_uuid: UUID | None = None,
+):
+    "The requester's shares of the item with users that wait for an admin's approval."
+    query = (
+        select(
+            User.email,
+            User.first_name,
+            User.last_name,
+            ShareRequest.permissions,
+            ShareRequest.created_date,
+        )
+        .join(User, User.uuid == ShareRequest.recipient_uuid)
+        .where(
+            _request_item(dashboard_uuid, app_uuid),
+            ShareRequest.requester_uuid == requester_uuid,
+        )
+    )
+    return (await db.execute(query)).mappings().all()
+
+
+async def approve_share_request(db: AsyncSession, share_request: ShareRequest) -> None:
+    """Makes the share a developer asked for, if they may still share the item and the
+    recipient may still receive it; the request is then done."""
+    requester_uuid = share_request.requester_uuid
+    sharing = await get_users_sharing(db, [requester_uuid])
+    if sharing[requester_uuid] != models.SHARING_SHARE:
+        raise HTTPException(409, detail="The requester's roles no longer allow sharing")
+
+    dashboard_uuid = share_request.dashboard_item_uuid
+    app_uuid = share_request.user_app_uuid
+    if dashboard_uuid:
+        owner_query = select(DashboardItem.owner_uuid).where(
+            DashboardItem.uuid == dashboard_uuid
+        )
+    else:
+        owner_query = select(UserApp.user_uuid).where(UserApp.uuid == app_uuid)
+    if (await db.execute(owner_query)).scalar_one_or_none() != requester_uuid:
+        raise HTTPException(409, detail="The requester no longer owns this item")
+
+    recipient_uuid = share_request.recipient_uuid
+    if recipient_uuid is None:
+        await db.execute(
+            update(DashboardItem)
+            .where(DashboardItem.uuid == dashboard_uuid)
+            .values(entity_share=True)
+        )
+    else:
+        entities_query = (
+            select(User.uuid, PermissionsEntityMap.entity_uuid)
+            .join(PermissionsEntityMap, PermissionsEntityMap.uuid == User.permissions_uuid)
+            .where(User.uuid.in_([requester_uuid, recipient_uuid]))
+        )
+        entities = dict((await db.execute(entities_query)).all())
+        recipient_entity = entities.get(recipient_uuid)
+        if recipient_entity is None or recipient_entity != entities.get(requester_uuid):
+            raise HTTPException(
+                409, detail="The recipient is no longer in the organization"
+            )
+        receiving = await get_users_sharing(db, [recipient_uuid])
+        if receiving[recipient_uuid] == models.SHARING_NONE:
+            raise HTTPException(
+                409, detail="The recipient's roles do not allow receiving shares"
+            )
+        item_key = "dashboard_item_uuid" if dashboard_uuid else "user_app_uuid"
+        shares: list[NewSharingPermission] = [
+            {
+                item_key: dashboard_uuid or app_uuid,
+                "shared_user_uuid": recipient_uuid,
+                "permissions": share_request.permissions or "view",
+            }
+        ]
+        await apply_shares(
+            db, requester_uuid, shares, dashboard_uuid=dashboard_uuid, app_uuid=app_uuid
+        )
+
+    await db.execute(
+        delete(ShareRequest).where(ShareRequest.uuid == share_request.uuid)
+    )
+    await db.commit()
+
+
 async def remove_shares_both_ways(
     db: AsyncSession, user_uuid: None | UUID = None, email: None | str = None
 ):
@@ -1203,6 +1345,213 @@ async def remove_shares_both_ways(
     await db.execute(
         delete(UserAppShare).where(UserAppShare.user_app_uuid.in_(user_app_uuids))
     )
+
+    # Drop the share requests the user made and the ones that would share with them
+    await db.execute(
+        delete(ShareRequest).where(
+            or_(
+                ShareRequest.requester_uuid == user_uuid,
+                ShareRequest.recipient_uuid == user_uuid,
+            )
+        )
+    )
+
+
+async def get_users_sharing(
+    db: AsyncSession, user_uuids: list[UUID]
+) -> dict[UUID, str]:
+    """What each user may do with shared items: the most any of their roles allows, or
+    nothing when their organization has sharing switched off."""
+    levels = dict.fromkeys(user_uuids, models.SHARING_NONE)
+    if not user_uuids:
+        return levels
+
+    query = (
+        select(models.UserRole.user_uuid, models.Role.sharing)
+        .join(models.Role, models.Role.uuid == models.UserRole.role_uuid)
+        .join(User, User.uuid == models.UserRole.user_uuid)
+        .join(PermissionsEntityMap, PermissionsEntityMap.uuid == User.permissions_uuid)
+        .join(Entity, Entity.uuid == PermissionsEntityMap.entity_uuid)
+        .where(
+            models.UserRole.user_uuid.in_(user_uuids),
+            models.Role.deleted_at.is_(None),
+            models.Role.entity_uuid == Entity.uuid,
+            Entity.sharing_enabled.is_(True),
+        )
+    )
+    for user_uuid, sharing in (await db.execute(query)).all():
+        if models.SHARING_LEVELS.index(sharing) > models.SHARING_LEVELS.index(
+            levels[user_uuid]
+        ):
+            levels[user_uuid] = sharing
+    return levels
+
+
+async def leave_other_organizations(db: AsyncSession, user_uuid: UUID) -> None:
+    """Takes the user out of the roles of organizations they are not in, and what they
+    brought (backends, files and prompts) out of what those roles grant."""
+    entity_uuid = (
+        await db.execute(
+            select(PermissionsEntityMap.entity_uuid)
+            .join(User, User.permissions_uuid == PermissionsEntityMap.uuid)
+            .where(User.uuid == user_uuid)
+        )
+    ).scalar_one_or_none()
+    other_roles = select(models.Role.uuid)
+    if entity_uuid is not None:
+        other_roles = other_roles.where(models.Role.entity_uuid != entity_uuid)
+
+    query = select(models.UserRole).where(
+        models.UserRole.user_uuid == user_uuid,
+        models.UserRole.role_uuid.in_(other_roles),
+    )
+    for user_role in (await db.execute(query)).scalars().all():
+        await db.delete(user_role)
+
+    for grant, item_uuid, item in (
+        (models.RoleBackend, models.RoleBackend.backend_uuid, ApiSource),
+        (models.RoleFile, models.RoleFile.file_uuid, models.FileWidget),
+        (models.RolePrompt, models.RolePrompt.prompt_uuid, models.UserPrompts),
+    ):
+        await db.execute(
+            delete(grant).where(
+                grant.role_uuid.in_(other_roles),
+                item_uuid.in_(select(item.uuid).where(item.user_uuid == user_uuid)),
+            )
+        )
+    await db.commit()
+
+
+async def check_may_share(db: AsyncSession, user_uuid: UUID) -> None:
+    if (await get_users_sharing(db, [user_uuid]))[user_uuid] != models.SHARING_SHARE:
+        raise HTTPException(403, detail="Sharing is not allowed for your account")
+
+
+async def check_share_recipients(db: AsyncSession, user_uuids: list[UUID]) -> None:
+    levels = await get_users_sharing(db, user_uuids)
+    refused = [uuid for uuid, level in levels.items() if level == models.SHARING_NONE]
+    if refused:
+        emails = (
+            (
+                await db.execute(
+                    select(User.email).where(User.uuid.in_(refused)).order_by(User.email)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        raise HTTPException(
+            403,
+            detail=f"These users cannot receive shared items: {', '.join(emails)}",
+        )
+
+
+async def get_share_recipients(
+    db: AsyncSession, user_uuids: list[UUID]
+) -> list[UUID]:
+    "The given users who may receive shared items."
+    levels = await get_users_sharing(db, user_uuids)
+    return [uuid for uuid, level in levels.items() if level != models.SHARING_NONE]
+
+
+async def revoke_disallowed_shares(db: AsyncSession, user_uuids: list[UUID]) -> None:
+    """Revoke the shares that the users' sharing no longer allows: below "share", what
+    they shared with others; below "receive", what others shared with them. The same
+    goes for shares waiting for an admin's approval."""
+    levels = await get_users_sharing(db, list(user_uuids))
+    sharers = [uuid for uuid, level in levels.items() if level != models.SHARING_SHARE]
+    receivers = [uuid for uuid, level in levels.items() if level == models.SHARING_NONE]
+
+    if sharers or receivers:
+        await db.execute(
+            delete(ShareRequest).where(
+                or_(
+                    ShareRequest.requester_uuid.in_(sharers),
+                    ShareRequest.recipient_uuid.in_(receivers),
+                )
+            )
+        )
+
+    if sharers:
+        dashboard_uuids = (
+            (
+                await db.execute(
+                    select(DashboardItem.uuid).where(
+                        DashboardItem.owner_uuid.in_(sharers)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        app_uuids = (
+            (await db.execute(select(UserApp.uuid).where(UserApp.user_uuid.in_(sharers))))
+            .scalars()
+            .all()
+        )
+        await db.execute(
+            delete(DashboardShare).where(
+                DashboardShare.dashboard_item_uuid.in_(dashboard_uuids)
+            )
+        )
+        await db.execute(
+            delete(UserAppShare).where(UserAppShare.user_app_uuid.in_(app_uuids))
+        )
+        await db.execute(
+            delete(StoredFileShare).where(StoredFileShare.creater_uuid.in_(sharers))
+        )
+        await db.execute(
+            update(DashboardItem)
+            .where(DashboardItem.owner_uuid.in_(sharers))
+            .values(entity_share=False, is_shared=False)
+        )
+        await db.execute(
+            update(UserApp).where(UserApp.user_uuid.in_(sharers)).values(is_shared=False)
+        )
+
+    received_dashboards: list[UUID] = []
+    received_apps: list[UUID] = []
+    if receivers:
+        received_dashboards = (
+            (
+                await db.execute(
+                    select(DashboardShare.dashboard_item_uuid)
+                    .where(DashboardShare.shared_user_uuid.in_(receivers))
+                    .distinct()
+                )
+            )
+            .scalars()
+            .all()
+        )
+        received_apps = (
+            (
+                await db.execute(
+                    select(UserAppShare.user_app_uuid)
+                    .where(UserAppShare.shared_user_uuid.in_(receivers))
+                    .distinct()
+                )
+            )
+            .scalars()
+            .all()
+        )
+        await db.execute(
+            delete(DashboardShare).where(DashboardShare.shared_user_uuid.in_(receivers))
+        )
+        await db.execute(
+            delete(UserAppShare).where(UserAppShare.shared_user_uuid.in_(receivers))
+        )
+        await db.execute(
+            delete(StoredFileShare).where(
+                StoredFileShare.shared_user_uuid.in_(receivers)
+            )
+        )
+
+    await db.commit()
+
+    for dashboard_uuid in received_dashboards:
+        await handle_dashboard_is_shared(db, dashboard_uuid)
+    for app_uuid in received_apps:
+        await handle_user_app_is_shared(db, app_uuid)
 
 
 async def update_user_dashboards_new_entity(

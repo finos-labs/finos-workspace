@@ -137,7 +137,7 @@ def client(sessions, monkeypatch):
 # --------------------------------------------------------------------------- #
 # Authorisation
 #
-# A full account export includes credentials in the clear, so it is gated on
+# A full account export carries the account's credentials, so it is gated on
 # superuser rather than the org-admin dependency the rest of /admin uses.
 # --------------------------------------------------------------------------- #
 def test_export_is_gated_on_superuser_not_org_admin():
@@ -157,8 +157,9 @@ def test_export_is_gated_on_superuser_not_org_admin():
     )
 
 
-def test_a_bad_token_is_rejected_by_the_real_dependency():
-    """With no override, the genuine guard runs and refuses."""
+def test_a_bad_credential_is_rejected_by_the_real_dependency():
+    """With no override, the genuine guard runs and refuses: a session cookie without the
+    client header that names it is no credential."""
     app = FastAPI()
     app.include_router(admin.router)
     app.state.limiter = limiter
@@ -166,10 +167,10 @@ def test_a_bad_token_is_rejected_by_the_real_dependency():
     with TestClient(app) as raw:
         response = raw.post(
             f"/admin/users/{TARGET_A}/export",
-            headers={"Authorization": "Bearer not-a-session-uuid"},
+            headers={"Cookie": f"{auth_helpers.SESSION_COOKIE}=not-a-session"},
         )
 
-    assert response.status_code in {401, 403}
+    assert response.status_code == 401
 
 
 def test_superuser_can_export_any_account(client):
@@ -202,6 +203,21 @@ def test_response_is_a_downloadable_zip(client):
     assert "manifest.json" in names
     assert "README.md" in names
     assert "data/user.jsonl" in names
+
+
+def test_response_hands_over_the_export_key_once(client):
+    """The key that opens the archive's credentials comes in a header, never in the
+    zip, never cached, and differs per export."""
+    first = client(SUPERUSER).post(f"/admin/users/{TARGET_A}/export")
+    second = client(SUPERUSER).post(f"/admin/users/{TARGET_A}/export")
+
+    key = first.headers["x-workspace-export-key"]
+    assert len(key) >= 43
+    assert key != second.headers["x-workspace-export-key"]
+    assert first.headers["cache-control"] == "no-store"
+    with ZipFile(io.BytesIO(first.content)) as zf:
+        everything = b"".join(zf.read(n) for n in zf.namelist())
+    assert key.encode() not in everything
 
 
 def test_response_reports_row_and_file_counts(client):

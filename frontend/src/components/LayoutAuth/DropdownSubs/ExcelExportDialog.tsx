@@ -12,6 +12,12 @@ import {
 import type { WidgetT } from "~/components/types";
 import { docsUrl } from "~/lib/docsUrl";
 import { type SideBarItem, useAppStore, useShallowAppStore } from "~/lib/state/app";
+import {
+  canFetchFromSource,
+  getSourceCredentials,
+  getWidgetSourceState,
+  SOURCE_UNAVAILABLE_MESSAGE,
+} from "~/lib/state/backendConnector";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { dispatchSaveState } from "~/lib/utils";
 import { isTruthyRecord } from "~/lib/utils/values";
@@ -176,11 +182,16 @@ async function getWidgetExportData(widget: WidgetT): Promise<unknown> {
         console.warn("No endpoint found for widget:", widget.name);
         return null;
       }
+      if (!canFetchFromSource(getWidgetSourceState(widget))) {
+        console.warn(`${SOURCE_UNAVAILABLE_MESSAGE}:`, widget.name);
+        return null;
+      }
+      const credentials = getSourceCredentials(widget.sourceId, widget.endpoint?.url);
 
       // Filter out empty arrays and undefined/null values from parameters
       const filteredParams = Object.fromEntries(
         Object.entries({
-          ...(widget.endpoint?.query || {}),
+          ...credentials.query,
           ...(widget.storage?.params || {}),
         }).filter(([_, value]) => {
           // Skip empty arrays
@@ -219,7 +230,6 @@ async function getWidgetExportData(widget: WidgetT): Promise<unknown> {
       //   widgetId: widget.widgetId,
       //   params: filteredParams,
       //   method: widget.endpoint?.method || "GET",
-      //   headers: widget.endpoint?.headers,
       // });
 
       try {
@@ -227,7 +237,7 @@ async function getWidgetExportData(widget: WidgetT): Promise<unknown> {
           method: widget.endpoint?.method || "GET",
           headers: {
             "Content-Type": "application/json",
-            ...(widget.endpoint?.headers || {}),
+            ...credentials.headers,
           },
           body:
             widget.endpoint?.method === "POST"
@@ -306,10 +316,7 @@ async function getWidgetExportData(widget: WidgetT): Promise<unknown> {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            ...(widget.endpoint?.query || {}),
-            ...(widget.storage?.params || {}),
-          }),
+          body: JSON.stringify(widget.storage?.params || {}),
         });
 
         if (!response.ok) {
@@ -485,11 +492,16 @@ async function ensureWidgetDataLoaded(widget: WidgetT): Promise<boolean> {
     //   widgetName: widget.name,
     //   endpoint: widget.endpoint.url,
     // });
+    if (!canFetchFromSource(getWidgetSourceState(widget))) {
+      console.warn(`${SOURCE_UNAVAILABLE_MESSAGE}:`, widget.name);
+      return false;
+    }
 
     try {
+      const credentials = getSourceCredentials(widget.sourceId, widget.endpoint?.url);
       // Get the latest parameters
       const params = {
-        ...(widget.endpoint?.query || {}),
+        ...credentials.query,
         ...(widget.storage?.params || {}),
         ...(widget.params || {}),
       };
@@ -534,7 +546,7 @@ async function ensureWidgetDataLoaded(widget: WidgetT): Promise<boolean> {
         method: widget.endpoint?.method || "GET",
         headers: {
           "Content-Type": "application/json",
-          ...(widget.endpoint?.headers || {}),
+          ...credentials.headers,
         },
         body:
           widget.endpoint?.method === "POST"
@@ -582,10 +594,7 @@ async function ensureWidgetDataLoaded(widget: WidgetT): Promise<boolean> {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...(widget.endpoint?.query || {}),
-          ...(widget.storage?.params || {}),
-        }),
+        body: JSON.stringify(widget.storage?.params || {}),
       });
 
       if (!response.ok) {

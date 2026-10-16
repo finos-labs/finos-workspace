@@ -9,12 +9,14 @@ import { toast } from "sonner";
 import { useLocalStorage } from "usehooks-ts";
 import { z } from "zod";
 import {
+  activateTotp,
   login as apiLogin,
+  getSession,
   googleLogin,
-  // githubLogin,
   microsoftLogin,
   oktaLogin,
   updatePassword,
+  withSignInNonce,
 } from "~/api/auth.api";
 import { PasswordUpdateDialog } from "~/components/Auth/PasswordUpdateDialog";
 import TOTPEnterDialog from "~/components/Auth/TOTPEnterDialog";
@@ -32,12 +34,13 @@ import { getEnabledIdentityProviders } from "~/lib/identityProviders";
 import { loginRequest } from "~/lib/microsoft-auth-config";
 import { oktaLoginRequest } from "~/lib/okta-auth-config";
 import { getConfig } from "~/lib/runtimeConfig";
+import { useAccessStore } from "~/lib/state/access";
 import { useAppStore } from "~/lib/state/app";
 import { useAuthStore, useShallowAuthStore } from "~/lib/state/auth";
 import { useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useCopilotStore } from "~/lib/state/copilot";
 import { useEntityThemeStore } from "~/lib/state/entityTheme";
-import { useFeatureFlagsStore } from "~/lib/state/featureFlags";
+import { rememberSignInProvider, setIdpTokens } from "~/lib/state/idpTokens";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
 import { useSharedAppStore } from "~/lib/state/sharedApp";
 import { useSkillsLibraryStore } from "~/lib/state/skillsLibrary";
@@ -50,7 +53,11 @@ import {
 } from "~/types/auth.type";
 import { zodEmail, zodPassword } from "~/utils/zodForms";
 
-const authenticationAllowEmailLoginFF = getConfig().authentication.allowEmailLogin;
+const {
+  allowEmailLogin: authenticationAllowEmailLoginFF,
+  sendMicrosoftIdToken,
+  sendOktaIdToken,
+} = getConfig().authentication;
 
 const { supportEmail } = getConfig().contact;
 const contactTarget = supportEmail ? `your admin (${supportEmail})` : "your admin";
@@ -62,19 +69,12 @@ export function getErrorMessage(
   switch (statusCode) {
     case 200:
       return undefined;
-    case 202:
-      return undefined;
-    case 400:
-      return `Your access has expired. Please contact ${contactTarget}.`;
-    case 402: {
-      if (detail === "User is not currently assigned a seat") {
-        return "Your account is not assigned a seat. Please contact your admin to get assigned a seat.";
-      }
-      return `Your account does not have access. Please contact ${contactTarget}.`;
-    }
     case 403: {
       if (detail === "Registration is disabled") return "Registration is disabled.";
-      return "Please confirm your account to proceed.";
+      if (!detail || detail === "User is not confirmed")
+        return "Please confirm your account to proceed.";
+      // The API says why, as when Microsoft has not verified the account's email
+      return detail;
     }
     case 404:
       return "The provided credentials do not match any registered user account.";
@@ -102,9 +102,9 @@ type loginForm = z.infer<typeof loginSchema>;
 export type LoginState = {
   passwordLoading: boolean;
   oauthLoading: boolean;
-  // githubLoading: boolean;
   showReset: boolean;
-  showQR: null | string;
+  // Set up an authenticator: required by the organization, or turned on for the account
+  showQR: boolean;
   enterQR: boolean;
   // If the user has logged in and doesnt need to
   // fill in any pop ups, we send them to the next page
@@ -120,9 +120,10 @@ export default function LoginPage() {
     null,
   );
 
-  const { user, logout } = useShallowAuthStore((state) => ({
+  const { user, logout, restoreSession } = useShallowAuthStore((state) => ({
     user: state.user,
     logout: state.logout,
+    restoreSession: state.restoreSession,
   }));
 
   const enabledProviders = getEnabledIdentityProviders();
@@ -130,24 +131,34 @@ export default function LoginPage() {
   const [state, dispatch] = useStateReducer<LoginState>({
     passwordLoading: false,
     oauthLoading: false,
-    // githubLoading: false,
     showReset: false,
-    showQR: null,
+    showQR: false,
     enterQR: false,
     loggedIn: user !== null,
     error: null,
   });
+
+  // A visitor whose session cookie still holds a session goes straight on
+  useEffect(() => {
+    if (user) return;
+    let active = true;
+    restoreSession().then((signedIn) => {
+      if (active && signedIn) dispatch({ loggedIn: true });
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const {
     form,
     onSubmit,
     onResetPasswordSubmit,
     onTOTPLoginSubmit,
+    onTOTPEnroll,
     handleGoogleSuccess,
     handleMicrosoftSuccess,
     handleOktaSuccess,
-    // handleGithubSuccess,
-    // handleGithubError,
   } = useLogin({
     dispatch,
     state,
@@ -287,11 +298,11 @@ export default function LoginPage() {
       />
       <TOTPSetDialog
         open={state.showQR}
-        setOpen={(value) => dispatch({ showQR: value ?? null })}
-        handleSubmit={onTOTPLoginSubmit}
+        setOpen={(showQR) => dispatch({ showQR })}
+        activate={onTOTPEnroll}
         onCancel={() =>
           dispatch({
-            showQR: null,
+            showQR: false,
             passwordLoading: false,
             oauthLoading: false,
           })
@@ -307,11 +318,9 @@ export default function LoginPage() {
   );
 }
 
+// HTTP 202: set up the authenticator the organization requires, or enter its code
 function handle2FAResponse(response: Login2FAResponse): Partial<LoginState> {
-  const { access_token = null } = response;
-  if (access_token) useAuthStore.getState().updateUser({ token: access_token });
-
-  return { enterQR: !access_token, showQR: access_token };
+  return response.two_factor_required ? { showQR: true } : { enterQR: true };
 }
 
 function useLogin(props: {
@@ -369,7 +378,7 @@ function useLogin(props: {
         error: UnexpectedError,
         passwordLoading: false,
         oauthLoading: false,
-        showQR: null,
+        showQR: false,
         enterQR: false,
       });
     },
@@ -391,6 +400,28 @@ function useLogin(props: {
       return response.status ?? 500;
     },
     [form.getValues, captureError],
+  );
+
+  // Turning on the authenticator the organization requires starts the session, and the
+  // code it takes is single-use, so it never goes to /app/login: the page reads that
+  // session from the API, as after a reload
+  const onTOTPEnroll = useCallback(
+    async (token: number): Promise<number> => {
+      dispatch({ error: null });
+      const status = await activateTotp(token, {
+        remember: form.getValues("remember"),
+      });
+      if (status !== 200) return status;
+      const session = await getSession();
+      if (!session) {
+        dispatch({ error: UnexpectedError });
+        return 500;
+      }
+      useAuthStore.getState().startSession(session);
+      dispatch({ loggedIn: true, showReset: session.temporary_password ?? false });
+      return status;
+    },
+    [dispatch, form.getValues],
   );
 
   const onSubmit = useCallback(
@@ -474,14 +505,17 @@ function useLogin(props: {
   const handleMicrosoftSuccess = useCallback(
     async (instance: IPublicClientApplication) => {
       try {
-        const res = await instance.loginPopup(loginRequest);
-        const idToken = res?.idToken;
-
-        const response = await microsoftLogin(res?.accessToken);
+        // The API accepts the ID token only with the nonce it issued for this sign-in
+        const { res, response } = await withSignInNonce(async (nonce) => {
+          const res = await instance.loginPopup({ ...loginRequest, nonce });
+          // The API verifies the ID token MSAL issued for this app
+          return { res, response: await microsoftLogin(res.accessToken, res.idToken) };
+        });
 
         if (isLoggedIn(response)) {
-          // we need to save the idToken so we can send later to custom backends
-          response.microsoftIdToken = idToken;
+          // Kept in page memory for the backends the deployment forwards it to
+          if (sendMicrosoftIdToken) setIdpTokens({ microsoftIdToken: res.idToken });
+          rememberSignInProvider("microsoft");
           // Remember which MSAL account this session belongs to; the silent
           // token refresh relies on it instead of matching the backend email
           // (which comes from Graph `mail` and can differ from the MSAL UPN)
@@ -519,19 +553,27 @@ function useLogin(props: {
   const handleOktaSuccess = useCallback(
     async (oktaAuth: OktaAuth) => {
       try {
-        const tokenResponse = await oktaAuth.token.getWithPopup(oktaLoginRequest);
-        const accessToken = tokenResponse.tokens.accessToken?.accessToken;
-        const idToken = tokenResponse.tokens.idToken?.idToken;
+        // The API accepts the ID token only with the nonce it issued for this sign-in
+        const { idToken, response } = await withSignInNonce(async (nonce) => {
+          const tokenResponse = await oktaAuth.token.getWithPopup({
+            ...oktaLoginRequest,
+            nonce,
+          });
+          const accessToken = tokenResponse.tokens.accessToken?.accessToken;
+          const idToken = tokenResponse.tokens.idToken?.idToken;
 
-        if (!accessToken) {
-          throw new Error("Failed to get access token from Okta");
-        }
+          if (!(accessToken && idToken)) {
+            throw new Error("Failed to get the access and ID tokens from Okta");
+          }
 
-        const response = await oktaLogin(accessToken);
+          // The API verifies the ID token Okta issued for this app
+          return { idToken, response: await oktaLogin(accessToken, idToken) };
+        });
 
         if (isLoggedIn(response)) {
-          // we need to save the idToken so we can send later to custom backends
-          response.oktaIdToken = idToken;
+          // Kept in page memory for the backends the deployment forwards it to
+          if (sendOktaIdToken) setIdpTokens({ oktaIdToken: idToken });
+          rememberSignInProvider("okta");
 
           setLastUsedMethod("okta");
           return loginSuccess(response)
@@ -567,6 +609,7 @@ function useLogin(props: {
     onSubmit,
     onResetPasswordSubmit,
     onTOTPLoginSubmit,
+    onTOTPEnroll,
     handleGoogleSuccess,
     handleMicrosoftSuccess,
     handleOktaSuccess,
@@ -601,13 +644,9 @@ export async function loginSuccess(data: LoginResponse) {
   useAuthStore.getState().login(data);
   const user = data.user;
 
-  useFeatureFlagsStore.getState().setFeatureFlagsAndUsage(
-    {
-      ...data.feature_entitlements,
-      can_submit_marketplace: data.can_submit_marketplace,
-    },
-    data.usage,
-  );
+  useAccessStore
+    .getState()
+    .setAccessAndUsage(data.access, data.can_submit_marketplace, data.usage);
 
   if (data.entity_theme_settings)
     useEntityThemeStore.getState().updateThemeSettings(data.entity_theme_settings);
@@ -648,9 +687,8 @@ export async function loginSuccess(data: LoginResponse) {
 
   useThemeStore.getState().updateThemeState({ ...user.display_settings });
 
-  const showQR = data.force_2fa ? data.access_token : undefined;
   return {
-    showQR,
+    showQR: data.force_2fa,
     showReset: data.temporary_password,
     loggedIn: true,
   };

@@ -5,6 +5,7 @@ import { useCallbackRef } from "~/hooks/useRefHooks";
 import { COPILOT_ACCEPTED_EXTENSIONS } from "~/lib/constants";
 import { useCopilotContext } from "~/lib/contexts/CopilotChatContext";
 import { useMobile } from "~/lib/providers/MobileProvider";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { cn, extractUrlsFromText } from "~/lib/utils";
 import { Button } from "../ds/atoms/Button";
@@ -27,8 +28,12 @@ export default function CopilotFooter() {
   const { transcript, listening, browserSupportsSpeechRecognition } =
     useSpeechRecognition();
 
-  const fileUploadFF = useShallowCopilotStore((s) =>
-    Boolean(s.selectedCopilot?.features?.["file-upload"]),
+  // The default copilot stores uploads as the user's files, which users may not add
+  const mayUpload = useShallowAccessStore((s) => canAddConnections(s.access));
+  const fileUploadFF = useShallowCopilotStore(
+    (s) =>
+      Boolean(s.selectedCopilot?.features?.["file-upload"]) &&
+      (mayUpload || s.selectedCopilot?.id !== "default-copilot"),
   );
 
   const handleSubmitRef = useCopilotContext().handleSubmitRef;

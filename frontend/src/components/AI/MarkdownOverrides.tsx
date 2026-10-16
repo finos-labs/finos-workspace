@@ -14,7 +14,6 @@ import {
 } from "react";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import { format } from "sql-formatter";
-import { useDebounceValue } from "usehooks-ts";
 import { type ArtifactT, useShallowCopilotStore } from "~/lib/state/copilot";
 import { cn } from "../ds/utils";
 import { InlineMath } from "../Tex";
@@ -271,89 +270,11 @@ const ParagraphComponent = memo(
   (p, n) => p.children === n.children,
 );
 
-const parseTableHTML = (code: string) => {
-  // Unescape underscores
-  code = code.replace(/\\_/g, "_");
-
-  // Ensures that table HTML is properly wrapped
-  if (!code.startsWith("<table")) {
-    if (code.startsWith("<thead") || code.startsWith("<tbody")) {
-      code = `<table>${code}</table>`;
-    } else if (code.startsWith("<tr")) {
-      code = `<table><tbody>${code}</tbody></table>`;
-    }
-  }
-
-  const container = document.createElement("div");
-  container.innerHTML = code;
-  const table = container.querySelector("table");
-
-  if (!table) return null;
-
-  if (
-    table.children?.length === 1 &&
-    table.children?.[0]?.tagName?.toLowerCase() === "tbody"
-  ) {
-    const thead = document.createElement("thead");
-    const firstRow = table.querySelector("tbody tr");
-    if (firstRow) {
-      thead.appendChild(firstRow.cloneNode(true));
-      table.insertBefore(thead, table.firstChild);
-      firstRow.remove();
-    }
-  }
-
-  return Array.from(table.children).map((child, index) => {
-    const ElemTag = child.tagName.toLowerCase() as "thead" | "tbody";
-    return (
-      <ElemTag key={`table-${ElemTag}-${index}`}>
-        {Array.from(child.children).map((row, rowIndex) => (
-          <tr key={`table-row-${rowIndex}`}>
-            {Array.from(row.children).map((cell, cellIndex) => {
-              const CellTag = cell.tagName.toLowerCase() as "td" | "th";
-              return (
-                <CellTag
-                  className={"!m-0 !p-2 align-top"}
-                  key={`table-cell-${cellIndex}`}
-                >
-                  {cell.innerHTML}
-                </CellTag>
-              );
-            })}
-          </tr>
-        ))}
-      </ElemTag>
-    );
-  });
-};
-
 const codeChildOf = (children: ReactNode): CodeChildProps | undefined =>
   isValidElement<CodeChildProps>(children) ? children.props : undefined;
 
 export const PreCodeComponent = memo(
-  (props: ComponentPropsWithoutRef<"pre">) => {
-    const child = codeChildOf(props.children);
-    const code =
-      typeof child?.children === "string" ? child.children : child?.children?.[0] || "";
-
-    const validTable = useMemo(
-      () =>
-        child?.className === "lang-html" &&
-        ["<table", "<thead", "<tr"].some((tag) => code?.startsWith(tag)),
-      [code?.slice(0, 7), child?.className],
-    );
-    const [debouncedCode] = useDebounceValue(code, 500, {
-      leading: true,
-      maxWait: 300,
-    });
-    const children = useMemo(
-      () => validTable && parseTableHTML(debouncedCode),
-      [debouncedCode, validTable],
-    );
-
-    if (children) return <MessageTable children={children} />;
-    return <pre {...props} data-ai-pre="true" />;
-  },
+  (props: ComponentPropsWithoutRef<"pre">) => <pre {...props} data-ai-pre="true" />,
   (p, n) =>
     p.className === n.className &&
     p.children === n.children &&

@@ -1,4 +1,3 @@
-import json
 import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeAlias, TypeVar
@@ -13,12 +12,12 @@ from pydantic import (
     EmailStr,
     Field,
     HttpUrl,
+    StringConstraints,
     alias_generators,
     field_validator,
     model_validator,
 )
 from pydantic.functional_validators import AfterValidator, BeforeValidator
-from pydantic.networks import IPvAnyAddress
 
 from api import base
 from api.events.types import RoleAuditAction, RoleResourceType
@@ -31,7 +30,9 @@ if TYPE_CHECKING:
 StoredFileT = TypeVar("StoredFileT", bound="StoredFile")
 
 main_config = ConfigDict(extra="forbid", from_attributes=True)
-source_type = Literal["sdk", "app", "oauth-app", "excel"]
+# Who signs in at POST /app/login: the web app ("app", and "oauth-app" after a sign-in
+# provider), the Excel add-in or the admin CLI
+AppLoginSource = Literal["app", "oauth-app", "excel", "cli"]
 MetaDataWidgetType = Literal[
     "iframe",
     "copilot_table",
@@ -62,7 +63,8 @@ ExtensionType = Literal[
     "html",
 ]
 AccessType = Literal["no-access", "access", "full-access"]
-BundleNames = Literal["Default", "Equity Research", "On-Premise"]
+UserType = Literal["Admin", "Developer", "User"]
+SharingLevel = Literal["none", "receive", "share"]
 
 
 def is_bad_word(word: str) -> bool:
@@ -111,14 +113,6 @@ def check_password(v: str) -> str:
     return v
 
 
-def check_username(v: None | str) -> None | str:
-    if v:
-        result = username_check(v)
-        if result:
-            raise ValueError(result)
-    return v
-
-
 def check_email_or_username(v: str) -> str:
     if not base.check_email(v) and username_check(v):
         raise ValueError("Invalid email or username")
@@ -151,18 +145,6 @@ def check_system(v: None | str) -> None | str:
 def check_version(v: None | str) -> None | str:
     if v and not re.match(r"^\d+\.\d+\.\d+$", v):
         raise ValueError(f"Invalid version: {v}")
-    return v
-
-
-def datetime_to_string(v: str | datetime | None):
-    if isinstance(v, datetime):
-        return v.isoformat()
-    return v
-
-
-def blank_to_none(v: None | str) -> None | str:
-    if not v:
-        return None
     return v
 
 
@@ -288,6 +270,35 @@ class DashboardShareReturn(BaseModel):
     permissions: None | base.PermissionEnum
     first_name: None | str
     last_name: None | str
+    # A developer's share that waits for an admin's approval
+    pending: bool = False
+
+
+class ShareReturn(SuccessReturn):
+    """What became of a share: a developer's waits for an admin of their organization to
+    approve it."""
+
+    pending_approval: bool = False
+
+
+class ShareRequestUser(BaseModel):
+    email: str
+    first_name: None | str
+    last_name: None | str
+
+
+class ShareRequestReturn(BaseModel):
+    """A share a developer asked for, as the admins of their organization see it."""
+
+    uuid: UUID
+    created_date: None | datetime
+    requester: ShareRequestUser
+    item_type: Literal["dashboard", "app"]
+    item_uuid: UUID
+    item_name: str
+    # None: the whole organization
+    recipient: None | ShareRequestUser
+    permissions: None | str
 
 
 class TotpGenerateReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
@@ -295,16 +306,8 @@ class TotpGenerateReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     secret: str
 
 
-class ContentReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    content: str
-
-
 class MessageReturn(SuccessReturn, extra="ignore"):  # type: ignore[call-arg]
     message: str
-
-
-class UrlReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    url: None | str = None
 
 
 class PendingFileReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
@@ -322,52 +325,36 @@ class PreSignedUrlReturn(BaseModel):
     original_file_name: str
 
 
-class CodeReturn(BaseModel):
-    code: str
-    used: bool
+class AdminSession(BaseModel):
+    """Who is signed in to the admin panel (POST /login, GET /session)."""
 
-
-class Token(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    username: None | str = None
+    model_config = main_config
     email: str
-    access_token: str
-    token_type: str
-    uuid: UUID
+    is_superuser: bool
 
 
-class FullToken(Token, extra="ignore"):  # type: ignore[call-arg]
-    has_app: bool
+class AgentToken(BaseModel):
+    """A token for the default Copilot to act for the signed-in user (POST
+    /app/copilot/token). It is accepted on GET /app/user, PUT /app/usage and POST
+    /app/copilot/authorize only, and ends with the session at the latest."""
 
-
-class TokenData(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    email: None | EmailStr = None
-
-
-class LogCreate(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    request: str
-    error: str
-    status_code: int
-    method: str
-
-
-class Email(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    message: str
-
-
-class TokenGet(BaseModel, extra="forbid"):  # type: ignore[call-arg]
+    model_config = main_config
     token: str
-
-
-class TokenReturn(TokenGet, extra="ignore"):  # type: ignore[call-arg]
-    expiration: datetime
+    expires_in: int
 
 
 class Expiration(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    days: int
+    days: int = Field(ge=1, le=365)
 
 
 class UUIDReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     uuid: UUID
+
+
+# Provider keys a browser once kept in its display settings. They are stored encrypted in
+# their own columns (PUT /app/copilot-keys) and are dropped from display settings on the way
+# in and out.
+DISPLAY_SETTINGS_SECRETS = ("openaiApiKey", "perplexityApiKey")
 
 
 class UserDisplaySettings(BaseModel, extra="allow"):  # type: ignore[call-arg]
@@ -378,7 +365,14 @@ class UserDisplaySettings(BaseModel, extra="allow"):  # type: ignore[call-arg]
     gridCorners: list[Literal["ne", "nw", "se", "sw"]] = ["se"]
     gridSnapping: Literal["off", "vertical"] = "vertical"
     quickAddButtonTransparent: bool = False
-    lastVisitedPage: str | None = "/app/data-connectors"
+    lastVisitedPage: str | None = "/app"
+
+    @model_validator(mode="before")
+    @classmethod
+    def drop_secrets(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            return {k: v for k, v in data.items() if k not in DISPLAY_SETTINGS_SECRETS}
+        return data
 
 
 class WidgetMetadata(BaseModel):
@@ -506,12 +500,12 @@ class EntityBase(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     organization_size: str
     aum: int
     country: str
-    seats: int
-    expiration_date: datetime
+    sharing_enabled: bool
 
 
 class EntityPost(EntityBase):
     admin_email: EmailStr
+    sharing_enabled: bool = True
 
 
 class EntityReturn(BaseModel):
@@ -524,8 +518,7 @@ class EntityReturn(BaseModel):
     organization_size: None | str
     aum: None | int
     country: None | str
-    seats: None | int
-    expiration_date: Annotated[None | str, BeforeValidator(datetime_to_string)]
+    sharing_enabled: bool
 
 
 class EntityRelationshipCreate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
@@ -547,13 +540,12 @@ class EntityRelationshipReturn(EntityRelationshipCreate, extra="forbid"):  # typ
 
 class UserAdminUpdate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     permissions_uuid: None | UUID = None
-    billing_active: None | bool = None
 
 
 class EntityMapCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", from_attributes=True)
     entity_uuid: UUID
-    name: str
+    name: UserType
 
 
 class EntityMapReturn(EntityMapCreate):
@@ -561,12 +553,6 @@ class EntityMapReturn(EntityMapCreate):
     uuid: UUID
     entity: EntityReturn
     name: str
-
-
-class EntityInfoReturn(BaseModel):
-    seats: int
-    used_seats: int
-    expiration_date: None | datetime
 
 
 class EntityUserReturn(BaseModel):
@@ -591,8 +577,44 @@ class DashboardReturn(BaseModel):
     is_shared: bool | None = False
 
 
+# The keys of a saved widget's endpoint that carried a data backend's credentials, which
+# widgets look up in the data backend when they fetch
+ENDPOINT_CREDENTIAL_KEYS = frozenset({"headers", "query"})
+
+
+def strip_endpoint_credentials(content: Any) -> Any:
+    """Saved dashboard or app content without any data backend's credentials: no widget
+    endpoint keeps its headers or query values, and no backend's header rows
+    (`endpointHeaders`) are kept."""
+    if isinstance(content, list):
+        return [strip_endpoint_credentials(item) for item in content]
+    if not isinstance(content, dict):
+        return content
+    stripped = {
+        key: strip_endpoint_credentials(value)
+        for key, value in content.items()
+        if key != "endpointHeaders"
+    }
+    if isinstance(endpoint := stripped.get("endpoint"), dict):
+        stripped["endpoint"] = {
+            key: value
+            for key, value in endpoint.items()
+            if key not in ENDPOINT_CREDENTIAL_KEYS
+        }
+    return stripped
+
+
 class DashboardsCreate(BaseModel):
     items: dict[UUID, Literal["DELETE"] | dict]
+
+    @field_validator("items")
+    @classmethod
+    def strip_credentials(
+        cls, items: dict[UUID, Literal["DELETE"] | dict]
+    ) -> dict[UUID, Literal["DELETE"] | dict]:
+        return {
+            uuid: strip_endpoint_credentials(content) for uuid, content in items.items()
+        }
 
 
 class DashboardOwned(BaseModel):
@@ -608,81 +630,31 @@ class DashboardComplete(DashboardOwned, DashboardShared):
     pass
 
 
-class DataBundle(BaseModel):
-    model_config = ConfigDict(extra="allow", from_attributes=True)
+class UserAccess(BaseModel):
+    """What a user may do, from their type and the roles an admin assigned them."""
 
-    bundle_name: BundleNames
-    except_widgets: list[str] | None = None
-    except_dashboard_templates: list[str] | None = None
-    except_team_collaboration: list[Literal["pdf_reports", "sharing"]] | None = None
+    model_config = main_config
+    user_type: UserType | None
+    sharing: SharingLevel
     excel_add_in: bool
-    data_export: bool
-    providers: list[str] | None
-    dashboards_at_launch: list[str] | None
-    my_dashboards: list[str] | None
-    invite_your_colleagues: bool
-    number_copilot_calls_day: int
-    total_file_upload_size_gb: int
-    allow_custom_backends: bool | None = True
-
-    @field_validator(
-        "except_widgets",
-        "except_dashboard_templates",
-        "except_team_collaboration",
-        "providers",
-        "dashboards_at_launch",
-        "my_dashboards",
-        mode="before",
-        check_fields=False,
-    )
-    @classmethod
-    def json_to_lists(cls, value: None | str | list) -> None | list:
-        if value and isinstance(value, str):
-            return json.loads(value)
-        return value
 
 
-class EntitlementBase(BaseModel):
+class UserLimits(BaseModel):
+    """A user's daily limits, from their roles. None is no limit."""
+
+    copilot_calls_day: int | None
+    copilot_tokens_day: int | None
+    upload_size_gb: int | None
+
+
+class UsageBase(BaseModel):
     model_config = main_config
-
-    tier: Literal["full", "basic"] | None = None
-    number_copilot_calls_day: int = None
-    number_copilot_tokens_day: int | None = None
-    total_file_upload_size_gb: int = None
-    share_widgets: Literal["public", "private"] | None = None
-    bring_your_own_data: bool = None
-    bring_your_own_copilot: bool = None
-    admin_access: bool = None
-    support: bool = None
-    excel_add_in: bool = None
-    data_add_ons_redistribution: bool = None
-    bundle_name: BundleNames | None = None
-    allow_custom_backends: bool | None = True
+    number_copilot_calls_day_count: int
+    number_copilot_tokens_day_count: int = 0
+    total_file_upload_size_gb_count: float
 
 
-class EntitlementGet(EntitlementBase):
-    data_bundle_info: DataBundle | None = None
-
-
-class EntitlementUsageBase(BaseModel):
-    def entitlement_match_dump(self):
-        entitlement_match = {}
-
-        for field_name, field in self.__class__.model_fields.items():
-            entitlement_match[field.json_schema_extra["entitlement_match"]] = getattr(self, field_name)
-        return entitlement_match
-
-    model_config = main_config
-    number_copilot_calls_day_count: int = Field(..., json_schema_extra={"entitlement_match": "number_copilot_calls_day"})
-    number_copilot_tokens_day_count: int = Field(
-        0, json_schema_extra={"entitlement_match": "number_copilot_tokens_day"}
-    )
-    total_file_upload_size_gb_count: float = Field(
-        ..., json_schema_extra={"entitlement_match": "total_file_upload_size_gb"}
-    )
-
-
-class EntitlementUsagePut(BaseModel):
+class UsagePut(BaseModel):
     """Usage reported by the service that serves the Copilot, never by users."""
 
     add_copilot_count: int | None = Field(0, ge=0)
@@ -691,13 +663,13 @@ class EntitlementUsagePut(BaseModel):
     add_copilot_tokens: int | None = Field(0, ge=0)
 
 
-class EntitlementUsageGet(EntitlementUsageBase, extra="ignore"):  # type: ignore[call-arg]
+class UsageGet(UsageBase, extra="ignore"):  # type: ignore[call-arg]
     copilot_calls_limit: int | None = None
     copilot_tokens_limit: int | None = None
     file_upload_size_limit: float | None = None
 
     @classmethod
-    async def check_cache(cls, db, user) -> "EntitlementUsageGet":
+    async def check_cache(cls, db, user) -> "UsageGet":
         from routers.app.helpers import check_usage_cache  # noqa: PLC0415
 
         return await check_usage_cache(db, user)
@@ -709,7 +681,7 @@ class UsageLimitError(BaseModel):
     current_usage: int
 
     @classmethod
-    def limit_error(cls, usage: EntitlementUsageGet, tokens: bool = False) -> JSONResponse:
+    def limit_error(cls, usage: UsageGet, tokens: bool = False) -> JSONResponse:
         if tokens:
             message = (
                 "The daily token limit of "
@@ -749,8 +721,8 @@ def default_chats() -> list["Chat"]:
 class DashboardCompleteWithContext(DashboardComplete):
     model_config = main_config
     can_submit_marketplace: bool = False
-    feature_entitlements: EntitlementGet | None = None
-    usage: EntitlementUsageGet | None = None
+    access: UserAccess | None = None
+    usage: UsageGet | None = None
     copilot_chats: list["ChatInfo | Chat"] | None = Field(default_factory=default_chats)
     questions_history: list[str] | None = None
     mcp_servers: list[dict] | None = Field(default_factory=list)
@@ -796,7 +768,6 @@ class UserAdminReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     first_name: None | str = None
     last_name: None | str = None
     email: str
-    billing_active: None | bool = False
     role: str
     last_login: None | datetime = None
     last_active: None | datetime = None
@@ -834,23 +805,26 @@ class TotpToken(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     totp_token: Annotated[None | int, AfterValidator(check_totp_token)] = None
 
 
-class ExternalUserLogin(BaseModel):
+class TotpActivate(TotpToken):
+    """POST /totp/activate. A pending enrollment finishes its sign-in, which keeps the
+    sign-in's `remember` and `version` (POST /app/login)."""
+
+    remember: bool = False
+    version: None | str = None
+
+
+class UserLogin(BaseModel):
     model_config = main_config
     email: Annotated[str, AfterValidator(check_email_or_username)]
     remember: bool = False
-    ip_address: Annotated[None | IPvAnyAddress, BeforeValidator(blank_to_none)] = None
-    source: None | source_type = None
     totp_token: Annotated[None | int, AfterValidator(check_totp_token)] = None
-
-
-class UserLogin(ExternalUserLogin):
-    model_config = main_config
     password: Annotated[str, AfterValidator(check_password)]
 
     _bypass_password_check: bool = False
 
 
 class AppUserLogin(UserLogin):
+    source: None | AppLoginSource = None
     version: None | str = None
 
 
@@ -863,19 +837,9 @@ class OAuthLogin(AppUserLogin):
         return self
 
 
-class UserJsonUpdate(BaseModel):
-    model_config = main_config
-    key: str
-    value: Any = None
-
-
 class UserUpdate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    first_name: None | str = None
-    last_name: None | str = None
     old_password: Annotated[None | str, AfterValidator(check_password)] = None
     new_password: Annotated[None | str, AfterValidator(check_password)] = None
-    email: Annotated[None | EmailStr, AfterValidator(check_email)] = None
-    username: Annotated[None | str, AfterValidator(check_username)] = None
 
     def validated_dict(self, password: str):
         """Converts the model into a dictionary, valid for updating the user model.
@@ -898,23 +862,6 @@ class UserUpdate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
             new_dict["password"] = new_pass
             new_dict["temporary_password"] = False
         return new_dict
-
-
-class UserReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
-    model_config = main_config
-    confirmed: bool
-    created_date: datetime
-    first_name: None | str = None
-    last_name: None | str = None
-    referral_count: None | int = None
-    email: str
-    username: Annotated[None | str, AfterValidator(check_username)] = None
-    referral_code: str
-
-
-class UserReturnExpanded(UserReturn):
-    model_config = main_config
-    uuid: UUID
 
 
 class ShareDashboard(BaseModel):
@@ -1064,6 +1011,12 @@ class MCPTool(BaseModel):
     enabled: bool = True
 
 
+MCPHeaderName = Annotated[
+    str, StringConstraints(pattern=r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$", max_length=100)
+]
+MCPHeaderValue = Annotated[str, StringConstraints(pattern=r"^[^\r\n\x00]*$", max_length=8192)]
+
+
 class MCPServer(BaseModel):
     model_config = get_camel_config(extra="allow", from_attributes=True)
     id_: str = Field(serialization_alias="id", alias="id")
@@ -1073,7 +1026,19 @@ class MCPServer(BaseModel):
     url: str
     enabled: bool
     is_local: bool = False
-    custom_headers: dict[str, str] | None = Field(default_factory=dict)
+    # Write-only: a value sets that header, null removes it, a header left out keeps the
+    # stored value. Header values are stored encrypted and never sent back.
+    custom_headers: dict[MCPHeaderName, MCPHeaderValue | None] | None = Field(
+        default=None, exclude=True
+    )
+    # What is stored for the server: the names of its custom headers, and whether one of
+    # them is an Authorization header (a token-auth server)
+    custom_header_names: list[str] = Field(default_factory=list)
+    has_token: bool = False
+
+    def stored_fields(self) -> dict:
+        """The server as the non-secret server list stores it."""
+        return self.model_dump(exclude={"custom_header_names", "has_token"})
 
 
 class MCPServers(BaseModel):
@@ -1084,12 +1049,79 @@ class MCPServers(BaseModel):
         return self.model_dump(by_alias=True).get("servers", [])
 
 
+class MCPLocalServer(BaseModel):
+    """A saved MCP server on the user's machine (POST /app/mcp-servers/local-headers), in
+    the body: never in a query string."""
+
+    model_config = main_config
+    url: str = Field(max_length=2048)
+
+
+class MCPServerHeaders(BaseModel):
+    """The stored headers of a local MCP server, which the browser connects to itself."""
+
+    model_config = main_config
+    headers: dict[str, str]
+
+
+def mcp_header_flags(headers: dict[str, str] | None) -> dict[str, list[str] | bool]:
+    """The fields that describe a server's stored headers without their values."""
+    names = sorted(headers) if headers else []
+    return {
+        "custom_header_names": names,
+        "has_token": any(name.lower() == "authorization" for name in names),
+    }
+
+
 def normalize_mcp_url(url: str) -> str:
     """The form in which MCP server URLs are stored and compared: scheme and host in
     lower case, no query, fragment or trailing slash."""
     parsed = urlsplit(url.strip())
     path = parsed.path.rstrip("/")
     return urlunsplit((parsed.scheme.lower(), parsed.netloc.lower(), path, "", ""))
+
+
+def mcp_server_url(url: str) -> str:
+    """An MCP server URL as the API keeps a sign-in for it: normalized, http or https,
+    with a host and no credentials in its authority."""
+    normalized = normalize_mcp_url(url)
+    parsed = urlsplit(normalized)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("The MCP server URL must be an http or https URL")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("The MCP server URL must not carry credentials")
+    return normalized
+
+
+class MCPOAuthServer(BaseModel):
+    """The MCP server to sign the user in to (POST /app/mcp-oauth/start) or to forget the
+    sign-in of (POST /app/mcp-oauth/disconnect), in the body: never in a query string."""
+
+    model_config = main_config
+    server_url: Annotated[str, Field(max_length=2048), AfterValidator(mcp_server_url)]
+
+
+class MCPOAuthAuthorization(BaseModel):
+    """Where the user signs in to an MCP server: the authorization server's page, which
+    sends the browser back to the web app's /oauth/callback."""
+
+    model_config = main_config
+    authorization_url: str
+
+
+class MCPOAuthCallback(BaseModel):
+    """The authorization server's answer, as the web app's /oauth/callback page got it."""
+
+    model_config = main_config
+    code: str = Field(min_length=1, max_length=4096)
+    state: str = Field(min_length=1, max_length=512)
+
+
+class MCPOAuthCompleted(BaseModel):
+    """The MCP server the user is now signed in to, by its normalized URL."""
+
+    model_config = main_config
+    server_url: str
 
 
 ALL_MCP_TOOLS = "*"
@@ -1117,8 +1149,7 @@ class McpGrant(BaseModel):
 
 
 class RoleCopilotAccess(BaseModel):
-    """The Copilot models and MCP tools that a role grants. Empty lists grant nothing and
-    leave the user's access to that kind unrestricted."""
+    """The Copilot models and MCP tools that a role grants. Empty lists grant nothing."""
 
     model_config = main_config
     models: list[CopilotModelGrant] = Field(default_factory=list)
@@ -1127,9 +1158,6 @@ class RoleCopilotAccess(BaseModel):
 
 class CopilotAccess(RoleCopilotAccess):
     """What a user may use: the union of what their roles grant."""
-
-    models_restricted: bool = False
-    mcp_restricted: bool = False
 
 
 class CopilotToolRef(BaseModel):
@@ -1147,11 +1175,41 @@ class CopilotAuthorize(BaseModel):
     tools: list[CopilotToolRef] = Field(default_factory=list)
 
 
+ProviderKey = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1024, pattern=r"^\S+$")
+]
+
+
+class CopilotProviderKeys(BaseModel):
+    """A user's own Copilot provider keys.
+
+    As the body of PUT /app/copilot-keys: a key sets it, null clears it, a key left out
+    stays as it is.
+    """
+
+    model_config = main_config
+    openai_api_key: ProviderKey | None = None
+    perplexity_api_key: ProviderKey | None = None
+
+
+class CopilotKeysStatus(BaseModel):
+    """Which of the user's own provider keys are stored; the values never leave the API."""
+
+    model_config = main_config
+    has_openai_key: bool = False
+    has_perplexity_key: bool = False
+
+
 class CopilotAuthorizeResult(BaseModel):
     model_config = main_config
     allowed: bool
     denied_model: str | None = None
     denied_tools: list[CopilotToolRef] = Field(default_factory=list)
+    # The user's own provider keys, decrypted: in the answer to the default Copilot (an
+    # agent token) only
+    provider_keys: CopilotProviderKeys | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 class AppUserSchema(BaseModel):
@@ -1170,11 +1228,9 @@ class AppUserSchema(BaseModel):
     totp_secret: None | str = None
     totp_active: bool | None = None
     two_factor_auth: bool | None = None
-    billing_active: None | bool = None
     entity_uuid: UUID | None = None
     require_authenticator: bool | None = None
     name: str | None = None
-    expiration_date: None | datetime = None
     role: str | None = None
     is_superuser: bool | None = None
     can_submit_marketplace: bool | None = None
@@ -1269,6 +1325,11 @@ class UserAppCreate(BaseModel):
     gridLayout: dict[str, list[dict]] = Field(default_factory=dict)
     currentTab: str | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def strip_credentials(cls, content: Any) -> Any:
+        return strip_endpoint_credentials(content)
+
 
 class UserAppReturn(BaseModel):
     model_config = get_camel_config(from_attributes=True)
@@ -1286,27 +1347,13 @@ class UserAppShareReturn(BaseModel):
     permissions: None | base.PermissionEnum
     first_name: None | str
     last_name: None | str
+    # A developer's share that waits for an admin's approval
+    pending: bool = False
 
 
 class UserAppsComplete(BaseModel):
     shared: dict[UUID, UserAppReturn]
     owned: dict[UUID, UserAppReturn]
-
-
-class EntitlementPost(BaseModel):
-    model_config = main_config
-    tier: Literal["full", "basic"]
-
-
-class EntitlementPut(EntitlementPost): ...  # type: ignore
-
-
-class EntitlementPatch(EntitlementBase): ...  # type: ignore
-
-
-class ValidateAndSync(BaseModel):
-    model_config = main_config
-    feature_entitlements: EntitlementGet
 
 
 class SharedDashboardViewed(BaseModel):
@@ -1319,10 +1366,23 @@ class SharedAppViewed(BaseModel):
     viewed: bool
 
 
+class SignInNonce(BaseModel):
+    """POST /app/sign-in/nonce: the nonce that the ID token of the browser's next sign-in
+    with Microsoft or Okta must carry."""
+
+    model_config = main_config
+    nonce: str
+
+
 class AuthData(BaseModel):
+    """A sign-in with a provider: Google's access token, or the ID token Microsoft or Okta
+    issued to this deployment's client with the browser's sign-in nonce (their access
+    token, `token`, is not used)."""
+
     model_config = main_config
 
-    token: str | None = None
+    token: str | None = Field(default=None, max_length=8192)
+    id_token: str | None = Field(default=None, max_length=16384)
     version: None | str = None
 
 
@@ -1377,6 +1437,10 @@ class TwoFactorAuthGet(TwoFactorAuth):
     entity_require_authenticator: bool
 
 
+# The daily limits of a role; null is no limit
+ROLE_LIMITS = ("copilot_calls_day", "copilot_tokens_day", "upload_size_gb")
+
+
 class GetRoleWithUsers(BaseModel):
     model_config = main_config
     uuid: UUID
@@ -1384,6 +1448,26 @@ class GetRoleWithUsers(BaseModel):
     description: str
     updated_date: datetime
     users: list[EmailStr]
+    sharing: SharingLevel
+    copilot_calls_day: int | None
+    copilot_tokens_day: int | None
+    upload_size_gb: int | None
+    excel_add_in: bool
+
+    @classmethod
+    def from_role(cls, role, users: list[str]) -> "GetRoleWithUsers":
+        return cls(
+            uuid=role.uuid,
+            name=role.name,
+            description=role.description,
+            updated_date=role.updated_date,
+            users=users,
+            sharing=role.sharing,
+            copilot_calls_day=role.copilot_calls_day,
+            copilot_tokens_day=role.copilot_tokens_day,
+            upload_size_gb=role.upload_size_gb,
+            excel_add_in=role.excel_add_in,
+        )
 
 
 class PostRole(BaseModel):
@@ -1392,6 +1476,12 @@ class PostRole(BaseModel):
     name: str
     description: str
     users: list[EmailStr] | None = None
+    sharing: SharingLevel = "none"
+    # A new role has no limits: its members may use whatever it grants
+    copilot_calls_day: int | None = Field(None, ge=0)
+    copilot_tokens_day: int | None = Field(None, ge=0)
+    upload_size_gb: int | None = Field(None, ge=0)
+    excel_add_in: bool = False
 
 
 class PatchRole(BaseModel):
@@ -1399,6 +1489,21 @@ class PatchRole(BaseModel):
     name: str | None = None
     description: str | None = None
     users: list[EmailStr] | None = None
+    sharing: SharingLevel | None = None
+    copilot_calls_day: int | None = Field(None, ge=0)
+    copilot_tokens_day: int | None = Field(None, ge=0)
+    upload_size_gb: int | None = Field(None, ge=0)
+    excel_add_in: bool | None = None
+
+    def changes(self) -> dict[str, Any]:
+        """The role fields to set: the ones sent, where a null limit is no limit."""
+        return {
+            key: value
+            for key, value in self.model_dump(
+                exclude={"users"}, exclude_unset=True
+            ).items()
+            if value is not None or key in ROLE_LIMITS
+        }
 
 
 class WidgetAccess(BaseModel):
@@ -1535,7 +1640,9 @@ class EntityThemeSettings(BaseModel):
 class AppToken(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     uuid: UUID
     email: EmailStr
-    access_token: str
+    # The session token, for the clients that are not browsers only (the Excel add-in and
+    # the admin CLI). The web app's session is an HttpOnly cookie it never sees.
+    access_token: str | None = Field(default=None, exclude_if=lambda value: value is None)
     username: str | None
     expiration_date: datetime
     temporary_password: bool
@@ -1553,9 +1660,36 @@ class AppTokenWithContext(AppToken):
     user_apps: UserAppsComplete
     user_skills: list[SkillReturn] | None = None
     user: AppUserReturn | None = None
-    feature_entitlements: EntitlementGet | None = None
+    access: UserAccess | None = None
     can_submit_marketplace: bool = False
-    usage: EntitlementUsageGet | None = None
+    usage: UsageGet | None = None
     custom_copilots: list[CustomCopilot] | None = None
     mcp_servers: list[MCPServer] | None = None
+    copilot_keys: CopilotKeysStatus | None = None
     is_first_login: bool | None = False
+
+
+class SessionUser(BaseModel):
+    model_config = main_config
+    first_name: None | str = None
+    last_name: None | str = None
+    display_settings: UserDisplaySettings = UserDisplaySettings()
+
+
+class AppSession(BaseModel):
+    """GET /app/session: the signed-in user, as the web app needs it after a reload."""
+
+    model_config = main_config
+    uuid: UUID
+    email: EmailStr
+    username: str | None
+    expiration_date: datetime
+    temporary_password: bool
+    force_2fa: bool
+    entity_name: None | str
+    role: None | str
+    access: UserAccess
+    can_submit_marketplace: bool = False
+    usage: UsageGet | None = None
+    copilot_keys: CopilotKeysStatus
+    user: SessionUser

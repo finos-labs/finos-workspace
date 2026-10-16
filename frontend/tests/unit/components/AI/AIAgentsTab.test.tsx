@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AIAgentsTab } from "~/components/AI/AIAgentsTab";
 import type { ButtonProps } from "~/components/ds/atoms/Button";
 import type { InputProps } from "~/components/ds/atoms/Input";
+import { setAccess } from "../../factories";
 import { required } from "../../mocks";
 
 // Mock framer-motion so AnimatePresence exit animations complete synchronously in jsdom
@@ -437,6 +438,7 @@ describe("AIAgentsTab", () => {
     mockPutCustomCopilot.mockResolvedValue({});
     mockRemoveCustomCopilot.mockResolvedValue({});
     setupDefaultMocks();
+    setAccess({ user_type: "Developer" });
   });
 
   describe("Rendering", () => {
@@ -512,6 +514,15 @@ describe("AIAgentsTab", () => {
 
       await user.click(screen.getByRole("button", { name: "Add Agent" }));
       expect(mockSetShowAddAgentsDialog).toHaveBeenCalledWith(true);
+    });
+
+    it("is not offered to a User, who cannot add connections", () => {
+      setAccess({ user_type: "User" });
+      renderAIAgentsTab();
+
+      expect(
+        screen.queryByRole("button", { name: "Add Agent" }),
+      ).not.toBeInTheDocument();
     });
   });
 

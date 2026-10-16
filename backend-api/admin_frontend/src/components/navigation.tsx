@@ -2,7 +2,7 @@ import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuthStore } from "utils/auth";
 
-type ValidUrl = "/" | "/docs" | "/manageEntities" | "/login";
+type ValidUrl = "/" | "/manageEntities" | "/login";
 
 interface TabProps {
   name: string;
@@ -32,8 +32,8 @@ export default function Navigation(): JSX.Element {
   const { logout } = useAuthStore();
   const navigate = useNavigate();
 
-  const handleLogout = (): void => {
-    logout(navigate);
+  const handleLogout = async (): Promise<void> => {
+    await logout(navigate);
   };
 
   return (
@@ -48,7 +48,6 @@ export default function Navigation(): JSX.Element {
           </div>
           <div className="flex items-center gap-2">
             <Tab name="Manage Entities" url="/manageEntities" />
-            <Tab name="Docs" url="/docs" />
           </div>
           <button type="button" className="ws-btn" onClick={handleLogout}>
             Logout

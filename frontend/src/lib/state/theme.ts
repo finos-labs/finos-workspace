@@ -13,9 +13,9 @@ import type { Selector, SideBarItem } from "./app";
 import { useAuthStore } from "./auth";
 import type { Source } from "./backendConnector";
 
+/** A sign-in to an MCP server waiting for its popup: the server and where to sign in. */
 type McpAuthPopup = {
   serverName?: string;
-  serverUrlHash: string;
   url: string;
   authUrl: string;
   popupFeatures?: string;
@@ -170,6 +170,46 @@ interface ThemeState {
       prompts: string[];
     } | null;
   };
+}
+
+/**
+ * The preferences theme-storage keeps across reloads. Only these keys are written to
+ * localStorage and only these are read back from it, so dialog state, a pending MCP
+ * sign-in, and anything else that sits in theme-storage never reach the store or go
+ * back to browser storage.
+ */
+const PERSISTED_PREFERENCES = [
+  "theme",
+  "fontSize",
+  "gridCorners",
+  "gridSnapping",
+  "showWidgetControlsEllipsis",
+  "aiEnhancements",
+  "quickAddButtonVisible",
+  "showMinimizeButton",
+  "collapsedPanelExpandOnHover",
+  "autoHideWidgetNavbar",
+  "removedSkillSlugs",
+  "groupingVisible",
+  "recentlyAddedWidgets",
+  "userAcknowledgedMobile",
+  "userAcknowledgedNonChromium",
+  "pulseAnimationButtonsAlreadyClicked",
+] as const satisfies readonly (keyof ThemeState)[];
+
+type PersistedPreferences = Partial<
+  Pick<ThemeState, (typeof PERSISTED_PREFERENCES)[number]>
+>;
+
+function pickPreferences(state: unknown): PersistedPreferences {
+  if (typeof state !== "object" || state === null) return {};
+  const source = state as Record<string, unknown>;
+  return Object.fromEntries(
+    PERSISTED_PREFERENCES.filter((key) => key in source).map((key) => [
+      key,
+      source[key],
+    ]),
+  ) as PersistedPreferences;
 }
 
 export const useThemeStore = createWithEqualityFn<ThemeState>()(
@@ -388,11 +428,7 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
               removedSkillSlugs,
             } = get();
 
-            const {
-              lastVisitedPage = "/app",
-              openaiApiKey,
-              perplexityApiKey,
-            } = useAuthStore.getState();
+            const { lastVisitedPage = "/app" } = useAuthStore.getState();
 
             return {
               theme,
@@ -404,8 +440,6 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
               quickAddButtonVisible,
               showMinimizeButton,
               lastVisitedPage,
-              openaiApiKey,
-              perplexityApiKey,
               collapsedPanelExpandOnHover,
               autoHideWidgetNavbar,
               removedSkillSlugs,
@@ -436,9 +470,8 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
       },
       {
         name: "theme-storage",
-        onRehydrateStorage: () => (state) => {
-          if (state) state.mcpAuthPopup = null;
-        },
+        partialize: pickPreferences,
+        merge: (persisted, current) => ({ ...current, ...pickPreferences(persisted) }),
       },
     ),
   ),

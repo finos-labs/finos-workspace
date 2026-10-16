@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import type { DataTableColumn } from "~/components/ds/molecules/DataTable";
 import { useEntities, useEntityTypes } from "~/hooks/useEntityAdmin";
@@ -11,7 +10,7 @@ const COLUMNS: DataTableColumn<Entity>[] = [
   {
     id: "name",
     header: "Name",
-    width: "22%",
+    width: "26%",
     minWidth: 160,
     sortable: true,
     cell: (entity) => entity.name,
@@ -19,7 +18,7 @@ const COLUMNS: DataTableColumn<Entity>[] = [
   {
     id: "type",
     header: "Type",
-    width: "14%",
+    width: "18%",
     minWidth: 110,
     sortable: true,
     cell: (entity) => entity.entity_type.entity_type,
@@ -27,7 +26,7 @@ const COLUMNS: DataTableColumn<Entity>[] = [
   {
     id: "email",
     header: "Email",
-    width: "22%",
+    width: "28%",
     minWidth: 180,
     sortable: true,
     cell: (entity) => entity.email || "-",
@@ -35,29 +34,18 @@ const COLUMNS: DataTableColumn<Entity>[] = [
   {
     id: "country",
     header: "Country",
-    width: "10%",
+    width: "14%",
     minWidth: 90,
     sortable: true,
     cell: (entity) => entity.country || "-",
   },
   {
-    id: "seats",
-    header: "Seats",
-    width: "8%",
-    minWidth: 70,
-    sortable: true,
-    cell: (entity) => entity.seats ?? "-",
-  },
-  {
-    id: "expires",
-    header: "Expires",
+    id: "sharing",
+    header: "Sharing",
     width: "14%",
-    minWidth: 120,
+    minWidth: 90,
     sortable: true,
-    cell: (entity) =>
-      entity.expiration_date
-        ? dayjs(entity.expiration_date).format("MMM D, YYYY")
-        : "-",
+    cell: (entity) => (entity.sharing_enabled ? "Enabled" : "Disabled"),
   },
 ];
 
@@ -66,9 +54,7 @@ const SORT_VALUES: Record<string, (entity: Entity) => string | number> = {
   type: (entity) => entity.entity_type.entity_type.toLowerCase(),
   email: (entity) => (entity.email ?? "").toLowerCase(),
   country: (entity) => (entity.country ?? "").toLowerCase(),
-  seats: (entity) => entity.seats ?? 0,
-  expires: (entity) =>
-    entity.expiration_date ? Date.parse(entity.expiration_date) : 0,
+  sharing: (entity) => (entity.sharing_enabled ? 1 : 0),
 };
 
 const searchText = (entity: Entity) =>

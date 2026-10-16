@@ -7,6 +7,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useMcpToolSuggestions } from "~/components/AI/hooks/useMcpToolSuggestions";
+import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import { type McpConnection, useMcpToolsStore } from "~/lib/state/mcpTools";
 
 vi.mock("~/api/auth.api", () => ({ postMCPServers: vi.fn().mockResolvedValue({}) }));
@@ -26,6 +27,10 @@ const conn = (state: McpConnection["state"]): McpConnection => ({
 
 beforeEach(() => {
   useMcpToolsStore.setState({ servers: [], mcpConnectionRegistry: {} });
+  useCopilotAccessStore.getState().setAccess({
+    models: [],
+    mcp: [{ server_url: "https://w.example/mcp", tool_name: "*" }],
+  });
 });
 
 describe("iframe MCP tools in slash suggestions (real store)", () => {

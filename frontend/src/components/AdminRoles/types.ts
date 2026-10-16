@@ -1,7 +1,17 @@
 import type { ReactNode } from "react";
 import type { EntityRolePermissions } from "~/api/entity_roles.api";
+import type { SharingLevel } from "~/lib/state/access";
 
-export interface RoleT {
+/** What a role lets its members do besides the resources it grants. A null limit is no limit. */
+export interface RoleSettings {
+  sharing: SharingLevel;
+  copilot_calls_day: number | null;
+  copilot_tokens_day: number | null;
+  upload_size_gb: number | null;
+  excel_add_in: boolean;
+}
+
+export interface RoleT extends RoleSettings {
   uuid: string;
   name: string;
   description: string;

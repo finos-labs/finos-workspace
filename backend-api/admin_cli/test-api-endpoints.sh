@@ -9,6 +9,9 @@
 #
 #     # Or with environment variables:
 #     WORKSPACE_BASE_URL=http://localhost:8000 ./test-api-endpoints.sh
+#
+# It signs in as a command-line client (source "cli": a 12-hour bearer token,
+# kept in this shell's memory only) and signs out when it exits.
 
 set -e
 
@@ -25,7 +28,8 @@ log_step() { echo -e "${YELLOW}==>${NC} $1"; }
 log_success() { echo -e "${GREEN}✓${NC} $1"; }
 log_error() { echo -e "${RED}✗${NC} $1"; }
 
-# Helper: make authenticated API request
+# Helper: make authenticated API request. The token reaches curl through a
+# file descriptor, never its command line, where the process list would show it.
 api_request() {
     local METHOD=$1
     local ENDPOINT=$2
@@ -34,12 +38,12 @@ api_request() {
     if [ -n "$DATA" ]; then
         curl -s -X "$METHOD" "$BASE_URL$ENDPOINT" \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H @<(printf 'Authorization: Bearer %s\n' "$ACCESS_TOKEN") \
             -d "$DATA"
     else
         curl -s -X "$METHOD" "$BASE_URL$ENDPOINT" \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $ACCESS_TOKEN"
+            -H @<(printf 'Authorization: Bearer %s\n' "$ACCESS_TOKEN")
     fi
 }
 
@@ -65,16 +69,19 @@ if [ -z "$PASSWORD" ]; then
     echo ""
 fi
 
+# The body goes in on stdin so the password stays off curl's command line
 AUTH_RESPONSE=$(curl -s -X POST "$BASE_URL/app/login" \
     -H "Content-Type: application/json" \
-    -d "{
-        \"email\": \"$EMAIL\",
-        \"password\": \"$PASSWORD\",
-        \"remember\": false,
-        \"ip_address\": \"\",
-        \"source\": \"app\",
-        \"totp_token\": null
-    }")
+    --data @- <<EOF
+{
+    "email": "$EMAIL",
+    "password": "$PASSWORD",
+    "remember": false,
+    "source": "cli",
+    "totp_token": null
+}
+EOF
+)
 
 ACCESS_TOKEN=$(json_val "$AUTH_RESPONSE" "access_token")
 
@@ -83,7 +90,10 @@ if [ -z "$ACCESS_TOKEN" ]; then
     echo "$AUTH_RESPONSE"
     exit 1
 fi
-log_success "Authenticated (token: ${ACCESS_TOKEN:0:10}...)"
+log_success "Signed in (12-hour command-line session)"
+
+# End the session when the script exits, whatever happens
+trap 'api_request POST /logout > /dev/null' EXIT
 
 # =============================================================================
 # 2. LIST ENTITY TYPES
@@ -109,14 +119,12 @@ echo "Endpoint: POST /entity/entity"
 ENTITY_RESPONSE=$(api_request POST "/entity/entity" "{
     \"name\": \"Test Entity $TIMESTAMP\",
     \"entity_code\": \"$ENTITY_TYPE_UUID\",
-    \"email\": \"billing-$TIMESTAMP@example.com\",
+    \"email\": \"contact-$TIMESTAMP@example.com\",
     \"admin_email\": \"admin-$TIMESTAMP@example.com\",
     \"company_type\": \"Investment Firm\",
     \"organization_size\": \"10-50\",
     \"aum\": 10000000,
-    \"country\": \"USA\",
-    \"seats\": 50,
-    \"expiration_date\": \"2025-12-31T00:00:00Z\"
+    \"country\": \"USA\"
 }")
 
 ENTITY_UUID=$(json_val "$ENTITY_RESPONSE" "entity_uuid")
@@ -129,25 +137,9 @@ fi
 log_success "Entity created: $ENTITY_UUID"
 
 # =============================================================================
-# 4. UPDATE ENTITY ENTITLEMENTS (what entity_create_with_entitlements does)
+# 4. GET PERMISSION MAPS (what get_permission_map_by_role does)
 # =============================================================================
-log_step "Step 4: Updating entity entitlements..."
-echo "Endpoint: PATCH /entity/entitlement/{entity_uuid}?update_all=true"
-
-ENTITLEMENT_RESPONSE=$(api_request PATCH "/entity/entitlement/$ENTITY_UUID?update_all=true" "{
-    \"tier\": \"full\",
-    \"number_copilot_calls_day\": 10000,
-    \"total_file_upload_size_gb\": 10,
-    \"excel_add_in\": 1,
-    \"bundle_name\": \"On-Premise\"
-}")
-
-log_success "Entitlements configured (On-Premise bundle)"
-
-# =============================================================================
-# 5. GET PERMISSION MAPS (what get_permission_map_by_role does)
-# =============================================================================
-log_step "Step 5: Fetching permission maps for entity..."
+log_step "Step 4: Fetching permission maps for entity..."
 echo "Endpoint: GET /entity/entity-map?size=100&page=1"
 
 PERMISSION_MAPS=$(api_request GET "/entity/entity-map?size=100&page=1")
@@ -179,11 +171,11 @@ log_success "Admin permission map: $ADMIN_PERM_UUID"
 log_success "User permission map: $USER_PERM_UUID"
 
 # =============================================================================
-# 6. CREATE ADMIN USER
+# 5. CREATE ADMIN USER
 # =============================================================================
-log_step "Step 6: Creating admin user..."
+log_step "Step 5: Creating admin user..."
 echo "Endpoint: POST /admin/create-user"
-echo "Note: HubAPIClient.user_create() does step 5 + 6 automatically"
+echo "Note: HubAPIClient.user_create() does step 4 + 5 automatically"
 
 ADMIN_EMAIL="admin-$TIMESTAMP@example.com"
 
@@ -204,9 +196,9 @@ else
 fi
 
 # =============================================================================
-# 7. CREATE REGULAR USER
+# 6. CREATE REGULAR USER
 # =============================================================================
-log_step "Step 7: Creating regular user..."
+log_step "Step 6: Creating regular user..."
 echo "Endpoint: POST /admin/create-user"
 
 USER_EMAIL="analyst-$TIMESTAMP@example.com"
@@ -228,9 +220,9 @@ else
 fi
 
 # =============================================================================
-# 8. LIST ENTITIES (to get entity details)
+# 7. LIST ENTITIES (to get entity details)
 # =============================================================================
-log_step "Step 8: Getting entity details..."
+log_step "Step 7: Getting entity details..."
 echo "Endpoint: GET /entity/entity?page=1&size=100"
 echo "Note: HubAPIClient.entity_get() iterates pages to find by UUID"
 
@@ -250,9 +242,9 @@ echo "$ENTITY_DETAILS" | head -10
 log_success "Retrieved entity details"
 
 # =============================================================================
-# 9. UPDATE ENTITY (smart partial update)
+# 8. UPDATE ENTITY (smart partial update)
 # =============================================================================
-log_step "Step 9: Updating entity (seats: 50 -> 100)..."
+log_step "Step 8: Updating entity (sharing: off -> on)..."
 echo "Endpoint: PUT /entity/entity/{uuid}"
 echo "Note: HubAPIClient.entity_update() fetches current state, merges changes, then PUTs"
 
@@ -260,21 +252,20 @@ echo "Note: HubAPIClient.entity_update() fetches current state, merges changes, 
 UPDATE_RESPONSE=$(api_request PUT "/entity/entity/$ENTITY_UUID" "{
     \"name\": \"Test Entity $TIMESTAMP\",
     \"entity_code\": \"$ENTITY_TYPE_UUID\",
-    \"email\": \"billing-$TIMESTAMP@example.com\",
+    \"email\": \"contact-$TIMESTAMP@example.com\",
     \"company_type\": \"Investment Firm\",
     \"organization_size\": \"10-50\",
     \"aum\": 10000000,
     \"country\": \"USA\",
-    \"seats\": 100,
-    \"expiration_date\": \"2025-12-31T00:00:00Z\"
+    \"sharing_enabled\": true
 }")
 
-log_success "Entity updated (seats: 50 -> 100)"
+log_success "Entity updated (sharing: off -> on)"
 
 # =============================================================================
-# 10. FIND USER BY EMAIL
+# 9. FIND USER BY EMAIL
 # =============================================================================
-log_step "Step 10: Finding user by email..."
+log_step "Step 9: Finding user by email..."
 echo "Endpoint: GET /entity/user?email={email}&page=1&size=100"
 echo "Note: HubAPIClient.user_get_by_email() does this"
 
@@ -294,9 +285,9 @@ else
 fi
 
 # =============================================================================
-# 11. RESET USER PASSWORD
+# 10. RESET USER PASSWORD
 # =============================================================================
-log_step "Step 11: Resetting user password..."
+log_step "Step 10: Resetting user password..."
 echo "Endpoint: POST /admin/reset-password/{user_uuid}"
 
 if [ -n "$USER_UUID" ]; then
@@ -306,9 +297,9 @@ if [ -n "$USER_UUID" ]; then
 fi
 
 # =============================================================================
-# 12. DELETE USER
+# 11. DELETE USER
 # =============================================================================
-log_step "Step 12: Deleting user..."
+log_step "Step 11: Deleting user..."
 echo "Endpoint: DELETE /admin/users/{user_uuid}/remove"
 
 if [ -n "$USER_UUID" ]; then
@@ -328,10 +319,10 @@ echo "What HubAPIClient abstracts:"
 echo ""
 echo "| Client Method                      | Raw Endpoints                              |"
 echo "|------------------------------------|-------------------------------------------|"
-echo "| auth_login(email, pw)              | POST /app/login                           |"
+echo "| auth_login(email, pw)              | POST /app/login (source \"cli\")            |"
+echo "| auth_logout()                      | POST /logout                              |"
 echo "| entity_type_list()                 | GET /entity/entity-type                   |"
-echo "| entity_create_with_entitlements()  | POST /entity/entity                       |"
-echo "|                                    | + PATCH /entity/entitlement/{uuid}        |"
+echo "| entity_create(config)              | POST /entity/entity                       |"
 echo "| entity_get(uuid)                   | GET /entity/entity (iterates pages)       |"
 echo "| entity_update(uuid, **kwargs)      | GET + merge + PUT /entity/entity/{uuid}   |"
 echo "| get_permission_map_by_role()       | GET /entity/entity-map + filter           |"

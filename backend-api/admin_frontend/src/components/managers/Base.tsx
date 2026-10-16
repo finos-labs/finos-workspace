@@ -1,7 +1,7 @@
 import { BaseDialog, DialogTitle } from "ui/Dialog";
 import { clsx } from "clsx";
 import React, { type ComponentType, useState } from "react";
-import type { Paginated, User } from "utils/requests";
+import type { Paginated } from "utils/requests";
 
 type RetrieveItems = (search?: string) => Promise<void>;
 
@@ -13,7 +13,6 @@ interface TableBodyProps<T> {
 }
 
 export interface SubmitFormProps<T, V> {
-  user: User;
   setShowAdd: (set: boolean) => void;
   item?: T;
   setItem: (set: T) => void;
@@ -31,7 +30,6 @@ interface SearchBarProps {
  * options of a select. A form that needs nothing takes an empty record.
  */
 interface ManageBaseProps<T, V> {
-  user: User;
   headers: string[];
   title: string;
   SubmitForm: ComponentType<SubmitFormProps<T, V>>;
@@ -112,7 +110,6 @@ function TableBody<T>({
 }
 
 export function ManageBase<T, V>({
-  user,
   headers,
   title,
   SubmitForm,
@@ -137,7 +134,6 @@ export function ManageBase<T, V>({
         <BaseDialog open={show} onClose={() => prepareAdd(false)}>
           <DialogTitle>{`${title} ${editType}`}</DialogTitle>
           <SubmitForm
-            user={user}
             setShowAdd={setShow}
             retrieveItems={retrieveItems}
             data={formData}

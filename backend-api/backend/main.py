@@ -1,13 +1,11 @@
 import platform
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 from time import time
-from uuid import UUID
 
 import prometheus_client
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from fastapi_pagination import add_pagination
 from fastmcp.utilities.lifespan import combine_lifespans
@@ -18,9 +16,8 @@ from slowapi.errors import RateLimitExceeded
 from starlette.middleware.cors import CORSMiddleware
 
 from api import auth_helpers, helpers
-from api.context import session_token_ctx
 from api.events.role_permission_events import init_audit_listeners
-from api.rate_limit import LIMIT_DEFAULT, exempt_user_agent, limiter
+from api.rate_limit import limiter
 from api.worker_tasks import start_background_tasks
 from routers import (
     admin,
@@ -28,14 +25,13 @@ from routers import (
     entity,
     marketplace,
     marketplace_developer,
-    run_tasks,
-    sdk,
 )
 from routers.app import (
     dash,
     data_connectors,
     file_storage,
     index,
+    mcp_oauth,
     user_apps,
     workspace_mcp,
 )
@@ -61,12 +57,6 @@ async def lifespan(app: FastAPI):
     yield
 
 
-if config.settings.DISABLE_CORS:
-    logger.warning("Running with CORS Allow ALL, this should NOT be set in production")
-    origins = ["*"]
-else:
-    origins = config.settings.BACKEND_CORS_ORIGINS
-
 workspace_mcp_asgi_app = create_workspace_mcp_asgi_app()
 
 app = FastAPI(
@@ -77,11 +67,15 @@ app = FastAPI(
     generate_unique_id_function=lambda route: route.name,
 )
 
+# Only the web app and the admin panel, by their exact origins, may read answers and send
+# the session cookies. Their client header (auth_helpers.CLIENT_HEADER) needs this
+# preflight, so no other origin can make a request that rides a session cookie.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=config.settings.BACKEND_CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type", auth_helpers.CLIENT_HEADER],
 )
 
 
@@ -100,10 +94,11 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # ty
 
 routers = [
     auth.router,
-    sdk.router,
     index.router,
+    mcp_oauth.router,
     data_connectors.router,
     file_storage.router,
+    file_storage.signed_router,
     dash.router,
     user_apps.router,
     workspace_mcp.router,
@@ -111,7 +106,6 @@ routers = [
     admin.router,
     marketplace.router,
     marketplace_developer.router,
-    run_tasks.router,
 ]
 
 
@@ -138,55 +132,37 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         status_code=exc.status_code,
     )
     logger.bind(**extras).exception(exc)
+    # The exception's headers go out with it: WWW-Authenticate on a 401, the cookie a
+    # refused sign-in clears
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail, "status": exc.status_code},
+        headers=exc.headers,
     )
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: HTTPException):
-    detail = "Error extracting validation details"
-    try:
-        extras = dict(
-            method=request.method,
-            path=request.url.path,
-            status_code=422,
-        )
-        logger.bind(**extras).exception(exc)
-
-        if not getattr(request, "_stream_consumed", False):
-            body = await request.body()
-            decoded = body.decode("utf-8")
-            if decoded:
-                logger.bind(**extras).error(f"\nRequest body: {decoded}")
-
-        error = exc.errors()[0]  # type: ignore
-        detail = error["msg"].replace("Value error, ", "")
-    except Exception as log_exc:
-        logger.bind(**extras).exception(log_exc)
-
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    # Where and why the request failed, never what it sent: inputs carry passwords,
+    # tokens and keys
+    logger.bind(method=request.method, path=request.url.path, status_code=422).warning(
+        "Request validation failed: "
+        + "; ".join(f"{error['loc']}: {error['type']}" for error in errors)
+    )
+    detail = (
+        errors[0]["msg"].replace("Value error, ", "")
+        if errors
+        else "Error extracting validation details"
+    )
     return JSONResponse(status_code=422, content={"detail": detail, "status": 422})
 
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+    # The scheme of a request behind a proxy comes from X-Forwarded-Proto only when the
+    # proxy is one of TRUSTED_PROXIES (uvicorn's proxy headers, run.py)
     start_time = time()
-
-    if forwarded_proto := request.headers.get("x-forwarded-proto"):
-        # Override the internal scope scheme so url_for and redirects use it
-        request.scope["scheme"] = forwarded_proto
-
-    # Get token using the same logic as oauth2_scheme
-    scheme, raw_token = auth_helpers.get_authorization_scheme_param(
-        request.headers.get("Authorization")
-    )
-    token = None
-
-    if scheme.lower() == "bearer":
-        with suppress(ValueError, TypeError):
-            clean_token = UUID(raw_token)
-            token = session_token_ctx.set(clean_token)
 
     try:
         response: Response = await call_next(request)
@@ -202,10 +178,6 @@ async def log_requests(request: Request, call_next):
             status_code=400,
             content={"detail": "unexpected error", "status": 400},
         )
-    finally:
-        # Clean up the context var if we set it - avoid context leaks between requests
-        if token:
-            session_token_ctx.reset(token)
 
     process_time = (time() - start_time) * 1000
     response.headers["X-Process-Time"] = str(process_time)
@@ -224,41 +196,12 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-@app.get("/openapi.json")
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
-async def openapi(request: Request, _=Depends(auth_helpers.get_current_superuser)):
-    return get_openapi(title="FastAPI", version="1.0.0", routes=app.routes)
-
-
 @app.get("/health")
 @app.get("/healthz")
 @app.get("/")
 def nginx():
     "This endpoint only exists to test NGINX"
     return JSONResponse(content={"success": True}, status_code=200)
-
-
-def custom_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-
-    openapi_schema = get_openapi(
-        title="Backend",
-        version="1.0.0",
-        servers=[
-            {
-                "url": config.settings.SELFURL,
-                "description": "Development server",
-            },
-        ],
-        routes=[
-            route
-            for route in app.routes
-            if hasattr(route, "path") and route.path.startswith("/app/")
-        ],
-    )
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
 
 
 def include_routers():
@@ -301,10 +244,10 @@ app.mount("", workspace_mcp_asgi_app, name="Workspace MCP App")
 add_pagination(app)
 
 
-app.openapi = custom_openapi  # type: ignore
-
-
 app.add_middleware(GZipMiddleware)
+
+# No cache keeps an answer to a request that carried a credential
+app.add_middleware(auth_helpers.NoStoreMiddleware)
 
 # Added last so it is the outermost middleware: it answers the CORS preflight
 # for the public marketplace paths before the restrictive global CORSMiddleware

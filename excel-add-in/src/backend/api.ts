@@ -3,13 +3,8 @@ import { useAuthStore } from "~/store/auth";
 import { VITE_BACKEND_URL } from "../constants";
 
 export const backendClient = axios.create({
-  // withCredentials: true,
   baseURL: VITE_BACKEND_URL,
 });
-
-if (typeof window !== "undefined") {
-  // window.backendClient = backendClient;
-}
 
 backendClient.interceptors.request.use((config) => {
   const { user } = useAuthStore.getState();
@@ -32,8 +27,6 @@ backendClient.interceptors.response.use(
   (response) => {
     console.info(
       `[Backend res] ${response.status} ${response.config.url}`,
-      // response.data,
-      // response,
     );
 
     return response;

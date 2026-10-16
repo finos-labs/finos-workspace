@@ -2,25 +2,25 @@
 
 import asyncio
 import contextlib
+import hmac
 import warnings
 from collections.abc import AsyncGenerator
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
+import pyotp
 from fastapi import HTTPException
 from httpx import AsyncClient
 from loguru import logger
-from pydantic.networks import IPvAnyAddress
 from rq.timeouts import JobTimeoutException
-from sqlalchemy import case, func, insert, select
+from sqlalchemy import case, func, insert, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api import base, models, schemas, worker_tasks
+from api import models, worker_tasks
 from api.database import AsyncWriteSessionLocal
 from api.models import DashboardItem, Entity, EntityType, PermissionsEntityMap, User
-from routers import app_helpers
 from utilities import rq_results
 from utilities.config import settings
 
@@ -44,15 +44,6 @@ def add_log(request: str, error: str, status_code: int, method: str):
     # This is to prevent SQL details from being leaked to the client
     with contextlib.suppress(Exception):
         asyncio.ensure_future(add_log_task(request, error, status_code, method))
-
-
-def handle_user_conflict(exc: IntegrityError):
-    err_message = str(exc.orig)
-    if "username" in err_message:
-        raise HTTPException(409, detail="This username is already in use.") from exc
-    if "email" in err_message:
-        raise HTTPException(409, detail="This email is already in use.") from exc
-    raise HTTPException(400, detail="An unknown error occurred.") from exc
 
 
 def handle_duplicate_pk(exc: IntegrityError):
@@ -87,14 +78,12 @@ def refresh_usage_cache(user_uuid: UUID) -> None:
 
 def handle_add_login(
     user_uuid: UUID,
-    ip_address: None | IPvAnyAddress,
-    source: None | Literal["sdk", "app", "oauth-app", "excel"],
+    source: None | Literal["app", "oauth-app", "excel", "cli", "admin"],
 ) -> None:
     try:
         rq_results.rq_que.enqueue(
             worker_tasks.login_information,
             user_uuid,
-            ip_address,
             source,
             job_timeout=settings.RQ_TIMEOUT,
         )
@@ -141,19 +130,39 @@ def handle_share_files(
         logger.error(f"Update shared files job timed out for user: {owner_uuid}")
 
 
-def get_user_query(email: str):
-    to_select = [
-        User.uuid,
-        User.email,
-        User.password,
-        User.confirmed,
-        User.username,
-        User.totp_secret,
-        User.totp_active,
-        User.permissions_uuid,
-    ]
-    target = User.email if "@" in email else User.username
-    return select(*to_select).where(target == email, User.deleted.is_(False))  # type: ignore
+async def verify_totp(
+    db: AsyncSession, user_uuid: UUID, secret: str | None, code: int | None
+) -> bool:
+    """Whether ``code`` is the user's current authenticator code.
+
+    A code of the time step before or after the current one is accepted too, for clock
+    drift. The step of an accepted code is recorded, and a code of that step or an
+    earlier one is refused from then on, so a code works once.
+    """
+    if not secret or code is None:
+        return False
+    totp = pyotp.TOTP(secret)
+    candidate = f"{code:0{totp.digits}d}"
+    now = datetime.now(UTC)
+    if not totp.verify(candidate, for_time=now, valid_window=1):
+        return False
+    current = totp.timecode(now)
+    step = next(
+        step
+        for step in (current + 1, current, current - 1)
+        if hmac.compare_digest(totp.generate_otp(step), candidate)
+    )
+    # One statement checks and records the step, so two requests cannot both use a code
+    result = await db.execute(
+        update(User)
+        .where(
+            User.uuid == user_uuid,
+            or_(User.totp_last_step.is_(None), User.totp_last_step < step),
+        )
+        .values(totp_last_step=step)
+    )
+    await db.commit()
+    return result.rowcount == 1
 
 
 def get_app_user_query(email: str):
@@ -169,14 +178,12 @@ def get_app_user_query(email: str):
             User.temporary_password,
             User.totp_secret,
             User.totp_active,
-            User.billing_active,
             User.two_factor_auth,
             User.is_superuser,
             User.can_submit_marketplace,
             Entity.uuid.label("entity_uuid"),
             Entity.require_authenticator,
             Entity.name,
-            Entity.expiration_date,
             PermissionsEntityMap.name.label("role"),
         )
         .join(
@@ -218,13 +225,11 @@ async def get_or_create_entity(db: AsyncSession, entity_type: UUID, name: str) -
     create_query = insert(Entity).values(
         name=name,
         entity_type_uuid=entity_type,
-        expiration_date=datetime(2040, 12, 31),
         email=None,
         company_type=None,
         organization_size=None,
         aum=None,
         country=None,
-        seats=100_000,
     )
     return (await db.execute(create_query)).inserted_primary_key[0]
 
@@ -249,13 +254,17 @@ async def create_developer_mapping():
             create_mapping_q = insert(PermissionsEntityMap).values(
                 uuid=settings.DEVELOPER_MAPPING,
                 entity_uuid=entity_uuid,
-                name="Developer",
+                name=models.DEVELOPER_TYPE,
             )
             await db.execute(create_mapping_q)
+            await db.execute(
+                insert(PermissionsEntityMap),
+                [
+                    {"entity_uuid": entity_uuid, "name": user_type}
+                    for user_type in (models.ADMIN_TYPE, models.USER_TYPE)
+                ],
+            )
             await db.commit()
-
-            # Add entity entitlements
-            await app_helpers.insert_entity_entitlement(db, entity_uuid, "basic")
 
         except IntegrityError as e:
             handle_duplicate_pk(e)
@@ -282,7 +291,6 @@ async def get_managed_users(db: AsyncSession, admin_result: UUID):
             User.first_name,
             User.last_name,
             User.email,
-            User.billing_active,
             PermissionsEntityMap.name.label("role"),
             latest_login_subquery.c.last_login,
             User.permissions_uuid,
@@ -304,7 +312,6 @@ async def get_managed_users(db: AsyncSession, admin_result: UUID):
             User.first_name,
             User.last_name,
             User.email,
-            User.billing_active,
             PermissionsEntityMap.name,
             latest_login_subquery.c.last_login,
             User.permissions_uuid,
@@ -335,14 +342,8 @@ async def get_invite_users(db: AsyncSession, admin_result: UUID):
     return (await db.execute(query)).all()
 
 
-def get_app_session_expiration(
-    user: schemas.AppUserSchema, remember: bool
-) -> timedelta:
-    if user.permissions_uuid == settings.DEVELOPER_MAPPING:
-        return timedelta(30 if remember else 7)
-
-    now = base.get_now()
-    return min(timedelta(30 if remember else 7), user.expiration_date - now)
+def get_app_session_expiration(remember: bool) -> timedelta:
+    return timedelta(30 if remember else 7)
 
 
 def get_httpx_client() -> AsyncClient:

@@ -10,7 +10,7 @@ from loguru import logger
 from sqlalchemy import Connection, event, insert, inspect, select
 from sqlalchemy.orm.state import InstanceState
 
-from api.context import session_token_ctx
+from api.context import session_uuid_ctx
 from api.database import AsyncWriteSessionLocal
 from api.events.types import RoleAuditAction, RoleResourceType
 from api.helpers import add_log
@@ -35,7 +35,7 @@ async def _create_role_audit_entry_task(  # noqa: PLR0913, PLR0917
     resource_type: RoleResourceType,
     resource_uuid: UUID | None,
     details: dict,
-    session_token: UUID | None = None,
+    session_uuid: UUID | None = None,
 ):
     """Create an audit entry for role-related changes"""
     with warnings.catch_warnings():
@@ -48,7 +48,7 @@ async def _create_role_audit_entry_task(  # noqa: PLR0913, PLR0917
                 entity_uuid = query_entity.scalar_one_or_none()
 
                 query = await db.execute(
-                    select(DDSession.user_uuid).where(DDSession.uuid == session_token)
+                    select(DDSession.user_uuid).where(DDSession.uuid == session_uuid)
                 )
                 performing_user = query.scalar_one_or_none()
 
@@ -75,8 +75,8 @@ def _create_role_audit_entry(  # noqa: PLR0913, PLR0917
     resource_uuid: UUID | None,
     details: dict,
 ):
-    # Get the current session token from shared context
-    session_token = session_token_ctx.get()
+    # The session of the current request, from shared context
+    session_uuid = session_uuid_ctx.get()
     with suppress(Exception):
         asyncio.ensure_future(
             _create_role_audit_entry_task(
@@ -85,20 +85,34 @@ def _create_role_audit_entry(  # noqa: PLR0913, PLR0917
                 resource_type,
                 resource_uuid,
                 details,
-                session_token,
+                session_uuid,
             )
         )
+
+
+# What the audit records of a role
+ROLE_SETTINGS = [
+    "name",
+    "description",
+    "sharing",
+    "copilot_calls_day",
+    "copilot_tokens_day",
+    "upload_size_gb",
+    "excel_add_in",
+]
 
 
 # Role events
 def track_role_insert(mapper, connection: Connection, target: Role):
     """Track role creation"""
+    # Only loaded values: a value the database chose is not loaded inside the flush
+    values = inspect(target).dict
     _create_role_audit_entry(
         target.uuid,
         RoleAuditAction.CREATE,
         RoleResourceType.ROLE,
         target.uuid,
-        {"name": target.name, "description": target.description},
+        {attr: values.get(attr) for attr in ROLE_SETTINGS},
     )
 
 
@@ -108,7 +122,7 @@ def track_role_update(mapper, connection: Connection, target: Role):
     changed = {}
 
     # Track regular attribute changes
-    for attr in ["name", "description"]:
+    for attr in ROLE_SETTINGS:
         hist = state.get_history(attr, passive=True)
         if hist.has_changes():
             changed[attr] = {

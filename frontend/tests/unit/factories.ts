@@ -5,6 +5,7 @@ import type {
   WidgetContextType,
   WidgetT,
 } from "~/components/types";
+import { type UserAccess, useAccessStore } from "~/lib/state/access";
 import { type Item, type Items, type TabData, useAppStore } from "~/lib/state/app";
 import type { AuthState } from "~/lib/state/auth";
 import type { MessageGroup } from "~/lib/state/copilot";
@@ -129,22 +130,32 @@ type AuthUser = NonNullable<AuthState["user"]>;
 /** The user who is logged in, for whatever is not given. */
 export const makeAuthUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
   email: "test@example.com",
-  username: "test-user",
-  token: "test-token",
   entity_name: null,
   role: null,
   uuid: "auth-user-uuid",
   ...overrides,
 });
 
-/** An entity user, signed up and billed, for whatever is not given. */
+/** What the user's roles let them do; a User granted nothing for whatever is not given. */
+export const makeAccess = (overrides: Partial<UserAccess> = {}): UserAccess => ({
+  user_type: "User",
+  sharing: "none",
+  excel_add_in: false,
+  ...overrides,
+});
+
+/** Gives the signed-in user the access that their roles would. */
+export function setAccess(overrides: Partial<UserAccess> = {}) {
+  useAccessStore.setState({ access: makeAccess(overrides) });
+}
+
+/** An entity user, signed up, for whatever is not given. */
 export const makeUser = (overrides: Partial<User> = {}): User => ({
   uuid: "user-uuid",
   first_name: "Test",
   last_name: "User",
   email: "test@example.com",
   role: "User",
-  billing_active: true,
   status: "active",
   last_login: null,
   last_active: null,

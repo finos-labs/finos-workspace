@@ -11,23 +11,14 @@ if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
 import pytest
-from uuid import uuid4
+from uuid import UUID, uuid4
+
+from api.models import StoredFile
+from tests.fixtures.base import _AUTH_USER
 
 
 class TestFiles:
     """Tests for /app/files endpoints"""
-
-    @pytest.mark.asyncio
-    async def test_get_files_unauthenticated(self, client):
-        """Should fail without auth"""
-        response = await client.get("/app/files")
-        assert response.status_code in {401, 403}
-
-    @pytest.mark.asyncio
-    async def test_get_files_authenticated(self, auth_client):
-        """Should return user files"""
-        response = await auth_client.get("/app/files")
-        assert response.status_code == 200
 
     @pytest.mark.asyncio
     async def test_delete_files_unauthenticated(self, client):
@@ -115,10 +106,9 @@ class TestFileInputValidation:
 
     @pytest.mark.asyncio
     async def test_presigned_url_invalid_uuid(self, auth_client):
-        """Invalid UUID in presigned URL request should return error"""
+        """A file name that is not a UUID and matches no file is not found"""
         response = await auth_client.get("/app/files/invalid-uuid/presigned-url")
-        # 400 for bad request, 422 for validation error
-        assert response.status_code in {400, 422}
+        assert response.status_code == 404
 
     @pytest.mark.asyncio
     async def test_bulk_delete_empty_array(self, auth_client):
@@ -161,35 +151,6 @@ class TestFileInputValidation:
 
 
 # =============================================================================
-# FILE OUTPUT VALIDATION TESTS
-# =============================================================================
-
-
-class TestFileOutputValidation:
-    """Tests for file endpoint output validation"""
-
-    @pytest.mark.asyncio
-    async def test_files_list_response_schema(self, auth_client):
-        """Files list should return proper schema"""
-        response = await auth_client.get("/app/files")
-        assert response.status_code == 200
-        data = response.json()
-        # Should be a list
-        assert isinstance(data, list)
-
-    @pytest.mark.asyncio
-    async def test_files_response_no_sensitive_data(self, auth_client):
-        """Files response should not expose sensitive data"""
-        response = await auth_client.get("/app/files")
-        if response.status_code == 200:
-            data_str = str(response.json())
-            # Should not expose internal paths
-            assert "/var/" not in data_str
-            assert "/tmp/" not in data_str  # noqa: S108
-            assert "s3://" not in data_str or "presigned" in data_str.lower()
-
-
-# =============================================================================
 # FILE SECURITY TESTS
 # =============================================================================
 
@@ -211,25 +172,32 @@ class TestFileSecurity:
         assert response.status_code in {404, 422}
 
     @pytest.mark.asyncio
-    async def test_cannot_access_other_users_files(self, auth_client, second_user_client):
+    async def test_cannot_access_other_users_files(
+        self, auth_client, second_user_client, db_session
+    ):
         """User should not be able to access other user's files"""
-        # Get first user's files
-        first_user_files = await auth_client.get("/app/files")
-        second_user_files = await second_user_client.get("/app/files")
-
-        # Both should succeed with 200
-        assert first_user_files.status_code == 200
-        assert second_user_files.status_code == 200
-
-        # If first user has files, second user should not have access to them
-        if first_user_files.json():
-            for file_item in first_user_files.json():
-                if "uuid" in file_item:
-                    file_uuid = file_item["uuid"]
-                    # Second user tries to access first user's file
-                    response = await second_user_client.get(f"/app/files/{file_uuid}/presigned-url")
-                    # Should be 404 or 403 (not found or forbidden)
-                    assert response.status_code in {404, 403}
+        # A file the first user stored
+        stored_file = StoredFile(
+            uuid=uuid4(),
+            creater_uuid=UUID(_AUTH_USER["user_uuid"]),
+            s3_file_name="private.csv",
+            bucket="files",
+            extension="csv",
+            original_file_name="private.csv",
+            size=10,
+        )
+        db_session.add(stored_file)
+        await db_session.commit()
+        try:
+            # Second user tries to access first user's file
+            response = await second_user_client.get(
+                f"/app/files/{stored_file.uuid}/presigned-url"
+            )
+            # Should be 404 or 403 (not found or forbidden)
+            assert response.status_code in {404, 403}
+        finally:
+            await db_session.delete(stored_file)
+            await db_session.commit()
 
 
 # =============================================================================

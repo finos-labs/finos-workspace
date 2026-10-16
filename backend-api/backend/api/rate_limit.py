@@ -1,8 +1,7 @@
 """Allow us to configure rate limiting for the API."""
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 from fastapi.security.utils import get_authorization_scheme_param
-from loguru import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -13,36 +12,17 @@ settings.setup_logging()
 storage_uri = None if settings.is_test() else settings.get_redis_url()
 
 
-logger.info(f"Initializing rate limiter with storage_uri: {storage_uri}")
+# The peers whose X-Forwarded-For the server believes (gunicorn forwarded_allow_ips in
+# run.py): loopback and the private networks, which load balancers, ingresses and
+# compose networks connect from and a client on the internet cannot.
+TRUSTED_PROXIES = "127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"
 
-
-def get_remote_address_w_logging(request: Request) -> str:
-    """Log rate limit information for debugging."""
-    ip = get_remote_address(request)
-    x_forwarded_for = request.headers.get("x-forwarded-for", None)
-    logger.info(
-        f"Rate limit check - IP: {ip}, User-Agent: {request.headers.get('User-Agent')}"
-    )
-    logger.info(f"Request headers: {dict(request.headers)}")
-    return x_forwarded_for or ip
-
-
-limiter = Limiter(key_func=get_remote_address_w_logging, storage_uri=storage_uri)
+# The key is the client address the server resolved: uvicorn takes it from
+# X-Forwarded-For only when the peer is one of TRUSTED_PROXIES, so a client cannot
+# choose its own rate-limit bucket by sending that header.
+limiter = Limiter(key_func=get_remote_address, storage_uri=storage_uri)
 LIMIT_DEFAULT = "50/minute"
 LIMIT_FEW = "10/minute"
-
-
-def exempt_user_agent(request: Request) -> bool:
-    """Exempt frontend from rate limiting. This is done by providing a custom
-    user agent in the header.
-    """
-    user_agent = request.headers.get("X-Workspace-User-Agent") or request.headers.get(
-        "User-Agent"
-    )
-    frontend = settings.WORKSPACE_FRONTEND_USER_AGENT
-    if user_agent is None or not frontend:
-        return False
-    return frontend in user_agent
 
 
 def exempt_service_token(request: Request) -> bool:
@@ -67,7 +47,7 @@ def exempt_service_token(request: Request) -> bool:
         if service_scheme.lower() == "bearer":
             auth_helpers.check_origin(service_param)
             return True
-    except auth_helpers.credentials_exception:
+    except HTTPException:
         return False
 
     return False

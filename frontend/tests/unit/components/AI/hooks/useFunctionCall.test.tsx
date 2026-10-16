@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { apiClient } from "~/api/api";
 import type { CopilotCommandResultT } from "~/lib/state/copilot";
 import type { AddGenerativeWidgetInputArgumentsT, DataSourceT } from "~/lib/utils/ai";
 
@@ -147,6 +148,10 @@ describe("useFunctionCall", () => {
     mockUpdateWidget.mockClear();
     mockItems = {};
     vi.stubGlobal("fetch", vi.fn());
+    // The API mints the agent token the default Copilot is called with
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { token: "agent-token", expires_in: 1800 },
+    });
   });
 
   const renderUseFunctionCall = () => {

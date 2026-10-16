@@ -1,3 +1,4 @@
+import { logout as endServerSession } from "~/backend/auth.api";
 import { useAuthStore } from "~/store/auth";
 
 export function updateRibbon() {
@@ -38,9 +39,21 @@ export function updateRibbon() {
   });
 }
 
-export function signOut(event: Office.AddinCommands.Event) {
-  const { logout } = useAuthStore.getState();
-  logout();
+/**
+ * Signs the user out: ends the server session (POST /app/logout), then clears
+ * the local one, which happens even when the server call fails.
+ */
+export async function signOutUser(): Promise<void> {
+  try {
+    await endServerSession();
+  } catch (error) {
+    console.error("Server sign-out failed; clearing the local session anyway.", error);
+  }
+  useAuthStore.getState().logout();
+}
+
+export async function signOut(event: Office.AddinCommands.Event) {
+  await signOutUser();
   event.completed();
 }
 

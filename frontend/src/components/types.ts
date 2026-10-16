@@ -179,14 +179,6 @@ export type Widget = {
     // Endpoint or endpoints for the widget data.
     url: string; // URL for the endpoint.
     method: "GET" | "POST"; // Method for the endpoint.
-    headers?: {
-      // Headers for the endpoint.
-      [key: string]: string; // Headers for the endpoint.
-    };
-    query?: {
-      // Query for the endpoint.
-      [key: string]: string; // Query for the endpoint.
-    };
   };
   endpointMethod?: "GET" | "POST"; // Endpoint method
   params?: ParamDef[]; // url params to send to endpoint
@@ -216,7 +208,8 @@ export type Widget = {
   readonly dataKey?: string; // Nested reference to the data.
   /**
    * @internal **Only available before widget {@link useGetAppWidgets | creation}**
-   * @use `endpoint.headers` | `endpoint.query` on creation */
+   * Saved widgets never carry these: they look up their source's credentials when they
+   * fetch (lib/utils/endpointCredentials). */
   readonly endpointHeaders?: {
     key: string;
     value: string;

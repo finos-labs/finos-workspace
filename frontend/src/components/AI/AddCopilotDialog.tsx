@@ -9,7 +9,7 @@ import {
   hasCopilotConflict,
   putCustomCopilot,
 } from "~/api/auth.api";
-import { convertHeadersToRecord } from "~/lib/api";
+
 import { AGENT_ENABLED_FEATURES, ALL_AI_FEATURES } from "~/lib/constants";
 import { docsUrl } from "~/lib/docsUrl";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
@@ -134,7 +134,8 @@ export function AddCopilotDialog() {
       return;
     }
 
-    const endpointHeaders = (values.endpointHeaders || [])
+    // Only the agent's own headers are saved; identity headers are added per request
+    const headers = (values.endpointHeaders || [])
       .filter((header) => header.key && header.value)
       .reduce(
         (acc, header) => {
@@ -143,7 +144,6 @@ export function AddCopilotDialog() {
         },
         {} as Record<string, string>,
       );
-    const { headers } = convertHeadersToRecord(endpointHeaders);
 
     setIsTesting(true);
     resetTest();

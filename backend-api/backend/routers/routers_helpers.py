@@ -6,7 +6,7 @@ from sqlalchemy import insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api import base, schemas
+from api import schemas
 from api.models import User, UserInvite
 from utilities.config import settings
 
@@ -17,11 +17,8 @@ async def brand_new_account(
     information: schemas.RegisterAppUser,
     from_oauth: bool = False,
 ) -> None | UUID:
-    data = {
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "password": base.random_password(),
-    }
+    # No password: the account gets a random one when it is created (process_create_user)
+    data = {"first_name": user.first_name, "last_name": user.last_name}
     select_query = select(UserInvite.uuid).where(
         UserInvite.email == user.email, UserInvite.used.is_(False)
     )

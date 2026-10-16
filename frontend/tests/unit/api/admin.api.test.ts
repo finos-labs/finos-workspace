@@ -4,7 +4,6 @@ import {
   createUser,
   deleteUser,
   getEntity,
-  getEntityInfo,
   getEntityMap,
   getUsers,
   inviteUser,
@@ -40,7 +39,6 @@ const mockData = {
       last_name: "User",
       email: "user@mail.test",
       role: "user",
-      billing_active: true,
       status: "active",
       last_login: "2024-01-01",
       last_active: "2024-01-01",
@@ -51,8 +49,7 @@ const mockData = {
   baseResponse: { success: true, message: "Success" },
   resetPasswordResponse: { success: true, temporary_password: "random-password" },
   entitySettings: { require_authenticator: true },
-  entityInfo: { expiration_date: null, used_seats: 5, seats: 10 },
-  entityMap: [{ uuid: "1", name: "Entity1" }],
+  entityMap: [{ uuid: "1", name: "Admin" }],
 };
 
 describe("API functions", () => {
@@ -117,15 +114,6 @@ describe("API functions", () => {
     const entitySettings = await getEntity();
     expect(apiClient.get).toHaveBeenCalledWith("/admin/entity");
     expect(entitySettings).toEqual(mockData.entitySettings);
-  });
-
-  it("should fetch entity info", async () => {
-    (apiClient.get as MockedAxiosMethod).mockResolvedValueOnce({
-      data: mockData.entityInfo,
-    });
-    const entityInfo = await getEntityInfo();
-    expect(apiClient.get).toHaveBeenCalledWith("/admin/entity-info");
-    expect(entityInfo).toEqual(mockData.entityInfo);
   });
 
   it("should update entity settings", async () => {

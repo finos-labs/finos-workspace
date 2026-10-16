@@ -1,3 +1,4 @@
+import type { UserType } from "~/lib/state/access";
 import type { Entity, EntityMapItem, EntityType } from "~/types/entity.type";
 import { apiClient } from "./api";
 
@@ -21,28 +22,6 @@ export interface EntityRelationship {
   supreme: Entity;
 }
 
-export type EntityTier = "full" | "basic";
-export type ShareWidgets = "public" | "private";
-export type BundleName = "Default" | "Equity Research" | "On-Premise";
-
-/** The entitlements of an entity: what its users get unless a user's own say otherwise. */
-export interface EntityEntitlement {
-  tier: EntityTier | null;
-  number_copilot_calls_day: number | null;
-  /** Empty means no limit. */
-  number_copilot_tokens_day: number | null;
-  total_file_upload_size_gb: number | null;
-  share_widgets: ShareWidgets | null;
-  bring_your_own_data: boolean | null;
-  bring_your_own_copilot: boolean | null;
-  admin_access: boolean | null;
-  support: boolean | null;
-  excel_add_in: boolean | null;
-  data_add_ons_redistribution: boolean | null;
-  allow_custom_backends: boolean | null;
-  bundle_name: BundleName | null;
-}
-
 /** The fields that make an entity, as the backend takes them. */
 export interface EntityBody {
   name: string;
@@ -52,8 +31,7 @@ export interface EntityBody {
   organization_size: string;
   aum: number;
   country: string;
-  seats: number;
-  expiration_date: string;
+  sharing_enabled: boolean;
 }
 
 export interface EntityTypeBody {
@@ -158,7 +136,7 @@ export async function updateEntityRelationship(
   return data;
 }
 
-export async function createEntityMap(entityUuid: string, name: string) {
+export async function createEntityMap(entityUuid: string, name: UserType) {
   const { data } = await apiClient.post<{ uuid: string }>("/entity/entity-map", {
     entity_uuid: entityUuid,
     name,
@@ -166,34 +144,14 @@ export async function createEntityMap(entityUuid: string, name: string) {
   return data;
 }
 
-export async function updateEntityMap(uuid: string, entityUuid: string, name: string) {
+export async function updateEntityMap(
+  uuid: string,
+  entityUuid: string,
+  name: UserType,
+) {
   const { data } = await apiClient.put<SuccessResponse>(`/entity/entity-map/${uuid}`, {
     entity_uuid: entityUuid,
     name,
   });
-  return data;
-}
-
-export async function getEntityEntitlement(uuid: string) {
-  const { data } = await apiClient.get<EntityEntitlement>(
-    `/entity/entitlement/${uuid}`,
-  );
-  return data;
-}
-
-/**
- * Changes an entity's entitlements. Its users keep what they were given on their own, unless
- * `updateAllUsers` is set, which applies the change to every user of the entity.
- */
-export async function patchEntityEntitlement(
-  uuid: string,
-  entitlement: EntityEntitlement,
-  updateAllUsers: boolean,
-) {
-  const { data } = await apiClient.patch<SuccessResponse>(
-    `/entity/entitlement/${uuid}`,
-    entitlement,
-    { params: { update_all: updateAllUsers } },
-  );
   return data;
 }

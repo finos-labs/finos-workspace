@@ -1,3 +1,12 @@
+import type { UserType } from "~/lib/state/access";
+
+/** The user types, in the order they are offered. */
+export const USER_TYPES = [
+  "Admin",
+  "Developer",
+  "User",
+] as const satisfies readonly UserType[];
+
 export interface EntityType {
   uuid: string;
   entity_type: string;
@@ -15,14 +24,14 @@ export interface Entity {
   country: string | null;
   aum: number | null;
   organization_size: string | null;
-  seats: number | null;
-  expiration_date: string | null;
+  /** Whether the roles of this organization may let its users share and receive items. */
+  sharing_enabled: boolean;
 }
 
 export interface EntityMapItem {
   uuid: string;
-  /** Name of the user role */
-  name: string;
+  /** The user type of the users placed in this map. */
+  name: UserType;
   entity_uuid: string;
   entity: Entity;
 }

@@ -4,7 +4,6 @@ import type { Copilot } from "./state/copilot";
 
 export const VERSION = import.meta.env.VITE_RELEASE_VERSION;
 
-export const USER_AGENT_BACKEND = "app";
 export const REFRESH_WIDGET_INTERVAL = 1000 * 60 * 15; // 15 minutes
 
 export const ENABLE_SHARING = "true";
@@ -547,13 +546,12 @@ export const butterflyTypes = [
   "Obsidian Daggerwing",
 ];
 
-// For srcDoc= iframes (HtmlViewer, Artifact) — would inherit parent origin.
-// On-prem with allowHtmlJsExecution enabled intentionally treats uploaded and
-// fetched .html file widgets as trusted executable content. allow-same-origin
-// is required so HTML widget API calls send the correct Origin header
-// (not `null`).
+// For srcDoc= iframes (HtmlViewer, Artifact) that run scripts (allowHtmlJsExecution).
+// No allow-same-origin: with it the content would run as this app's origin, reach the
+// page's memory and make requests with its session cookie. Without it the content runs
+// in an opaque origin, so its own requests carry `Origin: null`.
 export const IFRAME_SRCDOC_SANDBOX_ATTRIBUTES =
-  "allow-scripts allow-forms allow-downloads allow-popups allow-same-origin";
+  "allow-scripts allow-forms allow-downloads allow-popups";
 
 // For src= iframes (Iframe.tsx) — external URL origin, NOT parent origin.
 // allow-same-origin lets external site use its own cookies/storage.

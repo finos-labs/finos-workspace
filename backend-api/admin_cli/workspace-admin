@@ -4,13 +4,25 @@ Admin CLI - v2.0.0
 
 A single-file CLI tool for managing entities and users.
 Dependencies: Python 3.8+ stdlib only (no external packages required)
+
+Sessions: the CLI signs in as a command-line client (a bearer token that lasts
+12 hours) and keeps the token in memory only; it never writes it to disk. For
+several commands, load a session into the shell once:
+
+    eval "$(workspace-admin auth login)"
+
+which exports WORKSPACE_BASE_URL and WORKSPACE_ADMIN_TOKEN. Without
+WORKSPACE_ADMIN_TOKEN a command asks for the email and password, signs in for
+itself and ends that session when it exits.
 """
 
 import argparse
+import atexit
 import getpass
 import json
 import logging
 import os
+import shlex
 import sys
 import time
 import urllib.error
@@ -29,9 +41,10 @@ logger = logging.getLogger("workspace-admin")
 
 VERSION = "2.0.0"
 
-CONFIG_DIR = Path.home() / ".workspace-admin"
-CONFIG_FILE = CONFIG_DIR / "config.json"
-BASE_URL = os.getenv("WORKSPACE_BASE_URL", "https://localhost:8080")
+BASE_URL_ENV = "WORKSPACE_BASE_URL"
+TOKEN_ENV = "WORKSPACE_ADMIN_TOKEN"
+BASE_URL = os.getenv(BASE_URL_ENV, "https://localhost:8080")
+LOGIN_HINT = 'eval "$(workspace-admin auth login)"'
 
 
 class APIError(Exception):
@@ -44,24 +57,17 @@ class APIError(Exception):
 
 
 ERROR_GUIDANCE = {
-    403: {
-        "Maximum seats reached": (
-            "The entity has reached its seat limit.\n"
-            "Fix: workspace-admin entity update <uuid> --data '{\"seats\": N}'"
-        ),
+    401: {
+        "default": "Check the email and password, or sign in again if the "
+        f"session has ended: {LOGIN_HINT}"
     },
     404: {"default": "Resource not found. Check the UUID and try again."},
     409: {"default": "Conflict - resource already exists or duplicate detected."},
     422: {"default": "Validation error - check your input data."},
 }
 
-
-DEFAULT_ENTITLEMENT = {
-    "tier": "full",
-    "number_copilot_calls_day": 10_000,
-    "total_file_upload_size_gb": 10,
-    "bundle_name": "On-Premise",
-}
+# Every entity has one permission map per user type; --role names the type.
+PERMISSION_MAPS = {"admin": "Admin", "developer": "Developer", "user": "User"}
 
 
 class HubAPIClient:
@@ -93,10 +99,9 @@ class HubAPIClient:
         if self.access_token:
             headers["Authorization"] = f"Bearer {self.access_token}"
 
+        # Headers and payloads are never logged: they carry the token, passwords
+        # and data backend credentials.
         logger.debug(f"{method} {url}")
-        logger.debug(f"Headers: {json.dumps(headers, default=str)}")
-        if data:
-            logger.debug(f"Payload: {json.dumps(data, indent=2)}")
 
         req_data = json.dumps(data).encode("utf-8") if data else None
         request = urllib.request.Request(
@@ -137,8 +142,9 @@ class HubAPIClient:
         method: Literal["GET", "POST"],
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[bytes, str]:
-        """Fetch a binary response body. Returns (payload, suggested filename).
+    ) -> Tuple[bytes, str, Any]:
+        """Fetch a binary response body. Returns (payload, suggested filename,
+        response headers).
 
         Separate from _request because that one decodes UTF-8 and parses JSON,
         which would corrupt a zip. No retry loop here either: these responses
@@ -163,7 +169,7 @@ class HubAPIClient:
                 filename = ""
                 if "filename=" in disposition:
                     filename = disposition.split("filename=", 1)[1].strip().strip('"')
-                return payload, filename
+                return payload, filename, response.headers
         except urllib.error.HTTPError as e:
             error_body = e.read().decode("utf-8", errors="replace")
             try:
@@ -175,35 +181,35 @@ class HubAPIClient:
 
     # AUTH
     def auth_login(self, email: str, password: str) -> str:
+        """Sign in as a command-line client and return the session token.
+
+        A "cli" session is accepted only as a bearer token, lasts 12 hours and
+        leaves the user's browser sessions signed in.
+        """
         data = {
             "email": email,
             "password": password,
             "remember": False,
-            "ip_address": "",
-            "source": "app",
+            "source": "cli",
             "totp_token": None,
         }
         response = self._request("POST", "/app/login", data)
-        return str(response["access_token"])
+        token = response.get("access_token")
+        if not isinstance(token, str) or not token:
+            raise APIError(
+                401, str(response.get("message") or "Sign-in returned no session")
+            )
+        return token
+
+    def auth_logout(self) -> None:
+        """End this client's session on the server."""
+        self._request("POST", "/logout")
+        self.access_token = None
 
     # ENTITY
     def entity_create(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        # Compatibility mapping for create
-        if "entity_type_uuid" in data and "entity_code" not in data:
-            data["entity_code"] = data.pop("entity_type_uuid")
-        return self._request("POST", "/entity/entity", data)
-
-    def entity_entitlements_update(self, entity_uuid: str) -> Dict[str, Any]:
-        return self._request(
-            "PATCH",
-            f"/entity/entitlement/{entity_uuid}",
-            DEFAULT_ENTITLEMENT,
-            {"update_all": True},
-        )
-
-    def entity_create_with_entitlements(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Create entity and auto-configure default entitlements.
+        Create entity.
 
         Args:
             data: Entity configuration dict
@@ -212,16 +218,15 @@ class HubAPIClient:
             Entity response dict (without permission_map_uuid key)
 
         Raises:
-            APIError: If creation or entitlements update fails
+            APIError: If creation fails
         """
-        e_resp = self.entity_create(data)
-        entity_uuid = e_resp.get("entity_uuid")
+        # Compatibility mapping for create
+        if "entity_type_uuid" in data and "entity_code" not in data:
+            data["entity_code"] = data.pop("entity_type_uuid")
+        e_resp = self._request("POST", "/entity/entity", data)
 
         # Remove permission_map_uuid (internal implementation detail)
         e_resp.pop("permission_map_uuid", None)
-
-        # Auto-configure entitlements
-        self.entity_entitlements_update(entity_uuid)
 
         return e_resp
 
@@ -261,8 +266,7 @@ class HubAPIClient:
             "organization_size": current.get("organization_size"),
             "aum": current.get("aum"),
             "country": current.get("country"),
-            "seats": current.get("seats"),
-            "expiration_date": current.get("expiration_date"),
+            "sharing_enabled": current.get("sharing_enabled"),
         }
 
         # 2. Merge user changes (ignore unknown keys)
@@ -307,7 +311,7 @@ class HubAPIClient:
         List permission maps, optionally filtered by entity.
 
         Iterates through all pages to find maps for the specified entity.
-        For a specific entity, expects to find 2 maps (Admin + User).
+        For a specific entity, expects to find 3 maps (Admin, Developer, User).
         """
         all_items: List[Dict[str, Any]] = []
         page = 1
@@ -324,8 +328,8 @@ class HubAPIClient:
                     item for item in items if item["entity_uuid"] == entity_uuid
                 ]
                 all_items.extend(matching)
-                # Entities have 2 permission maps (Admin + User), stop when we have both
-                if len(all_items) >= 2:
+                # Entities have one permission map per user type, stop when we have all
+                if len(all_items) >= len(PERMISSION_MAPS):
                     break
             else:
                 all_items.extend(items)
@@ -344,7 +348,7 @@ class HubAPIClient:
 
         Args:
             entity_uuid: Entity UUID
-            role: Role name ('admin' or 'user', case-insensitive)
+            role: Role name ('admin', 'developer' or 'user', case-insensitive)
 
         Returns:
             Permission map dict with keys: uuid, name, entity_uuid
@@ -353,7 +357,7 @@ class HubAPIClient:
             APIError: If permission map not found for role
         """
         maps = self.permission_map_list(entity_uuid)
-        role_name = "Admin" if role.lower() == "admin" else "User"
+        role_name = PERMISSION_MAPS[role.lower()]
         p_map = next((m for m in maps if m["name"] == role_name), None)
 
         if not p_map:
@@ -381,7 +385,7 @@ class HubAPIClient:
             email: User email
             first_name: User first name
             last_name: User last name
-            role: Role name ('admin' or 'user', default: 'user')
+            role: Role name ('admin', 'developer' or 'user', default: 'user')
             permissions_uuid: Optional permission map UUID (skips lookup if provided)
 
         Returns:
@@ -455,20 +459,18 @@ class HubAPIClient:
         self,
         user_uuid: str,
         include_history: bool = False,
-        include_legacy: bool = False,
         with_files: bool = False,
-    ) -> Tuple[bytes, str]:
-        """Download a user's data archive. Returns (zip bytes, filename)."""
+    ) -> Tuple[bytes, str, str]:
+        """Download a user's data archive. Returns (zip bytes, filename, export key)."""
         params: Dict[str, Any] = {}
         if include_history:
             params["include_history"] = "true"
-        if include_legacy:
-            params["include_legacy"] = "true"
         if with_files:
             params["with_files"] = "true"
-        return self._request_binary(
+        payload, filename, headers = self._request_binary(
             "POST", f"/admin/users/{user_uuid}/export", params=params or None
         )
+        return payload, filename, headers.get("X-Workspace-Export-Key", "")
 
     def user_update_entity(
         self, user_uuid: str, permissions_uuid: str
@@ -502,17 +504,6 @@ class HubAPIClient:
     def data_backend_list(self, entity_uuid: str) -> Any:
         return self._request("GET", f"/entity/data-backends/{entity_uuid}")
 
-    # ENTITLEMENTS
-    def entitlement_update(
-        self, entity_uuid: str, data: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        return self._request(
-            "PATCH",
-            f"/entity/entitlement/{entity_uuid}",
-            data,
-            {"update_all": True},
-        )
-
     def provision_full(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Execute complete provisioning workflow: entity + users.
@@ -537,8 +528,8 @@ class HubAPIClient:
             "failed_users": [],
         }
 
-        # Step 1: Create entity with entitlements
-        entity_resp = self.entity_create_with_entitlements(config["entity"])
+        # Step 1: Create entity
+        entity_resp = self.entity_create(config["entity"])
         results["entity"] = entity_resp
         entity_uuid = entity_resp["entity_uuid"]
 
@@ -549,8 +540,8 @@ class HubAPIClient:
             maps = self.permission_map_list(entity_uuid)
             for m in maps:
                 permission_maps[m["name"]] = m["uuid"]
-            # We expect both Admin and User maps
-            if "Admin" in permission_maps and "User" in permission_maps:
+            # We expect one map per user type
+            if all(name in permission_maps for name in PERMISSION_MAPS.values()):
                 break
             # Wait a bit for eventual consistency
             if attempt < max_retries - 1:
@@ -560,7 +551,7 @@ class HubAPIClient:
         for user_cfg in config.get("users", []):
             try:
                 role = user_cfg.get("role", "user")
-                role_name = "Admin" if role.lower() == "admin" else "User"
+                role_name = PERMISSION_MAPS[role.lower()]
                 perm_uuid = permission_maps.get(role_name)
 
                 if not perm_uuid:
@@ -591,15 +582,30 @@ class HubAPIClient:
 # ============================================================================
 
 
-def load_config() -> Dict[str, Any]:
-    if CONFIG_FILE.exists():
-        return json.loads(CONFIG_FILE.read_text(encoding="utf-8", newline="\n"))
-    return {"base_url": BASE_URL, "access_token": None}
+def prompt_credentials(
+    email: Optional[str], password: Optional[str]
+) -> Tuple[str, str]:
+    """The email and password, asking on the terminal for what was not given.
+
+    Prompts go to stderr, so stdout carries only the command's output.
+    """
+    if not email:
+        print("Email: ", end="", file=sys.stderr, flush=True)
+        email = input()
+    if not password:
+        password = getpass.getpass("Password: ")
+    return email, password
 
 
-def save_config(config: Dict[str, Any]) -> None:
-    CONFIG_DIR.mkdir(exist_ok=True, parents=True)
-    CONFIG_FILE.write_text(json.dumps(config, indent=2), encoding="utf-8", newline="\n")
+def end_session(client: HubAPIClient) -> None:
+    """End a session this command opened for itself."""
+    try:
+        client.auth_logout()
+    except APIError as e:
+        print(
+            f"! Could not end the session ({e}); it expires within 12 hours.",
+            file=sys.stderr,
+        )
 
 
 def handle_api_error(error: APIError) -> NoReturn:
@@ -617,13 +623,25 @@ def handle_api_error(error: APIError) -> NoReturn:
 
 
 def get_client() -> HubAPIClient:
-    cfg = load_config()
-    if not cfg.get("access_token"):
-        print("✗ Not authenticated. Run: workspace-admin auth login", file=sys.stderr)
+    """A signed-in client for this command.
+
+    It uses WORKSPACE_ADMIN_TOKEN when set. Otherwise it signs in for this one
+    command; the token stays in memory and the session ends when the command exits.
+    """
+    token = os.getenv(TOKEN_ENV)
+    if token:
+        return HubAPIClient(BASE_URL, token)
+    if not sys.stdin.isatty():
+        print(f"✗ Not signed in. Set {TOKEN_ENV}: {LOGIN_HINT}", file=sys.stderr)
         sys.exit(1)
-    return HubAPIClient(
-        str(cfg["base_url"]), str(cfg["access_token"]) if cfg["access_token"] else None
-    )
+    client = HubAPIClient(BASE_URL)
+    email, password = prompt_credentials(None, None)
+    try:
+        client.access_token = client.auth_login(email, password)
+    except APIError as e:
+        handle_api_error(e)
+    atexit.register(end_session, client)
+    return client
 
 
 def get_config_json(path: str) -> Dict[str, Any]:
@@ -688,42 +706,49 @@ def render_list(
 
 
 def auth_login(args: argparse.Namespace) -> None:
-    cfg = load_config()
-    base_url = args.api_url or cfg["base_url"]
-    email = args.email or input("Email: ")
-    password = args.password or getpass.getpass("Password: ")
-    client = HubAPIClient(base_url)
+    """Sign in and print the session as shell exports, for eval."""
+    base_url = (args.api_url or BASE_URL).rstrip("/")
+    email, password = prompt_credentials(args.email, args.password)
     try:
-        token = client.auth_login(email, password)
-        save_config({"base_url": base_url, "access_token": token})
-        if args.json:
-            print(json.dumps({"success": True, "access_token": token}, indent=2))
-        else:
-            print("✓ Authenticated successfully")
+        token = HubAPIClient(base_url).auth_login(email, password)
     except APIError as e:
         handle_api_error(e)
+    if args.json:
+        print(json.dumps({"base_url": base_url, "access_token": token}, indent=2))
+        return
+    print(f"export {BASE_URL_ENV}={shlex.quote(base_url)}")
+    print(f"export {TOKEN_ENV}={shlex.quote(token)}")
+    if sys.stdout.isatty():
+        print(
+            "\nLoad the session straight into your shell instead of printing it:\n"
+            f"  {LOGIN_HINT}",
+            file=sys.stderr,
+        )
+    else:
+        print("✓ Signed in for 12 hours", file=sys.stderr)
 
 
 def auth_logout(args: argparse.Namespace) -> None:
-    if CONFIG_FILE.exists():
-        CONFIG_FILE.unlink()
-
-    print("✓ Logged out")
+    """End the session in WORKSPACE_ADMIN_TOKEN and print the unset, for eval."""
+    token = os.getenv(TOKEN_ENV)
+    if not token:
+        print("✓ Not signed in", file=sys.stderr)
+        return
+    try:
+        HubAPIClient(BASE_URL, token).auth_logout()
+    except APIError as e:
+        # 401: the session had already ended or expired
+        if e.status_code != 401:
+            handle_api_error(e)
+    print(f"unset {TOKEN_ENV}")
+    print("✓ Signed out", file=sys.stderr)
 
 
 def auth_status(args: argparse.Namespace) -> None:
-    cfg = load_config()
-    authenticated = bool(cfg.get("access_token"))
-    status = {
-        "authenticated": authenticated,
-        "base_url": cfg.get("base_url", ""),
-        "access_token": (cfg["access_token"][:10] + "..." if authenticated else None),
-    }
-
+    status = {"base_url": BASE_URL, "token_set": bool(os.getenv(TOKEN_ENV))}
     fields = [
-        ("Authenticated", "authenticated"),
         ("Base URL", "base_url"),
-        ("Token", "access_token"),
+        (f"{TOKEN_ENV} set", "token_set"),
     ]
     render_record(status, fields, args.json)
 
@@ -732,7 +757,7 @@ def entity_create(args: argparse.Namespace) -> None:
     client = get_client()
     try:
         data = get_config_json(args.config)
-        resp = client.entity_create_with_entitlements(data)
+        resp = client.entity_create(data)
         entity_uuid = resp.get("entity_uuid")
         if args.json:
             print(json.dumps(resp, indent=2))
@@ -755,7 +780,7 @@ def entity_list(args: argparse.Namespace) -> None:
                 f"{get_val(i, 'entity_type.code')} | "
                 f"{i['name']} | "
                 f"{get_val(i, 'entity_type.entity_type')} | "
-                f"{i.get('seats', 'N/A')} seats"
+                f"Sharing: {'on' if i.get('sharing_enabled') else 'off'}"
             ),
         )
     except APIError as e:
@@ -767,14 +792,13 @@ def entity_sample(args: argparse.Namespace) -> None:
     sample = {
         "name": "string (Required) - the name of the organization",
         "entity_type_uuid": "UUID (Required) - Maps to 'entity_code'",
-        "email": "email (Required) - General contact email for the entity (e.g., <billing-email>)",
+        "email": "email (Required) - General contact email for the entity (e.g., <contact-email>)",
         "admin_email": "email (Required) - Email of the primary admin (e.g., <admin-email>)",
         "company_type": "string (Required) - e.g., 'Investment Firm'",
         "organization_size": "string (Required) - e.g., '10-50'",
         "aum": "integer (Required) - Assets Under Management",
         "country": "string (Required) - ISO country code or name",
-        "seats": "integer (Required) - Number of seats licensed",
-        "expiration_date": "datetime (Required) - ISO 8601 format (e.g., '2025-12-31T00:00:00Z')",
+        "sharing_enabled": "boolean (Optional) - Whether the entity's roles may allow sharing dashboards and apps (default: false)",
     }
     print(json.dumps(sample, indent=2))
 
@@ -789,9 +813,8 @@ def entity_show(args: argparse.Namespace) -> None:
             ("Code", "entity_type.code"),
             ("Type", "entity_type.entity_type"),
             ("Email", "email"),
-            ("Seats", "seats"),
             ("Country", "country"),
-            ("Expiration", "expiration_date"),
+            ("Sharing enabled", "sharing_enabled"),
         ]
         render_record(entity, fields, args.json)
     except APIError as e:
@@ -947,9 +970,9 @@ def print_import_instructions(
            -v /path/to/the/folder:/import \\
            lite
 
-    2. Import it:
+    2. Import it. It asks for the export key, which reaches you separately:
 
-       docker exec workspace workspace-import /import/{name}
+       docker exec -it workspace workspace-import /import/{name}
 
     3. Get the admin login and sign in at http://localhost:3000
 
@@ -970,8 +993,8 @@ def print_import_instructions(
             "      record of them. Ask for an export with files if you need them."
         )
     print(
-        "    - The archive holds your data connector credentials in the clear.\n"
-        "      Keep it private and delete it once you have imported it."
+        "    - The credentials in the archive are encrypted with the export key.\n"
+        "      The rest is not: keep it private and delete it once imported."
     )
     print()
     print("-" * 72)
@@ -982,10 +1005,9 @@ def user_export(args: argparse.Namespace) -> None:
     try:
         # Compose primitives: lookup user + download their archive
         user = client.user_get_by_email(args.email)
-        payload, suggested = client.user_export(
+        payload, suggested, export_key = client.user_export(
             user["uuid"],
             include_history=args.include_history,
-            include_legacy=args.include_legacy,
             with_files=args.with_files,
         )
     except APIError as e:
@@ -1001,13 +1023,19 @@ def user_export(args: argparse.Namespace) -> None:
     out.write_bytes(payload)
 
     if args.json:
-        print(json.dumps({"path": str(out), "bytes": len(payload)}, indent=2))
+        print(
+            json.dumps(
+                {"path": str(out), "bytes": len(payload), "export_key": export_key},
+                indent=2,
+            )
+        )
         return
 
     print(f"✓ Exported {args.email} to {out} ({len(payload) / 1024:.0f} KB)")
     print()
-    print("  This archive contains unencrypted backend and copilot credentials.")
-    print("  Treat it as a secret and delete it once it has been imported.")
+    print(f"  Export key (shown once, stored nowhere): {export_key}")
+    print("  The archive's credentials are sealed with it. Send it to the person")
+    print("  importing the archive separately from the file.")
     print()
     print_import_instructions(out, args.email, with_files=args.with_files)
 
@@ -1020,7 +1048,7 @@ def user_move(args: argparse.Namespace) -> None:
         p_map = client.get_permission_map_by_role(args.entity_uuid, args.role)
         resp = client.user_update_entity(user["uuid"], p_map["uuid"])
 
-        role_name = "Admin" if args.role == "admin" else "User"
+        role_name = PERMISSION_MAPS[args.role]
         if args.json:
             print(json.dumps(resp, indent=2))
         else:
@@ -1099,45 +1127,6 @@ def data_backend_list_cmd(args: argparse.Namespace) -> None:
         handle_api_error(e)
 
 
-def entitlement_update_cmd(args: argparse.Namespace) -> None:
-    client = get_client()
-    try:
-        if args.json_input:
-            data: dict[str, Any] = json.loads(args.json_input)
-        else:
-            data = get_config_json(args.config)
-
-        resp = client.entitlement_update(args.entity_uuid, data)
-        if args.json:
-            print(json.dumps(resp, indent=2))
-        else:
-            print(f"✓ Entitlements updated for entity {args.entity_uuid}")
-    except APIError as e:
-        handle_api_error(e)
-    except Exception as e:
-        print(f"✗ Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-
-def entitlement_sample(args: argparse.Namespace) -> None:
-    sample = {
-        "tier": "full | basic",
-        "number_copilot_calls_day": 10000,
-        "number_copilot_tokens_day": 5000000,  # null: no token limit
-        "total_file_upload_size_gb": 10,
-        "share_widgets": "public | private",
-        "bring_your_own_data": True,
-        "bring_your_own_copilot": True,
-        "admin_access": True,
-        "support": True,
-        "excel_add_in": True,
-        "data_add_ons_redistribution": True,
-        "bundle_name": "On-Premise",
-        "allow_custom_backends": True,
-    }
-    print(json.dumps(sample, indent=2))
-
-
 def provision_check(args: argparse.Namespace) -> None:
     """Validate provisioning configuration schema locally"""
     try:
@@ -1157,8 +1146,6 @@ def provision_check(args: argparse.Namespace) -> None:
                 "organization_size",
                 "aum",
                 "country",
-                "seats",
-                "expiration_date",
                 "admin_email",
             ]
             for field in required_entity:
@@ -1209,13 +1196,12 @@ def provision_sample(args: argparse.Namespace) -> None:
         "entity": {
             "name": "<entity name>",
             "entity_type_uuid": "<UUID of Entity Type>",
-            "email": "<billing-email>",
+            "email": "<contact-email>",
             "company_type": "Investment Firm",
             "organization_size": "10-50",
             "aum": 10000000,
             "country": "USA",
-            "seats": 50,
-            "expiration_date": "2025-12-31T00:00:00Z",
+            "sharing_enabled": False,
             "admin_email": "<admin-email>",
         },
         "admins": [
@@ -1300,7 +1286,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         prog="workspace-admin",
         description="Admin CLI - Manage entities, users, and provisioning.",
-        epilog=f"Version {VERSION} | Config: {CONFIG_FILE}",
+        epilog=f"Version {VERSION} | Sign in for several commands: {LOGIN_HINT}",
         fromfile_prefix_chars="@",
     )
     subparsers = parser.add_subparsers(
@@ -1313,22 +1299,32 @@ def main() -> None:
     auth = subparsers.add_parser("auth", help="Manage authentication session")
     auth_sub = auth.add_subparsers(dest="verb", required=True, help="Action")
 
-    login = auth_sub.add_parser("login", help="Authenticate with the Hub API")
-    login.add_argument("--api-url", help="Target API URL")
+    login = auth_sub.add_parser(
+        "login",
+        help=f"Sign in and print the session as shell exports: {LOGIN_HINT}",
+    )
+    login.add_argument(
+        "--api-url", help=f"Target API URL (default: ${BASE_URL_ENV} or {BASE_URL})"
+    )
     login.add_argument("--email", help="Admin account email address")
     login.add_argument(
         "--password", help="Admin password (interactive prompt if omitted)"
     )
     login.add_argument(
-        "--json", action="store_true", help="Output raw API response as JSON"
+        "--json",
+        action="store_true",
+        help="Print base_url and access_token as JSON instead of shell exports",
     )
     login.set_defaults(func=auth_login)
 
-    auth_sub.add_parser("logout", help="Clear local session credentials").set_defaults(
-        func=auth_logout
-    )
+    auth_sub.add_parser(
+        "logout",
+        help=f'End the ${TOKEN_ENV} session: eval "$(workspace-admin auth logout)"',
+    ).set_defaults(func=auth_logout)
 
-    status_parser = auth_sub.add_parser("status", help="Show current session status")
+    status_parser = auth_sub.add_parser(
+        "status", help=f"Show the API URL and whether ${TOKEN_ENV} is set"
+    )
     status_parser.add_argument(
         "--json", action="store_true", help="Output status as JSON object"
     )
@@ -1384,7 +1380,7 @@ def main() -> None:
         "--data",
         "-d",
         dest="json_input",
-        help="JSON string with fields to update (e.g. '{\"seats\": 50}')",
+        help="JSON string with fields to update (e.g. '{\"sharing_enabled\": true}')",
     )
     e_update.add_argument(
         "--json", action="store_true", help="Output raw API response as JSON"
@@ -1439,7 +1435,7 @@ def main() -> None:
     u_create.add_argument("--last-name", required=True, help="User's last name")
     u_create.add_argument(
         "--role",
-        choices=["admin", "user"],
+        choices=list(PERMISSION_MAPS),
         default="user",
         help="Role assignment (default: user)",
     )
@@ -1473,11 +1469,7 @@ def main() -> None:
         action="store_true",
         help="Include dashboard version history (much larger archive)",
     )
-    u_export.add_argument(
-        "--include-legacy",
-        action="store_true",
-        help="Include the legacy copilot chat table (archived, never imported)",
-    )
+
     u_export.add_argument(
         "--with-files",
         action="store_true",
@@ -1516,7 +1508,7 @@ def main() -> None:
     )
     u_move.add_argument(
         "--role",
-        choices=["admin", "user"],
+        choices=list(PERMISSION_MAPS),
         default="user",
         help="Role assignment in new entity (default: user)",
     )
@@ -1564,37 +1556,6 @@ def main() -> None:
         "--json", action="store_true", help="Output raw API response as JSON"
     )
     db_list.set_defaults(func=data_backend_list_cmd)
-
-    # ==========================
-    # Entitlement
-    # ==========================
-    ent = subparsers.add_parser("entitlement", help="Manage entity entitlements")
-    ent_sub = ent.add_subparsers(dest="verb", required=True, help="Action")
-
-    ent_update = ent_sub.add_parser(
-        "update", help="Update entitlements for an entity"
-    )
-    ent_update.add_argument("entity_uuid", help="UUID of the target entity")
-    ent_grp = ent_update.add_mutually_exclusive_group(required=True)
-    ent_grp.add_argument(
-        "--config", "-c", help="Path to JSON file with entitlement fields"
-    )
-    ent_grp.add_argument(
-        "--data",
-        "-d",
-        dest="json_input",
-        help="JSON string with entitlement fields "
-        "(e.g. '{\"allow_custom_backends\": true}')",
-    )
-    ent_update.add_argument(
-        "--json", action="store_true", help="Output raw API response as JSON"
-    )
-    ent_update.set_defaults(func=entitlement_update_cmd)
-
-    ent_sample = ent_sub.add_parser(
-        "sample", help="Output sample entitlement fields to stdout"
-    )
-    ent_sample.set_defaults(func=entitlement_sample)
 
     # ==========================
     # Provision

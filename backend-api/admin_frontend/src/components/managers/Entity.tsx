@@ -1,6 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Checkbox, FormField, FormInput, FormSelect } from "ui/Form";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "ui/Tabs";
 import { useForm } from "react-hook-form";
 import { ManagerForm } from "components/formItems";
 import type { SubmitFormProps } from "components/managers/Base";
@@ -9,34 +8,18 @@ import { type JSX, useEffect, useState } from "react";
 
 import {
   type BaseEntity,
-  type EntitlementBase,
   type Entity,
   type EntityType,
   type PostEntity,
   addEntity,
   addUser,
   editEntity,
-  getEntityEntitlement,
-  patchEntityEntitlement,
 } from "utils/requests";
 import { z } from "zod";
 import { toast } from "sonner";
 
 interface FormData {
   entityTypes: EntityType[];
-}
-
-function formatDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function oneYearFromToday(): Date {
-  const date = new Date();
-  date.setFullYear(date.getFullYear() + 1);
-  return date;
 }
 
 const entitySchema = z.object({
@@ -47,34 +30,7 @@ const entitySchema = z.object({
   organizationSize: z.string().min(1, "This field is required"),
   aum: z.coerce.number(),
   country: z.string().min(1, "This field is required"),
-  seats: z.coerce.number().gte(0).lte(10000),
-  expirationDate: z
-    .string()
-    .regex(
-      /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/,
-      "Format must be 'YYYY-MM-DD'",
-    ),
-  // Entitlements
-  tier: z.enum(["full", "basic"]).optional(),
-  number_copilot_calls_day: z.coerce.number().optional(),
-  number_copilot_tokens_day: z
-    .preprocess(
-      (value) => (value === "" || value == null ? null : Number(value)),
-      z.number().int().min(0).nullable(),
-    )
-    .optional(), // empty: no token limit
-  total_file_upload_size_gb: z.coerce.number().optional(),
-  share_widgets: z.enum(["public", "private"]).optional(),
-  bring_your_own_data: z.boolean().optional(),
-  bring_your_own_copilot: z.boolean().optional(),
-  admin_access: z.boolean().optional(),
-  support: z.boolean().optional(),
-  excel_add_in: z.boolean().optional(),
-  data_add_ons_redistribution: z.boolean().optional(),
-  bundle_name: z
-    .enum(["Default", "Equity Research"])
-    .nullable()
-    .optional(),
+  sharingEnabled: z.boolean(),
 });
 
 const adminSchema = z.object({
@@ -92,7 +48,6 @@ function isAdminSchema(data: TFormSchema | TAdminSchema): data is TAdminSchema {
 }
 
 export function EntitySubmitForm({
-  user,
   setShowAdd,
   retrieveItems,
   data,
@@ -102,12 +57,6 @@ export function EntitySubmitForm({
 }: SubmitFormProps<Entity, FormData>): JSX.Element {
   const [warning, setWarning] = useState("");
   const extras = item ? {} : { adminFirstName: "", adminLastName: "", adminEmail: "" };
-  const [entitlements, setEntitlements] = useState<Partial<EntitlementBase>>({});
-  const [updateAllUsers, setUpdateAllUsers] = useState(false);
-
-  const expirationDate = item?.expiration_date
-    ? new Date(item?.expiration_date)
-    : oneYearFromToday();
 
   const formSchema = editType === "Add" ? adminFormSchema : entitySchema;
 
@@ -121,8 +70,7 @@ export function EntitySubmitForm({
       organizationSize: item?.organization_size ?? "",
       aum: item?.aum ?? 0,
       country: item?.country ?? "",
-      seats: item?.seats ?? 1,
-      expirationDate: formatDate(expirationDate),
+      sharingEnabled: item?.sharing_enabled ?? true,
       ...extras,
     },
   });
@@ -132,25 +80,6 @@ export function EntitySubmitForm({
       setWarning(`Form validation errors: ${JSON.stringify(form.formState.errors)}`);
     }
   }, [form.formState]);
-
-  useEffect(() => {
-    const fetchEntitlements = async () => {
-      if (item) {
-        const result = await getEntityEntitlement(item.uuid, user.accessToken);
-        setEntitlements(result);
-      }
-    };
-    fetchEntitlements();
-  }, [item, user.accessToken]);
-
-  useEffect(() => {
-    if (Object.keys(entitlements).length > 0) {
-      form.reset({
-        ...form.getValues(),
-        ...entitlements,
-      });
-    }
-  }, [entitlements, form]);
 
   const handleSubmit = async (values: TFormSchema | TAdminSchema): Promise<void> => {
     let postData: PostEntity | undefined = undefined;
@@ -162,8 +91,7 @@ export function EntitySubmitForm({
       organization_size: values.organizationSize,
       aum: values.aum,
       country: values.country,
-      seats: values.seats,
-      expiration_date: values.expirationDate,
+      sharing_enabled: values.sharingEnabled,
     };
     if (item === undefined && editType === "Add" && isAdminSchema(values)) {
       postData = {
@@ -172,47 +100,17 @@ export function EntitySubmitForm({
       };
     }
 
-    const entitlement: EntitlementBase = {
-      tier: values.tier,
-      number_copilot_calls_day: values.number_copilot_calls_day,
-      number_copilot_tokens_day: values.number_copilot_tokens_day,
-      total_file_upload_size_gb: values.total_file_upload_size_gb,
-      share_widgets: values.share_widgets,
-      bring_your_own_data: values.bring_your_own_data,
-      bring_your_own_copilot: values.bring_your_own_copilot,
-      admin_access: values.admin_access,
-      support: values.support,
-      excel_add_in: values.excel_add_in,
-      data_add_ons_redistribution: values.data_add_ons_redistribution,
-      bundle_name: values.bundle_name || undefined,
-    };
-
     if (item !== undefined) {
-      const response = await editEntity(item.uuid, putData, user.accessToken);
+      const response = await editEntity(item.uuid, putData);
       if (response.success) {
         toast.success("Entity updated successfully");
       } else {
         toast.error(response.message);
-        await handleRequest(response, setWarning, setShowAdd, retrieveItems);
-        return;
       }
-
-      const entitlementResponse = await patchEntityEntitlement(
-        item.uuid,
-        entitlement,
-        updateAllUsers,
-        user.accessToken,
-      );
-      if (entitlementResponse.success) {
-        await handleRequest(response, setWarning, setShowAdd, retrieveItems);
-      } else {
-        toast.error(entitlementResponse.message);
-        await handleRequest(entitlementResponse, setWarning, setShowAdd, retrieveItems);
-      }
-
+      await handleRequest(response, setWarning, setShowAdd, retrieveItems);
     } else if (editType === "Add" && postData !== undefined) {
       let extraWarning = "";
-      let response = await addEntity(postData, user.accessToken);
+      let response = await addEntity(postData);
       if (response.success) {
         toast.success("Entity added successfully");
       } else {
@@ -235,7 +133,6 @@ export function EntitySubmitForm({
           response.data.permission_map_uuid,
           values.adminFirstName,
           values.adminLastName,
-          user.accessToken,
         );
         if (addUserResponse.success) {
           toast.success("Admin added successfully");
@@ -258,298 +155,104 @@ export function EntitySubmitForm({
   }));
 
   return (
-    <Tabs defaultValue="base">
-      <TabsList className="mb-2 flex w-full flex-wrap gap-2 rounded border border-general-border-primary bg-general-bg-secondary p-1">
-        <TabsTrigger value="base" className="px-3 py-1 text-xs">
-          Base
-        </TabsTrigger>
-        {editType === "Edit" && (
-          <TabsTrigger value="entitlements" className="px-3 py-1 text-xs">
-            Entitlements
-          </TabsTrigger>
-        )}
-      </TabsList>
-      <ManagerForm form={form} onSubmit={handleSubmit} warning={warning}>
-        <div className="max-h-[70vh] overflow-y-auto">
-          <TabsContent value="base">
-            <FormField
-              name="entityName"
-              control={form.control}
-              render={({ field }) => {
-                return <FormInput label="Name" placeholder="Workspace" {...field} />;
-              }}
+    <ManagerForm form={form} onSubmit={handleSubmit} warning={warning}>
+      <div className="max-h-[70vh] space-y-4 overflow-y-auto">
+        <FormField
+          name="entityName"
+          control={form.control}
+          render={({ field }) => {
+            return <FormInput label="Name" placeholder="Workspace" {...field} />;
+          }}
+        />
+        <FormField
+          name="code"
+          control={form.control}
+          render={({ field }) => (
+            <FormSelect
+              label="Code"
+              options={codeOptions}
+              placeholder="Select a role"
+              {...field}
             />
-            <FormField
-              name="code"
-              control={form.control}
-              render={({ field }) => (
-                <FormSelect
-                  label="Code"
-                  options={codeOptions}
-                  placeholder="Select a role"
-                  {...field}
-                />
-              )}
-            />
-            <FormField
-              name="email"
-              control={form.control}
-              render={({ field }) => {
-                return <FormInput label="Business Email" {...field} />;
-              }}
-            />
-            <FormField
-              name="companyType"
-              control={form.control}
-              render={({ field }) => {
-                return <FormInput label="Company Type" {...field} />;
-              }}
-            />
-            <FormField
-              name="organizationSize"
-              control={form.control}
-              render={({ field }) => {
-                return <FormInput label="Organization Size" {...field} />;
-              }}
-            />
-            <FormField
-              name="aum"
-              control={form.control}
-              render={({ field }) => {
-                return <FormInput type="number" label="AUM" {...field} />;
-              }}
-            />
-            <FormField
-              name="country"
-              control={form.control}
-              render={({ field }) => {
-                return <FormInput label="Country" {...field} />;
-              }}
-            />
-            <FormField
-              name="seats"
-              control={form.control}
-              render={({ field }) => {
-                return <FormInput type="number" label="Seats" {...field} />;
-              }}
-            />
-            <FormField
-              name="expirationDate"
-              control={form.control}
-              render={({ field }) => {
-                return <FormInput type="date" label="Expiration Date" {...field} />;
-              }}
-            />
-            {item === undefined ? (
-              <>
-                <FormField
-                  name="adminFirstName"
-                  control={form.control}
-                  render={({ field }) => {
-                    return <FormInput label="Admin First Name" {...field} />;
-                  }}
-                />
-                <FormField
-                  name="adminLastName"
-                  control={form.control}
-                  render={({ field }) => {
-                    return <FormInput label="Admin Last Name" {...field} />;
-                  }}
-                />
-                <FormField
-                  name="adminEmail"
-                  control={form.control}
-                  render={({ field }) => {
-                    return <FormInput label="Admin Email" {...field} />;
-                  }}
-                />
-              </>
-            ) : (
-              <></>
-            )}
-          </TabsContent>
-          {editType === "Edit" ? (
-            <TabsContent value="entitlements">
-              <FormField
-                name="tier"
-                control={form.control}
-                render={({ field }) => {
-                  return (
-                    <FormSelect
-                      options={[
-                        { value: "full", label: "Full" },
-                        { value: "basic", label: "Basic" },
-                      ]}
-                      label="Tier"
-                      {...field}
-                    />
-                  );
-                }}
-              />
-              <FormField
-                name="number_copilot_calls_day"
-                control={form.control}
-                render={({ field }) => {
-                  return (
-                    <FormInput
-                      type="number"
-                      label="Number of Copilot Calls per Day"
-                      {...field}
-                    />
-                  );
-                }}
-              />
-              <FormField
-                name="number_copilot_tokens_day"
-                control={form.control}
-                render={({ field }) => {
-                  return (
-                    <FormInput
-                      type="number"
-                      label="Number of Copilot Tokens per Day (empty for no limit)"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  );
-                }}
-              />
-              <FormField
-                name="total_file_upload_size_gb"
-                control={form.control}
-                render={({ field }) => {
-                  return (
-                    <FormInput
-                      type="number"
-                      label="Total File Upload Size (GB)"
-                      {...field}
-                    />
-                  );
-                }}
-              />
-              <FormField
-                name="share_widgets"
-                control={form.control}
-                render={({ field }) => {
-                  return (
-                    <FormSelect
-                      options={[
-                        { value: "public", label: "Public" },
-                        { value: "private", label: "Private" },
-                      ]}
-                      label="Share Widgets"
-                      {...field}
-                    />
-                  );
-                }}
-              />
-              <FormField
-                name="bring_your_own_data"
-                control={form.control}
-                render={({ field }) => {
-                  return (
-                    <Checkbox
-                      label="Bring Your Own Data"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  );
-                }}
-              />
-              <FormField
-                name="bring_your_own_copilot"
-                control={form.control}
-                render={({ field }) => {
-                  return (
-                    <Checkbox
-                      label="Bring Your Own Copilot"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  );
-                }}
-              />
-              <FormField
-                name="admin_access"
-                control={form.control}
-                render={({ field }) => {
-                  return (
-                    <Checkbox
-                      label="Admin Access"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  );
-                }}
-              />
-              <FormField
-                name="support"
-                control={form.control}
-                render={({ field }) => {
-                  return (
-                    <Checkbox
-                      label="Support"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  );
-                }}
-              />
-              <FormField
-                name="excel_add_in"
-                control={form.control}
-                render={({ field }) => {
-                  return (
-                    <Checkbox
-                      label="Excel Add-In"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  );
-                }}
-              />
-              <FormField
-                name="data_add_ons_redistribution"
-                control={form.control}
-                render={({ field }) => {
-                  return (
-                    <Checkbox
-                      label="Data Add-Ons Redistribution"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  );
-                }}
-              />
-              <FormField
-                name="bundle_name"
-                control={form.control}
-                render={({ field }) => (
-                  <FormSelect
-                    options={[
-                      { value: "Default", label: "Default" },
-                      { value: "Equity Research", label: "Equity Research" },
-                    ]}
-                    label="Bundle Name"
-                    {...field}
-                    value={field.value ?? undefined}
-                    className="mb-4" // Added padding at the bottom
-                  />
-                )}
-              />
-              <div title="If checked, this will apply the changes for all users associated with this entity">
-                <Checkbox
-                  label="Update All Users"
-                  checked={updateAllUsers}
-                  onCheckedChange={(checked: boolean) => setUpdateAllUsers(checked)}
-                />
-              </div>
-            </TabsContent>
-          ) : (
-            <></>
           )}
-        </div>
-        <button type="submit" className="ws-btn-blue mt-2">Submit</button>
-      </ManagerForm>
-    </Tabs>
+        />
+        <FormField
+          name="email"
+          control={form.control}
+          render={({ field }) => {
+            return <FormInput label="Business Email" {...field} />;
+          }}
+        />
+        <FormField
+          name="companyType"
+          control={form.control}
+          render={({ field }) => {
+            return <FormInput label="Company Type" {...field} />;
+          }}
+        />
+        <FormField
+          name="organizationSize"
+          control={form.control}
+          render={({ field }) => {
+            return <FormInput label="Organization Size" {...field} />;
+          }}
+        />
+        <FormField
+          name="aum"
+          control={form.control}
+          render={({ field }) => {
+            return <FormInput type="number" label="AUM" {...field} />;
+          }}
+        />
+        <FormField
+          name="country"
+          control={form.control}
+          render={({ field }) => {
+            return <FormInput label="Country" {...field} />;
+          }}
+        />
+        <FormField
+          name="sharingEnabled"
+          control={form.control}
+          render={({ field }) => {
+            return (
+              <Checkbox
+                label="Sharing enabled"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            );
+          }}
+        />
+        {item === undefined ? (
+          <>
+            <FormField
+              name="adminFirstName"
+              control={form.control}
+              render={({ field }) => {
+                return <FormInput label="Admin First Name" {...field} />;
+              }}
+            />
+            <FormField
+              name="adminLastName"
+              control={form.control}
+              render={({ field }) => {
+                return <FormInput label="Admin Last Name" {...field} />;
+              }}
+            />
+            <FormField
+              name="adminEmail"
+              control={form.control}
+              render={({ field }) => {
+                return <FormInput label="Admin Email" {...field} />;
+              }}
+            />
+          </>
+        ) : (
+          <></>
+        )}
+      </div>
+      <button type="submit" className="ws-btn-blue mt-2">Submit</button>
+    </ManagerForm>
   );
 }

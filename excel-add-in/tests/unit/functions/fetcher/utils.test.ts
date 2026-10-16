@@ -7,7 +7,6 @@ describe("privateFunc", () => {
     const expected = "Sign in to the add-in.";
     jest.spyOn(useAuthStore, "getState").mockImplementation(() => ({
       user: {
-        uuid: "",
         email: "",
         username: "",
         access_token: "",
@@ -29,7 +28,6 @@ describe("privateFunc", () => {
     const expected = "Sign in to the add-in.";
     jest.spyOn(useAuthStore, "getState").mockImplementation(() => ({
       user: {
-        uuid: "",
         email: "",
         username: "",
         access_token: "testToken",
@@ -51,7 +49,6 @@ describe("privateFunc", () => {
     const expected = "testToken";
     jest.spyOn(useAuthStore, "getState").mockImplementation(() => ({
       user: {
-        uuid: "",
         email: "",
         username: "",
         access_token: expected,

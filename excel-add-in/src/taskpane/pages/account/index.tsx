@@ -1,7 +1,8 @@
 import clsx from "clsx";
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getUserProfile, getWidgetDefinitionMap } from "~/backend";
+import { signOutUser } from "~/commands/common.commands";
 import { ADDIN_FUNCS_SUFFIX } from "~/constants";
 import { isEmpty } from "~/functions/fetcher/utils";
 import { useAuthStore } from "~/store/auth";
@@ -511,10 +512,13 @@ function Backends() {
 export default function Page() {
   usePrivateRoute();
 
-  const { logout, user } = useAuthStore();
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
 
-  function handleLogout() {
-    logout();
+  async function handleLogout(event: React.MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault();
+    await signOutUser();
+    navigate("/auth/login");
   }
 
   return (

@@ -28,8 +28,10 @@ export function setupMSW() {
 export {
   createErrorHandler,
   createMockHandler,
+  mockAccess,
+  mockCopilotKeys,
   mockDashboardData,
-  mockFeatureFlags,
+  mockSession,
   mockUsage,
   mockUser,
   mockValidateResponse,

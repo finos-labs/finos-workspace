@@ -1,5 +1,5 @@
 """
-Integration tests for Features & Entitlements endpoints.
+Integration tests for the endpoints that tell users what they may use.
 """
 
 import os
@@ -13,31 +13,6 @@ if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
 import pytest
-
-
-class TestUserHasEntity:
-    """Tests for /app/user-has-entity endpoint"""
-
-    @pytest.mark.asyncio
-    async def test_check_entity_unauthenticated(self, client):
-        """Should fail without auth"""
-        response = await client.get("/app/user-has-entity")
-        assert response.status_code in {401, 403}
-        # Validate error response structure
-        data = response.json()
-        assert isinstance(data, dict)
-        assert "detail" in data or "message" in data or "error" in data
-
-    @pytest.mark.asyncio
-    async def test_check_entity_authenticated(self, auth_client):
-        """Should return entity membership status"""
-        response = await auth_client.get("/app/user-has-entity")
-        assert response.status_code == 200
-        # Validate response structure
-        data = response.json()
-        assert isinstance(data, (bool, dict))
-        content_type = response.headers.get("content-type", "")
-        assert "application/json" in content_type
 
 
 class TestUsage:
@@ -54,11 +29,12 @@ class TestUsage:
         assert "detail" in data or "message" in data or "error" in data
 
     @pytest.mark.asyncio
-    async def test_get_usage_authenticated(self, auth_client):
-        """Should return API usage stats - may require entity context"""
+    async def test_get_usage_authenticated(self, auth_client, organization):
+        """Should return the user's usage and the limits of their roles"""
         response = await auth_client.get("/app/usage")
-        # 200 for success, 400 if missing entity context, 403 for permission denied, 404 if no entitlement
-        assert response.status_code in {200, 400, 403, 404}
+        assert response.status_code == 200
+        # A user without roles may use nothing
+        assert response.json()["copilot_calls_limit"] == 0
 
 
 class TestResourcePermissions:
@@ -111,15 +87,6 @@ class TestFeaturesOutputValidation:
             assert isinstance(data, (list, dict))
 
     @pytest.mark.asyncio
-    async def test_entity_status_response_schema(self, auth_client):
-        """Entity status response should have expected schema"""
-        response = await auth_client.get("/app/user-has-entity")
-        if response.status_code == 200:
-            data = response.json()
-            # Should be a boolean or dict with status
-            assert isinstance(data, (bool, dict))
-
-    @pytest.mark.asyncio
     async def test_features_no_sensitive_data(self, auth_client):
         """Features responses should not expose sensitive data"""
         response = await auth_client.get("/app/resource-permissions")
@@ -142,8 +109,7 @@ class TestFeaturesAdmin:
     async def test_admin_can_get_usage(self, admin_client):
         """Admin should be able to get usage stats"""
         response = await admin_client.get("/app/usage")
-        # 200 for success, 400 if missing entity context, 403 for permission denied, 404 if no entitlement
-        assert response.status_code in {200, 400, 403, 404}
+        assert response.status_code == 200
 
     @pytest.mark.asyncio
     async def test_admin_can_get_permissions(self, admin_client):
@@ -165,17 +131,6 @@ class TestFeaturesCrossUserSecurity:
         """Each user should only see their own permissions"""
         response1 = await auth_client.get("/app/resource-permissions")
         response2 = await second_user_client.get("/app/resource-permissions")
-
-        assert response1.status_code == 200
-        assert response2.status_code == 200
-
-    @pytest.mark.asyncio
-    async def test_entity_status_isolated_per_user(
-        self, auth_client, second_user_client
-    ):
-        """Each user should only see their own entity status"""
-        response1 = await auth_client.get("/app/user-has-entity")
-        response2 = await second_user_client.get("/app/user-has-entity")
 
         assert response1.status_code == 200
         assert response2.status_code == 200

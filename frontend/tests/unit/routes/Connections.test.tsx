@@ -8,6 +8,7 @@ import type { BackendPermissionsT } from "~/api/user_roles.api";
 import type { ButtonProps } from "~/components/ds/atoms/Button";
 import type { ExternalCopilotHolder } from "~/lib/state/copilot";
 import ConnectionsPage from "~/routes/Connections";
+import { setAccess } from "../factories";
 import { partial, required } from "../mocks";
 
 const {
@@ -422,6 +423,7 @@ describe("ConnectionsPage", () => {
     mockDeleteApiSource.mockResolvedValue({});
     mockRemoveCustomCopilot.mockResolvedValue({});
     setupDefaultMocks();
+    setAccess({ user_type: "Developer" });
   });
 
   describe("Rendering", () => {
@@ -497,6 +499,16 @@ describe("ConnectionsPage", () => {
         mode: "add",
         data: null,
       });
+    });
+
+    it("is not offered to a User, who cannot add connections", () => {
+      setAccess({ user_type: "User" });
+      renderConnections();
+
+      expect(screen.getByText("My Backend")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /connect backend/i }),
+      ).not.toBeInTheDocument();
     });
   });
 

@@ -2,6 +2,7 @@ import { useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { useGetCopilotRequestHeaders } from "~/components/AI/hooks/useGetCopilotRequestHeaders";
 import { useStateReducer } from "~/hooks/useStateReducer";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { type AIMessage, useShallowCopilotStore } from "~/lib/state/copilot";
 import { Button } from "../ds/atoms/Button";
 import { Checkbox } from "../ds/atoms/Checkbox";
@@ -100,7 +101,7 @@ export function CopilotFeedback({ message }: { message: AIMessage }) {
             feedbackPayload,
           );
 
-          const response = await fetch(feedbackEndpoint, {
+          const response = await fetchAgent(feedbackEndpoint, {
             method: "POST",
             headers: getCopilotRequestHeaders(message.traceId),
             body: JSON.stringify(feedbackPayload),

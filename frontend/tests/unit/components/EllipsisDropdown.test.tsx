@@ -1,22 +1,29 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import EllipsisDropdownMenu from "~/components/EllipsisDropdown";
 import type { EllipsisDropdownMenuProps } from "~/components/MoveToDropDown/types";
+import { setAccess } from "../factories";
+
+// The deployment has the Excel add-in; the menu reads the switch when it loads
+vi.hoisted(() => vi.stubEnv("VITE_EXCEL_ADD_IN_ENABLED", "true"));
+
+const widgetContext = vi.hoisted(() => ({
+  widgetRef: {
+    current: {
+      id: "test-widget",
+      widgetId: "test-widget",
+      name: "Test Widget",
+      type: "table",
+      connectionType: undefined as string | undefined,
+    },
+  },
+  activeDashboardId: "dashboard-1",
+  isShared: false,
+}));
 
 vi.mock("~/components/Widget.context", () => ({
-  useWidgetContext: vi.fn(() => ({
-    widgetRef: {
-      current: {
-        id: "test-widget",
-        widgetId: "test-widget",
-        name: "Test Widget",
-        type: "table",
-      },
-    },
-    activeDashboardId: "dashboard-1",
-    isShared: false,
-  })),
+  useWidgetContext: vi.fn(() => widgetContext),
 }));
 
 vi.mock("~/lib/state/app", () => ({
@@ -32,16 +39,8 @@ vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: vi.fn(() => vi.fn()),
 }));
 
-vi.mock("~/lib/state/featureFlags", () => ({
-  useShallowFeatureFlagsStore: vi.fn(() => true),
-}));
-
 vi.mock("~/components/MoveToDropDown", () => ({
   MoveToTabsDropdownMenu: () => <div data-testid="move-to-tabs">Move</div>,
-}));
-
-vi.mock("~/components/General/FeatureLock", () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 describe("EllipsisDropdownMenu", () => {
@@ -49,6 +48,15 @@ describe("EllipsisDropdownMenu", () => {
     dispatch: vi.fn(),
     settings: {},
   };
+
+  beforeEach(() => {
+    widgetContext.widgetRef.current.connectionType = undefined;
+    setAccess();
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
 
   it("renders the ellipsis trigger button", () => {
     render(<EllipsisDropdownMenu {...defaultProps} />);
@@ -153,6 +161,35 @@ describe("EllipsisDropdownMenu", () => {
       await user.click(trigger);
 
       expect(screen.queryByText("Minimize")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Export and Excel formula", () => {
+    const openMenu = async (settings: EllipsisDropdownMenuProps["settings"]) => {
+      render(<EllipsisDropdownMenu {...defaultProps} settings={settings} />);
+      await userEvent.setup().click(screen.getByRole("button"));
+    };
+
+    it("offers Export to every user", async () => {
+      await openMenu({ showExport: true });
+
+      expect(screen.getByText("Export")).toBeInTheDocument();
+    });
+
+    it("offers the Excel formula of a backend widget when a role grants the Excel add-in", async () => {
+      setAccess({ excel_add_in: true });
+      widgetContext.widgetRef.current.connectionType = "advanced-backend";
+      await openMenu({ showFunctions: true });
+
+      expect(screen.getByText("Excel formula")).toBeInTheDocument();
+    });
+
+    it("does not offer the Excel formula when no role grants the Excel add-in", async () => {
+      setAccess({ excel_add_in: false });
+      widgetContext.widgetRef.current.connectionType = "advanced-backend";
+      await openMenu({ showFunctions: true });
+
+      expect(screen.queryByText("Excel formula")).not.toBeInTheDocument();
     });
   });
 });

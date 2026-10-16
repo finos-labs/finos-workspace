@@ -23,6 +23,7 @@ import type {
 import type { WidgetT } from "~/components/types";
 import type { WidgetId } from "~/components/Widgets";
 import { type ProcessedTemplate, useSharedTemplates } from "~/hooks/useSharedTemplates";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useAppStore } from "~/lib/state/app";
 import {
   type BackendTemplate,
@@ -1843,7 +1844,7 @@ export function useWorkspaceBridgeCommandHandler() {
         throw new Error(`Agent '${targetAgent.name}' is missing a query endpoint.`);
       }
 
-      const response = await fetch(queryUrl, init);
+      const response = await fetchAgent(queryUrl, init);
       if (!response.ok) {
         throw new Error(response.statusText || "Assigned agent request failed.");
       }

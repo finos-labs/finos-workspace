@@ -7,7 +7,6 @@ import { Backend, User, UserProfile } from "~/types/user.types";
 export interface AuthStore {
   user: User | null;
   login: (
-    uuid: string,
     email: string,
     username: string,
     access_token: string,
@@ -23,10 +22,9 @@ export const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => ({
       user: null,
-      login(uuid, email, username, access_token, expiration_date, profile) {
+      login(email, username, access_token, expiration_date, profile) {
         set({
           user: {
-            uuid,
             email,
             username,
             access_token,

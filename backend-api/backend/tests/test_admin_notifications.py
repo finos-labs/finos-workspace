@@ -3,7 +3,7 @@
 import hashlib
 import hmac
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -187,8 +187,6 @@ class TestEntityCreatedEvent:
                     "organization_size": "1-10",
                     "aum": 0,
                     "country": "US",
-                    "seats": 5,
-                    "expiration_date": (datetime.now(UTC) + timedelta(days=30)).isoformat(),
                     "admin_email": "entity-admin@example.com",
                 },
             )

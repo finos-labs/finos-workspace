@@ -11,6 +11,7 @@ before the row it references fails here exactly as it would in production.
 """
 
 import json
+import secrets
 from datetime import UTC, datetime
 from uuid import uuid4
 from zipfile import ZipFile
@@ -22,6 +23,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session
 
 from api import base, models
+from api.crypto import AtRestCipher
 from api.models.model_helpers import Base
 from scripts import export_user_data as exporter
 from scripts import import_user_data as importer
@@ -286,7 +288,7 @@ async def imported(databases, tmp_path_factory, storage, request):
     export_result = await exporter.export_user(
         EMAIL, out, include_history=True, with_files=True
     )
-    import_result = await importer.import_archive(export_result.archive)
+    import_result = await importer.import_archive(export_result.archive, export_result.export_key)
     return export_result, import_result
 
 
@@ -338,10 +340,22 @@ async def test_every_table_arrives_identical(table, databases, imported):
     spec = scope.spec_by_table(table)
     forced = set(scope.import_overrides(spec)) | {"permissions_uuid", "username"}
 
+    sealer = AtRestCipher(secrets.token_urlsafe(32))
+
+    def opened(column, value):
+        # A sealed credential differs on every encoding (fresh nonce): compare what it holds
+        if isinstance(value, dict) and set(value) == {"__sealed__"}:
+            return json.loads(sealer.decrypt(value["__sealed__"], f"{table}.{column}"))
+        return value
+
     def comparable(rows):
         return sorted(
             (
-                {k: v for k, v in serde.encode_row(spec, r).items() if k not in forced}
+                {
+                    k: opened(k, v)
+                    for k, v in serde.encode_row(spec, r, sealer).items()
+                    if k not in forced
+                }
                 for r in rows
             ),
             key=lambda d: d.get("uuid", ""),
@@ -385,7 +399,7 @@ async def test_dashboard_content_blob_is_byte_for_byte_intact(databases, importe
 
 
 async def test_credentials_are_re_encrypted_and_readable(databases, imported):
-    """The archive carries plaintext; the destination stores its own ciphertext."""
+    """The archive carries them sealed; the destination stores its own ciphertext."""
     _, dst_sessions = databases
     async with dst_sessions() as s:
         copilot = (await s.execute(sa.select(models.CustomCopilot))).scalar_one()
@@ -448,13 +462,12 @@ async def test_account_cannot_be_logged_into_with_the_old_password(databases, im
     assert user.confirmed is True, "must be able to log in once a password is set"
 
 
-async def test_hub_privileges_and_billing_do_not_transfer(databases, imported):
+async def test_hub_privileges_do_not_transfer(databases, imported):
     _, dst_sessions = databases
     async with dst_sessions() as s:
         user = await s.get(models.User, USER_UUID)
 
     assert user.is_superuser is False, "Hub superuser must not become a Lite superuser"
-    assert user.billing_active is False
 
 
 async def test_user_joins_the_local_entity(databases, imported):
@@ -494,7 +507,7 @@ async def test_second_import_refuses_without_force(imported):
     export_result, _ = imported
 
     with pytest.raises(importer.ImportError_, match="already exists"):
-        await importer.import_archive(export_result.archive)
+        await importer.import_archive(export_result.archive, export_result.export_key)
 
 
 async def test_force_replaces_rather_than_duplicating(imported, databases):
@@ -508,10 +521,32 @@ async def test_force_replaces_rather_than_duplicating(imported, databases):
             )
 
     before = await dashboard_count()
-    result = await importer.import_archive(export_result.archive, force=True)
+    result = await importer.import_archive(
+        export_result.archive, export_result.export_key, force=True
+    )
 
     assert result.replaced is True
     assert await dashboard_count() == before, "re-import must not duplicate rows"
+
+
+async def test_a_wrong_export_key_is_refused_before_anything_changes(
+    imported, databases
+):
+    export_result, _ = imported
+    _, dst_sessions = databases
+
+    async def dashboards():
+        async with dst_sessions() as s:
+            return len(
+                (await s.execute(sa.select(models.DashboardItem))).scalars().all()
+            )
+
+    before = await dashboards()
+    for wrong in (secrets.token_urlsafe(32), "not a key", ""):
+        with pytest.raises(importer.ImportError_, match="export key does not open"):
+            await importer.import_archive(export_result.archive, wrong, force=True)
+
+    assert await dashboards() == before, "a refused import must not purge the account"
 
 
 # --------------------------------------------------------------------------- #
@@ -532,7 +567,7 @@ async def test_scope_version_mismatch_is_refused(tmp_path, imported):
             dst.writestr(name, payload)
 
     with pytest.raises(importer.ImportError_, match="scope version"):
-        await importer.import_archive(tampered)
+        await importer.import_archive(tampered, export_result.export_key)
 
 
 async def test_a_non_archive_is_rejected_clearly(tmp_path):
@@ -540,9 +575,9 @@ async def test_a_non_archive_is_rejected_clearly(tmp_path):
     junk.write_bytes(b"this is not a zip file")
 
     with pytest.raises(importer.ImportError_, match="not a readable zip"):
-        await importer.import_archive(junk)
+        await importer.import_archive(junk, "unused")
 
 
 async def test_missing_archive_is_reported(tmp_path):
     with pytest.raises(importer.ImportError_, match="No such archive"):
-        await importer.import_archive(tmp_path / "nope.zip")
+        await importer.import_archive(tmp_path / "nope.zip", "unused")

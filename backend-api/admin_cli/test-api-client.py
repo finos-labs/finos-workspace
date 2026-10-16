@@ -10,8 +10,12 @@ Usage:
 
     # Or with environment variables:
     WORKSPACE_BASE_URL=http://localhost:8000 ADMIN_EMAIL=admin@example.com python test-api-client.py
+
+It signs in as a command-line client (a 12-hour bearer token kept in memory
+only) and ends that session when it exits.
 """
 
+import atexit
 import getpass
 import os
 import sys
@@ -74,12 +78,13 @@ def main():
     client = HubAPIClient(base_url)  # noqa: F821  # type: ignore[unresolved-reference]
 
     try:
-        token = client.auth_login(email, password)
-        client.access_token = token
-        log_success(f"Authenticated (token: {token[:10]}...)")
+        client.access_token = client.auth_login(email, password)
+        log_success("Signed in")
     except APIError as e:  # noqa: F821  # type: ignore[unresolved-reference]
         log_error(f"Authentication failed: {e}")
         sys.exit(1)
+    # End the session when the script exits, however it exits
+    atexit.register(end_session, client)  # noqa: F821  # type: ignore[unresolved-reference]
 
     # =========================================================================
     # 2. GET ENTITY TYPE
@@ -100,30 +105,26 @@ def main():
         sys.exit(1)
 
     # =========================================================================
-    # 3. CREATE ENTITY WITH ENTITLEMENTS (High-level method)
+    # 3. CREATE ENTITY
     # =========================================================================
-    log_step("Step 3: Creating entity with entitlements...")
+    log_step("Step 3: Creating entity...")
 
     entity_config = {
         "name": f"Test Entity {timestamp}",
         "entity_type_uuid": entity_type_uuid,
-        "email": f"billing-{timestamp}@example.com",
+        "email": f"contact-{timestamp}@example.com",
         "admin_email": f"admin-{timestamp}@example.com",
         "company_type": "Investment Firm",
         "organization_size": "10-50",
         "aum": 10000000,
         "country": "USA",
-        "seats": 50,
-        "expiration_date": "2025-12-31T00:00:00Z",
     }
 
     try:
-        # This high-level method creates entity AND configures entitlements
-        entity_resp = client.entity_create_with_entitlements(entity_config)
+        entity_resp = client.entity_create(entity_config)
         entity_uuid = entity_resp["entity_uuid"]
         log_success(f"Entity created: {entity_uuid}")
         print(f"    Name: {entity_config['name']}")
-        print(f"    Seats: {entity_config['seats']}")
     except APIError as e:  # noqa: F821  # type: ignore[unresolved-reference]
         log_error(f"Failed to create entity: {e}")
         sys.exit(1)
@@ -178,20 +179,20 @@ def main():
     # =========================================================================
     # 6. UPDATE ENTITY (Partial update via high-level method)
     # =========================================================================
-    log_step("Step 6: Updating entity (seats: 50 -> 100)...")
+    log_step("Step 6: Updating entity (sharing: off -> on)...")
 
     try:
         # Smart partial update - only specify what you want to change
-        _ = client.entity_update(entity_uuid, seats=100)
+        _ = client.entity_update(entity_uuid, sharing_enabled=True)
         log_success("Entity updated")
 
         # Verify
         entity_details = client.entity_get(entity_uuid)
-        actual_seats = entity_details.get("seats")
-        if actual_seats == 100:
-            log_success(f"Verified: seats = {actual_seats}")
+        sharing_enabled = entity_details.get("sharing_enabled")
+        if sharing_enabled is True:
+            log_success(f"Verified: sharing_enabled = {sharing_enabled}")
         else:
-            log_error(f"Verification failed: expected 100, got {actual_seats}")
+            log_error(f"Verification failed: expected True, got {sharing_enabled}")
     except APIError as e:  # noqa: F821  # type: ignore[unresolved-reference]
         log_error(f"Failed to update entity: {e}")
 
@@ -225,21 +226,9 @@ def main():
         log_error(f"Failed to list data backends: {e}")
 
     # =========================================================================
-    # 9. UPDATE ENTITLEMENT (disable custom backends)
+    # 9. DELETE DATA BACKEND
     # =========================================================================
-    log_step("Step 9: Disabling custom backends via entitlement update...")
-
-    try:
-        ent_resp = client.entitlement_update(entity_uuid, {"allow_custom_backends": False})
-        log_success("Custom backends disabled")
-        print(f"    Response: {ent_resp}")
-    except APIError as e:  # noqa: F821  # type: ignore[unresolved-reference]
-        log_error(f"Failed to update entitlement: {e}")
-
-    # =========================================================================
-    # 10. DELETE DATA BACKEND
-    # =========================================================================
-    log_step("Step 10: Deleting data backend...")
+    log_step("Step 9: Deleting data backend...")
 
     try:
         client.data_backend_delete(entity_uuid, "test-backend")
@@ -248,9 +237,9 @@ def main():
         log_error(f"Failed to delete data backend: {e}")
 
     # =========================================================================
-    # 11. VERIFY DATA BACKENDS EMPTY
+    # 10. VERIFY DATA BACKENDS EMPTY
     # =========================================================================
-    log_step("Step 11: Verifying data backends removed...")
+    log_step("Step 10: Verifying data backends removed...")
 
     try:
         backends = client.data_backend_list(entity_uuid)
@@ -262,9 +251,9 @@ def main():
         log_error(f"Failed to list data backends: {e}")
 
     # =========================================================================
-    # 12. GET USER BY EMAIL (High-level method)
+    # 11. GET USER BY EMAIL (High-level method)
     # =========================================================================
-    log_step("Step 12: Looking up user by email...")
+    log_step("Step 11: Looking up user by email...")
 
     try:
         user = client.user_get_by_email(user_email)
@@ -275,9 +264,9 @@ def main():
         user_uuid = None
 
     # =========================================================================
-    # 13. RESET USER PASSWORD
+    # 12. RESET USER PASSWORD
     # =========================================================================
-    log_step("Step 13: Resetting user password...")
+    log_step("Step 12: Resetting user password...")
 
     if user_uuid:
         try:
@@ -289,22 +278,24 @@ def main():
             log_error(f"Failed to reset password: {e}")
 
     # =========================================================================
-    # 14. GET PERMISSION MAP BY ROLE (High-level helper)
+    # 13. GET PERMISSION MAP BY ROLE (High-level helper)
     # =========================================================================
-    log_step("Step 14: Testing permission map lookup...")
+    log_step("Step 13: Testing permission map lookup...")
 
     try:
         admin_map = client.get_permission_map_by_role(entity_uuid, "admin")
+        developer_map = client.get_permission_map_by_role(entity_uuid, "developer")
         user_map = client.get_permission_map_by_role(entity_uuid, "user")
         log_success(f"Admin permission map: {admin_map['uuid']}")
+        log_success(f"Developer permission map: {developer_map['uuid']}")
         log_success(f"User permission map: {user_map['uuid']}")
     except APIError as e:  # noqa: F821  # type: ignore[unresolved-reference]
         log_error(f"Failed to get permission maps: {e}")
 
     # =========================================================================
-    # 15. DELETE USERS
+    # 14. DELETE USERS
     # =========================================================================
-    log_step("Step 15: Deleting users...")
+    log_step("Step 14: Deleting users...")
 
     users_deleted = 0
     for email_to_delete in [admin_email, user_email]:
@@ -317,22 +308,20 @@ def main():
             print(f"{YELLOW}!{NC} Could not delete {email_to_delete}: {e}")
 
     # =========================================================================
-    # 16. TEST BULK PROVISIONING (High-level workflow)
+    # 15. TEST BULK PROVISIONING (High-level workflow)
     # =========================================================================
-    log_step("Step 16: Testing bulk provisioning (provision_full)...")
+    log_step("Step 15: Testing bulk provisioning (provision_full)...")
 
     provision_config = {
         "entity": {
             "name": f"Bulk Test Entity {timestamp}",
             "entity_type_uuid": entity_type_uuid,
-            "email": f"bulk-billing-{timestamp}@example.com",
+            "email": f"bulk-contact-{timestamp}@example.com",
             "admin_email": f"bulk-admin-{timestamp}@example.com",
             "company_type": "Hedge Fund",
             "organization_size": "50-100",
             "aum": 50000000,
             "country": "UK",
-            "seats": 25,
-            "expiration_date": "2026-06-30T00:00:00Z",
         },
         "users": [
             {
@@ -357,7 +346,7 @@ def main():
     }
 
     try:
-        # Single call creates entity + entitlements + all users
+        # Single call creates entity + all users
         results = client.provision_full(provision_config)
 
         bulk_entity_uuid = results["entity"]["entity_uuid"]
@@ -392,8 +381,9 @@ def main():
     print()
     print("High-level methods tested:")
     print("  - auth_login(email, password)")
+    print("  - auth_logout() (at exit)")
     print("  - entity_type_list()")
-    print("  - entity_create_with_entitlements(config)")
+    print("  - entity_create(config)")
     print("  - entity_get(uuid)")
     print("  - entity_update(uuid, **kwargs)")
     print("  - user_create(entity_uuid, email, first_name, last_name, role)")
@@ -404,12 +394,10 @@ def main():
     print("  - data_backend_add(entity_uuid, name, url)")
     print("  - data_backend_list(entity_uuid)")
     print("  - data_backend_delete(entity_uuid, backend_name)")
-    print("  - entitlement_update(entity_uuid, data)")
     print("  - provision_full(config)")
     print()
     print("Key benefits of HubAPIClient:")
     print("  - Pass role='admin' instead of looking up permission_uuid")
-    print("  - entity_create_with_entitlements() auto-configures On-Premise bundle")
     print("  - entity_update() does smart partial updates (fetch-merge-put)")
     print("  - provision_full() creates entity + all users in one call")
     print("  - user_get_by_email() abstracts pagination")

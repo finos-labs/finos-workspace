@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RoleDialog } from "~/components/AdminRoles/RoleDialog";
 import type { RoleT } from "~/components/AdminRoles/types";
 
@@ -27,7 +27,6 @@ const usersData = [
     source: "user",
     permissions_uuid: "perm-1",
     role: "User",
-    billing_active: true,
     status: "active",
     last_login: null,
     last_active: null,
@@ -58,18 +57,14 @@ vi.mock("@tanstack/react-query", async () => {
   );
   return {
     ...actual,
-    useMutation: vi.fn().mockImplementation((_opts: unknown) => {
-      const map: Record<string, Mock> = {
-        // postEntityRole.name might be minified — match by mutationFn reference
-        // We use the call-order trick below: each test sets up explicit asserts.
-      };
-      void map;
-      return {
+    // Saving calls the API function the mutation wraps, so a test sees what is sent.
+    useMutation: vi.fn(
+      ({ mutationFn }: { mutationFn: (variables: unknown) => unknown }) => ({
         mutate: vi.fn(),
-        mutateAsync: vi.fn().mockResolvedValue({}),
+        mutateAsync: async (variables: unknown) => mutationFn(variables),
         isPending: false,
-      };
-    }),
+      }),
+    ),
     useQueryClient: vi.fn(() => ({
       refetchQueries: vi.fn(),
       invalidateQueries: vi.fn(),
@@ -216,6 +211,159 @@ describe("RoleDialog", () => {
     });
   });
 
+  describe("role settings", () => {
+    const role: RoleT = {
+      uuid: "r1",
+      name: "Analyst",
+      description: "Reads dashboards",
+      users: [],
+      createdAt: 0,
+      sharing: "receive",
+      copilot_calls_day: 50,
+      copilot_tokens_day: null,
+      upload_size_gb: 2,
+      excel_add_in: true,
+    };
+
+    const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement;
+    const noLimit = (label: string) =>
+      screen.getByRole("checkbox", { name: `${label}: no limit` });
+    const LIMITS = [
+      "Copilot calls per day",
+      "Copilot tokens per day",
+      "Upload size (GB)",
+    ];
+    // The select's label names its form item, not the trigger
+    const sharingSelect = () =>
+      within(
+        screen.getByText("Sharing").closest(".BB-FormSelect") as HTMLElement,
+      ).getByRole("combobox");
+
+    it("starts a new role with no sharing, no limits and no Excel add-in", () => {
+      renderDialog();
+
+      expect(sharingSelect()).toHaveTextContent("None");
+      for (const label of LIMITS) {
+        expect(noLimit(label)).toBeChecked();
+        expect(field(label)).toBeDisabled();
+        expect(field(label).value).toBe("");
+      }
+      expect(screen.getByRole("checkbox", { name: "Excel add-in" })).not.toBeChecked();
+    });
+
+    it("shows the settings of the role it edits, a null limit as no limit", () => {
+      renderDialog({ mode: "edit", initialData: role });
+
+      expect(sharingSelect()).toHaveTextContent("Receive only");
+      expect(field("Copilot calls per day").value).toBe("50");
+      expect(noLimit("Copilot calls per day")).not.toBeChecked();
+      expect(noLimit("Copilot tokens per day")).toBeChecked();
+      expect(field("Copilot tokens per day")).toBeDisabled();
+      expect(field("Upload size (GB)").value).toBe("2");
+      expect(screen.getByRole("checkbox", { name: "Excel add-in" })).toBeChecked();
+    });
+
+    it("offers the three sharing levels", async () => {
+      renderDialog();
+
+      await userEvent.click(sharingSelect());
+
+      expect(
+        (await screen.findAllByRole("option")).map((option) => option.textContent),
+      ).toEqual(["None", "Receive only", "Can share"]);
+    });
+
+    it("creates a role with the limits typed, the others as no limit", async () => {
+      renderDialog();
+      await typeName("Sharers");
+      await userEvent.click(sharingSelect());
+      await userEvent.click(await screen.findByRole("option", { name: "Can share" }));
+      await userEvent.click(noLimit("Copilot tokens per day"));
+      await userEvent.type(field("Copilot tokens per day"), "5000");
+      await userEvent.click(noLimit("Upload size (GB)"));
+      await userEvent.type(field("Upload size (GB)"), "3");
+      await userEvent.click(screen.getByRole("checkbox", { name: "Excel add-in" }));
+
+      const save = screen.getByRole("button", { name: /^create role$/i });
+      await waitFor(() => expect(save).toBeEnabled());
+      await userEvent.click(save);
+
+      await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+      expect(mockCreate.mock.calls[0][0]).toMatchObject({
+        name: "Sharers",
+        sharing: "share",
+        copilot_calls_day: null,
+        copilot_tokens_day: 5000,
+        upload_size_gb: 3,
+        excel_add_in: true,
+      });
+    });
+
+    it("saves an edited limit and keeps the others as they were", async () => {
+      renderDialog({ mode: "edit", initialData: role });
+      await userEvent.clear(field("Copilot calls per day"));
+      await userEvent.type(field("Copilot calls per day"), "75");
+
+      const save = screen.getByRole("button", { name: /save changes/i });
+      await waitFor(() => expect(save).toBeEnabled());
+      await userEvent.click(save);
+
+      await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+      expect(mockUpdate.mock.calls[0][0]).toMatchObject({
+        uuid: "r1",
+        sharing: "receive",
+        copilot_calls_day: 75,
+        copilot_tokens_day: null,
+        upload_size_gb: 2,
+        excel_add_in: true,
+      });
+    });
+
+    it("refuses a limit that is not a whole number", async () => {
+      renderDialog();
+      await typeName("Analyst");
+      await userEvent.click(noLimit("Upload size (GB)"));
+      await userEvent.type(field("Upload size (GB)"), "1.5");
+
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: /^create role$/i })).toBeDisabled(),
+      );
+    });
+
+    it("asks for a number once No limit is unchecked", async () => {
+      renderDialog();
+      await typeName("Analyst");
+      await userEvent.click(noLimit("Copilot calls per day"));
+
+      expect(field("Copilot calls per day")).toBeEnabled();
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: /^create role$/i })).toBeDisabled(),
+      );
+      expect(await screen.findByText("Enter a whole number")).toBeInTheDocument();
+
+      await userEvent.type(field("Copilot calls per day"), "0");
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: /^create role$/i })).toBeEnabled(),
+      );
+    });
+
+    it("lifts a limit when No limit is checked", async () => {
+      renderDialog({ mode: "edit", initialData: role });
+      await userEvent.click(noLimit("Upload size (GB)"));
+
+      const save = screen.getByRole("button", { name: /save changes/i });
+      await waitFor(() => expect(save).toBeEnabled());
+      await userEvent.click(save);
+
+      await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+      expect(mockUpdate.mock.calls[0][0]).toMatchObject({
+        copilot_calls_day: 50,
+        copilot_tokens_day: null,
+        upload_size_gb: null,
+      });
+    });
+  });
+
   describe("Edit mode: trash button dirties the form", () => {
     const role: RoleT = {
       uuid: "r1",
@@ -223,6 +371,11 @@ describe("RoleDialog", () => {
       description: "Reads dashboards",
       users: ["alice@example.com"],
       createdAt: 0,
+      sharing: "none",
+      copilot_calls_day: 0,
+      copilot_tokens_day: 0,
+      upload_size_gb: 0,
+      excel_add_in: false,
     };
 
     it("removes a member via trash and the form becomes dirty", async () => {

@@ -269,6 +269,118 @@ describe("useIframeProtocol", () => {
     expect(result.current.manifest).toEqual(widgets);
   });
 
+  it("hands the iframe its source's headers from memory, not the saved widget's", async () => {
+    const { useWidgetContext } = await import("~/components/Widget.context");
+    vi.mocked(useWidgetContext).mockReturnValue({
+      widget: {
+        id: "w",
+        sourceId: "src-1",
+        endpoint: {
+          url: "http://localhost:8501/app",
+          method: "GET",
+          headers: { "X-Api-Key": "stale-saved-key" },
+        },
+      },
+    } as unknown as ReturnType<typeof useWidgetContext>);
+    const { useBackendConnectorStore } = await import("~/lib/state/backendConnector");
+    useBackendConnectorStore.setState({
+      apiSources: [
+        {
+          id: "src-1",
+          name: "Streamlit",
+          url: "http://localhost:8501",
+          endpointHeaders: [
+            { key: "X-Api-Key", value: "from-source", location: "headers" },
+          ],
+        },
+      ],
+    });
+    const postMessage = vi.fn();
+    const iframeRef = createMockIframeRef({} as Window, "http://localhost:8501/app");
+    renderHook(() => useIframeProtocol({ iframeRef }));
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: "workspace-connect", widgets: [] },
+          source: { postMessage } as unknown as Window,
+          origin: "http://localhost:8501",
+        }),
+      );
+    });
+
+    expect(postMessage).toHaveBeenCalledWith(
+      { type: "workspace-auth", headers: { "X-Api-Key": "from-source" } },
+      "http://localhost:8501",
+    );
+  });
+
+  it("hands the iframe its source's headers when they arrive after the handshake", async () => {
+    const { useWidgetContext } = await import("~/components/Widget.context");
+    vi.mocked(useWidgetContext).mockReturnValue({
+      widget: {
+        id: "w",
+        sourceId: "src-1",
+        endpoint: { url: "http://localhost:8501/app", method: "GET" },
+      },
+    } as unknown as ReturnType<typeof useWidgetContext>);
+    const { useBackendConnectorStore } = await import("~/lib/state/backendConnector");
+    // After a reload the source comes back from IndexedDB without its credentials
+    useBackendConnectorStore.setState({
+      apiSources: [
+        {
+          id: "src-1",
+          name: "Streamlit",
+          url: "http://localhost:8501",
+          endpointHeaders: null,
+        },
+      ],
+    });
+    const postMessage = vi.fn();
+    const iframeRef = createMockIframeRef({} as Window, "http://localhost:8501/app");
+    const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: "workspace-connect", widgets: [] },
+          source: { postMessage } as unknown as Window,
+          origin: "http://localhost:8501",
+        }),
+      );
+    });
+    expect(postMessage).not.toHaveBeenCalled();
+
+    // The API's answer puts the credentials back in memory
+    act(() => {
+      useBackendConnectorStore.setState({
+        apiSources: [
+          {
+            id: "src-1",
+            name: "Streamlit",
+            url: "http://localhost:8501",
+            endpointHeaders: [
+              { key: "X-Api-Key", value: "from-source", location: "headers" },
+            ],
+          },
+        ],
+      });
+    });
+
+    expect(postMessage).toHaveBeenCalledWith(
+      { type: "workspace-auth", headers: { "X-Api-Key": "from-source" } },
+      "http://localhost:8501",
+    );
+    // The page that made the handshake is still the one requests go to
+    act(() => {
+      result.current.requestWidgetData("w1");
+    });
+    expect(postMessage).toHaveBeenLastCalledWith(
+      { type: "workspace-request", widgetId: "w1" },
+      "http://localhost:8501",
+    );
+  });
+
   it("sends workspace-request to stored bridgeSource after handshake", async () => {
     const nestedPostMessage = vi.fn();
     const nestedWindow = {

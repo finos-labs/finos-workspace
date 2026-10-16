@@ -11,9 +11,25 @@ map $http_upgrade $connection_upgrade {
   ''      close;
 }
 
+# The access log names each request's path without its query string, and the Referer the
+# same way: a query can carry a credential (the signature of a pre-signed file URL, an OAuth
+# code), and no log may keep one. Otherwise the lines read like nginx's "combined" format.
+map $request_uri $request_path {
+  "~^([^?]*)" $1;
+}
+map $http_referer $referer_path {
+  ""           "-";
+  "~^([^?#]*)" $1;
+}
+log_format workspace '$remote_addr - $remote_user [$time_local] '
+                     '"$request_method $request_path $server_protocol" $status '
+                     '$body_bytes_sent "$referer_path" "$http_user_agent"';
+
 server {
   listen ${PORT};
   server_name _;
+
+  access_log /var/log/nginx/access.log workspace;
 
   client_max_body_size 50m;
 

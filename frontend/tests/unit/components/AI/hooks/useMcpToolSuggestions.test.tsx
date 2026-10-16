@@ -4,6 +4,7 @@ import {
   MCP_TOOL_TRIGGER,
   useMcpToolSuggestions,
 } from "~/components/AI/hooks/useMcpToolSuggestions";
+import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
 
 // --- Mocks ---
 
@@ -93,6 +94,16 @@ vi.mock("~/lib/state/mcpTools", async (importOriginal) => {
 describe("useMcpToolSuggestions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // A role grants every tool of the servers these tests use.
+    useCopilotAccessStore.getState().setAccess({
+      models: [],
+      mcp: [
+        "https://api.financial.com",
+        "https://api.opendata.com",
+        "https://api.disabled.com",
+        "https://widget.example.com/mcp",
+      ].map((server_url) => ({ server_url, tool_name: "*" })),
+    });
     // Reset getMCPConnection to default behavior
     mockGetMCPConnection.mockImplementation((serverId: string) => {
       const server = mockServers.find((s) => s.id === serverId);
@@ -125,6 +136,25 @@ describe("useMcpToolSuggestions", () => {
 
       // Should have 3 tools: 2 from server-1 + 1 from server-2 (server-3 is disabled)
       expect(result.current.mcpToolOptions).toHaveLength(3);
+    });
+
+    it("suggests only the tools a role grants", () => {
+      useCopilotAccessStore.getState().setAccess({
+        models: [],
+        mcp: [{ server_url: "https://api.financial.com", tool_name: "tool-1" }],
+      });
+
+      const { result } = renderHook(() => useMcpToolSuggestions());
+
+      expect(result.current.mcpToolOptions.map((t) => t.toolId)).toEqual(["tool-1"]);
+    });
+
+    it("suggests no tool when no role grants one", () => {
+      useCopilotAccessStore.getState().setAccess({ models: [], mcp: [] });
+
+      const { result } = renderHook(() => useMcpToolSuggestions());
+
+      expect(result.current.mcpToolOptions).toEqual([]);
     });
 
     it("excludes tools from disabled servers", () => {

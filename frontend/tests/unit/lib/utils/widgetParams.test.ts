@@ -82,12 +82,9 @@ describe("Widget Params Utility Functions", () => {
   });
 
   describe("createWidgetEndpoint", () => {
-    it("should create endpoint from string URL", () => {
+    it("should create endpoint from string URL, with no credentials", () => {
       const result = createWidgetEndpoint("https://api.example.com/data");
-      expect(result.url).toBe("https://api.example.com/data");
-      expect(result.method).toBe("GET");
-      expect(result.headers).toEqual({});
-      expect(result.query).toEqual({});
+      expect(result).toEqual({ url: "https://api.example.com/data", method: "GET" });
     });
 
     it("should create endpoint from URL object", () => {
@@ -95,35 +92,6 @@ describe("Widget Params Utility Functions", () => {
       const result = createWidgetEndpoint(urlObj);
       expect(result.url).toBe("https://api.example.com/data");
       expect(result.method).toBe("GET");
-    });
-
-    it("should add headers from endpointHeaders", () => {
-      const result = createWidgetEndpoint("https://api.example.com/data", [
-        { key: "Authorization", value: "Bearer token", location: "headers" },
-        { key: "Content-Type", value: "application/json", location: "headers" },
-      ]);
-      expect(result.headers).toEqual({
-        Authorization: "Bearer token",
-        "Content-Type": "application/json",
-      });
-    });
-
-    it("should add query params from endpointHeaders", () => {
-      const result = createWidgetEndpoint("https://api.example.com/data", [
-        { key: "page", value: "1", location: "query" },
-        { key: "limit", value: "10", location: "query" },
-      ]);
-      expect(result.query).toEqual({
-        page: "1",
-        limit: "10",
-      });
-    });
-
-    it("should default location to headers", () => {
-      const result = createWidgetEndpoint("https://api.example.com/data", [
-        partial({ key: "X-Custom", value: "value" }),
-      ]);
-      expect(result.headers?.["X-Custom"]).toBe("value");
     });
 
     it("should clean duplicate slashes in URL", () => {
@@ -176,12 +144,6 @@ describe("Widget Params Utility Functions", () => {
   });
 
   describe("createWidgetEndpoint edge cases", () => {
-    it("should handle empty endpointHeaders array", () => {
-      const result = createWidgetEndpoint("https://api.example.com", []);
-      expect(result.headers).toEqual({});
-      expect(result.query).toEqual({});
-    });
-
     it("should handle URL with existing query string", () => {
       const result = createWidgetEndpoint("https://api.example.com?existing=param");
       expect(result.url).toBe("https://api.example.com?existing=param");

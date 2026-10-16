@@ -1,8 +1,9 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import type { PropsWithChildren } from "react";
+import { describe, expect, it } from "vitest";
 import useQueriesLeft from "~/components/AI/hooks/useQueriesLeft";
-import { useAuthStore } from "~/lib/state/auth";
-import { type Usage, useFeatureFlagsStore } from "~/lib/state/featureFlags";
+import { type Usage, useAccessStore } from "~/lib/state/access";
 
 const usage = (overrides: Partial<Usage> = {}): Usage => ({
   number_copilot_calls_day_count: 10,
@@ -14,75 +15,106 @@ const usage = (overrides: Partial<Usage> = {}): Usage => ({
   ...overrides,
 });
 
+/** Renders the hook with the flags GET /app/copilot-keys answered. */
+function renderQueriesLeft(hasOpenaiKey = false) {
+  const queryClient = new QueryClient();
+  queryClient.setQueryData(["copilot-keys"], {
+    has_openai_key: hasOpenaiKey,
+    has_perplexity_key: false,
+  });
+  const wrapper = ({ children }: PropsWithChildren) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+  return renderHook(() => useQueriesLeft(), { wrapper });
+}
+
 describe("useQueriesLeft", () => {
-  beforeEach(() => {
-    useAuthStore.setState({ openaiApiKey: "" });
-  });
+  it("has no limit to report once the user saved their own OpenAI key", () => {
+    useAccessStore.setState({ usage: usage({ copilot_calls_limit: 0 }) });
 
-  it("counts the queries left against the daily limit", () => {
-    useFeatureFlagsStore.setState({ usage: usage() });
-
-    const { result } = renderHook(() => useQueriesLeft());
-
-    expect(result.current.queriesLeft).toBe(90);
-  });
-
-  it("has no limit to report when none is set", () => {
-    useFeatureFlagsStore.setState({
-      usage: usage({ copilot_calls_limit: 0, copilot_tokens_limit: null }),
-    });
-
-    const { result } = renderHook(() => useQueriesLeft());
+    const { result } = renderQueriesLeft(true);
 
     expect(result.current.queriesLeft).toBeNull();
   });
 
+  it("counts the queries left against the daily limit", () => {
+    useAccessStore.setState({ usage: usage() });
+
+    const { result } = renderQueriesLeft();
+
+    expect(result.current.queriesLeft).toBe(90);
+  });
+
+  it("has no limit to report when the user's roles set none", () => {
+    useAccessStore.setState({
+      usage: usage({ copilot_calls_limit: null, copilot_tokens_limit: null }),
+    });
+
+    const { result } = renderQueriesLeft();
+
+    expect(result.current.queriesLeft).toBeNull();
+  });
+
+  it("leaves no query when the daily calls limit is zero", () => {
+    useAccessStore.setState({
+      usage: usage({
+        copilot_calls_limit: 0,
+        number_copilot_calls_day_count: 0,
+        copilot_tokens_limit: null,
+      }),
+    });
+
+    const { result } = renderQueriesLeft();
+
+    expect(result.current.queriesLeft).toBe(0);
+  });
+
   it("leaves no query once the daily tokens are used up", () => {
-    useFeatureFlagsStore.setState({
+    useAccessStore.setState({
       usage: usage({
         copilot_tokens_limit: 1000,
         number_copilot_tokens_day_count: 1200,
       }),
     });
 
-    const { result } = renderHook(() => useQueriesLeft());
+    const { result } = renderQueriesLeft();
 
     expect(result.current.queriesLeft).toBe(0);
   });
 
   it("keeps counting queries while tokens remain", () => {
-    useFeatureFlagsStore.setState({
+    useAccessStore.setState({
       usage: usage({
         copilot_tokens_limit: 1000,
         number_copilot_tokens_day_count: 400,
       }),
     });
 
-    const { result } = renderHook(() => useQueriesLeft());
+    const { result } = renderQueriesLeft();
 
     expect(result.current.queriesLeft).toBe(90);
   });
 
   it("limits by tokens alone", () => {
-    useFeatureFlagsStore.setState({
+    useAccessStore.setState({
       usage: usage({
-        copilot_calls_limit: 0,
+        copilot_calls_limit: null,
         copilot_tokens_limit: 1000,
         number_copilot_tokens_day_count: 1000,
       }),
     });
 
-    const { result } = renderHook(() => useQueriesLeft());
+    const { result } = renderQueriesLeft();
 
     expect(result.current.queriesLeft).toBe(0);
   });
 
   it("blocks every query when the token limit is zero", () => {
-    useFeatureFlagsStore.setState({
+    useAccessStore.setState({
       usage: usage({ copilot_tokens_limit: 0, number_copilot_tokens_day_count: 0 }),
     });
 
-    const { result } = renderHook(() => useQueriesLeft());
+    const { result } = renderQueriesLeft();
 
     expect(result.current.queriesLeft).toBe(0);
   });

@@ -1,12 +1,13 @@
 import { HttpResponse, http, type JsonBodyType, passthrough } from "msw";
+import type { Usage, UserAccess } from "~/lib/state/access";
 
 // Default mock data
+// The API never sends a web session token: the session is an HttpOnly cookie
 export const mockUser = {
   uuid: "test-user-uuid",
   email: "test@example.com",
   first_name: "Test",
   last_name: "User",
-  token: "mock-jwt-token",
   is_superuser: false,
 };
 
@@ -31,20 +32,44 @@ export const mockDashboardData = {
   entity_shared: {},
 };
 
-export const mockUsage = {
-  copilot_messages: { used: 10, limit: 100 },
-  file_uploads: { used: 5, limit: 50 },
-  widgets: { used: 20, limit: 200 },
+export const mockUsage: Usage = {
+  number_copilot_calls_day_count: 10,
+  number_copilot_tokens_day_count: 0,
+  total_file_upload_size_gb_count: 5,
+  copilot_calls_limit: 100,
+  copilot_tokens_limit: null,
+  file_upload_size_limit: 50,
 };
 
-export const mockFeatureFlags = {
-  tier: "full",
-  features: {
-    copilot: true,
-    file_uploads: true,
-    custom_widgets: true,
+export const mockAccess: UserAccess = {
+  user_type: "User",
+  sharing: "none",
+  excel_add_in: false,
+};
+
+/** GET /app/session: the signed-in user restored from the session cookie. */
+export const mockSession = {
+  uuid: mockUser.uuid,
+  email: mockUser.email,
+  entity_name: null,
+  role: null,
+  access: mockAccess,
+  user: {
+    first_name: mockUser.first_name,
+    last_name: mockUser.last_name,
+    display_settings: { lastVisitedPage: "/app" },
   },
 };
+
+/** GET/PUT /app/copilot-keys: whether keys are saved; the values never come back. */
+export const mockCopilotKeys = { has_openai_key: false, has_perplexity_key: false };
+
+/** A cookie request is only accepted when it names the web client. */
+const isWebClient = (request: Request) =>
+  request.headers.get("X-Workspace-Client") === "web";
+
+const unauthorized = () =>
+  HttpResponse.json({ detail: "Not authenticated" }, { status: 401 });
 
 // Base URL for API - matches VITE_BACKEND_URL in tests
 const BASE_URL = "https://backend.test";
@@ -60,8 +85,12 @@ export const handlers = [
       return HttpResponse.json({ detail: "Invalid credentials" }, { status: 401 });
     }
 
+    // The organization requires an authenticator: the API sets the enrollment cookie
     if (body.email === "2fa@example.com") {
-      return HttpResponse.json({ requires_2fa: true, status: 200 }, { status: 200 });
+      return HttpResponse.json(
+        { two_factor_required: true, message: "Two-factor authentication is required" },
+        { status: 202 },
+      );
     }
 
     return HttpResponse.json({
@@ -71,30 +100,48 @@ export const handlers = [
   }),
 
   // Validate user
-  http.get(`${BASE_URL}/app/validate`, ({ request }) => {
-    const authHeader = request.headers.get("Authorization");
+  http.get(`${BASE_URL}/app/validate`, ({ request }) =>
+    isWebClient(request) ? HttpResponse.json(mockValidateResponse) : unauthorized(),
+  ),
 
-    if (!authHeader || authHeader === "Bearer invalid-token") {
-      return HttpResponse.json({ detail: "Unauthorized" }, { status: 401 });
-    }
+  // The signed-in user, restored from the session cookie after a reload
+  http.get(`${BASE_URL}/app/session`, ({ request }) =>
+    isWebClient(request) ? HttpResponse.json(mockSession) : unauthorized(),
+  ),
 
-    return HttpResponse.json(mockValidateResponse);
+  // The short-lived agent token for the default Copilot
+  http.post(`${BASE_URL}/app/copilot/token`, ({ request }) =>
+    isWebClient(request)
+      ? HttpResponse.json({ token: "mock-agent-token", expires_in: 1800 })
+      : unauthorized(),
+  ),
+
+  // The user's own provider keys: flags only
+  http.get(`${BASE_URL}/app/copilot-keys`, ({ request }) =>
+    isWebClient(request) ? HttpResponse.json(mockCopilotKeys) : unauthorized(),
+  ),
+
+  http.put(`${BASE_URL}/app/copilot-keys`, async ({ request }) => {
+    if (!isWebClient(request)) return unauthorized();
+    const body = (await request.json()) as {
+      openai_api_key?: string | null;
+      perplexity_api_key?: string | null;
+    };
+    return HttpResponse.json({
+      has_openai_key:
+        body.openai_api_key === undefined
+          ? mockCopilotKeys.has_openai_key
+          : body.openai_api_key !== null,
+      has_perplexity_key:
+        body.perplexity_api_key === undefined
+          ? mockCopilotKeys.has_perplexity_key
+          : body.perplexity_api_key !== null,
+    });
   }),
 
   // Logout
   http.post(`${BASE_URL}/app/logout`, () => {
     return HttpResponse.json({ success: true });
-  }),
-
-  // Get user
-  http.get(`${BASE_URL}/app/user`, ({ request }) => {
-    const authHeader = request.headers.get("Authorization");
-
-    if (!authHeader) {
-      return HttpResponse.json({ detail: "Unauthorized" }, { status: 401 });
-    }
-
-    return HttpResponse.json(mockUser);
   }),
 
   // Google auth
@@ -108,12 +155,22 @@ export const handlers = [
     return HttpResponse.json({ ...mockUser, status: 200 });
   }),
 
-  // Microsoft auth
+  // Microsoft and Okta auth: the API verifies the ID token the provider issued
   http.post(`${BASE_URL}/app/microsoft-auth`, async ({ request }) => {
-    const body = (await request.json()) as { token: string };
+    const body = (await request.json()) as { token: string; id_token?: string };
 
-    if (body.token === "invalid-microsoft-token") {
+    if (body.token === "invalid-microsoft-token" || !body.id_token) {
       return HttpResponse.json({ detail: "Invalid Microsoft token" }, { status: 401 });
+    }
+
+    return HttpResponse.json({ ...mockUser, status: 200 });
+  }),
+
+  http.post(`${BASE_URL}/app/okta-auth`, async ({ request }) => {
+    const body = (await request.json()) as { token: string; id_token?: string };
+
+    if (!body.id_token) {
+      return HttpResponse.json({ detail: "Invalid Okta token" }, { status: 401 });
     }
 
     return HttpResponse.json({ ...mockUser, status: 200 });
@@ -206,11 +263,16 @@ export const handlers = [
     return HttpResponse.json({ success: true });
   }),
 
-  // ============ Usage & Tier Endpoints ============
+  // ============ Usage & Access Endpoints ============
 
   // Get usage
   http.get(`${BASE_URL}/app/usage`, () => {
     return HttpResponse.json(mockUsage);
+  }),
+
+  // What the user's roles let them do
+  http.get(`${BASE_URL}/app/access`, () => {
+    return HttpResponse.json(mockAccess);
   }),
 
   // ============ Widget Metadata Endpoints ============
@@ -261,10 +323,6 @@ export const handlers = [
 
   // ============ Files Endpoints ============
 
-  http.get(`${BASE_URL}/app/files`, () => {
-    return HttpResponse.json([]);
-  }),
-
   http.get(`${BASE_URL}/app/files/:fileUuid/presigned-url`, ({ params }) => {
     const { fileUuid } = params;
     return HttpResponse.json({
@@ -283,10 +341,6 @@ export const handlers = [
   }),
 
   // ============ Copilot Endpoints ============
-
-  http.get(`${BASE_URL}/app/copilot-chats`, () => {
-    return HttpResponse.json({ chats: [] });
-  }),
 
   http.post(`${BASE_URL}/app/copilot-chats`, () => {
     return HttpResponse.json(mockUsage);
@@ -315,11 +369,6 @@ export const handlers = [
   }),
 
   // ============ Other Endpoints ============
-
-  // User has entity
-  http.get(`${BASE_URL}/app/user-has-entity`, () => {
-    return HttpResponse.json({ success: true });
-  }),
 
   // Theme settings
   http.get(`${BASE_URL}/app/theme-settings`, () => {

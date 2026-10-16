@@ -1,4 +1,5 @@
 import { useMobile } from "~/lib/providers/MobileProvider";
+import { canShare, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import AddSkillDialog from "../AI/AddSkillDialog";
 import { CreateWidgetMetadataDialog } from "../AI/CreateWidgetMetadataDialog";
@@ -47,6 +48,10 @@ export default function OuterComponents() {
   }));
 
   const isMobile = useMobile((s) => s.isMobile);
+  const { mayShare, excelAddIn } = useShallowAccessStore((state) => ({
+    mayShare: canShare(state.access),
+    excelAddIn: !!state.access?.excel_add_in,
+  }));
 
   return (
     <>
@@ -65,9 +70,9 @@ export default function OuterComponents() {
       {renamePopup && <RenamePopup />}
       <ExportTemplatePopup />
       <CreateFolderPopup />
-      {shareDashboardPopupId && <ShareDashboardDialog />}
-      {shareUserAppsPopupId && <ShareUserAppDialog />}
-      {excelExportPopup && <ExcelExportDialog />}
+      {mayShare && shareDashboardPopupId && <ShareDashboardDialog />}
+      {mayShare && shareUserAppsPopupId && <ShareUserAppDialog />}
+      {excelAddIn && excelExportPopup && <ExcelExportDialog />}
       {exportFolderPopup && <ExportFolderDialog />}
       <McpConnectionManager />
       <WorkspaceBridgeConnectionManager />

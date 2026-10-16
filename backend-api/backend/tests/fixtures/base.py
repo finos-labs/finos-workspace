@@ -4,15 +4,22 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 from contextlib import asynccontextmanager
 from datetime import UTC
 from typing import Any, TypedDict
 from collections.abc import Mapping, Sequence
 
+import jwt
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, text
 from sqlalchemy.sql import Executable
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# The origin of the web app and the admin panel in the tests; requests are sent to
+# https://test, so that the client keeps and sends the API's secure session cookies
+TEST_ORIGIN = "http://test"
+TEST_BASE_URL = "https://test"
 
 _BASE_TEST_ENV = {
     "MODE": "test",
@@ -21,15 +28,27 @@ _BASE_TEST_ENV = {
     "FRONTENDURL": "http://localhost:3000",
     "SELFURL": "http://localhost:8000",
     "JWT_SECRET": "supersecretkeyfortestingonly12345",
-    "WORKSPACE_AES_KEY": "sixteenbytekey!!",
-    "DISABLE_CORS": "true",
+    "WORKSPACE_AES_KEY": "d29ya3NwYWNlLXRlc3Qtc3VpdGUtYXQtcmVzdC1rZXk",
+    "LOCAL_STORAGE_SECRET_KEY": "local-storage-signing-key-for-the-test-suite",
+    "BACKEND_CORS_ORIGINS": TEST_ORIGIN,
 }
 for key, value in _BASE_TEST_ENV.items():
     os.environ.setdefault(key, value)
+# The service token the API holds for the /app routes, as create_local_env writes it
+os.environ.setdefault(
+    "WORKSPACE_AUTH_TOKEN",
+    jwt.encode({"sub": "workspace"}, os.environ["JWT_SECRET"], algorithm="HS256"),
+)
 
+from api import auth_helpers, crypto  # noqa: E402
 from api.models import User  # noqa: E402
 from utilities.config import settings  # noqa: E402
 from main import app  # noqa: E402
+
+# What the web app sends with every request; its session cookie comes on top
+WEB_HEADERS = {auth_helpers.CLIENT_HEADER: "web", "Origin": TEST_ORIGIN}
+# What the admin panel sends with every request
+ADMIN_HEADERS = {auth_helpers.CLIENT_HEADER: "admin", "Origin": TEST_ORIGIN}
 
 logger = logging.getLogger(__name__)
 
@@ -69,8 +88,8 @@ _AUTH_USER: UserConfig = {
     "entity_code": "TST",
     "entity_name": "Test Entity",
     "entity_email": "entity@example.com",
-    "perm_name": "admin",
-    "session_source": "integration_test",
+    "perm_name": "Developer",
+    "session_source": "app",
 }
 
 _ADMIN_USER: UserConfig = {
@@ -85,7 +104,7 @@ _ADMIN_USER: UserConfig = {
     "entity_name": "Admin Entity",
     "entity_email": "admin_entity@example.com",
     "perm_name": "Admin",
-    "session_source": "test_admin",
+    "session_source": "app",
 }
 
 _SECOND_USER: UserConfig = {
@@ -99,8 +118,8 @@ _SECOND_USER: UserConfig = {
     "entity_code": "SEC",
     "entity_name": "Second Entity",
     "entity_email": "second_entity@example.com",
-    "perm_name": "admin",
-    "session_source": "test_second",
+    "perm_name": "Developer",
+    "session_source": "app",
 }
 
 _USER_UUID_TABLE_DELETE_QUERIES = [
@@ -370,23 +389,30 @@ async def _create_session_record(
     user_uuid: str,
     session_uuid: str,
     source: str,
-) -> None:
-    """Create a session row for auth-based fixtures."""
+    *,
+    app_session: bool = True,
+    lifetime_seconds: int = 3600,
+) -> str:
+    """Create a session row for auth-based fixtures and return its token, which the
+    table stores as a hash only, as sign-in does."""
     from api.models import Session as SessionModel
     from datetime import datetime, timedelta
 
-    exp_aware = datetime.now(UTC) + timedelta(hours=1)
+    token = secrets.token_urlsafe(32)
+    exp_aware = datetime.now(UTC) + timedelta(seconds=lifetime_seconds)
     exp_naive = exp_aware.replace(tzinfo=None)
 
     new_session = SessionModel(
         uuid=session_uuid,
+        token_hash=crypto.hash_token(token),
         user_uuid=user_uuid,
         expiration_date=exp_naive,
-        app_session=True,
+        app_session=app_session,
         source=source,
     )
     db_session.add(new_session)
     await db_session.commit()
+    return token
 
 
 def _build_service_jwt() -> str:
@@ -402,18 +428,32 @@ def _build_service_jwt() -> str:
     return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
 
 
+def web_session_headers(session_token: str) -> dict[str, str]:
+    """The headers of the web app's requests with this session: its cookie, its client
+    header and its origin."""
+    return {**WEB_HEADERS, "Cookie": f"{auth_helpers.SESSION_COOKIE}={session_token}"}
+
+
 @asynccontextmanager
-async def _make_auth_client(service_jwt: str, session_token: str):
-    """Yield an AsyncClient with standard auth headers set."""
+async def bearer_client(session_token: str, origin: str | None = TEST_ORIGIN):
+    """Yield an AsyncClient that is a client other than a browser (the Excel add-in, the
+    admin CLI): its session is a bearer token, and it has no cookies."""
+    headers = {"Authorization": f"Bearer {session_token}"}
+    if origin is not None:
+        headers["Origin"] = origin
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as auth_ac:
-        auth_ac.headers.update(
-            {
-                "X-Workspace-Authorization": f"Bearer {service_jwt}",
-                "Authorization": f"Bearer {session_token}",
-                "Origin": "http://test",
-            }
-        )
+    async with AsyncClient(
+        transport=transport, base_url=TEST_BASE_URL, headers=headers
+    ) as bearer_ac:
+        yield bearer_ac
+
+
+@asynccontextmanager
+async def _make_auth_client(session_token: str):
+    """Yield an AsyncClient that is the web app signed in with this session."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url=TEST_BASE_URL) as auth_ac:
+        auth_ac.headers.update(web_session_headers(session_token))
         yield auth_ac
 
 
@@ -461,7 +501,6 @@ def _get_or_create_entity(
         name=name,
         entity_type_uuid=entity_type_uuid,
         email=email,
-        seats=100,
     )
     session.add(entity)
     session.commit()
@@ -515,7 +554,7 @@ def _seed_entities() -> None:
             session,
             uuid=_DEVELOPER_UUID,
             entity_uuid=developer_entity.uuid,
-            name="developer",
+            name="Developer",
         )
 
     engine.dispose()
@@ -546,6 +585,12 @@ __all__ = [
     "_create_session_record",
     "_build_service_jwt",
     "_make_auth_client",
+    "web_session_headers",
+    "bearer_client",
+    "WEB_HEADERS",
+    "ADMIN_HEADERS",
+    "TEST_ORIGIN",
+    "TEST_BASE_URL",
     "_seed_entities",
     "_get_test_db_url_async",
     "_get_test_db_url_sync",
