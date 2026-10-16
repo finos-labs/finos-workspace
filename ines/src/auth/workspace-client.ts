@@ -7,7 +7,8 @@
  *   POST /app/copilot/authorize whether the user's roles allow a model and some MCP tools
  *
  * The user's own session token authenticates them. Usage and access checks also carry the metering
- * token, which only the operator and this service hold, so users cannot write their own usage.
+ * token, which only the operator and this service hold, so users cannot write their own usage. Every
+ * call carries WORKSPACE_ORIGIN as its Origin: the API refuses the calls of an origin it does not allow.
  */
 
 import { getLogger } from "../lib/logger";
@@ -56,13 +57,14 @@ export interface WorkspaceClient {
 
 export interface WorkspaceClientOptions {
   apiUrl: string;
+  origin: string;
   meteringToken: string;
   timeoutMs?: number;
   fetch?: typeof fetch;
 }
 
 export function createWorkspaceClient(options: WorkspaceClientOptions): WorkspaceClient {
-  const { apiUrl, meteringToken, timeoutMs = 10_000 } = options;
+  const { apiUrl, origin, meteringToken, timeoutMs = 10_000 } = options;
   const doFetch = options.fetch ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
 
   /** One call; `outcome` for the metrics is decided by the caller from the response. */
@@ -78,6 +80,7 @@ export function createWorkspaceClient(options: WorkspaceClientOptions): Workspac
       const response = await doFetch(`${apiUrl}${path}`, {
         method: init.method,
         headers: {
+          Origin: origin,
           Authorization: `Bearer ${token}`,
           ...(init.metering ? { [METERING_HEADER]: `Bearer ${meteringToken}` } : {}),
           ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),

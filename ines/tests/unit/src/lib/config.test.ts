@@ -3,6 +3,7 @@ import { loadConfig } from "../../../../src/lib/config";
 
 const WORKSPACE_ENV = {
   WORKSPACE_API_URL: "http://api:8000/",
+  WORKSPACE_ORIGIN: "http://localhost:3000/",
   INES_METERING_TOKEN: "metering-token",
   INES_SCOPE_SECRET: "0123456789abcdef0123",
   INES_CORS_ORIGINS: "http://localhost:3000",
@@ -14,6 +15,7 @@ describe("loadConfig — workspace auth (the default)", () => {
     expect(config.auth).toEqual({
       mode: "workspace",
       apiUrl: "http://api:8000",
+      origin: "http://localhost:3000",
       meteringToken: "metering-token",
       cacheSeconds: 30,
     });
@@ -34,6 +36,7 @@ describe("loadConfig — workspace auth (the default)", () => {
     }
     expect(message).toContain("Invalid configuration");
     expect(message).toContain("WORKSPACE_API_URL is required");
+    expect(message).toContain("WORKSPACE_ORIGIN is required");
     expect(message).toContain("INES_METERING_TOKEN is required");
     expect(message).toContain("INES_SCOPE_SECRET is required");
     expect(message).toContain("INES_CORS_ORIGINS is required");
@@ -42,6 +45,8 @@ describe("loadConfig — workspace auth (the default)", () => {
   it("refuses a short scope secret, a bad API URL and a CORS entry that is not an origin", () => {
     expect(() => loadConfig({ ...WORKSPACE_ENV, INES_SCOPE_SECRET: "short" })).toThrow("at least 16 characters");
     expect(() => loadConfig({ ...WORKSPACE_ENV, WORKSPACE_API_URL: "ftp://api" })).toThrow("must be an http(s) URL");
+    expect(() => loadConfig({ ...WORKSPACE_ENV, WORKSPACE_ORIGIN: "localhost:3000" })).toThrow("WORKSPACE_ORIGIN must be an origin");
+    expect(() => loadConfig({ ...WORKSPACE_ENV, WORKSPACE_ORIGIN: "http://a.test/path" })).toThrow("WORKSPACE_ORIGIN must be an origin");
     expect(() => loadConfig({ ...WORKSPACE_ENV, INES_CORS_ORIGINS: "localhost:3000" })).toThrow("not an origin");
     expect(() => loadConfig({ ...WORKSPACE_ENV, INES_CORS_ORIGINS: "http://a.test/path" })).toThrow("not an origin");
   });
@@ -99,9 +104,13 @@ describe("loadConfig — models and limits", () => {
 });
 
 describe("loadConfig — the Workspace's files", () => {
-  it("fetches the links on the browser's address from the API's, with workspace auth", () => {
+  it("fetches the links on the browser's address from the API's, with workspace auth and its origin", () => {
     const config = loadConfig({ ...WORKSPACE_ENV, WORKSPACE_PUBLIC_URL: "http://localhost:8000/" });
-    expect(config.workspaceFiles).toEqual({ publicUrl: "http://localhost:8000", internalUrl: "http://api:8000" });
+    expect(config.workspaceFiles).toEqual({
+      publicUrl: "http://localhost:8000",
+      internalUrl: "http://api:8000",
+      origin: "http://localhost:3000",
+    });
   });
 
   it("is not set unless asked for", () => {

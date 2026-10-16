@@ -12,6 +12,7 @@ function clientAnswering(respond: (seen: Seen) => Response | Promise<Response>) 
   const calls: Seen[] = [];
   const client = createWorkspaceClient({
     apiUrl: "http://api:8000",
+    origin: "http://localhost:3000",
     meteringToken: "metering-secret",
     fetch: (async (input: string | URL | Request, init?: RequestInit) => {
       const seen: Seen = {
@@ -51,6 +52,7 @@ describe("getUser", () => {
     expect(await clientAnswering(() => json({ nothing: true })).client.getUser("t")).toEqual({ ok: false, reason: "unavailable" });
     const unreachable = createWorkspaceClient({
       apiUrl: "http://api:8000",
+      origin: "http://localhost:3000",
       meteringToken: "m",
       fetch: (() => Promise.reject(new Error("connection refused"))) as unknown as typeof fetch,
     });
@@ -101,6 +103,7 @@ describe("recordTokens", () => {
     await clientAnswering(() => json({}, 500)).client.recordTokens("t", 5);
     const unreachable = createWorkspaceClient({
       apiUrl: "http://api:8000",
+      origin: "http://localhost:3000",
       meteringToken: "m",
       fetch: (() => Promise.reject(new Error("down"))) as unknown as typeof fetch,
     });
@@ -174,6 +177,23 @@ describe("authorize", () => {
       ok: false,
       reason: "unavailable",
     });
+  });
+});
+
+describe("Origin", () => {
+  it("is WORKSPACE_ORIGIN on every call, since the API refuses an origin it does not allow", async () => {
+    const { client, calls } = clientAnswering(() => json({ uuid: "11111111-2222-3333-4444-555555555555", allowed: true }));
+    await client.getUser("t");
+    await client.recordQuery("t");
+    await client.recordTokens("t", 10);
+    await client.authorize("t", { agentId: "default_agent", tools: [] });
+    expect(calls.map((call) => call.url)).toEqual([
+      "http://api:8000/app/user",
+      "http://api:8000/app/usage",
+      "http://api:8000/app/usage",
+      "http://api:8000/app/copilot/authorize",
+    ]);
+    for (const call of calls) expect(call.headers.get("origin")).toBe("http://localhost:3000");
   });
 });
 

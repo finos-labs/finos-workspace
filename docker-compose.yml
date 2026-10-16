@@ -192,6 +192,9 @@ services:
       # Every caller signs in with the API, which owns the users, their roles and usage limits. The
       # metering token and the scope secret are in ines/.env (create_local_env writes them).
       WORKSPACE_API_URL: http://api:8000
+      # The Origin of Ines's calls to the API: the web app's address. The API refuses the calls of an origin
+      # it does not allow (BACKEND_CORS_ORIGINS in envs/.env; DISABLE_CORS=1 allows every origin).
+      WORKSPACE_ORIGIN: ${WEB_URL:-http://localhost:3000}
       # The address the browser uses for the API: the Workspace's links to its users' files are on it.
       WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
       # Where what Ines keeps between the requests of a turn lives: who is signed in, how much of their

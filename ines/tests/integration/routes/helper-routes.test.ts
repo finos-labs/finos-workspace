@@ -46,6 +46,7 @@ import type { Authorization, Result, WorkspaceClient } from "../../../src/auth/w
 
 const ENV = {
   WORKSPACE_API_URL: "http://api:8000",
+  WORKSPACE_ORIGIN: "http://localhost:3000",
   INES_METERING_TOKEN: "metering-token",
   INES_SCOPE_SECRET: "0123456789abcdef0123",
   INES_CORS_ORIGINS: "http://localhost:3000",

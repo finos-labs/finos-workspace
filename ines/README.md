@@ -446,6 +446,8 @@ PORT                  # Agent port (default 7777)
 # Who may use the agent (see "Running for many users")
 INES_AUTH                    # workspace (default) or none
 WORKSPACE_API_URL            # Required with workspace auth: the Workspace API as the agent reaches it
+WORKSPACE_ORIGIN             # Required with workspace auth: the Origin of the agent's calls to that API, the web app's
+                             # origin; the API refuses an origin that is not in its BACKEND_CORS_ORIGINS
 WORKSPACE_PUBLIC_URL         # The API as the browser addresses it; links to the Workspace's files on it are fetched from WORKSPACE_API_URL
 INES_METERING_TOKEN          # Required with workspace auth: python -m scripts.create_metering_token
 INES_SCOPE_SECRET            # Required with workspace auth (16+ characters); shared with the MCP server
@@ -537,7 +539,7 @@ The tag after `ollama:` in `DEFAULT_MODEL` must be a model you've **actually pul
 The repository's compose stack runs it, and the tools in it are how the agent searches the web and your documents. The agent itself is standalone — widget search, data, SQL, dashboards, and skills all work with `bun run dev:agent` alone. The MCP server adds web search, fetch, diagrams, and document search.
 
 **Ines will not start and lists what is missing.**
-With the default `INES_AUTH=workspace` she needs `WORKSPACE_API_URL`, `INES_METERING_TOKEN`, `INES_SCOPE_SECRET` and `INES_CORS_ORIGINS`, and she stops at start if any is missing instead of running without users. In the compose stack `create_local_env` and `docker-compose.yml` set them. On a development machine with no Workspace API, set `INES_AUTH=none`.
+With the default `INES_AUTH=workspace` she needs `WORKSPACE_API_URL`, `WORKSPACE_ORIGIN`, `INES_METERING_TOKEN`, `INES_SCOPE_SECRET` and `INES_CORS_ORIGINS`, and she stops at start if any is missing instead of running without users. In the compose stack `create_local_env` and `docker-compose.yml` set them. On a development machine with no Workspace API, set `INES_AUTH=none`.
 
 **A user is told a limit is reached, or that their role does not allow a model.**
 Both come from the Workspace, not from Ines: the daily limits are the entitlement an admin sets, and the models and tools are what the user's roles grant (admin panel, a role's Copilot access), less what is switched off for the user (the web tools, see "The web tools"). Ines only enforces them, and says so in the chat in the API's own words.

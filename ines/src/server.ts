@@ -51,7 +51,11 @@ const app = createApp({
   config,
   workspace:
     config.auth.mode === "workspace"
-      ? createWorkspaceClient({ apiUrl: config.auth.apiUrl, meteringToken: config.auth.meteringToken })
+      ? createWorkspaceClient({
+          apiUrl: config.auth.apiUrl,
+          origin: config.auth.origin,
+          meteringToken: config.auth.meteringToken,
+        })
       : null,
   limits,
   store,
