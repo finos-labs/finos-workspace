@@ -253,8 +253,8 @@ export function getDefaultCopilot(): Copilot {
   if (!_defaultCopilot) {
     _defaultCopilot = {
       id: "default-copilot",
-      name: "Copilot",
-      description: "Copilot is the default agent for Workspace.",
+      name: "Agent",
+      description: "The default agent for Workspace.",
       image: "/assets/images/brand.png",
       endpoints: {
         upload_docs: "",
@@ -277,7 +277,7 @@ export function getDefaultCopilot(): Copilot {
       "workspace-web-search": {
         label: "Web Search",
         default: true,
-        description: "Allows the copilot to search the web.",
+        description: "Allows the agent to search the web.",
       },
     };
   }

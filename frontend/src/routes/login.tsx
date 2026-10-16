@@ -168,7 +168,7 @@ export default function LoginPage() {
   return (
     <div className="absolute top-0 left-0 w-full h-full overflow-y-auto hide-scrollbars">
       <div className="flex items-center justify-center min-h-screen w-full py-8 px-8">
-        <div className="w-full max-w-[408px] p-10 rounded-lg bg-white">
+        <div className="w-full max-w-[408px] p-10 rounded-lg bg-white border border-light-200 shadow-[0_8px_30px_rgba(7,24,32,0.12)]">
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit)}
@@ -625,16 +625,16 @@ export function LastUsedMethod() {
         height="16"
         viewBox="0 0 8 16"
         fill="none"
-        className="absolute -left-2"
+        className="absolute -left-2 text-dark-500"
       >
         <path
           fillRule="evenodd"
           clipRule="evenodd"
           d="M1.41421 9.41421C0.633164 8.63316 0.633165 7.36684 1.41421 6.58579L8 0V16L1.41421 9.41421Z"
-          fill="#36363F"
+          fill="currentColor"
         />
       </svg>
-      <span className="bg-[#36363F] text-white text-xs px-2 py-1">Last Used</span>
+      <span className="bg-dark-500 text-white text-xs px-2 py-1">Last Used</span>
     </div>
   );
 }

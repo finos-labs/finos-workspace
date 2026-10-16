@@ -452,9 +452,9 @@ describe("AIAgentsTab", () => {
       expect(screen.getByRole("button", { name: "Add Agent" })).toBeInTheDocument();
     });
 
-    it("renders the AddCopilotDialog component", () => {
+    it("does not mount AddCopilotDialog in this tab", () => {
       renderAIAgentsTab();
-      expect(screen.getByTestId("add-copilot-dialog")).toBeInTheDocument();
+      expect(screen.queryByTestId("add-copilot-dialog")).not.toBeInTheDocument();
     });
 
     it("renders all agent cards as flat cards when holders exist", () => {

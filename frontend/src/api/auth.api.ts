@@ -744,7 +744,7 @@ export async function fetchAgentsData(
   if (!res.ok) {
     switch (res.status) {
       case 401: {
-        throw new Error("Unauthorized access to the copilot URL.");
+        throw new Error("Unauthorized access to the agent URL.");
       }
       case 404: {
         throw new Error("A valid /agents.json was not found.");

@@ -156,7 +156,7 @@ export default function ChatSelection() {
               "!border-transparent hover:!border-transparent focus-visible:!border-transparent !m-0 h-auto",
               {
                 "w-full justify-center": isFullscreen,
-                "justify-between flex-1 max-w-full": !isFullscreen,
+                "min-w-0 flex-1 max-w-full justify-between": !isFullscreen,
                 "opacity-50": loading,
               },
             )}

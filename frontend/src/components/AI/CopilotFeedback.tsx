@@ -25,7 +25,7 @@ const FEEDBACK_OPTIONS = [
   "Not factually correct / Hallucinations / Inaccurate",
   "Didn't use the correct data (although it's available)",
   "Didn't fully follow instructions / Lazy / Incomplete",
-  "Workspace didn't have the right data for copilot to answer correctly",
+  "Workspace didn't have the right data for the agent to answer correctly",
   "Other",
 ] as const;
 
@@ -200,7 +200,7 @@ export function CopilotFeedback({ message }: { message: AIMessage }) {
           open={state.showFeedbackModal}
           onClose={resetFeedback}
         >
-          <DialogTitle>Unsatisfactory copilot response</DialogTitle>
+          <DialogTitle>Unsatisfactory agent response</DialogTitle>
           <div className="space-y-4">
             {FEEDBACK_OPTIONS.map((option, index) => (
               <Checkbox

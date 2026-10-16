@@ -11,7 +11,7 @@ export function CopilotWrapper({ children }: { children: ReactNode }) {
   return (
     <div
       key="copilot-wrapper"
-      className="flex flex-col h-full bg-white dark:bg-dark-900 copilot text-xs max-h-screen overflow-x-auto"
+      className="flex flex-col h-full bg-white dark:bg-dark-900 copilot text-xs max-h-screen overflow-hidden"
     >
       {childrenMemo}
     </div>

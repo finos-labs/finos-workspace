@@ -382,7 +382,11 @@ function DashboardButton() {
   );
 }
 
-export function CopilotHeader() {
+export function CopilotHeader({
+  showChatActions = true,
+}: {
+  showChatActions?: boolean;
+} = {}) {
   const isMobile = useMobile((state) => state.isMobile);
   const expandedHeader = usePanelsState("right");
   const stopSubmitRef = useCopilotContext()?.stopSubmitRef;
@@ -454,88 +458,92 @@ export function CopilotHeader() {
   const buttons = useMemo(
     () => (
       <div className="flex gap-0.5 items-center" id="ws-copilot-header-buttons">
-        <Tooltip
-          message={
-            loading
-              ? "A new chat cannot be started while the agent is in use. To create a new chat, either stop Ada's messages or wait for Ada to finish responding."
-              : "Create a new chat"
-          }
-          hide={isMobile}
-        >
-          <button
-            disabled={loading}
-            onClick={() => {
-              const date = Date.now();
-              clearChatContext();
-
-              copilot.addChat({
-                uuid: uuidv4(),
-                label: (() => {
-                  const baseLabel = "New Chat";
-                  let label = baseLabel;
-                  let counter = 1;
-                  const existingLabels = copilot
-                    .getChatsData()
-                    .map((chat) => chat.label);
-                  while (existingLabels.includes(label)) {
-                    label = `${baseLabel} (${counter})`;
-                    counter++;
-                  }
-                  return label;
-                })(),
-                createdAt: date,
-                messages: [],
-                titleManuallyUpdated: false,
-                titleNeedsUpdate: true,
-                lastOpened: date,
-              });
-              copilot.setCurrentChat(date);
-            }}
-            className="ws-small-navbar-btn flex items-center justify-center"
-          >
-            <Icon id="plus" className="h-3.5 w-3.5" />
-          </button>
-        </Tooltip>
-        <Tooltip message="Clear messages from this chat" hide={isMobile}>
-          <button
-            onClick={() => {
-              stopSubmitRef.current?.();
-              copilot.resetContent();
-              copilot.setTitleNeedsUpdate(copilot.currentChat, true);
-              copilot.removeUnreachableArtifacts();
-
-              const currentChatData = copilot.getCurrentChat();
-              // only update the title if it hasn't been manually updated by the user
-              // and if it's not a new chat already
-              if (
-                !(
-                  currentChatData.titleManuallyUpdated ||
-                  currentChatData.label.includes("New Chat")
-                )
-              ) {
-                copilot.updateCopilotLabel(
-                  copilot.currentChat,
-                  (() => {
-                    const baseLabel = "New Chat";
-                    let label = baseLabel;
-                    let counter = 1;
-                    const existingLabels = copilot
-                      .getChatsData()
-                      .map((chat) => chat.label);
-                    while (existingLabels.includes(label)) {
-                      label = `${baseLabel} (${counter})`;
-                      counter++;
-                    }
-                    return label;
-                  })(),
-                );
+        {showChatActions && (
+          <>
+            <Tooltip
+              message={
+                loading
+                  ? "A new chat cannot be started while the agent is in use. To create a new chat, either stop Ada's messages or wait for Ada to finish responding."
+                  : "Create a new chat"
               }
-            }}
-            className="ws-small-navbar-btn flex items-center justify-center"
-          >
-            <Icon id="trash-02" className="h-3.5 w-3.5" />
-          </button>
-        </Tooltip>
+              hide={isMobile}
+            >
+              <button
+                disabled={loading}
+                onClick={() => {
+                  const date = Date.now();
+                  clearChatContext();
+
+                  copilot.addChat({
+                    uuid: uuidv4(),
+                    label: (() => {
+                      const baseLabel = "New Chat";
+                      let label = baseLabel;
+                      let counter = 1;
+                      const existingLabels = copilot
+                        .getChatsData()
+                        .map((chat) => chat.label);
+                      while (existingLabels.includes(label)) {
+                        label = `${baseLabel} (${counter})`;
+                        counter++;
+                      }
+                      return label;
+                    })(),
+                    createdAt: date,
+                    messages: [],
+                    titleManuallyUpdated: false,
+                    titleNeedsUpdate: true,
+                    lastOpened: date,
+                  });
+                  copilot.setCurrentChat(date);
+                }}
+                className="ws-small-navbar-btn flex items-center justify-center"
+              >
+                <Icon id="plus" className="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
+            <Tooltip message="Clear messages from this chat" hide={isMobile}>
+              <button
+                onClick={() => {
+                  stopSubmitRef.current?.();
+                  copilot.resetContent();
+                  copilot.setTitleNeedsUpdate(copilot.currentChat, true);
+                  copilot.removeUnreachableArtifacts();
+
+                  const currentChatData = copilot.getCurrentChat();
+                  // only update the title if it hasn't been manually updated by the user
+                  // and if it's not a new chat already
+                  if (
+                    !(
+                      currentChatData.titleManuallyUpdated ||
+                      currentChatData.label.includes("New Chat")
+                    )
+                  ) {
+                    copilot.updateCopilotLabel(
+                      copilot.currentChat,
+                      (() => {
+                        const baseLabel = "New Chat";
+                        let label = baseLabel;
+                        let counter = 1;
+                        const existingLabels = copilot
+                          .getChatsData()
+                          .map((chat) => chat.label);
+                        while (existingLabels.includes(label)) {
+                          label = `${baseLabel} (${counter})`;
+                          counter++;
+                        }
+                        return label;
+                      })(),
+                    );
+                  }
+                }}
+                className="ws-small-navbar-btn flex items-center justify-center"
+              >
+                <Icon id="trash-02" className="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
+          </>
+        )}
         {!isMobile && (
           <Tooltip
             message={
@@ -573,6 +581,8 @@ export function CopilotHeader() {
           hide={isMobile}
         >
           <button
+            type="button"
+            aria-label="Close Agent"
             onClick={() => dispatchCollapseCopilotPanel()}
             className="ws-small-navbar-btn flex items-center justify-center"
           >
@@ -581,7 +591,7 @@ export function CopilotHeader() {
         </Tooltip>
       </div>
     ),
-    [clearChatContext, stopSubmitRef, copilot, loading, isMobile],
+    [clearChatContext, stopSubmitRef, copilot, loading, isMobile, showChatActions],
   );
 
   const effectiveFullscreen = copilot.isFullscreen || isMobile;
@@ -607,39 +617,36 @@ export function CopilotHeader() {
                 id="ws-copilot-header"
               >
                 {/* Left: Dashboard Button */}
-                <div className="flex items-center gap-2 min-h-[32px] flex-shrink-0 min-w-0">
-                  <DashboardButton />
-                </div>
+                {showChatActions && (
+                  <div className="flex items-center gap-2 min-h-[32px] flex-shrink-0 min-w-0">
+                    <DashboardButton />
+                  </div>
+                )}
 
                 {/* Center: Copilot and Chat */}
-                <div className="flex items-center justify-center min-w-0 flex-1">
-                  <ChatSelection />
-                </div>
+                {showChatActions && (
+                  <div className="flex items-center justify-center min-w-0 flex-1">
+                    <ChatSelection />
+                  </div>
+                )}
 
                 {/* Right: Action Buttons */}
-                <div className="flex items-center gap-0.5 flex-shrink-0">{buttons}</div>
+                <div className="ml-auto flex items-center gap-0.5 flex-shrink-0">
+                  {buttons}
+                </div>
               </div>
             ) : (
               <div
-                className={cn(
-                  expandedHeader ? "flex gap-2 w-full" : "",
-                  "justify-between",
-                )}
+                className="flex w-full min-w-0 items-center gap-2"
                 id="ws-copilot-header"
               >
-                <div className="flex justify-between items-center gap-2">
-                  <div className="flex items-center gap-1">
+                {showChatActions && (
+                  <div className="flex min-w-0 flex-1 items-center">
                     <ChatSelection />
                   </div>
-                  {!expandedHeader && buttons}
-                </div>
-                <div
-                  className={cn(
-                    !expandedHeader && "mt-2",
-                    "flex gap-1 items-center overflow-x-auto flex-shrink-0",
-                  )}
-                >
-                  {expandedHeader && buttons}
+                )}
+                <div className="ml-auto flex shrink-0 items-center gap-0.5">
+                  {buttons}
                 </div>
               </div>
             )}
@@ -647,7 +654,7 @@ export function CopilotHeader() {
         </div>
       </div>
     ),
-    [buttons, expandedHeader, effectiveFullscreen],
+    [buttons, expandedHeader, effectiveFullscreen, showChatActions],
   );
 }
 const aiCopilotSecFilingsFF = getConfig().copilot.secFilings;

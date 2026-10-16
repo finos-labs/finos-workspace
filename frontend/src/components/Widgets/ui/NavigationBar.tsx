@@ -453,7 +453,7 @@ export default function NavigationBar() {
           </div>
         </DialogFooter>
       </BaseDialog>
-      <div className="group/widget flex overflow-auto h-full relative dark:bg-[#151518] bg-white shadow-xs rounded gap-3 text-sm p-2.5">
+      <div className="group/widget flex overflow-auto h-full relative dark:bg-dark-900 bg-white shadow-xs rounded gap-3 text-sm p-2.5">
         {widget?.storage?.tabs?.map((tab) => {
           const isCurrentTab = currentTab === tab.id;
           const isHighlighted = hoveredWidgetTabId === tab.id;
@@ -467,7 +467,7 @@ export default function NavigationBar() {
               className={cn(
                 "whitespace-nowrap p-1.5 text-sm rounded transition-colors duration-200",
                 {
-                  "dark:bg-[#212126] dark:text-white font-medium bg-light-50 text-brand-main":
+                  "dark:bg-dark-800 dark:text-white font-medium bg-light-50 text-brand-main":
                     isCurrentTab,
                   "text-light-600 hover:border-light-900 hover:text-light-900 dark:text-light-400 dark:hover:text-light-200":
                     !isCurrentTab,

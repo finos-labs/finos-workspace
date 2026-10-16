@@ -76,7 +76,7 @@ export function QueryLimitReached() {
             </span>
           </p>
           <p className="pt-1 text-xs">
-            You've reached your daily limit of Copilot{" "}
+            You've reached your daily limit of Agent{" "}
             {tokensUsedUp ? "tokens" : "queries"}. Add your OpenAI key or return
             tomorrow.
           </p>

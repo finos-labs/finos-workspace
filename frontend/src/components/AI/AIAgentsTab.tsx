@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { AddCopilotDialog } from "~/components/AI/AddCopilotDialog";
 import { AgentEditDialog } from "~/components/AI/AgentEditDialog";
 import type { HolderGroup } from "~/components/AI/hooks/useAgentManagement";
 import { useAgentManagement } from "~/components/AI/hooks/useAgentManagement";
@@ -124,7 +123,6 @@ export function AIAgentsTab() {
           )}
         </div>
       </TabPageLayout>
-      <AddCopilotDialog />
 
       <ConfirmDialog
         open={state.groupToDelete !== null}

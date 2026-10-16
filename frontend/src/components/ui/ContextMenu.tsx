@@ -60,7 +60,7 @@ const ContextMenuContent = React.forwardRef<
       ref={ref}
       className={cn(
         "z-40",
-        "dark:bg-[#24242A]",
+        "dark:bg-dark-750",
         "bg-light-50 text-light-800 dark:text-light-200",
         "rounded p-2 shadow-[2px_4px_15px_0_rgba(0,0,0,0.10)] dark:shadow-[0_4px_16px_0_rgba(0,0,0,0.78)]",
         "transition-all duration-300 ease-in-out",

@@ -342,7 +342,7 @@ export const AgentName = memo(
     );
 
     const agentName = useMemo(() => {
-      if (props.senderId === "default-copilot") return "Copilot";
+      if (props.senderId === "default-copilot") return "Agent";
       const senderName = externalCopilotHolders
         .flatMap((holder) => holder.copilots || [])
         .find((copilot) => copilot.id === props.senderId)?.name;

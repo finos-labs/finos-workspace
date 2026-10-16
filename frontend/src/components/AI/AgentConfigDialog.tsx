@@ -191,8 +191,8 @@ function CopilotApiKeyDialog() {
       toast.success(removed ? "API key removed" : "API key saved", {
         id: removed ? "copilot_api_key_cleared" : "copilot_api_key_saved",
         description: removed
-          ? "Copilot will now use the default API key."
-          : "Copilot will now use this API key.",
+          ? "Agent will now use the default API key."
+          : "Agent will now use this API key.",
       });
       onClose();
     },

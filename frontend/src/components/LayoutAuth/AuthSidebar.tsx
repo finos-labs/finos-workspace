@@ -159,8 +159,8 @@ function AuthSidebar({ isMobile }: { isMobile?: boolean }) {
               changeSearch(true);
             }}
             className="ws-navigation-item mx-auto rounded border border-[#DCDCDC]
-            bg-white hover:bg-light-50 dark:border-[#303038]
-            dark:bg-[#212126] dark:hover:bg-[#202025]"
+            bg-white hover:bg-light-50 dark:border-dark-600
+            dark:bg-dark-800 dark:hover:bg-dark-700"
           >
             <Icon
               id="magnifying-glass-icon"

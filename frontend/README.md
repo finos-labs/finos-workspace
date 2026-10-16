@@ -1,6 +1,6 @@
 # Workspace
 
-The web application of Workspace: dashboards of widgets that read from the data backends a deployment connects, with a Copilot beside them. It is a React and TypeScript single-page app that talks to the Workspace backend (`backend-api/backend` in this repository).
+The web application of Workspace: dashboards of widgets that read from the data backends a deployment connects, with an agent beside them. It is a React and TypeScript single-page app that talks to the Workspace backend (`backend-api/backend` in this repository).
 
 ## Tech stack
 
@@ -19,7 +19,7 @@ The web application of Workspace: dashboards of widgets that read from the data 
 src/
 ├── api/                    # Calls to the backend
 ├── components/             # React components by domain
-│   ├── AI/                 # The Copilot
+│   ├── AI/                 # The agent
 │   ├── Admin*/             # Administration: users, roles, entities, marketplace
 │   ├── DataConnectors/     # Connections to data backends
 │   ├── ds/                 # Design system (atoms, molecules, dialogs)

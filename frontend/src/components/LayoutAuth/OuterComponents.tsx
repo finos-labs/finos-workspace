@@ -1,6 +1,7 @@
 import { useMobile } from "~/lib/providers/MobileProvider";
 import { canShare, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowThemeStore } from "~/lib/state/theme";
+import { AddCopilotDialog } from "../AI/AddCopilotDialog";
 import AddSkillDialog from "../AI/AddSkillDialog";
 import { CreateWidgetMetadataDialog } from "../AI/CreateWidgetMetadataDialog";
 import McpAuthPopup from "../AI/hooks/mcp/McpAuthPopup";
@@ -55,6 +56,7 @@ export default function OuterComponents() {
 
   return (
     <>
+      <AddCopilotDialog />
       <AddConnectionModal />
       <InvalidItemsDialog />
       <AddPromptDialog />

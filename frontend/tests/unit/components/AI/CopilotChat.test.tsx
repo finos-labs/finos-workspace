@@ -42,7 +42,16 @@ vi.mock("~/components/AI", () => ({
     <div data-testid="dropzone">{children}</div>
   ),
   CopilotFooter: () => <div data-testid="footer">Footer</div>,
-  CopilotHeader: () => <div data-testid="header">Header</div>,
+  CopilotHeader: ({ showChatActions = true }: { showChatActions?: boolean }) => (
+    <div data-testid="header">
+      {showChatActions && (
+        <>
+          <button type="button">Create a new chat</button>
+          <button type="button">Clear messages from this chat</button>
+        </>
+      )}
+    </div>
+  ),
   CopilotMessageGroupRoot: () => <div data-testid="message-group-root">Messages</div>,
   CopilotWelcome: () => <div data-testid="welcome">Welcome</div>,
   CopilotWrapper: ({ children }: { children: React.ReactNode }) => (
@@ -109,16 +118,22 @@ describe("CopilotChat", () => {
 
       expect(screen.getByTestId("wrapper")).toBeInTheDocument();
       expect(screen.getByTestId("header")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Create a new chat" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Clear messages from this chat" }),
+      ).toBeInTheDocument();
       expect(screen.getByTestId("welcome")).toBeInTheDocument();
       expect(screen.getByTestId("message-group-root")).toBeInTheDocument();
       expect(screen.getByTestId("footer")).toBeInTheDocument();
     });
 
-    it("renders all dialog components", () => {
+    it("renders the agent config dialog and leaves add-copilot to the app shell", () => {
       render(<CopilotChat />);
 
       expect(screen.getByTestId("agent-config-dialog")).toBeInTheDocument();
-      expect(screen.getByTestId("add-copilot-dialog")).toBeInTheDocument();
+      expect(screen.queryByTestId("add-copilot-dialog")).not.toBeInTheDocument();
     });
 
     it("renders dropzone for file uploads", () => {
@@ -159,20 +174,27 @@ describe("CopilotChat", () => {
     it("renders NoCopilotSelected view", () => {
       render(<CopilotChat />);
 
-      expect(screen.getByText("No copilot selected")).toBeInTheDocument();
+      expect(screen.getByText("No agent selected")).toBeInTheDocument();
+      expect(screen.getByTestId("header")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Create a new chat" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Clear messages from this chat" }),
+      ).not.toBeInTheDocument();
     });
 
     it("renders Add Copilot button", () => {
       render(<CopilotChat />);
 
-      const addButton = screen.getByRole("button", { name: /add copilot/i });
+      const addButton = screen.getByRole("button", { name: /add agent/i });
       expect(addButton).toBeInTheDocument();
     });
 
     it("opens add agents dialog when Add Copilot button is clicked", () => {
       render(<CopilotChat />);
 
-      const addButton = screen.getByRole("button", { name: /add copilot/i });
+      const addButton = screen.getByRole("button", { name: /add agent/i });
       fireEvent.click(addButton);
 
       expect(mockSetShowAddAgentsDialog).toHaveBeenCalledWith(true);
@@ -285,7 +307,7 @@ describe("CopilotChat", () => {
 
       render(<CopilotChat />);
 
-      expect(screen.queryByText("No copilot selected")).not.toBeInTheDocument();
+      expect(screen.queryByText("No agent selected")).not.toBeInTheDocument();
       expect(screen.getByTestId("message-group-root")).toBeInTheDocument();
     });
 
@@ -299,7 +321,7 @@ describe("CopilotChat", () => {
 
       render(<CopilotChat />);
 
-      expect(screen.getByText("No copilot selected")).toBeInTheDocument();
+      expect(screen.getByText("No agent selected")).toBeInTheDocument();
       expect(screen.queryByTestId("message-group-root")).not.toBeInTheDocument();
     });
   });

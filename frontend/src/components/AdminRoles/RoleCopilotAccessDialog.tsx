@@ -147,10 +147,10 @@ export default function RoleCopilotAccessDialog({ open, onClose, role }: Props) 
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["roleCopilotAccess", roleUuid] });
-      toast.success("Copilot access saved");
+      toast.success("Agent access saved");
       onClose();
     },
-    onError: () => toast.error("Failed to save the Copilot access"),
+    onError: () => toast.error("Failed to save the agent access"),
   });
 
   if (!role) return null;
@@ -161,9 +161,9 @@ export default function RoleCopilotAccessDialog({ open, onClose, role }: Props) 
       onClose={onClose}
       className="max-w-md lg:max-w-2xl max-h-[760px] overflow-y-auto"
     >
-      <DialogTitle>Copilot access - {role.name}</DialogTitle>
+      <DialogTitle>Agent access - {role.name}</DialogTitle>
       <p className="body-xs-regular text-ds-text-caption">
-        Choose what the members of this role may use in the Copilot. They may use the
+        Choose what the members of this role may use in the agent. They may use the
         models and tools that one of their roles grants, and nothing else.
       </p>
 

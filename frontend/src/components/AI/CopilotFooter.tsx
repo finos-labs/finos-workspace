@@ -176,7 +176,7 @@ export default function CopilotFooter() {
                       )
                         .map((e) => e.slice(1).toUpperCase())
                         .join(", ")} supported)`
-                    : "File upload is not enabled for this copilot."
+                    : "File upload is not enabled for this agent."
                 }
               >
                 <div className="tooltip-wrapper">

@@ -2,14 +2,14 @@ import plugin from "tailwindcss/plugin";
 
 const STYLE = {
   title: {
-    fontFamily: "Inter",
+    fontFamily: "var(--font-family), sans-serif",
   },
   subtitle: {
-    fontFamily: "Inter",
+    fontFamily: "var(--font-family), sans-serif",
     textTransform: "uppercase",
     letterSpacing: "0.1em",
   },
-  body: { fontFamily: "Inter" },
+  body: { fontFamily: "var(--font-family), sans-serif" },
 } as const;
 
 const SIZE = {
