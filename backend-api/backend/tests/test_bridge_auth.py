@@ -101,23 +101,11 @@ class TestTheBridgeSocket:
         assert "token" not in ready["session"]
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        ("origin", "with_cookie"),
-        [
-            ("http://localhost:9999", True),
-            (None, True),
-            (TEST_ORIGIN, False),
-        ],
-    )
-    async def test_refused_before_the_handshake_is_accepted(
-        self, auth_client, bridge, origin, with_cookie
-    ):
+    async def test_refused_before_the_handshake_is_accepted(self, auth_client, bridge):
+        # Without a session cookie. A socket without an allowed origin never gets here:
+        # AllowedOriginMiddleware closes it first (test_allowed_origin.py)
         session_id = await _start(bridge, AUTH_USER)
-        socket = FakeWebSocket(
-            origin=origin,
-            cookie=_cookie(auth_client) if with_cookie else None,
-            session_id=session_id,
-        )
+        socket = FakeWebSocket(origin=TEST_ORIGIN, cookie=None, session_id=session_id)
         await bridge_router.bridge_websocket(socket)
         assert not socket.accepted
         assert socket.close_code == 1008

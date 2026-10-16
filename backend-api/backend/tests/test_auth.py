@@ -503,9 +503,10 @@ class TestSessionValidation:
 
     @pytest.mark.asyncio
     async def test_validate_unauthenticated(self, client):
-        """Validate without auth should return 401 or 403"""
+        """Without a session, validate answers that there is none"""
         response = await client.get("/app/validate")
-        assert response.status_code in {401, 403}
+        assert response.status_code == 200
+        assert response.json()["success"] is False
 
     @pytest.mark.asyncio
     async def test_validate_authenticated(self, auth_client):

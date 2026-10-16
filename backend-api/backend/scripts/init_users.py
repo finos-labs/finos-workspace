@@ -16,13 +16,10 @@ import getpass
 import json
 import sys
 import tomllib
-from collections.abc import Callable, Coroutine
 from contextlib import suppress
 from pathlib import Path
-from typing import Any
 from uuid import UUID
 
-from fastapi import BackgroundTasks
 from fastapi.encoders import jsonable_encoder
 from loguru import logger
 from pydantic import BaseModel, Field, field_validator
@@ -31,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import base, schemas
 from api.base import clean_email
+from api.database import aget_write_db
 from api.helpers import create_developer_mapping
 from api.models import (
     ADMIN_TYPE,
@@ -41,11 +39,8 @@ from api.models import (
     Session,
     User,
 )
+from routers import administration
 from routers.app.index import process_create_user, register_app_user
-from routers.entity import add_entity, aget_write_db
-
-type MaybCoro[T] = Coroutine[Any, Any, T] | T
-
 
 CONFIG_PATH = Path(__file__).parent / "cfgs"
 
@@ -91,17 +86,6 @@ class Config(BaseModel):
         return [user for user in v if user.get("email")]
 
 
-async def call_func[**P, T](
-    func: Callable[P, MaybCoro[T]], *args: P.args, **kwargs: P.kwargs
-) -> T:
-    """Unwraps a function to ignore decorators."""
-
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-
-    return await func(*args, **kwargs)
-
-
 class SetupConfig:
     db: AsyncSession
     config: Config
@@ -114,14 +98,8 @@ class SetupConfig:
         self.admin_user: type[User] | None = None
         self.code = config.entity.name[:3].upper()
 
-    async def add_entity(self, entity: schemas.EntityPost):
-        return await call_func(
-            add_entity,
-            request=None,
-            entity=entity,
-            background_tasks=BackgroundTasks(),
-            db=self.db,
-        )
+    async def add_entity(self, entity: schemas.EntityPost) -> schemas.AddEntityReturn:
+        return await administration.create_entity(self.db, entity)
 
     async def create_user(self, the_uuid: UUID, email: str) -> UUID | bool:
         return await process_create_user(the_uuid, email, self.db)
@@ -214,8 +192,7 @@ class SetupConfig:
         result = await self.db.execute(query)
 
         if (entity_uuid := result.scalars().first()) is None:
-            entity_data = await self.create_entity()
-            entity_uuid = entity_data["entity_uuid"]
+            entity_uuid = (await self.create_entity()).entity_uuid
 
         query = select(PermissionsEntityMap).where(
             PermissionsEntityMap.entity_uuid == entity_uuid

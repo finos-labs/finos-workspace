@@ -52,7 +52,7 @@ docker pull <registry>/<repository>:latest
 ## Step 4 — Run the Workspace
 
 ```bash
-docker run -d -p 3000:3000 -v workspace-data:/data -e WORKSPACE_ADMIN_EMAIL=<your-email> --name workspace <registry>/<repository>:latest
+docker run -d -p 3000:3000 -p 8000:8000 -v workspace-data:/data -e WORKSPACE_ADMIN_EMAIL=<your-email> --name workspace <registry>/<repository>:latest
 ```
 
 `WORKSPACE_ADMIN_EMAIL` is the address of the first administrator. The `-v workspace-data:/data` volume stores your data so it survives restarts and upgrades.
@@ -81,7 +81,7 @@ Your data lives in the `workspace-data` volume, so it survives the upgrade, and 
 docker stop workspace && docker rm workspace
 aws ecr get-login-password --region <region> --profile workspace-image | docker login --username AWS --password-stdin <registry>
 docker pull <registry>/<repository>:latest
-docker run -d -p 3000:3000 -v workspace-data:/data -e WORKSPACE_ADMIN_EMAIL=<your-email> --name workspace <registry>/<repository>:latest
+docker run -d -p 3000:3000 -p 8000:8000 -v workspace-data:/data -e WORKSPACE_ADMIN_EMAIL=<your-email> --name workspace <registry>/<repository>:latest
 ```
 
 ---
@@ -95,7 +95,7 @@ Your credentials do not have access to this repository. Contact the image publis
 Add `--platform linux/amd64` to the pull and run commands:
 ```bash
 docker pull --platform linux/amd64 <registry>/<repository>:latest
-docker run --platform linux/amd64 -d -p 3000:3000 -v workspace-data:/data -e WORKSPACE_ADMIN_EMAIL=<your-email> --name workspace <registry>/<repository>:latest
+docker run --platform linux/amd64 -d -p 3000:3000 -p 8000:8000 -v workspace-data:/data -e WORKSPACE_ADMIN_EMAIL=<your-email> --name workspace <registry>/<repository>:latest
 ```
 
 **Port 3000 is already in use**

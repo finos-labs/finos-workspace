@@ -109,32 +109,21 @@ This reads entity/admin configuration from `backend/scripts/cfgs/config.toml` an
 Set the administrator's password (typed twice, not shown; the same command sets a new one):
 `../.venv/bin/python -m scripts.init_users --new-password <your-email>`.
 
-### 3. Verify authentication
+### 3. Verify the API
 
-Sign in as a tool that is not a browser (`"source":"cli"`), which gets its session as a
-bearer token; the password is read from the terminal, so it stays out of the shell
-history:
+The API answers only a request that names an allowed origin (one of `BACKEND_CORS_ORIGINS`)
+in its `Origin` header; a browser sends its page's origin by itself:
 
 ```bash
-read -rs -p "Password: " PASSWORD && echo
-jq -n --arg email "<your-email>" --arg password "$PASSWORD" \
-  '{email: $email, password: $password, source: "cli"}' |
-  curl -s http://localhost:8000/app/login \
-    -X POST \
-    -H "Content-Type: application/json" \
-    --data-binary @-
+curl -s -H "Origin: http://localhost:3000" http://localhost:8000/health
 ```
 
-A successful response returns JSON with `access_token` (a bearer for 12 hours), `uuid`,
-etc. The web app's own sign-in returns no token: it sets the session cookie. End the
-session with `POST /logout` and the header `Authorization: Bearer <access_token>`.
-
-You can also use the admin CLI, which signs in the same way and keeps the token in the
-shell's environment only:
+Sign in through the web app with the password set in step 2. The admin CLI works on the
+database itself and makes no request to the API (`--help` lists its commands):
 
 ```bash
-cd admin_cli
-eval "$(./workspace-admin auth login --api-url http://localhost:8000)"
+cd backend
+../.venv/bin/python -m scripts.workspace_admin user list
 ```
 
 ## UI Testing Workflow

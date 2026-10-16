@@ -1,7 +1,7 @@
 #!/bin/bash
 # One-box entrypoint.
 #
-# Goal: `docker run -d -p 3000:3000 -e WORKSPACE_ADMIN_EMAIL=<your-email> <image>` is all it
+# Goal: `docker run -d -p 3000:3000 -p 8000:8000 -e WORKSPACE_ADMIN_EMAIL=<your-email> <image>` is all it
 # takes. A key passed with -e is used as given and is not written to the volume; any other
 # key is generated once per /data volume and kept in /data/secrets.env (secrets.sh), so it
 # stays the same across restarts. The administrator's password is never printed or kept
@@ -105,7 +105,7 @@ print_summary() {
   cat <<EOF
 ================================================================
  The Workspace is ${1} on port ${PORT}.
-   URL:      http://localhost:${PORT}
+   URL:      http://localhost:${PORT}   (the API: http://localhost:8000)
    Admin:    ${WORKSPACE_ADMIN_EMAIL}
    Password: set it with  docker exec -it workspace credentials
 ================================================================

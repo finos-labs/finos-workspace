@@ -14,7 +14,7 @@ from httpx import ASGITransport, AsyncClient
 
 from api.models import StoredFile
 from api.storage import FileStorage
-from tests.fixtures.base import _AUTH_USER, TEST_BASE_URL, app, settings
+from tests.fixtures.base import _AUTH_USER, TEST_BASE_URL, TEST_ORIGIN, app, settings
 
 CONTENT = b"%PDF-1.4 a document for the agent"
 
@@ -51,8 +51,10 @@ async def _presigned_path(auth_client, name: str) -> str:
 
 @pytest.fixture
 async def agent(client):
-    """A server that fetches a URL: no Origin, no client header, no cookie."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url=TEST_BASE_URL) as agent:
+    """A server that fetches a URL: its configured origin, no client header, no cookie."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url=TEST_BASE_URL, headers={"Origin": TEST_ORIGIN}
+    ) as agent:
         yield agent
 
 

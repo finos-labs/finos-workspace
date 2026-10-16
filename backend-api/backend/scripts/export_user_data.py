@@ -241,7 +241,7 @@ Store it somewhere private, and delete it once you have imported it -- but see
 
 1. Install Lite and start it, mounting the folder holding this archive:
 
-       docker run -d --name workspace -p 3000:3000 \\
+       docker run -d --name workspace -p 3000:3000 -p 8000:8000 \\
            -v workspace-data:/data \\
            -v /path/to/this/folder:/import \\
            lite

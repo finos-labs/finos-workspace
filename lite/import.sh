@@ -45,7 +45,7 @@ if [[ "$1" != "--describe-scope" ]]; then
     echo "No such archive inside the container: $archive" >&2
     echo >&2
     echo "Did you mount the folder containing it? For example:" >&2
-    echo "  docker run -d --name workspace -p 3000:3000 \\" >&2
+    echo "  docker run -d --name workspace -p 3000:3000 -p 8000:8000 \\" >&2
     echo "      -v workspace-data:/data -v /path/to/exports:/import lite" >&2
     echo "then pass /import/<file>.zip" >&2
     exit 1

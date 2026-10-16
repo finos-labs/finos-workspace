@@ -54,7 +54,7 @@ class TestTheApi:
 
     @pytest.mark.asyncio
     async def test_answers_to_a_bearer_are_never_stored(self, client):
-        async with bearer_client("not-a-session", origin=None) as bearer:
+        async with bearer_client("not-a-session") as bearer:
             response = await bearer.get("/admin/role")
         assert response.status_code == 401
         assert response.headers["cache-control"] == "no-store"

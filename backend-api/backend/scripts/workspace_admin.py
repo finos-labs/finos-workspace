@@ -21,6 +21,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
+from loguru import logger
 from pydantic import ValidationError
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +30,7 @@ from api import models, schemas
 from api.database import aget_write_db
 from routers import administration
 from scripts import export_user_data
+from utilities.log_helpers import obfuscate_secrets, stdoutSink
 
 # Every entity has one permission map per user type; --role names the type
 PERMISSION_MAPS = {
@@ -39,8 +41,11 @@ PERMISSION_MAPS = {
 
 
 def say(text: str = "", *, error: bool = False) -> None:
-    """A line for whoever runs the CLI: the outcome on stdout, a refusal on stderr."""
-    (sys.stderr if error else sys.stdout).write(f"{text}\n")
+    """A line for whoever runs the CLI: the outcome on stdout, a refusal on stderr. The
+    app's stdout is a log, which names any setting it would show (utilities/log_helpers.py)
+    and would turn a link's address into APPURL; the CLI's lines go out as they are."""
+    stream = sys.stderr if error else sys.stdout
+    (sys.__stdout__ if isinstance(stream, stdoutSink) else stream).write(f"{text}\n")
 
 
 class Refused(Exception):
@@ -427,7 +432,7 @@ def print_import_instructions(archive: Path, email: str, with_files: bool) -> No
 
     1. Start Lite with the folder holding this file mounted:
 
-       docker run -d --name workspace -p 3000:3000 \\
+       docker run -d --name workspace -p 3000:3000 -p 8000:8000 \\
            -v workspace-data:/data \\
            -v /path/to/the/folder:/import \\
            lite
@@ -524,8 +529,13 @@ def data_backend_add(args: argparse.Namespace) -> None:
             sys.exit(1)
         parts = header.split(":", 2)
         headers.append(dict(zip(("key", "value", "location"), parts, strict=False)))
-    backend = schemas.CreateApiSource(name=args.name, url=args.url, endpointHeaders=headers)
-    perform(lambda db: administration.add_data_backend(db, args.entity_uuid, backend))
+    perform(
+        lambda db: administration.add_data_backend(
+            db,
+            args.entity_uuid,
+            schemas.CreateApiSource(name=args.name, url=args.url, endpointHeaders=headers),
+        )
+    )
     if args.json:
         print_json({"success": True})
     else:
@@ -884,10 +894,28 @@ def parser() -> argparse.ArgumentParser:
     return main_parser
 
 
+def log_to_stderr() -> None:
+    """The app logs to stdout, the container's log (utilities/log_helpers.py). The CLI keeps
+    stdout for the outcome, which --json makes JSON, and writes the app's warnings and
+    errors to stderr, redacted as the app's log is."""
+    logger.configure(
+        handlers=[
+            {
+                "sink": lambda message: sys.stderr.write(obfuscate_secrets(str(message))),
+                "level": "WARNING",
+                "format": "{level}: {message}\n",
+                "diagnose": False,
+                "backtrace": False,
+            }
+        ]
+    )
+
+
 def main(argv: list[str] | None = None) -> None:
     args = parser().parse_args(argv)
     args.func(args)
 
 
 if __name__ == "__main__":
+    log_to_stderr()
     main()

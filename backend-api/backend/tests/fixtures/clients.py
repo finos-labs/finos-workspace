@@ -12,6 +12,7 @@ from .base import (
     _AUTH_USER,
     _SECOND_USER,
     TEST_BASE_URL,
+    TEST_ORIGIN,
     WEB_HEADERS,
     _cleanup_user_fixture_records,
     _create_session_record,
@@ -71,7 +72,10 @@ async def client(db_session, apply_migrations):
         )
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url=TEST_BASE_URL) as ac:
+        # Every request names an allowed origin, as the API requires
+        async with AsyncClient(
+            transport=transport, base_url=TEST_BASE_URL, headers={"Origin": TEST_ORIGIN}
+        ) as ac:
             yield ac
 
     app.dependency_overrides.clear()

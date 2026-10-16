@@ -80,8 +80,8 @@ class TestMinting:
     @pytest.mark.asyncio
     async def test_only_the_web_app_mints_it(self, auth_client, client, organization):
         headers = web_session_headers(auth_client.headers["Cookie"].split("=", 1)[1])
-        del headers["Origin"]
         client.headers.update(headers)
+        del client.headers["Origin"]
         # Without an allowed origin: no
         assert (await client.post("/app/copilot/token")).status_code == 403
 
@@ -104,8 +104,8 @@ class TestItsThreeRoutes:
         own = (await auth_client.get("/app/user")).json()
         assert own["api_sources"], "the web app gets the user's backends"
 
-        # The default Copilot calls server to server: no Origin, no cookie
-        async with bearer_client(agent_token["token"], origin=None) as agent:
+        # The default Copilot calls server to server: its configured origin, no cookie
+        async with bearer_client(agent_token["token"]) as agent:
             response = await agent.get("/app/user")
         assert response.status_code == 200, response.text
         data = response.json()
@@ -123,7 +123,7 @@ class TestItsThreeRoutes:
         )
         assert response.status_code == 200, response.text
 
-        async with bearer_client(agent_token["token"], origin=None) as agent:
+        async with bearer_client(agent_token["token"]) as agent:
             usage = await agent.put(
                 "/app/usage",
                 json={"add_copilot_count": 0, "add_copilot_tokens": 0},
@@ -151,7 +151,7 @@ class TestItsThreeRoutes:
 
     @pytest.mark.asyncio
     async def test_every_other_route_refuses_it(self, agent_token):
-        async with bearer_client(agent_token["token"], origin=None) as agent:
+        async with bearer_client(agent_token["token"]) as agent:
             for method, path in (
                 ("GET", "/app/access"),
                 ("GET", "/app/usage"),
@@ -181,7 +181,7 @@ class TestRevocation:
 
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         assert _redis().get(f"agent_token:{token_hash}") is None
-        async with bearer_client(token, origin=None) as agent:
+        async with bearer_client(token) as agent:
             assert (await agent.get("/app/user")).status_code == 401
 
     @pytest.mark.asyncio
@@ -191,7 +191,7 @@ class TestRevocation:
             delete(models.Session).where(models.Session.uuid == _AUTH_USER["session_uuid"])
         )
         await db_session.commit()
-        async with bearer_client(agent_token["token"], origin=None) as agent:
+        async with bearer_client(agent_token["token"]) as agent:
             assert (await agent.get("/app/user")).status_code == 401
 
     @pytest.mark.asyncio
@@ -204,5 +204,5 @@ class TestRevocation:
             .values(expiration_date=datetime.now(UTC) - timedelta(seconds=1))
         )
         await db_session.commit()
-        async with bearer_client(agent_token["token"], origin=None) as agent:
+        async with bearer_client(agent_token["token"]) as agent:
             assert (await agent.get("/app/user")).status_code == 401

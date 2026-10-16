@@ -11,9 +11,9 @@ session table stores. How a request carries it depends on the client:
 - The default Copilot acts for the signed-in user with an agent token, a bearer that GET
   /app/user, PUT /app/usage and POST /app/copilot/authorize accept and nothing else.
 
-Every request names one of BACKEND_CORS_ORIGINS in its Origin header, on every path
-(AllowedOriginMiddleware): a browser sends its page's origin, and a service that is not a
-browser sends the origin it is configured with (WORKSPACE_ORIGIN).
+Every request names one of BACKEND_CORS_ORIGINS in its Origin header, on every path but
+the health checks (AllowedOriginMiddleware): a browser sends its page's origin, and a service
+that is not a browser sends the origin it is configured with (WORKSPACE_ORIGIN).
 """
 
 import asyncio
@@ -131,17 +131,25 @@ def is_allowed_origin(origin: str | None) -> bool:
     )
 
 
+# The health checks of Docker, Kubernetes and the like, which send no Origin: they carry no
+# credential and read nothing
+HEALTH_PATHS = frozenset({"/health", "/healthz"})
+
+
 class AllowedOriginMiddleware:
     """Refuses every request and websocket whose Origin header is not an allowed origin
-    (is_allowed_origin), on every path, before anything else sees it: 403 for a request,
-    and a websocket is closed before its handshake is accepted."""
+    (is_allowed_origin), on every path but the health checks (HEALTH_PATHS), before anything
+    else sees it: 403 for a request, and a websocket is closed before its handshake is
+    accepted."""
 
     def __init__(self, app: ASGIApp):
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] not in {"http", "websocket"} or is_allowed_origin(
-            Headers(scope=scope).get("origin")
+        if (
+            scope["type"] not in {"http", "websocket"}
+            or (scope["type"] == "http" and scope["path"] in HEALTH_PATHS)
+            or is_allowed_origin(Headers(scope=scope).get("origin"))
         ):
             await self.app(scope, receive, send)
             return

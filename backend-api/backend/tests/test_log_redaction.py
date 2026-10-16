@@ -129,7 +129,9 @@ async def test_validation_errors_do_not_log_the_request_body():
     sink = logger.add(lambda message: lines.append(str(message)), level="DEBUG")
     try:
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"Origin": "http://test"},
         ) as client:
             response = await client.post(
                 "/login",

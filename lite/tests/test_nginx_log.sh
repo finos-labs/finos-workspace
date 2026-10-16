@@ -23,18 +23,19 @@ log="$(
       nginx
       python - <<PY
 import urllib.error, urllib.request
-for path, referer in [
-    ("/api/app/files/presigned/a.pdf?Expires=1&Signature=SIGNED-SECRET", None),
-    ("/oauth/callback?code=CODE-SECRET&state=STATE-SECRET", None),
-    ("/api/app/user", "http://localhost:3000/oauth/callback?code=REFERER-SECRET"),
+# The API is on 8000, the web app on 3000
+for url, referer in [
+    ("http://127.0.0.1:8000/app/files/presigned/a.pdf?Expires=1&Signature=SIGNED-SECRET", None),
+    ("http://127.0.0.1:3000/oauth/callback?code=CODE-SECRET&state=STATE-SECRET", None),
+    ("http://127.0.0.1:8000/app/user", "http://localhost:3000/oauth/callback?code=REFERER-SECRET"),
 ]:
-    request = urllib.request.Request("http://127.0.0.1:3000" + path)
+    request = urllib.request.Request(url)
     if referer:
         request.add_header("Referer", referer)
     try:
         urllib.request.urlopen(request, timeout=5)
     except urllib.error.HTTPError:
-        pass  # /api has no backend here; the line is logged all the same
+        pass  # the API has no backend here; the line is logged all the same
 PY
       nginx -s quit
       sleep 1
@@ -50,7 +51,7 @@ fail() {
 
 printf '%s\n' "$log"
 [[ "$(printf '%s\n' "$log" | grep -c .)" -eq 3 ]] || fail "expected one access log line per request"
-printf '%s\n' "$log" | grep -q '"GET /api/app/files/presigned/a.pdf HTTP/1.1"' ||
+printf '%s\n' "$log" | grep -q '"GET /app/files/presigned/a.pdf HTTP/1.1"' ||
   fail "the path of a request is not logged"
 printf '%s\n' "$log" | grep -q '"http://localhost:3000/oauth/callback"' ||
   fail "the path of the Referer is not logged"

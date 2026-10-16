@@ -192,29 +192,17 @@ class TestTheWebAppsCookie:
                 assert (await browser.get("/app/user")).status_code == 401
 
     @pytest.mark.asyncio
-    async def test_changes_need_an_allowed_origin_and_reads_need_none(
-        self, auth_client
-    ):
+    async def test_every_request_needs_an_allowed_origin(self, auth_client):
         headers = web_session_headers(_token_of(auth_client))
         del headers["Origin"]
-        # /app refuses other origins altogether (401); elsewhere a change from another
-        # origin, or with none, is forbidden (403)
-        for path, origin, status in (
-            ("/app/copilot-keys", None, 403),
-            ("/app/copilot-keys", OTHER_ORIGIN, 401),
-            ("/app/copilot-keys", TEST_ORIGIN, 200),
-            ("/user", None, 403),
-            ("/user", OTHER_ORIGIN, 403),
-            ("/user", TEST_ORIGIN, 200),
-        ):
-            sent = headers if origin is None else {**headers, "Origin": origin}
-            async with _browser(sent) as browser:
-                response = await browser.put(path, json={})
-                assert response.status_code == status, (path, origin, response.text)
-
-        # A page of the API's own origin sends no Origin on a read (Lite)
-        async with _browser(headers) as browser:
-            assert (await browser.get("/app/user")).status_code == 200
+        # A change or a read, under /app or elsewhere: another origin, or none, is refused
+        for method, path in (("put", "/app/copilot-keys"), ("put", "/user"), ("get", "/app/user")):
+            for origin, status in ((None, 403), (OTHER_ORIGIN, 403), (TEST_ORIGIN, 200)):
+                sent = headers if origin is None else {**headers, "Origin": origin}
+                async with _browser(sent) as browser:
+                    kwargs = {"json": {}} if method == "put" else {}
+                    response = await getattr(browser, method)(path, **kwargs)
+                    assert response.status_code == status, (path, origin, response.text)
 
     @pytest.mark.asyncio
     async def test_a_web_session_is_never_accepted_as_a_bearer(self, auth_client):
@@ -449,7 +437,7 @@ class TestCORS:
                 "Access-Control-Request-Headers": "x-workspace-client",
             },
         )
-        assert response.status_code == 400
+        assert response.status_code == 403
         assert "access-control-allow-origin" not in response.headers
 
     def test_the_origins_are_explicit(self):
