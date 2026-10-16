@@ -1,16 +1,13 @@
 name: Deploy to dev
 
-# A push to develop builds the changed images and pushes them to ECR as
-# dev-<commit>. Then .github/scripts/request-dev-deploy.sh asks the
-# infrastructure repository's Apps workflow to deploy the dev cluster, and waits
-# for the result. The message holds what the deploy needs from this repository:
-# deploy/dev.yaml (the app settings) and the newest backend and frontend images
-# on develop. Nothing is written to the infrastructure repository. A push that
-# changes only deploy/dev.yaml deploys the settings without a build, and the
-# workflow can also be run by hand to deploy the latest state again. If the
-# deploy fails, helm has already put the previous release back.
-# .github/scripts/check-deploy-config.sh checks deploy/dev.yaml against the code
-# first, and a problem stops the deploy.
+# A push to develop that changes the backend or the frontend builds the changed
+# images, pushes them to ECR as dev-<commit>, and deploys the dev environment with
+# the newest image of each: the latest commit on develop whose image is in ECR,
+# so the order in which builds finish does not matter. The deploy runs the
+# infrastructure repository's .github/scripts/deploy-workspace.sh with its chart
+# and the environment's values file: only the image tags come from here. The
+# run's summary lists what is running. Run the workflow by hand, from develop, to
+# build whatever develop's latest commit is missing and deploy again.
 #
 # Repository variables: AWS_REGION, AWS_IMAGE_PUSH_ROLE_ARN (the role that may
 # push to ECR), ECR_REGISTRY (<account>.dkr.ecr.<region>.amazonaws.com),
@@ -18,8 +15,9 @@ name: Deploy to dev
 # environment's values file in that repository, which names its folder) and
 # INFRA_APP_ID.
 #
-# The message is sent with a GitHub App installed on the infrastructure
-# repository: INFRA_APP_ID (variable) and INFRA_APP_PRIVATE_KEY (secret).
+# The infrastructure repository is read with a GitHub App installed on it:
+# INFRA_APP_ID (variable) and INFRA_APP_PRIVATE_KEY (secret). The deploy assumes
+# the environment's deployer role, which trusts this repository's develop branch.
 on:
   push:
     branches:
@@ -27,7 +25,6 @@ on:
     paths:
       - "backend-api/backend/**"
       - "frontend/**"
-      - "deploy/dev.yaml"
   workflow_dispatch:
 
 permissions:
@@ -39,21 +36,17 @@ env:
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
   INFRA_REPO: ${{ vars.INFRA_REPO }}
   VALUES_FILE: ${{ vars.DEV_VALUES_FILE }}
-  SETTINGS_FILE: deploy/dev.yaml
 
 jobs:
   changes:
     runs-on: ubuntu-latest
+    # A manual run builds both, and an image that is already in ECR is skipped.
     outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.backend }}
+      frontend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check the app settings
-        run: .github/scripts/check-deploy-config.sh "$SETTINGS_FILE"
-
-      # A manual run builds nothing and deploys the latest state.
       - uses: dorny/paths-filter@v3
         if: github.event_name == 'push'
         id: filter
@@ -135,12 +128,10 @@ jobs:
 
   deploy:
     needs: [changes, backend, frontend]
-    # Runs when nothing failed, whether or not an image was built: a push that
-    # changes only deploy/dev.yaml, or a manual run, deploys the latest state.
     if: ${{ !cancelled() && needs.changes.result == 'success' && needs.backend.result != 'failure' && needs.frontend.result != 'failure' }}
     runs-on: ubuntu-latest
-    # A newer deploy replaces one that is still waiting. Its message describes
-    # the newest state, so nothing is lost.
+    # A newer deploy replaces one that is still waiting. It deploys the newest
+    # images, so nothing is lost.
     concurrency:
       group: deploy-dev
       cancel-in-progress: true
@@ -151,14 +142,15 @@ jobs:
           ref: develop
           fetch-depth: 0
 
-      - name: Check the app settings
-        run: .github/scripts/check-deploy-config.sh "$SETTINGS_FILE"
-
       - name: Log in to AWS to read the images
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Find the newest images on develop
+        id: images
+        run: .github/scripts/newest-images.sh --backend-repository finos/backend --frontend-repository finos/frontend >> "$GITHUB_OUTPUT"
 
       # The environment is the folder of its values file: FINOS/dev.
       - name: Name the infrastructure repository and the environment
@@ -174,7 +166,7 @@ jobs:
             echo "environment=${VALUES_FILE%/apps/values.yaml}"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Get a token for the infrastructure repository
+      - name: Get a token to read the infrastructure repository
         id: infra-token
         uses: actions/create-github-app-token@v2
         with:
@@ -182,16 +174,40 @@ jobs:
           private-key: ${{ secrets.INFRA_APP_PRIVATE_KEY }}
           owner: ${{ steps.infra.outputs.owner }}
           repositories: ${{ steps.infra.outputs.name }}
-          permission-contents: write
-          permission-actions: read
+          permission-contents: read
 
-      - name: Ask the infrastructure repository to deploy and wait for the result
+      - name: Check out the infrastructure repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.INFRA_REPO }}
+          token: ${{ steps.infra-token.outputs.token }}
+          path: infra
+
+      - name: Read the environment
+        id: env
         env:
-          GH_TOKEN: ${{ steps.infra-token.outputs.token }}
-        run: >-
-          .github/scripts/request-dev-deploy.sh
-          --repo "$INFRA_REPO"
-          --environment "${{ steps.infra.outputs.environment }}"
-          --backend-repository finos/backend
-          --frontend-repository finos/frontend
-          --settings "$SETTINGS_FILE"
+          ENVIRONMENT: ${{ steps.infra.outputs.environment }}
+        run: grep -v '^#' "infra/$ENVIRONMENT/apps/deploy.env" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to AWS as the deployer
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ steps.env.outputs.DEPLOYER_ROLE_ARN }}
+          aws-region: ${{ steps.env.outputs.AWS_REGION }}
+          unset-current-credentials: true
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.1.1
+
+      - name: Connect to the cluster
+        run: aws eks update-kubeconfig --name "${{ steps.env.outputs.CLUSTER_NAME }}" --region "${{ steps.env.outputs.AWS_REGION }}"
+
+      - name: Deploy
+        working-directory: infra
+        env:
+          ENVIRONMENT: ${{ steps.infra.outputs.environment }}
+          BACKEND_TAG: ${{ steps.images.outputs.backend }}
+          FRONTEND_TAG: ${{ steps.images.outputs.frontend }}
+          SOURCE: ${{ github.repository }}@${{ github.sha }}
+        run: .github/scripts/deploy-workspace.sh -e "$ENVIRONMENT" -b "$BACKEND_TAG" -f "$FRONTEND_TAG" -s "$SOURCE"
