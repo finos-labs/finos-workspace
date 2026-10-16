@@ -75,7 +75,7 @@ describe("a question that needs no tool", () => {
     const spy = makeSpyMockLlm(llmEmitsText("Tokyo."));
     await run(spy.model);
     const names = toolNamesOf(spy.calls[0]);
-    expect(names.sort()).toEqual(["get_widget_data", "load_tools", "search_widgets"]);
+    expect(names.sort()).toEqual(["get_skill_content", "get_widget_data", "load_tools", "search_widgets"]);
 
     // The rest is named in the system prompt, by group.
     const catalog = catalogToolNamesOf(spy.calls[0]);

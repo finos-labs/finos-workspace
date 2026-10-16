@@ -47,7 +47,7 @@ import { type McpCitation } from "../mcp/results";
 import { readExtraState } from "../protocol/extra-state";
 import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server";
 import { buildMessages } from "./messages";
-import { injectFromReboot, injectWidgetData, type RoundTripContext } from "./round-trip";
+import { injectFromReboot, injectSkill, injectWidgetData, type RoundTripContext } from "./round-trip";
 import { getCachedRows } from "./row-cache";
 import {
   formatToolInputRejectedStatus,
@@ -68,6 +68,7 @@ import {
   type WidgetRequest,
 } from "./tools/widget-data";
 import { makeGetSkillContentTool, getSkillContentSchema } from "./tools/skills";
+import { isInesSkill, readInesSkill } from "../skills";
 import { makeWorkspaceTools } from "./tools/workspace";
 import {
   normalizeBridgeArgs,
@@ -948,7 +949,6 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
       // tool-result drain can't mis-attach them to an unrelated tool's status.
       // They surface woven into the final answer, or via the pre-exit flush.
       yield* drainQueueToDeferred();
-      const hasSkillsCatalog = (request.skills_catalog ?? []).length > 0;
 
       // The agent's own function calls for the Workspace are for a request that does not have the Workspace's
       // tools: with them, there is one way to do each thing, and it is the tool the Workspace describes.
@@ -995,7 +995,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         ...sqlToolSet,
         ...nativeToolSet,
         ...(widgetDataToolEnabled && { get_widget_data: makeWidgetDataTool() }),
-        ...(hasSkillsCatalog && { get_skill_content: makeGetSkillContentTool() }),
+        get_skill_content: makeGetSkillContentTool(),
         ...(earlierMessages.length > 0 && { recall_conversation: makeRecallConversationTool(earlierMessages) }),
         ...(suggestionsVia === "tool" &&
           promptSuggestionsEnabled && {
@@ -1599,6 +1599,11 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         }
         const { slug, reason } = skillParsed.data;
         loadedSkillSlugs.add(slug);
+        // Ines's own skills are read here; the Workspace supplies the user's with a round trip.
+        if (isInesSkill(request, slug)) {
+          yield injectSkill(slug, await readInesSkill(slug), ctx);
+          continue;
+        }
         for (const ev of sink.flushTail()) yield ev;
         yield* emitPendingArtifactsBeforeExit();
         yield getSkillContent(slug, reason, await buildContinuationExtraState());

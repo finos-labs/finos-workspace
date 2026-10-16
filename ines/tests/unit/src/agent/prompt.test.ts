@@ -67,7 +67,8 @@ describe("buildSystemPrompt — base content", () => {
 
   it("is lean: the instructions of tools that are not in use are not in it", () => {
     const out = buildSystemPrompt(req(), withTools());
-    expect(out.length).toBeLessThan(10_000);
+    // Ines's own skills are always listed (about 900 characters).
+    expect(out.length).toBeLessThan(11_000);
     for (const notThere of ["execute_sql:", "create_artifact renders", "operation 'create'", "_llm_think: show"]) {
       expect(out).not.toContain(notThere);
     }
@@ -326,10 +327,10 @@ describe("buildSystemPrompt — skills + MCP tools + timezone", () => {
     expect(skillsIdx).toBeLessThan(widgetsIdx);
   });
 
-  it("omits skills section entirely when catalog is empty", () => {
+  it("lists Ines's own skills when the Workspace lists none", () => {
     const out = buildSystemPrompt(req());
-    expect(out).not.toContain("## Skills");
-    expect(out).not.toContain("get_skill_content");
+    expect(out).toContain("## Skills");
+    for (const slug of ["html-report", "html-table", "html-chart"]) expect(out).toContain(`slug="${slug}"`);
   });
 
   it("lists MCP tools under their sanitized names, in a group", () => {

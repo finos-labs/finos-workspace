@@ -832,6 +832,17 @@ export function injectWidgetData(
   });
 }
 
+/** Gives the model a skill's instructions, whether the Workspace or Ines supplied them. */
+export function injectSkill(slug: string, content: string, ctx: RoundTripContext): SSEEvent {
+  ctx.messages.push({
+    role: "user" as const,
+    content: `Follow these skill instructions:\n\n${content}`,
+  });
+  return reasoningStep(`Skill "${slug}" loaded`, "INFO", {
+    output_preview: content.slice(0, 4_000),
+  });
+}
+
 export function extractSkillContent(toolMsg: ToolMessage): { slug: string; content: string } {
   const skillResult = toolMsg.data?.[0] as Record<string, unknown> | undefined;
   const slug = (toolMsg.input_arguments?.slug as string) ?? "unknown";
@@ -883,13 +894,7 @@ export async function* injectFromReboot(
   switch (toolMsg.function) {
     case "get_skill_content": {
       const { slug, content } = extractSkillContent(toolMsg);
-      ctx.messages.push({
-        role: "user" as const,
-        content: `Follow these skill instructions:\n\n${content}`,
-      });
-      yield reasoningStep(`Skill "${slug}" loaded`, "INFO", {
-        output_preview: content.slice(0, 4_000),
-      });
+      yield injectSkill(slug, content, ctx);
       return {};
     }
 

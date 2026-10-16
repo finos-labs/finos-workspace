@@ -60,7 +60,7 @@ const SQL_NOTES =
   "- execute_sql: SQLite SELECT/WITH only, up to 1000 rows. Result aliases are not saved as columns: to sort, filter, chart or build an artifact from a derived value, define it in the same SQL (a CTE or subquery). In UNION/INTERSECT/EXCEPT, ORDER BY uses output columns or positions (wrap the query in an outer SELECT for a custom sort). Window functions cover moving averages, rankings and cumulative sums.\n" +
   "- peek_table / peek_column_values: cheap previews; peek_table first when names are uncertain (never PRAGMA or SQLite internals). A query that returns 0 rows is not an answer: check the exact values with peek_column_values or SELECT DISTINCT.\n" +
   "- create_artifact renders a table inline. Pass exactly ONE source: `sql`, `from_table_id` (one loaded table as it is) or `data` (raw rows). Call it once per artifact, then go to the final answer. For tabular results and for CSV/export/download/full-table requests use it instead of writing Markdown or CSV rows; keep the final text to the interpretation and the key figures.\n" +
-  "- The Workspace has no chart artifact: draw a chart as HTML/SVG with create_html_artifact (in the `render` group) from the rows you queried, following the `html-chart` skill if one is listed. Check that the table has the columns first; never invent trend columns from a snapshot table.\n" +
+  "- The Workspace has no chart artifact: draw a chart as HTML/SVG with create_html_artifact (in the `render` group) from the rows you queried, following the `html-chart` skill. Check that the table has the columns first; never invent trend columns from a snapshot table.\n" +
   "- DEFAULT to these tools for filter / aggregate / chart / table tasks.";
 
 const DASHBOARD_NOTES =

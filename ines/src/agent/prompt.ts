@@ -1,11 +1,11 @@
 import type {
   QueryRequest,
-  SkillCatalogEntry,
   UploadedDocument,
   Widget,
   WidgetParam,
   WorkspaceState,
 } from "../protocol/types";
+import { type CatalogSkill, skillsCatalog } from "../skills";
 import { renderToolCatalog, renderToolNotes, type ToolCatalog } from "./tool-groups";
 
 const BASE_PROMPT =
@@ -154,7 +154,7 @@ function describeUploadedDocuments(docs: UploadedDocument[]): string {
   );
 }
 
-function describeSkillsCatalog(catalog: SkillCatalogEntry[]): string {
+function describeSkillsCatalog(catalog: CatalogSkill[]): string {
   const items = catalog.map((s) => `- slug="${s.slug}" — ${s.description}`).join("\n");
   return (
     "\n## Skills (specialized instructions / workflows)\n" +
@@ -277,8 +277,7 @@ export function buildSystemPrompt(
   const documents = request.documents ?? [];
   if (documents.length > 0) sections.push(describeUploadedDocuments(documents));
 
-  const catalogSkills = request.skills_catalog ?? [];
-  if (catalogSkills.length > 0) sections.push(describeSkillsCatalog(catalogSkills));
+  sections.push(describeSkillsCatalog(skillsCatalog(request)));
 
   const primary = request.widgets?.primary ?? [];
   const secondary = request.widgets?.secondary ?? [];

@@ -96,7 +96,8 @@ Workspace ──POST /v1/query──▶ Agent
    │   │             ┌─ search_widgets        → executes locally → loop continues
    │   │             ├─ SQL family            → executes locally (closure) → loop continues
    │   │             ├─ get_widget_data       → SSE → workspace fetches widget data
-   │   │             ├─ get_skill_content     → SSE → workspace loads skill
+   │   │             ├─ get_skill_content     → Ines's own skill: read locally → loop continues
+   │   │             │                          the user's skill: SSE → workspace loads it
    │   │             ├─ Workspace tool        → SSE execute_agent_tool (server "workspace") → the user's tab runs it
    │   │             ├─ workspace bridge op   → native SSE copilotFunctionCall {function, input_arguments} → terminal
    │   │             │                          (only for a request without the Workspace's tools)
@@ -115,7 +116,7 @@ This is the agent's irreducible scope — all of it runs without the MCP server:
 - Widget tier classification + `search_widgets`
 - `get_widget_data` round-trip
 - Widget data parsing (CSV / JSON / images → table schema; PDF/DOCX → a pointer to the document search)
-- `get_skill_content` round-trip
+- **Skills**: the catalog in the system prompt (the user's skills, which the Workspace lists, and Ines's own in `src/skills/`: `html-report`, `html-table`, `html-chart`) and `get_skill_content`, which reads Ines's own and round-trips to the Workspace for the user's
 - **SQL family** (`execute_sql`, `peek_table`, `peek_column_values`, `create_artifact`) — in-process `bun:sqlite`, a closure over `pendingTables`
 - **Tool groups** (`load_tools`, the catalog in the system prompt, the instructions that go with a loaded group) — the model is given the few tools every question can need and a one-line catalog of the agent's own others. The tools that the Workspace supplies (the connected servers' and its own) are never deferred: they are given in full, with their descriptions and parameters, so the model reads how to use them before it acts; see `src/agent/tool-groups.ts`
 - **Native helpers** (`enhance_prompt`, `_llm_think`, `create_table_from_text`, `create_html_artifact`, `create_app`) — local and state-bound to `artifactQueue` / `pendingTables`. `create_app` validates each `(origin, widget_id)` against the live widget catalog and emits an `app` artifact (an apps.json template) the Workspace renders with open-as-dashboard / save-to-apps actions
@@ -171,6 +172,7 @@ src/                           # Agent (port 7777) — the standalone product
 │       └── sql/               # execute_sql, peek_table, peek_column_values, create_artifact (in-process)
 ├── widgets/                   # tiers, parse, parse-as
 ├── sql/                       # loader (analyzeTable — type inference only)
+├── skills/                    # Ines's own skills: one markdown file per slug, and the catalog
 ├── mcp/                       # factory, schema, results, retry
 ├── protocol/                  # types, events, stream, extra-state, citations, bridge-commands
 └── lib/                       # providers, llm, token-usage, logger
