@@ -816,6 +816,10 @@ class GeneralSettings(BaseModel):
     # (scheme, host and port). Their session cookies are accepted only from them. Required:
     # there is no default and no wildcard.
     BACKEND_CORS_ORIGINS: list[str] | str
+    # Origins matching this regular expression are allowed as well, for hosts that
+    # can't be listed ahead of time, such as a preview per pull request. The whole
+    # origin must match. Unset by default.
+    BACKEND_CORS_ORIGIN_REGEX: str | None = None
     # Addresses exempt from the duplicate-email checks in crud.check_new_user
     SPECIAL_EMAILS: set[EmailStr] = Field(default_factory=set)
     SUPPRESSED_API_ROUTERS: list[str] | None = Field(default_factory=list)

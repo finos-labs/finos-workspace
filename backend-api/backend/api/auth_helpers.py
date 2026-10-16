@@ -18,6 +18,7 @@ browser sends the origin it is configured with (WORKSPACE_ORIGIN).
 
 import asyncio
 import json
+import re
 import secrets
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
@@ -120,13 +121,19 @@ class NoStoreMiddleware:
 
 
 def is_allowed_origin(origin: str | None) -> bool:
-    """Whether `origin` is exactly one of BACKEND_CORS_ORIGINS."""
-    return origin is not None and origin in settings.BACKEND_CORS_ORIGINS
+    """Whether `origin` is exactly one of BACKEND_CORS_ORIGINS, or matches
+    BACKEND_CORS_ORIGIN_REGEX as a whole."""
+    if origin is None:
+        return False
+    pattern = settings.BACKEND_CORS_ORIGIN_REGEX
+    return origin in settings.BACKEND_CORS_ORIGINS or (
+        pattern is not None and re.fullmatch(pattern, origin) is not None
+    )
 
 
 class AllowedOriginMiddleware:
-    """Refuses every request and websocket whose Origin header is not one of
-    BACKEND_CORS_ORIGINS, on every path, before anything else sees it: 403 for a request,
+    """Refuses every request and websocket whose Origin header is not an allowed origin
+    (is_allowed_origin), on every path, before anything else sees it: 403 for a request,
     and a websocket is closed before its handshake is accepted."""
 
     def __init__(self, app: ASGIApp):
