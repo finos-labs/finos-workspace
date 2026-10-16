@@ -72,10 +72,10 @@ function isInternalName(hostname: string): boolean {
 export interface FetchPolicy {
   /**
    * The Workspace API as the browser addresses it and as this process reaches it. A link to a file of
-   * the Workspace on the first address is fetched from the second, with `origin` as its Origin when it
-   * is given: the API refuses the calls of an origin it does not allow.
+   * the Workspace on the first address is fetched from the second, with `origin` (WORKSPACE_ORIGIN) as
+   * its Origin: the API refuses the calls of an origin it does not allow.
    */
-  workspace?: { publicUrl: string; internalUrl: string; origin?: string };
+  workspace?: { publicUrl: string; internalUrl: string; origin: string };
   /** The addresses of a hostname. DNS, unless a test says otherwise. */
   resolve?: (hostname: string) => Promise<string[]>;
 }
@@ -97,8 +97,7 @@ function describe(url: URL): string {
   return `${url.origin}${url.pathname}`;
 }
 
-function withOrigin(init: RequestInit, origin: string | undefined): RequestInit {
-  if (!origin) return init;
+function withOrigin(init: RequestInit, origin: string): RequestInit {
   const headers = new Headers(init.headers);
   headers.set("Origin", origin);
   return { ...init, headers };
@@ -217,7 +216,7 @@ export async function fetchClientUrl(
     const addresses = trusted ? null : await publicAddresses(url);
     const response = addresses
       ? await fetchPinned(url, addresses, requestInit)
-      : await fetch(url.href, trusted ? withOrigin(requestInit, policy.workspace?.origin) : requestInit);
+      : await fetch(url.href, trusted && policy.workspace ? withOrigin(requestInit, policy.workspace.origin) : requestInit);
     const location = response.headers.get("location");
     if (response.status >= 300 && response.status < 400 && location) {
       void response.body?.cancel();

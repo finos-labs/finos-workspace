@@ -446,8 +446,9 @@ PORT                  # Agent port (default 7777)
 # Who may use the agent (see "Running for many users")
 INES_AUTH                    # workspace (default) or none
 WORKSPACE_API_URL            # Required with workspace auth: the Workspace API as the agent reaches it
-WORKSPACE_ORIGIN             # Required with workspace auth: the Origin of the agent's calls to that API, the web app's
-                             # origin; the API refuses an origin that is not in its BACKEND_CORS_ORIGINS
+WORKSPACE_ORIGIN             # Required with workspace auth or WORKSPACE_PUBLIC_URL: the Origin of every call to that
+                             # API (the agent's, and the MCP server's file fetches), the web app's origin; the API
+                             # refuses an origin that is not in its BACKEND_CORS_ORIGINS
 WORKSPACE_PUBLIC_URL         # The API as the browser addresses it; links to the Workspace's files on it are fetched from WORKSPACE_API_URL
 INES_METERING_TOKEN          # Required with workspace auth: python -m scripts.create_metering_token
 INES_SCOPE_SECRET            # Required with workspace auth (16+ characters); shared with the MCP server

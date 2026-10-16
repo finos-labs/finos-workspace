@@ -119,14 +119,24 @@ describe("loadConfig — the Workspace's files", () => {
   });
 
   it("without users, takes the API's address from WORKSPACE_API_URL, or the same one", () => {
-    expect(loadConfig({ INES_AUTH: "none", WORKSPACE_PUBLIC_URL: "http://localhost:8000", WORKSPACE_API_URL: "http://127.0.0.1:8000/" }).workspaceFiles).toEqual({
+    const files = { INES_AUTH: "none", WORKSPACE_PUBLIC_URL: "http://localhost:8000", WORKSPACE_ORIGIN: "http://localhost:3000" };
+    expect(loadConfig({ ...files, WORKSPACE_API_URL: "http://127.0.0.1:8000/" }).workspaceFiles).toEqual({
       publicUrl: "http://localhost:8000",
       internalUrl: "http://127.0.0.1:8000",
+      origin: "http://localhost:3000",
     });
-    expect(loadConfig({ INES_AUTH: "none", WORKSPACE_PUBLIC_URL: "http://localhost:8000" }).workspaceFiles).toEqual({
+    expect(loadConfig(files).workspaceFiles).toEqual({
       publicUrl: "http://localhost:8000",
       internalUrl: "http://localhost:8000",
+      origin: "http://localhost:3000",
     });
+  });
+
+  it("needs WORKSPACE_ORIGIN for them without users too: every call to the API carries it", () => {
+    expect(() => loadConfig({ INES_AUTH: "none", WORKSPACE_PUBLIC_URL: "http://localhost:8000" })).toThrow(
+      "WORKSPACE_ORIGIN is required with INES_AUTH=workspace or WORKSPACE_PUBLIC_URL",
+    );
+    expect(loadConfig({ INES_AUTH: "none" }).auth).toEqual({ mode: "none" });
   });
 
   it("refuses an address with a path", () => {

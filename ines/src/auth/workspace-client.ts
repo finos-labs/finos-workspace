@@ -234,7 +234,10 @@ export function createWorkspaceClient(options: WorkspaceClientOptions): Workspac
 
     async ready() {
       try {
-        const response = await doFetch(`${apiUrl}/health`, { signal: AbortSignal.timeout(3_000) });
+        const response = await doFetch(`${apiUrl}/health`, {
+          headers: { Origin: origin },
+          signal: AbortSignal.timeout(3_000),
+        });
         return response.ok;
       } catch {
         return false;

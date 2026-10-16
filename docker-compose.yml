@@ -245,8 +245,10 @@ services:
       - ./ines/.env
     environment:
       # The document search fetches the files of the Workspace itself, from the links the Workspace gives
-      # out: they are on the address the browser uses, and are fetched from the API's address here.
+      # out: they are on the address the browser uses, and are fetched from the API's address here, with
+      # WORKSPACE_ORIGIN as their Origin (the API refuses the calls of an origin it does not allow).
       WORKSPACE_API_URL: http://api:8000
+      WORKSPACE_ORIGIN: ${WEB_URL:-http://localhost:3000}
       WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
       # The documents of a chat, shared between replicas of this server as Ines shares what she keeps.
       REDIS_URL: redis://redis:6379

@@ -187,11 +187,13 @@ describe("Origin", () => {
     await client.recordQuery("t");
     await client.recordTokens("t", 10);
     await client.authorize("t", { agentId: "default_agent", tools: [] });
+    await client.ready();
     expect(calls.map((call) => call.url)).toEqual([
       "http://api:8000/app/user",
       "http://api:8000/app/usage",
       "http://api:8000/app/usage",
       "http://api:8000/app/copilot/authorize",
+      "http://api:8000/health",
     ]);
     for (const call of calls) expect(call.headers.get("origin")).toBe("http://localhost:3000");
   });

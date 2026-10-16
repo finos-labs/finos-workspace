@@ -198,7 +198,7 @@ describe("fetchClientUrl — the Workspace's own files", () => {
   beforeEach(() => {
     configureFetchPolicy({
       resolve: async () => [PUBLIC_IP],
-      workspace: { publicUrl: "http://localhost:8000", internalUrl: "http://api:8000" },
+      workspace: { publicUrl: "http://localhost:8000", internalUrl: "http://api:8000", origin: "http://localhost:3000" },
     });
   });
 
@@ -226,11 +226,7 @@ describe("fetchClientUrl — the Workspace's own files", () => {
     expect(fetched).toHaveLength(0);
   });
 
-  it("fetches them with the Workspace's origin when one is configured, and nothing else", async () => {
-    configureFetchPolicy({
-      resolve: async () => [PUBLIC_IP],
-      workspace: { publicUrl: "http://localhost:8000", internalUrl: "http://api:8000", origin: "http://localhost:3000" },
-    });
+  it("fetches them with WORKSPACE_ORIGIN as their Origin, and nothing else with it", async () => {
     const origins: Record<string, string | null> = {};
     globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
       const url = logicalUrl(input, init);

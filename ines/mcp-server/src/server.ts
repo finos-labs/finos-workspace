@@ -148,11 +148,13 @@ if (import.meta.main) {
 }
 
 // The Workspace's links to its users' files are on the address the browser uses; these tools fetch them from
-// the API's address inside the deployment (see src/lib/safe-fetch.ts). Without WORKSPACE_PUBLIC_URL a link is
-// fetched as it is.
+// the API's address inside the deployment (see src/lib/safe-fetch.ts), with WORKSPACE_ORIGIN as their Origin:
+// the API refuses the calls of an origin it does not allow. Without WORKSPACE_PUBLIC_URL a link is fetched as
+// it is.
 const workspacePublicUrl = (process.env.WORKSPACE_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
 if (workspacePublicUrl) {
   const internalUrl = (process.env.WORKSPACE_API_URL ?? "").trim().replace(/\/+$/, "") || workspacePublicUrl;
+  const origin = (process.env.WORKSPACE_ORIGIN ?? "").trim().replace(/\/+$/, "");
   try {
     new URL(workspacePublicUrl);
     new URL(internalUrl);
@@ -160,7 +162,17 @@ if (workspacePublicUrl) {
     logger.fatal("WORKSPACE_PUBLIC_URL and WORKSPACE_API_URL must be URLs like http://api:8000");
     process.exit(1);
   }
-  configureFetchPolicy({ workspace: { publicUrl: workspacePublicUrl, internalUrl } });
+  let isOrigin = false;
+  try {
+    isOrigin = new URL(origin).origin === origin;
+  } catch {}
+  if (!isOrigin) {
+    logger.fatal(
+      "WORKSPACE_ORIGIN is required with WORKSPACE_PUBLIC_URL: the web app's origin, which the Workspace API allows (BACKEND_CORS_ORIGINS), like https://workspace.example.com",
+    );
+    process.exit(1);
+  }
+  configureFetchPolicy({ workspace: { publicUrl: workspacePublicUrl, internalUrl, origin } });
 }
 
 // Which tools exist is decided once, at start, and said once. Each request then gets a server
