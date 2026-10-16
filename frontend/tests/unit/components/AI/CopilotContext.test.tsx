@@ -185,7 +185,7 @@ describe("CopilotContext", () => {
 
     const openSettings = () => {
       render(<CopilotContext />);
-      fireEvent.click(screen.getByRole("button", { name: "Copilot settings" }));
+      fireEvent.click(screen.getByRole("button", { name: "Agent settings" }));
     };
 
     beforeEach(() => {

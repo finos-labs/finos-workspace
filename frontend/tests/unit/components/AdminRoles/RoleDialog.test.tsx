@@ -228,11 +228,7 @@ describe("RoleDialog", () => {
     const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement;
     const noLimit = (label: string) =>
       screen.getByRole("checkbox", { name: `${label}: no limit` });
-    const LIMITS = [
-      "Copilot calls per day",
-      "Copilot tokens per day",
-      "Upload size (GB)",
-    ];
+    const LIMITS = ["Agent calls per day", "Agent tokens per day", "Upload size (GB)"];
     // The select's label names its form item, not the trigger
     const sharingSelect = () =>
       within(
@@ -255,10 +251,10 @@ describe("RoleDialog", () => {
       renderDialog({ mode: "edit", initialData: role });
 
       expect(sharingSelect()).toHaveTextContent("Receive only");
-      expect(field("Copilot calls per day").value).toBe("50");
-      expect(noLimit("Copilot calls per day")).not.toBeChecked();
-      expect(noLimit("Copilot tokens per day")).toBeChecked();
-      expect(field("Copilot tokens per day")).toBeDisabled();
+      expect(field("Agent calls per day").value).toBe("50");
+      expect(noLimit("Agent calls per day")).not.toBeChecked();
+      expect(noLimit("Agent tokens per day")).toBeChecked();
+      expect(field("Agent tokens per day")).toBeDisabled();
       expect(field("Upload size (GB)").value).toBe("2");
       expect(screen.getByRole("checkbox", { name: "Excel add-in" })).toBeChecked();
     });
@@ -278,8 +274,8 @@ describe("RoleDialog", () => {
       await typeName("Sharers");
       await userEvent.click(sharingSelect());
       await userEvent.click(await screen.findByRole("option", { name: "Can share" }));
-      await userEvent.click(noLimit("Copilot tokens per day"));
-      await userEvent.type(field("Copilot tokens per day"), "5000");
+      await userEvent.click(noLimit("Agent tokens per day"));
+      await userEvent.type(field("Agent tokens per day"), "5000");
       await userEvent.click(noLimit("Upload size (GB)"));
       await userEvent.type(field("Upload size (GB)"), "3");
       await userEvent.click(screen.getByRole("checkbox", { name: "Excel add-in" }));
@@ -301,8 +297,8 @@ describe("RoleDialog", () => {
 
     it("saves an edited limit and keeps the others as they were", async () => {
       renderDialog({ mode: "edit", initialData: role });
-      await userEvent.clear(field("Copilot calls per day"));
-      await userEvent.type(field("Copilot calls per day"), "75");
+      await userEvent.clear(field("Agent calls per day"));
+      await userEvent.type(field("Agent calls per day"), "75");
 
       const save = screen.getByRole("button", { name: /save changes/i });
       await waitFor(() => expect(save).toBeEnabled());
@@ -333,15 +329,15 @@ describe("RoleDialog", () => {
     it("asks for a number once No limit is unchecked", async () => {
       renderDialog();
       await typeName("Analyst");
-      await userEvent.click(noLimit("Copilot calls per day"));
+      await userEvent.click(noLimit("Agent calls per day"));
 
-      expect(field("Copilot calls per day")).toBeEnabled();
+      expect(field("Agent calls per day")).toBeEnabled();
       await waitFor(() =>
         expect(screen.getByRole("button", { name: /^create role$/i })).toBeDisabled(),
       );
       expect(await screen.findByText("Enter a whole number")).toBeInTheDocument();
 
-      await userEvent.type(field("Copilot calls per day"), "0");
+      await userEvent.type(field("Agent calls per day"), "0");
       await waitFor(() =>
         expect(screen.getByRole("button", { name: /^create role$/i })).toBeEnabled(),
       );

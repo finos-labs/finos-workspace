@@ -120,8 +120,8 @@ function roleSettings(values: RoleForm): RoleSettings {
 }
 
 const LIMIT_FIELDS = [
-  { name: "copilot_calls_day", label: "Copilot calls per day" },
-  { name: "copilot_tokens_day", label: "Copilot tokens per day" },
+  { name: "copilot_calls_day", label: "Agent calls per day" },
+  { name: "copilot_tokens_day", label: "Agent tokens per day" },
   { name: "upload_size_gb", label: "Upload size (GB)" },
 ] as const;
 

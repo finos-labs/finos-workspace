@@ -200,13 +200,13 @@ describe("CopilotChat", () => {
       expect(mockSetShowAddAgentsDialog).toHaveBeenCalledWith(true);
     });
 
-    it("does not offer Add Copilot to a User, who cannot add connections", () => {
+    it("does not offer Add Agent to a User, who cannot add connections", () => {
       setAccess({ user_type: "User" });
       render(<CopilotChat />);
 
-      expect(screen.getByText("No copilot selected")).toBeInTheDocument();
+      expect(screen.getByText("No agent selected")).toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: /add copilot/i }),
+        screen.queryByRole("button", { name: /add agent/i }),
       ).not.toBeInTheDocument();
     });
 
