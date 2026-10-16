@@ -37,6 +37,17 @@ describe("configFromEnv", () => {
     expect(cfg.contact.supportEmail).toBe("");
   });
 
+  it("keeps the product description when the white-label variables are unset", () => {
+    const cfg = configFromEnv({});
+
+    expect(cfg.whiteLabel.description).toBe(
+      "An open, self-hosted analytics workspace for financial institutions to connect data, tools, and AI agents.",
+    );
+    expect(cfg.whiteLabel.keywords).toBe(
+      "FINOS Workspace, open source financial analytics, self-hosted analytics, financial data workspace, AI agents",
+    );
+  });
+
   it("maps the VITE_* variables onto their groups", () => {
     const cfg = configFromEnv({
       VITE_BACKEND_URL: "https://backend.test",

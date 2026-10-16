@@ -24,7 +24,7 @@ describe("DragFileHere Component", () => {
     // Check if the component has the correct css classes
     const component = screen.getByTestId("drag-file-here");
     expect(component).toHaveClass(
-      "rounded border border-dashed dark:border-[#505059] dark:bg-[#303038] dark:text-[#6D6E74] w-full h-full flex items-center justify-center",
+      "rounded border border-dashed dark:border-dark-300 dark:bg-dark-600 dark:text-dark-100 w-full h-full flex items-center justify-center",
     );
   });
 });

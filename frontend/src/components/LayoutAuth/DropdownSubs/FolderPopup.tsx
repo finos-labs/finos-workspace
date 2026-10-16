@@ -144,7 +144,7 @@ function FolderPopupMenu({
         ) : (
           <Fragment key={`${label}-${i}`}>
             {label === "Export PDF" && (
-              <DropdownMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-[#36363F]" />
+              <DropdownMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-dark-500" />
             )}
             <DropdownMenuPrimitive.Item
               onClick={(e) => {

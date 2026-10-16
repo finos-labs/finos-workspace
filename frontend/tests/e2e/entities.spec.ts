@@ -47,7 +47,7 @@ test("an entity opens with its entitlements", async ({ page }) => {
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("tab", { name: "Entitlements" }).click();
 
-  await expect(dialog.getByText("Copilot queries per day")).toBeVisible();
+  await expect(dialog.getByText("Agent queries per day")).toBeVisible();
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await expect(dialog).toBeHidden();
 });

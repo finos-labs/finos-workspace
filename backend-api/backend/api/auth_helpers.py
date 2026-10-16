@@ -76,7 +76,11 @@ def check_valid(origin: str, url_path: str) -> bool:
     if any(url_path.startswith(path) for path in VALID_PATHS):
         return True
 
-    return origin in VALID_ORIGINS
+    valid_pattern = settings.BACKEND_CORS_ORIGIN_REGEX is not None and bool(
+        re.fullmatch(settings.BACKEND_CORS_ORIGIN_REGEX, origin)
+    )
+
+    return origin in VALID_ORIGINS or valid_pattern
 
 
 class OriginOAuth2Token(OAuth2PasswordBearer):

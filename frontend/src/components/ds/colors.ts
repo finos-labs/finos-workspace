@@ -6,45 +6,49 @@ export const transparent = "transparent" as const;
 
 /* Primitives */
 
+/* FINOS Brand Visual Guidelines, 5 April 2018 (finos/branding):
+   Light Blue #00B5E2, Dark Blue #0086BF.
+   Light theme: white plus tints of those blues.
+   Dark theme: Dark Blue darkened toward black, with Light Blue and white. */
 export const base = {
   0: "#FFFFFF",
-  100: "#0C0C0E",
+  100: "#071820",
 } as const;
 
 export const main = {
-  50: "#33BBFF",
-  100: "#0077B3",
-  200: "#006699",
+  50: "#00B5E2",
+  100: "#0086BF",
+  200: "#005E8A",
 } as const;
 
 export const dark = {
-  50: "#8A8A90",
-  100: "#6D6E74",
-  200: "#5A5961",
-  300: "#505059",
-  400: "#46464F",
-  500: "#36363F",
-  600: "#303038",
-  700: "#2A2A31",
-  750: "#24242A",
-  800: "#212127",
-  850: "#1C1B20",
-  900: "#151518",
+  50: "#7699A8",
+  100: "#547280",
+  200: "#425E6C",
+  300: "#375C6C",
+  400: "#355867",
+  500: "#27556E",
+  600: "#1F4A60",
+  700: "#1A4154",
+  750: "#16394A",
+  800: "#123244",
+  850: "#0E2B3A",
+  900: "#0B2432",
 } as const;
 
 export const light = {
-  50: "#F7F8F9",
-  100: "#F3F4F7",
-  200: "#EBECF0",
-  300: "#D6DCE5",
-  400: "#D0D5DD",
-  500: "#9DA5B2",
-  600: "#667085",
-  700: "#485468",
-  750: "#3D4758",
-  800: "#354055",
-  850: "#1E2939",
-  900: "#0F1828",
+  50: "#F4F9FC",
+  100: "#E7F2F8",
+  200: "#D6E6F0",
+  300: "#C5D9E6",
+  400: "#B7CDD8",
+  500: "#8AA6B8",
+  600: "#56748C",
+  700: "#3E5C74",
+  750: "#345068",
+  800: "#2A4460",
+  850: "#1A3248",
+  900: "#102230",
 } as const;
 
 export const error = {

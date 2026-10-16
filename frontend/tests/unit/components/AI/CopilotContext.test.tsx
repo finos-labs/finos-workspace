@@ -162,7 +162,7 @@ describe("CopilotContext", () => {
     render(<CopilotContext />);
 
     expect(
-      screen.getByRole("button", { name: "Copilot settings" }),
+      screen.getByRole("button", { name: "Agent settings" }),
     ).toBeInTheDocument();
   });
 });

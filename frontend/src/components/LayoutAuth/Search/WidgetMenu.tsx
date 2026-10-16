@@ -74,7 +74,10 @@ export const CreateCheckbox = memo(
     const handleFocus = useCallback(() => {
       document
         .getElementById(parentId)
-        ?.style.setProperty("background-color", isDarkMode ? "#303038" : "#CDCED0");
+        ?.style.setProperty(
+          "background-color",
+          isDarkMode ? "var(--color-dark-600)" : "var(--color-light-300)",
+        );
     }, [parentId, isDarkMode]);
 
     const handleBlur = useCallback(() => {

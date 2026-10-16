@@ -208,7 +208,7 @@ export function DashboardPopup(props: DashboardPopupProps) {
           ) : (
             <Fragment key={`${label}-${i}`}>
               {(label === "Export PDF" || label === "Export apps.json") && (
-                <DropdownMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-[#36363F]" />
+                <DropdownMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-dark-500" />
               )}
               <FeatureLock isLocked={!!locked}>
                 {disabled && !locked ? (

@@ -107,7 +107,7 @@ export function EntityAdminFields() {
 
 const FLAGS: { name: keyof EntitlementFormValues; label: string }[] = [
   { name: "bring_your_own_data", label: "Bring your own data" },
-  { name: "bring_your_own_copilot", label: "Bring your own copilot" },
+  { name: "bring_your_own_copilot", label: "Bring your own agent" },
   { name: "allow_custom_backends", label: "Allow custom backends" },
   { name: "search_web", label: "Copilot may search the web (SEARCH_WEB)" },
   {
@@ -143,7 +143,7 @@ export function EntityEntitlementFields() {
         name="number_copilot_calls_day"
         control={control}
         render={({ field }) => (
-          <FormInput type="number" label="Copilot queries per day" {...field} />
+          <FormInput type="number" label="Agent queries per day" {...field} />
         )}
       />
       <FormField
@@ -152,7 +152,7 @@ export function EntityEntitlementFields() {
         render={({ field }) => (
           <FormInput
             type="number"
-            label="Copilot tokens per day"
+            label="Agent tokens per day"
             message="Leave empty for no limit"
             {...field}
           />

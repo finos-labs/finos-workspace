@@ -1,14 +1,14 @@
 .ws-admin-table .ag-header {
-  background-color: #f5f5f6 !important;
-  color: #6d6e74 !important;
+  background-color: #e7f2f8 !important;
+  color: #547280 !important;
   font-weight: 500 !important;
   margin-bottom: 6px !important;
   border-radius: 4px !important;
 }
 
 .ws-admin-table.dark .ag-header {
-  background-color: #151518 !important;
-  color: #8a8a90 !important;
+  background-color: var(--color-dark-900) !important;
+  color: #7699a8 !important;
   font-weight: 500 !important;
   margin-bottom: 6px !important;
   border-radius: 4px !important;
@@ -31,7 +31,7 @@
 
 .ws-admin-table.dark .ag-cell {
   height: 40px !important;
-  background-color: #151518 !important;
+  background-color: var(--color-dark-900) !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
 }

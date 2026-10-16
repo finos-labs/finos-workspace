@@ -29,7 +29,7 @@ const RenderIfVisible = forwardRef<HTMLDivElement, Props>(
       initialVisible = false,
       visibleOffset = 400,
       stayRendered = true,
-      rootElementClass = "widgetContent w-full h-full rounded bg-white text-xs shadow-xs dark:bg-[#151518]",
+      rootElementClass = "widgetContent w-full h-full rounded bg-white text-xs shadow-xs dark:bg-dark-900",
       children,
     },
     _forwardedRef,

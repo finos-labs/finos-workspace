@@ -6,7 +6,7 @@ export default function DragFileHere({ className }: { className?: string }) {
     <div
       data-testid="drag-file-here"
       className={cn(
-        "rounded border border-dashed bg-white dark:border-[#505059] dark:bg-[#303038] dark:text-[#6D6E74] w-full h-full flex items-center justify-center",
+        "rounded border border-dashed bg-white dark:border-dark-300 dark:bg-dark-600 dark:text-dark-100 w-full h-full flex items-center justify-center",
         className,
       )}
     >

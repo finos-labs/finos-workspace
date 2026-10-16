@@ -20,7 +20,7 @@ export function ExternalLinkProvider({ children }: { children: ReactNode }) {
 
   const handleOpenInIframe = useCallback(
     (url: string) => {
-      addWidget(activeDashboardId, buildIframeWidget(url, "Copilot"));
+      addWidget(activeDashboardId, buildIframeWidget(url, "Agent"));
     },
     [addWidget, activeDashboardId],
   );

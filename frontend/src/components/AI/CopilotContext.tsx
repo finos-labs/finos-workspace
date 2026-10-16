@@ -180,11 +180,11 @@ export function CopilotContext() {
           <PopoverTrigger asChild={true}>
             <Tooltip
               message={
-                enableSettings ? "Settings" : "No settings available for this copilot"
+                enableSettings ? "Settings" : "No settings available for this agent"
               }
             >
               <button
-                aria-label="Copilot settings"
+                aria-label="Agent settings"
                 ref={(el) => (settingsButtonRef.current = el)}
                 onClick={enableSettings ? handleSettingsButtonClick : undefined}
                 disabled={!enableSettings}
@@ -235,7 +235,7 @@ export function CopilotContext() {
               message={
                 contextEnabled
                   ? "Add widgets or tabs to context"
-                  : "Searching across all widgets is not enabled for this copilot."
+                  : "Searching across all widgets is not enabled for this agent."
               }
               hide={isMobile}
             >
@@ -462,7 +462,7 @@ const SelectedWidgetBadges = memo(
                 ? "Using dashboard widgets"
                 : "Add widgets to context"
             : "Widget context is available on dashboards only"
-          : "Context not available for this copilot"}
+          : "Context not available for this agent"}
       </span>
     );
   },
@@ -495,8 +495,8 @@ function SettingsContent() {
         id: `copilot-feature-toggle-${key}`,
         message: enabled ? `${label} Enabled` : `${label} Disabled`,
         description: enabled
-          ? `The copilot can now use ${label.toLowerCase()}.`
-          : `The copilot will no longer use ${label.toLowerCase()}.`,
+          ? `The agent can now use ${label.toLowerCase()}.`
+          : `The agent will no longer use ${label.toLowerCase()}.`,
         toastType: "info",
       });
     },
@@ -725,8 +725,8 @@ const BuiltInFeatureToggles = memo(() => {
       id: "copilot-global-data-toggle",
       message: newState ? "Global Data Enabled" : "Global Data Disabled",
       description: newState
-        ? "The copilot can now access data from any widget in the library, not just those on your dashboard."
-        : "The copilot will only access data from widgets currently on your dashboard.",
+        ? "The agent can now access data from any widget in the library, not just those on your dashboard."
+        : "The agent will only access data from widgets currently on your dashboard.",
       toastType: "info",
     });
   }, [copilot.toggleExtraWidgetsEnabled]);
@@ -738,8 +738,8 @@ const BuiltInFeatureToggles = memo(() => {
           <HintLabel
             tooltip={
               widgetGlobalSearchFF
-                ? "Expands the copilot's data access beyond your current dashboard. When enabled, the copilot can retrieve data from any widget in the library — not just the ones you've added to your dashboard."
-                : "Global data is not enabled for this copilot"
+                ? "Expands the agent's data access beyond your current dashboard. When enabled, the agent can retrieve data from any widget in the library — not just the ones you've added to your dashboard."
+                : "Global data is not enabled for this agent"
             }
             tooltipClassName="max-w-[280px]"
             disabled={!widgetGlobalSearchFF}

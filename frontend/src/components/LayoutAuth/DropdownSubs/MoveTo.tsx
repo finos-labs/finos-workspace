@@ -27,7 +27,7 @@ export default function MoveTo({
       moveInnerFunction={() => moveTabToFolder("root", itemData.index, "")}
     >
       {depth !== 0 && folders.length === 0 && (
-        <DropdownMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-[#36363F]" />
+        <DropdownMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-dark-500" />
       )}
       {folders.map((folder) => (
         <Fragment key={folder.index}>
@@ -45,7 +45,7 @@ export default function MoveTo({
         </Fragment>
       ))}
       {folders.length > 0 && (
-        <DropdownMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-[#36363F]" />
+        <DropdownMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-dark-500" />
       )}
     </MoveGeneric>
   );
