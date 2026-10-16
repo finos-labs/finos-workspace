@@ -617,7 +617,7 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
                 useAppStore.getState().addWidget(currentDashboardId, widgetToAdd);
                 toast.success("Widget added to dashboard", {
                   id: `copilot-add-widget-${virtualWidgetUuid}`,
-                  description: `"${suggestion.content?.name}" has been added to your dashboard and Copilot context.`,
+                  description: `"${suggestion.content?.name}" has been added to your dashboard and agent context.`,
                 });
               },
             },
@@ -626,7 +626,7 @@ export function useCopilotContextSuggestions(props: ContextSuggestionsProps) {
           useAppStore.getState().addWidget(currentDashboardId, widgetToAdd);
           toast.success("Widget added to dashboard", {
             id: `copilot-add-widget-${virtualWidgetUuid}`,
-            description: `"${widgetToAdd.name}" has been added to your dashboard and Copilot context.`,
+            description: `"${widgetToAdd.name}" has been added to your dashboard and agent context.`,
           });
         }
       } catch (error) {
@@ -1265,7 +1265,7 @@ export const ExtraWidgetsSelectButton = (props: ExtraWidgetsSelectButtonProps) =
       message={
         buttonEnabled
           ? "Search across widgets and tabs"
-          : "Searching across all widgets is not enabled for this copilot."
+          : "Searching across all widgets is not enabled for this agent."
       }
     >
       <button

@@ -21,7 +21,7 @@ describe("getDefaultCopilot", () => {
   it("returns a copilot with the correct id and name", () => {
     const copilot = getDefaultCopilot();
     expect(copilot.id).toBe("default-copilot");
-    expect(copilot.name).toBe("Copilot");
+    expect(copilot.name).toBe("Agent");
   });
 
   it("builds the query endpoint from runtime AI URL", () => {

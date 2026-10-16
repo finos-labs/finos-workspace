@@ -162,7 +162,7 @@ export function useCreateSkillFromConversation() {
         const payload: SkillCreate = {
           slug,
           description: (
-            generated.description || "Workflow saved from a copilot conversation."
+            generated.description || "Workflow saved from an agent conversation."
           ).slice(0, MAX_SKILL_DESCRIPTION_LENGTH),
           content: generated.content,
         };

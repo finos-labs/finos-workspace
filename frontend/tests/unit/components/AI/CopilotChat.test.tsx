@@ -172,7 +172,7 @@ describe("CopilotChat", () => {
     it("renders NoCopilotSelected view", () => {
       render(<CopilotChat />);
 
-      expect(screen.getByText("No copilot selected")).toBeInTheDocument();
+      expect(screen.getByText("No agent selected")).toBeInTheDocument();
       expect(screen.getByTestId("header")).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Create a new chat" }),
@@ -185,14 +185,14 @@ describe("CopilotChat", () => {
     it("renders Add Copilot button", () => {
       render(<CopilotChat />);
 
-      const addButton = screen.getByRole("button", { name: /add copilot/i });
+      const addButton = screen.getByRole("button", { name: /add agent/i });
       expect(addButton).toBeInTheDocument();
     });
 
     it("opens add agents dialog when Add Copilot button is clicked", () => {
       render(<CopilotChat />);
 
-      const addButton = screen.getByRole("button", { name: /add copilot/i });
+      const addButton = screen.getByRole("button", { name: /add agent/i });
       fireEvent.click(addButton);
 
       expect(mockSetShowAddAgentsDialog).toHaveBeenCalledWith(true);
@@ -295,7 +295,7 @@ describe("CopilotChat", () => {
 
       render(<CopilotChat />);
 
-      expect(screen.queryByText("No copilot selected")).not.toBeInTheDocument();
+      expect(screen.queryByText("No agent selected")).not.toBeInTheDocument();
       expect(screen.getByTestId("message-group-root")).toBeInTheDocument();
     });
 
@@ -309,7 +309,7 @@ describe("CopilotChat", () => {
 
       render(<CopilotChat />);
 
-      expect(screen.getByText("No copilot selected")).toBeInTheDocument();
+      expect(screen.getByText("No agent selected")).toBeInTheDocument();
       expect(screen.queryByTestId("message-group-root")).not.toBeInTheDocument();
     });
   });

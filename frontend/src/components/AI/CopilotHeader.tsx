@@ -582,7 +582,7 @@ export function CopilotHeader({
         >
           <button
             type="button"
-            aria-label="Close Copilot"
+            aria-label="Close Agent"
             onClick={() => dispatchCollapseCopilotPanel()}
             className="ws-small-navbar-btn flex items-center justify-center"
           >

@@ -141,13 +141,13 @@ export default function CopilotSwitcher() {
                           <span className="text-xs">
                             {hasHolders ? (
                               <>
-                                Copilot will delegate tasks to
+                                Agent will delegate tasks to
                                 <br />
-                                the agents available.
+                                the available sub-agents.
                               </>
                             ) : (
                               <>
-                                No external agents available.
+                                No sub-agents available.
                                 <br />
                                 Add agents to enable orchestration.
                               </>
@@ -168,7 +168,7 @@ export default function CopilotSwitcher() {
                             return showNotification({
                               message: "Orchestration Disabled",
                               description:
-                                "Copilot will no longer delegate tasks to external agents. All queries will be handled directly by the Copilot.",
+                                "Agent will no longer delegate tasks to sub-agents. All queries will be handled directly by the Agent.",
                               toastType: "info",
                             });
                           }
@@ -184,11 +184,11 @@ export default function CopilotSwitcher() {
                           const agentList =
                             agentNames.length > 0
                               ? agentNames.join(", ")
-                              : "external agents";
+                              : "sub-agents";
 
                           showNotification({
                             message: "Orchestration Enabled",
-                            description: `Tasks will be automatically routed to the most appropriate agent. Copilot can now delegate tasks to the following agents: ${agentList}.`,
+                            description: `Tasks will be automatically routed to the most appropriate sub-agent. Agent can now delegate tasks to the following sub-agents: ${agentList}.`,
                             toastType: "info",
                           });
                         }}
@@ -248,7 +248,7 @@ export default function CopilotSwitcher() {
                 setAgentSwitcherPopoverOpen((prev) => !prev);
               }}
             >
-              <Tooltip message="Manage Copilots">
+              <Tooltip message="Manage Agents">
                 {selectedCopilot ? (
                   <span className="flex items-center gap-1 body-xs-medium text-ds-text-heading min-w-0 max-w-full truncate">
                     <span className="truncate min-w-0 leading-none">
@@ -258,7 +258,7 @@ export default function CopilotSwitcher() {
                   </span>
                 ) : (
                   <span className="truncate whitespace-nowrap body-xs-medium">
-                    No copilot selected
+                    No agent selected
                   </span>
                 )}
               </Tooltip>
@@ -272,7 +272,7 @@ export default function CopilotSwitcher() {
               </span>
             ) : (
               <span className="truncate whitespace-nowrap body-xs-medium">
-                No copilot selected
+                No agent selected
               </span>
             )}
           </div>

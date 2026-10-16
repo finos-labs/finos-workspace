@@ -202,7 +202,7 @@ const ResizableHandle = memo(
               isCollapsed
                 ? type === "left"
                   ? "Click to expand sidebar"
-                  : "Click to expand Copilot"
+                  : "Click to expand Agent"
                 : "Drag to resize"
             }
             position={type === "left" ? "right" : "left"}

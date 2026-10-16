@@ -289,12 +289,12 @@ export function CopilotButton({ aiEnabled }: { aiEnabled?: boolean }) {
   const contextEnabled = widgetDashboardSelectFF && !disabled;
 
   const tooltipMessage = useMemo(() => {
-    if (isPreview) return "Copilot is not available in preview mode.";
-    if (disabled) return "Copilot is not allowed to retrieve data from this widget.";
+    if (isPreview) return "Agent is not available in preview mode.";
+    if (disabled) return "Agent is not allowed to retrieve data from this widget.";
 
     return widgetDashboardSelectFF
-      ? "Add widget as context to the Copilot for customized answers using its data."
-      : "Dashboard widget selection is not enabled for this copilot.";
+      ? "Add widget as context to the agent for customized answers using its data."
+      : "Dashboard widget selection is not enabled for this agent.";
   }, [widgetDashboardSelectFF, disabled, isPreview]);
 
   const { isSelected, toggleSelectedWidget, getDashboardWidgetData } =

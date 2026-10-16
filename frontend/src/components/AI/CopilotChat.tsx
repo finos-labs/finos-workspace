@@ -110,12 +110,12 @@ function NoCopilotSelected() {
       <div className="flex h-full flex-col">
         <CopilotHeader showChatActions={false} />
         <div className="flex flex-1 flex-col items-center justify-center gap-2">
-          <span>No copilot selected</span>
+          <span>No agent selected</span>
           <Button
             size="xs"
             onClick={() => useThemeStore.getState().setShowAddAgentsDialog(true)}
           >
-            Add Copilot
+            Add Agent
           </Button>
         </div>
       </div>

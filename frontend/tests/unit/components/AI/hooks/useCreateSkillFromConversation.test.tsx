@@ -285,7 +285,7 @@ describe("useCreateSkillFromConversation", () => {
 
       expect(mockCreateUserSkill).toHaveBeenCalledWith({
         slug: "saved-skill",
-        description: "Workflow saved from a copilot conversation.",
+        description: "Workflow saved from an agent conversation.",
         content: "c",
       });
     });

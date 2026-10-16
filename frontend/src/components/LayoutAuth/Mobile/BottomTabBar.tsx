@@ -62,7 +62,7 @@ export default function BottomTabBar() {
     // Copilot is browse-only useless without an agent — hide the tab until one exists.
     if (copilotAvailable) {
       items.push({
-        label: "Copilot",
+        label: "Agent",
         icon: "sparkles-icon",
         action: openCopilot,
         isActive: false,
