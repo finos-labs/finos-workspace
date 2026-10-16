@@ -1,13 +1,12 @@
 name: Deploy to dev
 
-# A push to develop that changes the backend or the frontend builds the changed
-# images, pushes them to ECR as dev-<commit>, and deploys the dev environment with
-# the newest image of each: the latest commit on develop whose image is in ECR,
-# so the order in which builds finish does not matter. The deploy runs the
-# infrastructure repository's .github/scripts/deploy-workspace.sh with its chart
-# and the environment's values file: only the image tags come from here. The
-# run's summary lists what is running. Run the workflow by hand, from develop, to
-# build whatever develop's latest commit is missing and deploy again.
+# A push to develop that changes the backend or the frontend builds both images
+# from that commit, pushes them to ECR as dev-<commit>, and deploys them to the
+# dev environment with the infrastructure repository's
+# .github/scripts/deploy-workspace.sh, its chart and the environment's values
+# file. Only the image tags come from here. The run's summary lists what is
+# running. Run the workflow by hand, from develop, to build and deploy develop's
+# latest commit again. Re-running an older run deploys that older commit.
 #
 # Repository variables: AWS_REGION, AWS_IMAGE_PUSH_ROLE_ARN (the role that may
 # push to ECR), ECR_REGISTRY (<account>.dkr.ecr.<region>.amazonaws.com),
@@ -27,6 +26,13 @@ on:
       - "frontend/**"
   workflow_dispatch:
 
+# One run at a time, and a running deploy is never cancelled. A run that is
+# still waiting is replaced by a newer one, which builds both images from a
+# later commit, so nothing it would have deployed is lost.
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
 permissions:
   contents: read
   id-token: write
@@ -38,32 +44,8 @@ env:
   VALUES_FILE: ${{ vars.DEV_VALUES_FILE }}
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    # A manual run builds both, and an image that is already in ECR is skipped.
-    outputs:
-      backend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.backend }}
-      frontend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.frontend }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dorny/paths-filter@v3
-        if: github.event_name == 'push'
-        id: filter
-        with:
-          filters: |
-            backend:
-              - "backend-api/backend/**"
-            frontend:
-              - "frontend/**"
-
   backend:
-    needs: changes
-    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    concurrency:
-      group: deploy-dev-backend
-      cancel-in-progress: false
     env:
       IMAGE_TAG: dev-${{ github.sha }}
     steps:
@@ -94,12 +76,7 @@ jobs:
           done
 
   frontend:
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
-    concurrency:
-      group: deploy-dev-frontend
-      cancel-in-progress: false
     env:
       IMAGE_TAG: dev-${{ github.sha }}
     steps:
@@ -127,31 +104,11 @@ jobs:
           fi
 
   deploy:
-    needs: [changes, backend, frontend]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.backend.result != 'failure' && needs.frontend.result != 'failure' }}
+    needs: [backend, frontend]
     runs-on: ubuntu-latest
-    # A newer deploy replaces one that is still waiting. It deploys the newest
-    # images, so nothing is lost.
-    concurrency:
-      group: deploy-dev
-      cancel-in-progress: true
+    env:
+      IMAGE_TAG: dev-${{ github.sha }}
     steps:
-      # The full history, to find the newest commit that has an image.
-      - uses: actions/checkout@v4
-        with:
-          ref: develop
-          fetch-depth: 0
-
-      - name: Log in to AWS to read the images
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Find the newest images on develop
-        id: images
-        run: .github/scripts/newest-images.sh --backend-repository finos/backend --frontend-repository finos/frontend >> "$GITHUB_OUTPUT"
-
       # The environment is the folder of its values file: FINOS/dev.
       - name: Name the infrastructure repository and the environment
         id: infra
@@ -181,20 +138,18 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPO }}
           token: ${{ steps.infra-token.outputs.token }}
-          path: infra
 
       - name: Read the environment
         id: env
         env:
           ENVIRONMENT: ${{ steps.infra.outputs.environment }}
-        run: grep -v '^#' "infra/$ENVIRONMENT/apps/deploy.env" >> "$GITHUB_OUTPUT"
+        run: grep -v '^#' "$ENVIRONMENT/apps/deploy.env" >> "$GITHUB_OUTPUT"
 
       - name: Log in to AWS as the deployer
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ steps.env.outputs.DEPLOYER_ROLE_ARN }}
           aws-region: ${{ steps.env.outputs.AWS_REGION }}
-          unset-current-credentials: true
 
       - uses: azure/setup-helm@v4
         with:
@@ -204,10 +159,7 @@ jobs:
         run: aws eks update-kubeconfig --name "${{ steps.env.outputs.CLUSTER_NAME }}" --region "${{ steps.env.outputs.AWS_REGION }}"
 
       - name: Deploy
-        working-directory: infra
         env:
           ENVIRONMENT: ${{ steps.infra.outputs.environment }}
-          BACKEND_TAG: ${{ steps.images.outputs.backend }}
-          FRONTEND_TAG: ${{ steps.images.outputs.frontend }}
           SOURCE: ${{ github.repository }}@${{ github.sha }}
-        run: .github/scripts/deploy-workspace.sh -e "$ENVIRONMENT" -b "$BACKEND_TAG" -f "$FRONTEND_TAG" -s "$SOURCE"
+        run: .github/scripts/deploy-workspace.sh -e "$ENVIRONMENT" -b "$IMAGE_TAG" -f "$IMAGE_TAG" -s "$SOURCE"
