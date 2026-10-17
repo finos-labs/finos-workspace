@@ -305,15 +305,18 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Create the organizations and administrators that scripts/cfgs/*.toml name."
     )
+    # The option's value is the administrator's address, kept as such: the password itself
+    # is read from the terminal or standard input
     parser.add_argument(
         "--new-password",
+        dest="admin_email",
         metavar="EMAIL",
         help="Instead, set the password of the administrator EMAIL, read from the terminal "
         "without echo, or from standard input",
     )
     args = parser.parse_args(argv)
-    if args.new_password:
-        return asyncio.run(set_new_password(args.new_password))
+    if args.admin_email:
+        return asyncio.run(set_new_password(args.admin_email))
     asyncio.run(setup_configs())
     return 0
 

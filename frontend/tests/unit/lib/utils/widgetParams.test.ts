@@ -15,6 +15,39 @@ type CreateParamDefsInput = Parameters<typeof createParamDefs>[0];
 
 describe("Widget Params Utility Functions", () => {
   describe("createParamDefs", () => {
+    it("keeps a form's endpoint input options, on the backend's URL", () => {
+      const widget = partial<CreateParamDefsInput>({
+        params: [
+          {
+            paramName: "note",
+            type: "form",
+            endpoint: "/notes",
+            inputParams: [
+              {
+                paramName: "rate",
+                type: "endpoint",
+                optionsEndpoint: "/rates",
+                optionsParams: { region: "eu" },
+              },
+            ],
+          },
+        ],
+      });
+
+      const [form] = createParamDefs(widget, "https://backend.test");
+
+      expect(form).toMatchObject({
+        endpoint: "https://backend.test/notes",
+        inputParams: [
+          {
+            paramName: "rate",
+            optionsEndpoint: "https://backend.test/rates",
+            optionsParams: { region: "eu" },
+          },
+        ],
+      });
+    });
+
     it("should create param definitions from widget params", () => {
       const widget = partial<CreateParamDefsInput>({
         params: [

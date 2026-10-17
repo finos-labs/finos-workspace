@@ -28,6 +28,7 @@ import {
   type EndpointHeaderRows,
   splitEndpointHeaders,
 } from "~/lib/utils/endpointCredentials";
+import { isOnSourceOrigin } from "~/lib/utils/fetch";
 import { createIndexedDBStorage } from "~/lib/utils/indexDB";
 import type { InvalidItem } from "~/lib/utils/invalidItems";
 import { type ShowNotificationProps, showNotification } from "~/lib/utils/toast";
@@ -513,7 +514,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
                   ...widget,
                   widgetId: key,
                   subCategory,
-                  endpointHeaders: source.endpointHeaders,
                 };
                 return acc;
               },
@@ -766,8 +766,8 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
       {
         name: "backend-connector",
         storage: createIndexedDBStorage(),
-        // A source's credentials and their copies on its widgets stay in page memory:
-        // the API sends them again with the source list.
+        // A source's credentials stay in page memory: the API sends them again with the
+        // source list. Its widgets are written without any rows of their own either.
         partialize: (state) =>
           ({
             apiSources: state.apiSources
@@ -798,23 +798,6 @@ function getRoleSharedBackend(
   return permissions.backends.find(
     (backend) => backend.uuid === sourceId && backend.access === "access",
   );
-}
-
-/**
- * Whether `url` is on the data backend's own origin. A widget names its source by id and
- * its URL separately, and shared content can pair any id with any URL, so a source's
- * credentials go to its own origin only. A relative URL is on the backend.
- */
-function isOnSourceOrigin(
-  url: string | null | undefined,
-  sourceUrl: string | null | undefined,
-) {
-  if (!url || !sourceUrl) return false;
-  try {
-    return new URL(url, sourceUrl).origin === new URL(sourceUrl).origin;
-  } catch {
-    return false;
-  }
 }
 
 /**

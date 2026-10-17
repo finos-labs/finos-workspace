@@ -67,7 +67,7 @@ test("a user sets their password with the link an admin gives them", async ({
   page,
   browser,
 }) => {
-  const id = Math.random().toString(36).slice(2, 10);
+  const id = crypto.randomUUID().slice(0, 8);
   const email = `e2e-reset-${id}@example.com`;
 
   await page.goto("/admin/users");

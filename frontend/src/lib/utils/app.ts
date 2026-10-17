@@ -684,8 +684,10 @@ export function getEndpointParamRequestArgs(
   param: ParamDefT<"endpoint">,
   currentParams: Record<string, unknown>,
 ) {
-  const { headers, newParams } = convertHeadersToRecord(
-    getSourceCredentials(widget.sourceId, param.optionsEndpoint).headers,
+  const credentials = getSourceCredentials(widget.sourceId, param.optionsEndpoint);
+  const { headers, newParams } = convertHeadersToRecord<Record<string, unknown>>(
+    credentials.headers,
+    { ...credentials.query },
   );
 
   for (const [key, value] of Object.entries(param.optionsParams ?? {})) {

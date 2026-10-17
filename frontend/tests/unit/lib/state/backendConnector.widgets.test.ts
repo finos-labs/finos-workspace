@@ -452,6 +452,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         widgets,
         mockBackendUrl,
         mockHeaders,
+        {},
       );
 
       expect(failedEndpoints).toEqual([]);
@@ -483,6 +484,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         widgets,
         mockBackendUrl,
         mockHeaders,
+        {},
       );
 
       expect(failedEndpoints).toHaveLength(1);
@@ -511,6 +513,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         widgets,
         mockBackendUrl,
         mockHeaders,
+        {},
       );
 
       expect(failedEndpoints).toHaveLength(1);
@@ -543,6 +546,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         widgets,
         mockBackendUrl,
         mockHeaders,
+        {},
         false,
         signal,
       );
@@ -587,6 +591,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         widgets,
         mockBackendUrl,
         mockHeaders,
+        {},
       );
 
       // Should skip 422 errors as they're expected for widgets with required params

@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "~/api/api";
+import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
 import type { CopilotCommandResultT } from "~/lib/state/copilot";
 import type { AddGenerativeWidgetInputArgumentsT, DataSourceT } from "~/lib/utils/ai";
 
@@ -131,7 +132,7 @@ import {
   useFunctionCall,
 } from "~/components/AI/hooks/useFunctionCall";
 import { useManageNavigationBar } from "~/components/AI/hooks/useManageNavigationBar";
-import { required } from "../../../mocks";
+import { partial, required } from "../../../mocks";
 
 describe("useFunctionCall", () => {
   beforeEach(() => {
@@ -202,7 +203,6 @@ describe("useFunctionCall", () => {
         name: "HTML Widget",
         type: "html",
         endpoint: "https://reference-backend.test/html",
-        endpointHeaders: [],
       });
       vi.mocked(fetch).mockResolvedValue(
         new Response("<main>Endpoint HTML</main>", {
@@ -237,6 +237,56 @@ describe("useFunctionCall", () => {
         ],
         extra_citations: [],
       });
+    });
+
+    it("sends the data backend's credentials, headers and query, to its own origin only", async () => {
+      useBackendConnectorStore.setState({
+        apiSources: [
+          partial<Source>({
+            id: "src-1",
+            url: "https://reference-backend.test",
+            endpointHeaders: [
+              { key: "X-API-KEY", value: "backend-key" },
+              { key: "token", value: "backend-token", location: "query" },
+            ],
+          }),
+        ],
+      });
+      vi.mocked(fetch).mockImplementation(
+        async () =>
+          new Response("[]", { headers: { "content-type": "application/json" } }),
+      );
+      const requestFor = async (endpoint: string) => {
+        mockGetAppWidget.mockReturnValue({
+          widgetId: "prices",
+          name: "Prices",
+          type: "markdown",
+          endpoint,
+          sourceId: "src-1",
+        });
+        const { result } = renderUseFunctionCall();
+        await act(async () => {
+          await result.current.getWidgetData([
+            {
+              origin: "Reference Backend",
+              id: "prices",
+              input_args: { token: "from-agent", limit: 5 },
+            },
+          ]);
+        });
+        return vi.mocked(fetch).mock.calls.at(-1)?.[0] as Request;
+      };
+
+      const own = await requestFor("https://reference-backend.test/prices");
+      expect(own.headers.get("X-API-KEY")).toBe("backend-key");
+      expect(new URL(own.url).searchParams.get("token")).toBe("backend-token");
+      expect(new URL(own.url).searchParams.get("limit")).toBe("5");
+
+      const other = await requestFor("https://elsewhere.test/prices");
+      expect(other.headers.get("X-API-KEY")).toBeNull();
+      expect(new URL(other.url).searchParams.get("token")).toBe("from-agent");
+
+      useBackendConnectorStore.setState({ apiSources: [] });
     });
 
     it("resolves dropped-file widgets from the widget id, not the composer store", async () => {
@@ -393,7 +443,6 @@ describe("useFunctionCall", () => {
     it("should throw error when param is not found on widget", async () => {
       mockGetAppWidget.mockReturnValue({
         params: [{ paramName: "other-param", type: "text" }],
-        endpointHeaders: {},
       });
       const paramOptionsQuery = {
         origin: "Sandbox",
@@ -416,7 +465,6 @@ describe("useFunctionCall", () => {
     it("should throw error when endpoint param has no optionsEndpoint", async () => {
       mockGetAppWidget.mockReturnValue({
         params: [{ paramName: "test-param", type: "endpoint" }],
-        endpointHeaders: {},
       });
 
       const paramOptionsQuery = {

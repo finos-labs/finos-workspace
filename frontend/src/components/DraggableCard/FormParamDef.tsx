@@ -64,14 +64,17 @@ export function FormParamElement() {
         setIsLoading(true);
         const { headers } = convertHeadersToRecord(credentials.headers);
 
-        const response = await fetch(formParamDef.endpoint, {
-          method: formParamDef.method ?? "POST",
-          headers: {
-            ...headers,
-            "Content-Type": "application/json",
+        const response = await fetch(
+          cleanSearchParams(formParamDef.endpoint, credentials.query),
+          {
+            method: formParamDef.method ?? "POST",
+            headers: {
+              ...headers,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
           },
-          body: JSON.stringify(data),
-        });
+        );
 
         const json = await response.json();
 
@@ -155,7 +158,9 @@ function EndpointType(props: { inputParam: FormInputParamDefT<"endpoint"> }) {
   const title = beautifySlug(label ?? paramName);
 
   const options = useMemo(() => {
-    const { headers, newParams } = convertHeadersToRecord(credentials.headers);
+    const { headers, newParams } = convertHeadersToRecord(credentials.headers, {
+      ...credentials.query,
+    });
     const url = cleanSearchParams(inputParam.optionsEndpoint, newParams);
 
     return {

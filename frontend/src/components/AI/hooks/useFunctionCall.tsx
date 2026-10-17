@@ -16,6 +16,7 @@ import { getConfig } from "~/lib/runtimeConfig";
 import { fetchAgent } from "~/lib/state/agentToken";
 import { useAppStore } from "~/lib/state/app";
 import { useShallowAuthStore } from "~/lib/state/auth";
+import { getSourceCredentials } from "~/lib/state/backendConnector";
 import {
   type ArtifactT,
   type Citation,
@@ -791,9 +792,15 @@ export function useFunctionCall() {
 function getRequest(widget: WidgetT, inputArgs: Record<string, unknown>): Request {
   const baseUrl = widget.endpoint;
   if (!baseUrl) throw new Error("Missing widget endpoint url.");
+  // The backend's credentials, for an endpoint on its origin only; its query rows take
+  // precedence over the agent's arguments
+  const credentials = getSourceCredentials(widget.sourceId, createCleanUrl(baseUrl));
   const { headers, newParams: urlParams } = getHeadersAndUrlParams(
-    widget.endpointHeaders,
-    inputArgs,
+    credentials.headers,
+    {
+      ...inputArgs,
+      ...credentials.query,
+    },
   );
   const url = createCleanUrl(baseUrl, urlParams);
   return new Request(url, { method: "GET", headers });
@@ -966,7 +973,6 @@ export async function getWidgetsParamOptions(
       CopilotErrorType.NOT_FOUND,
       `Widget with id ${paramOptionsQuery.id} not found`,
     );
-  const { headers } = getHeadersAndUrlParams(widget.endpointHeaders);
   // this name should be more explicit like param_name
   const paramName = paramOptionsQuery.param;
   const widgetParams = (widget.params || []).filter(
@@ -986,7 +992,13 @@ export async function getWidgetsParamOptions(
     } else acc[key] = value;
     return acc;
   }, {});
-  const url = createCleanUrl(optionsEndpoint, newOptionsEndpointParams);
+  // The backend's credentials, for an options endpoint on its origin only
+  const credentials = getSourceCredentials(widget.sourceId, optionsEndpoint);
+  const { headers } = getHeadersAndUrlParams(credentials.headers);
+  const url = createCleanUrl(optionsEndpoint, {
+    ...credentials.query,
+    ...newOptionsEndpointParams,
+  });
   const request = new Request(url, { method: "GET", headers: headers });
   const response: unknown = await fetch(request).then((res) => res.json());
   if (!Array.isArray(response)) throw new Error("Failed to parse param options result");

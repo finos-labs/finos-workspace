@@ -103,8 +103,10 @@ def get_secrets() -> dict[str, str]:
 
 
 def obfuscate_secrets(message: str) -> str:
-    for key, value in get_secrets().items():
-        message = message.replace(value, key)
+    """The message with the value of every setting masked, and every credential it carries.
+    A value is masked, not named: nothing taken from the settings is written out."""
+    for value in get_secrets().values():
+        message = message.replace(value, MASK)
     return redact(message)
 
 

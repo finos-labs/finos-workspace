@@ -42,8 +42,9 @@ PERMISSION_MAPS = {
 
 def say(text: str = "", *, error: bool = False) -> None:
     """A line for whoever runs the CLI: the outcome on stdout, a refusal on stderr. The
-    app's stdout is a log, which names any setting it would show (utilities/log_helpers.py)
-    and would turn a link's address into APPURL; the CLI's lines go out as they are."""
+    app's stdout is a log, which masks the value of any setting it would show
+    (utilities/log_helpers.py) and would hide a link's address; the CLI's lines go out as
+    they are."""
     stream = sys.stderr if error else sys.stdout
     (sys.__stdout__ if isinstance(stream, stdoutSink) else stream).write(f"{text}\n")
 

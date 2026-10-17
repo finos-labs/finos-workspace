@@ -97,7 +97,6 @@ export function createSourceWidget(
     sourceId: source.id,
     sourceName: source.name,
     connectionType: "advanced-backend",
-    endpointHeaders: source.endpointHeaders ?? [],
   } as WidgetT;
 
   if (source.isSharedSource) {

@@ -5,7 +5,7 @@ import {
   type Source,
   useBackendConnectorStore,
 } from "~/lib/state/backendConnector";
-import { getWidgetData } from "~/lib/utils/app";
+import { getEndpointParamRequestArgs, getWidgetData } from "~/lib/utils/app";
 import {
   splitEndpointHeaders,
   withoutEndpointCredentials,
@@ -93,6 +93,25 @@ describe("credentials of a data backend", () => {
     ).toEqual(none);
     expect(getSourceCredentials("src-1", "//attacker.example/x")).toEqual(none);
     expect(getSourceCredentials("src-1", undefined)).toEqual(none);
+  });
+
+  it("go with an endpoint parameter's options request: headers, and query rows in its URL", () => {
+    type Args = Parameters<typeof getEndpointParamRequestArgs>;
+    const { url, reqInit } = getEndpointParamRequestArgs(
+      partial<Args[0]>({ sourceId: "src-1" }),
+      partial<Args[1]>({
+        optionsEndpoint: "https://api.example.com/options",
+        optionsParams: { region: "eu" },
+      }),
+      {},
+    );
+
+    const { searchParams } = new URL(url);
+    expect(searchParams.get("apikey")).toBe("query-secret");
+    expect(searchParams.get("region")).toBe("eu");
+    expect(reqInit.headers).toMatchObject({
+      Authorization: "Bearer data-backend-secret",
+    });
   });
 
   it("never land in the widget a dashboard saves", () => {

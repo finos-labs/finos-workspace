@@ -188,6 +188,10 @@ const ParamValueSchema = z.discriminatedUnion("type", [
               ),
             )
             .optional(),
+          // An endpoint input lists its options from the backend, as an endpoint
+          // parameter does
+          optionsEndpoint: z.string().optional(),
+          optionsParams: z.record(z.string(), z.unknown()).optional(),
         }),
       )
       .optional(),

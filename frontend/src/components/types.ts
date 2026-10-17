@@ -207,9 +207,9 @@ export type Widget = {
    */
   readonly dataKey?: string; // Nested reference to the data.
   /**
-   * @internal **Only available before widget {@link useGetAppWidgets | creation}**
-   * Saved widgets never carry these: they look up their source's credentials when they
-   * fetch (lib/utils/endpointCredentials). */
+   * The rows of a data backend's credentials, as its source holds them. Widgets never
+   * carry these: they look up their source's credentials when they fetch
+   * (lib/utils/endpointCredentials). */
   readonly endpointHeaders?: {
     key: string;
     value: string;

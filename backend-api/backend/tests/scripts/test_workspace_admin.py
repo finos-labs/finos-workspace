@@ -221,8 +221,8 @@ class TestUsers:
     async def test_the_link_is_printed_as_it_is_past_the_logs_redaction(
         self, cli, tmp_path, monkeypatch, capsys
     ):
-        # Outside the tests the app's stdout names the settings it would show, so that
-        # APPURL's value would print as "APPURL"
+        # Outside the tests the app's stdout masks the value of every setting, APPURL's
+        # among them, which would hide the link's address
         entity_uuid = await _entity(cli, tmp_path)
         email = f"cli-{uuid4().hex[:8]}@example.com"
         cli.created["emails"].append(email)

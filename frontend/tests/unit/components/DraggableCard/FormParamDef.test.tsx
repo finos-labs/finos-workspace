@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { FormParamElement } from "~/components/DraggableCard/FormParamDef";
@@ -19,11 +19,12 @@ vi.mock("~/lib/api", () => ({
     error: null,
     dataUpdatedAt: 0,
   }),
-  convertHeadersToRecord: (headers: Record<string, string> = {}) => ({
-    headers,
-    newParams: {},
-  }),
-  cleanSearchParams: (url: string) => url ?? "",
+  convertHeadersToRecord: (
+    headers: Record<string, string> = {},
+    params: Record<string, string> = {},
+  ) => ({ headers, newParams: params }),
+  cleanSearchParams: (url: string, params: Record<string, string> = {}) =>
+    Object.keys(params).length ? `${url}?${new URLSearchParams(params)}` : (url ?? ""),
 }));
 
 vi.mock("~/components/ds/molecules/Form", () => ({
@@ -161,5 +162,72 @@ describe("FormParamElement - EndpointType", () => {
       }),
       expect.anything(),
     );
+  });
+});
+
+describe("FormParamElement - the source's query rows", () => {
+  const QUERY_ROW = {
+    key: "apikey",
+    value: "query-secret",
+    location: "query" as const,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useBackendConnectorStore.setState({
+      apiSources: [
+        { ...SOURCE, endpointHeaders: [...(SOURCE.endpointHeaders ?? []), QUERY_ROW] },
+      ],
+    });
+  });
+
+  it("go with the options request as params, apart from the headers", () => {
+    (useWidgetContext as Mock).mockReturnValue(createMockWidgetContext());
+
+    render(<FormParamElement />);
+
+    expect(vi.mocked(useJsonData)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: `${OPTIONS_ENDPOINT}?apikey=query-secret`,
+        params: { apikey: "query-secret" },
+        endpointHeaders: CUSTOM_HEADERS,
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("go with the form's submit, as do the headers", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ message: "Saved" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const widgetWithSubmit = partial<WidgetT>({
+      ...mockWidget,
+      params: [
+        {
+          type: "form",
+          paramName: "form_param",
+          label: "My Form",
+          endpoint: "https://my-api.com/submit",
+          method: "POST",
+          inputParams: [
+            { type: "button", paramName: "action", label: "Submit", value: "go" },
+          ],
+        },
+      ],
+    });
+    (useWidgetContext as Mock).mockReturnValue(
+      createMockWidgetContext(widgetWithSubmit),
+    );
+
+    render(<FormParamElement />);
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://my-api.com/submit?apikey=query-secret");
+    expect(init.headers).toMatchObject(CUSTOM_HEADERS);
+    vi.unstubAllGlobals();
   });
 });

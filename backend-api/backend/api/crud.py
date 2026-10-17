@@ -295,13 +295,19 @@ async def bulk_copilot_chats_insert_update(
 SelectT = TypeVar("SelectT", bound=Select)
 
 
+def prefix_last_word(search_term: str) -> str:
+    """The term with its last word made a prefix match (`:*`, PostgreSQL's full text search)
+    when it ends in a word character. Only that character is matched, so that no term can
+    make the match backtrack."""
+    return f"{search_term}:*" if re.fullmatch(r"\w", search_term[-1:]) else search_term
+
+
 def get_match_exprs(search_term: str) -> list:
     vector_match_exprs = []
     match_exprs = []
 
-    # add :* to end of last word for prefix matching in postgres
     if settings.DATABASE_TYPE == "postgresql":
-        search_term = re.sub(r"(\w+)$", r"\1:*", search_term)
+        search_term = prefix_last_word(search_term)
 
     for w in search_term.split():
         word = w.strip()

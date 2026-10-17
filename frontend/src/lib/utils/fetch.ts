@@ -49,3 +49,20 @@ export function isDefaultCopilotUrl(url: string | URL): boolean {
   const basePath = ai.pathname.replace(/\/+$/, "");
   return target.pathname === basePath || target.pathname.startsWith(`${basePath}/`);
 }
+
+/**
+ * Whether `url` is on the data backend's own origin. A widget names its source by id and
+ * its URL separately, and shared content can pair any id with any URL, so a source's
+ * credentials go to its own origin only. A relative URL is on the backend.
+ */
+export function isOnSourceOrigin(
+  url: string | null | undefined,
+  sourceUrl: string | null | undefined,
+) {
+  if (!url || !sourceUrl) return false;
+  try {
+    return new URL(url, sourceUrl).origin === new URL(sourceUrl).origin;
+  } catch {
+    return false;
+  }
+}

@@ -80,6 +80,14 @@ def test_redaction_runs_in_linear_time(message):
     assert time.perf_counter() - start < 0.5
 
 
+def test_setting_values_are_masked_and_not_named(monkeypatch):
+    monkeypatch.setattr(log_helpers, "get_secrets", lambda: {"JWT_SECRET": "the-jwt-value"})
+
+    shown = log_helpers.obfuscate_secrets("signed with the-jwt-value")
+
+    assert shown == f"signed with {log_helpers.MASK}"
+
+
 def test_json_log_records_are_redacted(monkeypatch):
     monkeypatch.setattr(log_helpers, "get_secrets", dict)
 
