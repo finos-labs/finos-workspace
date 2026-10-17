@@ -135,8 +135,6 @@ export interface CopilotDataStore extends CopilotDataState {
   clearSelectedWidgets: () => void; // clear all selected widgets
   extraWidgetsEnabled: boolean;
   toggleExtraWidgetsEnabled: () => boolean;
-  generativeUiEnabled: boolean;
-  toggleGenerativeUiEnabled: () => boolean;
   /* Mention tracking */
   setMentionTrackedWidgets: (uuids: string[]) => void; // set mention-tracked widgets
   addMentionTrackedWidget: (uuid: string) => void; // add widget to mention tracking
@@ -425,16 +423,6 @@ export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
           }));
           return !extraWidgetsEnabled;
         },
-        generativeUiEnabled: false,
-        toggleGenerativeUiEnabled: () => {
-          const { generativeUiEnabled } = get();
-          set((state) => ({
-            ...state,
-            generativeUiEnabled: !generativeUiEnabled,
-          }));
-
-          return !generativeUiEnabled;
-        },
         setMentionTrackedWidgets: (uuids: string[]) =>
           set((state) => ({
             ...state,
@@ -514,7 +502,6 @@ export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
         name: "copilot-data",
         partialize: (state) => ({
           extraWidgetsEnabled: state.extraWidgetsEnabled,
-          generativeUiEnabled: state.generativeUiEnabled,
         }),
       },
     ),

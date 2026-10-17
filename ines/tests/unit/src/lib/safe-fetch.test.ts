@@ -198,7 +198,7 @@ describe("fetchClientUrl — the Workspace's own files", () => {
   beforeEach(() => {
     configureFetchPolicy({
       resolve: async () => [PUBLIC_IP],
-      workspace: { publicUrl: "http://localhost:8000", internalUrl: "http://api:8000" },
+      workspace: { publicUrl: "http://localhost:8000", internalUrl: "http://api:8000", origin: "http://localhost:3000" },
     });
   });
 
@@ -224,6 +224,24 @@ describe("fetchClientUrl — the Workspace's own files", () => {
     await expect(fetchClientUrl("http://api:8000/app/files/presigned/abc.pdf")).rejects.toThrow("Refusing to fetch");
     await expect(fetchClientUrl("http://localhost:9999/app/files/presigned/abc.pdf")).rejects.toThrow("Refusing to fetch");
     expect(fetched).toHaveLength(0);
+  });
+
+  it("fetches them with WORKSPACE_ORIGIN as their Origin, and nothing else with it", async () => {
+    const origins: Record<string, string | null> = {};
+    globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = logicalUrl(input, init);
+      origins[url] = new Headers(init?.headers).get("origin");
+      return url.startsWith("http://api:8000/")
+        ? new Response(null, { status: 302, headers: { location: "https://files.example.org/abc.pdf" } })
+        : new Response("%PDF");
+    }) as unknown as typeof fetch;
+    await fetchClientUrl("http://localhost:8000/app/files/presigned/abc.pdf");
+    await fetchClientUrl("https://docs.example.org/a");
+    expect(origins).toEqual({
+      "http://api:8000/app/files/presigned/abc.pdf": "http://localhost:3000",
+      "https://files.example.org/abc.pdf": null,
+      "https://docs.example.org/a": null,
+    });
   });
 
   it("does not stay trusted through a redirect", async () => {

@@ -100,7 +100,7 @@ export const McpAppPopover = memo((props: McpAppPopoverProps) => {
           title: `${displayName} MCP added`,
           description:
             mcpServer.description ||
-            `Copilot has access to ${toolCount} ${displayName} tool${toolCount === 1 ? "" : "s"}.`,
+            `Agent has access to ${toolCount} ${displayName} tool${toolCount === 1 ? "" : "s"}.`,
           action: (
             <div className="flex items-center gap-1.5">
               {tokenButton}
@@ -131,7 +131,7 @@ export const McpAppPopover = memo((props: McpAppPopoverProps) => {
         title: `${displayName} MCP added`,
         description:
           mcpServer.description ||
-          `Copilot has access to ${toolCount} ${displayName} tool${toolCount === 1 ? "" : "s"}.`,
+          `Agent has access to ${toolCount} ${displayName} tool${toolCount === 1 ? "" : "s"}.`,
         action: (
           <Button variant="secondary" size="xs" onClick={handleManage}>
             Manage MCP Server

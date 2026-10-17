@@ -17,7 +17,6 @@ import { singleShotLlm, parseJsonResponse } from "../../lib/llm";
 import { messageArtifact } from "../../protocol/events";
 import { analyzeTable, type TableInfo } from "../../sql/loader";
 import { rememberRows } from "../row-cache";
-import { setPendingTable } from "../pending-tables";
 import { htmlTableArtifact } from "../../protocol/html-table";
 import type { SSEEvent } from "../../protocol/types";
 import { getLogger } from "../../lib/logger";
@@ -52,7 +51,6 @@ export type TableFromTextArgs = z.infer<typeof tableFromTextSchema>;
 
 export interface TableFromTextContext {
   pendingTables: Map<string, Record<string, unknown>[]>;
-  tablesShipped: Set<string>;
   artifactQueue: SSEEvent[];
   tables: TableInfo[];
   conversationId: string;
@@ -84,7 +82,7 @@ export async function runTableFromText(
 
   const tableInfo = analyzeTable(args.name, limited);
   ctx.tables.push(tableInfo);
-  setPendingTable(tableInfo.tableName, limited, ctx.pendingTables, ctx.tablesShipped);
+  ctx.pendingTables.set(tableInfo.tableName, limited);
   rememberRows(ctx.conversationId, tableInfo.tableName, limited);
 
   ctx.artifactQueue.push(messageArtifact(htmlTableArtifact(args.name, args.description, limited)));

@@ -74,7 +74,7 @@ panel, are used when the images are built, so changing them needs `docker compos
 | `PLATFORM` | `linux/amd64` | CPU architecture the api, worker and web images are built for. Use `linux/arm64` on Apple silicon. |
 | `API_URL` | `http://localhost:8000` | The API's address as the browser sees it. It becomes `BACKEND_URL` of the web container and is built into the admin panel (`VITE_API_URL`). Set `SELFURL` in `envs/.env` to the same address. |
 | `AI_API_URL` | `http://localhost:7777` | Ines's address as the browser sees it. The browser calls her directly. |
-| `WEB_URL` | unset: every origin | The web app's address as the browser sees it. When set, Ines allows requests from this origin only (`INES_CORS_ORIGINS`); unset, she allows every origin. The browser calls Ines directly, so the origin is whatever address you opened the web app on — `localhost`, `127.0.0.1`, your machine's address on the network, a tunnel — and an origin she does not allow is a Copilot that fails with nothing in the interface to say why. A developer machine cannot know which address you will use, and the API allows every origin here too (`DISABLE_CORS=1`), so the default matches it. Set it for a deployment: Ines refuses to start with users and no origins at all. |
+| `WEB_URL` | unset: every origin | The web app's address as the browser sees it. When set, Ines allows requests from this origin only (`INES_CORS_ORIGINS`); unset, she allows every origin. The browser calls Ines directly, so the origin is whatever address you opened the web app on — `localhost`, `127.0.0.1`, your machine's address on the network, a tunnel — and an origin she does not allow is a Copilot that fails with nothing in the interface to say why. A developer machine cannot know which address you will use, and the API allows every origin here too (`DISABLE_CORS=1`), so the default matches it. Set it for a deployment: Ines refuses to start with users and no origins at all. It is also the Origin of Ines's calls to the API (`WORKSPACE_ORIGIN`), `http://localhost:3000` when unset. |
 | `AI_COPILOT_ENABLED` | `true` | Shows the Copilot panel. Must be `true` or `false`. |
 
 ### Backend (`backend-api/backend/envs/.env`)
@@ -130,7 +130,9 @@ container refuses to start.
 
 `create_local_env` creates `ines/.env` from `ines/.env.example`, which has every variable with comments. Ines is configured
 only through the environment: no model, provider or key is written in her code. Compose also sets `WORKSPACE_API_URL`
-(`http://api:8000`), `WORKSPACE_PUBLIC_URL` (from `API_URL`) and `INES_CORS_ORIGINS` (from `WEB_URL`) for her.
+(`http://api:8000`), `WORKSPACE_ORIGIN` (from `WEB_URL`, else `http://localhost:3000`), `WORKSPACE_PUBLIC_URL` (from `API_URL`) and
+`INES_CORS_ORIGINS` (from `WEB_URL`) for her. `WORKSPACE_ORIGIN` is the Origin of every call she and her MCP server make to the API, which refuses
+an origin it does not allow: with `DISABLE_CORS=0`, list it in `BACKEND_CORS_ORIGINS`.
 
 | Variable | Set it | What it is |
 |---|---|---|
@@ -155,7 +157,6 @@ start which are not and why.
 | Variable | What it enables |
 |---|---|
 | `INES_EMBED_MODEL` | `query_documents` and `list_documents`: search of the documents a user attached, with the page of each hit. Written `<provider>:<model>` like `DEFAULT_MODEL`, with that provider's key (`openai`, `openrouter`, `nvidia` and `ollama` embed). |
-| `DAYTONA_API_KEY` | `execute_code`, a Python sandbox for each chat. |
 | `COMPANION_TOOLS_ENABLED` | The tools that drive a Workspace browser tab (`true`; off by default). |
 
 `mermaid_diagram` needs Chromium, which the image does not contain.
@@ -173,7 +174,7 @@ it is. For each question Ines then asks the API, with the token it trusts only t
   used are added to their daily tokens; when a limit is reached the chat says so in the API's words. Setting the limits is the
   admin's job, in the entitlement.
 
-The tools that keep state for a chat (the code sandbox, the document store) file it under the user and the chat, and accept only
+The tools that keep state for a chat (the document store, the fetched pages) file it under the user and the chat, and accept only
 a chat scope that Ines has signed with `INES_SCOPE_SECRET`: a user's browser makes the calls to the tools, so without the
 signature it could name another user's chat. The MCP server publishes no port, and the API's MCP proxy checks the user's roles
 on every tool call. Both services fetch only public addresses on behalf of a client (the Workspace's own file links are the one
@@ -187,8 +188,7 @@ Workspace describes them to the agent with its other tools (the same names, desc
 the same server: `GET /app/workspace-tools`), and when the agent calls one, the user's own tab runs it, as the user who is signed
 in: nothing is handed to the agent but the call's result, and no token or bridge session is involved. The API checks every call
 (`POST /app/workspace-tools/prepare`) against what the user's roles grant, as it does for any MCP tool, with the address of the
-tools' endpoint as the server's. The tools that change something are offered while the user lets the agent change the Workspace
-(the generative UI switch of the Copilot settings), and reading a widget always. Each widget in a request advertises its current
+tools' endpoint as the server's. The agent always has all of them, whatever page the user is on. Each widget in a request advertises its current
 parameters, and these are what the widget is showing: a parameter that belongs to one of the dashboard's parameter groups is
 advertised with the group's value, which is what the widget shows, not with the value it stored. A widget that embeds a page of its
 own backend (`iframe`) is advertised as such, and Ines reads its state from those parameters and changes it with the Workspace's `update_widget`, which
@@ -226,8 +226,9 @@ it does not answer.
 - The workflows in the root `.github/workflows/` are the ones GitHub Actions runs: the checks on pull requests
   (`frontend-checks.yml`, `backend-checks.yml`, `excel-add-in-checks.yml`, `admin-frontend-checks.yml`,
   `pr-description.yml`), the end-to-end tests (`e2e.yml`), the Docker images and build check (`backend-image.yml`,
-  `frontend-image.yml`, `pr-build-check.yml`), the deployment to the dev environment (`deploy-dev.yml`) and the
-  production frontend deployment (`prod-deploy.yml`). Each deployment file's header lists the repository variables and
+  `frontend-image.yml`, `pr-build-check.yml`), the deployment to the dev environment (`deploy-dev.yml`, which builds
+  the images and deploys them) and the production frontend deployment (`prod-deploy.yml`). The app's settings are
+  defaults in its code; the values the dev environment sets differently are in the infrastructure repository. Each deployment file's header lists the repository variables and
   secrets it reads. The `.github/workflows/` files left inside `frontend/` are kept for reference; GitHub Actions only
   executes workflows from a repository's root `.github/` directory, so none of them run here as-is.
 - Licensed under Apache-2.0 (see [LICENSE](LICENSE)). Individual components may carry additional notices in their own directories.

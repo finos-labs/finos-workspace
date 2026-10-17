@@ -4,7 +4,7 @@
  * fresh in-memory DB is built per call and dropped on return.
  *
  * Local execute: agent runs this in-process. No MCP detour, no
- * decoration, no x-ines-tables ship.
+ * decoration.
  */
 
 import { tool } from "ai";
@@ -31,15 +31,7 @@ export const executeSqlDescription =
   "Run a SQL query against widget data already loaded for this conversation. " +
   "SQLite dialect. SELECT and WITH/CTE only. Returns up to 1000 rows as JSON. " +
   "Result columns/aliases from one execute_sql call are not added to loaded tables; if you need to sort, filter, chart, or artifact a derived alias, compute it in the same SQL using a WITH CTE or subquery. " +
-  "This is the fast path — use it for filters, aggregations, joins, peeks. " +
-  "For Python statistics or interactive plotly charts, use execute_code instead.";
-
-export const executeSqlDescriptionWithoutCode =
-  "Run a SQL query against widget data already loaded for this conversation. " +
-  "SQLite dialect. SELECT and WITH/CTE only. Returns up to 1000 rows as JSON. " +
-  "Result columns/aliases from one execute_sql call are not added to loaded tables; if you need to sort, filter, chart, or artifact a derived alias, compute it in the same SQL using a WITH CTE or subquery. " +
-  "This is the fast path — use it for filters, aggregations, joins, peeks. " +
-  "Python execute_code is not available in this turn.";
+  "This is the fast path — use it for filters, aggregations, joins, peeks.";
 
 export interface ExecuteSqlContext {
   pendingTables: Map<string, Record<string, unknown>[]>;
@@ -92,12 +84,9 @@ export function runExecuteSql(
   }
 }
 
-export function makeExecuteSqlTool(
-  ctx: ExecuteSqlContext,
-  options: { codeExecutionAvailable?: boolean } = {},
-) {
+export function makeExecuteSqlTool(ctx: ExecuteSqlContext) {
   return tool({
-    description: options.codeExecutionAvailable ? executeSqlDescription : executeSqlDescriptionWithoutCode,
+    description: executeSqlDescription,
     inputSchema: executeSqlSchema,
     // A query the safety checks refuse is answered here, without starting a process for it.
     execute: async (args) => rejectUnsafeSql(args.sql) ?? runSqlIsolated("execute_sql", args, { ...ctx, artifactQueue: [] }),

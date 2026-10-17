@@ -41,6 +41,7 @@ const workspace: WorkspaceClient = {
 
 const config = loadConfig({
   WORKSPACE_API_URL: "http://api:8000",
+  WORKSPACE_ORIGIN: "http://localhost:3000",
   INES_METERING_TOKEN: "metering-token",
   INES_SCOPE_SECRET: "0123456789abcdef0123",
   INES_CORS_ORIGINS: "http://localhost:3000",
@@ -72,7 +73,7 @@ const valid = () => ({
   urls: [],
   timezone: "Europe/Madrid",
   workspace_state: { current_page_context: "dashboard" },
-  workspace_options: { "prompt-suggestions": true, "generative-ui": true },
+  workspace_options: { "prompt-suggestions": true },
   tools: [{ name: "Ines Tools_web_search", tool_name: "web_search", server_id: "s", url: "http://ines-mcp:8787/mcp", description: "d", input_schema: { properties: { query: { type: "string" } }, required: ["query"] } }],
   documents: [],
 });

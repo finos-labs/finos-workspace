@@ -13,7 +13,6 @@ import { makeCreateArtifactTool } from "./create-artifact";
 export interface SqlToolsContext {
   pendingTables: Map<string, Record<string, unknown>[]>;
   artifactQueue: SSEEvent[];
-  codeExecutionAvailable?: boolean;
 }
 
 export const SQL_TOOL_NAMES = [
@@ -27,7 +26,7 @@ export const SQL_TOOL_NAME_SET: ReadonlySet<string> = new Set(SQL_TOOL_NAMES);
 
 export function makeSqlTools(ctx: SqlToolsContext): ToolSet {
   return {
-    execute_sql: makeExecuteSqlTool(ctx, { codeExecutionAvailable: ctx.codeExecutionAvailable }),
+    execute_sql: makeExecuteSqlTool(ctx),
     peek_table: makePeekTableTool(ctx),
     peek_column_values: makePeekColumnValuesTool(ctx),
     create_artifact: makeCreateArtifactTool(ctx),

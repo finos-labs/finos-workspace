@@ -41,8 +41,10 @@ services:
         "--character-set-server=utf8mb4",
         "--collation-server=utf8mb4_unicode_ci",
       ]
+    # Pinged over TCP: on a first start the entrypoint runs a temporary server on the socket only,
+    # while it creates the database, and a socket ping would call that healthy too early.
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot --silent"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -P 3306 -u root -proot --silent"]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -196,6 +198,9 @@ services:
       # Every caller signs in with the API, which owns the users, their roles and usage limits. The
       # metering token and the scope secret are in ines/.env (create_local_env writes them).
       WORKSPACE_API_URL: http://api:8000
+      # The Origin of Ines's calls to the API: the web app's address. The API refuses the calls of an origin
+      # it does not allow (BACKEND_CORS_ORIGINS in envs/.env; DISABLE_CORS=1 allows every origin).
+      WORKSPACE_ORIGIN: ${WEB_URL:-http://localhost:3000}
       # The address the browser uses for the API: the Workspace's links to its users' files are on it.
       WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
       # Where what Ines keeps between the requests of a turn lives: who is signed in, how much of their
@@ -246,8 +251,10 @@ services:
       - ./ines/.env
     environment:
       # The document search fetches the files of the Workspace itself, from the links the Workspace gives
-      # out: they are on the address the browser uses, and are fetched from the API's address here.
+      # out: they are on the address the browser uses, and are fetched from the API's address here, with
+      # WORKSPACE_ORIGIN as their Origin (the API refuses the calls of an origin it does not allow).
       WORKSPACE_API_URL: http://api:8000
+      WORKSPACE_ORIGIN: ${WEB_URL:-http://localhost:3000}
       WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
       # The documents of a chat, shared between replicas of this server as Ines shares what she keeps.
       REDIS_URL: redis://redis:6379

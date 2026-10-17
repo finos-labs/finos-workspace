@@ -2,12 +2,12 @@ import type { HtmlArtifact } from "./types";
 
 /**
  * The Workspace has no table artifact: it renders `text`, `html` and `app`
- * artifacts. A table is therefore an `html` artifact, styled the way the
- * Workspace's own `html-table` skill asks for: its exact light/dark colors, no
- * borders, the theme background on the outermost element with small padding,
- * and no title repeated inside the HTML (the artifact's name is shown by the
- * Workspace). The artifact renders in a sandboxed iframe with no script, so the
- * theme is chosen with `prefers-color-scheme`.
+ * artifacts. A table is therefore an `html` artifact, styled the way Ines's
+ * own `html-table` skill (src/skills/html-table.md) asks for: its exact
+ * light/dark colors, no borders, the theme background on the outermost element
+ * with small padding, and no title repeated inside the HTML (the artifact's
+ * name is shown by the Workspace). The artifact renders in a sandboxed iframe
+ * with no script, so the theme is chosen with `prefers-color-scheme`.
  */
 
 function escapeHtml(value: string): string {
@@ -35,7 +35,7 @@ tbody tr:nth-child(odd){background:#FFFFFF}
 tbody tr:nth-child(even){background:#F6F6F6}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 @media (prefers-color-scheme: dark){
-html,body{background:#151518;color:#FFFFFF}
+html,body{background:#0b2432;color:#FFFFFF}
 th{background:#36363E}
 tbody tr:nth-child(odd){background:#1F1E23}
 tbody tr:nth-child(even){background:#2A2A31}

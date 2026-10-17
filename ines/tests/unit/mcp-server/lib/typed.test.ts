@@ -7,8 +7,6 @@ import {
   sqliteTableItem,
   errorItem,
   modelContextItem,
-  sandboxMetaItem,
-  sandboxMetaPayloadSchema,
 } from "../../../../mcp-server/src/lib/typed";
 
 describe("typed.ts — helpers", () => {
@@ -77,16 +75,5 @@ describe("typed.ts — helpers", () => {
   it("modelContextItem encodes summary", () => {
     const item = modelContextItem("use this only");
     expect(JSON.parse(item.text)).toEqual({ $ines_kind: "model_context", summary: "use this only" });
-  });
-
-  it("sandboxMetaItem encodes sandbox_id under $ines_kind and parses via Zod", () => {
-    const item = sandboxMetaItem("sb-abc-123");
-    const parsed = JSON.parse(item.text);
-    expect(parsed).toEqual({ $ines_kind: "sandbox_meta", sandbox_id: "sb-abc-123" });
-    expect(sandboxMetaPayloadSchema.parse({ sandbox_id: parsed.sandbox_id })).toEqual({
-      sandbox_id: "sb-abc-123",
-    });
-    expect(() => sandboxMetaPayloadSchema.parse({})).toThrow();
-    expect(() => sandboxMetaPayloadSchema.parse({ sandbox_id: "" })).toThrow();
   });
 });

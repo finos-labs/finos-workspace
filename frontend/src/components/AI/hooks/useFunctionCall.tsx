@@ -899,8 +899,11 @@ async function getPreSignedUrls(
     return getFileReference(uuid);
   }
 
-  // Drag-and-drop files: the widget id already carries the stored file uuid
-  const fileUuid = extractUuidFromWidgetId(dataSource.id);
+  // Files attached to the chat: the widget id carries the stored file uuid ("file-<uuid>"), and an
+  // agent may name the file by that uuid alone, as its widget_uuid
+  const fileUuid =
+    extractUuidFromWidgetId(dataSource.id) ??
+    (dataSource.widget_uuid ? extractUuidFromWidgetId(dataSource.widget_uuid) : null);
   if (fileUuid) return getFileReference(fileUuid);
 
   throw new CopilotError(

@@ -112,7 +112,6 @@ describe("useWorkspaceBridgeSnapshot", () => {
     });
     mockUseCopilotDataStoreGetState.mockReturnValue({
       extraWidgetsEnabled: false,
-      generativeUiEnabled: false,
     });
     mockUseMcpToolsStoreGetState.mockReturnValue({
       getEnabledToolCount: () => 0,
@@ -187,7 +186,6 @@ describe("useWorkspaceBridgeSnapshot", () => {
         features: {
           "agent-orchestration": true,
           "mcp-tools": true,
-          "generative-ui": true,
           "widget-global-search": true,
         },
       },
@@ -196,7 +194,6 @@ describe("useWorkspaceBridgeSnapshot", () => {
     });
     mockUseCopilotDataStoreGetState.mockReturnValue({
       extraWidgetsEnabled: true,
-      generativeUiEnabled: true,
     });
     mockUseMcpToolsStoreGetState.mockReturnValue({
       getEnabledToolCount: () => 3,
@@ -209,7 +206,6 @@ describe("useWorkspaceBridgeSnapshot", () => {
       expect.arrayContaining([
         "agent-orchestration",
         "mcp-tools",
-        "generative-ui",
         "widget-global-search",
       ]),
     );

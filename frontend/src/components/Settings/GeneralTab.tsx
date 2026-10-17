@@ -126,9 +126,9 @@ export default function GeneralTab() {
                       <strong>Features include:</strong>
                     </span>
                     <ul className="list-disc pl-4">
-                      <li>Widget title/description suggestion from copilot</li>
+                      <li>Widget title/description suggestion from the agent</li>
                       <li>Widget title/description suggestion upon upload</li>
-                      <li>Copilot chat title generation</li>
+                      <li>Agent chat title generation</li>
                       <li>Dashboard name generation</li>
                     </ul>
                   </>

@@ -16,7 +16,6 @@ const mockState = vi.hoisted(() => {
     endpoints: { query: "https://ada.example/v1/query" },
     features: {
       "widget-global-search": true,
-      "generative-ui": true,
       "mcp-tools": false,
       "agent-orchestration": false,
     },
@@ -26,7 +25,6 @@ const mockState = vi.hoisted(() => {
     allWidget,
     selectedCopilot,
     extraWidgetsEnabled: false,
-    generativeUiEnabled: true,
     temporaryWidgets: [] as CopilotWidget[],
     tools: [] as Record<string, unknown>[],
     servers: [] as Record<string, unknown>[],
@@ -51,7 +49,6 @@ vi.mock("~/components/AI/hooks/useGetFinalMessagesAndWidgets", () => ({
 vi.mock("~/lib/constants", () => ({
   ALL_AI_FEATURES: new Set([
     "widget-global-search",
-    "generative-ui",
     "mcp-tools",
     "agent-orchestration",
   ]),
@@ -78,7 +75,6 @@ vi.mock("~/lib/state/copilotData", () => ({
     selector({
       widgetSubsetData: [],
       extraWidgetsEnabled: mockState.extraWidgetsEnabled,
-      generativeUiEnabled: mockState.generativeUiEnabled,
       copilotWidgetsLastUpdated: 0,
       getCopilotWidgets: () => ({
         selectedWidgets: [],
@@ -159,7 +155,6 @@ const makeAttachmentWidget = (uuid: string, name: string) => ({
 describe("useAiFetchRequestInit", () => {
   beforeEach(() => {
     mockState.extraWidgetsEnabled = false;
-    mockState.generativeUiEnabled = true;
     mockState.temporaryWidgets = [];
     mockState.tools = [];
     mockState.servers = [];
@@ -167,11 +162,10 @@ describe("useAiFetchRequestInit", () => {
     mockState.selectedCopilot.features["mcp-tools"] = false;
   });
 
-  it("does not send extra widgets when only Generative UI is enabled", async () => {
+  it("does not send extra widgets without Global data", async () => {
     const payloads = await getPayloads();
 
     for (const payload of payloads) {
-      expect(payload.workspace_options["generative-ui"]).toBe(true);
       expect(payload.workspace_options["widget-global-search"]).toBeUndefined();
       expect(payload.widgets.extra).toEqual([]);
     }

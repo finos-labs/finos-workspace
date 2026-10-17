@@ -1,11 +1,11 @@
 import type {
   QueryRequest,
-  SkillCatalogEntry,
   UploadedDocument,
   Widget,
   WidgetParam,
   WorkspaceState,
 } from "../protocol/types";
+import { type CatalogSkill, skillsCatalog } from "../skills";
 import { renderToolCatalog, renderToolNotes, type ToolCatalog } from "./tool-groups";
 
 const BASE_PROMPT =
@@ -160,7 +160,7 @@ function describeUploadedDocuments(docs: UploadedDocument[]): string {
   );
 }
 
-function describeSkillsCatalog(catalog: SkillCatalogEntry[]): string {
+function describeSkillsCatalog(catalog: CatalogSkill[]): string {
   const items = catalog.map((s) => `- slug="${s.slug}" — ${s.description}`).join("\n");
   return (
     "\n## Skills (specialized instructions / workflows)\n" +
@@ -243,7 +243,6 @@ export function describeDisabledCapabilities(disabled: readonly string[]): strin
 export interface PromptOptions {
   /** What an administrator has switched off for this user (see describeDisabledCapabilities). */
   disabledCapabilities?: readonly string[];
-  generativeUiEnabled?: boolean;
   promptSuggestionsEnabled?: boolean;
   /**
    * How the model should produce follow-up suggestions when
@@ -252,11 +251,6 @@ export interface PromptOptions {
    */
   suggestionsVia?: "inline" | "tool";
   workspaceState?: WorkspaceState | null;
-  /**
-   * False when the sandbox cannot be used in this chat: the model is told, so it does not try or promise it.
-   * Left out, nothing is said.
-   */
-  codeExecutionAvailable?: boolean;
   /** The tools that exist beyond the core ones, by group (src/agent/tool-groups.ts). */
   toolCatalog?: ToolCatalog;
   /**
@@ -284,9 +278,6 @@ export function buildSystemPrompt(
   const loaded = options?.loadedGroups ?? new Set<string>();
   if (catalog) {
     sections.push(renderToolCatalog(catalog, loaded));
-    if (options?.codeExecutionAvailable === false) {
-      sections.push("Python execution is not available in this chat: do not attempt it.");
-    }
     const notes = renderToolNotes(catalog, loaded);
     if (notes) sections.push(notes);
   }
@@ -297,8 +288,7 @@ export function buildSystemPrompt(
   const documents = request.documents ?? [];
   if (documents.length > 0) sections.push(describeUploadedDocuments(documents));
 
-  const catalogSkills = request.skills_catalog ?? [];
-  if (catalogSkills.length > 0) sections.push(describeSkillsCatalog(catalogSkills));
+  sections.push(describeSkillsCatalog(skillsCatalog(request)));
 
   const primary = request.widgets?.primary ?? [];
   const secondary = request.widgets?.secondary ?? [];
@@ -325,7 +315,7 @@ export function buildSystemPrompt(
     sections.push("\nNo widgets or data sources are currently available in this session.");
   }
 
-  if (options?.generativeUiEnabled && options.workspaceState) {
+  if (options?.workspaceState) {
     sections.push(describeDashboardContext(options.workspaceState));
   }
 

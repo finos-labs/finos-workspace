@@ -236,7 +236,7 @@ const GroupDropdownContent = forwardRef<HTMLDivElement>((_props, _ref) => {
       <ContextMenuPrimitive.Item
         className="truncate flex gap-1 items-center cursor-pointer
             whitespace-nowrap rounded-[2px] p-1 transition-colors
-            hover:bg-light-50 dark:hover:bg-[#303038] data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
+            hover:bg-light-50 dark:hover:bg-dark-600 data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
         onSelect={handleOpenWidgetsSearch}
         disabled={isSharedDashboard}
       >
@@ -245,17 +245,17 @@ const GroupDropdownContent = forwardRef<HTMLDivElement>((_props, _ref) => {
       <ContextMenuPrimitive.Item
         className="truncate flex gap-1 items-center cursor-pointer
               whitespace-nowrap rounded-[2px] p-1 transition-colors
-              hover:bg-light-50 dark:hover:bg-[#303038] data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
+              hover:bg-light-50 dark:hover:bg-dark-600 data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
         onSelect={handleAddNavigationBar}
         disabled={isSharedDashboard || hasNavigationBar}
       >
         Add navigation bar
       </ContextMenuPrimitive.Item>
-      <ContextMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-[#36363F]" />
+      <ContextMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-dark-500" />
       <ContextMenuPrimitive.Item
         className="truncate flex gap-1 items-center cursor-pointer
         whitespace-nowrap rounded-[2px] p-1 transition-colors
-        hover:bg-light-50 dark:hover:bg-[#303038] data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
+        hover:bg-light-50 dark:hover:bg-dark-600 data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
         onSelect={() => {
           dispatchRefreshQuery();
         }}
@@ -265,7 +265,7 @@ const GroupDropdownContent = forwardRef<HTMLDivElement>((_props, _ref) => {
       </ContextMenuPrimitive.Item>
       <ContextMenuPrimitive.Item
         className="truncate flex gap-1 items-center cursor-pointer
-        whitespace-nowrap rounded-[2px] p-1 transition-colors hover:bg-light-50 dark:hover:bg-[#303038] data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
+        whitespace-nowrap rounded-[2px] p-1 transition-colors hover:bg-light-50 dark:hover:bg-dark-600 data-[disabled]:hover:bg-transparent! data-[disabled]:dark:hover:bg-transparent! data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
         onSelect={handleRefreshBackends}
         disabled={state.backendSources?.length === 0}
       >

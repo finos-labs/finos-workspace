@@ -56,13 +56,11 @@ describe("workspace bridge — generic dispatch", () => {
             { role: "human", content: "Update these widgets to say by 41" },
             toolMsg,
           ],
-          workspace_options: ["generative-ui"],
         } as unknown as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: spy.model,
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: true,
         conversationId: "wb-update-terminal",
       }),
     );
@@ -87,13 +85,11 @@ describe("workspace bridge — generic dispatch", () => {
       runAgentLoop({
         request: {
           messages: [{ role: "human", content: "make me tabs" }],
-          workspace_options: ["generative-ui"],
         } as unknown as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeMockLlm(llmCallsTool("manage_navigation_bar", args)),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: true,
         conversationId: "wb-1",
       }),
     );
@@ -128,7 +124,6 @@ describe("workspace bridge — generic dispatch", () => {
       runAgentLoop({
         request: {
           messages: [{ role: "human", content: "filter this widget to B" }],
-          workspace_options: ["generative-ui"],
         } as unknown as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeMockLlm(llmCallsTool("update_widget_in_dashboard", args)),
@@ -153,7 +148,6 @@ describe("workspace bridge — generic dispatch", () => {
             ],
           },
         },
-        generativeUiEnabled: true,
         conversationId: "wb-update-widget-progress",
       }),
     );
@@ -191,13 +185,11 @@ describe("workspace bridge — generic dispatch", () => {
       runAgentLoop({
         request: {
           messages: [{ role: "human", content: "place options chain" }],
-          workspace_options: ["generative-ui"],
         } as unknown as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeMockLlm(llmCallsTool("add_widget_to_dashboard", args)),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: true,
         conversationId: "wb-2",
       }),
     );
@@ -218,7 +210,6 @@ describe("workspace bridge — generic dispatch", () => {
       runAgentLoop({
         request: {
           messages: [{ role: "human", content: "update parameter sector to Financials" }],
-          workspace_options: ["generative-ui"],
         } as unknown as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeMockLlm({
@@ -242,7 +233,6 @@ describe("workspace bridge — generic dispatch", () => {
         }),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: true,
         conversationId: "wb-update",
       }),
     );
@@ -262,7 +252,6 @@ describe("workspace bridge — generic dispatch", () => {
       runAgentLoop({
         request: {
           messages: [{ role: "human", content: "create a widget and a tab" }],
-          workspace_options: ["generative-ui"],
         } as unknown as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeMockLlm({
@@ -280,7 +269,6 @@ describe("workspace bridge — generic dispatch", () => {
         }),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: true,
         conversationId: "wb-multi-bridge",
       }),
     );
@@ -331,13 +319,11 @@ describe("workspace bridge — generic dispatch", () => {
             { role: "human", content: "update parameter sector to technology" },
             priorBridgeResult,
           ],
-          workspace_options: ["generative-ui"],
         } as unknown as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeMockLlm(llmEmitsText("MODEL SHOULD NOT RUN")),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: true,
         conversationId: "wb-drain",
       }),
     );
@@ -360,11 +346,11 @@ describe("workspace bridge — generic dispatch", () => {
     expect(events.some((e) => e.event === "copilotMessageChunk")).toBe(false);
   });
 
-  it("carries continuation extra_state on bridge emissions (compute delta survives the round-trip)", async () => {
+  it("carries continuation extra_state on bridge emissions (document delta survives the round-trip)", async () => {
     // The workspace echoes extra_state back on the re-POST and the loop
     // restores from the LAST tool message only. A bridge emission that drops
-    // compute_tables_shipped would silently wipe the execute_code delta-ship
-    // state mid-turn.
+    // documents_shipped would silently wipe the document delta-ship state
+    // mid-turn.
     const priorBridgeResult: ToolMessage = {
       role: "tool",
       function: "manage_dashboard",
@@ -376,7 +362,7 @@ describe("workspace bridge — generic dispatch", () => {
           data: { ok: true, command: "manage_dashboard", data: { dashboard_id: "d-1" } },
         },
       ] as unknown as ToolMessage["data"],
-      extra_state: { compute_tables_shipped: ["events_table"] },
+      extra_state: { documents_shipped: ["doc-1"] },
     } as unknown as ToolMessage;
 
     const events = await collectGenerator(
@@ -386,7 +372,6 @@ describe("workspace bridge — generic dispatch", () => {
             { role: "human", content: "create dashboard then add the widget" },
             priorBridgeResult,
           ],
-          workspace_options: ["generative-ui"],
         } as unknown as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeMockLlm(llmCallsTool("add_widget_to_dashboard", {
@@ -395,7 +380,6 @@ describe("workspace bridge — generic dispatch", () => {
         })),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: true,
         conversationId: "wb-extra-state",
       }),
     );
@@ -404,7 +388,7 @@ describe("workspace bridge — generic dispatch", () => {
     expect(fc).toBeDefined();
     const extraState = (fc!.data as { extra_state?: Record<string, unknown> }).extra_state;
     expect(extraState).toMatchObject({
-      compute_tables_shipped: ["events_table"],
+      documents_shipped: ["doc-1"],
     });
   });
 
@@ -444,13 +428,11 @@ describe("workspace bridge — generic dispatch", () => {
             { role: "human", content: "place options chain" },
             schemaTool,
           ],
-          workspace_options: ["generative-ui"],
         } as unknown as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeMockLlm(llmCallsTool("add_widget_to_dashboard", args)),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: true,
         conversationId: "wb-2-schema",
       }),
     );
@@ -500,7 +482,6 @@ describe("workspace bridge — generic dispatch", () => {
                 'Create a new dashboard with 2 widgets from ESG on Governance on one tab "Governance" and then another tab "Social" that just has a markdown note widget saying "Hello"',
             },
           ],
-          workspace_options: ["generative-ui"],
         } as unknown as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeMockLlm(llmCallsTool("add_widget_to_dashboard", duplicateBoard)),
@@ -534,7 +515,6 @@ describe("workspace bridge — generic dispatch", () => {
             ],
           },
         },
-        generativeUiEnabled: true,
         conversationId: "wb-dashboard-duplicate-widget-guard",
       }),
     );
@@ -572,7 +552,6 @@ describe("workspace bridge — generic dispatch", () => {
                 'Create a new dashboard with 2 widgets from ESG on Governance on one tab "Governance" and then another tab "Social" that just has a markdown note widget saying "Hello"',
             },
           ],
-          workspace_options: ["generative-ui"],
         } as unknown as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeMockLlm(llmCallsTool("manage_navigation_bar", createTabs)),
@@ -590,7 +569,6 @@ describe("workspace bridge — generic dispatch", () => {
             ],
           },
         },
-        generativeUiEnabled: true,
         conversationId: "wb-dashboard-duplicate-nav-guard",
       }),
     );
@@ -602,24 +580,5 @@ describe("workspace bridge — generic dispatch", () => {
       event.event === "copilotStatusUpdate" &&
       (event.data as { message?: string }).message === "manage_navigation_bar: already created"
     )).toBe(false);
-  });
-
-  it("when generativeUiEnabled is false the bridge tools are NOT registered", async () => {
-    const events = await collectGenerator(
-      runAgentLoop({
-        request: { messages: [{ role: "human", content: "x" }] } as unknown as QueryRequest,
-        rawModelId: "openai:gpt-4o-mini",
-        // The model "tries" to call update_widget_in_dashboard but it isn't
-        // surfaced; the AI SDK still emits the tool-call content, and the loop's
-        // generic dispatch ignores it (bridge calls only fire when generative
-        // UI is enabled). We just assert no native SSE leaks out.
-        model: makeMockLlm(llmCallsTool("update_widget_in_dashboard", { widget_uuid: "w-1" })),
-        allWidgets: [],
-        workspaceState: null,
-        generativeUiEnabled: false,
-        conversationId: "wb-3",
-      }),
-    );
-    expect(findFunctionCall(events, "update_widget_in_dashboard")).toBeUndefined();
   });
 });

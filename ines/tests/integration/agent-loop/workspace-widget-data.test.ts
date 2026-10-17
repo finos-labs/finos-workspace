@@ -63,7 +63,6 @@ function ask(opts: { messages: QueryRequest["messages"]; tools?: AgentTool[]; mo
       model: opts.model,
       allWidgets: [widget()],
       workspaceState: null,
-      generativeUiEnabled: false,
       promptSuggestionsEnabled: false,
       conversationId: opts.chat,
     }),

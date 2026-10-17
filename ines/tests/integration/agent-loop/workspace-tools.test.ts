@@ -38,7 +38,6 @@ function ask(opts: {
   model: ReturnType<typeof makeMockLlm>;
   chat: string;
   tools?: AgentTool[];
-  generativeUiEnabled?: boolean;
 }): Promise<SSEEvent[]> {
   return collectGenerator(
     runAgentLoop({
@@ -47,7 +46,6 @@ function ask(opts: {
       model: opts.model,
       allWidgets: [],
       workspaceState: null,
-      generativeUiEnabled: opts.generativeUiEnabled ?? true,
       promptSuggestionsEnabled: false,
       conversationId: opts.chat,
     }),
@@ -127,7 +125,6 @@ describe("the model is given the Workspace's tools", () => {
       messages: [{ role: "human", content: "set the symbol to MSFT" }],
       model: spy.model,
       chat: "wt-read-only",
-      generativeUiEnabled: false,
     });
 
     const system = JSON.stringify(spy.calls[0].messages);
@@ -244,22 +241,6 @@ describe("the calls that wait", () => {
       ],
       model: spy.model,
       chat: "wt-untrusted",
-    });
-
-    expect(functionCalls(events)).toHaveLength(0);
-    expect(spy.calls).toHaveLength(1);
-  });
-
-  it("are not made when the user no longer lets the agent change the Workspace", async () => {
-    const spy = makeSpyMockLlm(llmEmitsText("Done."));
-    const events = await ask({
-      messages: [
-        { role: "human", content: "set the symbol to MSFT" },
-        result({ pending_workspace_calls: [{ tool_name: "Workspace_update_widget", input_arguments: { widget_uuid: "w-2" } }] }),
-      ],
-      model: spy.model,
-      chat: "wt-switched-off",
-      generativeUiEnabled: false,
     });
 
     expect(functionCalls(events)).toHaveLength(0);

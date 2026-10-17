@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createGroq } from "@ai-sdk/groq";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
@@ -46,13 +47,25 @@ export const PROVIDER_OPTIONS: Record<string, Record<string, JSONValue>> = {
  * that traffic per key stay near 15 req/min, which a per-chat key can't breach.
  */
 export function providerOptionsFor(
-  cacheKey: string | undefined,
+  conversationId: string | undefined,
 ): Record<string, Record<string, JSONValue>> {
-  if (!cacheKey) return PROVIDER_OPTIONS;
+  if (!conversationId) return PROVIDER_OPTIONS;
   return {
     ...PROVIDER_OPTIONS,
-    openai: { ...PROVIDER_OPTIONS.openai, promptCacheKey: cacheKey },
+    openai: { ...PROVIDER_OPTIONS.openai, promptCacheKey: promptCacheKey(conversationId) },
   };
+}
+
+/**
+ * The prompt cache key of a chat. OpenAI rejects a `prompt_cache_key` longer
+ * than 64 characters, and a conversation id is the chat's scope key,
+ * "<user id>:<chat id>" (see lib/scope.ts), 73 characters for two UUIDs and
+ * longer for a longer X-Trace-Id. So the key is a SHA-256 hash of it, 43
+ * characters of base64url: the same chat always gets the same key, and the
+ * user's id does not go to the provider.
+ */
+export function promptCacheKey(conversationId: string): string {
+  return createHash("sha256").update(conversationId).digest("base64url");
 }
 
 // No model id is written anywhere in this code. A provider is registered when

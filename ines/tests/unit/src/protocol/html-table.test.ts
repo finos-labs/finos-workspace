@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { htmlTableArtifact, renderHtmlTable } from "../../../../src/protocol/html-table";
 
 // The Workspace has no table artifact: a table is an html artifact, styled per
-// the Workspace's own `html-table` skill (its exact colors, no borders, no title
+// Ines's own `html-table` skill (its exact colors, no borders, no title
 // repeated inside the HTML, theme background on the outermost element).
 describe("renderHtmlTable", () => {
   const html = renderHtmlTable([
@@ -28,8 +28,8 @@ describe("renderHtmlTable", () => {
     expect(out).toContain("<td>a &amp; b</td>");
   });
 
-  it("follows the Workspace html-table skill: its colors, no borders, theme on the outer element", () => {
-    for (const color of ["#FFFFFF", "#F6F6F6", "#EBEBED", "#191D1F", "#1F1E23", "#2A2A31", "#36363E", "#151518"]) {
+  it("follows the html-table skill: its colors, no borders, theme on the outer element", () => {
+    for (const color of ["#FFFFFF", "#F6F6F6", "#EBEBED", "#191D1F", "#1F1E23", "#2A2A31", "#36363E", "#0b2432"]) {
       expect(html).toContain(color);
     }
     expect(html).toContain("prefers-color-scheme: dark");

@@ -70,7 +70,6 @@ function firstRequest(conversationId: string) {
   return runAgentLoop({
     request: {
       messages: [{ role: "human", content: "make me tabs" }],
-      workspace_options: ["generative-ui"],
     } as unknown as QueryRequest,
     rawModelId: "openai:gpt-4o-mini",
     model: makeMockLlm(
@@ -81,7 +80,6 @@ function firstRequest(conversationId: string) {
     ),
     allWidgets: [],
     workspaceState: null,
-    generativeUiEnabled: true,
     conversationId,
   });
 }
@@ -100,13 +98,11 @@ function rePost(conversationId: string, extraState: Record<string, unknown>) {
   return runAgentLoop({
     request: {
       messages: [{ role: "human", content: "make me tabs" }, toolMsg],
-      workspace_options: ["generative-ui"],
     } as unknown as QueryRequest,
     rawModelId: "openai:gpt-4o-mini",
     model: makeMockLlm(llmEmitsText("Done — tabs created.")),
     allWidgets: [],
     workspaceState: null,
-    generativeUiEnabled: true,
     conversationId,
   });
 }
@@ -129,7 +125,6 @@ function rePostWithBridgeCall(conversationId: string, extraState: Record<string,
   return runAgentLoop({
     request: {
       messages: [{ role: "human", content: "make me tabs" }, toolMsg],
-      workspace_options: ["generative-ui"],
     } as unknown as QueryRequest,
     rawModelId: "openai:gpt-4o-mini",
     model: makeMockLlm(
@@ -140,7 +135,6 @@ function rePostWithBridgeCall(conversationId: string, extraState: Record<string,
     ),
     allWidgets: [],
     workspaceState: null,
-    generativeUiEnabled: true,
     conversationId,
   });
 }
@@ -327,14 +321,12 @@ describe("turn tracing — timezone carries across the round-trip", () => {
     return runAgentLoop({
       request: {
         messages: [{ role: "human", content: "make me tabs" }],
-        workspace_options: ["generative-ui"],
         ...(timezone ? { timezone } : {}),
       } as unknown as QueryRequest,
       rawModelId: "openai:gpt-4o-mini",
       model: spy.model,
       allWidgets: [],
       workspaceState: null,
-      generativeUiEnabled: true,
       conversationId: "t-tz",
     });
   }
@@ -353,13 +345,11 @@ describe("turn tracing — timezone carries across the round-trip", () => {
     return runAgentLoop({
       request: {
         messages: [{ role: "human", content: "make me tabs" }, toolMsg],
-        workspace_options: ["generative-ui"],
       } as unknown as QueryRequest,
       rawModelId: "openai:gpt-4o-mini",
       model: spy.model,
       allWidgets: [],
       workspaceState: null,
-      generativeUiEnabled: true,
       conversationId: "t-tz",
     });
   }

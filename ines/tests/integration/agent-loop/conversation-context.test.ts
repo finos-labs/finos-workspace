@@ -11,7 +11,6 @@ import type { QueryRequest, Message, AgentTool } from "../../../src/protocol/typ
 import { llmCallsTool, llmEmitsText, makeSequencedSpyMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm";
 import { collectGenerator } from "../../helpers/sse-reader";
 import { clearAllModuleState } from "../../helpers/clear-state";
-import { modelKnowsTool } from "../../helpers/offered-tools";
 
 beforeEach(() => {
   clearAllModuleState();
@@ -40,7 +39,6 @@ async function run(messages: Message[], model: ReturnType<typeof makeSpyMockLlm>
       model,
       allWidgets: [],
       workspaceState: null,
-      generativeUiEnabled: false,
       conversationId: "chat-1",
     }),
   );
@@ -115,36 +113,5 @@ describe("what the model does when the question needs the rest", () => {
     );
     expect(chunks(events)).toBe("Teal.");
     expect(promptText(spy.calls[1])).toContain("My favourite colour is teal.");
-  });
-});
-
-describe("what carries over from earlier turns without being shown", () => {
-  const codeTool: AgentTool = {
-    name: "Ines Tools_execute_code",
-    tool_name: "execute_code",
-    server_id: "ines-tools",
-    url: "http://ines-mcp:8787/mcp",
-    description: "Run Python",
-    input_schema: { properties: { code: { type: "string" } }, required: ["code"] },
-  };
-
-  it("keeps the code sandbox off for the rest of the chat once a turn found it permanently unavailable", async () => {
-    const spy = makeSpyMockLlm(llmEmitsText("no sandbox"));
-    const earlierTurnFailure = {
-      role: "tool",
-      function: "execute_agent_tool",
-      input_arguments: { tool_name: "execute_code", server_id: "ines-tools" },
-      data: [{ items: [{ text: "COMPUTE_PERMANENTLY_UNAVAILABLE: sandbox failed" }] }],
-    } as unknown as Message;
-    await run([human("run python"), earlierTurnFailure, ai("It failed."), human("try again")], spy.model, [codeTool]);
-    expect(modelKnowsTool(spy.calls[0], "execute_code")).toBe(false);
-    // The failure itself is not in what the model was given: it is a turn the model is not shown.
-    expect(promptText(spy.calls[0])).not.toContain("COMPUTE_PERMANENTLY_UNAVAILABLE");
-  });
-
-  it("offers the sandbox as before when nothing failed", async () => {
-    const spy = makeSpyMockLlm(llmEmitsText("ok"));
-    await run([human("a"), ai("b"), human("run python")], spy.model, [codeTool]);
-    expect(modelKnowsTool(spy.calls[0], "execute_code")).toBe(true);
   });
 });

@@ -32,7 +32,6 @@ agentsRouter.get("/agents.json", (c) => {
         "widget-dashboard-search": true,
         "widget-global-search": true,
         "mcp-tools": true,
-        "generative-ui": true,
         "file-upload": true,
         "prompt-suggestions": {
           label: "Follow-up Suggestions",

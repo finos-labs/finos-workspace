@@ -38,7 +38,6 @@ function ask(chat: string, model: ReturnType<typeof makeSequencedMockLlm>, allWi
       model,
       allWidgets,
       workspaceState: null,
-      generativeUiEnabled: false,
       promptSuggestionsEnabled: false,
       conversationId: chat,
     }),

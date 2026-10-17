@@ -116,22 +116,22 @@ describe("makeMcpTools — input schema strips x-ines-*", () => {
   it("hides decoration keys from the model-facing input schema", () => {
     const out = makeMcpTools([
       tool({
-        name: "execute_code",
+        name: "query_documents",
         input_schema: {
           properties: {
-            code: { type: "string" },
-            "x-ines-tables": { type: "object" },
+            query: { type: "string" },
+            "x-ines-documents": { type: "array" },
             "x-ines-conversation-id": { type: "string" },
           },
-          required: ["code"],
+          required: ["query"],
         },
       }),
     ]);
-    const t = out.toolSet.execute_code as unknown as { inputSchema: { shape: Record<string, unknown> } };
+    const t = out.toolSet.query_documents as unknown as { inputSchema: { shape: Record<string, unknown> } };
     const keys = Object.keys(t.inputSchema.shape);
-    expect(keys).toContain("code");
+    expect(keys).toContain("query");
     expect(keys).toContain("display_summary");
-    expect(keys).not.toContain("x-ines-tables");
+    expect(keys).not.toContain("x-ines-documents");
     expect(keys).not.toContain("x-ines-conversation-id");
   });
 });
@@ -169,8 +169,7 @@ describe("makeMcpTools — agent-owned tool names filtered", () => {
   // The bridge mount names `update_widget_layout` differently from its wire
   // command (`update_dashboard_layout`), and get_widget_data/get_skill_content
   // are bridge commands with bespoke agent paths outside WORKSPACE_BRIDGE_COMMANDS.
-  // All three must still be deduped or they double-register against native tools
-  // (and update_widget_layout leaks a mutation path when generative UI is off).
+  // All three must still be deduped or they double-register against native tools.
   it("drops bridge-mount aliases and bespoke round-trip wrappers", () => {
     const out = makeMcpTools([
       tool({ name: "inesmcp_update_widget_layout", server_id: "ines" }),
@@ -194,7 +193,6 @@ describe("makeMcpTools — the Workspace's get_widget_data", () => {
           required: ["origin", "widget_id"],
         },
       }),
-      tool({ name: "Workspace_update_widget_layout", server_id: "workspace" }),
     ]);
     expect(out.entries).toEqual([
       {
@@ -239,8 +237,8 @@ describe("makeMcpTools — the Workspace's own tools", () => {
     workspace("get_skill_content"),
   ];
 
-  it("are registered, with the schema and the description the Workspace gives them, when the user lets the agent change the Workspace", () => {
-    const out = makeMcpTools(request, { generativeUiEnabled: true });
+  it("are registered, with the schema and the description the Workspace gives them", () => {
+    const out = makeMcpTools(request);
     expect(Object.keys(out.toolSet).sort()).toEqual([
       "Workspace_create_widget",
       "Workspace_manage_dashboard",
@@ -261,15 +259,8 @@ describe("makeMcpTools — the Workspace's own tools", () => {
   });
 
   it("are not the ones that skills are read with: those are the agent's", () => {
-    const out = makeMcpTools(request, { generativeUiEnabled: true });
+    const out = makeMcpTools(request);
     expect(out.entries.map((entry) => entry.toolName)).not.toContain("Workspace_get_skill_content");
-  });
-
-  it("are only the one that reads a widget when the user does not let the agent change the Workspace", () => {
-    for (const options of [undefined, { generativeUiEnabled: false }]) {
-      const out = makeMcpTools(request, options);
-      expect(Object.keys(out.toolSet)).toEqual(["get_widget_data"]);
-    }
   });
 
   it("are the Workspace's by the id of their server, not by their name", () => {
@@ -280,7 +271,6 @@ describe("makeMcpTools — the Workspace's own tools", () => {
         tool({ name: "inesmcp_get_widget_data", server_id: "ines" }),
         workspace("manage_dashboard"),
       ],
-      { generativeUiEnabled: true },
     );
     expect(out.entries.map((entry) => `${entry.serverId}:${entry.toolName}`)).toEqual([
       "ines:inesmcp_get_widget_data",
@@ -291,7 +281,6 @@ describe("makeMcpTools — the Workspace's own tools", () => {
   it("read the widgets with the Workspace's get_widget_data, whichever server lists one first", () => {
     const out = makeMcpTools(
       [tool({ name: "docs_get_widget_data", server_id: "docs" }), workspace("get_widget_data")],
-      { generativeUiEnabled: true },
     );
     expect(out.widgetDataEntry?.serverId).toBe("workspace");
     expect(out.entries.map((entry) => entry.serverId)).toEqual(["workspace"]);
@@ -299,7 +288,7 @@ describe("makeMcpTools — the Workspace's own tools", () => {
 
   it("are offered, whatever of them is registered: the agent then has no function calls of its own for the Workspace", () => {
     expect(makeMcpTools(request).workspaceToolsOffered).toBe(true);
-    expect(makeMcpTools([workspace("read_widget")], { generativeUiEnabled: false }).workspaceToolsOffered).toBe(true);
+    expect(makeMcpTools([workspace("read_widget")]).workspaceToolsOffered).toBe(true);
     expect(makeMcpTools([tool({ name: "fetch_webpage", server_id: "ines" })]).workspaceToolsOffered).toBe(false);
     expect(makeMcpTools([]).workspaceToolsOffered).toBe(false);
   });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { PROVIDER_OPTIONS, providerOptionsFor } from "../../../../src/lib/providers";
+import { PROVIDER_OPTIONS, promptCacheKey, providerOptionsFor } from "../../../../src/lib/providers";
 
 describe("providerOptionsFor", () => {
   // OpenAI routes requests to machines holding a matching prefix; without a
@@ -9,7 +9,24 @@ describe("providerOptionsFor", () => {
   // user message) dropped to 0% cached.
   it("sets promptCacheKey so a chat's requests route to the same machine", () => {
     const out = providerOptionsFor("chat-abc");
-    expect(out.openai?.promptCacheKey).toBe("chat-abc");
+    expect(out.openai?.promptCacheKey).toBe(promptCacheKey("chat-abc"));
+    expect(providerOptionsFor("chat-abc").openai?.promptCacheKey).toBe(out.openai!.promptCacheKey!);
+  });
+
+  it("keeps the key within OpenAI's 64 characters for a scope key of two UUIDs", () => {
+    // A conversation id is "<user id>:<chat id>" (lib/scope.ts): 73 characters,
+    // which OpenAI rejects as a prompt_cache_key.
+    const conversationId = `${crypto.randomUUID()}:${crypto.randomUUID()}`;
+    expect(conversationId.length).toBe(73);
+    const key = providerOptionsFor(conversationId).openai?.promptCacheKey as string;
+    expect(key.length).toBeLessThanOrEqual(64);
+    expect(key).not.toContain(conversationId.split(":")[0]!);
+    expect(promptCacheKey("x".repeat(10_000)).length).toBeLessThanOrEqual(64);
+  });
+
+  it("gives different chats different keys", () => {
+    expect(promptCacheKey("user-1:chat-1")).not.toBe(promptCacheKey("user-1:chat-2"));
+    expect(promptCacheKey("user-1:chat-1")).not.toBe(promptCacheKey("user-2:chat-1"));
   });
 
   it("preserves the existing provider options", () => {

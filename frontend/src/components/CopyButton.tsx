@@ -27,7 +27,7 @@ export default function CopyButton({ text, className, copyClassName }: Props) {
       <Popover.Content
         side="top"
         sideOffset={5}
-        className="rounded border border-light-600 dark:bg-[#303038] bg-light-200 dark:text-light-200 p-2 py-1 uppercase will-change-[transform,opacity] data-[state=open]:data-[side=top]:animate-slide-down-fade"
+        className="rounded border border-light-600 dark:bg-dark-600 bg-light-200 dark:text-light-200 p-2 py-1 uppercase will-change-[transform,opacity] data-[state=open]:data-[side=top]:animate-slide-down-fade"
       >
         Copied
       </Popover.Content>

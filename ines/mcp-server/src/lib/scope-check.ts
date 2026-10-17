@@ -1,12 +1,12 @@
 /**
- * The tools that keep state for a chat (the code sandbox, the document store) file it under the chat's
+ * The tools that keep state for a chat (the document store, the fetched pages) file it under the chat's
  * scope key, which names the user (see src/lib/scope.ts). The browser makes the calls to the tools, so
  * it could put any key in one; the agent signs the key it means, and these tools do not act on one that
  * lacks the signature.
  *
  * INES_SCOPE_SECRET is shared with the agent, which requires it (see src/lib/config.ts). This server
  * requires it too, and says so at start (`scopeSecretProblem`): without it every key a client sends
- * would be taken as given, and one user would reach another user's documents and sandbox. The one
+ * would be taken as given, and one user would reach another user's documents and pages. The one
  * deployment that has no secret is the one that has no users, INES_AUTH=none, which is the same named
  * opt-out the agent takes.
  */

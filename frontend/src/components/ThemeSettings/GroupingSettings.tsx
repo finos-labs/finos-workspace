@@ -22,12 +22,12 @@ import {
 } from "./ThemeSettingsLayout";
 
 const DEFAULT_COLORS = [
-  "#00AAFF", // blue
+  "#00B5E2", // FINOS light blue
   "#EF6689", // pink
   "#16A34A", // green
   "#FB923C", // orange
   "#CCBE00", // yellow
-  "#337DBA", // dark blue
+  "#0086BF", // FINOS dark blue
   "#998E00", // dark yellow
   "#917DB0", // purple
   "#FB923C", // orange

@@ -162,7 +162,7 @@ export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
             <Icon id="key-icon" className="size-3.5" />
           </button>
         </Tooltip>
-        <Tooltip position="top" message="Copilot models and tools">
+        <Tooltip position="top" message="Agent models and tools">
           <button
             className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 ws-small-navbar-btn rounded flex items-center justify-center"
             onClick={() => handleEditCopilotAccess(role)}

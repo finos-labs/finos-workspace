@@ -9,7 +9,7 @@ an inner chart container. Reset `margin: 0` on `html`/`body`, wrapper
 Backgrounds:
 
 - Light theme chart area: `#FFFFFF`
-- Dark theme chart area: `#151518`
+- Dark theme chart area: `#0b2432`
 Axis labels / legend text:
 - Light theme: `#191D1F`
 - Dark theme: `#FFFFFF`

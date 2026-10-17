@@ -78,7 +78,6 @@ describe("file widget — image inline content reaches the LLM as ImagePart", ()
         model: spy.model,
         allWidgets: [widget],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "file-png",
       }),
     );
@@ -134,7 +133,6 @@ describe("file widget — a PDF is searched, not shown", () => {
         model: spy.model,
         allWidgets: [pdfWidget],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "file-pdf",
       }),
     );
@@ -204,7 +202,6 @@ describe("file widget — inline xlsx content reaches LLM as JSON table", () => 
         model: spy.model,
         allWidgets: [xlsxWidget],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "file-xlsx",
       }),
     );
@@ -236,7 +233,6 @@ describe("file widget — system prompt tags file widgets", () => {
         model: spy.model,
         allWidgets: [pdfWidget],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "file-tag",
       }),
     );
@@ -280,7 +276,6 @@ describe("file widget — a long text file is cut, not sent whole", () => {
         model: spy.model,
         allWidgets: [txtWidget],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "file-txt",
       }),
     );

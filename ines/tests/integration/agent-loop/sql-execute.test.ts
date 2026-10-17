@@ -3,7 +3,7 @@
  *
  * Asserts:
  *   - Model calls execute_sql → loop runs it locally; no executeAgentTool
- *     SSE; no x-ines-tables decoration emitted.
+ *     SSE; no decoration emitted.
  *   - Model calls create_artifact → artifact lands on the answer stream as a
  *     copilotMessageArtifact event (ordering vs the model's text is asserted
  *     in streaming-progress).
@@ -49,7 +49,6 @@ describe("SQL family — in-process execution", () => {
         ]),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "sql-1",
       }),
     );
@@ -78,7 +77,6 @@ describe("SQL family — in-process execution", () => {
         ]),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "sql-2",
       }),
     );

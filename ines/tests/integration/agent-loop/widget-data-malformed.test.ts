@@ -58,7 +58,6 @@ describe("get_widget_data — malformed input is rejected without emit", () => {
         ]),
         allWidgets: [widget],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "malformed-1",
       }),
     );
@@ -77,7 +76,6 @@ describe("get_widget_data — malformed input is rejected without emit", () => {
         ]),
         allWidgets: [widget],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "malformed-2",
       }),
     );
@@ -96,7 +94,6 @@ describe("get_widget_data — malformed input is rejected without emit", () => {
         ]),
         allWidgets: [widget],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "malformed-3",
       }),
     );
@@ -120,7 +117,6 @@ describe("get_skill_content — malformed input is rejected without emit", () =>
         ]),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "skill-bad",
       }),
     );
@@ -167,7 +163,6 @@ describe("get_skill_content — malformed input is rejected without emit", () =>
         ]),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         promptSuggestionsEnabled: false,
         conversationId: "skill-already-loaded",
       }),

@@ -57,13 +57,12 @@ export function CopilotContext() {
       ([, val]) => typeof val === "object" && val !== null,
     ) as [string, FeatureMeta][];
     const widgetGlobalSearchFF = Boolean(featureFlags?.["widget-global-search"]);
-    const generativeUiFF = Boolean(featureFlags?.["generative-ui"]);
     return {
       contextEnabled: widgetDashboardSelectFF,
       selectedCopilot: s.selectedCopilot,
       setSelectedCopilot: s.setSelectedCopilot,
       initializeCustomFeatures: s.initializeCustomFeatures,
-      enableSettings: someTruthy(widgetGlobalSearchFF, generativeUiFF, customEntries),
+      enableSettings: someTruthy(widgetGlobalSearchFF, customEntries),
     };
   });
 
@@ -181,11 +180,11 @@ export function CopilotContext() {
           <PopoverTrigger asChild={true}>
             <Tooltip
               message={
-                enableSettings ? "Settings" : "No settings available for this copilot"
+                enableSettings ? "Settings" : "No settings available for this agent"
               }
             >
               <button
-                aria-label="Copilot settings"
+                aria-label="Agent settings"
                 ref={(el) => (settingsButtonRef.current = el)}
                 onClick={enableSettings ? handleSettingsButtonClick : undefined}
                 disabled={!enableSettings}
@@ -236,7 +235,7 @@ export function CopilotContext() {
               message={
                 contextEnabled
                   ? "Add widgets or tabs to context"
-                  : "Searching across all widgets is not enabled for this copilot."
+                  : "Searching across all widgets is not enabled for this agent."
               }
               hide={isMobile}
             >
@@ -463,7 +462,7 @@ const SelectedWidgetBadges = memo(
                 ? "Using dashboard widgets"
                 : "Add widgets to context"
             : "Widget context is available on dashboards only"
-          : "Context not available for this copilot"}
+          : "Context not available for this agent"}
       </span>
     );
   },
@@ -476,20 +475,17 @@ function SettingsContent() {
     setCustomFeatureValue: state.setCustomFeatureValue,
   }));
 
-  const { customEntries, widgetGlobalSearchFF, generativeUiFF } =
-    useShallowCopilotStore((s) => {
-      const featureFlags = s.selectedCopilot?.features || {};
-      const customEntries = Object.entries(featureFlags || {}).filter(
-        ([, val]) => typeof val === "object" && val !== null,
-      ) as [string, FeatureMeta][];
-      const widgetGlobalSearchFF = Boolean(featureFlags?.["widget-global-search"]);
-      const generativeUiFF = Boolean(featureFlags?.["generative-ui"]);
-      return {
-        widgetGlobalSearchFF,
-        generativeUiFF,
-        customEntries,
-      };
-    });
+  const { customEntries, widgetGlobalSearchFF } = useShallowCopilotStore((s) => {
+    const featureFlags = s.selectedCopilot?.features || {};
+    const customEntries = Object.entries(featureFlags || {}).filter(
+      ([, val]) => typeof val === "object" && val !== null,
+    ) as [string, FeatureMeta][];
+    const widgetGlobalSearchFF = Boolean(featureFlags?.["widget-global-search"]);
+    return {
+      widgetGlobalSearchFF,
+      customEntries,
+    };
+  });
 
   const handleToggleCustomFeature = useCallback(
     (key: string, label: string) => {
@@ -499,8 +495,8 @@ function SettingsContent() {
         id: `copilot-feature-toggle-${key}`,
         message: enabled ? `${label} Enabled` : `${label} Disabled`,
         description: enabled
-          ? `The copilot can now use ${label.toLowerCase()}.`
-          : `The copilot will no longer use ${label.toLowerCase()}.`,
+          ? `The agent can now use ${label.toLowerCase()}.`
+          : `The agent will no longer use ${label.toLowerCase()}.`,
         toastType: "info",
       });
     },
@@ -521,11 +517,11 @@ function SettingsContent() {
 
   return (
     <>
-      {(widgetGlobalSearchFF || generativeUiFF) && <BuiltInFeatureToggles />}
+      {widgetGlobalSearchFF && <BuiltInFeatureToggles />}
 
       {customEntries.length > 0 && (
         <>
-          {(widgetGlobalSearchFF || generativeUiFF) && (
+          {widgetGlobalSearchFF && (
             <div className="mx-3 my-1 border-t border-light-200 dark:border-dark-500" />
           )}
           {customEntries.map(([key, val]) => {
@@ -716,32 +712,11 @@ const BuiltInFeatureToggles = memo(() => {
   const copilot = useShallowCopilotDataStore((state) => ({
     extraWidgetsEnabled: state.extraWidgetsEnabled,
     toggleExtraWidgetsEnabled: state.toggleExtraWidgetsEnabled,
-    generativeUiEnabled: state.generativeUiEnabled,
-    toggleGenerativeUiEnabled: state.toggleGenerativeUiEnabled,
   }));
 
-  const { widgetGlobalSearchFF, generativeUiFF } = useShallowCopilotStore((s) => {
-    const featureFlags = s.selectedCopilot?.features || {};
-    const widgetGlobalSearchFF = Boolean(featureFlags?.["widget-global-search"]);
-    const generativeUiFF = Boolean(featureFlags?.["generative-ui"]);
-    return {
-      widgetGlobalSearchFF,
-      generativeUiFF,
-    };
-  });
-
-  const handleToggleGenerativeUI = useCallback(() => {
-    const newState = copilot.toggleGenerativeUiEnabled();
-
-    showNotification({
-      id: "copilot-generative-ui-toggle",
-      message: newState ? "Generative UI Enabled" : "Generative UI Disabled",
-      description: newState
-        ? "The copilot can now control your dashboard and automatically add or modify widgets based on your requests."
-        : "The copilot will no longer be able to control your dashboard or modify widgets automatically.",
-      toastType: "info",
-    });
-  }, [copilot.toggleGenerativeUiEnabled]);
+  const widgetGlobalSearchFF = useShallowCopilotStore((s) =>
+    Boolean(s.selectedCopilot?.features?.["widget-global-search"]),
+  );
 
   const handleToggleGlobalData = useCallback(() => {
     const newState = copilot.toggleExtraWidgetsEnabled();
@@ -750,77 +725,35 @@ const BuiltInFeatureToggles = memo(() => {
       id: "copilot-global-data-toggle",
       message: newState ? "Global Data Enabled" : "Global Data Disabled",
       description: newState
-        ? "The copilot can now access data from any widget in the library, not just those on your dashboard."
-        : "The copilot will only access data from widgets currently on your dashboard.",
+        ? "The agent can now access data from any widget in the library, not just those on your dashboard."
+        : "The agent will only access data from widgets currently on your dashboard.",
       toastType: "info",
     });
   }, [copilot.toggleExtraWidgetsEnabled]);
 
   return (
-    <>
-      <div className="px-3 py-2 group">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <HintLabel
-              tooltip={
-                widgetGlobalSearchFF
-                  ? "Expands the copilot's data access beyond your current dashboard. When enabled, the copilot can retrieve data from any widget in the library — not just the ones you've added to your dashboard."
-                  : "Global data is not enabled for this copilot"
-              }
-              tooltipClassName="max-w-[280px]"
-              disabled={!widgetGlobalSearchFF}
-            >
-              Global data
-            </HintLabel>
-          </div>
-          <Switch
-            checked={copilot.extraWidgetsEnabled && widgetGlobalSearchFF}
-            onCheckedChange={handleToggleGlobalData}
+    <div className="px-3 py-2 group">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <HintLabel
+            tooltip={
+              widgetGlobalSearchFF
+                ? "Expands the agent's data access beyond your current dashboard. When enabled, the agent can retrieve data from any widget in the library — not just the ones you've added to your dashboard."
+                : "Global data is not enabled for this agent"
+            }
+            tooltipClassName="max-w-[280px]"
             disabled={!widgetGlobalSearchFF}
-            aria-label="Toggle global data"
-          />
+          >
+            Global data
+          </HintLabel>
         </div>
+        <Switch
+          checked={copilot.extraWidgetsEnabled && widgetGlobalSearchFF}
+          onCheckedChange={handleToggleGlobalData}
+          disabled={!widgetGlobalSearchFF}
+          aria-label="Toggle global data"
+        />
       </div>
-
-      <div className="px-3 py-2 group">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <HintLabel
-              tooltip={
-                generativeUiFF ? (
-                  <div className="flex flex-col gap-1.5">
-                    <span>Lets the copilot control your dashboard directly:</span>
-                    <ul className="list-disc pl-3.5 space-y-0.5">
-                      <li>Add widgets from the library with the right parameters</li>
-                      <li>Update parameters on existing dashboard widgets</li>
-                      <li>
-                        Create widgets on the fly (e.g. HTML reports, notes, charts,
-                        etc.)
-                      </li>
-                    </ul>
-                    <span className="text-light-500 dark:text-light-400 italic">
-                      Try: "Using the financial statements of AAPL, create an HTML
-                      report with a DCF analysis and add it to the dashboard"
-                    </span>
-                  </div>
-                ) : (
-                  "Generative UI is not enabled for this copilot"
-                )
-              }
-              tooltipClassName="max-w-[320px]"
-              disabled={!generativeUiFF}
-            >
-              Generative UI
-            </HintLabel>
-          </div>
-          <Switch
-            checked={copilot.generativeUiEnabled && generativeUiFF}
-            onCheckedChange={handleToggleGenerativeUI}
-            disabled={!generativeUiFF}
-            aria-label="Toggle generative UI"
-          />
-        </div>
-      </div>
-    </>
+    </div>
   );
 });

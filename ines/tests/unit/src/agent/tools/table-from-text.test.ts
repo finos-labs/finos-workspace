@@ -41,7 +41,7 @@ describe("runTableFromText", () => {
         name: "revenue",
         description: "Quarterly revenue",
       },
-      { pendingTables, tablesShipped: new Set<string>(), artifactQueue, tables, conversationId: "test" },
+      { pendingTables, artifactQueue, tables, conversationId: "test" },
     );
     expect(out).toMatch(/Extracted 2 rows/);
     expect(pendingTables.size).toBe(1);
@@ -61,7 +61,7 @@ describe("runTableFromText", () => {
     const tables: TableInfo[] = [];
     const out = await runTableFromText(
       { text: "blah", name: "x", description: "x" },
-      { pendingTables, tablesShipped: new Set<string>(), artifactQueue, tables, conversationId: "test" },
+      { pendingTables, artifactQueue, tables, conversationId: "test" },
     );
     expect(out).toMatch(/Could not extract/);
     expect(pendingTables.size).toBe(0);
@@ -76,7 +76,7 @@ describe("runTableFromText", () => {
     const tables: TableInfo[] = [];
     await runTableFromText(
       { text: "x", name: "big", description: "big" },
-      { pendingTables, tablesShipped: new Set<string>(), artifactQueue, tables, conversationId: "test" },
+      { pendingTables, artifactQueue, tables, conversationId: "test" },
     );
     const stored = pendingTables.get([...pendingTables.keys()][0]);
     expect(stored).toHaveLength(500);

@@ -38,7 +38,6 @@ export const NATIVE_TOOL_NAME_SET: ReadonlySet<string> = new Set(NATIVE_TOOL_NAM
 
 export interface NativeToolsContext {
   pendingTables: Map<string, Record<string, unknown>[]>;
-  tablesShipped: Set<string>;
   artifactQueue: SSEEvent[];
   tables: TableInfo[];
   conversationId: string;
@@ -50,7 +49,6 @@ export function makeNativeTools(ctx: NativeToolsContext): ToolSet {
     _llm_think: makeLlmThinkTool({ artifactQueue: ctx.artifactQueue }),
     create_table_from_text: makeTableFromTextTool({
       pendingTables: ctx.pendingTables,
-      tablesShipped: ctx.tablesShipped,
       artifactQueue: ctx.artifactQueue,
       tables: ctx.tables,
       conversationId: ctx.conversationId,

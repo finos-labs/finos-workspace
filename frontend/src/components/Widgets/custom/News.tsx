@@ -109,7 +109,7 @@ export default function News() {
         >
           <div
             className={cn(
-              "overflow-x-auto p-0.5 rounded text-xs flex flex-col gap-2 text-left hover:bg-light-100 dark:hover:bg-[#212126]",
+              "overflow-x-auto p-0.5 rounded text-xs flex flex-col gap-2 text-left hover:bg-light-100 dark:hover:bg-dark-800",
             )}
           >
             {article.excerpt?.length > 10 ? (
@@ -123,7 +123,7 @@ export default function News() {
                 {article.title}
               </p>
             )}
-            <div className="flex items-center gap-2 text-light-500 dark:text-[#A2A2A2]">
+            <div className="flex items-center gap-2 text-light-500 dark:text-dark-50">
               <span>{formatArticleDate(article.date)}</span>
               <span>•</span>
               <span>{article.author}</span>

@@ -37,7 +37,6 @@ import { useGetFinalMessagesAndWidgets } from "./useGetFinalMessagesAndWidgets";
 const featureFlagMapping = {
   extraWidgetsEnabled: "widget-global-search",
   orchestrationModeEnabled: "agent-orchestration",
-  generativeUiEnabled: "generative-ui",
   mcpToolsEnabled: "mcp-tools",
 } as const;
 
@@ -111,12 +110,10 @@ export function useAiFetchRequestInit() {
     getCopilotWidgets,
     widgetSubsetData,
     extraWidgetsEnabled,
-    generativeUiEnabled,
     copilotWidgetsLastUpdated,
   } = useShallowCopilotDataStore((s) => ({
     widgetSubsetData: s.widgetSubsetData,
     extraWidgetsEnabled: s.extraWidgetsEnabled,
-    generativeUiEnabled: s.generativeUiEnabled,
     getCopilotWidgets: s.getCopilotWidgets,
     copilotWidgetsLastUpdated: s.copilotWidgetsLastUpdated,
   }));
@@ -133,9 +130,6 @@ export function useAiFetchRequestInit() {
 
     if (features?.["agent-orchestration"] && orchestrationModeEnabled)
       options["agent-orchestration"] = true;
-
-    if (features?.["generative-ui"] && generativeUiEnabled)
-      options["generative-ui"] = true;
 
     if (features?.["mcp-tools"] && getEnabledToolCount() > 0)
       options["mcp-tools"] = true;
@@ -163,7 +157,6 @@ export function useAiFetchRequestInit() {
   }, [
     selectedCopilot?.features,
     extraWidgetsEnabled,
-    generativeUiEnabled,
     customFeatureStates,
     orchestrationModeEnabled,
     getEnabledToolCount,
@@ -307,7 +300,6 @@ export function useAiFetchRequestInit() {
       getCopilotWidgets,
       widgetSubsetData,
       extraWidgetsEnabled,
-      generativeUiEnabled,
       customFeatureStates,
       getSelectedModelForAgent,
       getFinalMessagesAndWidgets,
@@ -332,7 +324,6 @@ export function useAiFetchRequestInit() {
       const features = targetAgent?.features || selectedCopilot?.features;
       const {
         extraWidgetsEnabled: extraWidgetsCap,
-        generativeUiEnabled: generativeUiCap,
         mcpToolsEnabled,
         orchestrationModeEnabled: orchestrationModeCap,
       } = getEnabledFeatures(features);
@@ -392,8 +383,7 @@ export function useAiFetchRequestInit() {
         messages: finalMessages,
         context: context,
         api_keys: customApiKeys,
-        workspace_state:
-          generativeUiEnabled && generativeUiCap ? finalWorkspaceState : undefined,
+        workspace_state: finalWorkspaceState,
         workspace_options: Object.fromEntries(
           Object.entries(workspaceOptions).filter(
             ([flag]) =>
@@ -431,7 +421,6 @@ export function useAiFetchRequestInit() {
       getFinalMessagesAndWidgets,
       copilotWidgetsLastUpdated,
       extraWidgetsEnabled,
-      generativeUiEnabled,
       orchestrationModeEnabled,
       getSkillsCatalog,
       skills,

@@ -6,6 +6,7 @@ import { describe, it, expect } from "bun:test";
 import { join } from "node:path";
 
 const SERVER = join(import.meta.dir, "../../src/server.ts");
+const MCP_SERVER = join(import.meta.dir, "../../mcp-server/src/server.ts");
 
 async function startServer(extraEnv: Record<string, string> = {}) {
   const port = 20_000 + Math.floor(Math.random() * 20_000);
@@ -50,5 +51,26 @@ describe("the server process", () => {
     expect(code).toBe(1);
     const output = (await new Response(proc.stdout).text()) + (await new Response(proc.stderr).text());
     expect(output).toContain("WORKSPACE_API_URL");
+  }, 30_000);
+});
+
+describe("the MCP server process", () => {
+  it("refuses to fetch the Workspace's files without the Origin the API allows", async () => {
+    const proc = Bun.spawn([process.execPath, MCP_SERVER], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: {
+        PATH: process.env.PATH ?? "",
+        INES_AUTH: "none",
+        MCP_PORT: String(20_000 + Math.floor(Math.random() * 20_000)),
+        MCP_METRICS_PORT: "0",
+        WORKSPACE_PUBLIC_URL: "http://localhost:8000",
+        WORKSPACE_API_URL: "http://api:8000",
+      },
+    });
+    const code = await proc.exited;
+    expect(code).toBe(1);
+    const output = (await new Response(proc.stdout).text()) + (await new Response(proc.stderr).text());
+    expect(output).toContain("WORKSPACE_ORIGIN is required with WORKSPACE_PUBLIC_URL");
   }, 30_000);
 });

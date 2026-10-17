@@ -5,6 +5,9 @@
  *   INES_AUTH                    workspace (default) | none. `workspace` signs every caller in with the
  *                                Workspace API; `none` runs without users, for a development machine.
  *   WORKSPACE_API_URL            The Workspace API as this agent can reach it (not the browser's address).
+ *   WORKSPACE_ORIGIN             The Origin header of every call the agent makes to the Workspace API: the web app's
+ *                                origin, one the API allows (BACKEND_CORS_ORIGINS), since the API refuses the calls of
+ *                                an origin it does not allow. Required with INES_AUTH=workspace or WORKSPACE_PUBLIC_URL.
  *   INES_METERING_TOKEN          The service token the Workspace API checks usage reports and access
  *                                checks with: `python -m scripts.create_metering_token` in backend-api/backend.
  *   INES_SCOPE_SECRET            Signs the scope of each chat that the MCP tools receive, so that a user
@@ -29,7 +32,7 @@
 
 export type AuthConfig =
   | { mode: "none" }
-  | { mode: "workspace"; apiUrl: string; meteringToken: string; cacheSeconds: number };
+  | { mode: "workspace"; apiUrl: string; origin: string; meteringToken: string; cacheSeconds: number };
 
 export interface ServerConfig {
   auth: AuthConfig;
@@ -38,8 +41,8 @@ export interface ServerConfig {
   scopeSecret: string | null;
   /** The models a user may pick: INES_MODELS and DEFAULT_MODEL. Empty when none is configured. */
   models: string[];
-  /** Where the Workspace's file links point and where the agent fetches them from; null when not set. */
-  workspaceFiles: { publicUrl: string; internalUrl: string } | null;
+  /** Where the Workspace's file links point, where the agent fetches them from and with which Origin; null when not set. */
+  workspaceFiles: { publicUrl: string; internalUrl: string; origin: string } | null;
   maxBodyBytes: number;
   maxConcurrentQueries: number;
   maxTotalQueries: number;
@@ -91,6 +94,17 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     problems.push(`INES_AUTH must be workspace or none; got "${mode}".`);
   }
 
+  // The Origin of every call the agent makes to the Workspace API: with workspace auth, and for its file links.
+  const origin = (env.WORKSPACE_ORIGIN ?? "").trim().replace(/\/+$/, "");
+  const publicUrl = (env.WORKSPACE_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
+  if (mode === "workspace" || publicUrl) {
+    if (!origin) {
+      problems.push("WORKSPACE_ORIGIN is required with INES_AUTH=workspace or WORKSPACE_PUBLIC_URL: the web app's origin, which the Workspace API allows (BACKEND_CORS_ORIGINS).");
+    } else if (!isOrigin(origin)) {
+      problems.push(`WORKSPACE_ORIGIN must be an origin like https://workspace.example.com without a path; got "${env.WORKSPACE_ORIGIN}".`);
+    }
+  }
+
   let auth: AuthConfig = { mode: "none" };
   if (mode === "workspace") {
     const apiUrl = (env.WORKSPACE_API_URL ?? "").trim().replace(/\/+$/, "");
@@ -111,18 +125,20 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     auth = {
       mode: "workspace",
       apiUrl,
+      origin,
       meteringToken,
       cacheSeconds: integer(env, "INES_AUTH_CACHE_SECONDS", 30, 0, problems),
     };
   }
 
   let workspaceFiles: ServerConfig["workspaceFiles"] = null;
-  const publicUrl = (env.WORKSPACE_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
   if (publicUrl) {
     if (!isOrigin(publicUrl)) {
       problems.push(`WORKSPACE_PUBLIC_URL must be an address like https://api.workspace.example.com without a path; got "${env.WORKSPACE_PUBLIC_URL}".`);
     } else {
-      workspaceFiles = { publicUrl, internalUrl: auth.mode === "workspace" ? auth.apiUrl : (env.WORKSPACE_API_URL ?? "").trim().replace(/\/+$/, "") || publicUrl };
+      const internalUrl =
+        auth.mode === "workspace" ? auth.apiUrl : (env.WORKSPACE_API_URL ?? "").trim().replace(/\/+$/, "") || publicUrl;
+      workspaceFiles = { publicUrl, internalUrl, origin };
     }
   }
 

@@ -73,25 +73,19 @@ function isAgentOwnedTool(toolName: string): boolean {
   );
 }
 
-export interface McpToolsOptions {
-  /** The user lets the agent change the Workspace (the `generative-ui` option, on a dashboard). */
-  generativeUiEnabled?: boolean;
-}
-
 /** What the Workspace's server has that the agent has its own tool for: skills are the agent's, with their catalog and round trip. */
 const AGENT_OWNED_WORKSPACE_TOOLS: ReadonlySet<string> = new Set(["get_skill_content"]);
 
 /**
  * Whether a tool of the request is registered. The Workspace's tools are, as those of any server, except the
- * agent's own and, unless the user lets the agent change the Workspace, all of them but the one that reads a widget.
+ * agent's own.
  */
-function isOffered(agentTool: AgentTool, generativeUiEnabled: boolean): boolean {
+function isOffered(agentTool: AgentTool): boolean {
   if (agentTool.server_id !== WORKSPACE_SERVER_ID) return !isAgentOwnedTool(agentTool.name);
-  return generativeUiEnabled && !endsWithCanonical(agentTool.name, AGENT_OWNED_WORKSPACE_TOOLS);
+  return !endsWithCanonical(agentTool.name, AGENT_OWNED_WORKSPACE_TOOLS);
 }
 
-export function makeMcpTools(agentTools: AgentTool[], options: McpToolsOptions = {}): McpToolsResult {
-  const { generativeUiEnabled = false } = options;
+export function makeMcpTools(agentTools: AgentTool[]): McpToolsResult {
   const toolSet: ToolSet = {};
   const entries: McpToolEntry[] = [];
   const usedNames = new Set<string>();
@@ -103,7 +97,7 @@ export function makeMcpTools(agentTools: AgentTool[], options: McpToolsOptions =
 
   for (const agentTool of agentTools) {
     const isWidgetData = agentTool === widgetDataTool;
-    if (!isWidgetData && (isWidgetDataToolName(agentTool.name) || !isOffered(agentTool, generativeUiEnabled))) continue;
+    if (!isWidgetData && (isWidgetDataToolName(agentTool.name) || !isOffered(agentTool))) continue;
     let sanitized = isWidgetData ? WIDGET_DATA_TOOL : sanitizeMcpToolName(agentTool.name);
     if (usedNames.has(sanitized)) {
       let suffix = 2;

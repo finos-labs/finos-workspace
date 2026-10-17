@@ -72,9 +72,10 @@ function isInternalName(hostname: string): boolean {
 export interface FetchPolicy {
   /**
    * The Workspace API as the browser addresses it and as this process reaches it. A link to a file of
-   * the Workspace on the first address is fetched from the second.
+   * the Workspace on the first address is fetched from the second, with `origin` (WORKSPACE_ORIGIN) as
+   * its Origin: the API refuses the calls of an origin it does not allow.
    */
-  workspace?: { publicUrl: string; internalUrl: string };
+  workspace?: { publicUrl: string; internalUrl: string; origin: string };
   /** The addresses of a hostname. DNS, unless a test says otherwise. */
   resolve?: (hostname: string) => Promise<string[]>;
 }
@@ -94,6 +95,12 @@ async function addressesOf(hostname: string): Promise<string[]> {
 /** The URL as it is shown in an error: where it points, without a query that may carry a signature. */
 function describe(url: URL): string {
   return `${url.origin}${url.pathname}`;
+}
+
+function withOrigin(init: RequestInit, origin: string): RequestInit {
+  const headers = new Headers(init.headers);
+  headers.set("Origin", origin);
+  return { ...init, headers };
 }
 
 function workspaceFileUrl(url: URL): URL | null {
@@ -207,7 +214,9 @@ export async function fetchClientUrl(
 
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     const addresses = trusted ? null : await publicAddresses(url);
-    const response = addresses ? await fetchPinned(url, addresses, requestInit) : await fetch(url.href, requestInit);
+    const response = addresses
+      ? await fetchPinned(url, addresses, requestInit)
+      : await fetch(url.href, trusted && policy.workspace ? withOrigin(requestInit, policy.workspace.origin) : requestInit);
     const location = response.headers.get("location");
     if (response.status >= 300 && response.status < 400 && location) {
       void response.body?.cancel();

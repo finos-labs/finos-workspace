@@ -10,7 +10,7 @@ let stylesInjected = false;
 function injectHighlightStyles() {
   if (stylesInjected) return;
 
-  const mainColor = getConfig().whiteLabel.mainColor ?? "#0088CC";
+  const mainColor = getConfig().whiteLabel.mainColor ?? "#0086BF";
   const style = document.createElement("style");
   style.id = "widget-highlight-styles";
   style.textContent = `

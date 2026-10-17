@@ -20,9 +20,9 @@
 
 ---
 
-- #### Copilot and MCP
+- #### Agent and MCP
 
-  Chat with the copilot, add custom agents and MCP servers, and keep prompts and skills. Administrators set the daily queries and tokens of each user, and choose the models, MCP servers and tools that a role may use.
+  Chat with the agent, add custom agents and MCP servers, and keep prompts and skills. Administrators set the daily queries and tokens of each user, and choose the models, MCP servers and tools that a role may use.
 
 ---
 

@@ -3,15 +3,6 @@ import type { Citation, ToolMessage } from "./types";
 import type { DocumentCitation } from "../mcp/results";
 import type { TurnUsage } from "../lib/token-usage";
 
-/**
- * Marker emitted by the compute MCP server when execute_code cannot recover
- * for the rest of the chat (e.g. Daytona quota exhausted, sandbox locked
- * down). Once any prior tool message in the conversation contains this
- * substring, src/agent/loop.ts suppresses execute_code for the rest of the
- * chat. SQL family is unaffected — it runs in-process on the MCP server.
- */
-export const COMPUTE_PERMANENTLY_UNAVAILABLE = "COMPUTE_PERMANENTLY_UNAVAILABLE";
-
 export interface ExtraState {
   copilot_function_call_arguments?: Record<string, unknown>;
   intermediate_citations?: Citation[];
@@ -52,25 +43,9 @@ export interface ExtraState {
    */
   loaded_tool_groups?: string[];
   /**
-   * Names of tables already shipped to the compute sandbox in this chat.
-   * Persisted across re-POSTs so the agent only sends the delta on the next
-   * compute-MCP call. Populated by the decoration step in src/agent/loop.ts.
-   */
-  compute_tables_shipped?: string[];
-  /**
-   * Daytona sandbox identity from the prior execute_code result. The agent
-   * compares it against the sandbox_id emitted in the next MCP result; on
-   * mismatch (sandbox auto-stopped → fresh sandbox), `tablesShipped` is
-   * cleared so the new sandbox gets a full re-ship. Absent = unknown =
-   * conservative full-ship (backwards-compat for older MCP servers that
-   * don't emit `sandbox_meta`).
-   */
-  compute_sandbox_id?: string;
-  /**
    * Document ids already shipped to the ines-tools MCP server's
    * `query_documents` cache for this chat. Persisted across re-POSTs so the
-   * agent only ships the delta on the next query_documents call. Same
-   * pattern as `compute_tables_shipped`.
+   * agent only ships the delta on the next query_documents call.
    */
   documents_shipped?: string[];
   /**
@@ -181,8 +156,6 @@ export function readExtraState(toolMsg: ToolMessage): ExtraState {
     pending_workspace_calls: elementsOf(r.pending_workspace_calls, workspaceCallSchema, 100),
     loaded_skill_slugs: elementsOf(r.loaded_skill_slugs, names, 100),
     loaded_tool_groups: elementsOf(r.loaded_tool_groups, names, 50),
-    compute_tables_shipped: elementsOf(r.compute_tables_shipped, names, MAX_LIST),
-    compute_sandbox_id: valueOf(r.compute_sandbox_id, boundedString(200)),
     documents_shipped: elementsOf(r.documents_shipped, names, MAX_LIST),
     traceparent: valueOf(r.traceparent, boundedString(200)),
     // Read by readTurnUsage, which validates it.

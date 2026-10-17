@@ -12,7 +12,6 @@ function freshCtx(conversationId = "conv-test"): McpResultContext {
     citations: [],
     messages: [],
     pendingTables: new Map(),
-    tablesShipped: new Set(),
     conversationId,
   };
 }
@@ -265,10 +264,10 @@ describe("processMcpResult — $ines_kind: sqlite_table", () => {
     expect(ctx.messages).toHaveLength(0);
   });
 
-  it("invalidates tablesShipped when overwriting an existing pendingTables entry", () => {
+  it("overwrites an existing pendingTables entry with the new rows", () => {
     const ctx = freshCtx();
-    // Seed pendingTables + tablesShipped via a first sqlite_table dispatch so
-    // the key matches whatever analyzeTable produces (sanitization-aware).
+    // Seed pendingTables via a first sqlite_table dispatch so the key
+    // matches whatever analyzeTable produces (sanitization-aware).
     processMcpResult(
       toolMsg([
         {
@@ -282,7 +281,6 @@ describe("processMcpResult — $ines_kind: sqlite_table", () => {
       ctx,
     );
     const tableName = ctx.tables[0].tableName;
-    ctx.tablesShipped.add(tableName);
     // Second dispatch overwrites the same name with fresh rows.
     processMcpResult(
       toolMsg([
@@ -297,50 +295,6 @@ describe("processMcpResult — $ines_kind: sqlite_table", () => {
       ctx,
     );
     expect(ctx.pendingTables.get(tableName)).toEqual([{ symbol: "MSFT", close: 500 }]);
-    expect(ctx.tablesShipped.has(tableName)).toBe(false);
-  });
-});
-
-describe("processMcpResult — $ines_kind: sandbox_meta", () => {
-  it("captures sandbox_id into summary and emits no text/message", () => {
-    const ctx = freshCtx();
-    const summary = processMcpResult(
-      toolMsg([{ text: JSON.stringify({ $ines_kind: "sandbox_meta", sandbox_id: "sb-abc" }) }]),
-      ctx,
-    );
-    expect(summary.sandboxId).toBe("sb-abc");
-    expect(ctx.messages).toHaveLength(0);
-    expect(ctx.tables).toHaveLength(0);
-    expect(ctx.artifactQueue).toHaveLength(0);
-  });
-
-  it("summary.sandboxId is undefined when no sandbox_meta item is present", () => {
-    const ctx = freshCtx();
-    const summary = processMcpResult(toolMsg([{ text: "hi" }]), ctx);
-    expect(summary.sandboxId).toBeUndefined();
-  });
-
-  it("sandbox_meta + other items both processed, sandboxId still captured", () => {
-    const ctx = freshCtx();
-    const summary = processMcpResult(
-      toolMsg([
-        { text: JSON.stringify({ $ines_kind: "sandbox_meta", sandbox_id: "sb-xyz" }) },
-        { text: "some prose" },
-      ]),
-      ctx,
-    );
-    expect(summary.sandboxId).toBe("sb-xyz");
-    expect(ctx.messages).toHaveLength(1);
-    expect(ctx.messages[0].content).toContain("some prose");
-  });
-
-  it("sandbox_meta with empty/invalid sandbox_id is ignored (summary.sandboxId stays undefined)", () => {
-    const ctx = freshCtx();
-    const summary = processMcpResult(
-      toolMsg([{ text: JSON.stringify({ $ines_kind: "sandbox_meta", sandbox_id: "" }) }]),
-      ctx,
-    );
-    expect(summary.sandboxId).toBeUndefined();
   });
 });
 

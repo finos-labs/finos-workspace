@@ -104,8 +104,6 @@ type CopilotDataStoreState = {
   };
   extraWidgetsEnabled: boolean;
   toggleExtraWidgetsEnabled: ReturnType<typeof vi.fn>;
-  generativeUiEnabled: boolean;
-  toggleGenerativeUiEnabled: ReturnType<typeof vi.fn>;
   toggleSelectedWidget: ReturnType<typeof vi.fn>;
   isMentionTrackedWidget: ReturnType<typeof vi.fn>;
   getCopilotWidgets: ReturnType<typeof vi.fn>;
@@ -142,8 +140,6 @@ describe("CopilotContext", () => {
       },
       extraWidgetsEnabled: false,
       toggleExtraWidgetsEnabled: vi.fn(),
-      generativeUiEnabled: false,
-      toggleGenerativeUiEnabled: vi.fn(),
       toggleSelectedWidget: vi.fn(),
       isMentionTrackedWidget: vi.fn().mockReturnValue(false),
       getCopilotWidgets: vi.fn().mockReturnValue({ selectedWidgets: [] }),
@@ -166,7 +162,7 @@ describe("CopilotContext", () => {
     render(<CopilotContext />);
 
     expect(
-      screen.getByRole("button", { name: "Copilot settings" }),
+      screen.getByRole("button", { name: "Agent settings" }),
     ).toBeInTheDocument();
   });
 });

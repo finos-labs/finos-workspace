@@ -111,7 +111,6 @@ describe("citations persist across two MCP round-trips and a terminal turn", () 
         ]),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "persist-1",
       }),
     );
@@ -160,7 +159,6 @@ describe("citations persist across two MCP round-trips and a terminal turn", () 
         model: makeSequencedMockLlm([llmEmitsText("done")]),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "persist-2",
       }),
     );
@@ -192,7 +190,6 @@ describe("citations persist across two MCP round-trips and a terminal turn", () 
         model: makeSequencedMockLlm([llmEmitsText("ok")]),
         allWidgets: [],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "persist-3",
       }),
     );

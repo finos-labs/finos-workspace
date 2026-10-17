@@ -15,6 +15,7 @@ import { useCallback, useEffect } from "react";
 import { v4 as uuidLibv4 } from "uuid";
 import type { CreateWidgetParams } from "~/components/AI/hooks/useCreateWidgetFromArtifact";
 import type { NewWidgetT, StoredParamValue } from "~/components/types";
+import { getConfig } from "~/lib/runtimeConfig";
 import { isDate } from "~/lib/utils/format";
 import { areTruthy } from "~/lib/utils/values";
 import { butterflyTypes, MAX_SKILL_SLUG_LENGTH } from "../constants";
@@ -244,7 +245,7 @@ export function saveToLS(localStorageKey: string, key: string, value: unknown) {
 }
 
 const CHARTING_COLORS = [
-  "#33BBFF",
+  "#00B5E2",
   "#E93361",
   "#4ADE80",
   "#EF7D00",
@@ -331,12 +332,12 @@ export function generateBackgroundColorWithContrast(
 }
 
 export const COLORS = [
-  "#00AAFF", // blue
+  "#00B5E2", // FINOS light blue
   "#EF6689", // pink
   "#16A34A", // green
   "#FB923C", // orange
   "#CCBE00", // yellow
-  "#337DBA", // dark blue
+  "#0086BF", // FINOS dark blue
   "#998E00", // dark yellow
   "#917DB0", // purple
   "#FB923C", // orange
@@ -614,6 +615,11 @@ export function parseValue(value: string | number): number | string {
   return value;
 }
 
+function exportCanvasFont(size: number, weight?: "bold") {
+  const family = `${getConfig().whiteLabel.fontFamily}, sans-serif`;
+  return weight ? `${weight} ${size}px ${family}` : `${size}px ${family}`;
+}
+
 export async function generateReportImage(
   checkIfLoadingData: () => boolean,
   element: HTMLElement | null | undefined,
@@ -676,15 +682,15 @@ export async function generateReportImage(
           ctx.fillRect(0, 0, canvas.width, 80); // Increased box height
 
           // Add title text, logo, and date to the canvas
-          ctx.font = "28px Inter"; // Increased font size
+          ctx.font = exportCanvasFont(28); // Increased font size
           ctx.textAlign = "left";
           ctx.fillStyle = "#ffffff";
 
           // Draw the title text with bold font weight
-          ctx.font = "bold 28px Inter"; // Increased font size
+          ctx.font = exportCanvasFont(28, "bold"); // Increased font size
           ctx.fillText(title, 10, 48); // Adjusted position
 
-          ctx.font = "28px Inter"; // Reset font size
+          ctx.font = exportCanvasFont(28); // Reset font size
           const exportString = "| Exported with Workspace";
           ctx.fillText(exportString, ctx.measureText(title).width + 40, 48); // Adjusted position
 
@@ -804,12 +810,12 @@ async function captureElementWithHeader(
       ctx.fillStyle = "#000000";
       ctx.fillRect(0, 0, canvas.width, EXPORT_HEADER_HEIGHT);
 
-      ctx.font = `bold ${EXPORT_HEADER_FONT_SIZE}px Inter`;
+      ctx.font = exportCanvasFont(EXPORT_HEADER_FONT_SIZE, "bold");
       ctx.textAlign = "left";
       ctx.fillStyle = "#ffffff";
       ctx.fillText(title, EXPORT_HEADER_PADDING_LEFT, EXPORT_HEADER_TEXT_Y);
 
-      ctx.font = `${EXPORT_HEADER_FONT_SIZE}px Inter`;
+      ctx.font = exportCanvasFont(EXPORT_HEADER_FONT_SIZE);
       const exportString = "| Exported with Workspace";
       ctx.fillText(
         exportString,
@@ -1173,13 +1179,13 @@ export function hexToRGBString(hex: string, alpha?: number): string {
 
 export function getRandomUserListBackgroundByEmail(email: string) {
   const COLORS = [
-    "#33BBFF",
+    "#00B5E2",
     "#6D5296",
     "#22C55E",
     "#CCBE00",
     "#F97316",
     "#E93361",
-    "#006699",
+    "#005E8A",
   ];
 
   let hash = 0;

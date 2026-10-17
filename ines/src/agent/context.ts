@@ -8,7 +8,7 @@
  * structured rows from free text so:
  *
  *  - Structured tables land in `pendingTables` under a sanitized synthetic
- *    name, giving the SQL family + execute_code automatic access.
+ *    name, giving the SQL family automatic access.
  *  - Free text is summarized into the system prompt so the model can quote
  *    or paraphrase without hallucinating.
  *

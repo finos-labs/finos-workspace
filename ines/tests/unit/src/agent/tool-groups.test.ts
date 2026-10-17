@@ -23,7 +23,7 @@ const AGENT_TOOLS = [
   "update_widget_in_dashboard", "manage_navigation_bar", "create_app",
   "create_html_artifact", "create_table_from_text", "_llm_think", "enhance_prompt",
 ];
-const MCP = [entry("Ines_Tools_web_search"), entry("Ines_Tools_query_documents"), entry("Ines_Tools_execute_code")];
+const MCP = [entry("Ines_Tools_web_search"), entry("Ines_Tools_query_documents")];
 const ALL = [...AGENT_TOOLS, ...MCP.map((e) => e.sanitizedName)];
 
 describe("the web group of a user who has only one of the web tools", () => {
@@ -141,7 +141,6 @@ describe("buildToolCatalog", () => {
   it("groups MCP tools by their canonical name, however the Workspace prefixed it", () => {
     expect(group("web")?.tools).toEqual(["Ines_Tools_web_search"]);
     expect(group("documents")?.tools).toEqual(["Ines_Tools_query_documents"]);
-    expect(group("code")?.tools).toEqual(["Ines_Tools_execute_code"]);
   });
 
   it("does not take an MCP tool for an agent tool of the same name, nor the other way round", () => {

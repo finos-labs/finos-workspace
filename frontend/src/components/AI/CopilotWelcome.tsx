@@ -214,12 +214,6 @@ export function CopilotWelcome() {
                     />{" "}
                     to retrieve data from any widget available in the library.
                   </div>
-                  <div className="bg-general-bg-secondary rounded p-3 body-xs-regular text-ds-text-body text-start">
-                    Activate Generative UI{" "}
-                    <Icon id="zap-icon" className="inline-block w-4 h-4 align-middle" />{" "}
-                    that grants control of the dashboard by adding and modifying
-                    widgets.
-                  </div>
                 </div>
               </div>
 

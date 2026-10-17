@@ -20,11 +20,6 @@ import {
   inspectWebpageDescription,
 } from "./tools/backend/inspect-webpage";
 import {
-  executeCodeSchema,
-  executeCodeHandler,
-  executeCodeDescription,
-} from "./tools/backend/compute/execute-code";
-import {
   queryDocumentsSchema,
   queryDocumentsHandler,
   queryDocumentsDescription,
@@ -154,11 +149,13 @@ if (import.meta.main) {
 }
 
 // The Workspace's links to its users' files are on the address the browser uses; these tools fetch them from
-// the API's address inside the deployment (see src/lib/safe-fetch.ts). Without WORKSPACE_PUBLIC_URL a link is
-// fetched as it is.
+// the API's address inside the deployment (see src/lib/safe-fetch.ts), with WORKSPACE_ORIGIN as their Origin:
+// the API refuses the calls of an origin it does not allow. Without WORKSPACE_PUBLIC_URL a link is fetched as
+// it is.
 const workspacePublicUrl = (process.env.WORKSPACE_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
 if (workspacePublicUrl) {
   const internalUrl = (process.env.WORKSPACE_API_URL ?? "").trim().replace(/\/+$/, "") || workspacePublicUrl;
+  const origin = (process.env.WORKSPACE_ORIGIN ?? "").trim().replace(/\/+$/, "");
   try {
     new URL(workspacePublicUrl);
     new URL(internalUrl);
@@ -166,19 +163,21 @@ if (workspacePublicUrl) {
     logger.fatal("WORKSPACE_PUBLIC_URL and WORKSPACE_API_URL must be URLs like http://api:8000");
     process.exit(1);
   }
-  configureFetchPolicy({ workspace: { publicUrl: workspacePublicUrl, internalUrl } });
+  let isOrigin = false;
+  try {
+    isOrigin = new URL(origin).origin === origin;
+  } catch {}
+  if (!isOrigin) {
+    logger.fatal(
+      "WORKSPACE_ORIGIN is required with WORKSPACE_PUBLIC_URL: the web app's origin, which the Workspace API allows (BACKEND_CORS_ORIGINS), like https://workspace.example.com",
+    );
+    process.exit(1);
+  }
+  configureFetchPolicy({ workspace: { publicUrl: workspacePublicUrl, internalUrl, origin } });
 }
 
 // Which tools exist is decided once, at start, and said once. Each request then gets a server
 // that registers exactly these (see `buildMcpServer`).
-
-// Code execution — Daytona Python sandbox per conversation. Slow first
-// call (sandbox cold start + pip install). Only used when the model needs
-// Python (statistics, scipy/numpy, plotly, custom transformations).
-const codeExecEnabled = !!process.env.DAYTONA_API_KEY;
-if (!codeExecEnabled) {
-  logger.warn("DAYTONA_API_KEY not set — execute_code disabled (SQL family still works)");
-}
 
 // Document RAG — uploaded PDF/DOCX/TXT/MD search via per-conversation
 // vector store. Needs INES_EMBED_MODEL to name the embedding model as
@@ -225,14 +224,6 @@ async function buildMcpServer(): Promise<McpServer> {
   // Read-widget-data SQL family lives in the agent now (in-process,
   // closure on pendingTables). It's no longer registered here.
 
-  if (codeExecEnabled) {
-    mcp.tool(
-      "execute_code",
-      executeCodeDescription,
-      executeCodeSchema,
-      observed("execute_code", requireScope(executeCodeHandler)),
-    );
-  }
   if (docRagEnabled) {
     mcp.tool(
       "query_documents",
@@ -409,7 +400,6 @@ app.get("/", (c) =>
         "web_search",
         "fetch_webpage",
         "inspect_webpage",
-        ...(codeExecEnabled ? ["execute_code"] : []),
         ...(docRagEnabled ? ["query_documents", "list_documents"] : []),
       ],
       workspace: companionToolsEnabled
@@ -435,7 +425,6 @@ app.get("/", (c) =>
           ]
         : [],
     },
-    code_execution_enabled: codeExecEnabled,
     companion_tools_enabled: companionToolsEnabled,
     prompts: companionToolsEnabled
       ? ["workspace_tool_usage", "workspace_session_context"]
@@ -471,5 +460,5 @@ export default {
 };
 
 logger.info(
-  `MCP server starting port=${PORT} codeExecEnabled=${codeExecEnabled} docRagEnabled=${docRagEnabled} companionToolsEnabled=${companionToolsEnabled} bridgeMounted=true`,
+  `MCP server starting port=${PORT} docRagEnabled=${docRagEnabled} companionToolsEnabled=${companionToolsEnabled} bridgeMounted=true`,
 );

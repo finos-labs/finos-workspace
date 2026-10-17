@@ -48,33 +48,6 @@ describe("tool status formatting", () => {
       "```sql\nSELECT\n  year,\n  -- keep the next expression on its own line\n  close\nFROM prices\n```",
     );
 
-    const python = formatToolStartStatus("execute_code", {
-      code: "import pandas as pd\nprint(pd.__version__)",
-    });
-    expect(python.message).toBe("Running Python code");
-    expect(python.details).toBe(
-      "```python\nimport pandas as pd\nprint(pd.__version__)\n```",
-    );
-
-    const prefixedMcpPython = formatToolStartStatus(
-      "inesmcp_execute_code",
-      {
-        display_summary: "Generating random data and running a linear regression",
-        code: "import numpy as np\nprint(np.__version__)",
-      },
-      {
-        isMcp: true,
-        actualToolName: "inesmcp_execute_code",
-      },
-    );
-    expect(prefixedMcpPython.message).toBe(
-      "Generating random data and running a linear regression",
-    );
-    expect(prefixedMcpPython.details).toBe(
-      "```python\nimport numpy as np\nprint(np.__version__)\n```",
-    );
-    expect(JSON.stringify(prefixedMcpPython.details)).not.toContain('"code"');
-
     const html = formatToolStartStatus("create_html_artifact", {
       html: "<h2>Product Offerings</h2>",
       name: "Product Offerings Diagram",
@@ -119,16 +92,16 @@ describe("tool status formatting", () => {
     expect(JSON.stringify(mcp.details)).not.toContain("actual_tool_name");
 
     const out = formatToolResultStatus(
-      "execute_code",
-      { code: "print(1)" },
+      "list_documents",
+      {},
       "ok",
       { isMcp: true },
     );
-    expect(out.message).toBe("execute_code returned a result");
+    expect(out.message).toBe("list_documents returned a result");
     expect(out.details).toMatchObject({
       phase: "output",
       category: "tool_output",
-      tool_name: "execute_code",
+      tool_name: "list_documents",
     });
   });
 
@@ -340,7 +313,7 @@ describe("tool status formatting", () => {
     const noTables = formatToolResultStatus(
       "peek_table",
       { display_summary: "Checking available tables" },
-      "No tables shipped to compute. Did the widget data round-trip complete?",
+      "No tables are loaded. Did the widget data round-trip complete?",
     );
     expect(noTables.message).toBe("peek_table returned a result");
     expect(noTables.eventType).toBe("INFO");
@@ -589,22 +562,6 @@ describe("tool status formatting", () => {
     expect(status.eventType).toBe("INFO");
     expect(JSON.stringify(status.details)).toContain("pass exactly one of");
     expect(JSON.stringify(status.details)).toContain("output_preview");
-  });
-
-  it("shows rejected execute_code details as Python code only", () => {
-    const status = formatToolInputRejectedStatus(
-      "execute_code",
-      {
-        code: "import pandas as pd\nprint('hello')",
-      },
-      "Model tried to call unavailable tool 'execute_code'.",
-    );
-
-    expect(status.message).toBe("Input rejected");
-    expect(status.eventType).toBe("WARNING");
-    expect(status.details).toBe("```python\nimport pandas as pd\nprint('hello')\n```");
-    expect(JSON.stringify(status.details)).not.toContain("unavailable tool");
-    expect(JSON.stringify(status.details)).not.toContain("input_params");
   });
 
   it("shows rejected get_widget_data details as the validation message only", () => {

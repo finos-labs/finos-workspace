@@ -26,11 +26,14 @@ test.describe("the Copilot", () => {
   test("answers a question", async ({ page }) => {
     await page.goto("/");
 
-    // The panel is open by default; where it is not, this is the control that opens it.
+    // The panel is open by default, once the page has drawn it; where it is not, Toggle Agent
+    // (⌘/Ctrl + L) opens it.
     const question = page.getByPlaceholder("Ask a question", { exact: false });
-    if (!(await question.isVisible().catch(() => false))) {
-      await page.getByRole("button", { name: /copilot/i }).first().click();
-    }
+    const opened = await question.waitFor({ state: "visible", timeout: 30_000 }).then(
+      () => true,
+      () => false,
+    );
+    if (!opened) await page.keyboard.press("ControlOrMeta+KeyL");
     await expect(question).toBeVisible({ timeout: 30_000 });
 
     // The stub says the same thing to everything, so an answer already on screen — a chat this

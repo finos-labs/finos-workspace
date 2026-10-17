@@ -201,11 +201,11 @@ describe("executeAgentTool", () => {
 
   it("threads parameters byte-for-byte (decoration keys included)", () => {
     const params = {
-      sql: "SELECT 1",
+      query: "revenue",
       "x-ines-conversation-id": "conv-1",
-      "x-ines-tables": { t1: [{ a: 1 }] },
+      "x-ines-documents": [{ id: "d1", name: "report.pdf" }],
     };
-    const e = executeAgentTool("srv", "execute_sql", params);
+    const e = executeAgentTool("srv", "query_documents", params);
     const data = e.data as Record<string, unknown>;
     expect((data.input_arguments as Record<string, unknown>).parameters).toEqual(params);
   });
@@ -214,9 +214,9 @@ describe("executeAgentTool", () => {
     const empty = executeAgentTool("s", "t", {}, {});
     expect("extra_state" in (empty.data as Record<string, unknown>)).toBe(false);
 
-    const filled = executeAgentTool("s", "t", {}, { compute_tables_shipped: ["t1"] });
+    const filled = executeAgentTool("s", "t", {}, { documents_shipped: ["d1"] });
     expect((filled.data as Record<string, unknown>).extra_state).toEqual({
-      compute_tables_shipped: ["t1"],
+      documents_shipped: ["d1"],
     });
   });
 });
@@ -256,11 +256,11 @@ describe("getWidgetData", () => {
   });
 
   it("merges extraState into extra_state alongside copilot_function_call_arguments", () => {
-    const e = getWidgetData([widget()], { compute_tables_shipped: ["t"] });
+    const e = getWidgetData([widget()], { documents_shipped: ["d"] });
     const data = e.data as Record<string, unknown>;
     expect(data.extra_state).toMatchObject({
       copilot_function_call_arguments: { widget_queries: [{ widget_uuid: "u-1" }] },
-      compute_tables_shipped: ["t"],
+      documents_shipped: ["d"],
     });
   });
 });

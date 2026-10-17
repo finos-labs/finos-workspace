@@ -85,7 +85,6 @@ describe("get_widget_data identifier resolution", () => {
         ),
         allWidgets: [widget()],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "wr-uuid",
       }),
     );
@@ -109,7 +108,6 @@ describe("get_widget_data identifier resolution", () => {
         ),
         allWidgets: [first, second],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "wr-batch-regular",
       }),
     );
@@ -150,7 +148,6 @@ describe("get_widget_data identifier resolution", () => {
         model: makeMockLlm(llmEmitsText("Both loaded.")),
         allWidgets: [first, second],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "wr-batch-reboot",
       }),
     );
@@ -176,7 +173,6 @@ describe("get_widget_data identifier resolution", () => {
         model: spy.model,
         allWidgets: [widget({ uuid: "w-filter", name: "Table Widget with String Filter" })],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "wr-loaded-inventory",
       }),
     );
@@ -259,7 +255,6 @@ describe("get_widget_data identifier resolution", () => {
         model: spy.model,
         allWidgets: [table],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "wr-cached-filter-retry",
       }),
     );
@@ -323,7 +318,6 @@ describe("get_widget_data identifier resolution", () => {
         ]),
         allWidgets: [table],
         workspaceState: null,
-        generativeUiEnabled: false,
         promptSuggestionsEnabled: false,
         conversationId: "wr-allcached-reloop",
       }),
@@ -404,7 +398,6 @@ describe("get_widget_data identifier resolution", () => {
         ),
         allWidgets: [table],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "wr-argless-cache-filter",
       }),
     );
@@ -463,7 +456,6 @@ describe("get_widget_data identifier resolution", () => {
         model: spy.model,
         allWidgets: [table],
         workspaceState: null,
-        generativeUiEnabled: true,
         conversationId: "wr-empty-filter-invalidates",
       }),
     );
@@ -511,7 +503,6 @@ describe("get_widget_data identifier resolution", () => {
         model: spy.model,
         allWidgets: [table],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "wr-param-cache-mismatch",
       }),
     );
@@ -530,7 +521,6 @@ describe("get_widget_data identifier resolution", () => {
         ),
         allWidgets: [widget()],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "wr-fallback",
       }),
     );
@@ -566,7 +556,6 @@ describe("get_widget_data identifier resolution", () => {
         ),
         allWidgets,
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "wr-no-uuid",
       }),
     );
@@ -590,7 +579,6 @@ describe("get_widget_data identifier resolution", () => {
         ),
         allWidgets: [widget()],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "wr-bogus",
       }),
     );
@@ -610,7 +598,6 @@ describe("get_widget_data identifier resolution", () => {
         ),
         allWidgets: [w1],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId: "wr-prefix",
       }),
     );
@@ -647,7 +634,6 @@ describe("get_widget_data identifier resolution", () => {
             ],
           },
         },
-        generativeUiEnabled: true,
         conversationId: "wr-dashboard-reconcile",
       }),
     );
@@ -682,7 +668,6 @@ describe("get_widget_data identifier resolution", () => {
             tabs: [{ tab_id: "tab-1", widgets: [{ widget_uuid: "dash-report", name: "Report" }] }],
           },
         },
-        generativeUiEnabled: true,
         conversationId: "wr-dashboard-ambiguous",
       }),
     );
@@ -720,7 +705,6 @@ describe("get_widget_data identifier resolution", () => {
         allWidgets: [fred],
         tieredWidgets: [{ widget: fred, tier: "extra" }],
         workspaceState: null,
-        generativeUiEnabled: true,
         promptSuggestionsEnabled: false,
         conversationId: "wr-data-schema-required",
       }),
@@ -761,7 +745,6 @@ describe("get_widget_data identifier resolution", () => {
         allWidgets: [fred],
         tieredWidgets: [{ widget: fred, tier: "extra" }],
         workspaceState: null,
-        generativeUiEnabled: true,
         promptSuggestionsEnabled: false,
         conversationId: "wr-data-schema-required-aliases",
       }),
@@ -808,7 +791,6 @@ describe("get_widget_data identifier resolution", () => {
         allWidgets: [unemployment],
         tieredWidgets: [{ widget: unemployment, tier: "secondary" }],
         workspaceState: null,
-        generativeUiEnabled: false,
         promptSuggestionsEnabled: false,
         conversationId: "wr-provider-normalized",
       }),
@@ -858,7 +840,6 @@ describe("the widget data cache keeps one chat's data for that chat", () => {
         model: spy.model,
         allWidgets: [sharedWidget],
         workspaceState: null,
-        generativeUiEnabled: false,
         conversationId,
       }),
     );
