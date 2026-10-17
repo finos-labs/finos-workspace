@@ -18,15 +18,15 @@ type ParamsForm = {
   [key: string]: string | number | boolean | undefined;
 };
 
-export function FormParamElement() {
+/** One of a widget's forms: a widget may have several, each its own form. */
+export function FormParamElement({
+  formParamDef,
+}: {
+  formParamDef: ParamDefT<"form">;
+}) {
   const { widget, updateWidget } = useWidgetContext();
   const [isLoading, setIsLoading] = useState(false);
 
-  const formParamDef = useMemo(() => {
-    return widget?.params?.find(
-      (param): param is ParamDefT<"form"> => param.type === "form",
-    );
-  }, [widget?.params]);
   const credentials = useSourceCredentials(widget.sourceId, formParamDef?.endpoint);
 
   const initialFormValues = useMemo(() => {

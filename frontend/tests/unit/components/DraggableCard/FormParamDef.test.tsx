@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { FormParamElement } from "~/components/DraggableCard/FormParamDef";
-import type { WidgetT } from "~/components/types";
+import type { ParamDefT, WidgetT } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useJsonData } from "~/lib/api";
 import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
@@ -90,6 +90,15 @@ const mockWidget = partial<WidgetT>({
   ],
 });
 
+/** Renders the form of the widget the mocked widget context holds */
+const renderForm = () => {
+  const { widget } = (useWidgetContext as Mock)() as { widget: WidgetT };
+  const formParamDef = widget.params?.find(
+    (param): param is ParamDefT<"form"> => param.type === "form",
+  );
+  return render(<FormParamElement formParamDef={formParamDef as ParamDefT<"form">} />);
+};
+
 const createMockWidgetContext = (widget: WidgetT = mockWidget) => ({
   widget,
   updateWidget: vi.fn(),
@@ -108,7 +117,7 @@ describe("FormParamElement - EndpointType", () => {
   });
 
   it("passes the source's headers as endpointHeaders to useJsonData when fetching options", () => {
-    render(<FormParamElement />);
+    renderForm();
 
     expect(vi.mocked(useJsonData)).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -120,7 +129,7 @@ describe("FormParamElement - EndpointType", () => {
   });
 
   it("does not pass headers under the wrong key name", () => {
-    render(<FormParamElement />);
+    renderForm();
 
     const callArgs = vi.mocked(useJsonData).mock.calls[0]?.[0];
     expect(callArgs).not.toHaveProperty("headers");
@@ -140,7 +149,7 @@ describe("FormParamElement - EndpointType", () => {
       createMockWidgetContext(widgetWithHeaders),
     );
 
-    render(<FormParamElement />);
+    renderForm();
 
     expect(vi.mocked(useJsonData)).toHaveBeenCalledWith(
       expect.objectContaining({ endpointHeaders: CUSTOM_HEADERS }),
@@ -153,7 +162,7 @@ describe("FormParamElement - EndpointType", () => {
       apiSources: [{ ...SOURCE, endpointHeaders: [] }],
     });
 
-    render(<FormParamElement />);
+    renderForm();
 
     expect(vi.mocked(useJsonData)).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -184,7 +193,7 @@ describe("FormParamElement - the source's query rows", () => {
   it("go with the options request as params, apart from the headers", () => {
     (useWidgetContext as Mock).mockReturnValue(createMockWidgetContext());
 
-    render(<FormParamElement />);
+    renderForm();
 
     expect(vi.mocked(useJsonData)).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -221,7 +230,7 @@ describe("FormParamElement - the source's query rows", () => {
       createMockWidgetContext(widgetWithSubmit),
     );
 
-    render(<FormParamElement />);
+    renderForm();
     fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());

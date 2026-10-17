@@ -47,12 +47,13 @@ import { someTruthy } from "~/lib/utils/values";
 import CompareTermsParam from "./CompareTermsParam";
 import { TabsParam } from "./TabsParam";
 
-export function FormParamDialog() {
+/** A form of the widget, opened from a button named by the form's label. */
+export function FormParamDialog({ formParamDef }: { formParamDef: ParamDefT<"form"> }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild={true}>
         <Button size="xs" variant="outlined" className="h-[20px]">
-          Open Form
+          {formParamDef.label ?? "Open Form"}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -60,7 +61,7 @@ export function FormParamDialog() {
         side="bottom"
         align="start"
       >
-        <FormParamElement />
+        <FormParamElement formParamDef={formParamDef} />
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -125,12 +126,12 @@ export function useWidgetParamsPositions(enabled = true) {
 
   const { updateGroupedParam } = useParamGroupBindings();
 
-  const { hasForm, paramsGroupedByRow, endpointParams, hasParams, tabsParams } =
+  const { formParams, paramsGroupedByRow, endpointParams, hasParams, tabsParams } =
     useMemo(() => {
       const endpointParams = {} as Record<string, ParamDefT<"endpoint">>;
       const paramsGroupedByRow: Record<number, ParamDef[]> = {};
       const tabsParams: ParamDefT<"tabs">[] = [];
-      let hasForm = false;
+      const formParams: ParamDefT<"form">[] = [];
       let hasParams = false;
       const widgetJSON = getJsonWidget(widget);
 
@@ -150,7 +151,7 @@ export function useWidgetParamsPositions(enabled = true) {
               badgeParams.has(param.groupById)));
 
         if (param?.type === "form") {
-          hasForm = true;
+          formParams.push(param);
           continue;
         }
         // Collect tabs params separately - they render in their own row below navbar
@@ -182,7 +183,7 @@ export function useWidgetParamsPositions(enabled = true) {
       return {
         paramsGroupedByRow,
         endpointParams,
-        hasForm,
+        formParams,
         hasParams,
         tabsParams,
       };
@@ -457,7 +458,12 @@ export function useWidgetParamsPositions(enabled = true) {
         className="flex gap-1.5 _elements-left-navbar
         min-w-fit items-center h-[22px] text-2xs"
       >
-        {hasForm && <FormParamDialog />}
+        {formParams.map((formParam) => (
+          <FormParamDialog
+            key={[formParam.paramName, formParam.label, formParam.endpoint].join("|")}
+            formParamDef={formParam}
+          />
+        ))}
         {row0}
       </div>
     );
@@ -470,7 +476,7 @@ export function useWidgetParamsPositions(enabled = true) {
     const filteredRowsBelow = rowsBelow.filter(Boolean);
     const hasRowsBelow = filteredRowsBelow.length > 0 || renderTabsRow;
 
-    if (!someTruthy(row0, hasRowsBelow, hasForm))
+    if (!someTruthy(row0, hasRowsBelow, formParams.length > 0))
       return { renderRow0Params: null, renderBelowNavbarRows: null };
 
     if (!hasRowsBelow) return { renderRow0Params, renderBelowNavbarRows: null };
@@ -483,7 +489,7 @@ export function useWidgetParamsPositions(enabled = true) {
     );
 
     return { renderRow0Params, renderBelowNavbarRows };
-  }, [rowElements, tabRowElements, hasForm]);
+  }, [rowElements, tabRowElements, formParams]);
 }
 
 const RenderTabParamsRow = memo(
