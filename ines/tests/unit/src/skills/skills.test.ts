@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { isInesSkill, readInesSkill, skillsCatalog } from "../../../../src/skills";
+import { inesSkillContent, inesSkills, isInesSkill, skillsCatalog } from "../../../../src/skills";
 import type { QueryRequest } from "../../../../src/protocol/types";
 
 const request = (skills_catalog?: QueryRequest["skills_catalog"]): QueryRequest =>
@@ -34,11 +34,24 @@ describe("isInesSkill", () => {
   });
 });
 
-describe("readInesSkill", () => {
-  it("reads the instructions of every skill in the catalog", async () => {
-    for (const slug of INES_SLUGS) {
-      expect((await readInesSkill(slug)).trim().length).toBeGreaterThan(0);
+describe("inesSkills", () => {
+  it("lists Ines's skills by slug and what each is for, without their instructions", () => {
+    const skills = inesSkills();
+    expect(skills.map((s) => s.slug)).toEqual(INES_SLUGS);
+    for (const skill of skills) {
+      expect(Object.keys(skill).sort()).toEqual(["description", "slug"]);
+      expect(skill.description.length).toBeGreaterThan(0);
     }
-    expect(await readInesSkill("html-chart")).toContain("# Workspace chart colors skill");
+  });
+});
+
+describe("inesSkillContent", () => {
+  it("has the instructions of every skill Ines lists", () => {
+    for (const slug of INES_SLUGS) expect(inesSkillContent(slug).trim().length).toBeGreaterThan(0);
+    expect(inesSkillContent("html-chart")).toContain("# Workspace chart colors skill");
+  });
+
+  it("has none of a skill Ines does not have", () => {
+    expect(() => inesSkillContent("earnings")).toThrow("Ines has no skill named earnings.");
   });
 });

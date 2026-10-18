@@ -1,9 +1,13 @@
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { QueryRequest, SkillCatalogEntry } from "../protocol/types";
 
 export type CatalogSkill = Pick<SkillCatalogEntry, "slug" | "description">;
 
-/** Ines's own skills. Each one's instructions are the markdown file in this folder named by its slug. */
+/**
+ * Ines's own skills. Each one's instructions are the markdown file in this folder named by its slug. The Workspace
+ * lists them as the agent's (`skills` in /agents.json), and the model loads them like the user's.
+ */
 const INES_SKILLS: readonly CatalogSkill[] = [
   {
     slug: "html-report",
@@ -37,6 +41,17 @@ export function isInesSkill(request: QueryRequest, slug: string): boolean {
   );
 }
 
-export function readInesSkill(slug: string): Promise<string> {
-  return Bun.file(join(import.meta.dir, `${slug}.md`)).text();
+/** Ines's skills as /agents.json lists them: the slug and what each is for. */
+export function inesSkills(): CatalogSkill[] {
+  return INES_SKILLS.map(({ slug, description }) => ({ slug, description }));
+}
+
+/** The instructions of each of Ines's skills, read once: they are part of the agent, and small. */
+const CONTENT = new Map(INES_SKILLS.map(({ slug }) => [slug, readFileSync(join(import.meta.dir, `${slug}.md`), "utf8")]));
+
+/** The instructions of one of Ines's skills. */
+export function inesSkillContent(slug: string): string {
+  const content = CONTENT.get(slug);
+  if (content === undefined) throw new Error(`Ines has no skill named ${slug}.`);
+  return content;
 }

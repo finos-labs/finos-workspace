@@ -30,6 +30,21 @@ describe("buildMessages", () => {
     expect(c).toContain("beta body");
   });
 
+  it("gives a picked skill of Ines's its instructions, which the Workspace does not send", () => {
+    const out = buildMessages(
+      req({
+        selected_skills: [
+          { slug: "html-chart", description: "charts", source: "forced_slash" },
+          { slug: "not-a-skill", description: "unknown", source: "forced_slash" },
+        ],
+      }),
+    );
+    const c = out[1].content as string;
+    expect(c).toContain('<skill name="html-chart">');
+    expect(c).toContain("# Workspace chart colors skill");
+    expect(c).not.toContain("not-a-skill");
+  });
+
   it("does not append a skills user message when none are selected", () => {
     const out = buildMessages(req({ selected_skills: [] }));
     expect(out.find((m) => m.role === "user" && (m.content as string).includes("<skill"))).toBeUndefined();

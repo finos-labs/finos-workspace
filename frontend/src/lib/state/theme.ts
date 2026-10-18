@@ -8,7 +8,7 @@ import { updateUserDisplaySettings } from "~/api/user.api";
 import type { SearchTabId } from "~/components/LayoutAuth/Search/SearchDialog";
 import type { WidgetItem } from "~/components/LayoutAuth/Search/WidgetMenu";
 import { getConfig } from "~/lib/runtimeConfig";
-import type { DefaultSkillSlugs, DisplaySettings } from "~/types/auth.type";
+import type { DisplaySettings } from "~/types/auth.type";
 import type { Selector, SideBarItem } from "./app";
 import { useAuthStore } from "./auth";
 import type { Source } from "./backendConnector";
@@ -24,9 +24,6 @@ type McpAuthPopup = {
 type ExportFormatFn = (title: string) => void;
 
 interface ThemeState {
-  // Track removed default skills by slug to prevent re-adding them
-  removedSkillSlugs: DefaultSkillSlugs[];
-  removeDefaultSkill: (slug: DefaultSkillSlugs) => void;
   mcpAuthPopup: McpAuthPopup | null;
   setMcpAuthPopup: (popup: ThemeState["mcpAuthPopup"]) => void;
   promptsSuggestionsMenuOpen: boolean;
@@ -180,13 +177,6 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
         const resolvedTheme = uiCfg.defaultTheme || "dark";
 
         return {
-          removedSkillSlugs: [],
-          removeDefaultSkill: (slug) => {
-            const { removedSkillSlugs } = get();
-            const updatedRemovedSkillSlugs = new Set([...removedSkillSlugs, slug]);
-            set({ removedSkillSlugs: Array.from(updatedRemovedSkillSlugs) });
-            get().debouncedUpdateSettings();
-          },
           mcpAuthPopup: null,
           setMcpAuthPopup: (popup) => set({ mcpAuthPopup: popup }),
           generateAppDashboardId: null,
@@ -385,7 +375,6 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
               showMinimizeButton,
               collapsedPanelExpandOnHover,
               autoHideWidgetNavbar,
-              removedSkillSlugs,
             } = get();
 
             const {
@@ -408,7 +397,6 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
               perplexityApiKey,
               collapsedPanelExpandOnHover,
               autoHideWidgetNavbar,
-              removedSkillSlugs,
             } as DisplaySettings;
           },
           updateDisplaySettings: (settings) => {

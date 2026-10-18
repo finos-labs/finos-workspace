@@ -116,7 +116,7 @@ This is the agent's irreducible scope — all of it runs without the MCP server:
 - Widget tier classification + `search_widgets`
 - `get_widget_data` round-trip
 - Widget data parsing (CSV / JSON / images → table schema; PDF/DOCX → a pointer to the document search)
-- **Skills**: the catalog in the system prompt (the user's skills, which the Workspace lists, and Ines's own in `src/skills/`: `html-report`, `html-table`, `html-chart`) and `get_skill_content`, which reads Ines's own and round-trips to the Workspace for the user's
+- **Skills**: the catalog in the system prompt (the user's skills, which the Workspace lists, and Ines's own in `src/skills/`: `html-report`, `html-table`, `html-chart`) and `get_skill_content`, which reads Ines's own and round-trips to the Workspace for the user's. `/agents.json` lists Ines's own under `skills` (slug and description), so the Workspace shows them, read-only, in its Skills tab and `/` menu; a user who picks one sends only its slug, and Ines adds its instructions
 - **SQL family** (`execute_sql`, `peek_table`, `peek_column_values`, `create_artifact`) — in-process `bun:sqlite`, a closure over `pendingTables`
 - **Tool groups** (`load_tools`, the catalog in the system prompt, the instructions that go with a loaded group) — the model is given the few tools every question can need and a one-line catalog of the agent's own others. The tools that the Workspace supplies (the connected servers' and its own) are never deferred: they are given in full, with their descriptions and parameters, so the model reads how to use them before it acts; see `src/agent/tool-groups.ts`
 - **Native helpers** (`enhance_prompt`, `_llm_think`, `create_table_from_text`, `create_html_artifact`, `create_app`) — local and state-bound to `artifactQueue` / `pendingTables`. `create_app` validates each `(origin, widget_id)` against the live widget catalog and emits an `app` artifact (an apps.json template) the Workspace renders with open-as-dashboard / save-to-apps actions
@@ -368,7 +368,7 @@ The agent is built for a deployment shared by many users, and leaves to the Work
 - **Roles and limits.** Before any work for a question, Ines calls `POST /app/copilot/authorize` (which models and MCP tools the user's roles grant: a denied model is refused in the chat, a denied tool is left out) and, for the first request of the turn, `PUT /app/usage` (one question against the daily limit; the API answers 422 with its own wording when it is used up). After the request she adds the tokens it used. Both calls carry `INES_METERING_TOKEN` besides the user's own token, so users cannot write their own usage. A turn that needs a tool in the browser is several requests; only the first is counted, and a request that claims to continue a turn Ines does not know of is counted again.
 - **One user's chats are theirs.** Everything kept for a chat (widget rows, documents, fetched pages) is filed under `<user>:<chat>`. The browser makes the calls to the MCP tools, so it could name any chat; Ines signs each scope with `INES_SCOPE_SECRET` and the tools that keep state (`query_documents`, `list_documents`) refuse a call without a valid signature.
 - **What a client can make the agent fetch.** Files, pasted links and pages a model asks for are fetched only from public addresses (`src/lib/safe-fetch.ts`): the host is resolved once, every address it resolves to is checked, and the connection goes to the address that was checked (so a host cannot answer one address to the check and another to the connection), redirects are checked again, internal names and private, loopback and link-local addresses are refused, and a response is cut off at 25 MB. The one exception is the Workspace's own links to its files, fetched from `WORKSPACE_API_URL`.
-- **Limits.** `INES_MAX_CONCURRENT_QUERIES` per user (a user over it gets 429), `INES_MAX_TOTAL_QUERIES` for the whole agent (503), `INES_MAX_TURN_REQUESTS` per question, `INES_HELPER_CALLS_PER_MINUTE` per user for the helpers (titles, prompt rewriting; 429, and counted before the body is read), `INES_INVALID_REQUESTS_PER_MINUTE` per user for requests that are not questions (past it their questions are turned away unread), `INES_MAX_BODY_MB` per request (8 MB for the helpers that take JSON), field limits on what a request may hold (messages, widgets, documents), and only the models on offer (`DEFAULT_MODEL`, `INES_MODELS`). A query's place is taken before its body is read (a body can be tens of megabytes, and refused requests must cost nothing), and a query whose client has gone is stopped, and its place and its model call with it.
+- **Limits.** `INES_MAX_CONCURRENT_QUERIES` per user (a user over it gets 429), `INES_MAX_TOTAL_QUERIES` for the whole agent (503), `INES_MAX_TURN_REQUESTS` per question, `INES_HELPER_CALLS_PER_MINUTE` per user for the helpers (titles, prompt rewriting, dictation; 429, and counted before the body is read), `INES_INVALID_REQUESTS_PER_MINUTE` per user for requests that are not questions (past it their questions are turned away unread), `INES_MAX_BODY_MB` per request (8 MB for the helpers that take JSON), field limits on what a request may hold (messages, widgets, documents), and only the models on offer (`DEFAULT_MODEL`, `INES_MODELS`). A query's place is taken before its body is read (a body can be tens of megabytes, and refused requests must cost nothing), and a query whose client has gone is stopped, and its place and its model call with it.
 - **More than one replica.** A turn is several requests, and what the agent remembers between them decides what the next one may do. All of it — who a token belongs to, how much of a user's share is left, which turn is under way and a chat's rows — lives behind one store (`src/lib/store.ts`). With `REDIS_URL` set it is shared, so a user has one share of their quota across every replica, a continuation is recognised wherever it lands, and rows another replica fetched are found instead of fetched again; `GET /status` says `sharedState: true`. Without it the store keeps everything in this process, as it always did, and a deployment should run one replica (or send a chat's requests to the same one). Redis is never in the way of serving: an operation it cannot answer falls back to this process, so a Redis outage makes the quotas per-replica for a while rather than stopping the agent — `ines_store_errors_total` counts those. Every cache is bounded (entries, size and age) and filed under the user's scope; a table too large to be worth sending (1 MB as JSON) stays in the process that fetched it, and another replica fetches it again.
 
 ### Hardening
@@ -454,6 +454,9 @@ INES_METERING_TOKEN          # Required with workspace auth: python -m scripts.c
 INES_SCOPE_SECRET            # Required with workspace auth (16+ characters); shared with the MCP server
 INES_CORS_ORIGINS            # Required with workspace auth: the web app's origin(s), or *
 INES_MODELS                  # More models users may pick, comma-separated <provider>:<model>
+INES_TRANSCRIBE_MODEL        # Dictation in the chat, no default: <provider>:<model> (groq, openai or nvidia), plus that
+                             # provider's key; nvidia models are named as on build.nvidia.com (nvidia:openai/whisper-large-v3).
+                             # Unset: no dictation, and /agents.json does not offer "speech-to-text"
 INES_AUTH_CACHE_SECONDS      # How long a signed-in user is remembered (default 30)
 REDIS_URL                    # Shares what the agent keeps between the requests of a turn with the other
                              # replicas (sign-ins, quotas, turns, a chat's rows). Unset: kept in this
@@ -462,7 +465,7 @@ INES_INLINE_TOOL_CALLS       # "off" does not read tool calls that a model write
 INES_MAX_CONCURRENT_QUERIES  # Queries one user may run at once (default 4)
 INES_MAX_TOTAL_QUERIES       # Queries the whole agent runs at once; past it a query is refused with 503 (default 200)
 INES_MAX_TURN_REQUESTS       # Requests one question may be made of, counting every return from a tool (default 60)
-INES_HELPER_CALLS_PER_MINUTE # Helper calls (titles, rewritten prompts) one user may make in a minute; past it 429 (default 60)
+INES_HELPER_CALLS_PER_MINUTE # Helper calls (titles, rewritten prompts, dictation) one user may make in a minute; past it 429 (default 60)
 INES_INVALID_REQUESTS_PER_MINUTE # Requests that are not questions (not JSON, wrong shape) one user may send in a minute (default 20)
 INES_MAX_BODY_MB             # Largest request (default 64)
 INES_SQL_TIMEOUT_MS          # How long one SQL tool call may run (default 10000)
@@ -507,11 +510,12 @@ MCP_PORT                # MCP server port (default 8787)
 ### Endpoints
 
 **Agent:**
-- `GET /agents.json` — agent descriptor (name, features, the models on offer); public
+- `GET /agents.json` — agent descriptor (name, features, the models on offer, the skills that come with Ines); public
 - `GET /status` — the process is up (the container's health check); public
 - `GET /ready` — 200 when the Workspace API answers, 503 when it does not; public
 - `POST /v1/query` — main query endpoint (SSE); needs a signed-in user
 - `POST /v1/generate/*`, `POST /v1/enhance_prompt` — single-shot helpers (chat title, dashboard title, prompt enhancement, widget info, code); need a signed-in user. Their tokens are not metered.
+- `POST /v1/transcribe` — dictation: a 16-bit PCM WAV recording (form field `audio`, up to 4 MB, about two minutes at 16 kHz) answered with `{ "text": … }`, from `INES_TRANSCRIBE_MODEL`; needs a signed-in user and counts as a helper call. Groq and OpenAI models are called through the AI SDK; NVIDIA's hosted speech models through Riva's `Recognize` over gRPC (`grpc.nvcf.nvidia.com`), with the model's function id looked up by name from the functions `NVIDIA_API_KEY` can see. Without the variable it answers 404, and `/agents.json` does not offer `"speech-to-text"`, so the web app shows no microphone.
 - `GET /metrics` — on the metrics port (`INES_METRICS_PORT`, 9464), not on the agent's
 
 **MCP server:**

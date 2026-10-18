@@ -67,7 +67,8 @@ const QueryRequestSchema = z.object({
     .array(z.object({
       slug: z.string().max(200),
       description: z.string().max(4_000),
-      contentMarkdown: z.string().max(500_000),
+      // Absent for one of Ines's own skills: she has its instructions.
+      contentMarkdown: z.string().max(500_000).optional(),
       source: z.enum(["forced_slash", "model_selected"]),
     }))
     .max(20)

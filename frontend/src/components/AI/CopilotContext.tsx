@@ -56,13 +56,12 @@ export function CopilotContext() {
     const customEntries = Object.entries(featureFlags || {}).filter(
       ([, val]) => typeof val === "object" && val !== null,
     ) as [string, FeatureMeta][];
-    const widgetGlobalSearchFF = Boolean(featureFlags?.["widget-global-search"]);
     return {
       contextEnabled: widgetDashboardSelectFF,
       selectedCopilot: s.selectedCopilot,
       setSelectedCopilot: s.setSelectedCopilot,
       initializeCustomFeatures: s.initializeCustomFeatures,
-      enableSettings: someTruthy(widgetGlobalSearchFF, customEntries),
+      enableSettings: someTruthy(customEntries),
     };
   });
 
@@ -286,7 +285,6 @@ const SelectedWidgetBadges = memo(
     const copilot = useShallowCopilotDataStore((state) => ({
       selectedWidgets: state.copilotWidgets.selectedWidgets,
       toggleSelectedWidget: state.toggleSelectedWidget,
-      extraWidgetsEnabled: state.extraWidgetsEnabled,
       isMentionTrackedWidget: state.isMentionTrackedWidget,
       getCopilotWidgets: state.getCopilotWidgets,
       removeMentionTrackedWidget: state.removeMentionTrackedWidget,
@@ -456,7 +454,7 @@ const SelectedWidgetBadges = memo(
       >
         {contextEnabled
           ? currentDashboardId
-            ? copilot.extraWidgetsEnabled && widgetGlobalSearchFF
+            ? widgetGlobalSearchFF
               ? "Using all widgets available"
               : widgetDashboardSearchFF
                 ? "Using dashboard widgets"
@@ -475,17 +473,12 @@ function SettingsContent() {
     setCustomFeatureValue: state.setCustomFeatureValue,
   }));
 
-  const { customEntries, widgetGlobalSearchFF } = useShallowCopilotStore((s) => {
-    const featureFlags = s.selectedCopilot?.features || {};
-    const customEntries = Object.entries(featureFlags || {}).filter(
-      ([, val]) => typeof val === "object" && val !== null,
-    ) as [string, FeatureMeta][];
-    const widgetGlobalSearchFF = Boolean(featureFlags?.["widget-global-search"]);
-    return {
-      widgetGlobalSearchFF,
-      customEntries,
-    };
-  });
+  const customEntries = useShallowCopilotStore(
+    (s) =>
+      Object.entries(s.selectedCopilot?.features || {}).filter(
+        ([, val]) => typeof val === "object" && val !== null,
+      ) as [string, FeatureMeta][],
+  );
 
   const handleToggleCustomFeature = useCallback(
     (key: string, label: string) => {
@@ -517,54 +510,45 @@ function SettingsContent() {
 
   return (
     <>
-      {widgetGlobalSearchFF && <BuiltInFeatureToggles />}
+      {customEntries.map(([key, val]) => {
+        if (typeof val !== "object" || val === null) return null;
+        const featureType = val.type || "toggle";
 
-      {customEntries.length > 0 && (
-        <>
-          {widgetGlobalSearchFF && (
-            <div className="mx-3 my-1 border-t border-light-200 dark:border-dark-500" />
-          )}
-          {customEntries.map(([key, val]) => {
-            if (typeof val !== "object" || val === null) return null;
-            const featureType = val.type || "toggle";
+        if (featureType === "text") {
+          return (
+            <CustomFeatureText
+              key={`custom-feature-text-${key}`}
+              featureKey={key}
+              meta={val}
+              value={String(copilot.customFeatureStates?.[key] ?? "")}
+              onChange={handleSetCustomFeatureValue}
+            />
+          );
+        }
 
-            if (featureType === "text") {
-              return (
-                <CustomFeatureText
-                  key={`custom-feature-text-${key}`}
-                  featureKey={key}
-                  meta={val}
-                  value={String(copilot.customFeatureStates?.[key] ?? "")}
-                  onChange={handleSetCustomFeatureValue}
-                />
-              );
-            }
+        if (featureType === "select" && val.options?.length) {
+          return (
+            <CustomFeatureSelect
+              key={`custom-feature-select-${key}`}
+              featureKey={key}
+              meta={val}
+              value={String(copilot.customFeatureStates?.[key] ?? "")}
+              onChange={handleSetCustomFeatureValue}
+            />
+          );
+        }
 
-            if (featureType === "select" && val.options?.length) {
-              return (
-                <CustomFeatureSelect
-                  key={`custom-feature-select-${key}`}
-                  featureKey={key}
-                  meta={val}
-                  value={String(copilot.customFeatureStates?.[key] ?? "")}
-                  onChange={handleSetCustomFeatureValue}
-                />
-              );
-            }
-
-            const enabled = Boolean(copilot.customFeatureStates?.[key]);
-            return (
-              <CustomFeatureToggle
-                key={`custom-feature-toggle-${key}`}
-                featureKey={key}
-                meta={val}
-                enabled={enabled}
-                onToggle={handleToggleCustomFeature}
-              />
-            );
-          })}
-        </>
-      )}
+        const enabled = Boolean(copilot.customFeatureStates?.[key]);
+        return (
+          <CustomFeatureToggle
+            key={`custom-feature-toggle-${key}`}
+            featureKey={key}
+            meta={val}
+            enabled={enabled}
+            onToggle={handleToggleCustomFeature}
+          />
+        );
+      })}
     </>
   );
 }
@@ -703,56 +687,6 @@ const CustomFeatureSelect = memo((props: CustomFeatureSelectProps) => {
             ))}
           </SelectContent>
         </SelectRoot>
-      </div>
-    </div>
-  );
-});
-
-const BuiltInFeatureToggles = memo(() => {
-  const copilot = useShallowCopilotDataStore((state) => ({
-    extraWidgetsEnabled: state.extraWidgetsEnabled,
-    toggleExtraWidgetsEnabled: state.toggleExtraWidgetsEnabled,
-  }));
-
-  const widgetGlobalSearchFF = useShallowCopilotStore((s) =>
-    Boolean(s.selectedCopilot?.features?.["widget-global-search"]),
-  );
-
-  const handleToggleGlobalData = useCallback(() => {
-    const newState = copilot.toggleExtraWidgetsEnabled();
-
-    showNotification({
-      id: "copilot-global-data-toggle",
-      message: newState ? "Global Data Enabled" : "Global Data Disabled",
-      description: newState
-        ? "The agent can now access data from any widget in the library, not just those on your dashboard."
-        : "The agent will only access data from widgets currently on your dashboard.",
-      toastType: "info",
-    });
-  }, [copilot.toggleExtraWidgetsEnabled]);
-
-  return (
-    <div className="px-3 py-2 group">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <HintLabel
-            tooltip={
-              widgetGlobalSearchFF
-                ? "Expands the agent's data access beyond your current dashboard. When enabled, the agent can retrieve data from any widget in the library — not just the ones you've added to your dashboard."
-                : "Global data is not enabled for this agent"
-            }
-            tooltipClassName="max-w-[280px]"
-            disabled={!widgetGlobalSearchFF}
-          >
-            Global data
-          </HintLabel>
-        </div>
-        <Switch
-          checked={copilot.extraWidgetsEnabled && widgetGlobalSearchFF}
-          onCheckedChange={handleToggleGlobalData}
-          disabled={!widgetGlobalSearchFF}
-          aria-label="Toggle global data"
-        />
       </div>
     </div>
   );

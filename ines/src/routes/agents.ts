@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { configuredModels } from "../lib/config";
 import { getLogger } from "../lib/logger";
+import { transcribeModel } from "../lib/transcribe";
+import { inesSkills } from "../skills";
 
 const logger = getLogger(["app", "routes", "agents"]);
 
@@ -26,6 +28,8 @@ agentsRouter.get("/agents.json", (c) => {
       description:
         "An open-source, model-agnostic agent for the Workspace",
       endpoints: { query: "/v1/query" },
+      // The skills that come with Ines: the Workspace shows them, and a user can pick one with /skill:<slug>.
+      skills: inesSkills(),
       features: {
         streaming: true,
         "widget-dashboard-select": true,
@@ -33,6 +37,8 @@ agentsRouter.get("/agents.json", (c) => {
         "widget-global-search": true,
         "mcp-tools": true,
         "file-upload": true,
+        // Dictation in the chat: the web app records and asks /v1/transcribe for the text.
+        ...(transcribeModel() ? { "speech-to-text": true } : {}),
         "prompt-suggestions": {
           label: "Follow-up Suggestions",
           default: true,
