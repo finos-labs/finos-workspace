@@ -5,7 +5,7 @@ The type catalog, the widget and param field tables and the header-name rules in
 widgets.json schema from (docs/widget-plugins/WIDGETS-JSON.md 3.9), so the pages cannot
 drift from what Workspace accepts. Each list sits between two markers; the prose around
 it is hand-written. Ines's MCP server serves the same pages, so its copy
-(``ines/mcp-server/src/resources/app-builder``) is written from them too.
+(``agent/mcp-server/src/resources/app-builder``) is written from them too.
 
     python -m scripts.generate_app_builder_specs           # rewrite the pages
     python -m scripts.generate_app_builder_specs --check   # fail when a page is stale
@@ -24,7 +24,7 @@ from typing import Any
 from api.widget_plugins.widgets_schema import load_kit
 
 RESOURCES = Path(__file__).resolve().parents[1] / "workspace_mcp" / "app_builder" / "resources"
-INES_COPY = Path(__file__).resolve().parents[3] / "ines" / "mcp-server" / "src" / "resources" / "app-builder"
+INES_COPY = Path(__file__).resolve().parents[3] / "agent" / "mcp-server" / "src" / "resources" / "app-builder"
 MARKER = re.compile(
     r"(<!-- generated:(?P<name>[a-z-]+) -->\n)(?:.*?\n)?(<!-- /generated:(?P=name) -->)",
     re.DOTALL,
