@@ -3,15 +3,8 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { useStoreWithEqualityFn } from "zustand/traditional";
-import { getActiveDefaultSkills } from "~/components/AI/skills";
-import type {
-  DefaultSkillSlugs,
-  Skill,
-  SkillCatalogEntry,
-  SkillCreate,
-} from "~/types/auth.type";
+import type { Skill, SkillCatalogEntry, SkillCreate } from "~/types/auth.type";
 import type { Selector } from "./app";
-import { useThemeStore } from "./theme";
 
 // Re-export types for convenience
 export type { Skill, SkillCatalogEntry, SkillPayload } from "~/types/auth.type";
@@ -59,7 +52,6 @@ interface SkillsLibraryState {
   isSlugUnique: (slug: string, excludeId?: string) => boolean;
   getSkillsCatalog: () => SkillCatalogEntry[];
   updateSkills: (skills: Skill[]) => void;
-  removeDefaultSkill: (slug: DefaultSkillSlugs) => void;
 }
 
 export const useSkillsLibraryStore = create<SkillsLibraryState>()(
@@ -67,19 +59,11 @@ export const useSkillsLibraryStore = create<SkillsLibraryState>()(
     skills: [],
     skillDialogOpen: false,
     skillDialogPrefill: null,
-    updateSkills: (skills) => set({ skills: getActiveDefaultSkills(skills) }),
+    updateSkills: (skills) => set({ skills }),
     setSkillDialogOpen: (skillDialogOpen) => set({ skillDialogOpen }),
     openSkillDialogWithPrefill: (skillDialogPrefill) =>
       set({ skillDialogPrefill, skillDialogOpen: true }),
     closeSkillDialog: () => set({ skillDialogOpen: false, skillDialogPrefill: null }),
-    removeDefaultSkill: (slug) => {
-      const { skills } = get();
-      const updatedSkills = skills.filter((skill) => skill.id !== slug);
-
-      // Also update theme store to track removed default skills
-      useThemeStore.getState().removeDefaultSkill(slug);
-      set({ skills: updatedSkills });
-    },
     /**
      * Check if a slug is unique among existing skills.
      * Optionally exclude a specific skill ID (for editing).

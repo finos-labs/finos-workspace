@@ -54,6 +54,8 @@ export const copilotSchema = z
       .optional(),
     headers: z.record(z.string(), z.string()).optional(),
     models: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
+    /** The skills that come with the agent, as its /agents.json lists them. The agent has their instructions. */
+    skills: z.array(z.object({ slug: z.string(), description: z.string() })).optional(),
   })
   .refine((data) => {
     if (data.hasStreaming !== undefined) {

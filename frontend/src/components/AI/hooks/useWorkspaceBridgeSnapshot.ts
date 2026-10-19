@@ -6,7 +6,6 @@ import { ALL_AI_FEATURES } from "~/lib/constants";
 import { type Item, useAppStore } from "~/lib/state/app";
 import { useAuthStore } from "~/lib/state/auth";
 import { useCopilotStore } from "~/lib/state/copilot";
-import { useCopilotDataStore } from "~/lib/state/copilotData";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
 import { useSkillsLibraryStore } from "~/lib/state/skillsLibrary";
 import type { DashboardInfoT } from "~/lib/utils/workspaceDashboard";
@@ -85,7 +84,6 @@ export function useWorkspaceBridgeSnapshot() {
     const appState = useAppStore.getState();
     const authState = useAuthStore.getState();
     const copilotState = useCopilotStore.getState();
-    const copilotDataState = useCopilotDataStore.getState();
     const mcpToolsState = useMcpToolsStore.getState();
     const skillsLibraryState = useSkillsLibraryStore.getState();
 
@@ -155,8 +153,7 @@ export function useWorkspaceBridgeSnapshot() {
     const customFeatureStates = copilotState.customFeatureStates || {};
     const enabledOptions = new Set<string>();
 
-    if (features["widget-global-search"] && copilotDataState.extraWidgetsEnabled)
-      enabledOptions.add("widget-global-search");
+    if (features["widget-global-search"]) enabledOptions.add("widget-global-search");
     if (features["agent-orchestration"] && copilotState.orchestrationModeEnabled)
       enabledOptions.add("agent-orchestration");
     if (features["mcp-tools"] && mcpToolsState.getEnabledToolCount() > 0)

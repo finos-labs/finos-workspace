@@ -8,6 +8,7 @@ import { agentsRouter } from "./routes/agents";
 import { createStatusRouter } from "./routes/status";
 import { queryRouter } from "./routes/query";
 import { generateRouter } from "./routes/generate";
+import { MAX_AUDIO_BYTES, transcribeRouter } from "./routes/transcribe";
 
 /** The helpers (a title, a rewritten prompt) take a few lines of text: what they are sent is far less than a question is. */
 const HELPER_BODY_BYTES = 8 * 1024 * 1024;
@@ -83,11 +84,18 @@ export function createApp(services: Services): Hono<AppEnv> {
   // turned away at no cost: reading a body takes the whole agent a moment, and a model call is paid for.
   app.use("/v1/generate/*", helperGate);
   app.use("/v1/enhance_prompt", helperGate);
+  app.use("/v1/transcribe", helperGate);
+  // A recording, in a form: the audio and a little room for the form around it.
+  app.use(
+    "/v1/transcribe",
+    bodyLimit({ maxSize: MAX_AUDIO_BYTES + 64 * 1024, onError: (c) => c.json({ error: "The recording is too long." }, 413) }),
+  );
   for (const path of HELPER_JSON_PATHS) {
     app.use(path, bodyLimit({ maxSize: HELPER_BODY_BYTES, onError: (c) => c.json({ error: "The request is too large" }, 413) }));
   }
   app.route("/", queryRouter);
   app.route("/", generateRouter);
+  app.route("/", transcribeRouter);
 
   return app;
 }

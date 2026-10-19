@@ -201,22 +201,6 @@ export function CopilotWelcome() {
                 </div>
               </div>
 
-              <div className="w-full">
-                <div className="body-xs-semibold uppercase tracking-wider text-ds-text-caption mb-2 text-left text-2xs">
-                  Chat Settings
-                </div>
-                <div className="flex flex-col gap-2.5 w-full">
-                  <div className="bg-general-bg-secondary rounded p-3 body-xs-regular text-ds-text-body text-start">
-                    Activate Global data{" "}
-                    <Icon
-                      id="layout-top"
-                      className="inline-block w-4 h-4 align-middle"
-                    />{" "}
-                    to retrieve data from any widget available in the library.
-                  </div>
-                </div>
-              </div>
-
               {aiCopilotDocumentationLinksFF && copilotDocsHref && (
                 <p className="body-xs-regular text-ds-text-caption text-left">
                   For more information, see our{" "}

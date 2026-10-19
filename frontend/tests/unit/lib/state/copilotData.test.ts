@@ -89,7 +89,6 @@ describe("useCopilotDataStore", () => {
         mentionTrackedWidgetUuids: new Set<string>(),
         preSelectedWidgetUuids: new Set<string>(),
         widgetRuntimeState: new Map(),
-        extraWidgetsEnabled: false,
       });
     });
   });
@@ -115,7 +114,6 @@ describe("useCopilotDataStore", () => {
       expect(state.mentionTrackedWidgetUuids.size).toBe(0);
       expect(state.preSelectedWidgetUuids.size).toBe(0);
       expect(state.widgetRuntimeState.size).toBe(0);
-      expect(state.extraWidgetsEnabled).toBe(false);
     });
   });
 
@@ -1040,31 +1038,6 @@ describe("useCopilotDataStore", () => {
     });
   });
 
-  describe("Toggle States", () => {
-    describe("toggleExtraWidgetsEnabled", () => {
-      it("should toggle extra widgets enabled state", () => {
-        expect(useCopilotDataStore.getState().extraWidgetsEnabled).toBe(false);
-
-        act(() => {
-          useCopilotDataStore.getState().toggleExtraWidgetsEnabled();
-        });
-
-        expect(useCopilotDataStore.getState().extraWidgetsEnabled).toBe(true);
-
-        act(() => {
-          useCopilotDataStore.getState().toggleExtraWidgetsEnabled();
-        });
-
-        expect(useCopilotDataStore.getState().extraWidgetsEnabled).toBe(false);
-      });
-
-      it("should return the new state", () => {
-        const result = useCopilotDataStore.getState().toggleExtraWidgetsEnabled();
-        expect(result).toBe(true);
-      });
-    });
-  });
-
   describe("Signature Tracking", () => {
     describe("updateSignaturesMap", () => {
       it("should update signatures map", async () => {
@@ -1158,7 +1131,6 @@ describe("useCopilotDataStore", () => {
               data: { content: "c" },
             },
           ],
-          extraWidgetsEnabled: true,
           mentionTrackedWidgetUuids: new Set(["widget-1"]),
         });
       });

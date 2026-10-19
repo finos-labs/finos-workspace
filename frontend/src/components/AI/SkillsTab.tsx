@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { useDebounceValue } from "usehooks-ts";
 import { deleteUserSkills } from "~/api/auth.api";
-import { SkillCard } from "~/components/AI/SkillCard";
+import { AgentSkillCard, SkillCard } from "~/components/AI/SkillCard";
 import { Button } from "~/components/ds/atoms/Button";
 import { ConfirmDialog } from "~/components/ds/dialogs/ConfirmDialog";
 import SearchResultsNotFound from "~/components/General/SearchResultsNotFound";
@@ -14,9 +14,8 @@ import {
   TabPageToolbar,
 } from "~/components/shared/TabPage";
 import { useStateReducer } from "~/hooks/useStateReducer";
+import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowSkillsLibraryStore } from "~/lib/state/skillsLibrary";
-import type { DefaultSkillSlugs } from "~/types/auth.type";
-import { isDefaultSkill } from "./skills";
 
 type SkillsTabState = {
   deleteSkillId: string | null;
@@ -37,24 +36,20 @@ export function SkillsTab() {
 
   const [debouncedFilter] = useDebounceValue(state.filter, 300);
 
-  const { skills, setSkillDialogOpen, updateSkills, removeDefaultSkill } =
-    useShallowSkillsLibraryStore((s) => ({
+  const { skills, setSkillDialogOpen, updateSkills } = useShallowSkillsLibraryStore(
+    (s) => ({
       skills: s.skills,
       setSkillDialogOpen: s.setSkillDialogOpen,
       updateSkills: s.updateSkills,
-      removeDefaultSkill: s.removeDefaultSkill,
-    }));
+    }),
+  );
+  const agent = useShallowCopilotStore((s) => s.selectedCopilot);
 
   const handleDelete = useCallback((id: string) => {
     dispatch({ deleteSkillId: id });
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
-    if (state.deleteSkillId && isDefaultSkill(state.deleteSkillId)) {
-      removeDefaultSkill(state.deleteSkillId);
-      dispatch({ deleteSkillId: null });
-      return toast.success("Skill deleted");
-    }
     if (state.deleteSkillId) {
       const updatedSkills = await deleteUserSkills(state.deleteSkillId);
       dispatch({ deleteSkillId: null });
@@ -63,7 +58,7 @@ export function SkillsTab() {
       updateSkills(updatedSkills);
       toast.success("Skill deleted");
     }
-  }, [state.deleteSkillId, updateSkills, removeDefaultSkill]);
+  }, [state.deleteSkillId, updateSkills]);
 
   const handleEdit = useCallback(
     (id: string) => setSkillDialogOpen(id),
@@ -92,22 +87,8 @@ export function SkillsTab() {
 
   const handleConfirmBulkDelete = useCallback(async () => {
     const count = state.selectedSkills.size;
-    const obj = {
-      defaultSkills: [] as DefaultSkillSlugs[],
-      userSkills: [] as string[],
-    };
-
-    for (const skillId of state.selectedSkills) {
-      if (isDefaultSkill(skillId)) obj.defaultSkills.push(skillId);
-      else obj.userSkills.push(skillId);
-    }
-
-    // First remove default skills from theme store
-    for (const slug of obj.defaultSkills) removeDefaultSkill(slug);
-
-    // Then delete user skills via API
-    if (obj.userSkills.length > 0) {
-      const updatedSkills = await deleteUserSkills(obj.userSkills);
+    if (count > 0) {
+      const updatedSkills = await deleteUserSkills(Array.from(state.selectedSkills));
       if (!updatedSkills) return toast.error("Failed to delete selected skills");
       updateSkills(updatedSkills);
     }
@@ -116,7 +97,7 @@ export function SkillsTab() {
     toast.success("Skills deleted", {
       description: `Successfully deleted ${count} skill(s).`,
     });
-  }, [updateSkills, state.selectedSkills, removeDefaultSkill]);
+  }, [updateSkills, state.selectedSkills]);
 
   const handleSearchChange = useCallback(
     (value: string) => {
@@ -136,6 +117,22 @@ export function SkillsTab() {
     () => skills.filter((s) => state.selectedSkills.has(s.id)),
     [skills, state.selectedSkills],
   );
+
+  // The skills that come with the agent, listed read-only; a user's skill with the same slug takes the place of one.
+  const agentSkills = useMemo(() => {
+    const ownSlugs = new Set(skills.map((skill) => skill.slug));
+    return (agent?.skills ?? []).filter((skill) => !ownSlugs.has(skill.slug));
+  }, [agent?.skills, skills]);
+
+  const filteredAgentSkills = useMemo(() => {
+    if (!debouncedFilter) return agentSkills;
+    const searchTerm = debouncedFilter.toLowerCase();
+    return agentSkills.filter(
+      (skill) =>
+        skill.slug.toLowerCase().includes(searchTerm) ||
+        skill.description.toLowerCase().includes(searchTerm),
+    );
+  }, [agentSkills, debouncedFilter]);
 
   const filteredSkills = useMemo(() => {
     if (!debouncedFilter) return skills;
@@ -180,7 +177,7 @@ export function SkillsTab() {
         </TabPageToolbar>
 
         <div className="flex flex-col gap-4">
-          {filteredSkills.length === 0 ? (
+          {filteredSkills.length === 0 && filteredAgentSkills.length === 0 ? (
             debouncedFilter ? (
               <SearchResultsNotFound
                 extraClassName="rounded-lg bg-general-bg-primary p-12 h-[200px]"
@@ -205,6 +202,13 @@ export function SkillsTab() {
             <div>
               <hr className="mt-2 border-surface-divider" />
               <div className="flex flex-col">
+                {filteredAgentSkills.map((skill) => (
+                  <AgentSkillCard
+                    key={`agent-skill-card-${skill.slug}`}
+                    skill={skill}
+                    agentName={agent?.name ?? "the agent"}
+                  />
+                ))}
                 {filteredSkills.map((skill) => (
                   <SkillCard
                     key={`skill-card-${skill.id}`}

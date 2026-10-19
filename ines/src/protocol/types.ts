@@ -72,7 +72,8 @@ export interface SkillCatalogEntry {
 export interface SkillPayload {
   slug: string;
   description: string;
-  contentMarkdown: string;
+  /** The skill's instructions; absent for one of Ines's own skills, whose instructions she has. */
+  contentMarkdown?: string;
   source: "forced_slash" | "model_selected";
 }
 

@@ -106,17 +106,12 @@ export function useAiFetchRequestInit() {
   }));
 
   // dashboardWidgetsData contain all the widgets with data filled in a dashboard
-  const {
-    getCopilotWidgets,
-    widgetSubsetData,
-    extraWidgetsEnabled,
-    copilotWidgetsLastUpdated,
-  } = useShallowCopilotDataStore((s) => ({
-    widgetSubsetData: s.widgetSubsetData,
-    extraWidgetsEnabled: s.extraWidgetsEnabled,
-    getCopilotWidgets: s.getCopilotWidgets,
-    copilotWidgetsLastUpdated: s.copilotWidgetsLastUpdated,
-  }));
+  const { getCopilotWidgets, widgetSubsetData, copilotWidgetsLastUpdated } =
+    useShallowCopilotDataStore((s) => ({
+      widgetSubsetData: s.widgetSubsetData,
+      getCopilotWidgets: s.getCopilotWidgets,
+      copilotWidgetsLastUpdated: s.copilotWidgetsLastUpdated,
+    }));
 
   const workspaceOptions = useMemo(() => {
     const options: Record<string, boolean | string> = {};
@@ -124,9 +119,8 @@ export function useAiFetchRequestInit() {
     // Features that are available within the UI and the agent just needs to expose them
     const EXCLUDE = ALL_AI_FEATURES;
 
-    // Built-in options controlled by UI toggles and agent capability
-    if (features?.["widget-global-search"] && extraWidgetsEnabled)
-      options["widget-global-search"] = true;
+    // Built-in options: what the agent can do, and what the UI has turned on
+    if (features?.["widget-global-search"]) options["widget-global-search"] = true;
 
     if (features?.["agent-orchestration"] && orchestrationModeEnabled)
       options["agent-orchestration"] = true;
@@ -156,7 +150,6 @@ export function useAiFetchRequestInit() {
     return options;
   }, [
     selectedCopilot?.features,
-    extraWidgetsEnabled,
     customFeatureStates,
     orchestrationModeEnabled,
     getEnabledToolCount,
@@ -217,6 +210,7 @@ export function useAiFetchRequestInit() {
       const { slugs: forcedSkillSlugs } = parseSkillSlashCommands(incomingMessage);
       const selectedSkills: SkillPayload[] = [];
 
+      const agentSkills = (targetAgent ?? selectedCopilot)?.skills ?? [];
       for (const slug of forcedSkillSlugs) {
         const skill = getSkillBySlug(slug);
         if (skill) {
@@ -224,6 +218,16 @@ export function useAiFetchRequestInit() {
             slug: skill.slug,
             description: skill.description,
             contentMarkdown: skill.content,
+            source: "forced_slash",
+          });
+          continue;
+        }
+        // One of the agent's own skills goes by its slug: the agent has its instructions.
+        const agentSkill = agentSkills.find((s) => s.slug === slug);
+        if (agentSkill) {
+          selectedSkills.push({
+            slug,
+            description: agentSkill.description,
             source: "forced_slash",
           });
         }
@@ -247,7 +251,7 @@ export function useAiFetchRequestInit() {
           {
             primary: expandedPrimaryWidgets,
             secondary: expandedSecondaryWidgets,
-            extra: extraWidgetsEnabled && extraWidgetsCap ? expandedAllWidgets : [],
+            extra: extraWidgetsCap ? expandedAllWidgets : [],
           },
           mcpToolsEnabled ? enabledTools : [],
         ),
@@ -299,7 +303,6 @@ export function useAiFetchRequestInit() {
       getCopilotRequestHeaders,
       getCopilotWidgets,
       widgetSubsetData,
-      extraWidgetsEnabled,
       customFeatureStates,
       getSelectedModelForAgent,
       getFinalMessagesAndWidgets,
@@ -376,7 +379,7 @@ export function useAiFetchRequestInit() {
           {
             primary: expandedPrimaryWidgets,
             secondary: expandedSecondaryWidgets,
-            extra: extraWidgetsEnabled && extraWidgetsCap ? expandedAllWidgets : [],
+            extra: extraWidgetsCap ? expandedAllWidgets : [],
           },
           mcpToolsEnabled ? enabledTools : [],
         ),
@@ -420,7 +423,6 @@ export function useAiFetchRequestInit() {
       getSelectedModelForAgent,
       getFinalMessagesAndWidgets,
       copilotWidgetsLastUpdated,
-      extraWidgetsEnabled,
       orchestrationModeEnabled,
       getSkillsCatalog,
       skills,

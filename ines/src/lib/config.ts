@@ -20,15 +20,19 @@
  *   INES_CORS_ORIGINS            Comma-separated origins of the web app; `*` allows every origin.
  *                                Required with INES_AUTH=workspace, `*` otherwise.
  *   INES_MODELS                  Comma-separated <provider>:<model> that users may pick, besides DEFAULT_MODEL.
+ *   INES_TRANSCRIBE_MODEL        <provider>:<model> for dictation in the chat (groq, openai or nvidia; see
+ *                                lib/transcribe.ts). Unset, there is no dictation.
  *   INES_AUTH_CACHE_SECONDS      How long a signed-in user is remembered (default 30).
  *   INES_MAX_BODY_MB             Largest request accepted (default 64).
  *   INES_MAX_CONCURRENT_QUERIES  Queries one user may have running at once (default 4).
  *   INES_MAX_TOTAL_QUERIES       Queries the whole agent runs at once; past it a query is refused with 503 (default 200).
  *   INES_MAX_TURN_REQUESTS       Requests one question may be made of, counting every return from a tool (default 60).
- *   INES_HELPER_CALLS_PER_MINUTE Helper calls (titles, rewritten prompts, widget descriptions) one user may make in a minute; past it they get 429 (default 60).
+ *   INES_HELPER_CALLS_PER_MINUTE Helper calls (titles, rewritten prompts, widget descriptions, dictation) one user may make in a minute; past it they get 429 (default 60).
  *   INES_INVALID_REQUESTS_PER_MINUTE  Questions that are not questions (not JSON, wrong shape) one user may send in a minute; past it their questions are turned away unread (default 20).
  *   INES_METRICS_PORT            Port of the /metrics listener (default 9464, 0 turns it off).
  */
+
+import { transcribeModelProblem } from "./transcribe";
 
 export type AuthConfig =
   | { mode: "none" }
@@ -162,6 +166,9 @@ export function loadConfig(env: Env = process.env): ServerConfig {
       if (!isOrigin(origin)) problems.push(`INES_CORS_ORIGINS has "${origin}", which is not an origin like https://workspace.example.com.`);
     }
   }
+
+  const transcribeProblem = transcribeModelProblem(env);
+  if (transcribeProblem) problems.push(transcribeProblem);
 
   const models = configuredModels(env);
   for (const model of models) {

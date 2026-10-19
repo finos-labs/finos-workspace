@@ -14,6 +14,7 @@ const mockState = vi.hoisted(() => {
     id: "default-copilot",
     name: "Copilot",
     endpoints: { query: "https://ada.example/v1/query" },
+    skills: [{ slug: "html-report", description: "HTML reports" }],
     features: {
       "widget-global-search": true,
       "mcp-tools": false,
@@ -24,7 +25,6 @@ const mockState = vi.hoisted(() => {
   return {
     allWidget,
     selectedCopilot,
-    extraWidgetsEnabled: false,
     temporaryWidgets: [] as CopilotWidget[],
     tools: [] as Record<string, unknown>[],
     servers: [] as Record<string, unknown>[],
@@ -74,7 +74,6 @@ vi.mock("~/lib/state/copilotData", () => ({
   useShallowCopilotDataStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       widgetSubsetData: [],
-      extraWidgetsEnabled: mockState.extraWidgetsEnabled,
       copilotWidgetsLastUpdated: 0,
       getCopilotWidgets: () => ({
         selectedWidgets: [],
@@ -154,7 +153,7 @@ const makeAttachmentWidget = (uuid: string, name: string) => ({
 
 describe("useAiFetchRequestInit", () => {
   beforeEach(() => {
-    mockState.extraWidgetsEnabled = false;
+    mockState.selectedCopilot.features["widget-global-search"] = true;
     mockState.temporaryWidgets = [];
     mockState.tools = [];
     mockState.servers = [];
@@ -162,23 +161,23 @@ describe("useAiFetchRequestInit", () => {
     mockState.selectedCopilot.features["mcp-tools"] = false;
   });
 
-  it("does not send extra widgets without Global data", async () => {
-    const payloads = await getPayloads();
-
-    for (const payload of payloads) {
-      expect(payload.workspace_options["widget-global-search"]).toBeUndefined();
-      expect(payload.widgets.extra).toEqual([]);
-    }
-  });
-
-  it("sends extra widgets when Global data is enabled", async () => {
-    mockState.extraWidgetsEnabled = true;
-
+  it("always sends the widgets of the whole library to an agent that can search them", async () => {
     const payloads = await getPayloads();
 
     for (const payload of payloads) {
       expect(payload.workspace_options["widget-global-search"]).toBe(true);
       expect(payload.widgets.extra).toEqual([mockState.allWidget]);
+    }
+  });
+
+  it("sends no library widgets to an agent that cannot search them", async () => {
+    mockState.selectedCopilot.features["widget-global-search"] = false;
+
+    const payloads = await getPayloads();
+
+    for (const payload of payloads) {
+      expect(payload.workspace_options["widget-global-search"]).toBeUndefined();
+      expect(payload.widgets.extra).toEqual([]);
     }
   });
 
@@ -204,7 +203,6 @@ describe("useAiFetchRequestInit", () => {
   });
 
   it("tells the agent of a widget's MCP link when its tool is in the request", async () => {
-    mockState.extraWidgetsEnabled = true;
     mockState.selectedCopilot.features["mcp-tools"] = true;
     mockState.servers = [
       {
@@ -249,5 +247,31 @@ describe("useAiFetchRequestInit", () => {
     mockState.selectedCopilot.features["mcp-tools"] = false;
     for (const payload of await getPayloads())
       expect(payload.widgets.extra).toEqual([mockState.allWidget]);
+  });
+
+  it("sends a picked skill of the agent's by its slug, without instructions", async () => {
+    const { result } = renderHook(() => useAiFetchRequestInit());
+    const [getQueryFetchParams] = result.current;
+
+    const { init } = await getQueryFetchParams({
+      incomingMessage: "/skill:html-report make a report",
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(JSON.parse(init.body as string).selected_skills).toEqual([
+      { slug: "html-report", description: "HTML reports", source: "forced_slash" },
+    ]);
+  });
+
+  it("sends nothing for a picked slug that is neither the user's skill nor the agent's", async () => {
+    const { result } = renderHook(() => useAiFetchRequestInit());
+    const [getQueryFetchParams] = result.current;
+
+    const { init } = await getQueryFetchParams({
+      incomingMessage: "/skill:no-such-skill go",
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(JSON.parse(init.body as string).selected_skills).toBeUndefined();
   });
 });

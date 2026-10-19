@@ -2,6 +2,7 @@ import type { ModelMessage } from "ai";
 import type { QueryRequest, ToolMessage, WorkspaceState } from "../protocol/types";
 import { buildSystemPrompt, type PromptOptions } from "./prompt";
 import { renderToolResultForHistory } from "../mcp/results";
+import { inesSkillContent, isInesSkill } from "../skills";
 import { WORKSPACE_BRIDGE_COMMAND_NAMES } from "../protocol/bridge-commands";
 import { isWidgetDataMcpResult } from "./workspace-widget-data";
 import {
@@ -47,10 +48,14 @@ export function buildMessages(
     { role: "system", content: buildSystemPrompt(request, options) },
   ];
 
-  const selectedSkills = request.selected_skills ?? [];
+  // A skill the user picked comes with its instructions, except one of Ines's own, whose instructions she has.
+  const selectedSkills = (request.selected_skills ?? []).flatMap((s) => {
+    const content = s.contentMarkdown || (isInesSkill(request, s.slug) ? inesSkillContent(s.slug) : "");
+    return content ? [{ slug: s.slug, content }] : [];
+  });
   if (selectedSkills.length > 0) {
     const skillBlocks = selectedSkills
-      .map((s) => `<skill name="${s.slug}">\n${s.contentMarkdown}\n</skill>`)
+      .map((s) => `<skill name="${s.slug}">\n${s.content}\n</skill>`)
       .join("\n\n");
     messages.push({
       role: "user",

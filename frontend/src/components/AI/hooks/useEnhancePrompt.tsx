@@ -29,12 +29,10 @@ export function useEnhancePrompt() {
     (s) => s.getCurrentChatArtifacts,
   );
 
-  const { getCopilotWidgets, widgetSubsetData, extraWidgetsEnabled } =
-    useShallowCopilotDataStore((s) => ({
-      widgetSubsetData: s.widgetSubsetData,
-      extraWidgetsEnabled: s.extraWidgetsEnabled,
-      getCopilotWidgets: s.getCopilotWidgets,
-    }));
+  const { getCopilotWidgets, widgetSubsetData } = useShallowCopilotDataStore((s) => ({
+    widgetSubsetData: s.widgetSubsetData,
+    getCopilotWidgets: s.getCopilotWidgets,
+  }));
 
   const customFeatureStates = useShallowCopilotStore((s) => s.customFeatureStates);
 
@@ -53,8 +51,7 @@ export function useEnhancePrompt() {
     const features = getDefaultCopilot().features || {};
 
     // Built-in options controlled by UI toggles and agent capability
-    if (features?.["widget-global-search"] && extraWidgetsEnabled)
-      options["widget-global-search"] = true;
+    if (features?.["widget-global-search"]) options["widget-global-search"] = true;
     if (features?.["mcp-tools"] && getEnabledToolCount() > 0)
       options["mcp-tools"] = true;
 
@@ -80,7 +77,7 @@ export function useEnhancePrompt() {
     }
 
     return options;
-  }, [extraWidgetsEnabled, getEnabledToolCount, customFeatureStates]);
+  }, [getEnabledToolCount, customFeatureStates]);
 
   const enhancePrompt = useCallback(
     async (promptText: string): Promise<string> => {
@@ -144,7 +141,7 @@ export function useEnhancePrompt() {
           widgets: {
             primary: expandedPrimaryWidgets,
             secondary: expandedSecondaryWidgets,
-            extra: extraWidgetsEnabled && extraWidgetsCap ? expandedAllWidgets : [],
+            extra: extraWidgetsCap ? expandedAllWidgets : [],
           },
           messages: [
             ...finalMessages,
@@ -197,7 +194,6 @@ export function useEnhancePrompt() {
       getFinalMessagesAndWidgets,
       getCurrentChatArtifacts,
       widgetSubsetData,
-      extraWidgetsEnabled,
       getCopilotRequestHeaders,
       workspaceOptions,
       getEnabledToolsForAgent,

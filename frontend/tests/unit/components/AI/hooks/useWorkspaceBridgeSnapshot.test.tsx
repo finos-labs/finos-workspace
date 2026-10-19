@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockUseAppStoreGetState = vi.fn();
 const mockUseAuthStoreGetState = vi.fn();
 const mockUseCopilotStoreGetState = vi.fn();
-const mockUseCopilotDataStoreGetState = vi.fn();
 const mockUseMcpToolsStoreGetState = vi.fn();
 const mockUseSkillsLibraryStoreGetState = vi.fn();
 const mockGetDashboardInfo = vi.fn();
@@ -32,12 +31,6 @@ vi.mock("~/lib/state/auth", () => ({
 vi.mock("~/lib/state/copilot", () => ({
   useCopilotStore: {
     getState: () => mockUseCopilotStoreGetState(),
-  },
-}));
-
-vi.mock("~/lib/state/copilotData", () => ({
-  useCopilotDataStore: {
-    getState: () => mockUseCopilotDataStoreGetState(),
   },
 }));
 
@@ -109,9 +102,6 @@ describe("useWorkspaceBridgeSnapshot", () => {
       selectedCopilot: null,
       agentOrchestrationMap: {},
       customFeatureStates: {},
-    });
-    mockUseCopilotDataStoreGetState.mockReturnValue({
-      extraWidgetsEnabled: false,
     });
     mockUseMcpToolsStoreGetState.mockReturnValue({
       getEnabledToolCount: () => 0,
@@ -191,9 +181,6 @@ describe("useWorkspaceBridgeSnapshot", () => {
       },
       agentOrchestrationMap: {},
       customFeatureStates: {},
-    });
-    mockUseCopilotDataStoreGetState.mockReturnValue({
-      extraWidgetsEnabled: true,
     });
     mockUseMcpToolsStoreGetState.mockReturnValue({
       getEnabledToolCount: () => 3,

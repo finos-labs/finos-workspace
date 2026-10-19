@@ -68,7 +68,7 @@ import {
   type WidgetRequest,
 } from "./tools/widget-data";
 import { makeGetSkillContentTool, getSkillContentSchema } from "./tools/skills";
-import { isInesSkill, readInesSkill } from "../skills";
+import { inesSkillContent, isInesSkill } from "../skills";
 import { makeWorkspaceTools } from "./tools/workspace";
 import {
   normalizeBridgeArgs,
@@ -1604,7 +1604,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         loadedSkillSlugs.add(slug);
         // Ines's own skills are read here; the Workspace supplies the user's with a round trip.
         if (isInesSkill(request, slug)) {
-          yield injectSkill(slug, await readInesSkill(slug), ctx);
+          yield injectSkill(slug, inesSkillContent(slug), ctx);
           continue;
         }
         for (const ev of sink.flushTail()) yield ev;

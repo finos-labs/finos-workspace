@@ -65,6 +65,14 @@ describe("GET /agents.json", () => {
     expect(features["prompt-suggestions"]).toHaveProperty("label");
     expect(features["model"]).toHaveProperty("type", "select");
   });
+
+  it("lists the skills that come with Ines", async () => {
+    const body = (await (await app().request("/agents.json")).json()) as {
+      default_agent: { skills: { slug: string; description: string }[] };
+    };
+    expect(body.default_agent.skills.map((s) => s.slug)).toEqual(["html-report", "html-table", "html-chart"]);
+    expect(body.default_agent.skills.every((s) => s.description.length > 0)).toBe(true);
+  });
 });
 
 describe("GET /status", () => {

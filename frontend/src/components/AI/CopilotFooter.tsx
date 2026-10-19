@@ -1,16 +1,15 @@
-import { type MouseEvent, useEffect, useMemo, useRef } from "react";
-import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
+import { type MouseEvent, useMemo, useRef } from "react";
 import { FooterLink, UploadedFile } from "~/components/General/UploadedFile";
 import { useCallbackRef } from "~/hooks/useRefHooks";
 import { COPILOT_ACCEPTED_EXTENSIONS } from "~/lib/constants";
 import { useCopilotContext } from "~/lib/contexts/CopilotChatContext";
-import { useMobile } from "~/lib/providers/MobileProvider";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { cn, extractUrlsFromText } from "~/lib/utils";
 import { Button } from "../ds/atoms/Button";
 import Icon from "../Icon";
 import Tooltip from "../Tooltip";
 import CopilotSwitcher from "./CopilotSwitcher";
+import { useDictation } from "./hooks/useDictation";
 import { useEnhancePrompt } from "./hooks/useEnhancePrompt";
 import {
   StreamingStatus,
@@ -23,10 +22,6 @@ import PromptSuggestions from "./PromptSuggestions";
 import TextArea from "./TextArea";
 
 export default function CopilotFooter() {
-  const isMobile = useMobile((state) => state.isMobile);
-  const { transcript, listening, browserSupportsSpeechRecognition } =
-    useSpeechRecognition();
-
   const fileUploadFF = useShallowCopilotStore((s) =>
     Boolean(s.selectedCopilot?.features?.["file-upload"]),
   );
@@ -49,11 +44,17 @@ export default function CopilotFooter() {
     [files],
   );
 
-  useEffect(() => {
-    if (transcript && listening && browserSupportsSpeechRecognition) {
-      dispatchCopilotCommand(transcript);
-    }
-  }, [transcript, listening, browserSupportsSpeechRecognition]);
+  const selectedCopilot = useShallowCopilotStore((s) => s.selectedCopilot);
+  const speechToTextFF = Boolean(selectedCopilot?.features?.["speech-to-text"]);
+  // What was said goes after what is already typed.
+  const onDictated = useCallbackRef((text: string) =>
+    dispatchCopilotCommand((prev) =>
+      prev.trim() ? `${prev.trimEnd()} ${text}` : text,
+    ),
+  );
+  const dictation = useDictation(selectedCopilot, onDictated);
+  const recording = dictation.state === "recording";
+  const transcribing = dictation.state === "transcribing";
   const inputRef = useRef<HTMLDivElement | null>(null);
 
   const uniqueLinks = useMemo(() => {
@@ -130,37 +131,46 @@ export default function CopilotFooter() {
             <CopilotSwitcher />
             <ModelPicker />
             <div className="flex shrink-0 gap-1 items-center">
-              {isMobile && browserSupportsSpeechRecognition ? (
-                <button
-                  type="button"
-                  aria-label={listening ? "Stop voice input" : "Start voice input"}
-                  aria-pressed={listening}
-                  onClick={() =>
-                    listening
-                      ? SpeechRecognition.stopListening()
-                      : SpeechRecognition.startListening()
-                  }
-                  disabled={loading || limitReached}
-                  className={cn(
-                    "flex items-center justify-center w-8 h-8 rounded transition-colors duration-200 min-w-8",
-                    {
-                      "opacity-25 cursor-default": loading || limitReached,
-                      "text-ds-text-body hover:bg-btn-ghost-bg-hover":
-                        !loading && !limitReached,
-                      "bg-brand-main/10": listening,
-                    },
-                  )}
-                >
-                  <Icon
-                    id={listening ? "ph-microphone-slash-fill" : "ph-microphone-fill"}
-                    className={cn("h-4 w-4 stroke-1", {
-                      "animate-pulse text-brand-main dark:text-brand-lighter":
-                        listening,
-                    })}
-                  />
-                </button>
-              ) : (
-                promptSuggestionsMemo
+              {promptSuggestionsMemo}
+              {speechToTextFF && (
+                <Tooltip message={recording ? "Stop voice input" : "Start voice input"}>
+                  <div className="tooltip-wrapper">
+                    <button
+                      type="button"
+                      aria-label={recording ? "Stop voice input" : "Start voice input"}
+                      aria-pressed={recording}
+                      onClick={() =>
+                        recording ? dictation.stop() : void dictation.start()
+                      }
+                      disabled={loading || limitReached || transcribing}
+                      className={cn(
+                        "flex items-center justify-center w-8 h-8 rounded transition-colors duration-200 min-w-8",
+                        {
+                          "opacity-25 cursor-default":
+                            loading || limitReached || transcribing,
+                          "text-ds-text-body hover:bg-btn-ghost-bg-hover":
+                            !loading && !limitReached && !transcribing,
+                          "bg-brand-main/10": recording,
+                        },
+                      )}
+                    >
+                      <Icon
+                        id={
+                          transcribing
+                            ? "mdi-loading"
+                            : recording
+                              ? "ph-microphone-slash-fill"
+                              : "ph-microphone-fill"
+                        }
+                        className={cn("h-4 w-4 stroke-1", {
+                          "animate-spin": transcribing,
+                          "animate-pulse text-brand-main dark:text-brand-lighter":
+                            recording,
+                        })}
+                      />
+                    </button>
+                  </div>
+                </Tooltip>
               )}
 
               <Tooltip
@@ -249,15 +259,16 @@ export default function CopilotFooter() {
     [
       onSendClick,
       onEnhanceClick,
+      dictation,
       limitReached,
       loading,
       fileUploadFF,
-      isMobile,
       isPromptEmpty,
       hasPendingFiles,
       isEnhancing,
-      browserSupportsSpeechRecognition,
-      listening,
+      speechToTextFF,
+      recording,
+      transcribing,
       promptSuggestionsMemo,
     ],
   );

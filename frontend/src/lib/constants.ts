@@ -83,6 +83,7 @@ export const ALL_AI_FEATURES = new Set([
   "mcp-tools",
   "agent-orchestration",
   "feedback",
+  "speech-to-text",
 ]);
 
 // Features that can be enabled by agents (user-specified in agent configs)
