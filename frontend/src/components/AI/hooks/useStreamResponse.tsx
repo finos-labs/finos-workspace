@@ -28,9 +28,9 @@ import {
   useCopilotStore,
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
-import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowSkillsLibraryStore } from "~/lib/state/skillsLibrary";
 import { useShallowThemeStore, useThemeStore } from "~/lib/state/theme";
+import { WORKSPACE_SERVER_ID } from "~/lib/state/workspaceTools";
 import {
   type AddGenerativeWidgetInputArgumentsT,
   type FunctionCallT,
@@ -59,6 +59,7 @@ import {
   useStreamingHooks,
   useStreamingStore,
 } from "./useStreaming";
+import { useWorkspaceToolExecutor } from "./useWorkspaceToolExecutor";
 import {
   dispatchCopilotCommand,
   normalizeCitations,
@@ -131,7 +132,6 @@ function useStreamResponse(stopSubmit: () => void) {
   const userToken = useShallowAuthStore((s) => s.user?.token);
   const addTab = useShallowAppStore((s) => s.addTab);
   const apiSources = useShallowBackendConnectorStore((s) => s.apiSources);
-  const generativeUiEnabled = useShallowCopilotDataStore((s) => s.generativeUiEnabled);
 
   const copilot = useShallowCopilotStore((s) => ({
     addArtifactToCurrentChat: s.addArtifactToCurrentChat,
@@ -162,8 +162,9 @@ function useStreamResponse(stopSubmit: () => void) {
   } = useFunctionCall();
   const manageNavigationBar = useManageNavigationBar();
 
-  // MCP tool execution
+  // MCP tool execution; the Workspace's own tools are run by this tab
   const executeAgentTool = useMcpExecutor();
+  const executeWorkspaceTool = useWorkspaceToolExecutor();
 
   // Skills store access for get_skill_content function call
   const getSkillBySlug = useShallowSkillsLibraryStore((s) => s.getSkillBySlug);
@@ -179,22 +180,18 @@ function useStreamResponse(stopSubmit: () => void) {
   // Store pending MCP citations across streaming lifecycle (accumulates across multiple tool calls)
   const pendingMcpCitationsRef = useRef<CitationT[]>([]);
 
+  // Follow-up suggestions that arrive before the answer they belong to is put in the chat.
+  const pendingSuggestionsRef = useRef<string[] | null>(null);
+  /** The pending "put the cursor back in the question box" timer, so it can be cancelled. */
+  const focusInputRef = useRef<ReturnType<typeof setTimeout>>();
+
   const autoOpenAppArtifact = useCallback(
-    async (artifact: AppArtifactT, targetAgent?: Copilot) => {
-      const features = targetAgent?.features || copilot.selectedCopilot?.features;
+    async (artifact: AppArtifactT) => {
       // Read items imperatively: back-to-back artifacts in one stream must see the dashboard
       // state left by the previous auto-open, which the render closure would not reflect.
       const items = useAppStore.getState().items;
       const currentDashboardItem = currentDashboard ? items?.[currentDashboard] : null;
-      if (
-        !shouldAutoOpenAppArtifact({
-          generativeUiEnabled,
-          features,
-          currentDashboardItem,
-        })
-      ) {
-        return;
-      }
+      if (!shouldAutoOpenAppArtifact({ currentDashboardItem })) return;
 
       try {
         await createCustomTemplateTab({
@@ -216,14 +213,7 @@ function useStreamResponse(stopSubmit: () => void) {
         });
       }
     },
-    [
-      addTab,
-      navigate,
-      currentDashboard,
-      apiSources,
-      generativeUiEnabled,
-      copilot.selectedCopilot?.features,
-    ],
+    [addTab, navigate, currentDashboard, apiSources],
   );
 
   const updateCopilotTitle = useCallback(
@@ -554,7 +544,10 @@ function useStreamResponse(stopSubmit: () => void) {
           const { server_id, tool_name, parameters } = functionCallSpec.input_arguments;
           if (!(server_id && tool_name))
             throw new Error("execute_agent_tool requires server_id and tool_name");
-          const data = await executeAgentTool(server_id, tool_name, parameters);
+          const data =
+            server_id === WORKSPACE_SERVER_ID
+              ? await executeWorkspaceTool(tool_name, parameters)
+              : await executeAgentTool(server_id, tool_name, parameters);
           return await submitFunctionCallResponse(props, data);
         }
         case "manage_navigation_bar": {
@@ -624,6 +617,7 @@ function useStreamResponse(stopSubmit: () => void) {
       addWidgetToDashboard,
       updateWidgetInDashboard,
       executeAgentTool,
+      executeWorkspaceTool,
       manageNavigationBar,
       addGenerativeWidget,
       getSkillBySlug,
@@ -650,16 +644,30 @@ function useStreamResponse(stopSubmit: () => void) {
       }
       const copilotId = targetAgent?.id || copilot.selectedCopilot.id;
 
-      const flushBuffers = () => {
-        // Used when there is a MessageChunk receiving stream ongoing
-        // but we there is an incoming FunctionCall or StatusUpdate
-        if (!aiMessageBuffer) return;
-        copilot.updateLastMessage({
+      // The answer is held until it is complete and put in the chat whole. Text is never shown token by
+      // token, whatever the agent sends: a chunk is only added to the buffer, never rendered by itself.
+      const commitAnswer = (extra: Partial<AIMessage> = {}) => {
+        if (!aiMessageBuffer) return false;
+        const suggestions = pendingSuggestionsRef.current;
+        pendingSuggestionsRef.current = null;
+        copilot.addMessage({
+          role: "ai",
           content: aiMessageBuffer,
-          citations: citationBuffer,
+          ...(citationBuffer.length > 0 ? { citations: citationBuffer } : {}),
+          ...(suggestions ? { suggestions } : {}),
+          ...extra,
+          copilotId,
+          timestamp: Date.now() + 1, // adding 1 to avoid timestamp collision with the human message
         });
         aiMessageBuffer = "";
         citationBuffer = [];
+        return true;
+      };
+
+      const flushBuffers = () => {
+        // Used when there is text held for the answer
+        // but there is an incoming FunctionCall or StatusUpdate
+        if (!commitAnswer()) return;
         dispatch(
           { ...ResetState, ...StreamingStatus.READY, loading: true },
           setStreamedData,
@@ -695,36 +703,17 @@ function useStreamResponse(stopSubmit: () => void) {
           break;
         }
         case "copilotMessageArtifact": {
-          if (!aiMessageBuffer) {
-            copilot.addMessage({
-              role: "ai",
-              content: "",
-              copilotId,
-              timestamp: Date.now() + 1,
-            });
-            dispatch(StreamingStatus.STARTED);
-          }
           const artifact = data as ArtifactT;
           const suffix = aiMessageBuffer.endsWith("| ") ? "\n" : "";
           const artifactMarker = `${suffix}<artifact className="${artifact.name}"/>`;
           aiMessageBuffer += artifactMarker;
           copilot.addArtifactToCurrentChat(artifact);
           setStreamedData((prevData) => prevData + artifactMarker);
-          if (artifact.type === "app") void autoOpenAppArtifact(artifact, targetAgent);
+          if (artifact.type === "app") void autoOpenAppArtifact(artifact);
 
           break;
         }
         case "copilotMessageChunk": {
-          if (!aiMessageBuffer) {
-            // We add an empty message that will be updated with the data from the chunks
-            copilot.addMessage({
-              role: "ai",
-              content: "",
-              copilotId,
-              timestamp: Date.now() + 1, // adding 1 to avoid timestamp collision with the human message
-            });
-            dispatch(StreamingStatus.STARTED);
-          }
           const delta = (data as { delta?: string }).delta;
           if (!delta) break;
           aiMessageBuffer += delta;
@@ -732,16 +721,6 @@ function useStreamResponse(stopSubmit: () => void) {
           break;
         }
         case "copilotCitationCollection": {
-          if (!aiMessageBuffer) {
-            copilot.addMessage({
-              role: "ai",
-              content: "",
-              copilotId,
-              timestamp: Date.now() + 1,
-            });
-            dispatch(StreamingStatus.STARTED);
-          }
-
           const { citations } = data as { citations: CitationT[] };
           let citationMarkers = citations
             .map((citation) => `<citation className="${citation.id}"/>`)
@@ -776,7 +755,9 @@ function useStreamResponse(stopSubmit: () => void) {
           const suggestions = (data as { suggestions?: unknown } | undefined)
             ?.suggestions;
           if (Array.isArray(suggestions) && suggestions.length > 0) {
-            copilot.updateLastMessage({ suggestions });
+            // They belong to the answer: with it when it is put in the chat, else to the last message.
+            if (aiMessageBuffer) pendingSuggestionsRef.current = suggestions;
+            else copilot.updateLastMessage({ suggestions });
           }
           break;
         }
@@ -813,28 +794,31 @@ function useStreamResponse(stopSubmit: () => void) {
             pendingMcpCitationsRef.current = [];
           }
 
-          if (aiMessageBuffer) {
-            updateMessage.content = aiMessageBuffer;
-            // Only update title if there is actual AI message content
-            // Title generation is an Workspace backend feature available for all agents
-            if (aiEnhancements && aiCopilotAiEnhancementsFF) {
-              updateCopilotTitle(xHeaders?.traceId || "");
-            }
-          }
-          if (citationBuffer.length > 0) {
-            updateMessage.citations = citationBuffer;
-          }
           if (copilot.selectedCopilot.id === "default-copilot") {
             for (const key of ["traceId", "completionId"] as const) {
               const value = xHeaders[key];
               if (value) updateMessage[key] = value;
             }
           }
-          if (Object.keys(updateMessage).length > 0) {
+
+          if (aiMessageBuffer) {
+            // The answer is put in the chat whole, with what belongs to it.
+            commitAnswer(updateMessage);
+            // Only update title if there is actual AI message content
+            // Title generation is a Workspace backend feature available for all agents
+            if (aiEnhancements && aiCopilotAiEnhancementsFF) {
+              updateCopilotTitle(xHeaders?.traceId || "");
+            }
+          } else if (Object.keys(updateMessage).length > 0) {
             copilot.updateLastMessage(updateMessage);
           }
 
-          setTimeout(() => {
+          // The cursor goes back to the question box once the answer is in the chat. The wait is for
+          // the chat to have rendered it. Kept so it can be cancelled: a timer that nobody owns runs
+          // after the component is gone, and then there is no document to look in — which is what
+          // ended the unit tests when a stream finished within 100 ms of the test file finishing.
+          clearTimeout(focusInputRef.current);
+          focusInputRef.current = setTimeout(() => {
             document.getElementById("copilot-input")?.focus();
           }, 100);
           break;
@@ -855,12 +839,16 @@ function useStreamResponse(stopSubmit: () => void) {
       commandRef,
       autoOpenAppArtifact,
       pendingMcpCitationsRef,
+      pendingSuggestionsRef,
     ],
   );
 
   useEffect(() => {
     handleEventRef.current = handleEvent;
   }, [handleEvent]);
+
+  // Nothing to focus once this is unmounted, and the page it would look in may be gone.
+  useEffect(() => () => clearTimeout(focusInputRef.current), []);
 
   const startStreamCb = useCallback(
     async (params: CopilotSubmitParams): Promise<void> => {
@@ -966,6 +954,8 @@ function useStreamResponse(stopSubmit: () => void) {
 
       const newAbortController = new AbortController();
 
+      pendingSuggestionsRef.current = null;
+
       // Clear previous data
       dispatch(
         {
@@ -1037,10 +1027,14 @@ function useStreamResponse(stopSubmit: () => void) {
       }
       console.error("Error:", err);
       copilot.updateLastMessageError(true);
-      dispatch({ loading: false, ...StreamingStatus.READY });
+      dispatch(
+        { loading: false, ...StreamingStatus.READY },
+        setStreamedData,
+        setStreamedCitations,
+      );
       dispatchCopilotCommand("");
     },
-    [copilot.updateLastMessageError, dispatch],
+    [copilot.updateLastMessageError, dispatch, setStreamedData, setStreamedCitations],
   );
 
   const startStreamRef = useRef(mutateAsync);
@@ -1102,19 +1096,23 @@ export function useHandleStreaming() {
     const { messages } = getCurrentChat();
     const lastMessage = messages[messages.length - 1];
 
-    if (streamedData) {
-      // Case 1: There is streamed AI content - update it with cancellation
-      const updateData: Partial<AIMessage> = {
+    if (streamedData && selectedCopilot) {
+      // Case 1: Text was received and is not in the chat yet (it is put there whole when it is complete):
+      // add what there is as a cancelled AI message
+      const newMessage: AIMessage = {
+        role: "ai",
         content: streamedData,
         isCancelled: true,
+        copilotId: selectedCopilot.id,
+        timestamp: Date.now() + 1,
       };
       // Include citations if they exist
       if (streamedCitations && streamedCitations.length > 0) {
-        updateData.citations = streamedCitations;
+        newMessage.citations = streamedCitations;
       }
-      updateLastMessage(updateData);
+      addMessage(newMessage);
     } else if (lastMessage && lastMessage.role === "ai") {
-      // Case 2: AI message exists but no streamed data yet - mark as cancelled
+      // Case 2: AI message exists and nothing is held - mark as cancelled
       const updateData: Partial<AIMessage> = { isCancelled: true };
       // Still include citations if they exist in localStorage
       if (streamedCitations && streamedCitations.length > 0) {

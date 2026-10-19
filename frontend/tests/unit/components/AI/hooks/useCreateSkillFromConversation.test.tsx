@@ -2,7 +2,6 @@ import { act, renderHook } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCreateSkillFromConversation } from "~/components/AI/hooks/useCreateSkillFromConversation";
-import { isDefaultSkill } from "~/components/AI/skills";
 import {
   type Chat,
   type CopilotCommandResultT,
@@ -34,25 +33,9 @@ vi.mock("~/lib/state/auth", () => ({
     selector({ user: { token: "test-token" } }),
 }));
 
-// Stub the theme store so the skills store does not pull in real persisted state.
-vi.mock("~/lib/state/theme", () => ({
-  useThemeStore: {
-    getState: () => ({
-      removedSkillSlugs: ["html-report"],
-      removeDefaultSkill: vi.fn(),
-    }),
-  },
-}));
-
-/**
- * Saving a skill runs it through `updateSkills`, which always appends the built-in
- * default skills. Filter them out so slug assertions stay exact as defaults change.
- */
+/** The slugs of the skills saved in the library. */
 const savedSkillSlugs = () =>
-  useSkillsLibraryStore
-    .getState()
-    .skills.filter((skill) => !isDefaultSkill(skill.id))
-    .map((skill) => skill.slug);
+  useSkillsLibraryStore.getState().skills.map((skill) => skill.slug);
 
 // Mock fetch for the skill generation endpoint
 global.fetch = vi.fn();

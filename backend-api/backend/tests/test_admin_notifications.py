@@ -13,7 +13,7 @@ import pytest
 from api import notifications
 from api.notifications import WebhookNotifier, notify_admins
 from tests.fixtures.base import _TEST_ENTITY_TYPE_UUID
-from tests.fixtures.marketplace import create_app, superuser_override
+from tests.fixtures.base import superuser_override
 from utilities.config import settings
 
 
@@ -129,46 +129,6 @@ class TestNotifyAdmins:
             assert isinstance(notifications.get_notifier(), _RecordingNotifier)
         finally:
             notifications.get_notifier.cache_clear()
-
-
-class TestMarketplaceSubmissionEvent:
-    @pytest.mark.asyncio
-    async def test_submission_notifies_the_reviewers(self, auth_client):
-        app_id = await create_app(auth_client)
-        recorder = _RecordingNotifier()
-        with patch.object(notifications, "get_notifier", lambda: recorder):
-            response = await auth_client.post(
-                f"/marketplace/developer/apps/{app_id}/submit-for-review",
-                json={"message": "please review"},
-            )
-        assert response.status_code == 200, response.text
-        (event, subject, text, payload) = recorder.calls[0]
-        assert event == "marketplace.listing.submitted"
-        assert subject.startswith("[Marketplace review]")
-        assert "please review" in text
-        assert payload["app_uuid"] == app_id
-        assert payload["message"] == "please review"
-        await auth_client.delete(f"/marketplace/developer/apps/{app_id}")
-
-    @pytest.mark.asyncio
-    async def test_submission_succeeds_without_a_notifier(self, auth_client):
-        app_id = await create_app(auth_client)
-        with patch.object(notifications, "get_notifier", lambda: WebhookNotifier(url="")):
-            response = await auth_client.post(
-                f"/marketplace/developer/apps/{app_id}/submit-for-review", json={}
-            )
-        assert response.status_code == 200, response.text
-        await auth_client.delete(f"/marketplace/developer/apps/{app_id}")
-
-    @pytest.mark.asyncio
-    async def test_failed_notifier_returns_502(self, auth_client):
-        app_id = await create_app(auth_client)
-        with patch.object(notifications, "get_notifier", lambda: _RecordingNotifier(False)):
-            response = await auth_client.post(
-                f"/marketplace/developer/apps/{app_id}/submit-for-review", json={}
-            )
-        assert response.status_code == 502
-        await auth_client.delete(f"/marketplace/developer/apps/{app_id}")
 
 
 class TestEntityCreatedEvent:

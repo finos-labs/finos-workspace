@@ -1,7 +1,7 @@
 ---
 title: Backend Contract
 uri: workspace://contract/backend
-use_when: You need to understand what an Workspace backend must expose, regardless of language or framework.
+use_when: You need to understand what a Workspace backend must expose, regardless of language or framework.
 language_specific: false
 related:
   - workspace://specs/widgets-json
@@ -12,7 +12,7 @@ related:
 
 # Backend Contract
 
-An Workspace backend is an **HTTP service** that returns JSON. Workspace fetches metadata and data from your backend over HTTP; it does not import your code, run your runtime, or care which language you use.
+A Workspace backend is an **HTTP service** that returns JSON. Workspace fetches metadata and data from your backend over HTTP; it does not import your code, run your runtime, or care which language you use.
 
 Any framework that can serve JSON over HTTP works: FastAPI, Flask, Django, Express, Fastify, Hono, Spring, Actix, ASP.NET, Go's `net/http`, etc. The contract below is identical for all of them.
 

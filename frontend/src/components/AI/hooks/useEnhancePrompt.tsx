@@ -29,15 +29,8 @@ export function useEnhancePrompt() {
     (s) => s.getCurrentChatArtifacts,
   );
 
-  const {
-    getCopilotWidgets,
-    widgetSubsetData,
-    extraWidgetsEnabled,
-    generativeUiEnabled,
-  } = useShallowCopilotDataStore((s) => ({
+  const { getCopilotWidgets, widgetSubsetData } = useShallowCopilotDataStore((s) => ({
     widgetSubsetData: s.widgetSubsetData,
-    extraWidgetsEnabled: s.extraWidgetsEnabled,
-    generativeUiEnabled: s.generativeUiEnabled,
     getCopilotWidgets: s.getCopilotWidgets,
   }));
 
@@ -58,10 +51,7 @@ export function useEnhancePrompt() {
     const features = getDefaultCopilot().features || {};
 
     // Built-in options controlled by UI toggles and agent capability
-    if (features?.["widget-global-search"] && extraWidgetsEnabled)
-      options["widget-global-search"] = true;
-    if (features?.["generative-ui"] && generativeUiEnabled)
-      options["generative-ui"] = true;
+    if (features?.["widget-global-search"]) options["widget-global-search"] = true;
     if (features?.["mcp-tools"] && getEnabledToolCount() > 0)
       options["mcp-tools"] = true;
 
@@ -87,12 +77,7 @@ export function useEnhancePrompt() {
     }
 
     return options;
-  }, [
-    extraWidgetsEnabled,
-    generativeUiEnabled,
-    getEnabledToolCount,
-    customFeatureStates,
-  ]);
+  }, [getEnabledToolCount, customFeatureStates]);
 
   const enhancePrompt = useCallback(
     async (promptText: string): Promise<string> => {
@@ -156,7 +141,7 @@ export function useEnhancePrompt() {
           widgets: {
             primary: expandedPrimaryWidgets,
             secondary: expandedSecondaryWidgets,
-            extra: extraWidgetsEnabled && extraWidgetsCap ? expandedAllWidgets : [],
+            extra: extraWidgetsCap ? expandedAllWidgets : [],
           },
           messages: [
             ...finalMessages,
@@ -209,8 +194,6 @@ export function useEnhancePrompt() {
       getFinalMessagesAndWidgets,
       getCurrentChatArtifacts,
       widgetSubsetData,
-      extraWidgetsEnabled,
-      generativeUiEnabled,
       getCopilotRequestHeaders,
       workspaceOptions,
       getEnabledToolsForAgent,

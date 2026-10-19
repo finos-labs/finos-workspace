@@ -7,7 +7,7 @@ import type { Group } from "~/lib/state/app";
 import { useThemeStore } from "~/lib/state/theme";
 import { makeEndpointParamGroup } from "../../factories";
 import { partial } from "../../mocks";
-import { renderWidget } from "./WidgetTestWrapper";
+import { renderWidget, WidgetTestWrapper } from "./WidgetTestWrapper";
 
 type IframeProtocol = ReturnType<typeof UseIframeProtocol>;
 
@@ -413,5 +413,111 @@ describe("Iframe Widget", () => {
       "src",
       "https://example.com/browse?selection=Crypto&theme=dark",
     );
+  });
+
+  describe("when a parameter changes", () => {
+    const widgetOverrides = (refreshQuery?: number) => ({
+      id: "browse_markets",
+      ...(refreshQuery === undefined ? {} : { refreshQuery }),
+      storage: {
+        html: "https://example.com/browse",
+        scale: 1.0,
+        params: { selection: "All" },
+      },
+      params: [
+        {
+          paramName: "selection",
+          type: "endpoint" as const,
+          groupById: "selection-options",
+          value: "All",
+          show: true,
+        },
+      ],
+    });
+    const selectionIs = (value: string) =>
+      appStoreMock.getWidgetGroups.mockReturnValue([
+        makeEndpointParamGroup({
+          id: "selection-group",
+          groupById: "selection-options",
+          value,
+        }),
+      ]);
+    const page = (refreshQuery?: number) => (
+      <WidgetTestWrapper widgetOverrides={widgetOverrides(refreshQuery)}>
+        <Iframe />
+      </WidgetTestWrapper>
+    );
+    const connected = () => {
+      iframeProtocolMock.state.manifest = [
+        { widgetId: "page-widget", name: "Page", dataType: "table" },
+      ] as IframeProtocol["manifest"];
+    };
+
+    it("loads a page that has not connected over the protocol with the new address", () => {
+      selectionIs("Sports");
+      const view = renderWidget(<Iframe />, { widgetOverrides: widgetOverrides() });
+      expect(document.querySelector("iframe")).toHaveAttribute(
+        "src",
+        "https://example.com/browse?selection=Sports&theme=dark",
+      );
+
+      selectionIs("Politics");
+      view.rerender(page());
+
+      expect(document.querySelector("iframe")).toHaveAttribute(
+        "src",
+        "https://example.com/browse?selection=Politics&theme=dark",
+      );
+    });
+
+    it("does not reload a page that speaks the protocol: it is told with a message", () => {
+      connected();
+      selectionIs("Sports");
+      const view = renderWidget(<Iframe />, { widgetOverrides: widgetOverrides() });
+      const sent = vi.mocked(iframeProtocolMock.state.sendParamsUpdate);
+      sent.mockClear();
+
+      selectionIs("Politics");
+      view.rerender(page());
+
+      expect(document.querySelector("iframe")).toHaveAttribute(
+        "src",
+        "https://example.com/browse?selection=Sports&theme=dark",
+      );
+      expect(sent).toHaveBeenLastCalledWith(
+        expect.objectContaining({ selection: "Politics" }),
+      );
+    });
+
+    it("keeps the same iframe element, so nothing starts over", () => {
+      connected();
+      selectionIs("Sports");
+      const view = renderWidget(<Iframe />, { widgetOverrides: widgetOverrides() });
+      const before = document.querySelector("iframe");
+
+      selectionIs("Politics");
+      view.rerender(page());
+
+      expect(document.querySelector("iframe")).toBe(before);
+    });
+
+    it("loads the current params when the user refreshes the widget", () => {
+      connected();
+      selectionIs("Sports");
+      const view = renderWidget(<Iframe />, { widgetOverrides: widgetOverrides(1) });
+
+      selectionIs("Politics");
+      view.rerender(page(1));
+      expect(document.querySelector("iframe")).toHaveAttribute(
+        "src",
+        "https://example.com/browse?selection=Sports&theme=dark",
+      );
+
+      view.rerender(page(2));
+      expect(document.querySelector("iframe")).toHaveAttribute(
+        "src",
+        "https://example.com/browse?selection=Politics&theme=dark",
+      );
+    });
   });
 });

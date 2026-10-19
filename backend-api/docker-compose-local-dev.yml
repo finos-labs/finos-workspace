@@ -23,9 +23,11 @@ services:
         "--character-set-server=utf8mb4",
         "--collation-server=utf8mb4_unicode_ci",
       ]
+    # Pinged over TCP: on a first start the entrypoint runs a temporary server on the socket only,
+    # while it creates the database, and a socket ping would call that healthy too early.
     healthcheck:
       test:
-        ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot --silent"]
+        ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -P 3306 -u root -proot --silent"]
       interval: 5s
       timeout: 5s
       retries: 20

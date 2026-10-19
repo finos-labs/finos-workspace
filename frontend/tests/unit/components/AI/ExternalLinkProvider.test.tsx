@@ -58,6 +58,20 @@ describe("ExternalLinkProvider", () => {
     expect(screen.getByText(URL)).toBeInTheDocument();
   });
 
+  it("loads nothing from the link until the user asks for the preview, and then only in a sandbox", () => {
+    renderWithProvider();
+    fireEvent.click(screen.getByText("open report"));
+
+    expect(document.querySelector("iframe")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /load preview/i }));
+
+    const frame = document.querySelector("iframe");
+    expect(frame).toHaveAttribute("src", URL);
+    expect(frame).toHaveAttribute("sandbox", "allow-scripts allow-same-origin");
+    expect(frame).toHaveAttribute("referrerpolicy", "no-referrer");
+  });
+
   it("creates an iframe widget on the active dashboard when choosing 'Open in iframe'", () => {
     renderWithProvider();
 

@@ -451,6 +451,20 @@ By default, entity users can add their own backends from the frontend. To restri
   --data '{"allow_custom_backends": true}'
 ```
 
+**Controlling whether the Copilot may use the web:**
+
+Searching the web (`SEARCH_WEB`) and reading a page from it (`FETCH_FROM_WEB`) are on for everyone. They are switched off for the whole entity with its entitlement. The CLI applies an entitlement to every user of the entity (it always sends `update_all`), whatever a user had; the API's `PATCH /entity/entitlement/{entity}` without `update_all` reaches only the users who still have the entity's setting and keeps the ones whose own was set. An administrator switches either off for one user in the admin panel (User, Entitlements tab) or in the app (the user's profile, "Copilot web access").
+
+```bash
+# The Copilot of this entity's users does not search the web
+./workspace-admin entitlement update <entity-uuid> \
+  --data '{"search_web": false}'
+
+# ... and does not read pages from it either
+./workspace-admin entitlement update <entity-uuid> \
+  --data '{"search_web": false, "fetch_from_web": false}'
+```
+
 ## Advanced Examples
 
 ### Extend Entity Expiration
@@ -628,6 +642,9 @@ client.entitlement_update("entity-uuid", {"allow_custom_backends": False})
 
 # Re-enable custom backends
 client.entitlement_update("entity-uuid", {"allow_custom_backends": True})
+
+# Switch the Copilot's tools for the web off for an entity (SEARCH_WEB, FETCH_FROM_WEB)
+client.entitlement_update("entity-uuid", {"search_web": False, "fetch_from_web": False})
 ```
 
 ### Bulk Provisioning

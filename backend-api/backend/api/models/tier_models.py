@@ -53,6 +53,10 @@ class TierDefaults(Base, UUIDMixin, DateMixin):
     support = Column(Boolean)
     excel_add_in = Column(Boolean)
     data_add_ons_redistribution = Column(Boolean)
+    # What the Copilot may do on the web: the agent's tools for searching it and for reading a page.
+    # None is allowed, as for every flag of a tier or entitlement that was written before the flag existed.
+    search_web: Mapped[bool | None] = mapped_column(Boolean, default=True)
+    fetch_from_web: Mapped[bool | None] = mapped_column(Boolean, default=True)
 
     __table_args__ = (
         CheckConstraint(
@@ -87,6 +91,10 @@ class EntityEntitlement(Base, UUIDMixin, DateMixin):
     excel_add_in = Column(Boolean)
     data_add_ons_redistribution = Column(Boolean)
     allow_custom_backends: Mapped[bool | None] = mapped_column(Boolean, default=True)
+    # What the Copilot may do on the web: the agent's tools for searching it and for reading a page.
+    # None is allowed, as for every flag of a tier or entitlement that was written before the flag existed.
+    search_web: Mapped[bool | None] = mapped_column(Boolean, default=True)
+    fetch_from_web: Mapped[bool | None] = mapped_column(Boolean, default=True)
 
     data_bundle_uuid = Column(
         UUIDType, ForeignKey("data_bundle.uuid"), nullable=True, default=None
@@ -125,6 +133,10 @@ class Entitlement(Base, UUIDMixin, DateMixin):
     excel_add_in = Column(Boolean)
     data_add_ons_redistribution = Column(Boolean)
     allow_custom_backends: Mapped[bool | None] = mapped_column(Boolean, default=True)
+    # What the Copilot may do on the web: the agent's tools for searching it and for reading a page.
+    # None is allowed, as for every flag of a tier or entitlement that was written before the flag existed.
+    search_web: Mapped[bool | None] = mapped_column(Boolean, default=True)
+    fetch_from_web: Mapped[bool | None] = mapped_column(Boolean, default=True)
 
     data_bundle_uuid = Column(
         UUIDType, ForeignKey("data_bundle.uuid"), nullable=True, default=None

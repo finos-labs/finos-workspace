@@ -43,6 +43,8 @@ const userSchema = z.object({
   support: z.boolean().optional(),
   excel_add_in: z.boolean().optional(),
   data_add_ons_redistribution: z.boolean().optional(),
+  search_web: z.boolean().nullable().optional(),
+  fetch_from_web: z.boolean().nullable().optional(),
   bundle_name: z
     .enum(["Default", "Equity Research"])
     .nullable()
@@ -123,6 +125,8 @@ export function UserSubmitForm({
           support: values.support,
           excel_add_in: values.excel_add_in,
           data_add_ons_redistribution: values.data_add_ons_redistribution,
+          search_web: values.search_web ?? true,
+          fetch_from_web: values.fetch_from_web ?? true,
           bundle_name: values.bundle_name,
         };
         const entitlementResponse = await patchAdminUserEntitlement(
@@ -338,6 +342,32 @@ export function UserSubmitForm({
                   <Checkbox
                     label="Data Add-Ons Redistribution"
                     checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                );
+              }}
+            />
+            <FormField
+              name="search_web"
+              control={form.control}
+              render={({ field }) => {
+                return (
+                  <Checkbox
+                    label="Copilot may search the web (SEARCH_WEB)"
+                    checked={field.value ?? true}
+                    onCheckedChange={field.onChange}
+                  />
+                );
+              }}
+            />
+            <FormField
+              name="fetch_from_web"
+              control={form.control}
+              render={({ field }) => {
+                return (
+                  <Checkbox
+                    label="Copilot may read pages from the web (FETCH_FROM_WEB)"
+                    checked={field.value ?? true}
                     onCheckedChange={field.onChange}
                   />
                 );

@@ -142,6 +142,8 @@ describe("entitlement form", () => {
     excel_add_in: true,
     data_add_ons_redistribution: false,
     allow_custom_backends: true,
+    search_web: true,
+    fetch_from_web: false,
     bundle_name: "On-Premise",
   });
 
@@ -157,7 +159,26 @@ describe("entitlement form", () => {
 
     expect(none.admin_access).toBe(false);
     expect(none.allow_custom_backends).toBe(true);
+    // The Copilot's web tools are on until an administrator switches them off
+    expect(none.search_web).toBe(true);
+    expect(none.fetch_from_web).toBe(true);
     expect(entitlementFormSchema.safeParse(none).success).toBe(true);
+  });
+
+  it("shows the web tools as the entity has them, and sends them as they are", () => {
+    expect(entitlements.search_web).toBe(true);
+    expect(entitlements.fetch_from_web).toBe(false);
+    const body = entitlementBody(entitlements);
+    expect(body.search_web).toBe(true);
+    expect(body.fetch_from_web).toBe(false);
+    // An entity written before the switches existed has neither set: both are on
+    const old = entitlementFormDefaults({
+      ...(entitlementBody(entitlements) as object),
+      search_web: null,
+      fetch_from_web: null,
+    } as Parameters<typeof entitlementFormDefaults>[0]);
+    expect(old.search_web).toBe(true);
+    expect(old.fetch_from_web).toBe(true);
   });
 
   it("sends no token limit as null and the rest as numbers", () => {
@@ -210,6 +231,8 @@ describe("entitlement form", () => {
         "excel_add_in",
         "data_add_ons_redistribution",
         "allow_custom_backends",
+        "search_web",
+        "fetch_from_web",
         "bundle_name",
       ].sort(),
     );

@@ -39,7 +39,7 @@ SCOPE_VERSION = 1
 # hashes on *every* write, so a hash round-tripped through the ORM would be
 # double-hashed and the account would be permanently unloggable. The importer
 # sets an unknown random password instead and the Lite admin assigns a real one.
-GLOBAL_REDACT = ("password", "auth_token", "totp_secret")
+GLOBAL_REDACT = ("password", "totp_secret")
 
 
 @dataclass(frozen=True)
@@ -248,13 +248,6 @@ EXCLUDED: list[ExcludedTable] = [
     ),
     ExcludedTable("entitlement_usage", "user_uuid", "Hub quota counters."),
     ExcludedTable(
-        "user_app_subscription", "user_uuid", "Marketplace subscriptions; no "
-        "marketplace in Lite."
-    ),
-    ExcludedTable("rate_vendor_app", "user_uuid", "Marketplace app reviews."),
-    ExcludedTable("vendor", "owner_uuid", "Marketplace publisher identity."),
-    ExcludedTable("vendor_app", "owner_uuid", "Marketplace published listings."),
-    ExcludedTable(
         "audit_entity_roles_permissions",
         "performed_by_uuid",
         "Org admin audit log; belongs to the entity, not the user.",
@@ -289,11 +282,6 @@ IMPORT_OVERRIDE_REASONS: dict[str, dict[str, str]] = {
         "billing_active": "No billing in Lite.",
     },
     "api_source": {
-        "vendor_app_uuid": (
-            "Points at a marketplace listing, which is EXCLUDED and will never "
-            "exist in Lite. With PRAGMA foreign_keys=ON this would fail the "
-            "insert outright."
-        ),
         "entity_uuid": "Org ownership does not transfer; these become personal.",
     },
     "dashboard_item": {
@@ -322,7 +310,7 @@ def import_overrides(spec: TableSpec) -> dict[str, Any]:
             "billing_active": False,
         }
     if spec.table == "api_source":
-        return {"vendor_app_uuid": None, "entity_uuid": None}
+        return {"entity_uuid": None}
     if spec.table == "dashboard_item":
         return {"entity_uuid": None, "entity_share": False, "is_shared": False}
     if spec.table == "user_app":

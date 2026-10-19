@@ -19,8 +19,7 @@ const DOT_COLORS: Record<Exclude<ConnectionStatus, "pending">, string> = {
 };
 
 // Text color paired with each dot. Used when `coloredLabel` tints the whole
-// indicator so the dot and label share one color (e.g. a green "● Connected",
-// matching the marketplace app cards).
+// indicator so the dot and label share one color (e.g. a green "● Connected").
 const LABEL_COLORS: Record<Exclude<ConnectionStatus, "pending">, string> = {
   connected: "text-alert-success",
   error: "text-alert-error",

@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { WidgetT } from "~/components/types";
+import type { Group, WidgetT } from "~/components/types";
 
 // --- Mocks ---
 
@@ -11,11 +11,14 @@ vi.mock("react-router-dom", () => ({
 
 const mockGetLastInnerTab = vi.fn().mockReturnValue("");
 const mockGetSideBarItem = vi.fn();
+const mockGetWidgetGroups = vi.fn().mockReturnValue([]);
+const mockGetTabById = vi.fn().mockReturnValue(undefined);
 
 vi.mock("~/lib/state/app", () => ({
   useAppStore: {
     getState: () => ({
       getSideBarItem: mockGetSideBarItem,
+      getWidgetGroups: mockGetWidgetGroups,
       items: new Proxy({} as Record<string, unknown>, {
         get: (_target, key: string) => mockGetSideBarItem(key),
       }),
@@ -25,6 +28,7 @@ vi.mock("~/lib/state/app", () => ({
     selector({
       getLastInnerTab: mockGetLastInnerTab,
       getSideBarItem: mockGetSideBarItem,
+      getTabById: mockGetTabById,
     }),
 }));
 
@@ -122,6 +126,7 @@ const { mockGetWidgetInfo, mockCreateParamDefs, mockCurrentDateModifier } = vi.h
 vi.mock("~/lib/utils", () => ({
   createParamDefs: mockCreateParamDefs,
   currentDateModifier: mockCurrentDateModifier,
+  getEndpointParamName: vi.fn(),
   getJsonWidget: vi.fn(),
   getWidgetDataSource: vi.fn().mockReturnValue("unknown"),
   getWidgetInfo: mockGetWidgetInfo,
@@ -132,6 +137,10 @@ import {
   createCopilotWidget,
   useGetCopilotWidgets,
 } from "~/components/AI/hooks/useGetCopilotWidgets";
+import {
+  registerIframeWidget,
+  unregisterIframeWidget,
+} from "~/lib/iframeWidgetRegistry";
 import type { CopilotFile, HumanMessage, Message } from "~/lib/state/copilot";
 
 // Helper to create mock widgets
@@ -624,6 +633,137 @@ describe("createCopilotWidget - runtime state", () => {
 });
 
 /**
+ * A widget in a parameter group shows the group's value, not the one it stored when it joined: the Copilot
+ * is told what the widget shows now. (An iframe widget cannot be read any other way: its parameters are its state.)
+ */
+describe("createCopilotWidget - grouped parameters", () => {
+  const symbolGroup = (value: unknown): Group =>
+    ({
+      type: "param",
+      id: "g-1",
+      name: "Symbol",
+      color: "#fff",
+      groupById: "symbol",
+      value,
+    }) as Group;
+
+  const iframeWidget = () =>
+    createWidget({
+      id: "asset-info",
+      widgetId: "asset_info",
+      type: "iframe",
+      params: [
+        { paramName: "symbol", type: "text", value: "AAPL" },
+        { paramName: "theme", type: "text", value: "dark" },
+      ],
+    });
+
+  const currentValueOf = (
+    result: ReturnType<typeof createCopilotWidget>,
+    name: string,
+  ) => result?.params?.find((p: { name: string }) => p.name === name)?.current_value;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetWidgetInfo.mockReturnValue({ name: "Asset Info", description: "Info" });
+    mockCreateParamDefs.mockReturnValue([
+      { paramName: "symbol", type: "text", value: "AAPL" },
+      { paramName: "theme", type: "text", value: "dark" },
+    ]);
+  });
+
+  it("advertises the value of the group, whatever the widget stored", () => {
+    const stored = { params: { symbol: "AAPL", theme: "dark" } };
+
+    const result = createCopilotWidget(
+      "asset-info",
+      iframeWidget(),
+      stored,
+      undefined,
+      [symbolGroup("MSFT")],
+    );
+
+    expect(currentValueOf(result, "symbol")).toBe("MSFT");
+    expect(currentValueOf(result, "theme")).toBe("dark");
+  });
+
+  it("advertises what the widget stored when it is in no group", () => {
+    const stored = { params: { symbol: "TSLA", theme: "dark" } };
+
+    expect(
+      currentValueOf(
+        createCopilotWidget("asset-info", iframeWidget(), stored),
+        "symbol",
+      ),
+    ).toBe("TSLA");
+    expect(
+      currentValueOf(
+        createCopilotWidget("asset-info", iframeWidget(), stored, undefined, []),
+        "symbol",
+      ),
+    ).toBe("TSLA");
+  });
+
+  it("advertises what the widget stored while the group has no value yet", () => {
+    const stored = { params: { symbol: "TSLA" } };
+
+    const result = createCopilotWidget(
+      "asset-info",
+      iframeWidget(),
+      stored,
+      undefined,
+      [symbolGroup(null)],
+    );
+
+    expect(currentValueOf(result, "symbol")).toBe("TSLA");
+  });
+
+  it("does not let a group of another parameter change this one", () => {
+    const stored = { params: { symbol: "TSLA", theme: "dark" } };
+    const otherGroup = {
+      ...symbolGroup("light"),
+      id: "g-2",
+      groupById: "theme",
+    } as Group;
+
+    const result = createCopilotWidget(
+      "asset-info",
+      iframeWidget(),
+      stored,
+      undefined,
+      [otherGroup],
+    );
+
+    expect(currentValueOf(result, "symbol")).toBe("TSLA");
+    expect(currentValueOf(result, "theme")).toBe("light");
+  });
+
+  it("keeps a value that the user typed and has not run, over the group's", () => {
+    const result = createCopilotWidget(
+      "asset-info",
+      iframeWidget(),
+      { params: { symbol: "AAPL" } },
+      { copilotDraftParams: { symbol: "NVDA" } },
+      [symbolGroup("MSFT")],
+    );
+
+    expect(currentValueOf(result, "symbol")).toBe("NVDA");
+  });
+
+  it("says what the widget is, so that an iframe widget can be told from the others", () => {
+    expect(createCopilotWidget("asset-info", iframeWidget(), {})?.widget_type).toBe(
+      "iframe",
+    );
+    const table = createWidget({
+      id: "t",
+      widgetId: "t",
+      type: "table" as WidgetT["type"],
+    });
+    expect(createCopilotWidget("t", table, {})?.widget_type).toBe("table");
+  });
+});
+
+/**
  * The agent payload and `workspace_state` are built from the same dashboard but
  * by two independent paths: widgets go through the reduce in `useGetCopilotWidgets`,
  * while `current_dashboard_info` is built from `getDashboardInfo(currentDashboardId)`.
@@ -726,6 +866,80 @@ describe("useGetCopilotWidgets - agent payload vs. advertised dashboard state", 
 
     expect(sentToAgent).toHaveLength(3);
     expect(advertisedInPrompt.every((u: string) => sentToAgent.includes(u))).toBe(true);
+  });
+});
+
+describe("useGetCopilotWidgets - an iframe widget whose page has published entries", () => {
+  const WIDGET_UUID = "0b6f6a0e-5c1d-4a52-9d1e-3b0c9f6a1e11";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetWidgetInfo.mockReturnValue({
+      name: "TradingView Chart",
+      description: "A chart",
+      source: "ODP",
+      category: "Test",
+      subCategory: "Test",
+    });
+    mockGetLastInnerTab.mockReturnValue("");
+    mockGetSideBarItem.mockImplementation(() => ({
+      data: {
+        name: "Dashboard",
+        widgets: mockGetWidgetsInCurrentDashboard(),
+        currentTab: "",
+        gridLayout: {},
+      },
+    }));
+    mockGetWidgetsInCurrentDashboard.mockReturnValue([
+      createWidget({ id: WIDGET_UUID, name: "TradingView Chart", widgetId: "tv", type: "iframe" }),
+    ]);
+    mockGetDashboardWidgetsData.mockReturnValue({
+      [WIDGET_UUID]: { metadata: {}, title: "TradingView Chart" },
+    });
+  });
+
+  afterEach(() => unregisterIframeWidget(WIDGET_UUID));
+
+  const sent = () => mockSetCopilotWidgets.mock.calls[0]?.[0];
+
+  it("sends the widget itself, by its own uuid, once the page has published entries", () => {
+    registerIframeWidget(WIDGET_UUID, {
+      requestWidgetData: vi.fn(),
+      sendRefresh: vi.fn(),
+      manifest: [{ widgetId: "tvc_made_up_by_the_page", name: "Chart", dataType: "table" }],
+    });
+
+    renderHook(() => useGetCopilotWidgets());
+
+    const toAgent = (sent()?.allDashboardWidgets ?? []) as { uuid: string; widget_type?: string }[];
+    expect(toAgent.find((w) => w.uuid === WIDGET_UUID)).toMatchObject({
+      uuid: WIDGET_UUID,
+      widget_type: "iframe",
+    });
+    expect(toAgent.map((w) => w.uuid)).toContain(
+      `${WIDGET_UUID}::iframe::tvc_made_up_by_the_page`,
+    );
+  });
+
+  it("sends the same widget before the page has published anything", () => {
+    renderHook(() => useGetCopilotWidgets());
+
+    const toAgent = (sent()?.allDashboardWidgets ?? []) as { uuid: string; widget_type?: string }[];
+    expect(toAgent.map((w) => w.uuid)).toEqual([WIDGET_UUID]);
+    expect(toAgent[0].widget_type).toBe("iframe");
+  });
+
+  it("keeps the widget out of the current-tab slice, which holds what the page published", () => {
+    registerIframeWidget(WIDGET_UUID, {
+      requestWidgetData: vi.fn(),
+      sendRefresh: vi.fn(),
+      manifest: [{ widgetId: "tvc_made_up_by_the_page", name: "Chart", dataType: "table" }],
+    });
+
+    renderHook(() => useGetCopilotWidgets());
+
+    const slice = ((sent()?.dashboardWidgets ?? []) as { uuid: string }[]).map((w) => w.uuid);
+    expect(slice).toEqual([`${WIDGET_UUID}::iframe::tvc_made_up_by_the_page`]);
   });
 });
 

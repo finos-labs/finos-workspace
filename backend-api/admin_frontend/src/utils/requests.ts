@@ -97,6 +97,9 @@ export interface EntitlementBase {
   support: boolean | undefined;
   excel_add_in: boolean | undefined;
   data_add_ons_redistribution: boolean | undefined;
+  // The Copilot's tools for the web: on unless switched off (empty is on).
+  search_web: boolean | null | undefined;
+  fetch_from_web: boolean | null | undefined;
   bundle_name: "Default" | "Equity Research" | undefined | null;
 }
 

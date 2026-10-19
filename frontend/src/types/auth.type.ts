@@ -13,8 +13,6 @@ import type { McpServer } from "~/lib/state/mcpTools";
 import type { SharedItem } from "~/lib/state/sharedApp";
 import type { UserAppsSync } from "~/lib/state/userApps";
 
-export type DefaultSkillSlugs = "html-report" | "html-table" | "html-chart";
-
 export interface DisplaySettings {
   theme: "light" | "dark";
   showWidgetControlsEllipsis: boolean;
@@ -29,7 +27,6 @@ export interface DisplaySettings {
   openaiApiKey?: string;
   collapsedPanelExpandOnHover?: boolean;
   autoHideWidgetNavbar?: boolean;
-  removedSkillSlugs?: DefaultSkillSlugs[]; // Track removed skills by slug to prevent re-adding default skills
 }
 
 export type SyncType = "owned" | "shared" | "entity_shared";
@@ -40,8 +37,7 @@ export interface DashSyncT {
   shared?: Record<string, SharedItem>;
   entity_shared?: Record<string, SharedItem>;
   entity_theme_settings: EntityThemeSettings;
-  feature_entitlements?: Omit<FeatureFlags, "can_submit_marketplace">;
-  can_submit_marketplace?: boolean;
+  feature_entitlements?: FeatureFlags;
   usage?: Usage;
   copilot_chats?: Chat[];
   questions_history?: string[];
@@ -67,8 +63,7 @@ export type Detail = { status: number; detail: string };
 export interface LoginResponse {
   is_first_login: boolean;
   custom_copilots: CustomCopilot[];
-  feature_entitlements: Omit<FeatureFlags, "can_submit_marketplace">;
-  can_submit_marketplace: boolean;
+  feature_entitlements: FeatureFlags;
   usage: Usage;
   uuid: string;
   email: string;
@@ -176,6 +171,7 @@ export interface SkillCatalogEntry {
 export interface SkillPayload {
   slug: string;
   description: string;
-  contentMarkdown: string;
+  /** The skill's instructions; absent for one of the agent's own skills, whose instructions the agent has. */
+  contentMarkdown?: string;
   source: "forced_slash" | "model_selected";
 }
