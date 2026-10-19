@@ -37,7 +37,6 @@ export type FeatureFlags = {
   support: boolean;
   tier: "full" | "basic";
   total_file_upload_size_gb: number;
-  can_submit_marketplace: boolean; // developer may submit marketplace apps
 };
 
 export function isExcludedWidgetId(widgetId: string | undefined): boolean {

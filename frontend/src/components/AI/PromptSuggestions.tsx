@@ -141,7 +141,7 @@ export default function PromptSuggestions({ setCompletion }: PromptSuggestionsPr
           <div className="text-sm font-semibold text-ds-text-heading">Prompts</div>
           <Tooltip message="Manage Prompts">
             <Link
-              to="/app/prompts"
+              to="/app/ai?tab=prompts"
               tabIndex={0}
               aria-label="Manage Prompts"
               onClick={() => setPromptsSuggestionsMenuOpen(false)}
@@ -185,7 +185,10 @@ export default function PromptSuggestions({ setCompletion }: PromptSuggestionsPr
           ) : (
             <div className="p-4 text-center text-ds-text-caption">
               No suggestions available for this dashboard, try adding more widgets or{" "}
-              <Link to="/app/prompts" className="text-link-color hover:underline">
+              <Link
+                to="/app/ai?tab=prompts"
+                className="text-link-color hover:underline"
+              >
                 create your own prompt
               </Link>
               .

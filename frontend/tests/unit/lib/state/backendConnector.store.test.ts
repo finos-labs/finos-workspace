@@ -1,12 +1,7 @@
 import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  type Source,
-  useBackendConnectorStore,
-  type VenderApp,
-} from "~/lib/state/backendConnector";
+import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
-import { partial } from "../../mocks";
 
 vi.mock("sonner", () => ({
   toast: {
@@ -168,7 +163,6 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
       url: "https://mcp.example.com/sse",
       sourceId: mockSource.id,
     });
-    expect(servers[0].vendorAppUuid).toBeUndefined();
   });
 
   it("does not re-register MCP on refresh after user removed it manually", async () => {
@@ -222,32 +216,5 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
     // Manual backend refresh must NOT bring it back
     await useBackendConnectorStore.getState().updateApiSource(mockSource);
     expect(useMcpToolsStore.getState().servers).toHaveLength(0);
-  });
-
-  it("finds and removes marketplace sources by vendorAppUuid", () => {
-    useBackendConnectorStore.setState({
-      apiSources: [
-        {
-          id: "source-1",
-          uuid: "source-1",
-          name: "Marketplace Backend",
-          url: "https://test-backend.com",
-          endpointHeaders: [],
-          vendorApp: partial<VenderApp>({
-            uuid: "listed-app-1",
-            name: "Listed App 1",
-          }),
-          hasApiKey: true,
-        },
-      ],
-    });
-
-    const store = useBackendConnectorStore.getState();
-
-    expect(store.getApiSourceById("listed-app-1")?.id).toBe("source-1");
-
-    store.removeApiSource("listed-app-1");
-
-    expect(useBackendConnectorStore.getState().apiSources).toEqual([]);
   });
 });

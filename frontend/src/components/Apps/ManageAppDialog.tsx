@@ -49,7 +49,6 @@ export const AppSchema = z.object({
     )
     .optional(),
   validateWidgets: z.string().default("false").optional(),
-  isPlatform: z.boolean().default(false).optional(),
 });
 
 export type AppForm = z.infer<typeof AppSchema>;
@@ -116,7 +115,6 @@ export default function ManageAppDialog() {
       url: url || "",
       endpointHeaders: [],
       validateWidgets: "false",
-      isPlatform: false,
     },
   });
 
@@ -128,7 +126,6 @@ export default function ManageAppDialog() {
       url: url || source?.url || "",
       endpointHeaders: source?.endpointHeaders || [],
       validateWidgets: "false",
-      isPlatform: source?.isPlatform ?? undefined,
     });
     dispatch({ isConnected: manageAppDialog.data?.status === "success" });
   }, [manageAppDialog.data]);
@@ -224,7 +221,6 @@ export default function ManageAppDialog() {
           templateWarningMessage,
           totalFailed,
           templates,
-          isPlatform,
         } = await validateSource(source, validateWidgets === "true");
 
         const widgetsCount = Object.keys(widgets).length;
@@ -276,7 +272,6 @@ export default function ManageAppDialog() {
             url: cleanUrl,
             widgets,
             endpointHeaders,
-            isPlatform,
           },
         });
       } catch (err) {

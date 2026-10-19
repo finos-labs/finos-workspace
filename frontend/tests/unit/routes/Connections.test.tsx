@@ -44,8 +44,6 @@ const {
 }));
 
 vi.mock("~/api/auth.api", () => ({
-  SUBSCRIPTIONS_QUERY_KEY: ["marketplace", "subscriptions"],
-  getUserSubscriptions: vi.fn(),
   deleteApiSource: (...args: unknown[]) => mockDeleteApiSource(...args),
   getApiSources: () => mockGetApiSources(),
   removeCustomCopilot: (...args: unknown[]) => mockRemoveCustomCopilot(...args),

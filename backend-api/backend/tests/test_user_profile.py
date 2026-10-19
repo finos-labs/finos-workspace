@@ -44,6 +44,15 @@ class TestDisplaySettings:
         assert "application/json" in content_type
 
 
+class TestDisplaySettingsDefaults:
+    """A new user's saved settings must point somewhere the app serves"""
+
+    def test_default_landing_page_is_the_apps_page(self):
+        from api.schemas import UserDisplaySettings
+
+        assert UserDisplaySettings().lastVisitedPage == "/app"
+
+
 class TestUserUpdate:
     """Tests for /user PUT endpoint"""
 

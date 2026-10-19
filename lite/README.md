@@ -95,11 +95,9 @@ The web app reads `/config.js` when it loads. The image writes that file at ever
 | --- | --- |
 | `VITE_BACKEND_URL` | Where the app finds the backend (`/api` in this image: nginx proxies it) |
 | `VITE_AI_API_URL` | The AI service the Copilot talks to |
-| `VITE_MARKETPLACE_URL` | A remote marketplace to list apps from (empty: this backend) |
 | `VITE_DOCS_URL` | The documentation site (empty: links to it are hidden) |
 | `VITE_SUPPORT_EMAIL` | Where users are sent for help (empty: no address is shown) |
 | `VITE_AUTHENTICATION_IDENTITY_PROVIDERS` | Single sign-on providers to offer (`google`, `microsoft`, `okta`) |
-| `VITE_UI_SHOW_MARKETPLACE` | Show the Apps Marketplace tab |
 
 A variable that is not a setting is reported in the startup logs and ignored. To start from a `config.js` of your own instead of the built one, mount it over the file the renderer reads (the renderer writes `/usr/share/nginx/html/config.js`, so that path cannot be mounted):
 

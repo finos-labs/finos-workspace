@@ -64,7 +64,7 @@ def _base_env() -> dict[str, str]:
         "S3_ENDPOINT_URL": "http://localhost",
         "FRONTENDURL": "http://localhost",
         "WORKSPACE_FRONTEND_USER_AGENT": "test",
-        "SUPPRESSED_API_ROUTERS": '["sdk", "run_tasks"]',
+        "SUPPRESSED_API_ROUTERS": '["run_tasks"]',
         "SUPPRESSED_API_ROUTES": "[]",
         "WORKSPACE_AUTH_TOKEN": "test-token",
     }

@@ -55,6 +55,7 @@ vi.mock("~/components/AI/MarkdownOverrides", () => ({
   PreCodeComponent: ({ children }: { children: React.ReactNode }) => (
     <pre>{children}</pre>
   ),
+  inertImageOverride: {},
   renderRule: vi.fn(),
 }));
 

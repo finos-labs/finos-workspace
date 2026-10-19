@@ -64,7 +64,7 @@ export const WidgetNameItem = memo<WidgetNameItemProps>(
 /**
  * Renders a `WidgetNameItem` row (icon + bold name + muted description) wrapped in a
  * hover `Tooltip` showing the full `TabWidgetElement` detail panel (backend tag, name,
- * category, description). Used in AppCard widget lists and the Marketplace modal.
+ * category, description). Used in AppCard widget lists.
  */
 export const WidgetTooltipItem = memo<WidgetTooltipItemProps>((props) => {
   const { name, displayName, description, origin, widgetId } = props;

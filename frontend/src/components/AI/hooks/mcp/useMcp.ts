@@ -36,6 +36,7 @@ import { convertHeadersToRecord, fetchWithToken } from "~/lib/api";
 import { getConfig } from "~/lib/runtimeConfig";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
 import { useThemeStore } from "~/lib/state/theme";
+import { isLoopbackUrl } from "~/lib/utils/mcp";
 import { BrowserOAuthClientProvider } from "./browser-provider";
 
 /**
@@ -195,12 +196,13 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
     transportType,
     preventAutoAuth,
     popupFeatures,
-    isLocal,
+    isLocal: isLocalOption,
     authType,
     handleDisconnect,
     onPopupWindow,
   } = useMemo(() => getOptions(options), [options]); // Memoize options to prevent unnecessary effect runs
 
+  const isLocal = isLocalOption || isLoopbackUrl(url);
   const usesTokenAuth = authType === "token";
 
   const [data, dispatch] = useStateReducer<MCPDataType>({

@@ -5,7 +5,6 @@
 webhook URL configured, notifications are logged and dropped.
 
 Events:
-- `marketplace.listing.submitted`: a developer asked for review of a marketplace listing.
 - `entity.created`: an entity was created; the payload carries `admin_email` and `entity_name`.
 """
 

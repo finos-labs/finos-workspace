@@ -19,28 +19,26 @@ if BACKEND_DIR not in sys.path:
 from unittest.mock import patch
 from uuid import UUID, uuid4
 
-import jwt
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import delete, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from api import models
 from routers.app.index import MCPProxyRequest, check_mcp_tool_calls
+from scripts.create_metering_token import create_metering_token
 from tests.fixtures.base import (
     _ADMIN_USER,
     _AUTH_USER,
     _get_test_db_url_async,
     settings,
+    superuser_override,
 )
 from tests.fixtures.db import TestAsyncSessionLocal
 
 MEMBER_UUID = UUID(_AUTH_USER["user_uuid"])
 ADMIN_ENTITY = _ADMIN_USER["entity_uuid"]
-METERING = {
-    "X-Metering-Authorization": "Bearer "
-    + jwt.encode({"sub": "metering"}, settings.JWT_SECRET, algorithm="HS256")
-}
+METERING = {"X-Metering-Authorization": "Bearer " + create_metering_token()[0]}
 
 MCP_URL = "https://mcp.example.com/mcp"
 OTHER_MCP_URL = "https://tools.example.com/mcp"
@@ -261,6 +259,7 @@ class TestUsersGetWhatTheirRolesGrant:
             "allowed": False,
             "denied_model": "smart",
             "denied_tools": [],
+            "disabled_capabilities": [],
         }
 
         # The same model id of another agent is another model
@@ -469,3 +468,402 @@ class TestEnforcement:
                 request({"method": "tools/call", "params": {"name": "delete"}}),
             )
         assert refused.value.status_code == 403
+
+
+async def _entitle(db_session, **flags) -> None:
+    """Give the test user an entitlement, with the flags of the Copilot's web tools as asked (on if not)."""
+    await _drop_entitlement(db_session)
+    db_session.add(
+        models.Entitlement(
+            user_uuid=MEMBER_UUID,
+            tier_id=models.FULL_TIER_ID,
+            number_copilot_calls_day=10,
+            total_file_upload_size_gb=1,
+            share_widgets="private",
+            bring_your_own_data=False,
+            bring_your_own_copilot=False,
+            admin_access=False,
+            support=False,
+            excel_add_in=False,
+            data_add_ons_redistribution=False,
+            **flags,
+        )
+    )
+    await db_session.commit()
+
+
+async def _drop_entitlement(db_session) -> None:
+    for table in (models.EntitlementUsage, models.Entitlement):
+        await db_session.execute(delete(table).where(table.user_uuid == MEMBER_UUID))
+    await db_session.commit()
+    settings.redis_cache(f"usage:{MEMBER_UUID}", delete=True)
+
+
+WEB_SEARCH = {"url": MCP_URL, "tool_name": "web_search"}
+FETCH_PAGE = {"url": MCP_URL, "tool_name": "fetch_webpage"}
+OTHER_TOOL = {"url": MCP_URL, "tool_name": "execute_sql"}
+
+
+@pytest.fixture
+async def entitled(organization, db_session):
+    """The test user in the admin's organization with an entitlement, whose web tools are on."""
+    await _entitle(db_session)
+    yield
+    await _drop_entitlement(db_session)
+
+
+class TestWebToolsOfTheCopilot:
+    """SEARCH_WEB and FETCH_FROM_WEB: on for everyone, until an administrator switches them off for a user."""
+
+    @pytest.mark.asyncio
+    async def test_both_are_on_by_default(self, entitled, admin_client, auth_client):
+        entitlement = (await admin_client.get(f"/admin/entitlement/{MEMBER_UUID}")).json()
+        assert entitlement["search_web"] is True
+        assert entitlement["fetch_from_web"] is True
+
+        access = (await auth_client.get("/app/copilot/access")).json()
+        assert access["disabled_capabilities"] == []
+        result = (
+            await _authorize(auth_client, tools=[WEB_SEARCH, FETCH_PAGE, OTHER_TOOL])
+        ).json()
+        assert result["allowed"] is True
+        assert result["disabled_capabilities"] == []
+
+    @pytest.mark.asyncio
+    async def test_an_admin_switches_one_off_for_a_user_and_the_other_stays(
+        self, entitled, admin_client, auth_client
+    ):
+        response = await admin_client.patch(
+            f"/admin/entitlement/{MEMBER_UUID}", json={"search_web": False}
+        )
+        assert response.status_code == 200
+
+        entitlement = (await admin_client.get(f"/admin/entitlement/{MEMBER_UUID}")).json()
+        assert entitlement["search_web"] is False
+        assert entitlement["fetch_from_web"] is True
+
+        access = (await auth_client.get("/app/copilot/access")).json()
+        assert access["disabled_capabilities"] == ["SEARCH_WEB"]
+
+        result = (
+            await _authorize(auth_client, tools=[WEB_SEARCH, FETCH_PAGE, OTHER_TOOL])
+        ).json()
+        assert result["allowed"] is False
+        assert result["denied_tools"] == [WEB_SEARCH]
+        assert result["disabled_capabilities"] == ["SEARCH_WEB"]
+
+    @pytest.mark.asyncio
+    async def test_both_can_be_off_and_can_be_switched_back_on(
+        self, entitled, admin_client, auth_client
+    ):
+        await admin_client.patch(
+            f"/admin/entitlement/{MEMBER_UUID}",
+            json={"search_web": False, "fetch_from_web": False},
+        )
+        result = (await _authorize(auth_client, tools=[WEB_SEARCH, FETCH_PAGE])).json()
+        assert result["denied_tools"] == [WEB_SEARCH, FETCH_PAGE]
+        assert result["disabled_capabilities"] == ["SEARCH_WEB", "FETCH_FROM_WEB"]
+
+        await admin_client.patch(
+            f"/admin/entitlement/{MEMBER_UUID}",
+            json={"search_web": True, "fetch_from_web": True},
+        )
+        result = (await _authorize(auth_client, tools=[WEB_SEARCH, FETCH_PAGE])).json()
+        assert result["allowed"] is True
+        assert result["disabled_capabilities"] == []
+
+    @pytest.mark.asyncio
+    async def test_a_patch_of_something_else_leaves_them_as_they_are(
+        self, entitled, admin_client
+    ):
+        await admin_client.patch(
+            f"/admin/entitlement/{MEMBER_UUID}", json={"fetch_from_web": False}
+        )
+        await admin_client.patch(
+            f"/admin/entitlement/{MEMBER_UUID}", json={"number_copilot_calls_day": 5}
+        )
+        entitlement = (await admin_client.get(f"/admin/entitlement/{MEMBER_UUID}")).json()
+        assert entitlement["fetch_from_web"] is False
+        assert entitlement["search_web"] is True
+        assert entitlement["number_copilot_calls_day"] == 5
+
+    @pytest.mark.asyncio
+    async def test_switched_off_beats_what_roles_grant_and_whichever_server_has_the_tool(
+        self, entitled, organization, admin_client, auth_client, db_session
+    ):
+        role = await organization("Analysts")
+        await _assign(db_session, role)
+        await admin_client.put(
+            f"/admin/role/{role}/copilot-access", json=_grants(mcp=[(MCP_URL, "*")])
+        )
+        await admin_client.patch(
+            f"/admin/entitlement/{MEMBER_UUID}", json={"search_web": False}
+        )
+
+        result = (
+            await _authorize(
+                auth_client,
+                tools=[
+                    WEB_SEARCH,
+                    # The same tool on another server, as a user who adds it again would have it
+                    {"url": OTHER_MCP_URL, "tool_name": "web_search"},
+                    OTHER_TOOL,
+                ],
+            )
+        ).json()
+        assert result["denied_tools"] == [
+            WEB_SEARCH,
+            {"url": OTHER_MCP_URL, "tool_name": "web_search"},
+        ]
+
+    @pytest.mark.asyncio
+    async def test_on_changes_nothing_a_role_that_does_not_grant_the_tool_still_refuses_it(
+        self, entitled, organization, admin_client, auth_client, db_session
+    ):
+        role = await organization("Analysts")
+        await _assign(db_session, role)
+        await admin_client.put(
+            f"/admin/role/{role}/copilot-access",
+            json=_grants(mcp=[(MCP_URL, "execute_sql")]),
+        )
+        result = (await _authorize(auth_client, tools=[WEB_SEARCH, OTHER_TOOL])).json()
+        assert result["denied_tools"] == [WEB_SEARCH]
+        assert result["disabled_capabilities"] == []
+
+    @pytest.mark.asyncio
+    async def test_the_proxy_refuses_a_call_of_a_tool_that_is_switched_off(
+        self, entitled, admin_client, db_session
+    ):
+        await admin_client.patch(
+            f"/admin/entitlement/{MEMBER_UUID}", json={"fetch_from_web": False}
+        )
+
+        def call(name, url=MCP_URL):
+            return MCPProxyRequest(
+                url=url,
+                method="POST",
+                body={"method": "tools/call", "params": {"name": name}},
+            )
+
+        # Reading a page that was fetched is the same capability as fetching it.
+        for url in (MCP_URL, OTHER_MCP_URL):
+            for name in ("fetch_webpage", "inspect_webpage"):
+                with pytest.raises(HTTPException) as refused:
+                    await check_mcp_tool_calls(
+                        db_session, MEMBER_UUID, call(name, url)
+                    )
+                assert refused.value.status_code == 403
+        await check_mcp_tool_calls(db_session, MEMBER_UUID, call("web_search"))
+        await check_mcp_tool_calls(db_session, MEMBER_UUID, call("execute_sql"))
+
+    @pytest.mark.asyncio
+    async def test_a_user_cannot_switch_it_back_on_themselves(
+        self, entitled, admin_client, auth_client
+    ):
+        await admin_client.patch(
+            f"/admin/entitlement/{MEMBER_UUID}", json={"search_web": False}
+        )
+        response = await auth_client.patch(
+            f"/admin/entitlement/{MEMBER_UUID}", json={"search_web": True}
+        )
+        assert response.status_code == 403
+        access = (await auth_client.get("/app/copilot/access")).json()
+        assert access["disabled_capabilities"] == ["SEARCH_WEB"]
+
+    @pytest.mark.asyncio
+    async def test_the_sync_carries_what_is_switched_off(
+        self, entitled, admin_client, auth_client
+    ):
+        await admin_client.patch(
+            f"/admin/entitlement/{MEMBER_UUID}", json={"search_web": False}
+        )
+        response = await auth_client.get("/app/dash/validate-and-sync")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["copilot_access"]["disabled_capabilities"] == ["SEARCH_WEB"]
+        assert body["feature_entitlements"]["search_web"] is False
+        assert body["feature_entitlements"]["fetch_from_web"] is True
+
+    @pytest.mark.asyncio
+    async def test_a_flag_that_was_never_set_is_on(self, entitled, db_session, auth_client):
+        await db_session.execute(
+            update(models.Entitlement)
+            .where(models.Entitlement.user_uuid == MEMBER_UUID)
+            .values(search_web=None, fetch_from_web=None)
+        )
+        await db_session.commit()
+        access = (await auth_client.get("/app/copilot/access")).json()
+        assert access["disabled_capabilities"] == []
+
+    @pytest.mark.asyncio
+    async def test_a_user_without_an_entitlement_follows_the_entity(
+        self, organization, admin_client, auth_client, db_session
+    ):
+        await _drop_entitlement(db_session)
+        entity_entitlement = models.EntityEntitlement(
+            entity_uuid=ADMIN_ENTITY,
+            tier_id=models.FULL_TIER_ID,
+            number_copilot_calls_day=10,
+            total_file_upload_size_gb=1,
+            share_widgets="private",
+            bring_your_own_data=False,
+            bring_your_own_copilot=False,
+            admin_access=False,
+            support=False,
+            excel_add_in=False,
+            data_add_ons_redistribution=False,
+            search_web=False,
+        )
+        existing = (
+            await db_session.execute(
+                select(models.EntityEntitlement).where(
+                    models.EntityEntitlement.entity_uuid == ADMIN_ENTITY
+                )
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            pytest.skip("The test organization has an entitlement of its own")
+        db_session.add(entity_entitlement)
+        await db_session.commit()
+        try:
+            access = (await auth_client.get("/app/copilot/access")).json()
+            assert access["disabled_capabilities"] == ["SEARCH_WEB"]
+        finally:
+            await db_session.execute(
+                delete(models.EntityEntitlement).where(
+                    models.EntityEntitlement.entity_uuid == ADMIN_ENTITY
+                )
+            )
+            await db_session.commit()
+
+
+class TestWebToolsOfAnEntity:
+    """An entity switches them off for its users; a user an administrator set differently keeps their own."""
+
+    @pytest.fixture
+    async def entity_entitlement(self, db_session):
+        existing = (
+            await db_session.execute(
+                select(models.EntityEntitlement).where(
+                    models.EntityEntitlement.entity_uuid == ADMIN_ENTITY
+                )
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            pytest.skip("The test organization has an entitlement of its own")
+        db_session.add(
+            models.EntityEntitlement(
+                entity_uuid=ADMIN_ENTITY,
+                tier_id=models.FULL_TIER_ID,
+                number_copilot_calls_day=10,
+                total_file_upload_size_gb=1,
+                share_widgets="private",
+                bring_your_own_data=False,
+                bring_your_own_copilot=False,
+                admin_access=False,
+                support=False,
+                excel_add_in=False,
+                data_add_ons_redistribution=False,
+            )
+        )
+        await db_session.commit()
+        yield
+        await db_session.execute(
+            delete(models.EntityEntitlement).where(
+                models.EntityEntitlement.entity_uuid == ADMIN_ENTITY
+            )
+        )
+        await db_session.commit()
+
+    @pytest.mark.asyncio
+    async def test_a_change_of_the_entity_reaches_the_users_who_follow_it_and_not_the_others(
+        self, entity_entitlement, entitled, auth_client, admin_client, db_session
+    ):
+        # The user's own setting: fetching is off, as an administrator set it for them.
+        await admin_client.patch(
+            f"/admin/entitlement/{MEMBER_UUID}", json={"fetch_from_web": False}
+        )
+        with superuser_override():
+            response = await auth_client.patch(
+                f"/entity/entitlement/{ADMIN_ENTITY}",
+                json={"search_web": False, "fetch_from_web": False},
+            )
+        assert response.status_code == 200
+
+        stored = (await admin_client.get(f"/admin/entitlement/{MEMBER_UUID}")).json()
+        # Search followed the entity; fetching was already off, as the user's own, and stays so.
+        assert stored["search_web"] is False
+        assert stored["fetch_from_web"] is False
+
+        with superuser_override():
+            await auth_client.patch(
+                f"/entity/entitlement/{ADMIN_ENTITY}",
+                json={"search_web": True, "fetch_from_web": True},
+            )
+        stored = (await admin_client.get(f"/admin/entitlement/{MEMBER_UUID}")).json()
+        assert stored["search_web"] is True
+        assert stored["fetch_from_web"] is True
+
+    @pytest.mark.asyncio
+    async def test_a_user_with_a_setting_of_their_own_keeps_it_unless_all_are_updated(
+        self, entity_entitlement, entitled, auth_client, admin_client
+    ):
+        await admin_client.patch(
+            f"/admin/entitlement/{MEMBER_UUID}", json={"search_web": False}
+        )
+        # The entity's was on and stays on: nothing changes for anyone, and the user's own stays.
+        with superuser_override():
+            await auth_client.patch(
+                f"/entity/entitlement/{ADMIN_ENTITY}", json={"fetch_from_web": False}
+            )
+        stored = (await admin_client.get(f"/admin/entitlement/{MEMBER_UUID}")).json()
+        assert stored["search_web"] is False
+        assert stored["fetch_from_web"] is False
+
+        # Switched on for the whole entity, whatever the users had.
+        with superuser_override():
+            await auth_client.patch(
+                f"/entity/entitlement/{ADMIN_ENTITY}",
+                params={"update_all": "true"},
+                json={"search_web": False, "fetch_from_web": True},
+            )
+        stored = (await admin_client.get(f"/admin/entitlement/{MEMBER_UUID}")).json()
+        assert stored["search_web"] is False
+        assert stored["fetch_from_web"] is True
+
+    @pytest.mark.asyncio
+    async def test_a_user_who_gets_their_entitlement_gets_the_entitys_switches(
+        self, entity_entitlement, organization, admin_client, db_session
+    ):
+        from routers.app import helpers as app_helpers
+
+        await db_session.execute(
+            update(models.EntityEntitlement)
+            .where(models.EntityEntitlement.entity_uuid == ADMIN_ENTITY)
+            .values(search_web=False, fetch_from_web=True)
+        )
+        await db_session.commit()
+        await _drop_entitlement(db_session)
+        try:
+            await app_helpers.update_user_entitlement_with_entity_entitlement(
+                db_session, MEMBER_UUID
+            )
+            stored = (await admin_client.get(f"/admin/entitlement/{MEMBER_UUID}")).json()
+            assert stored["search_web"] is False
+            assert stored["fetch_from_web"] is True
+        finally:
+            await _drop_entitlement(db_session)
+
+    @pytest.mark.asyncio
+    async def test_the_defaults_of_a_tier_are_on_so_new_entities_and_users_start_with_both(
+        self, db_session
+    ):
+        tier = (
+            await db_session.execute(
+                select(models.TierDefaults).where(
+                    models.TierDefaults.tier_id == models.FULL_TIER_ID
+                )
+            )
+        ).scalar_one()
+        assert tier.search_web is True
+        assert tier.fetch_from_web is True

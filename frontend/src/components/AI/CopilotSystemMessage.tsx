@@ -9,7 +9,12 @@ import { someTruthy } from "~/lib/utils/values";
 import { cn } from "../ds/utils";
 import { Artifact, Table } from ".";
 import CopilotMessageTitle from "./CopilotMessageTitle";
-import { CodeComponent, PreCodeComponent, renderRule } from "./MarkdownOverrides";
+import {
+  CodeComponent,
+  inertImageOverride,
+  PreCodeComponent,
+  renderRule,
+} from "./MarkdownOverrides";
 import { escapeMarkdownUnderscores } from "./utils/markdown";
 
 type CopilotSystemMessageProps = {
@@ -23,6 +28,7 @@ const markdownOptions = {
   renderRule,
   disableParsingRawHTML: true,
   overrides: {
+    ...inertImageOverride,
     a: {
       component: ({ children }: { children: ReactNode }) => (
         <span className="text-inherit">{children}</span>

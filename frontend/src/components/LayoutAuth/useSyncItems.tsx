@@ -86,13 +86,7 @@ export default function useSyncItems() {
       queueMicrotask(async () => {
         const data = dashboardsData;
         if (data.feature_entitlements) {
-          setFeatureFlagsAndUsage(
-            {
-              ...data.feature_entitlements,
-              can_submit_marketplace: data.can_submit_marketplace ?? false,
-            },
-            data.usage ?? null,
-          );
+          setFeatureFlagsAndUsage(data.feature_entitlements, data.usage ?? null);
         }
 
         updateChats(data.copilot_chats, { questionsHistory: data.questions_history });

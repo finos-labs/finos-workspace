@@ -3,7 +3,6 @@ import { toast } from "sonner";
 import { parseValue } from "~/lib/utils";
 import Icon from "../Icon";
 import Tooltip from "../Tooltip";
-import { useShallowStreamingStore } from "./hooks/useStreaming";
 
 type MessageTableProps = {
   children: ReactNode;
@@ -11,9 +10,6 @@ type MessageTableProps = {
 
 const MessageTable = memo((props: MessageTableProps) => {
   const { children } = props;
-  const isStreaming = useShallowStreamingStore(
-    (s) => s.streamingStatus === "streaming-started",
-  );
   const tableRef = useRef<HTMLTableElement>(null);
 
   const convertTableToJson = useCallback(() => {
@@ -64,19 +60,6 @@ const MessageTable = memo((props: MessageTableProps) => {
 
     return jsonData;
   }, [tableRef]);
-
-  if (isStreaming) {
-    return (
-      <div className="bg-light-100 dark:bg-dark-400 rounded p-0.5 space-y-2 mb-2 overflow-auto">
-        <table
-          children={children}
-          className="table-fixed rounded-[2px] w-full !m-0 dark:bg-dark-700 bg-light-200
-          [&_tbody]:bg-white [&_tr]:even:bg-light-50 dark:[&_tbody]:bg-dark-600
-          dark:[&_tr]:even:bg-dark-500 [&_td]:pl-1 [&_th]:pl-1 [&_th]:pt-1.5 [&_thead]:border-none"
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="bg-light-100 dark:bg-dark-400 rounded p-0.5 space-y-2 mb-2">

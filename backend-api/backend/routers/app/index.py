@@ -295,9 +295,6 @@ async def login(  # noqa: PLR0914, PLR0915
         "user_skills": user_skills,
         "user": user_data,
         "feature_entitlements": entitlements,
-        "can_submit_marketplace": bool(
-            db_user.is_superuser or db_user.can_submit_marketplace
-        ),
         "usage": usage,
         "custom_copilots": custom_copilots,
         "mcp_servers": mcp_servers.servers if mcp_servers else None,

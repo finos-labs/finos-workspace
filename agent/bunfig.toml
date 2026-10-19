@@ -1,0 +1,3 @@
+[test]
+# Runs before every test file: see tests/setup.ts.
+preload = ["./tests/setup.ts"]

@@ -127,14 +127,8 @@ export default function AdvancedWidgetDialog() {
         const cleanUrl = url.trim().replace(/\/+$/, "").trim();
         const source = { name, url: cleanUrl, endpointHeaders } as Source;
 
-        const {
-          widgets,
-          errorMessage,
-          templateErrorMessage,
-          totalFailed,
-          templates,
-          isPlatform,
-        } = await validateSource(source, validateWidgets === "true");
+        const { widgets, errorMessage, templateErrorMessage, totalFailed, templates } =
+          await validateSource(source, validateWidgets === "true");
 
         const widgetsCount = Object.keys(widgets).length;
 
@@ -181,7 +175,6 @@ export default function AdvancedWidgetDialog() {
             url: cleanUrl,
             widgets,
             endpointHeaders,
-            isPlatform,
           },
         });
       } catch (err) {

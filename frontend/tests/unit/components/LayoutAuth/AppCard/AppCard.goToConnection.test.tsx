@@ -52,14 +52,6 @@ vi.mock("~/lib/constants", async (importOriginal) => {
   };
 });
 
-const { mockCanSubmitApp } = vi.hoisted(() => ({
-  mockCanSubmitApp: vi.fn(() => false),
-}));
-
-vi.mock("~/lib/appSubmissionFlag", () => ({
-  useCanSubmitApp: () => mockCanSubmitApp(),
-}));
-
 vi.mock("~/components/ds/utils", () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
@@ -196,49 +188,10 @@ describe("AppCard - Go to connection menu item", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does NOT show 'Go to connection' for listed (marketplace) cards", () => {
-    renderCard(makeTemplate("listed"));
-    expect(
-      screen.queryByRole("button", { name: "Go to connection" }),
-    ).not.toBeInTheDocument();
-  });
-
   it("does NOT show 'Go to connection' for generated (saved) cards", () => {
     renderCard(makeTemplate("generated"));
     expect(
       screen.queryByRole("button", { name: "Go to connection" }),
-    ).not.toBeInTheDocument();
-  });
-});
-
-describe("AppCard - List app to marketplace menu item", () => {
-  beforeEach(() => {
-    mockSource = null;
-    mockNavigate.mockClear();
-    mockCanSubmitApp.mockReturnValue(false);
-  });
-
-  it("shows the item on a user backend card when submission is allowed", () => {
-    mockCanSubmitApp.mockReturnValue(true);
-    renderCard(makeTemplate("user"));
-    expect(
-      screen.getByRole("button", { name: "List app to marketplace" }),
-    ).toBeInTheDocument();
-  });
-
-  it("hides the item when submission is not allowed", () => {
-    mockCanSubmitApp.mockReturnValue(false);
-    renderCard(makeTemplate("user"));
-    expect(
-      screen.queryByRole("button", { name: "List app to marketplace" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("hides the item on non-backend cards even when submission is allowed", () => {
-    mockCanSubmitApp.mockReturnValue(true);
-    renderCard(makeTemplate("generated"));
-    expect(
-      screen.queryByRole("button", { name: "List app to marketplace" }),
     ).not.toBeInTheDocument();
   });
 });

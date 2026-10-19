@@ -18,6 +18,7 @@ BACKEND_DIR = os.path.dirname(
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 from uuid import UUID, uuid4
 
@@ -28,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from api import models
 import jwt
 
+from scripts.create_metering_token import create_metering_token
 from tests.fixtures.base import (
     _ADMIN_USER,
     _AUTH_USER,
@@ -121,10 +123,7 @@ async def member(auth_client, admin_client, db_session):
     await db_session.commit()
 
 
-METERING = {
-    "X-Metering-Authorization": "Bearer "
-    + jwt.encode({"sub": "metering"}, settings.JWT_SECRET, algorithm="HS256")
-}
+METERING = {"X-Metering-Authorization": "Bearer " + create_metering_token()[0]}
 
 
 async def _use(client, count: int = 1, **usage):
@@ -231,6 +230,32 @@ class TestUsersCannotWriteUsage:
                 headers={"X-Metering-Authorization": f"Bearer {token}"},
             )
             assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_a_metering_token_that_never_runs_out_is_refused(self, member):
+        """A token without an expiry could only be withdrawn by changing JWT_SECRET."""
+        forever = jwt.encode({"sub": "metering"}, settings.JWT_SECRET, algorithm="HS256")
+        response = await member.put(
+            "/app/usage",
+            json={"reset_copilot_count": True},
+            headers={"X-Metering-Authorization": f"Bearer {forever}"},
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_an_expired_metering_token_is_refused_and_says_so(self, member):
+        expired, _ = create_metering_token(
+            days=1, now=datetime.now(UTC) - timedelta(days=2)
+        )
+        response = await member.put(
+            "/app/usage",
+            json={"reset_copilot_count": True},
+            headers={"X-Metering-Authorization": f"Bearer {expired}"},
+        )
+        assert response.status_code == 403
+        # The operator has to mint a new one, so the answer says that rather than "invalid".
+        assert "expired" in response.json()["detail"].lower()
+        assert "create_metering_token" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_the_metering_service_can_reset_and_refund(self, member):

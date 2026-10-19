@@ -24,7 +24,6 @@ const createMockFeatureFlags = (
   support: true,
   tier: "full",
   total_file_upload_size_gb: 50,
-  can_submit_marketplace: false,
   ...overrides,
 });
 
