@@ -36,7 +36,10 @@ export default function BrandedLogo({ className, animate = true }: BrandedLogoPr
   }
 
   return (
-    <div className={cn("logo-stage h-auto w-[100px] text-main-50", className)} aria-hidden>
+    <div
+      className={cn("logo-stage h-auto w-[100px] text-main-50", className)}
+      aria-hidden
+    >
       <div className="logo-depth">
         <div className={cn("logo-wing", animate && "logo-wing-left")}>
           <svg viewBox="0 0 277.167 139.248" className="h-full w-full overflow-visible">
