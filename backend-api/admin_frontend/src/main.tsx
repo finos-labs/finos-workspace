@@ -28,6 +28,8 @@ const preferredTheme = window.localStorage.getItem("theme") ?? "dark";
 const normalizedTheme = preferredTheme === "light" ? "light" : "dark";
 window.localStorage.setItem("theme", normalizedTheme);
 document.documentElement.classList.toggle("dark", normalizedTheme === "dark");
+// Swagger UI reads `dark-mode`, not `dark`.
+document.documentElement.classList.toggle("dark-mode", normalizedTheme === "dark");
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

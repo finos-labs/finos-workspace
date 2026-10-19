@@ -52,6 +52,7 @@ function TableHeader({ headers }: TableHeaderProps): JSX.Element {
       <tr className="border-b border-surface-divider bg-general-bg-secondary">
         {headers.map((header, index) => (
           <th
+            scope="col"
             className="px-5 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-ds-text-subtitle"
             key={index}
           >
@@ -95,7 +96,7 @@ function TableBody<T>({
     <tbody>
       {items.map((row: T, i: number) => {
         return (
-          <tr className="cursor-pointer border-b border-surface-divider bg-general-bg-primary hover:bg-general-bg-primary-hover" onClick={() => handleEdit(row)} key={i}>
+          <tr className="border-b border-surface-divider bg-general-bg-primary hover:bg-general-bg-primary-hover" key={i}>
             {columns.map((column: string, i: number) => {
               const value = getValue(row, column);
               return (
@@ -104,6 +105,15 @@ function TableBody<T>({
                 </td>
               );
             })}
+            <td className="px-5 py-3 text-right">
+              <button
+                type="button"
+                className="ws-btn"
+                onClick={() => handleEdit(row)}
+              >
+                Edit
+              </button>
+            </td>
           </tr>
         );
       })}
@@ -160,7 +170,7 @@ export function ManageBase<T, V>({
       </div>
       <div className="ws-card-content">
         <table className="w-full overflow-hidden rounded border border-general-border-primary">
-          <TableHeader headers={headers} />
+          <TableHeader headers={[...headers, "Actions"]} />
           <TableBody
             items={items.items}
             columns={columns}

@@ -380,15 +380,20 @@ export function UserSearchBar({
     await retrieveItems(email);
   }
 
+  const searchId = "user-email-search";
   return (
     <form onSubmit={handleSubmit} className="flex items-center gap-2">
+      <label htmlFor={searchId} className="sr-only">
+        Search by user email
+      </label>
       <input
-        type="text"
+        id={searchId}
+        type="search"
         value={email}
         onChange={(e) => {
           setEmail(e.target.value);
         }}
-        className="h-8 rounded border border-general-border-primary bg-input-bg px-3 text-xs text-ds-text-body focus:outline-none"
+        className="h-8 rounded border border-general-border-primary bg-input-bg px-3 text-xs text-ds-text-body focus:outline-none focus:ring-1 focus:ring-link-color"
         placeholder="Search by user email"
       />
       <button type="submit" className="ws-btn">Search</button>

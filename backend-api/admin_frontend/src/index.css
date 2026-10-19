@@ -15,6 +15,18 @@
     margin: 0;
     @apply bg-surface-page text-ds-text-body;
   }
+
+  /* Browser autofill paints a pale background and leaves overlay labels
+     (Show / Hide) in the theme color, which disappears on that fill. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px var(--general-bg-secondary) inset;
+    box-shadow: 0 0 0 1000px var(--general-bg-secondary) inset;
+    -webkit-text-fill-color: var(--text-body);
+    caret-color: var(--text-body);
+  }
 }
 
 @layer components {
@@ -52,6 +64,120 @@
 
   .ws-admin-subtitle {
     @apply text-xs text-ds-text-subtitle;
+  }
+
+  /* Swagger's own stylesheet is light. These overrides apply only in light mode.
+     Dark mode uses Swagger's `html.dark-mode` styles. */
+  html:not(.dark) .ws-docs-swagger {
+    background: #fff;
+    color: #3b4151;
+  }
+
+  html:not(.dark) .ws-docs-swagger .swagger-ui,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .scheme-container,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .opblock-tag,
+  html:not(.dark) .ws-docs-swagger .swagger-ui section.models,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .model-box,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .opblock .opblock-section-header {
+    background: #fff;
+    color: #3b4151;
+  }
+
+  html:not(.dark) .ws-docs-swagger .swagger-ui .info .title,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .info p,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .info li,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .opblock-summary-path,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .opblock-summary-description,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .opblock-tag,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .parameter__name,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .parameter__type,
+  html:not(.dark) .ws-docs-swagger .swagger-ui table thead tr td,
+  html:not(.dark) .ws-docs-swagger .swagger-ui table thead tr th,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .response-col_status,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .model,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .model-title {
+    color: #3b4151;
+  }
+
+  html:not(.dark) .ws-docs-swagger .swagger-ui .opblock.opblock-get .opblock-summary-method {
+    background: #1d4ed8;
+  }
+
+  html:not(.dark) .ws-docs-swagger .swagger-ui .opblock.opblock-post .opblock-summary-method {
+    background: #3f6212;
+  }
+
+  html:not(.dark) .ws-docs-swagger .swagger-ui .opblock.opblock-put .opblock-summary-method {
+    background: #b45309;
+  }
+
+  html:not(.dark) .ws-docs-swagger .swagger-ui .opblock.opblock-delete .opblock-summary-method {
+    background: #b91c1c;
+  }
+
+  html:not(.dark) .ws-docs-swagger .swagger-ui .info .title small {
+    background: #4b5563 !important;
+  }
+
+  html:not(.dark) .ws-docs-swagger .swagger-ui .info .title small.version-stamp {
+    background: #3f6212 !important;
+  }
+
+  html:not(.dark) .ws-docs-swagger .swagger-ui .info .title small pre {
+    background: transparent !important;
+    color: #fff !important;
+  }
+
+  html:not(.dark) .ws-docs-swagger .swagger-ui .info .url,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .info a {
+    color: #005e8a !important;
+  }
+
+  html:not(.dark) .ws-docs-swagger .swagger-ui .btn.authorize,
+  html:not(.dark) .ws-docs-swagger .swagger-ui .btn.authorize span {
+    color: #3f6212 !important;
+    border-color: #3f6212 !important;
+  }
+
+  html:not(.dark) .ws-docs-swagger .swagger-ui .json-schema-2020-12-expand-deep-button {
+    color: #374151 !important;
+  }
+
+  /* Swagger's dark palette is neutral black. Use the admin navy surfaces instead. */
+  .dark .ws-docs-swagger,
+  .dark .ws-docs-swagger .swagger-ui,
+  .dark .ws-docs-swagger .swagger-ui .scheme-container,
+  .dark .ws-docs-swagger .swagger-ui .information-container,
+  .dark .ws-docs-swagger .swagger-ui .info,
+  .dark .ws-docs-swagger .swagger-ui section.models {
+    background: var(--general-bg-primary);
+    color: var(--text-body);
+  }
+
+  .dark .ws-docs-swagger .swagger-ui .opblock.opblock-get,
+  .dark .ws-docs-swagger .swagger-ui .opblock.opblock-post,
+  .dark .ws-docs-swagger .swagger-ui .opblock.opblock-put,
+  .dark .ws-docs-swagger .swagger-ui .opblock.opblock-delete,
+  .dark .ws-docs-swagger .swagger-ui .opblock.opblock-patch,
+  .dark .ws-docs-swagger .swagger-ui .opblock.opblock-head,
+  .dark .ws-docs-swagger .swagger-ui .opblock.opblock-options,
+  .dark .ws-docs-swagger .swagger-ui .opblock.opblock-deprecated,
+  .dark .ws-docs-swagger .swagger-ui .opblock .opblock-section-header,
+  .dark .ws-docs-swagger .swagger-ui section.models .model-container,
+  .dark .ws-docs-swagger .swagger-ui section.models .model-container:hover,
+  .dark .ws-docs-swagger .swagger-ui .json-schema-2020-12,
+  .dark .ws-docs-swagger .swagger-ui .json-schema-2020-12 button,
+  .dark .ws-docs-swagger .swagger-ui .model-box {
+    background: var(--general-bg-secondary);
+    border-color: var(--general-border-primary);
+  }
+
+  .dark .ws-docs-swagger .swagger-ui .opblock-tag,
+  .dark .ws-docs-swagger .swagger-ui .opblock .opblock-summary-path,
+  .dark .ws-docs-swagger .swagger-ui .opblock .opblock-summary-description,
+  .dark .ws-docs-swagger .swagger-ui section.models h4,
+  .dark .ws-docs-swagger .swagger-ui section.models .model-title {
+    color: var(--text-body);
   }
 }
 

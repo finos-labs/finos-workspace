@@ -11,9 +11,9 @@ export default function ProtectedRoute(): JSX.Element {
   return (
     <div className="min-h-screen bg-surface-page">
       <Navigation />
-      <div className="ws-page-container">
+      <main className="ws-page-container">
         <Outlet />
-      </div>
+      </main>
     </div>
   );
 }

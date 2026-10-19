@@ -61,6 +61,7 @@ export default {
           heading: "var(--text-heading)",
           subtitle: "var(--text-subtitle)",
           body: "var(--text-body)",
+          danger: "var(--text-danger)",
         },
       },
     },

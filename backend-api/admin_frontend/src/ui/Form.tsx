@@ -17,8 +17,12 @@ function useFieldError(name: string | undefined): string | undefined {
   return name ? getFieldState(name, formState).error?.message : undefined;
 }
 
-function FieldError({ message }: { message: string | undefined }) {
-  return message ? <p className="text-xs text-red-500">{message}</p> : null;
+function FieldError({ id, message }: { id: string; message: string | undefined }) {
+  return message ? (
+    <p id={id} role="alert" className="text-xs text-ds-text-danger">
+      {message}
+    </p>
+  ) : null;
 }
 
 interface FormInputProps extends ComponentPropsWithoutRef<"input"> {
@@ -31,36 +35,48 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(function F
 ) {
   const id = useId();
   const error = useFieldError(props.name);
+  const errorId = `${id}-error`;
   const [revealed, setRevealed] = useState(false);
   const isPassword = type === "password";
+  const borderClass = error ? "border-red-500" : "border-general-border-primary";
   return (
     <div className="space-y-1.5">
       <label htmlFor={id} className={labelClass}>
         {label}
       </label>
-      <div className="relative">
+      <div
+        className={
+          isPassword
+            ? `flex h-9 items-center rounded border bg-general-bg-secondary focus-within:ring-1 focus-within:ring-link-color ${borderClass}`
+            : undefined
+        }
+      >
         <input
           id={id}
           ref={ref}
           type={isPassword && revealed ? "text" : type}
           value={value ?? ""}
-          aria-invalid={error ? true : undefined}
-          className={`${controlClass} ${error ? "border-red-500" : "border-general-border-primary"} ${isPassword ? "pr-14" : ""} ${className ?? ""}`}
+          className={
+            isPassword
+              ? `h-full min-w-0 flex-1 border-0 bg-transparent px-3 text-xs text-ds-text-body outline-none placeholder:text-general-label-disabled ${className ?? ""}`
+              : `${controlClass} ${borderClass} ${className ?? ""}`
+          }
           {...props}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
         />
         {isPassword && (
           <button
             type="button"
-            tabIndex={-1}
             aria-label={revealed ? "Hide password" : "Show password"}
             onClick={() => setRevealed((shown) => !shown)}
-            className="absolute inset-y-0 right-0 px-3 text-xs text-ds-text-subtitle hover:text-general-label-hover"
+            className="shrink-0 rounded px-3 text-xs font-medium text-ds-text-body hover:text-general-label-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link-color"
           >
             {revealed ? "Hide" : "Show"}
           </button>
         )}
       </div>
-      <FieldError message={error} />
+      <FieldError id={errorId} message={error} />
     </div>
   );
 });
@@ -80,6 +96,7 @@ export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
   function FormSelect({ label, options, placeholder, className, value, ...props }, ref) {
     const id = useId();
     const error = useFieldError(props.name);
+    const errorId = `${id}-error`;
     return (
       <div className="space-y-1.5">
         <label htmlFor={id} className={labelClass}>
@@ -89,9 +106,10 @@ export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
           id={id}
           ref={ref}
           value={value ?? ""}
-          aria-invalid={error ? true : undefined}
           className={`${controlClass} ${error ? "border-red-500" : "border-general-border-primary"} ${className ?? ""}`}
           {...props}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
         >
           <option value="" disabled>
             {placeholder ?? ""}
@@ -102,7 +120,7 @@ export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
             </option>
           ))}
         </select>
-        <FieldError message={error} />
+        <FieldError id={errorId} message={error} />
       </div>
     );
   },

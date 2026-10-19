@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useId, useRef } from "react";
 
 interface BaseDialogProps {
   open: boolean;
@@ -6,9 +6,12 @@ interface BaseDialogProps {
   children: ReactNode;
 }
 
+const DialogTitleId = createContext<string | undefined>(undefined);
+
 /** A modal on the browser's own `<dialog>`: it traps focus, closes on Escape and dims the page. */
 export function BaseDialog({ open, onClose, children }: BaseDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     const dialog = ref.current;
@@ -18,8 +21,10 @@ export function BaseDialog({ open, onClose, children }: BaseDialogProps) {
   }, [open]);
 
   return (
+    <DialogTitleId.Provider value={titleId}>
     <dialog
       ref={ref}
+      aria-labelledby={titleId}
       onClose={onClose}
       onClick={(event) => {
         // A click on the backdrop lands on the dialog itself, not on its content
@@ -39,9 +44,15 @@ export function BaseDialog({ open, onClose, children }: BaseDialogProps) {
         {children}
       </div>
     </dialog>
+    </DialogTitleId.Provider>
   );
 }
 
 export function DialogTitle({ children }: { children: ReactNode }) {
-  return <h2 className="text-sm font-semibold text-ds-text-heading">{children}</h2>;
+  const titleId = useContext(DialogTitleId);
+  return (
+    <h2 id={titleId} className="text-sm font-semibold text-ds-text-heading">
+      {children}
+    </h2>
+  );
 }

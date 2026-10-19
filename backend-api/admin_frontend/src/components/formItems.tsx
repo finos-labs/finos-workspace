@@ -20,7 +20,7 @@ export function ManagerForm<T extends FieldValues>({
       <div className="ws-card w-full max-w-2xl">
         <div className="ws-card-content space-y-3">
           {warning && (
-            <p className="rounded bg-red-500/10 px-3 py-2 text-xs text-red-500">{warning}</p>
+            <p role="alert" className="rounded bg-red-500/10 px-3 py-2 text-xs text-ds-text-danger">{warning}</p>
           )}
           <form className="_form space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
           {children}

@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --font-family: "Montserrat";
   --text-scale: 1;
 
@@ -12,9 +13,12 @@
   --color-dark-200: #425e6c;
   --color-dark-400: #355867;
   --color-dark-700: #1a4154;
+  --color-dark-750: #16394a;
   --color-dark-800: #123244;
   --color-dark-850: #0e2b3a;
   --color-dark-900: #0b2432;
+
+  --color-error-200: #b91c1c;
 
   --color-light-50: #f4f9fc;
   --color-light-100: #e7f2f8;
@@ -45,7 +49,7 @@
 
   --btn-primary-bg: var(--color-main-100);
   --btn-primary-bg-hover: var(--color-main-200);
-  --btn-primary-label: var(--color-base-0);
+  --btn-primary-label: var(--color-main-contrast, var(--color-light-100));
   --btn-secondary-bg: var(--color-light-100);
   --btn-secondary-bg-hover: var(--color-light-50);
 
@@ -57,14 +61,16 @@
   --text-heading: var(--color-light-850);
   --text-subtitle: var(--color-light-750);
   --text-body: var(--color-light-700);
+  --text-danger: var(--color-error-200);
 }
 
 .dark {
+  color-scheme: dark;
   --general-border-primary: var(--color-dark-400);
   --general-bg-primary: var(--color-dark-900);
   --general-bg-primary-hover: var(--color-dark-850);
   --general-bg-secondary: var(--color-dark-800);
-  --general-bg-secondary-hover: var(--color-dark-700);
+  --general-bg-secondary-hover: var(--color-dark-750);
   --general-label: var(--color-light-100);
   --general-label-hover: var(--color-base-0);
   --general-label-disabled: var(--color-dark-200);
@@ -76,7 +82,7 @@
 
   --btn-primary-bg: var(--color-main-100);
   --btn-primary-bg-hover: var(--color-main-200);
-  --btn-primary-label: var(--color-base-0);
+  --btn-primary-label: var(--color-main-contrast, var(--color-light-100));
   --btn-secondary-bg: var(--color-dark-800);
   --btn-secondary-bg-hover: var(--color-dark-700);
 
@@ -88,4 +94,5 @@
   --text-heading: var(--color-base-0);
   --text-subtitle: var(--color-light-50);
   --text-body: var(--color-light-100);
+  --text-danger: #ef5555;
 }

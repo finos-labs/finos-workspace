@@ -37,7 +37,7 @@ export default function Navigation(): JSX.Element {
   };
 
   return (
-    <nav className="sticky top-0 z-20 border-b border-surface-divider bg-surface-header/95 backdrop-blur">
+    <nav aria-label="Admin" className="sticky top-0 z-20 border-b border-surface-divider bg-surface-header/95 backdrop-blur">
       <div className="ws-page-container py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">

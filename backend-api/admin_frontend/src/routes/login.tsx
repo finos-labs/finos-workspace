@@ -34,7 +34,7 @@ export default function Login(): JSX.Element {
   };
 
   return (
-    <div className="min-h-screen bg-surface-page">
+    <main className="min-h-screen bg-surface-page">
       <div className="ws-page-container flex justify-center pt-16">
         <div className="w-full max-w-2xl">
           <div className="mb-4">
@@ -63,6 +63,6 @@ export default function Login(): JSX.Element {
       </ManagerForm>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
