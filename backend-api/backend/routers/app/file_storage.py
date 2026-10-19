@@ -34,8 +34,9 @@ router = APIRouter(
     prefix="/app",
     tags=["app-file-storage"],
 )
-# The pre-signed downloads: the URL's signature is their whole credential, and agents fetch
-# them server to server, with no Origin and no client header
+# The pre-signed downloads: the URL's signature is their whole credential, with no session
+# or client header. Agents fetch them server to server; like every request, they name an
+# allowed Origin (an agent sends its WORKSPACE_ORIGIN), or the API refuses them with 403.
 signed_router = APIRouter(prefix="/app", tags=["app-file-storage"])
 
 

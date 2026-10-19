@@ -91,6 +91,8 @@ class FakeAuthorizationServer:
         self.access_tokens: set[str] = set()
         self.token_requests: list[dict] = []
         self.issued = 0
+        # The status a refresh answers with instead of a token, while it is set
+        self.refresh_status: int | None = None
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         if request.url.path == "/.well-known/oauth-authorization-server":
@@ -168,6 +170,8 @@ class FakeAuthorizationServer:
             ):
                 return httpx.Response(400, json={"error": "invalid_grant"})
         elif form.get("grant_type") == "refresh_token":
+            if self.refresh_status is not None:
+                return httpx.Response(self.refresh_status, json={"error": "temporarily_unavailable"})
             if self.refresh_tokens.pop(form.get("refresh_token", ""), None) != client_id:
                 return httpx.Response(400, json={"error": "invalid_grant"})
         else:
@@ -489,6 +493,21 @@ class TestSignIn:
         assert response.status_code == 401
         assert response.json() == {"auth_required": True, "server_url": MCP_URL}
         assert await _grant(db_session) is None
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("answer", [408, 429, 503])
+    async def test_a_server_that_cannot_answer_now_keeps_the_grant(self, auth_client, servers, db_session, answer):
+        await _sign_in(auth_client, servers)
+        await _expire_the_token(db_session)
+        servers.auth.refresh_status = answer
+
+        await _proxy(auth_client)
+
+        assert await _grant(db_session) is not None
+        servers.auth.refresh_status = None
+        response = await _proxy(auth_client)
+        assert response.status_code == 200, response.text
+        assert servers.mcp.tokens_seen[-1] == "Bearer access-2"
 
     @pytest.mark.asyncio
     async def test_one_request_refreshes_at_a_time(self, auth_client, servers, db_session):

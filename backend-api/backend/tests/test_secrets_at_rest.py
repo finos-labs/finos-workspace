@@ -231,6 +231,14 @@ class TestMcpServerHeaders:
         assert response.status_code in {404, 405}
         assert "local-value" not in response.text
 
+    async def test_local_server_headers_are_served_for_the_ipv6_loopback(self, auth_client):
+        local = "http://[::1]:8123/mcp"
+        await _save(auth_client, _server(url=local, customHeaders={"X-Local": "local-value"}))
+
+        response = await auth_client.post("/app/mcp-servers/local-headers", json={"url": local})
+        assert response.status_code == 200
+        assert response.json() == {"headers": {"X-Local": "local-value"}}
+
     async def test_local_server_headers_are_never_served_to_a_bearer_session(
         self, auth_client, db_session
     ):

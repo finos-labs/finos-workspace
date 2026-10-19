@@ -20,6 +20,7 @@ import asyncio
 import json
 import re
 import secrets
+import weakref
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
@@ -621,13 +622,24 @@ def _session_agent_tokens_key(session_uuid: UUID) -> str:
     return app_redis_key(f"agent_tokens:{session_uuid}")
 
 
+# The client of the app's Redis database, one per event loop: a client's connections belong
+# to the loop that opened them. The API runs one loop; the tests, one per test.
+_app_redis_clients: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, Any] = weakref.WeakKeyDictionary()
+
+
 @asynccontextmanager
 async def app_redis() -> AsyncIterator[Any]:
-    """A client of the app's Redis database, closed on exit."""
-    client = settings.get_async_redis_session("app")
-    try:
-        yield client
-    finally:
+    """The client of the app's Redis database. It stays open, with its connection pool,
+    for every later call on the same event loop."""
+    loop = asyncio.get_running_loop()
+    if (client := _app_redis_clients.get(loop)) is None:
+        client = _app_redis_clients[loop] = settings.get_async_redis_session("app")
+    yield client
+
+
+async def close_app_redis() -> None:
+    """Closes the event loop's client of the app's Redis database, if it has one."""
+    if (client := _app_redis_clients.pop(asyncio.get_running_loop(), None)) is not None:
         await client.aclose()
 
 

@@ -1292,7 +1292,7 @@ async def post_mcp_servers(
 
 
 # The hosts of MCP servers on the user's own machine, which the browser reaches directly
-LOCAL_MCP_HOSTS = frozenset({"localhost", "127.0.0.1"})
+LOCAL_MCP_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
 
 @router.post("/mcp-servers/local-headers", response_model=schemas.MCPServerHeaders)

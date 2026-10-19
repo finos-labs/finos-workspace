@@ -55,6 +55,7 @@ async def lifespan(app: FastAPI):
     if config.settings.PROMETHEUS:
         start_runtime_metrics()
     yield
+    await auth_helpers.close_app_redis()
 
 
 workspace_mcp_asgi_app = create_workspace_mcp_asgi_app()

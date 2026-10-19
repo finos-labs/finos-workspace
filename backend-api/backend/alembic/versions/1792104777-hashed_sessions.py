@@ -8,7 +8,8 @@ The content of saved dashboards and apps loses the data backend credentials that
 carried in it (endpoint headers and query values, and backend header rows): widgets look
 them up in the data backend when they fetch.
 
-downgrade() drops the column, again with every session.
+downgrade() drops the column, again with every session. It does not put back the copies of
+the credentials it removed from saved dashboards and apps.
 
 Revision ID: 7002053173be
 Revises: ff59d563599c

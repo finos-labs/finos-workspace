@@ -604,7 +604,11 @@ async def _refreshed(db: AsyncSession, user_uuid: UUID, server: str) -> dict | N
         try:
             fresh = await _token_request(credentials["token_endpoint"], client, form)
         except TokenEndpointError as exc:
-            if httpx.codes.is_server_error(exc.status_code):
+            # A server that cannot answer now (down, overloaded, timed out) has refused nothing
+            if httpx.codes.is_server_error(exc.status_code) or exc.status_code in {
+                status.HTTP_408_REQUEST_TIMEOUT,
+                status.HTTP_429_TOO_MANY_REQUESTS,
+            }:
                 return None
         except (httpx.HTTPError, OAuthFlowError, BlockedAddressError, ValueError) as exc:
             logger.info(f"MCP sign-in: refreshing a token failed: {type(exc).__name__}")

@@ -21,3 +21,12 @@ def reset_rate_limiter():
             pass
 
     yield
+
+
+@pytest.fixture(autouse=True)
+async def close_app_redis():
+    """Close the test event loop's client of the app's Redis, which ends with the test."""
+    yield
+    from api.auth_helpers import close_app_redis
+
+    await close_app_redis()
