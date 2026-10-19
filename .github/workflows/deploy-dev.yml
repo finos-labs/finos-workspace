@@ -1,10 +1,10 @@
 name: Deploy to dev
 
-# A push to develop that changes the backend or the frontend builds both images
-# from that commit, pushes them to ECR as dev-<commit>, and deploys them to the
-# dev environment with the infrastructure repository's
-# .github/scripts/deploy-workspace.sh, its chart and the environment's values
-# file. Only the image tags come from here. The run's summary lists what is
+# A push to develop that changes the backend, the frontend or the agent (Ines,
+# in ines/) builds every image from that commit, pushes them to ECR as
+# dev-<commit>, and deploys them to the dev environment with the infrastructure
+# repository's .github/scripts/deploy-workspace.sh, its chart and the
+# environment's values file. Only the image tags come from here. The run's summary lists what is
 # running. Run the workflow by hand, from develop, to build and deploy develop's
 # latest commit again. Re-running an older run deploys that older commit.
 #
@@ -24,10 +24,11 @@ on:
     paths:
       - "backend-api/backend/**"
       - "frontend/**"
+      - "ines/**"
   workflow_dispatch:
 
 # One run at a time, and a running deploy is never cancelled. A run that is
-# still waiting is replaced by a newer one, which builds both images from a
+# still waiting is replaced by a newer one, which builds every image from a
 # later commit, so nothing it would have deployed is lost.
 concurrency:
   group: deploy-dev
@@ -103,8 +104,40 @@ jobs:
             exit 1
           fi
 
+  # Ines and the MCP server with her tools: the two targets of ines/Dockerfile.
+  agent:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: dev-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to AWS to push images
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        with:
+          role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
+
+      # Tags are immutable, so a rerun keeps the images the first attempt pushed.
+      - name: Build and push the agent and agent MCP server images
+        run: |
+          for image in agent:ines agent-mcp:ines-mcp; do
+            repository="finos/${image%%:*}" target="${image#*:}"
+            if output=$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="$IMAGE_TAG" 2>&1); then
+              echo "$repository:$IMAGE_TAG is already in ECR."
+            elif grep -q ImageNotFoundException <<< "$output"; then
+              docker build --target "$target" --build-arg GIT_SHA="$GITHUB_SHA" -t "$ECR_REGISTRY/$repository:$IMAGE_TAG" ines
+              docker push "$ECR_REGISTRY/$repository:$IMAGE_TAG"
+            else
+              echo "$output" >&2
+              exit 1
+            fi
+          done
+
   deploy:
-    needs: [backend, frontend]
+    needs: [backend, frontend, agent]
     runs-on: ubuntu-latest
     env:
       IMAGE_TAG: dev-${{ github.sha }}
@@ -162,4 +195,4 @@ jobs:
         env:
           ENVIRONMENT: ${{ steps.infra.outputs.environment }}
           SOURCE: ${{ github.repository }}@${{ github.sha }}
-        run: .github/scripts/deploy-workspace.sh -e "$ENVIRONMENT" -b "$IMAGE_TAG" -f "$IMAGE_TAG" -s "$SOURCE"
+        run: .github/scripts/deploy-workspace.sh -e "$ENVIRONMENT" -b "$IMAGE_TAG" -f "$IMAGE_TAG" -a "$IMAGE_TAG" -s "$SOURCE"
