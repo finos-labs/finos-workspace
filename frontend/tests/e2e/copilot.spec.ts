@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 /**
  * A question put to the Copilot, from the chat to the model and back.
  *
- * The stack these run against answers with a stubbed model (`ines/tests/stub-model`, added by
+ * The stack these run against answers with a stubbed model (`agent/tests/stub-model`, added by
  * `docker-compose.e2e.yml`), which says the same sentence to everything. So this does not test what
  * an answer says — nothing here could, and a test that tried would be asserting on a model. It tests
  * that an answer arrives at all, which is the whole path between the browser and the model: the web
@@ -14,7 +14,7 @@ import { expect, test } from "@playwright/test";
  * test here asks it anything.
  */
 
-/** What the stub answers. It has to match STUB_ANSWER in ines/tests/stub-model/server.ts. */
+/** What the stub answers. It has to match STUB_ANSWER in agent/tests/stub-model/server.ts. */
 const STUB_ANSWER =
   "This answer came from the stubbed model that the end-to-end stack runs instead of a provider";
 

@@ -27,8 +27,8 @@ def config(tmp_path, monkeypatch):
     path = tmp_path / "cfgs" / "config.toml"
     monkeypatch.setattr(local_env, "CONFIG", path)
     monkeypatch.setattr(local_env, "USER_CREATE", tmp_path / "user_create.json")
-    monkeypatch.setattr(local_env, "INES_EXAMPLE", tmp_path / "ines" / ".env.example")
-    monkeypatch.setattr(local_env, "INES_TARGET", tmp_path / "ines" / ".env")
+    monkeypatch.setattr(local_env, "INES_EXAMPLE", tmp_path / "agent" / ".env.example")
+    monkeypatch.setattr(local_env, "INES_TARGET", tmp_path / "agent" / ".env")
     return path
 
 
@@ -269,14 +269,14 @@ INES_SCOPE_SECRET=
 
 @pytest.fixture
 def ines(tmp_path, monkeypatch, config):
-    """A checkout with an ``ines/`` directory and the example environment of the API."""
+    """A checkout with an ``agent/`` directory and the example environment of the API."""
     example = tmp_path / ".env.example"
     example.write_text(EXAMPLE)
     monkeypatch.setattr(local_env, "EXAMPLE", example)
     monkeypatch.setattr(local_env, "TARGET", tmp_path / ".env")
-    (tmp_path / "ines").mkdir()
-    (tmp_path / "ines" / ".env.example").write_text(INES_EXAMPLE)
-    return tmp_path / "ines" / ".env"
+    (tmp_path / "agent").mkdir()
+    (tmp_path / "agent" / ".env.example").write_text(INES_EXAMPLE)
+    return tmp_path / "agent" / ".env"
 
 
 def test_the_metering_token_is_what_the_api_expects(ines):
@@ -347,7 +347,7 @@ def test_main_without_ines_writes_nothing_for_her(tmp_path, monkeypatch, config)
 
     assert local_env.main(ADMIN) == 0
 
-    assert not (tmp_path / "ines").exists()
+    assert not (tmp_path / "agent").exists()
 
 
 def test_config_only_and_sqlite_leave_ines_alone(ines, tmp_path, monkeypatch):

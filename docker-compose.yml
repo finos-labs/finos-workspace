@@ -2,7 +2,7 @@
 # Copilot's agent, and the MCP server with the tools she uses.
 #
 #   (cd backend-api/backend && python3 -m scripts.create_local_env --admin-email <your-email>)
-#   # ...which also writes ines/.env: set DEFAULT_MODEL and that provider's key in it
+#   # ...which also writes agent/.env: set DEFAULT_MODEL and that provider's key in it
 #   docker compose up --build
 #
 # Web app http://localhost:3000, admin panel http://localhost:3001, API http://localhost:8000,
@@ -170,12 +170,12 @@ services:
     networks:
       - workspace
 
-  # The Copilot's agent. The web app sends chat requests to it. ines/.env (create_local_env writes it) holds
-  # its secrets and its model: DEFAULT_MODEL and that provider's key (see ines/.env.example); without
+  # The Copilot's agent. The web app sends chat requests to it. agent/.env (create_local_env writes it) holds
+  # its secrets and its model: DEFAULT_MODEL and that provider's key (see agent/.env.example); without
   # a model it answers that none is configured, and without its secrets it does not start.
   ines:
     build:
-      context: ./ines
+      context: ./agent
       target: ines
     image: workspace-ines:local
     restart: unless-stopped
@@ -193,10 +193,10 @@ services:
     mem_limit: ${INES_MEM_LIMIT:-4g}
     pids_limit: 1024
     env_file:
-      - ./ines/.env
+      - ./agent/.env
     environment:
       # Every caller signs in with the API, which owns the users, their roles and usage limits. The
-      # metering token and the scope secret are in ines/.env (create_local_env writes them).
+      # metering token and the scope secret are in agent/.env (create_local_env writes them).
       WORKSPACE_API_URL: http://api:8000
       # The Origin of Ines's calls to the API: the web app's address. The API refuses the calls of an origin
       # it does not allow (BACKEND_CORS_ORIGINS in envs/.env; DISABLE_CORS=1 allows every origin).
@@ -206,7 +206,8 @@ services:
       # Where what Ines keeps between the requests of a turn lives: who is signed in, how much of their
       # share is left, which turn is under way, and a chat's rows. In Redis they are shared, so the
       # answers are the same whichever replica a request reaches and a user has one share in all. Without
-      # it each replica keeps its own, so run one.
+      # it each replica keeps its own, so run one, and a chat's rows are not kept at all: they are only
+      # ever in Redis, never in a process's memory.
       REDIS_URL: redis://redis:6379
       # The origin of the web app: the browser calls Ines directly, so this has to name the address the
       # web app was loaded from, whatever that is — localhost, 127.0.0.1, the machine's address on the
@@ -228,11 +229,11 @@ services:
       - workspace
 
   # The tools Ines uses: web search, page fetch, document search and more, each registered when what
-  # it needs is set (see ines/.env.example). Every user has this server by default
+  # it needs is set (see agent/.env.example). Every user has this server by default
   # (DEFAULT_MCP_SERVERS above). The web app calls it through the API's MCP proxy, so it publishes no port.
   ines-mcp:
     build:
-      context: ./ines
+      context: ./agent
       target: ines-mcp
     image: workspace-ines-mcp:local
     restart: unless-stopped
@@ -248,7 +249,7 @@ services:
     mem_limit: ${INES_MEM_LIMIT:-4g}
     pids_limit: 1024
     env_file:
-      - ./ines/.env
+      - ./agent/.env
     environment:
       # The document search fetches the files of the Workspace itself, from the links the Workspace gives
       # out: they are on the address the browser uses, and are fetched from the API's address here, with
