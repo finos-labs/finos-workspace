@@ -69,7 +69,6 @@ const entitySchema = z.object({
   bring_your_own_copilot: z.boolean().optional(),
   admin_access: z.boolean().optional(),
   support: z.boolean().optional(),
-  excel_add_in: z.boolean().optional(),
   data_add_ons_redistribution: z.boolean().optional(),
   search_web: z.boolean().nullable().optional(),
   fetch_from_web: z.boolean().nullable().optional(),
@@ -184,7 +183,6 @@ export function EntitySubmitForm({
       bring_your_own_copilot: values.bring_your_own_copilot,
       admin_access: values.admin_access,
       support: values.support,
-      excel_add_in: values.excel_add_in,
       data_add_ons_redistribution: values.data_add_ons_redistribution,
       search_web: values.search_web ?? true,
       fetch_from_web: values.fetch_from_web ?? true,
@@ -492,19 +490,6 @@ export function EntitySubmitForm({
                   return (
                     <Checkbox
                       label="Support"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  );
-                }}
-              />
-              <FormField
-                name="excel_add_in"
-                control={form.control}
-                render={({ field }) => {
-                  return (
-                    <Checkbox
-                      label="Excel Add-In"
                       checked={field.value}
                       onCheckedChange={field.onChange}
                     />

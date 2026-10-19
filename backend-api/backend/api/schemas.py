@@ -33,7 +33,7 @@ StoredFileT = TypeVar("StoredFileT", bound="StoredFile")
 main_config = ConfigDict(extra="forbid", from_attributes=True)
 # Where a login came from. "sdk" is gone with the SDK token endpoints; this is what a client
 # may send, not what is read back, so logins already recorded as "sdk" are unaffected.
-source_type = Literal["app", "oauth-app", "excel"]
+source_type = Literal["app", "oauth-app"]
 MetaDataWidgetType = Literal[
     "iframe",
     "copilot_table",
@@ -476,7 +476,6 @@ class DataBundle(BaseModel):
     except_widgets: list[str] | None = None
     except_dashboard_templates: list[str] | None = None
     except_team_collaboration: list[Literal["pdf_reports", "sharing"]] | None = None
-    excel_add_in: bool
     data_export: bool
     providers: list[str] | None
     dashboards_at_launch: list[str] | None
@@ -515,7 +514,6 @@ class EntitlementBase(BaseModel):
     bring_your_own_copilot: bool = None
     admin_access: bool = None
     support: bool = None
-    excel_add_in: bool = None
     data_add_ons_redistribution: bool = None
     bundle_name: BundleNames | None = None
     allow_custom_backends: bool | None = True

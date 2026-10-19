@@ -205,10 +205,8 @@ async def login(  # noqa: PLR0914, PLR0915
 
     time_d = helpers.get_app_session_expiration(db_user, user.remember)
 
-    sources = ["app", "oauth-app"] if user.source != "excel" else ["excel"]
-
-    # Delete all other app sessions, except for excel
-    await auth_helpers.delete_user_app_sessions(db, db_user.uuid, sources)
+    # Delete all other app sessions
+    await auth_helpers.delete_user_app_sessions(db, db_user.uuid, ["app", "oauth-app"])
 
     access_token = await auth_helpers.create_login_token(
         db=db,
