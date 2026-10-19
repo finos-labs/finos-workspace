@@ -95,8 +95,8 @@ class HubAPIClient:
         if self.access_token:
             headers["Authorization"] = f"Bearer {self.access_token}"
 
+        # Not the headers: they carry the access token
         logger.debug(f"{method} {url}")
-        logger.debug(f"Headers: {json.dumps(headers, default=str)}")
         if data:
             logger.debug(
                 "Payload: (withheld)"
@@ -189,7 +189,7 @@ class HubAPIClient:
             "source": "app",
             "totp_token": None,
         }
-        response = self._request("POST", "/app/login", data)
+        response = self._request("POST", "/app/login", data, withhold_payload=True)
         return str(response["access_token"])
 
     # ENTITY

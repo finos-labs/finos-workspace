@@ -7,9 +7,9 @@ value wins. A value is read only to fill the headers of a proxy that names it: n
 endpoint, listing, log line or event carries one.
 """
 
+import os
 import re
 from collections.abc import Iterable
-from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -19,6 +19,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api import models
 from api.models.widget_plugin_models import VERSION_MISSING
 from utilities.config import settings
+
+from .manifest import PLUGIN_ID_PATTERN
+from .proxy import NAME_PATTERN
 
 MAX_SECRET_LENGTH = 4096
 SOURCE_CONFIGURATION = "configuration"
@@ -41,14 +44,20 @@ def value_problem(value: str) -> str | None:
 
 def configured(plugin_id: str, name: str) -> str | None:
     """The deployment's value: the file's text without its final line break, or None
-    when there is no file. Plugin ids and secret names cannot leave the directory."""
+    when there is no file. Only a plugin id and a secret name of the manifest's forms are
+    looked up, and only inside the directory."""
     if not settings.WIDGET_PLUGIN_SECRETS_DIR:
         return None
-    path = Path(settings.WIDGET_PLUGIN_SECRETS_DIR) / plugin_id / name
+    if not (re.fullmatch(PLUGIN_ID_PATTERN, plugin_id) and re.fullmatch(NAME_PATTERN, name)):
+        return None
+    base = os.path.normpath(settings.WIDGET_PLUGIN_SECRETS_DIR)
+    path = os.path.normpath(os.path.join(base, plugin_id, name))
+    if not path.startswith(base + os.sep):
+        return None
     try:
-        if not path.is_file():
+        if not os.path.isfile(path):
             return None
-        with path.open("rb") as handle:
+        with open(path, "rb") as handle:
             raw = handle.read(MAX_SECRET_LENGTH + 2)
     except OSError:
         return None

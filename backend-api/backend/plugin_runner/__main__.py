@@ -121,7 +121,8 @@ class Supervised:
         uid = gid = self.backend.uid or 0
         if not uid:
             raise ValueError(f"{self.name}: no uid")
-        _directory(self.base, 0, 0, 0o755)
+        # Others pass through to their own sockets and directories; nobody else lists them
+        _directory(self.base, 0, 0, 0o711)
         listen = _directory(self.base / "listen", uid, gid, 0o700)
         for stale in listen.iterdir():
             stale.unlink()
@@ -194,7 +195,7 @@ class Supervised:
 
 async def run(config: RunnerConfig) -> int:
     api_gid = grp.getgrnam(config.api_group).gr_gid
-    _directory(Path(config.socket_dir), 0, 0, 0o755)
+    _directory(Path(config.socket_dir), 0, 0, 0o711)
     supervised = []
     for name, backend in sorted(config.backends.items()):
         reason = verify(config, name, backend)

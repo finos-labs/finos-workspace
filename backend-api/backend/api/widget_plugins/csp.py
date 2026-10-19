@@ -51,6 +51,7 @@ _LABEL = r"(?!-)[a-z0-9-]{1,63}(?<!-)"
 _HOST = re.compile(rf"^(\*\.)?{_LABEL}(\.{_LABEL})*$")
 _URL = re.compile(r"^(?P<scheme>https|wss|http|ws)://(?P<host>[^/:?#@]+)(?P<port>:\d{1,5})?(?P<path>/[^?#]*)?$")
 _HASH = re.compile(r"^'sha(256|384|512)-[A-Za-z0-9+/]+={0,2}'$")
+_SCHEME = re.compile(r"[a-z][a-z0-9+.-]*")
 _BAD_CHARACTERS = set(' \t\r\n\f\v,;"<>&\\`')
 _PRIVATE_SUFFIXES = (".local", ".internal", ".localhost", ".home.arpa", ".lan")
 
@@ -134,7 +135,8 @@ def check_source(directive: str, source: object, check: PolicyCheck) -> None:  #
             return
         check.errors.append(f"{directive}: {source} is not allowed")
         return
-    if source == "*" or re.fullmatch(r"[a-z][a-z0-9+.-]*:", source):
+    # A whole scheme, such as "https:"
+    if source == "*" or (source.endswith(":") and _SCHEME.fullmatch(source[:-1])):
         check.errors.append(f"{directive}: {source!r} is too broad; name a host")
         return
     _check_url(directive, source, check)
