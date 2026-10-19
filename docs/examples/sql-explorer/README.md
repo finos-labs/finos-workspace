@@ -12,8 +12,8 @@ each query to one of two engines:
 It is the counterpart of a plugin that only draws (the Plotly plugin). Here the work cannot
 happen in the browser: the database speaks its own protocol, its password must never
 reach a browser, and the files are on a server. It is an example in the repository's
-`examples/`, a package of its own that nothing in Workspace imports, built and deployed the
-way any plugin is ([AUTHORING.md](../../docs/widget-plugins/AUTHORING.md), section 8 for
+`docs/examples/`, a package of its own that nothing in Workspace imports, built and deployed the
+way any plugin is ([AUTHORING.md](../../widget-plugins/AUTHORING.md), section 8 for
 backends).
 
 ```

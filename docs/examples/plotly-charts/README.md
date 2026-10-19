@@ -3,9 +3,9 @@
 A Workspace widget plugin that draws the `plotly` widget type with plotly.js 4. Any
 backend whose `widgets.json` declares a widget of type `plotly`, and whose endpoint returns
 a Plotly figure as JSON, is drawn by this plugin once a Workspace deployment has approved
-and enabled it. It is an example in the repository's `examples/`, a package of its own
+and enabled it. It is an example in the repository's `docs/examples/`, a package of its own
 that nothing in Workspace imports, built and deployed the way any plugin is
-([AUTHORING.md](../../docs/widget-plugins/AUTHORING.md)).
+([AUTHORING.md](../../widget-plugins/AUTHORING.md)).
 
 ## The contract
 
