@@ -5,15 +5,15 @@
 # The stack on its own has no model — `create_local_env` leaves DEFAULT_MODEL blank and a provider
 # key is a secret, which a pull request from a fork does not get. So the tests cannot ask the Copilot
 # anything, and the one feature this repository is adding goes untested. This file points Ines at a
-# server that impersonates a provider (ines/tests/stub-model), so a question goes all the way from
+# server that impersonates a provider (agent/tests/stub-model), so a question goes all the way from
 # the browser to a model and back with no key, no network and the same answer every time.
 #
 # It belongs to the tests, not to the stack: `docker compose up` without `-f` is the developer's
-# stack as it was, with a real model configured in ines/.env.
+# stack as it was, with a real model configured in agent/.env.
 
 services:
   stub-model:
-    build: ./ines/tests/stub-model
+    build: ./agent/tests/stub-model
     image: workspace-stub-model:local
     restart: unless-stopped
     init: true
@@ -28,7 +28,7 @@ services:
   ines:
     environment:
       # `environment` wins over the `env_file` that leaves these blank, so the stack keeps the rest
-      # of ines/.env (her secrets, which create_local_env writes) and takes its model from here.
+      # of agent/.env (her secrets, which create_local_env writes) and takes its model from here.
       DEFAULT_MODEL: ollama:stub
       # Ines registers the `ollama:` provider with no credentials and asks this address for a chat
       # (src/lib/providers.ts). The path ends in /api because the provider appends /chat to it.

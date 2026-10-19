@@ -7,10 +7,10 @@ the first start creates (``scripts.init_users`` reads it); the administrator's p
 random unless you pass one. ``user_create.json`` starts empty: compose mounts it into the
 containers, and without a file on the host Docker would put a directory there.
 
-Ines, the Copilot's agent, takes two secrets from ``ines/.env``: the token with which she reports
+Ines, the Copilot's agent, takes two secrets from ``agent/.env``: the token with which she reports
 usage to the API (signed with the API's ``JWT_SECRET``) and the secret that signs the chat scopes she
 hands to the tools. They are written there, into the file that holds her model settings, which is
-created from ``ines/.env.example`` when it is missing and otherwise only has these two set.
+created from ``agent/.env.example`` when it is missing and otherwise only has these two set.
 
     python -m scripts.create_local_env --admin-email <your-email>   # refuses to overwrite
     python -m scripts.create_local_env --admin-email <your-email> --force
@@ -38,7 +38,7 @@ SQLITE_EXAMPLE = ENVS / ".env.sqlite.example"
 SQLITE_TARGET = ENVS / ".env.sqlite"
 CONFIG = Path(__file__).resolve().parent / "cfgs" / "config.toml"
 USER_CREATE = Path(__file__).resolve().parent.parent / "user_create.json"
-INES = Path(__file__).resolve().parents[3] / "ines"
+INES = Path(__file__).resolve().parents[3] / "agent"
 INES_EXAMPLE = INES / ".env.example"
 INES_TARGET = INES / ".env"
 
@@ -155,8 +155,8 @@ def ines_secrets(jwt_secret: str, current_scope_secret: str = "") -> dict[str, s
 
 
 def write_ines_env(jwt_secret: str) -> Path | None:
-    """Set her two secrets in ``ines/.env``, which starts from ``ines/.env.example`` and is otherwise
-    left as it is (it holds her model settings). None when this checkout has no ``ines/``."""
+    """Set her two secrets in ``agent/.env``, which starts from ``agent/.env.example`` and is otherwise
+    left as it is (it holds her model settings). None when this checkout has no ``agent/``."""
     if not INES_EXAMPLE.exists():
         return None
     text = INES_TARGET.read_text() if INES_TARGET.exists() else INES_EXAMPLE.read_text()
