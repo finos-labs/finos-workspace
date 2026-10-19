@@ -1,5 +1,7 @@
+import BrandedLogo from "~/components/General/BrandedLogo";
 import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowThemeStore } from "~/lib/state/theme";
+import { cn } from "~/lib/utils";
 
 export default function NoItems() {
   const theme = useShallowThemeStore((state) => state.theme);
@@ -19,10 +21,11 @@ export default function NoItems() {
             alt={name || "Workspace"}
           />
         ) : (
-          <img
-            className="w-[200px] object-contain opacity-50"
-            src={`/assets/images/loading-${theme === "dark" ? "white" : "dark"}.svg`}
-            alt="Workspace"
+          <BrandedLogo
+            className={cn(
+              "h-auto w-[200px]",
+              theme === "dark" ? "text-white/50" : "text-[#071820]/50",
+            )}
           />
         )}
         <p className="subtitle-sm-bold mt-2 text-light-300 dark:text-dark-700">

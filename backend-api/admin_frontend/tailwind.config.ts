@@ -48,6 +48,15 @@ export default {
         link: {
           color: "var(--link-color)",
         },
+        input: {
+          bg: "var(--input-bg)",
+          "bg-hover": "var(--input-bg-hover)",
+        },
+        tab: {
+          bg: {
+            primary: "var(--tab-bg-primary)",
+          },
+        },
         "ds-text": {
           heading: "var(--text-heading)",
           subtitle: "var(--text-subtitle)",

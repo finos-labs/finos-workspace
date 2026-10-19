@@ -41,7 +41,7 @@ export default function Navigation(): JSX.Element {
       <div className="ws-page-container py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-link-color" />
+            <img src="/logo.svg" alt="" className="h-6 w-auto" />
             <span className="text-sm font-semibold text-ds-text-heading">
               Admin Dashboard
             </span>

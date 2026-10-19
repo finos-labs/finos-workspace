@@ -48,7 +48,7 @@ export function Sidebar(props: Props) {
               className="size-9 object-contain"
             />
           ) : (
-            <Icon id="brand-mark" className="h-4 w-8 text-light-800 dark:text-white" />
+            <Icon id="brand-mark" className="h-4 w-8 text-main-50" />
           )}
         </Link>
         {header && (

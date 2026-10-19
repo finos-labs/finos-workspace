@@ -695,9 +695,7 @@ export async function generateReportImage(
           ctx.fillText(exportString, ctx.measureText(title).width + 40, 48); // Adjusted position
 
           // Draw the logo SVG next to the title
-          const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 255 127" width="32" height="16" fill="none" xmlns:xlink="http://www.w3.org/1999/xlink">
-          <path d="M151.404 103.189v-7.937h71.733v15.874h-71.733v-7.937Zm0-63.5v-7.937h87.66v15.874h-87.66V39.69Zm95.628-23.815H135.468V127h103.596V79.374h-87.66V63.5H255V15.874h-7.968Zm-215.16 87.315v-7.937h71.733v15.874H31.873v-7.937Zm-15.936-63.5v-7.937h87.66v15.874h-87.66V39.69ZM119.532 0v15.874H0V63.5h103.596v15.874h-87.66V127h103.596V15.874h15.936V0h-15.936Z" fill="white" />
-        </svg>`;
+          const logoSvg = LOGO_SVG;
           const logoImage = new Image();
           logoImage.onload = () => {
             const titleWidth =
@@ -774,8 +772,9 @@ const ELEMENT_POLL_INTERVAL = 100;
 const ELEMENT_MAX_WAIT = 5000;
 const ELEMENT_SETTLE_DELAY = 1000; // Allow widgets to fully render after content detected
 
-const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 255 127" width="32" height="16" fill="none" xmlns:xlink="http://www.w3.org/1999/xlink">
-  <path d="M151.404 103.189v-7.937h71.733v15.874h-71.733v-7.937Zm0-63.5v-7.937h87.66v15.874h-87.66V39.69Zm95.628-23.815H135.468V127h103.596V79.374h-87.66V63.5H255V15.874h-7.968Zm-215.16 87.315v-7.937h71.733v15.874H31.873v-7.937Zm-15.936-63.5v-7.937h87.66v15.874h-87.66V39.69ZM119.532 0v15.874H0V63.5h103.596v15.874h-87.66V127h103.596V15.874h15.936V0h-15.936Z" fill="white" />
+const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 277.167 139.248" width="32" height="16" fill="none">
+  <path fill="white" d="M147.222,17.667V0h-17.333v17.595H0v52h17.444v-.056h95.111v17.306H16.889v52.278h113.111V17.667h17.222ZM112.556,121.623H34.333v-17.278h78.222v17.278ZM112.556,52.04H17.444v-16.444h95.111v16.444Z"/>
+  <path fill="white" d="M147.167,17.72v121.528h113.111v-52.278h-95.667v-17.306h95.111v.056h17.444V17.72h-130ZM242.833,104.47v17.278h-78.222v-17.278h78.222ZM259.722,52.165h-95.111v-16.444h95.111v16.444Z"/>
 </svg>`;
 
 async function captureElementWithHeader(
