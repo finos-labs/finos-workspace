@@ -77,10 +77,8 @@ class HubAPIClient:
         endpoint: str,
         data: Optional[Dict[str, Any]] = None,
         params: Optional[Dict[str, Any]] = None,
-        withhold_payload: bool = False,
     ) -> Dict[str, Any]:
-        """Make HTTP request with error handling and retries. A payload that carries a
-        secret is not logged (withhold_payload)."""
+        """Make HTTP request with error handling and retries."""
         url = f"{self.base_url}{endpoint}"
 
         if params:
@@ -95,14 +93,8 @@ class HubAPIClient:
         if self.access_token:
             headers["Authorization"] = f"Bearer {self.access_token}"
 
-        # Not the headers: they carry the access token
+        # Neither the headers nor the payload: they carry the access token, passwords and secrets
         logger.debug(f"{method} {url}")
-        if data:
-            logger.debug(
-                "Payload: (withheld)"
-                if withhold_payload
-                else f"Payload: {json.dumps(data, indent=2)}"
-            )
 
         req_data = json.dumps(data).encode("utf-8") if data else None
         request = urllib.request.Request(
@@ -189,7 +181,7 @@ class HubAPIClient:
             "source": "app",
             "totp_token": None,
         }
-        response = self._request("POST", "/app/login", data, withhold_payload=True)
+        response = self._request("POST", "/app/login", data)
         return str(response["access_token"])
 
     # ENTITY
@@ -641,7 +633,6 @@ class HubAPIClient:
             "PUT",
             f"/plugins/{plugin_id}/secrets/{name}",
             {"value": value},
-            withhold_payload=True,
         )
 
     def plugin_check_backend(self, plugin_id: str) -> Dict[str, Any]:

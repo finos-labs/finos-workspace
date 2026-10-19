@@ -126,7 +126,7 @@ class Supervised:
         listen = _directory(self.base / "listen", uid, gid, 0o700)
         for stale in listen.iterdir():
             stale.unlink()
-        egress = _directory(self.base / "egress", 0, gid, 0o750)
+        egress = _directory(self.base / "egress", 0, gid, 0o710)
         api_socket = str(Path(self.config.socket_dir) / f"{self.name}.sock")
         self.servers.append(
             await relays.unix_server(
