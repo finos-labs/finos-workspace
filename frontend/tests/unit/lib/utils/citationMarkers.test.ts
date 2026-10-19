@@ -106,7 +106,8 @@ describe("protectAiMarkers", () => {
     );
 
     // Simulate a sanitizer pass that strips tags but keeps plain text
-    const transformed = protectedText.replace(/<[^>]*>/g, "");
+    const transformed =
+      new DOMParser().parseFromString(protectedText, "text/html").body.textContent ?? "";
     expect(restoreAiMarkers(transformed)).toBe('x <citation className="cite-1"/> y');
   });
 });

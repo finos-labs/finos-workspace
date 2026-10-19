@@ -43,18 +43,18 @@ export function convertHeadersToRecord<PT extends object = Record<string, unknow
   headers = headers || {};
 
   if (Array.isArray(headers)) {
-    const newHeaders = headers.reduce<Record<string, string>>(
-      (acc, { key, value, location = "headers" }) => {
-        if (location === "headers") acc[key] = value;
-        else (params as Record<string, unknown>)[key] = value;
-
-        return acc;
-      },
-      {},
-    );
+    // Built as new records, not written key by key: a key comes from the backend's
+    // configuration and must not reach an object's prototype
+    const rows = headers;
+    const entries = (inHeaders: boolean) =>
+      rows
+        .filter(({ location = "headers" }) => (location === "headers") === inHeaders)
+        .map(({ key, value }) => [key, value] as const);
+    const newHeaders: Record<string, string> = Object.fromEntries(entries(true));
+    const newParams = { ...params, ...Object.fromEntries(entries(false)) } as PT;
 
     headers = addExtraHeaders(newHeaders);
-    return { headers, newParams: params };
+    return { headers, newParams };
   }
 
   headers = addExtraHeaders(headers);

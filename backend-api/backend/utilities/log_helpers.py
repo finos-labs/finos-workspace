@@ -63,8 +63,8 @@ def get_secrets() -> dict[str, str]:
 
 def obfuscate_secrets(message: str) -> str:
 
-    for key, value in get_secrets().items():
-        message = message.replace(value, key)
+    for value in get_secrets().values():
+        message = message.replace(value, "********")
 
     cleaned_message = FILTER_REGEX.sub(r"\1'********'", message)
     return URL_QUERY_FILTER.sub(r"\1=********'", cleaned_message)
