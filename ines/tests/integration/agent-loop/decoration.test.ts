@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop, _resetWidgetDataCache } from "../../../src/agent/loop";
+import { runAgentLoop } from "../../../src/agent/loop";
 import type { AgentTool, QueryRequest, SSEEvent, ToolMessage, Widget } from "../../../src/protocol/types";
 import { llmCallsTool, llmEmitsText, makeMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm";
 import { collectGenerator } from "../../helpers/sse-reader";
@@ -18,7 +18,6 @@ import { rememberRows } from "../../../src/agent/row-cache";
 
 beforeEach(() => {
   clearAllModuleState();
-  _resetWidgetDataCache();
 });
 
 // MCP tools of the ines tool server: a renderer, and a tool that keeps state per chat and so
@@ -72,7 +71,7 @@ function findExecuteAgentTool(events: SSEEvent[]): SSEEvent | undefined {
 
 describe("decoration — the SQL family needs none", () => {
   it("execute_sql runs in-process even when conversationId is missing — no executeAgentTool emit", async () => {
-    rememberRows("", "prices", [{ symbol: "NVDA" }]);
+    await rememberRows("", "prices", [{ symbol: "NVDA" }]);
     const events = await collectGenerator(
       runAgentLoop({
         request: { messages: [{ role: "human", content: "select" }], tools: tools() } as QueryRequest,

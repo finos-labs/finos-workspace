@@ -4,6 +4,7 @@ import {
   type McpResultContext,
 } from "../../../../src/mcp/results";
 import type { ToolMessage } from "../../../../src/protocol/types";
+import { clearAllModuleState } from "../../../helpers/clear-state";
 
 function freshCtx(conversationId = "conv-test"): McpResultContext {
   return {
@@ -26,10 +27,8 @@ function toolMsg(items: Array<{ text?: string; content?: string }>, fn = "tool-1
 }
 
 beforeEach(() => {
-  // Clear module-level row cache (declared globally in src/agent/row-cache.ts)
-  // so each test runs against a clean slate.
-  (globalThis as { __ines_chat_row_cache?: Map<string, unknown> })
-    .__ines_chat_row_cache?.clear();
+  // Each test starts with no kept rows.
+  clearAllModuleState();
 });
 
 describe("processMcpResult — plain text", () => {

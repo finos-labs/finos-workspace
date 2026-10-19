@@ -5,8 +5,8 @@
  *  - `query_documents` decoration ships uploaded docs once per conversation.
  *    We extract → chunk → embed → store, keyed by conversationId + docId.
  *  - Subsequent calls in the same chat read from the store directly.
- *  - TTL eviction (30 min idle) matches the agent's `chatRowCache` so a chat
- *    that idles past the agent cache will re-ship anyway. Process restart
+ *  - TTL eviction (30 min idle) matches how long the agent keeps a chat's
+ *    rows, so a chat that idles past that will re-ship anyway. Process restart
  *    drops the store entirely (no persistence).
  *
  * Memory cap: per-conversation `MAX_DOCS_PER_CHAT` and `MAX_CHUNKS_PER_CHAT`

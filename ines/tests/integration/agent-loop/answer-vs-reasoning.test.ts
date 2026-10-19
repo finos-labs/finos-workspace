@@ -23,8 +23,8 @@ beforeEach(() => clearAllModuleState());
 
 const SQL = { display_summary: "Checking the top close", sql: "SELECT MAX(close) AS m FROM prices" };
 
-function seedPrices(chat: string): void {
-  rememberRows(chat, "prices", [
+async function seedPrices(chat: string): Promise<void> {
+  await rememberRows(chat, "prices", [
     { symbol: "NVDA", close: 100 },
     { symbol: "AAPL", close: 200 },
   ]);
@@ -68,7 +68,7 @@ describe("the answer reaches the chat whole", () => {
   it("as one chunk, however many deltas the model wrote it in", async () => {
     const answer = "Top close is 200. NVDA closed at 100 and AAPL at 200, so AAPL has the higher close.";
     for (const size of [1, 2, 5, 17, answer.length]) {
-      seedPrices(`avr-whole-${size}`);
+      await seedPrices(`avr-whole-${size}`);
       const events = await ask(`avr-whole-${size}`, makeSequencedMockLlm([llmEmitsTextInDeltas(splitEvery(answer, size))]));
       expect(chunks(events)).toEqual([answer]);
     }
@@ -77,13 +77,13 @@ describe("the answer reaches the chat whole", () => {
   it("as one chunk when it is long enough that the text sink works on it in slices", async () => {
     const answer = `${"NVDA closed at 100 and AAPL at 200, so AAPL has the higher close. ".repeat(400)}Done.`;
     expect(answer.length).toBeGreaterThan(20_000);
-    seedPrices("avr-long");
+    await seedPrices("avr-long");
     const events = await ask("avr-long", makeSequencedMockLlm([llmEmitsTextInDeltas(splitEvery(answer, 1000))]));
     expect(chunks(events)).toEqual([answer]);
   });
 
   it("as one chunk after a chain of tool steps, and the steps' text is not in it", async () => {
-    seedPrices("avr-chain");
+    await seedPrices("avr-chain");
     const events = await ask(
       "avr-chain",
       makeSequencedMockLlm([
@@ -98,7 +98,7 @@ describe("the answer reaches the chat whole", () => {
   });
 
   it("with a placeholder tag split across the deltas still stripped, in one chunk", async () => {
-    seedPrices("avr-tag");
+    await seedPrices("avr-tag");
     const events = await ask(
       "avr-tag",
       makeSequencedMockLlm([llmEmitsTextInDeltas(["Here is the chart. <arti", 'fact id="a1"/>', " NVDA is at 100."])]),
@@ -112,7 +112,7 @@ describe("the answer reaches the chat whole", () => {
 
 describe("text in a step that calls a tool is reasoning", () => {
   it("is one status however many deltas it came in, and never a chunk", async () => {
-    seedPrices("avr-reasoning-deltas");
+    await seedPrices("avr-reasoning-deltas");
     const intent = "I will look at the highest close before I answer.";
     const events = await ask(
       "avr-reasoning-deltas",
@@ -127,7 +127,7 @@ describe("text in a step that calls a tool is reasoning", () => {
   });
 
   it("is cleaned like the answer: no placeholder tag and no suggestions block reaches the reasoning", async () => {
-    seedPrices("avr-reasoning-clean");
+    await seedPrices("avr-reasoning-clean");
     const events = await ask(
       "avr-reasoning-clean",
       makeSequencedMockLlm([
@@ -146,7 +146,7 @@ describe("text in a step that calls a tool is reasoning", () => {
   });
 
   it("is left out when it is too short to say anything, and is not repeated", async () => {
-    seedPrices("avr-reasoning-short");
+    await seedPrices("avr-reasoning-short");
     const events = await ask(
       "avr-reasoning-short",
       makeSequencedMockLlm([
@@ -161,7 +161,7 @@ describe("text in a step that calls a tool is reasoning", () => {
   });
 
   it("is shown before the tool it introduced, and before the answer", async () => {
-    seedPrices("avr-order");
+    await seedPrices("avr-order");
     const events = await ask(
       "avr-order",
       makeSequencedMockLlm([llmCallsToolWithText("execute_sql", SQL, "Looking at the top close."), llmEmitsText("Top close is 200.")]),
@@ -181,7 +181,7 @@ describe("a model that writes its tool calls into its text", () => {
     withInlineToolCalls(makeSequencedMockLlm(steps) as never) as unknown as ReturnType<typeof makeSequencedMockLlm>;
 
   it("has its marker run as the tool call, its text before it shown as reasoning, and no marker shown", async () => {
-    seedPrices("avr-inline");
+    await seedPrices("avr-inline");
     const text = `I will look at the highest close first. ${marker("execute_sql", SQL)}`;
     const events = await ask(
       "avr-inline",
@@ -197,7 +197,7 @@ describe("a model that writes its tool calls into its text", () => {
   });
 
   it("runs several markers of one step", async () => {
-    seedPrices("avr-inline-many");
+    await seedPrices("avr-inline-many");
     const events = await ask(
       "avr-inline-many",
       inline([
@@ -226,7 +226,7 @@ describe("a model that writes its tool calls into its text", () => {
   });
 
   it("drops a marker for a tool that does not exist, and a marker that cannot be read, instead of showing it", async () => {
-    seedPrices("avr-inline-bad");
+    await seedPrices("avr-inline-bad");
     const events = await ask(
       "avr-inline-bad",
       inline([
@@ -241,7 +241,7 @@ describe("a model that writes its tool calls into its text", () => {
   });
 
   it("shows an answer that talks about markers, without a marker in it, as the answer", async () => {
-    seedPrices("avr-inline-prose");
+    await seedPrices("avr-inline-prose");
     const events = await ask(
       "avr-inline-prose",
       inline([llmEmitsText("In HTML, <function> and <tool> are just tags; P/E < 15 is cheap.")]),

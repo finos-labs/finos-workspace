@@ -244,7 +244,7 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
   });
 
   it("emits a structured reasoning step per in-process tool and attaches artifacts before the final answer", async () => {
-    rememberRows("stream-prog-1", "prices", [
+    await rememberRows("stream-prog-1", "prices", [
       { symbol: "NVDA", close: 100 },
       { symbol: "AAPL", close: 200 },
     ]);
@@ -358,7 +358,7 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
   });
 
   it("defers create_artifact answer events until later tool reasoning is complete", async () => {
-    rememberRows("stream-artifact-defers", "prices", [
+    await rememberRows("stream-artifact-defers", "prices", [
       { symbol: "NVDA", close: 100 },
       { symbol: "AAPL", close: 200 },
     ]);
@@ -415,7 +415,7 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
       date: `2024-01-${String(idx + 1).padStart(2, "0")}`,
       close: idx + 1,
     }));
-    rememberRows("stream-sql-export-artifact", "prices", rows);
+    await rememberRows("stream-sql-export-artifact", "prices", rows);
 
     const csv = [
       "date,close",
@@ -459,7 +459,7 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
   });
 
   it("can place answer artifacts between final text paragraphs", async () => {
-    rememberRows("stream-artifact-middle", "prices", [
+    await rememberRows("stream-artifact-middle", "prices", [
       { symbol: "NVDA", close: 100 },
       { symbol: "AAPL", close: 200 },
     ]);
@@ -503,7 +503,7 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
   });
 
   it("preserves final text when a table artifact is rendered", async () => {
-    rememberRows("stream-artifact-inline-table", "metrics", [
+    await rememberRows("stream-artifact-inline-table", "metrics", [
       { metric: "Renewable Energy %", value_2020: 12.3, value_2024: 33.7, pct_change: 174 },
       { metric: "Waste Recycled %", value_2020: 38, value_2024: 51.9, pct_change: 36.7 },
     ]);
@@ -555,7 +555,7 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
   });
 
   it("preserves final text when the table artifact is attached to tool progress", async () => {
-    rememberRows("stream-artifact-status-table", "metrics", [
+    await rememberRows("stream-artifact-status-table", "metrics", [
       { metric: "Renewable Energy %", value_2020: 12.3, value_2024: 33.7, pct_change: 174 },
       { metric: "Waste Recycled %", value_2020: 38, value_2024: 51.9, pct_change: 36.7 },
     ]);
@@ -609,7 +609,7 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
   });
 
   it("emits the table artifact and strips inline artifact placeholders from the text", async () => {
-    rememberRows("stream-artifact-compare", "prices", [
+    await rememberRows("stream-artifact-compare", "prices", [
       { symbol: "NVDA", close: 100 },
       { symbol: "AAPL", close: 200 },
     ]);
@@ -651,7 +651,7 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
   });
 
   it("emits create_artifact output consistently regardless of user wording", async () => {
-    rememberRows("stream-artifact-reasoning-only", "prices", [
+    await rememberRows("stream-artifact-reasoning-only", "prices", [
       { symbol: "NVDA", close: 100 },
       { symbol: "AAPL", close: 200 },
     ]);
@@ -694,7 +694,7 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
   });
 
   it("shows prose written in a step that calls a tool as reasoning, and only the final step as the answer", async () => {
-    rememberRows("stream-progress-text", "prices", [
+    await rememberRows("stream-progress-text", "prices", [
       { symbol: "NVDA", close: 100 },
       { symbol: "AAPL", close: 200 },
     ]);
@@ -742,7 +742,7 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
   });
 
   it("surfaces invalid in-process tool inputs as warnings", async () => {
-    rememberRows("stream-invalid-tool", "prices", [
+    await rememberRows("stream-invalid-tool", "prices", [
       { symbol: "NVDA", close: 100 },
       { symbol: "AAPL", close: 200 },
     ]);
@@ -822,7 +822,7 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
   });
 
   it("does not warn when a tool-only stop already emitted an answer artifact", async () => {
-    rememberRows("stream-artifact-only", "prices", [
+    await rememberRows("stream-artifact-only", "prices", [
       { symbol: "NVDA", close: 100 },
       { symbol: "AAPL", close: 200 },
     ]);
@@ -1073,7 +1073,7 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
   });
 
   it("warns when a later empty step follows a completed tool and suppresses naked citations", async () => {
-    rememberRows("stream-empty-after-tool", "prices", [
+    await rememberRows("stream-empty-after-tool", "prices", [
       { symbol: "NVDA", close: 100 },
       { symbol: "AAPL", close: 200 },
     ]);

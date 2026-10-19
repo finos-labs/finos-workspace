@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop, _resetWidgetDataCache } from "../../../src/agent/loop";
+import { runAgentLoop } from "../../../src/agent/loop";
 import type { QueryRequest, Message, AgentTool } from "../../../src/protocol/types";
 import { llmCallsTool, llmEmitsText, makeSequencedSpyMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm";
 import { collectGenerator } from "../../helpers/sse-reader";
@@ -14,7 +14,6 @@ import { clearAllModuleState } from "../../helpers/clear-state";
 
 beforeEach(() => {
   clearAllModuleState();
-  _resetWidgetDataCache();
 });
 
 const human = (content: string): Message => ({ role: "human", content });

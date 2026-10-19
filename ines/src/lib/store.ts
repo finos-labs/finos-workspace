@@ -4,9 +4,9 @@
  *
  * A turn is several requests (the browser runs a tool and comes back), and what the agent remembers
  * between them decides what the next one may do: who the caller is, how much of their quota is left,
- * whether the turn they claim to continue is real, and which rows it already has. Kept in one
- * process, all of that is right only while there is one process. A second replica gives the same
- * user their quota again, counts a continuation as a new turn, and re-fetches rows it has no copy of.
+ * and whether the turn they claim to continue is real. Kept in one process, all of that is right only
+ * while there is one process. A second replica gives the same user their quota again, and counts a
+ * continuation as a new turn.
  *
  * So each of those lives behind this interface. With REDIS_URL set they are shared and the answers
  * are the same whichever replica a request reaches. Without it they fall back to bounded structures
@@ -17,6 +17,9 @@
  * answer rather than failing the request, because a cache that is down must not take the agent with
  * it. A quota is then enforced per replica until Redis comes back, which is looser than intended but
  * never looser than having no limit at all.
+ *
+ * A chat's tables and widget data are the exception: they are kept in Redis alone (`sharedOnly()`), never in a
+ * process's memory. Without Redis, or while it cannot answer, they are not kept, and the widget is fetched again.
  */
 
 import { randomUUID } from "node:crypto";
@@ -57,6 +60,13 @@ export interface Store {
   /** Adds to one number of a record. Null when there is no record to add to. */
   addToRecord(key: string, field: string, by: number): Promise<number | null>;
 
+  /**
+   * This store in Redis alone: what Redis cannot keep is not kept, and an operation it cannot answer fails
+   * instead of being answered from this process. Null when there is no Redis. For what is never held in a
+   * process's memory: a chat's tables and widget data (agent/row-cache.ts).
+   */
+  sharedOnly(): Store | null;
+
   close(): Promise<void>;
 }
 
@@ -93,6 +103,7 @@ export function createLocalStore(now: () => number = Date.now): Store {
 
   return {
     shared: false,
+    sharedOnly: () => null,
 
     async get(key) {
       const found = values.get(key);
@@ -229,116 +240,126 @@ export function createRedisStore(url: string, now: () => number = Date.now): Sto
   });
   client.on("connect", () => logger.info("Connected to Redis: what the agent keeps is shared between replicas"));
 
-  const local = createLocalStore(now);
   const key = (k: string) => `${PREFIX}${k}`;
 
-  /** The shared answer, or the process-local one when Redis cannot give it. */
-  async function shared<T>(op: string, ask: () => Promise<T>, fallback: () => Promise<T>): Promise<T> {
-    try {
-      return await ask();
-    } catch (error) {
-      metrics.storeErrors.inc({ op });
-      logger.warn("Redis could not {op}, answering from this process: {message}", {
-        op,
-        message: error instanceof Error ? error.message : String(error),
-      });
-      return fallback();
+  /**
+   * The store over this connection. With `local`, an operation Redis cannot answer is answered from this
+   * process; without it, the operation fails.
+   */
+  function over(local: Store | null): Omit<Store, "sharedOnly"> {
+    /** The shared answer, or the process-local one when Redis cannot give it and there is a process-local one. */
+    async function shared<T>(op: string, ask: () => Promise<T>, fallback: (local: Store) => Promise<T>): Promise<T> {
+      try {
+        return await ask();
+      } catch (error) {
+        metrics.storeErrors.inc({ op });
+        const message = error instanceof Error ? error.message : String(error);
+        if (!local) {
+          logger.warn("Redis could not {op}: {message}", { op, message });
+          throw error;
+        }
+        logger.warn("Redis could not {op}, answering from this process: {message}", { op, message });
+        return fallback(local);
+      }
     }
+
+    return {
+      shared: true,
+
+      get: (k) => shared("get", () => client.get(key(k)), (l) => l.get(k)),
+      set: (k, value, ttlSeconds) =>
+        shared("set", async () => void (await client.set(key(k), value, "EX", Math.max(1, Math.ceil(ttlSeconds)))), (l) =>
+          l.set(k, value, ttlSeconds),
+        ),
+      del: (k) => shared("del", async () => void (await client.del(key(k))), (l) => l.del(k)),
+
+      take: (k, max, windowMs) =>
+        shared(
+          "take",
+          async () =>
+            (await client.eval(TAKE, 1, key(k), String(now()), String(windowMs), String(max), randomUUID())) === 1,
+          (l) => l.take(k, max, windowMs),
+        ),
+      record: (k, max, windowMs) =>
+        shared(
+          "record",
+          async () => void (await client.eval(TAKE, 1, key(k), String(now()), String(windowMs), String(max), randomUUID())),
+          (l) => l.record(k, max, windowMs),
+        ),
+      full: (k, max, windowMs) =>
+        shared(
+          "full",
+          async () => Number(await client.eval(FULL, 1, key(k), String(now()), String(windowMs))) >= max,
+          (l) => l.full(k, max, windowMs),
+        ),
+
+      async lease(k, max, ttlMs = LEASE_TTL_MS) {
+        const member = randomUUID();
+        const got = await shared(
+          "lease",
+          async () =>
+            (await client.eval(TAKE, 1, key(k), String(now()), String(ttlMs), String(max), member)) === 1,
+          // Redis is down: this replica keeps its own count rather than letting everything through.
+          async (l) => (await l.lease(k, max, ttlMs)) !== null,
+        );
+        if (!got) return null;
+        let given = false;
+        return async () => {
+          if (given) return;
+          given = true;
+          await shared("release", async () => void (await client.zrem(key(k), member)), async () => undefined);
+        };
+      },
+
+      putRecord: (k, fields, ttlSeconds) =>
+        shared(
+          "putRecord",
+          async () => {
+            await client
+              .multi()
+              .del(key(k))
+              .hset(key(k), fields)
+              .expire(key(k), Math.max(1, Math.ceil(ttlSeconds)))
+              .exec();
+          },
+          (l) => l.putRecord(k, fields, ttlSeconds),
+        ),
+      getRecord: (k) =>
+        shared(
+          "getRecord",
+          async () => {
+            const found = await client.hgetall(key(k));
+            return found && Object.keys(found).length > 0 ? found : null;
+          },
+          (l) => l.getRecord(k),
+        ),
+      addToRecord: (k, field, by) =>
+        shared(
+          "addToRecord",
+          async () => {
+            // Only where there is a record: HINCRBY on a key that is gone would make one that never expires.
+            if ((await client.exists(key(k))) === 0) return null;
+            return await client.hincrby(key(k), field, by);
+          },
+          (l) => l.addToRecord(k, field, by),
+        ),
+
+      async close() {
+        await local?.close();
+        client.disconnect();
+      },
+    };
   }
 
-  return {
-    shared: true,
-
-    get: (k) => shared("get", () => client.get(key(k)), () => local.get(k)),
-    set: (k, value, ttlSeconds) =>
-      shared("set", async () => void (await client.set(key(k), value, "EX", Math.max(1, Math.ceil(ttlSeconds)))), () =>
-        local.set(k, value, ttlSeconds),
-      ),
-    del: (k) => shared("del", async () => void (await client.del(key(k))), () => local.del(k)),
-
-    take: (k, max, windowMs) =>
-      shared(
-        "take",
-        async () =>
-          (await client.eval(TAKE, 1, key(k), String(now()), String(windowMs), String(max), randomUUID())) === 1,
-        () => local.take(k, max, windowMs),
-      ),
-    record: (k, max, windowMs) =>
-      shared(
-        "record",
-        async () => void (await client.eval(TAKE, 1, key(k), String(now()), String(windowMs), String(max), randomUUID())),
-        () => local.record(k, max, windowMs),
-      ),
-    full: (k, max, windowMs) =>
-      shared(
-        "full",
-        async () => Number(await client.eval(FULL, 1, key(k), String(now()), String(windowMs))) >= max,
-        () => local.full(k, max, windowMs),
-      ),
-
-    async lease(k, max, ttlMs = LEASE_TTL_MS) {
-      const member = randomUUID();
-      const got = await shared(
-        "lease",
-        async () =>
-          (await client.eval(TAKE, 1, key(k), String(now()), String(ttlMs), String(max), member)) === 1,
-        // Redis is down: this replica keeps its own count rather than letting everything through.
-        async () => (await local.lease(k, max, ttlMs)) !== null,
-      );
-      if (!got) return null;
-      let given = false;
-      return async () => {
-        if (given) return;
-        given = true;
-        await shared("release", async () => void (await client.zrem(key(k), member)), async () => undefined);
-      };
-    },
-
-    putRecord: (k, fields, ttlSeconds) =>
-      shared(
-        "putRecord",
-        async () => {
-          await client
-            .multi()
-            .del(key(k))
-            .hset(key(k), fields)
-            .expire(key(k), Math.max(1, Math.ceil(ttlSeconds)))
-            .exec();
-        },
-        () => local.putRecord(k, fields, ttlSeconds),
-      ),
-    getRecord: (k) =>
-      shared(
-        "getRecord",
-        async () => {
-          const found = await client.hgetall(key(k));
-          return found && Object.keys(found).length > 0 ? found : null;
-        },
-        () => local.getRecord(k),
-      ),
-    addToRecord: (k, field, by) =>
-      shared(
-        "addToRecord",
-        async () => {
-          // Only where there is a record: HINCRBY on a key that is gone would make one that never expires.
-          if ((await client.exists(key(k))) === 0) return null;
-          return await client.hincrby(key(k), field, by);
-        },
-        () => local.addToRecord(k, field, by),
-      ),
-
-    async close() {
-      await local.close();
-      client.disconnect();
-    },
-  };
+  const onlyRedis: Store = { ...over(null), sharedOnly: () => onlyRedis };
+  return { ...over(createLocalStore(now)), sharedOnly: () => onlyRedis };
 }
 
 /** The store this deployment uses: shared when REDIS_URL names one. */
 export function createStore(env: NodeJS.ProcessEnv = process.env, now: () => number = Date.now): Store {
   const url = (env.REDIS_URL ?? "").trim();
   if (!url) {
-    logger.info("No REDIS_URL: what the agent keeps lives in this process, so run one replica of it");
+    logger.info("No REDIS_URL: what the agent keeps lives in this process, so run one replica of it; a chat's tables are not kept");
     return createLocalStore(now);
   }
   return createRedisStore(url, now);

@@ -33,7 +33,7 @@ function findFunctionCall(events: SSEEvent[], fn: string): SSEEvent | undefined 
 
 describe("SQL family — in-process execution", () => {
   it("execute_sql runs locally without an executeAgentTool round-trip", async () => {
-    rememberRows("sql-1", "prices", [
+    await rememberRows("sql-1", "prices", [
       { symbol: "NVDA", close: 100 },
       { symbol: "AAPL", close: 200 },
     ]);
@@ -58,7 +58,7 @@ describe("SQL family — in-process execution", () => {
   });
 
   it("create_artifact emits the rendered artifact into the answer stream", async () => {
-    rememberRows("sql-2", "prices", [
+    await rememberRows("sql-2", "prices", [
       { symbol: "NVDA", close: 100 },
       { symbol: "AAPL", close: 200 },
     ]);

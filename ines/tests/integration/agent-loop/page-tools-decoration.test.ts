@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop, _resetWidgetDataCache } from "../../../src/agent/loop";
+import { runAgentLoop } from "../../../src/agent/loop";
 import { signScope } from "../../../src/lib/scope";
 import type { AgentTool, QueryRequest, SSEEvent } from "../../../src/protocol/types";
 import { llmCallsTool, makeMockLlm } from "../../helpers/mock-llm";
@@ -16,7 +16,6 @@ import { clearAllModuleState } from "../../helpers/clear-state";
 
 beforeEach(() => {
   clearAllModuleState();
-  _resetWidgetDataCache();
 });
 
 const SECRET = "0123456789abcdef0123";

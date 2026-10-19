@@ -1,52 +1,29 @@
 /**
- * Conversation-scoped cache of parsed widget rows. Survives across HTTP
- * requests (module-level), keyed by conversationId (X-Trace-Id from the
- * workspace). Written to by `injectWidgetData` and the `sqlite_table`
- * MCP-result handler; read at the top of `runAgentLoop` to seed
- * `pendingTables` so a follow-up message in the same chat can hit
- * `execute_sql` without first round-tripping back through `get_widget_data`.
+ * A chat's data between the requests of a conversation: the rows of each table it has loaded, and the widget data
+ * the browser sent back. Both are kept in Redis (the store's `sharedOnly()`, lib/store.ts) and nowhere else, never
+ * in a process's memory, so every replica reads the same data. Without REDIS_URL, or while Redis cannot answer,
+ * nothing is kept: a follow-up fetches the widget again.
  *
- * Bounded (see lib/bounded-cache.ts): a chat's rows go after the TTL whether or not anyone asks for them
- * again, the chats that have not been used for longest go first when there are too many, and so do they
- * when all the rows held are too many. Without that a user could fill the memory of the process with
- * chats (the chat id is whatever the client sends) or with one very large table.
- * Every write sets the chat's entry again, which is what keeps an active chat alive.
- *
- * With several replicas the rows are also written to the shared store (lib/store.ts), so a follow-up
- * that reaches another replica finds them instead of fetching the widget again. The copy in this
- * process stays the first place looked, because it costs nothing to read; the shared copy is the
- * second. A table too large to be worth sending (SHARED_TABLE_MAX_BYTES) is kept here only — missing
- * it costs a re-fetch, which is what would have happened anyway.
- *
- * Writing is never waited for: rows are a cache, and a request must not be slower because one replica
- * told another about them.
+ * The rows seed `pendingTables` at the top of `runAgentLoop`, so a follow-up in the same chat can run
+ * `execute_sql` without the widget being fetched again. The widget data answers a re-fetch inside a turn without
+ * a round trip to the browser. Both are filed under the chat's scope key, which names the user, so one user never
+ * reads another's.
  */
 
-import { createBoundedCache, sweepEvery, type BoundedCache } from "../lib/bounded-cache";
 import { getLogger } from "../lib/logger";
-import type { Widget } from "../protocol/types";
 import type { Store } from "../lib/store";
+import type { Widget } from "../protocol/types";
+import type { WidgetItem } from "../widgets/parse";
 
 const logger = getLogger(["app", "agent", "row-cache"]);
 
-// 30 min — covers typical user pauses between follow-up messages. Memory
-// cost is small: ~100KB per loaded table.
-const CACHE_TTL_MS = 30 * 60 * 1000;
-
-interface ChatEntry {
-  tables: Map<string, CachedRows>;
-}
+/** How long a chat's rows are kept: long enough for the pauses between follow-up questions. */
+const ROWS_TTL_SECONDS = 30 * 60;
+/** How long widget data is kept: a turn and its re-fetches. */
+const WIDGET_DATA_TTL_SECONDS = 5 * 60;
 
 /** The most rows of one table that are kept for a follow-up question; a bigger table is fetched again. */
 export const MAX_CACHED_TABLE_ROWS = 500_000;
-const MAX_CHATS = 2_000;
-const MAX_CACHED_ROWS = 5_000_000;
-
-const rowsOf = (entry: ChatEntry): number => {
-  let n = 0;
-  for (const cached of entry.tables.values()) n += cached.rows.length;
-  return n;
-};
 
 interface CachedRows {
   rows: Record<string, unknown>[];
@@ -59,105 +36,19 @@ export interface RememberRowsOptions {
   inputArgs?: Record<string, unknown>;
 }
 
-// Persist across `bun --hot` reloads. Module-level state is reset whenever
-// any source file changes; pinning the Map to globalThis preserves cached
-// rows so dev iterations don't force the model to re-fetch widget data.
-declare global {
-  // eslint-disable-next-line no-var
-  var __ines_chat_row_cache: BoundedCache<string, ChatEntry> | undefined;
-}
-const chatRowCache: BoundedCache<string, ChatEntry> =
-  globalThis.__ines_chat_row_cache ??
-  (globalThis.__ines_chat_row_cache = createBoundedCache<string, ChatEntry>({
-    ttlMs: CACHE_TTL_MS,
-    maxEntries: MAX_CHATS,
-    weigh: rowsOf,
-    maxWeight: MAX_CACHED_ROWS,
-  }));
-sweepEvery(chatRowCache, 60_000);
+/** Where a chat's data is kept: Redis alone. Without it (no REDIS_URL, or before start) nothing is kept. */
+let store: Store | null = null;
 
-/**
- * The most one table may weigh, as JSON, to be worth putting in the shared store. A chat's rows can
- * be hundreds of thousands of them; sending that to Redis on every write would cost more than
- * fetching the widget again, which is what a replica without them does.
- */
-export const SHARED_TABLE_MAX_BYTES = 1024 * 1024;
-
-/** The store the rows are shared through, or null to keep them in this process only. */
-let sharedStore: Store | null = null;
-
-/** Called once at start (src/server.ts). Without it nothing is shared and nothing changes. */
-export function shareRowsThrough(store: Store | null): void {
-  sharedStore = store?.shared ? store : null;
+/** Called once at start (src/server.ts) with the agent's store in Redis alone, or null when there is no Redis. */
+export function keepChatDataIn(next: Store | null): void {
+  store = next;
 }
 
-const sharedKey = (conversationId: string, tableName: string) => `rows:${conversationId}:${tableName}`;
-const sharedIndexKey = (conversationId: string) => `rows:${conversationId}`;
+const tableKey = (conversationId: string, tableName: string) => `rows:${conversationId}:${tableName}`;
+const tablesKey = (conversationId: string) => `rows:${conversationId}`;
+const widgetDataKey = (scope: string, cacheKey: string) => `widget-data:${scope}:${cacheKey}`;
 
-/** Writes a table to the shared store, if it is small enough to be worth it. Never waited for. */
-function shareRows(conversationId: string, tableName: string, cached: CachedRows): void {
-  const store = sharedStore;
-  if (!store) return;
-  void (async () => {
-    try {
-      const body = JSON.stringify(cached);
-      if (body.length > SHARED_TABLE_MAX_BYTES) return;
-      const ttl = Math.floor(CACHE_TTL_MS / 1000);
-      await store.set(sharedKey(conversationId, tableName), body, ttl);
-      // Which tables a chat has, so that another replica knows what to ask for.
-      const index = await store.getRecord(sharedIndexKey(conversationId));
-      await store.putRecord(sharedIndexKey(conversationId), { ...index, [tableName]: "1" }, ttl);
-    } catch (error) {
-      logger.debug("Could not share cached rows", {
-        conversationId,
-        tableName,
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
-  })();
-}
-
-/** Takes a table out of the shared store. Never waited for. */
-function unshareRows(conversationId: string, tableName: string): void {
-  const store = sharedStore;
-  if (!store) return;
-  void (async () => {
-    try {
-      await store.del(sharedKey(conversationId, tableName));
-      const index = await store.getRecord(sharedIndexKey(conversationId));
-      if (!index) return;
-      delete index[tableName];
-      const ttl = Math.floor(CACHE_TTL_MS / 1000);
-      if (Object.keys(index).length === 0) await store.del(sharedIndexKey(conversationId));
-      else await store.putRecord(sharedIndexKey(conversationId), index, ttl);
-    } catch {
-      // A table left in the shared store runs out by itself, and is checked against the widget anyway.
-    }
-  })();
-}
-
-/** What another replica wrote for this chat, as this process would have held it. */
-async function sharedTables(conversationId: string): Promise<Map<string, CachedRows>> {
-  const store = sharedStore;
-  const found = new Map<string, CachedRows>();
-  if (!store) return found;
-  try {
-    const index = await store.getRecord(sharedIndexKey(conversationId));
-    if (!index) return found;
-    for (const tableName of Object.keys(index)) {
-      const body = await store.get(sharedKey(conversationId, tableName));
-      if (!body) continue;
-      const cached = normalizeCachedRows(JSON.parse(body));
-      if (cached) found.set(tableName, cached);
-    }
-  } catch (error) {
-    logger.debug("Could not read shared cached rows", {
-      conversationId,
-      message: error instanceof Error ? error.message : String(error),
-    });
-  }
-  return found;
-}
+const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 function compactInputArgs(args: Record<string, unknown> | undefined): Record<string, unknown> {
   if (!args) return {};
@@ -227,97 +118,112 @@ function cachedRowsMatchCurrentWidget(
 }
 
 /**
- * Snapshot of cached rows for a conversation. Returns an empty Map when
- * no cache exists, the entry has expired (in which case it's also dropped),
- * or no conversationId was supplied. The returned Map is a shallow copy —
- * mutating it does not affect the cache; row arrays themselves are shared
- * by reference (callers treat them as immutable).
+ * The rows of a conversation's tables, from the store, that still match the widget they came from. An empty
+ * Map when there is no store, no conversationId, or nothing kept for the chat.
  */
 export async function getCachedRows(
   conversationId: string,
   allWidgets?: Widget[],
 ): Promise<Map<string, Record<string, unknown>[]>> {
-  if (!conversationId) return new Map();
-  const entry = chatRowCache.get(conversationId);
-  // What this process holds, and what another replica wrote that it does not. The local copy wins:
-  // it is at least as new, because every local write shares what it wrote.
-  const tables = await sharedTables(conversationId);
-  for (const [tableName, cached] of entry?.tables ?? []) tables.set(tableName, cached as CachedRows);
-  if (tables.size === 0) return new Map();
   const rows = new Map<string, Record<string, unknown>[]>();
-  for (const [tableName, value] of tables) {
-    const cached = normalizeCachedRows(value);
-    if (!cached) {
-      entry?.tables.delete(tableName);
-      continue;
+  const target = store;
+  if (!conversationId || !target) return rows;
+  try {
+    const tables = await target.getRecord(tablesKey(conversationId));
+    for (const tableName of Object.keys(tables ?? {})) {
+      const body = await target.get(tableKey(conversationId, tableName));
+      if (!body) continue;
+      const cached = normalizeCachedRows(JSON.parse(body));
+      if (!cached) continue;
+      if (!cachedRowsMatchCurrentWidget(tableName, cached, allWidgets)) {
+        logger.debug("Skipped kept widget rows with stale params", {
+          conversationId,
+          tableName,
+          widgetUuid: cached.widgetUuid,
+          cachedInputArgs: compactInputArgs(cached.inputArgs),
+        });
+        continue;
+      }
+      rows.set(tableName, cached.rows);
     }
-    if (!cachedRowsMatchCurrentWidget(tableName, cached, allWidgets)) {
-      logger.debug("Skipped cached widget rows with stale params", {
-        conversationId,
-        tableName,
-        widgetUuid: cached.widgetUuid,
-        cachedInputArgs: compactInputArgs(cached.inputArgs),
-      });
-      continue;
-    }
-    rows.set(tableName, cached.rows);
+  } catch (error) {
+    logger.debug("Could not read a chat's rows", { conversationId, message: reason(error) });
   }
   return rows;
 }
 
 /**
- * Persist (tableName → rows) into the conversation's cache. Refreshes the
- * entry timestamp so chats that keep producing tables stay cached past the
- * TTL window. No-ops on missing conversationId or empty rows.
+ * Keeps (tableName → rows) for the conversation, in the store. The agent does not wait for it: the rows are a
+ * cache, the request that wrote them has them already, and the next request of the chat comes after a model call.
+ * The returned write never fails. No-op on a missing conversationId, empty rows, or no store.
  */
 export function rememberRows(
   conversationId: string,
   tableName: string,
   rows: Record<string, unknown>[],
   options: RememberRowsOptions = {},
-): void {
-  if (!conversationId || rows.length === 0) return;
+): Promise<void> {
+  const target = store;
+  if (!conversationId || rows.length === 0 || !target) return Promise.resolve();
   if (rows.length > MAX_CACHED_TABLE_ROWS) {
-    logger.warn("Not caching a table of {rows} rows (the most kept is {max})", { rows: rows.length, max: MAX_CACHED_TABLE_ROWS, conversationId });
-    return;
+    logger.warn("Not keeping a table of {rows} rows (the most kept is {max})", { rows: rows.length, max: MAX_CACHED_TABLE_ROWS, conversationId });
+    return Promise.resolve();
   }
-  const entry = chatRowCache.get(conversationId) ?? { tables: new Map<string, CachedRows>() };
   const cached: CachedRows = {
     rows,
     widgetUuid: options.widgetUuid,
     inputArgs: options.inputArgs ? compactInputArgs(options.inputArgs) : undefined,
   };
-  entry.tables.set(tableName, cached);
-  shareRows(conversationId, tableName, cached);
-  // Set again: the entry is as new as this write, and weighs what it now holds.
-  chatRowCache.set(conversationId, entry);
-  logger.debug("Cached rows for chat", {
-    conversationId,
-    tableName,
-    rowCount: rows.length,
-    totalTablesCached: entry.tables.size,
-  });
+  logger.debug("Keeping rows for chat", { conversationId, tableName, rowCount: rows.length });
+  return (async () => {
+    await target.set(tableKey(conversationId, tableName), JSON.stringify(cached), ROWS_TTL_SECONDS);
+    // Which tables a chat has, so that a request knows what to read.
+    const tables = await target.getRecord(tablesKey(conversationId));
+    await target.putRecord(tablesKey(conversationId), { ...tables, [tableName]: "1" }, ROWS_TTL_SECONDS);
+  })().catch((error) => logger.debug("Could not keep a chat's rows", { conversationId, tableName, message: reason(error) }));
 }
 
 /**
- * Remove a table from the conversation cache when a fresh widget fetch proves
- * the old rows are stale, for example a filtered widget request returning no
- * rows. No-ops on missing cache state.
+ * Removes a table from the conversation's kept rows when a fresh widget fetch proves the old rows are stale, for
+ * example a filtered widget request returning no rows. The agent does not wait for it; the returned removal never
+ * fails. No-op without a store.
  */
-export function forgetRows(
-  conversationId: string,
-  tableName: string,
-): void {
-  if (!conversationId) return;
-  unshareRows(conversationId, tableName);
-  const entry = chatRowCache.get(conversationId);
-  if (!entry) return;
-  if (!entry.tables.delete(tableName)) return;
-  if (entry.tables.size === 0) chatRowCache.delete(conversationId);
-  else chatRowCache.set(conversationId, entry);
-  logger.debug("Forgot cached rows for chat", {
-    conversationId,
-    tableName,
-    totalTablesCached: entry.tables.size,
+export function forgetRows(conversationId: string, tableName: string): Promise<void> {
+  const target = store;
+  if (!conversationId || !target) return Promise.resolve();
+  logger.debug("Forgetting rows for chat", { conversationId, tableName });
+  return (async () => {
+    await target.del(tableKey(conversationId, tableName));
+    const tables = await target.getRecord(tablesKey(conversationId));
+    if (!tables) return;
+    delete tables[tableName];
+    if (Object.keys(tables).length === 0) await target.del(tablesKey(conversationId));
+    else await target.putRecord(tablesKey(conversationId), tables, ROWS_TTL_SECONDS);
+  })().catch(() => {
+    // Rows left in the store run out by themselves, and are checked against the widget anyway.
   });
+}
+
+/** The widget data the browser sent back for this widget and these parameters (`cacheKey`) in the chat, or null. */
+export async function getKeptWidgetData(scope: string, cacheKey: string): Promise<WidgetItem[] | null> {
+  const target = store;
+  if (!scope || !target) return null;
+  try {
+    const body = await target.get(widgetDataKey(scope, cacheKey));
+    return body ? (JSON.parse(body) as WidgetItem[]) : null;
+  } catch (error) {
+    logger.debug("Could not read kept widget data", { scope, message: reason(error) });
+    return null;
+  }
+}
+
+/** Keeps the widget data the browser sent back, in the store. Waited for: the same request may read it back. */
+export async function keepWidgetData(scope: string, cacheKey: string, items: WidgetItem[]): Promise<void> {
+  const target = store;
+  if (!scope || !target) return;
+  try {
+    await target.set(widgetDataKey(scope, cacheKey), JSON.stringify(items), WIDGET_DATA_TTL_SECONDS);
+  } catch (error) {
+    logger.debug("Could not keep widget data", { scope, message: reason(error) });
+  }
 }

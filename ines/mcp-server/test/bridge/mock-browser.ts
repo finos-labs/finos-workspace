@@ -95,7 +95,7 @@ export async function startMockBrowser(opts: {
       };
       received.push(incoming);
       const handler = handlers.get(command.command);
-      const result = handler
+      const result = typeof handler === "function"
         ? handler(incoming)
         : { ok: true, message: `mock ${command.command} ok`, data: { mocked: true } };
       ws.send(

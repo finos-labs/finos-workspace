@@ -227,3 +227,30 @@ describe("when the shared store cannot answer", () => {
     }
   }, 20_000);
 });
+
+describe("the store in Redis alone", () => {
+  it("is not there without a Redis", () => {
+    expect(createLocalStore().sharedOnly()).toBeNull();
+    expect(createStore({} as NodeJS.ProcessEnv).sharedOnly()).toBeNull();
+  });
+
+  it("fails when Redis cannot answer, and keeps nothing in this process", async () => {
+    const store = createStore({ REDIS_URL: "redis://127.0.0.1:6399" } as NodeJS.ProcessEnv);
+    try {
+      const onlyRedis = store.sharedOnly();
+      if (!onlyRedis) throw new Error("a store with a Redis has a Redis-only view");
+      expect(onlyRedis.shared).toBe(true);
+      expect(onlyRedis.sharedOnly()).toBe(onlyRedis);
+
+      await expect(onlyRedis.set("k", "v", 30)).rejects.toThrow();
+      await expect(onlyRedis.get("k")).rejects.toThrow();
+      await expect(onlyRedis.putRecord("r", { n: "1" }, 60)).rejects.toThrow();
+      await expect(onlyRedis.getRecord("r")).rejects.toThrow();
+      // What could not go to Redis is not in this process either.
+      expect(await store.get("k")).toBeNull();
+      expect(await store.getRecord("r")).toBeNull();
+    } finally {
+      await store.close();
+    }
+  }, 20_000);
+});

@@ -48,7 +48,7 @@ import { readExtraState } from "../protocol/extra-state";
 import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server";
 import { buildMessages } from "./messages";
 import { injectFromReboot, injectSkill, injectWidgetData, type RoundTripContext } from "./round-trip";
-import { getCachedRows } from "./row-cache";
+import { getCachedRows, getKeptWidgetData, keepWidgetData } from "./row-cache";
 import {
   formatToolInputRejectedStatus,
   formatToolResultStatus,
@@ -91,7 +91,6 @@ import { signScope, signUrl } from "../lib/scope";
 import { addressesGiven, isFetchTool, isGivenAddress } from "./known-urls";
 import { metrics } from "../lib/metrics";
 import { redactString } from "../lib/redact";
-import { createBoundedCache, sweepEvery } from "../lib/bounded-cache";
 import { liveDebugLevel } from "../lib/debug-traces";
 import { getLogger } from "../lib/logger";
 import { providerOptionsFor } from "../lib/providers";
@@ -108,35 +107,8 @@ import { ATTR_SESSION_ID } from "@opentelemetry/semantic-conventions/incubating"
 
 const logger = getLogger(["app", "agent", "loop"]);
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
-
-/** What a fetched widget costs to keep: its characters (a file or an image is base64 text). */
-function widgetItemsWeight(items: WidgetItem[]): number {
-  let n = 0;
-  for (const item of items) {
-    n += item.content.length;
-    for (const part of item.parts ?? []) {
-      const data = (part as { image?: unknown }).image;
-      if (typeof data === "string") n += data.length;
-    }
-  }
-  return n;
-}
-
-// Widget data fetched in this process, so that a re-fetch inside a turn does not go back to the browser.
-// Bounded (see lib/bounded-cache.ts) and kept for one chat only: the key holds the chat's scope key, which
-// names the user. Shared between users it would give one user's data to another who asks for the same
-// widget, and let one user fill in what another is then shown.
-const widgetDataCache = createBoundedCache<string, WidgetItem[]>({
-  ttlMs: CACHE_TTL_MS,
-  maxEntries: 500,
-  weigh: widgetItemsWeight,
-  maxWeight: 100_000_000,
-});
-sweepEvery(widgetDataCache, 60_000);
-
 /**
- * Cache key for the in-process widget data cache. Exported under the
+ * Key of a widget's data among a chat's kept widget data (row-cache.ts). Exported under the
  * `_` test-only convention so unit tests can pin the contract:
  * key-order-invariant on inputArgs, type-strict on values
  * (`"47" !== 47`), uuid-distinct.
@@ -152,20 +124,6 @@ export function _widgetCacheKey(uuid: string, inputArgs?: Record<string, unknown
 }
 
 const widgetCacheKey = _widgetCacheKey;
-
-const scopedCacheKey = (scope: string, uuid: string, inputArgs?: Record<string, unknown>) =>
-  `${scope}\u0000${widgetCacheKey(uuid, inputArgs)}`;
-
-// Without a chat there is nobody to keep the data for: nothing is cached.
-function getCachedItems(scope: string, uuid: string, inputArgs?: Record<string, unknown>): WidgetItem[] | null {
-  if (!scope) return null;
-  return widgetDataCache.get(scopedCacheKey(scope, uuid, inputArgs)) ?? null;
-}
-
-function cacheWidgetItems(scope: string, uuid: string, inputArgs: Record<string, unknown> | undefined, items: WidgetItem[]): void {
-  if (!scope) return;
-  widgetDataCache.set(scopedCacheKey(scope, uuid, inputArgs), items);
-}
 
 function artifactPayloads(events: SSEEvent[]): CopilotArtifact[] {
   return events
@@ -366,14 +324,6 @@ function buildLoadedSkillsInventory(loadedSkillSlugs: Set<string>): string | nul
     "These skill instructions are already loaded for this conversation.",
     ...[...loadedSkillSlugs].sort().map((slug) => `- ${slug}`),
   ].join("\n");
-}
-
-/**
- * Test-only: clear the module-level widget data cache. Underscore-prefixed
- * to discourage prod use.
- */
-export function _resetWidgetDataCache(): void {
-  widgetDataCache.clear();
 }
 
 export interface AgentRunOptions {
@@ -1701,7 +1651,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         const key = widgetCacheKey(fetch.request.widget_uuid, fetch.cacheInputArgs);
         if (seenFetchKeys.has(key)) continue;
         seenFetchKeys.add(key);
-        const cached = getCachedItems(conversationId, fetch.request.widget_uuid, fetch.cacheInputArgs);
+        const cached = await getKeptWidgetData(conversationId, key);
         if (cached) {
           cachedItems.push(...cached);
         } else {
@@ -1802,7 +1752,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
   }
 }
 
-// Cache widget items extracted during a re-POST so they can be reused without round-tripping
+// Keeps the widget data of a re-POST in the store, so that a re-fetch of it needs no round trip
 export async function cacheWidgetItemsFromReboot(
   toolMsg: ToolMessage,
   allWidgets: Widget[],
@@ -1819,7 +1769,7 @@ export async function cacheWidgetItemsFromReboot(
     const inputArgs = widget
       ? effectiveWidgetInputArgs(widget, query?.input_args)
       : query?.input_args;
-    cacheWidgetItems(scope, items[i].uuid, inputArgs, [items[i]]);
+    await keepWidgetData(scope, widgetCacheKey(items[i].uuid, inputArgs), [items[i]]);
   }
   return items;
 }

@@ -160,7 +160,7 @@ describe("get_widget_data identifier resolution", () => {
   });
 
   it("injects a compact loaded-table inventory into model context", async () => {
-    rememberRows("wr-loaded-inventory", "table_widget_with_string_filter", [
+    await rememberRows("wr-loaded-inventory", "table_widget_with_string_filter", [
       { Year: 2020, date: "2020-01-01", Total_Emissions_tCO2e_Index: 100 },
       { Year: 2024, date: "2024-01-01", Total_Emissions_tCO2e_Index: 84 },
     ], { widgetUuid: "w-filter" });
@@ -418,7 +418,7 @@ describe("get_widget_data identifier resolution", () => {
         { name: "filter_text", type: "text", description: "", current_value: "Char" },
       ],
     });
-    rememberRows(
+    await rememberRows(
       "wr-empty-filter-invalidates",
       "table_widget_with_string_filter",
       [
@@ -481,7 +481,7 @@ describe("get_widget_data identifier resolution", () => {
         { name: "filter_text", type: "text", description: "", current_value: "Char" },
       ],
     });
-    rememberRows(
+    await rememberRows(
       "wr-param-cache-mismatch",
       "table_widget_with_string_filter",
       [

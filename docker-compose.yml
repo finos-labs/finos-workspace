@@ -200,7 +200,8 @@ services:
       # Where what Ines keeps between the requests of a turn lives: who is signed in, how much of their
       # share is left, which turn is under way, and a chat's rows. In Redis they are shared, so the
       # answers are the same whichever replica a request reaches and a user has one share in all. Without
-      # it each replica keeps its own, so run one.
+      # it each replica keeps its own, so run one, and a chat's rows are not kept at all: they are only
+      # ever in Redis, never in a process's memory.
       REDIS_URL: redis://redis:6379
       # The origin of the web app: the browser calls Ines directly, so this has to name the address the
       # web app was loaded from, whatever that is — localhost, 127.0.0.1, the machine's address on the

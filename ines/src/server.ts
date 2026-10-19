@@ -5,7 +5,7 @@ import { loadConfig } from "./lib/config";
 import { metrics, renderMetrics } from "./lib/metrics";
 import { createLimits } from "./auth/limits";
 import { createStore } from "./lib/store";
-import { shareRowsThrough } from "./agent/row-cache";
+import { keepChatDataIn } from "./agent/row-cache";
 import { createWorkspaceClient } from "./auth/workspace-client";
 import { configureFetchPolicy } from "./lib/safe-fetch";
 import { createApp } from "./app";
@@ -35,8 +35,8 @@ configureFetchPolicy({ workspace: config.workspaceFiles ?? undefined });
 
 // Shared between replicas when REDIS_URL names a Redis, in this process otherwise.
 const store = createStore();
-// A chat's rows go to the shared store too, so a follow-up that reaches another replica finds them.
-shareRowsThrough(store);
+// A chat's rows and widget data are kept in Redis alone, never in this process; without REDIS_URL they are not kept.
+keepChatDataIn(store.sharedOnly());
 
 const limits = createLimits({
   store,

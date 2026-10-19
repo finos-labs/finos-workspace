@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop, _resetWidgetDataCache } from "../../../src/agent/loop";
+import { runAgentLoop } from "../../../src/agent/loop";
 import type {
   AgentTool,
   QueryRequest,
@@ -30,7 +30,6 @@ import { clearAllModuleState } from "../../helpers/clear-state";
 
 beforeEach(() => {
   clearAllModuleState();
-  _resetWidgetDataCache();
 });
 
 function ragTools(): AgentTool[] {

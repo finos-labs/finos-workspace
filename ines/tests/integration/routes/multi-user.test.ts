@@ -417,7 +417,7 @@ describe("what an administrator switched off for a user: the web", () => {
     switchedOff(off, "FETCH_FROM_WEB");
     currentModel = makeMockLlm(llmEmitsText("done"));
     await readSse(await post(off));
-    expect(requested.filter((u) => u.includes("example.com"))).toEqual([]);
+    expect(requested.filter((u) => new URL(u).hostname === "example.com")).toEqual([]);
   });
 });
 
