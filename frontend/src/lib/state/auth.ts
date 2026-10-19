@@ -16,7 +16,6 @@ import { useMcpToolsStore } from "~/lib/state/mcpTools";
 import { showNotification } from "~/lib/utils/toast";
 import type { LoginResponse, SessionResponse } from "~/types/auth.type";
 import { refreshExternalCopilotHolders, useCopilotStore } from "./copilot";
-import { useCopilotDataStore } from "./copilotData";
 import { usePromptLibraryStore } from "./promptLibrary";
 import { useSharedAppStore } from "./sharedApp";
 import { useSidebarStore } from "./sidebar";
@@ -65,7 +64,6 @@ async function clearPersistedStores() {
     useThemeStore,
     useSharedAppStore,
     useCopilotStore,
-    useCopilotDataStore,
     usePromptLibraryStore,
     useSidebarStore,
     useToastStore,
@@ -155,11 +153,7 @@ export const useAuthStore = createWithEqualityFn<AuthState>()(
       get().login(session);
       useAccessStore
         .getState()
-        .setAccessAndUsage(
-          session.access,
-          session.can_submit_marketplace ?? false,
-          session.usage ?? null,
-        );
+        .setAccessAndUsage(session.access, session.usage ?? null);
       // The custom agents' headers are never persisted: load them again
       refreshExternalCopilotHolders().catch((error) =>
         console.error("Could not load the custom agents:", error),

@@ -4,14 +4,16 @@ Drops the tier, default_tier, data_bundle, entity_entitlement and entitlement ta
 entity.seats, entity.expiration_date and user.billing_active, and renames
 entitlement_usage to user_usage. Adds the organization's sharing switch
 (entity.sharing_enabled, on) and the role settings: sharing level, daily Copilot calls
-and tokens, upload size and Excel add-in. Every organization without a "Developer"
-permissions map gets one.
+and tokens, upload size, Excel add-in and the Copilot's web tools (search_web,
+fetch_from_web). Every organization without a "Developer" permissions map gets one.
 
-The roles that exist share nothing and have no limits, as a new role. downgrade()
-restores the schema without data.
+The roles that exist share nothing and have no limits, as a new role. Their web tools are
+on, except where their organization's entitlement had switched them off; the switches set
+for one user (entitlement) are not carried over. downgrade() restores the schema without
+data.
 
 Revision ID: 4f1c8a2d9e63
-Revises: b179074b50c6
+Revises: 9c4d7a2e1f35
 Create Date: 2026-10-14
 
 """
@@ -27,7 +29,7 @@ from alembic import op  # type: ignore
 
 # revision identifiers, used by Alembic.
 revision = "4f1c8a2d9e63"
-down_revision = "b179074b50c6"
+down_revision = "9c4d7a2e1f35"
 branch_labels = None
 depends_on = None
 
@@ -47,6 +49,8 @@ ROLE_SHARING_CHECK = "check_role_sharing"
 
 DEVELOPER_MAP = "Developer"
 
+WEB_SWITCHES = ("search_web", "fetch_from_web")
+
 
 def _role_columns() -> list[sa.Column]:
     return [
@@ -59,10 +63,22 @@ def _role_columns() -> list[sa.Column]:
         sa.Column(
             "excel_add_in", sa.Boolean(), server_default=sa.false(), nullable=False
         ),
+        *(
+            sa.Column(switch, sa.Boolean(), server_default=sa.true(), nullable=False)
+            for switch in WEB_SWITCHES
+        ),
     ]
 
 
 def upgrade():
+    with op.batch_alter_table("role", schema=None) as batch_op:
+        for column in _role_columns():
+            batch_op.add_column(column)
+        batch_op.create_check_constraint(
+            ROLE_SHARING_CHECK, "sharing IN ('none', 'receive', 'share')"
+        )
+    _copy_web_switches()
+
     for table in REMOVED_TABLES:
         op.drop_table(table)
 
@@ -84,14 +100,29 @@ def upgrade():
     with op.batch_alter_table("user", schema=None) as batch_op:
         batch_op.drop_column("billing_active")
 
-    with op.batch_alter_table("role", schema=None) as batch_op:
-        for column in _role_columns():
-            batch_op.add_column(column)
-        batch_op.create_check_constraint(
-            ROLE_SHARING_CHECK, "sharing IN ('none', 'receive', 'share')"
-        )
-
     _add_developer_maps()
+
+
+def _copy_web_switches():
+    """Switch a role's web tools off where its organization's entitlement had them off"""
+    uuid_type = sqlalchemy_utils.types.uuid.UUIDType()
+    role = sa.table(
+        "role",
+        sa.column("entity_uuid", uuid_type),
+        *(sa.column(switch, sa.Boolean) for switch in WEB_SWITCHES),
+    )
+    entitlement = sa.table(
+        "entity_entitlement",
+        sa.column("entity_uuid", uuid_type),
+        *(sa.column(switch, sa.Boolean) for switch in WEB_SWITCHES),
+    )
+    for switch in WEB_SWITCHES:
+        off = sa.select(entitlement.c.entity_uuid).where(
+            entitlement.c[switch] == sa.false()
+        )
+        op.execute(
+            role.update().where(role.c.entity_uuid.in_(off)).values({switch: False})
+        )
 
 
 def _rename_usage_keys(old: str, new: str):
@@ -210,6 +241,10 @@ def _feature_columns() -> list[sa.Column]:
         sa.Column("support", sa.Boolean(), nullable=True),
         sa.Column("excel_add_in", sa.Boolean(), nullable=True),
         sa.Column("data_add_ons_redistribution", sa.Boolean(), nullable=True),
+        *(
+            sa.Column(switch, sa.Boolean(), nullable=True, server_default=sa.true())
+            for switch in WEB_SWITCHES
+        ),
     ]
 
 

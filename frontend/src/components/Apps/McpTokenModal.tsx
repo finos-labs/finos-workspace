@@ -10,15 +10,13 @@ import {
 } from "~/components/ds/dialogs/Dialog";
 import { ConnectionTestResult } from "~/components/ds/molecules/ConnectionTestResult";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { MCP_TOKEN_AUTH_FIELD, stripBearerPrefix } from "~/types/listedApps";
+import { MCP_TOKEN_AUTH_FIELD, stripBearerPrefix } from "~/types/appMcpServer";
 
 interface McpTokenModalProps {
   isOpen: boolean;
   onClose: () => void;
   /** MCP server name, used in copy. */
   serverName: string;
-  /** Display name for the vendor; falls back to the server name. */
-  vendorName?: string;
   /**
    * Whether a token is saved. Its value never comes back to the page: a new one replaces
    * it.
@@ -36,13 +34,11 @@ export function McpTokenModal({
   isOpen,
   onClose,
   serverName,
-  vendorName,
   hasSavedToken = false,
   onSave,
   onRemove,
   error,
 }: McpTokenModalProps) {
-  const displayName = vendorName || serverName;
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [state, dispatch] = useStateReducer({ token: "", dismissedError: false });
@@ -94,8 +90,8 @@ export function McpTokenModal({
 
           <DialogDescription>
             {hasSavedToken
-              ? `A token is saved for ${displayName}. Paste a new one to replace it.`
-              : `Paste your access token for ${displayName}.`}{" "}
+              ? `A token is saved for ${serverName}. Paste a new one to replace it.`
+              : `Paste your access token for ${serverName}.`}{" "}
             It is stored encrypted for this MCP server only and sent as an authorization
             header on its requests.
           </DialogDescription>

@@ -4,10 +4,24 @@ export type CopilotModelGrant = { agent_id: string; model_id: string };
 
 export type McpGrant = { server_url: string; tool_name: string };
 
-/** What the user may use in the Copilot: only what the roles an admin assigned them grant. */
+/**
+ * What a role can switch off: the Copilot's tools for the web. The names are the backend's, and so
+ * are the tools each stands for (`CAPABILITY_MCP_TOOLS` in api/schemas.py).
+ */
+export type CopilotCapability = "SEARCH_WEB" | "FETCH_FROM_WEB";
+
+export const CAPABILITY_MCP_TOOLS: Record<CopilotCapability, readonly string[]> = {
+  SEARCH_WEB: ["web_search"],
+  FETCH_FROM_WEB: ["fetch_webpage", "inspect_webpage"],
+};
+
+/** What the user may use in the Copilot: only what the roles an admin assigned them grant, less the
+ * web tools none of those roles allows. */
 export type CopilotAccess = {
   models: CopilotModelGrant[];
   mcp: McpGrant[];
+  /** The web tools none of the user's roles allows: they are not theirs whatever else is granted. */
+  disabled_capabilities?: CopilotCapability[];
 };
 
 export const ALL_MCP_TOOLS = "*";
@@ -41,11 +55,24 @@ export function isModelAllowed(
   );
 }
 
+/** Whether the tool is one of those that an administrator switched off for the user, on whichever server. */
+export function isMcpToolSwitchedOff(
+  access: CopilotAccess | null | undefined,
+  toolName: string,
+): boolean {
+  return (access?.disabled_capabilities ?? []).some((capability) =>
+    CAPABILITY_MCP_TOOLS[capability]?.includes(toolName),
+  );
+}
+
 export function isMcpToolAllowed(
   access: CopilotAccess | null | undefined,
   serverUrl: string,
   toolName: string,
 ): boolean {
+  // Switched off beats what the roles grant, and goes by the tool's name: the same server under another
+  // address is the same tool.
+  if (isMcpToolSwitchedOff(access, toolName)) return false;
   const url = normalizeMcpUrl(serverUrl);
   return (
     access?.mcp.some(

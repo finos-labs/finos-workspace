@@ -23,8 +23,6 @@ from routers import (
     admin,
     auth,
     entity,
-    marketplace,
-    marketplace_developer,
 )
 from routers.app import (
     dash,
@@ -34,6 +32,7 @@ from routers.app import (
     mcp_oauth,
     user_apps,
     workspace_mcp,
+    workspace_tools,
 )
 from routers.app.workspace_mcp.asgi import create_workspace_mcp_asgi_app
 from utilities import config
@@ -104,10 +103,9 @@ routers = [
     dash.router,
     user_apps.router,
     workspace_mcp.router,
+    workspace_tools.router,
     entity.router,
     admin.router,
-    marketplace.router,
-    marketplace_developer.router,
 ]
 
 

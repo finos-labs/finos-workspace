@@ -15,7 +15,6 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    false,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy_utils import EmailType, UUIDType
@@ -83,9 +82,6 @@ class User(Base, UUIDMixin, DateMixin):
     deleted = Column(Boolean, default=False)
     confirmed = Column(Boolean, default=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
-    can_submit_marketplace: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default=false()
-    )
 
     # App fields
     permissions_uuid: Mapped[None | UUID] = mapped_column(

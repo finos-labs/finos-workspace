@@ -199,6 +199,13 @@ class Role(Base, UUIDMixin, DateMixin):
     excel_add_in: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=false()
     )
+    # The Copilot's web tools: on for a user when any of their roles allows them
+    search_web: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=true()
+    )
+    fetch_from_web: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=true()
+    )
     entity_uuid: Mapped[UUID] = mapped_column(
         ForeignKey("entity.uuid", ondelete="CASCADE"), index=True
     )

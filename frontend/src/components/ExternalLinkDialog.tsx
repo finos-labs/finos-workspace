@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Button } from "~/components/ds/atoms/Button";
 import { BaseDialog } from "~/components/ds/dialogs/BaseDialog";
 import {
@@ -25,6 +26,13 @@ export function ExternalLinkDialog({
   onOpenInNewTab,
   canOpenInIframe = true,
 }: ExternalLinkDialogProps) {
+  // The page is not loaded until the user asks for the preview: the link may have been written by a model or
+  // taken from a web page, and loading it runs its scripts and styles here, before the user has chosen anything.
+  const [previewing, setPreviewing] = useState(false);
+  useEffect(() => {
+    setPreviewing(false);
+  }, [open, url]);
+
   const handleIframeClick = () => {
     onOpenInIframe(url);
     onClose();
@@ -55,13 +63,30 @@ export function ExternalLinkDialog({
           test)
         </div>
         <div className="relative">
-          <iframe src={url} width="100%" height="224" className="border-0" />
+          {previewing ? (
+            <iframe
+              src={url}
+              width="100%"
+              height="224"
+              className="border-0"
+              title="Link preview"
+              sandbox="allow-scripts allow-same-origin"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="flex h-24 items-center justify-center">
+              <Button variant="secondary" size="sm" onClick={() => setPreviewing(true)}>
+                Load preview
+              </Button>
+            </div>
+          )}
         </div>
       </div>
       <p className="dark:text-dark-50 text-light-600">
-        The preview shows if this website can be embedded. If you see the content
-        loading, the iframe option will work. If it shows an error or blank page, use
-        "Open in new tab" instead.
+        The preview loads the website here, so it shows if the website can be embedded.
+        If you see the content loading, the iframe option will work. If it shows an
+        error or blank page, use "Open in new tab" instead. Nothing is loaded until you
+        choose "Load preview".
       </p>
 
       <DialogFooter className="flex items-center justify-between gap-2">

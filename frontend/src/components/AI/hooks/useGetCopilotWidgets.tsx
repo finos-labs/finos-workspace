@@ -1,9 +1,10 @@
 import { useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import type { ParamDef, WidgetT } from "~/components/types";
+import type { Group, ParamDef, StoredParamValue, WidgetT } from "~/components/types";
 import { createCopilotDataWidget } from "~/components/Widgets/Helpers/useCopilotDataWidget";
+import { getGroupParamName } from "~/components/Widgets/Helpers/useParamGroupBindings";
 import { getIframeWidget } from "~/lib/iframeWidgetRegistry";
-import { useShallowAppStore } from "~/lib/state/app";
+import { useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import {
@@ -56,6 +57,12 @@ export function useGetCopilotWidgets() {
   );
 
   const getSideBarItem = useShallowAppStore((state) => state.getSideBarItem);
+
+  // What the widgets show follows the dashboard's parameter groups, so a change of a group is a change of
+  // what the Copilot is told about them.
+  const dashboardGroups = useShallowAppStore(
+    (state) => state.getTabById(currentDashboardId)?.data?.groups,
+  );
 
   const lastVisitedPage = useShallowAuthStore((state) => state.lastVisitedPage);
 
@@ -164,6 +171,7 @@ export function useGetCopilotWidgets() {
                 widget,
                 dashboardWidgetData.metadata ?? {},
                 getWidgetRuntimeState(widget.id),
+                useAppStore.getState().getWidgetGroups(currentDashboardId, widget.id),
               );
             })
             .filter(Boolean);
@@ -199,6 +207,7 @@ export function useGetCopilotWidgets() {
           widget,
           dashboardWidgetData.metadata ?? {},
           getWidgetRuntimeState(uuid),
+          useAppStore.getState().getWidgetGroups(currentDashboardId, uuid),
         );
       })
       .filter(Boolean) as CopilotWidget[];
@@ -221,6 +230,8 @@ export function useGetCopilotWidgets() {
     getDashboardWidgetByUuid,
     getWidgetRuntimeState,
     currentSelectedWidgets,
+    currentDashboardId,
+    dashboardGroups,
   ]);
 
   const workspaceAgents = useMemo(() => {
@@ -316,14 +327,19 @@ export function useGetCopilotWidgets() {
         finalWidget,
         widgetData?.metadata ?? {},
         getWidgetRuntimeState(uuid),
+        useAppStore.getState().getWidgetGroups(currentDashboardId, uuid),
       );
 
       if (!copilotWidget) return acc;
 
       // Expand iframe sub-widgets: if the parent has a bridge with a manifest,
-      // create synthetic CopilotWidgets for each sub-widget instead of the parent.
+      // create synthetic CopilotWidgets for each sub-widget. The widget itself is sent as well, whatever its
+      // page has published: it is the one the agent acts on, by the uuid that the Workspace gave it (the same
+      // after any refresh), with its type and the parameters it shows. Whether the page has connected yet must
+      // not change what the agent is sent. The sub-widgets are what the page publishes, under ids it makes up.
       const bridge = getIframeWidget(uuid);
       if (bridge && bridge.manifest.length > 0) {
+        acc.allDashboardWidgets.push(copilotWidget);
         for (const entry of bridge.manifest) {
           const compositeId = `${uuid}::iframe::${entry.widgetId}`;
           const subWidget: CopilotWidget = {
@@ -380,6 +396,7 @@ export function useGetCopilotWidgets() {
     workspaceAgents,
     getApiSourceById,
     getWidgetRuntimeState,
+    dashboardGroups,
   ]);
 
   const temporaryWidgets = useMemo((): CopilotWidget[] => {
@@ -460,11 +477,30 @@ const getOptionsParams = (
     .filter(Boolean) as Record<string, string>[];
 };
 
+/**
+ * What a widget's grouped parameters are: it shows the value of the dashboard's group that they are in, whatever
+ * value it stored (the widget keeps the one it had when it joined the group, and the group's overrides it).
+ */
+export function groupedParamValues(
+  groups: readonly Group[],
+  paramDefs: ParamDef[],
+): Record<string, StoredParamValue> {
+  const values: Record<string, StoredParamValue> = {};
+  for (const group of groups) {
+    if (group.type !== "param" && group.type !== "endpointParam") continue;
+    if (group.value === null || group.value === undefined) continue;
+    const paramName = getGroupParamName(group, paramDefs);
+    if (paramName) values[paramName] = group.value;
+  }
+  return values;
+}
+
 export function createCopilotWidget(
   uuid: string | undefined,
   widget: WidgetT,
   metadata?: WidgetDataMetadata,
   runtimeState?: CopilotWidgetRuntimeState,
+  groups: readonly Group[] = [],
 ): CopilotWidget | null {
   try {
     // Early validation - ensure widget has basic required properties
@@ -503,6 +539,8 @@ export function createCopilotWidget(
       ? copilotExecutedParams
       : undefined;
 
+    const groupedParams = groupedParamValues(groups, defaultParams);
+
     const widgetInfo = getWidgetInfo(widget);
     const source = Array.isArray(widgetInfo.source)
       ? widgetInfo.source[0]
@@ -514,7 +552,9 @@ export function createCopilotWidget(
       .map((param: ParamDef) => {
         const defaultValue = param.value;
         const currentParamValue =
-          runtimeDraftParams?.[param.paramName] ?? currentParams?.[param.paramName];
+          runtimeDraftParams?.[param.paramName] ??
+          groupedParams[param.paramName] ??
+          currentParams?.[param.paramName];
         const executedParamValue = runtimeExecutedParams?.[param.paramName];
         const currentOptionsValue = currentOptions?.[param.paramName];
         const output = {
@@ -558,6 +598,7 @@ export function createCopilotWidget(
       uuid: uuid,
       name: widgetName,
       description: widget.description ?? "",
+      widget_type: widget.type,
       source: source,
       category: widgetInfo.category,
       sub_category: widgetInfo.subCategory,

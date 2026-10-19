@@ -32,7 +32,6 @@ import {
 } from "~/lib/state/userApps";
 import { createURL, createURLString, processWidgetId, uuidv4 } from "~/lib/utils";
 import { addExtraHeaders } from "~/lib/utils/widgetParams";
-import queryClient from "~/queryClient";
 import type {
   Detail,
   Login2FAResponse,
@@ -58,10 +57,9 @@ export interface PostApiSource {
   endpointHeaders?:
     | { key: string; value: string; location?: "headers" | "query" }[]
     | null;
-  vendorAppUuid?: string;
 }
 
-export type PostFileWidget = Omit<PostApiSource, "vendorAppUuid"> &
+export type PostFileWidget = PostApiSource &
   WidgetMetadata & {
     stored_file_uuid?: string;
     extension: Extension;
@@ -374,57 +372,6 @@ export async function deleteApiSource(sourceUuid: string): Promise<{ status: num
     .catch((e: AxiosError) => {
       return { status: getErrorResponse(e).status || 500 };
     });
-  return { status };
-}
-
-export interface Subscription {
-  appId: string;
-  status: "active" | "disconnected";
-  version: string;
-  parentAppUuid: string | null;
-  latestVersion: string;
-  subscribedAt: string;
-}
-
-export interface SubscriptionsResponse {
-  subscriptions: Subscription[];
-  subscribedAppIds: string[];
-}
-
-export async function getUserSubscriptions() {
-  const { data } = await apiClient
-    .get<SubscriptionsResponse>("/marketplace/subscriptions")
-    .catch((error) => {
-      console.error("Failed to fetch user subscriptions:", error);
-      return {
-        data: { subscriptions: [], subscribedAppIds: [] } as SubscriptionsResponse,
-      };
-    });
-
-  return data;
-}
-
-export const SUBSCRIPTIONS_QUERY_KEY = ["marketplace", "subscriptions"] as const;
-
-export function invalidateSubscriptions() {
-  queryClient.invalidateQueries({ queryKey: SUBSCRIPTIONS_QUERY_KEY });
-}
-
-export async function subscribeListedApp(appId: string) {
-  const { data } = await apiClient.post<Subscription>(
-    `/marketplace/apps/${appId}/subscribe`,
-  );
-  if (data?.status === "active") invalidateSubscriptions();
-  return data;
-}
-
-export async function unsubscribeListedApp(appId: string): Promise<{ status: number }> {
-  const { status } = await apiClient
-    .delete(`/marketplace/apps/${appId}/subscribe`)
-    .catch((e: AxiosError) => ({ status: e?.response?.status || 500 }));
-
-  if (status === 204) invalidateSubscriptions();
-
   return { status };
 }
 

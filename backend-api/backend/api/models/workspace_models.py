@@ -23,7 +23,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy_utils import ScalarListType, UUIDType
 
 from api import base
-from api.models.marketplace_models import VendorApp
 from api.models.model_helpers import (
     DATETIME,
     AwareDateTime,
@@ -110,12 +109,6 @@ class ApiSource(Base, UUIDMixin, DateMixin):
     )
     entity_uuid: Mapped[None | UUID] = mapped_column(
         ForeignKey("entity.uuid", ondelete="CASCADE"), index=True
-    )
-    vendor_app_uuid: Mapped[None | UUID] = mapped_column(
-        ForeignKey("vendor_app.uuid", ondelete="CASCADE"), index=True
-    )
-    vendor_app: Mapped[VendorApp | None] = relationship(
-        foreign_keys=[vendor_app_uuid], lazy="joined"
     )
 
     __table_args__ = (

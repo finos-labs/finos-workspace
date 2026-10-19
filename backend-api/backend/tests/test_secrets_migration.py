@@ -130,7 +130,6 @@ def _seed(engine: sa.Engine) -> dict:
         sa.Column("referral_code", sa.String),
         sa.Column("is_superuser", sa.Boolean),
         sa.Column("totp_secret", sa.String),
-        sa.Column("auth_token", sa.Text),
         sa.Column("display_settings", sa.JSON),
     )
     common = {"password": "x", "two_factor_auth": False, "is_superuser": False}
@@ -197,7 +196,6 @@ def _seed(engine: sa.Engine) -> dict:
                     "referral_code": "r1",
                     "totp_active": True,
                     "totp_secret": "JBSWY3DPEHPK3PXP",
-                    "auth_token": "old.sdk.jwt",
                     # As the app writes it: a JSON document holding the settings' JSON text
                     "display_settings": json.dumps(
                         {
@@ -215,7 +213,6 @@ def _seed(engine: sa.Engine) -> dict:
                     "referral_code": "r2",
                     "totp_active": False,
                     "totp_secret": None,
-                    "auth_token": None,
                     "display_settings": {"theme": "light", "openaiApiKey": ""},
                 },
             ],
@@ -360,7 +357,6 @@ def test_downgrade_restores_the_old_format_without_plaintext(database):
     # No secret comes back in plain text: the authenticator is set up again
     user = _by_uuid(db_path, "user", ids["user"])
     assert user["totp_secret"] is None and user["totp_active"] == 0
-    assert user["auth_token"] is None
     assert "openai_api_key" not in user
     assert "sk-openai-secret" not in json.dumps(user, default=str)
     assert "headers" not in _by_uuid(db_path, "mcp_servers", ids["mcp"])

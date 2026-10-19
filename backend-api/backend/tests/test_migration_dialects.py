@@ -38,8 +38,8 @@ needs_docker = pytest.mark.skipif(not _DOCKER_AVAILABLE, reason="Docker not avai
 
 _BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Minimum expected tables (model-created tables)
-_MIN_TABLES = 40
+# Minimum expected tables (model-created tables, and alembic_version)
+_MIN_TABLES = 39
 
 
 def _base_env() -> dict[str, str]:

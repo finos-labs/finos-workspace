@@ -649,9 +649,7 @@ export async function loginSuccess(data: LoginResponse) {
   useAuthStore.getState().login(data);
   const user = data.user;
 
-  useAccessStore
-    .getState()
-    .setAccessAndUsage(data.access, data.can_submit_marketplace, data.usage);
+  useAccessStore.getState().setAccessAndUsage(data.access, data.usage);
 
   if (data.entity_theme_settings)
     useEntityThemeStore.getState().updateThemeSettings(data.entity_theme_settings);

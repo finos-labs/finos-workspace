@@ -4,7 +4,12 @@ import type { ReactNode } from "react";
 import { isValidUrl } from "~/lib/utils";
 
 import "./tritanopia-dark.css";
-import { CodeComponent, PreCodeComponent, renderRule } from "./MarkdownOverrides";
+import {
+  CodeComponent,
+  inertImageOverride,
+  PreCodeComponent,
+  renderRule,
+} from "./MarkdownOverrides";
 
 export default function Table({
   content,
@@ -115,6 +120,7 @@ function formatValue(text = "", disableAutoLink = false, depth = 0) {
           renderRule,
           disableParsingRawHTML: true,
           overrides: {
+            ...inertImageOverride,
             a: {
               component: ({ children }: { children: ReactNode }) => (
                 <span className="text-inherit">{children}</span>

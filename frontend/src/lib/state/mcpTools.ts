@@ -12,8 +12,10 @@ import {
 } from "~/components/AI/hooks/mcp/mcpServerAuth";
 import type { UseMcpResult } from "~/components/AI/hooks/mcp/useMcp";
 import { isRecord } from "~/components/AI/utils/mcpToolSchema";
+import { isLoopbackUrl } from "~/lib/utils/mcp";
 import type { Selector } from "./app";
 import { getCopilotAccess, isMcpToolAllowed } from "./copilotAccess";
+import { getWorkspaceAgentTools } from "./workspaceTools";
 
 // Connection states that indicate a pending/in-progress connection
 export const PENDING_CONNECTION_STATES = [
@@ -75,9 +77,7 @@ export interface McpServer {
   hasToken?: boolean;
   iframeWidgetId?: string; // Links this server to an iframe widget
   iframeParams?: Record<string, string>; // Current iframe widget param values
-  vendorAppUuid?: string; // Vendor application UUID
-  vendorName?: string; // Vendor name (for display purposes)
-  sourceId?: string; // Custom backend source id (for non-marketplace apps)
+  sourceId?: string; // Backend source id the server was declared by
   authType?: "oauth" | "token"; // Static-token auth suppresses the OAuth flow when "token"
 }
 
@@ -117,7 +117,6 @@ interface McpToolsState {
   saveMCPServers: () => Promise<void>;
   debouncedSaveServers: DebouncedFunc<() => Promise<void>>;
   updateServers: (servers: McpServer[]) => void;
-  removeVendorAppServer: (vendorAppUuid: string) => void;
   removeSourceServer: (sourceId: string) => void;
   /** Signs the page out of MCP: disconnects every server and forgets them all. */
   clearAllStorage: () => void;
@@ -303,6 +302,7 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
       set((state) => ({
         servers: upsertServer(state.servers, {
           ...server,
+          isLocal: server.isLocal || isLoopbackUrl(server.url),
           toolsEnabled: server.iframeWidgetId ? true : undefined,
         }),
       }));
@@ -675,14 +675,14 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         }
       }
 
+      // The Workspace's own tools, which this tab runs when the agent calls one
+      for (const tool of await getWorkspaceAgentTools()) pushEnabledTool(tool);
+
       // Only the tools the user's roles grant go to the agent
       const access = getCopilotAccess();
       return enabledTools.filter((tool) =>
         isMcpToolAllowed(access, tool.url, tool.tool_name),
       );
-    },
-    removeVendorAppServer: (vendorAppUuid) => {
-      removeServersBy(get, set, (s) => s.vendorAppUuid === vendorAppUuid);
     },
     removeSourceServer: (sourceId) => {
       removeServersBy(get, set, (s) => s.sourceId === sourceId);

@@ -99,6 +99,8 @@ ROLE_SETTINGS = [
     "copilot_tokens_day",
     "upload_size_gb",
     "excel_add_in",
+    "search_web",
+    "fetch_from_web",
 ]
 
 

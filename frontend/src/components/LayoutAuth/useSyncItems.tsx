@@ -84,11 +84,7 @@ export default function useSyncItems() {
       queueMicrotask(async () => {
         const data = dashboardsData;
         if (data.access) {
-          setAccessAndUsage(
-            data.access,
-            data.can_submit_marketplace ?? false,
-            data.usage ?? null,
-          );
+          setAccessAndUsage(data.access, data.usage ?? null);
         }
 
         updateChats(data.copilot_chats, { questionsHistory: data.questions_history });

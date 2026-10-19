@@ -10,7 +10,6 @@ import {
   registerIframeWidget,
   unregisterIframeWidget,
 } from "~/lib/iframeWidgetRegistry";
-import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import { useShallowThemeStore } from "~/lib/state/theme";
@@ -30,8 +29,6 @@ import { IframeMcpPopover } from "./Helpers/IframeMcpPopover";
 import { IframeParamControls } from "./Helpers/IframeParamControls";
 import { useIframeProtocol } from "./Helpers/useIframeProtocol";
 import { useParamGroupBindings } from "./Helpers/useParamGroupBindings";
-
-const allowJsExecution = getConfig().data.allowHtmlJsExecution;
 
 function normalizeParamRecord(params?: Record<string, unknown>) {
   return Object.fromEntries(
@@ -390,7 +387,7 @@ export default function Iframe() {
     [prevIframeParamsRef, persistIframeParams, sendParamsUpdate, updateGroupedParams],
   );
 
-  const iframeSrc = useMemo(() => {
+  const addressWithParams = useMemo(() => {
     if (!state.url) return "";
     const paramEntries = Object.entries(effectiveIframeParams);
     if (paramEntries.length === 0) return state.url;
@@ -404,6 +401,17 @@ export default function Iframe() {
       return state.url;
     }
   }, [state.url, effectiveIframeParams]);
+
+  // A page that speaks the iframe protocol is told of a parameter change with `workspace-params-update`
+  // and applies it with its own code. A new address would reload it instead, and every reload is a new page,
+  // for which its backend starts a new instance. So once the page has connected, the address stays the one it
+  // was loaded with; a new URL or a refresh (the `key` below) are what reload it, and take the current params.
+  const loadedRef = useRef<{ key: string; src: string } | null>(null);
+  const loadKey = `${state.url}|${widget.refreshQuery ?? ""}`;
+  if (!hasProtocol || loadedRef.current?.key !== loadKey) {
+    loadedRef.current = { key: loadKey, src: addressWithParams };
+  }
+  const iframeSrc = loadedRef.current.src;
 
   const onOpenChange = useCallback((open: boolean) => dispatch({ open }), []);
 
@@ -599,7 +607,7 @@ export default function Iframe() {
               src={iframeSrc}
               width="100%"
               height="100%"
-              sandbox={allowJsExecution ? IFRAME_SANDBOX_ATTRIBUTES : ""}
+              sandbox={IFRAME_SANDBOX_ATTRIBUTES}
             />
           </div>
         </div>

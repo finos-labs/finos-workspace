@@ -23,7 +23,6 @@ from .entity_models import (
     entity_get_supreme,
 )
 from .general_models import Log
-from .marketplace_models import RateVendorApp, UserAppSubscription, Vendor, VendorApp
 from .user_models import (
     Login,
     PersonalAccessToken,

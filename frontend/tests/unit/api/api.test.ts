@@ -75,8 +75,8 @@ describe("apiClient requests", () => {
 
   it("sends nothing to a base URL on another origin", async () => {
     const config = await send({
-      url: "/marketplace/apps",
-      baseURL: "https://marketplace.test",
+      url: "/app/user",
+      baseURL: "https://elsewhere.test",
     });
 
     expect(config.withCredentials).toBe(false);

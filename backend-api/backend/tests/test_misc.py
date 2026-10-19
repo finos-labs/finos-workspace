@@ -14,7 +14,7 @@ if BACKEND_DIR not in sys.path:
 
 import pytest
 
-from tests.fixtures.marketplace import superuser_override
+from tests.fixtures.base import superuser_override
 
 
 class TestHealthCheck:

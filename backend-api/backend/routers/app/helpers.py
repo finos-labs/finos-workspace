@@ -45,31 +45,35 @@ async def set_app_user_data(user, db: AsyncSession) -> schemas.AppUserReturn:
 
 
 async def get_mcp_servers(db: AsyncSession, user: models.User) -> schemas.MCPServers:
-    """The user's MCP servers, each with the names of its stored headers and never their
-    values."""
-    if not await may_add_connections(db, user.uuid):
-        return schemas.MCPServers()
-    query = (
-        select(models.MCPServers.servers, models.MCPServers.headers)
-        .where(models.MCPServers.user_uuid == user.uuid)
-        .limit(1)
-    )
-    row = (await db.execute(query)).first()
-    if row is None:
-        return schemas.MCPServers()
-
-    headers = row.headers or {}
-    return schemas.MCPServers(
-        servers=[
-            {
-                **server,
-                **schemas.mcp_header_flags(
-                    headers.get(schemas.normalize_mcp_url(server["url"]))
-                ),
-            }
-            for server in row.servers or []
-        ]
-    )
+    """The deployment's default MCP servers, then the user's own, each with the names of its
+    stored headers and never their values. Only a user who may add connections has servers of
+    their own; a default the user saved under the same address is theirs."""
+    stored: list[dict] = []
+    headers: dict = {}
+    if await may_add_connections(db, user.uuid):
+        query = (
+            select(models.MCPServers.servers, models.MCPServers.headers)
+            .where(models.MCPServers.user_uuid == user.uuid)
+            .limit(1)
+        )
+        row = (await db.execute(query)).first()
+        if row is not None:
+            stored = row.servers or []
+            headers = row.headers or {}
+    has = {schemas.normalize_mcp_url(server["url"]) for server in stored}
+    defaults = [
+        schemas.MCPServer(id=server.id, name=server.name, url=server.url, enabled=True)
+        for server in settings.DEFAULT_MCP_SERVERS
+        if schemas.normalize_mcp_url(server.url) not in has
+    ]
+    own = [
+        {
+            **server,
+            **schemas.mcp_header_flags(headers.get(schemas.normalize_mcp_url(server["url"]))),
+        }
+        for server in stored
+    ]
+    return schemas.MCPServers(servers=[*defaults, *own])
 
 
 def merge_mcp_server_headers(
@@ -994,10 +998,35 @@ async def get_role_copilot_access(
 async def get_user_copilot_access(
     db: AsyncSession, user_uuid: UUID
 ) -> schemas.CopilotAccess:
-    """What a user may use in the Copilot: the models and MCP tools their roles grant,
-    and nothing else."""
-    granted = await get_role_copilot_access(db, list(await _get_user_roles(db, user_uuid)))
-    return schemas.CopilotAccess(models=granted.models, mcp=granted.mcp)
+    """What a user may use in the Copilot: the models and MCP tools their roles grant, and
+    nothing else. The web tools that none of their roles allows are switched off."""
+    role_uuids = list(await _get_user_roles(db, user_uuid))
+    granted = await get_role_copilot_access(db, role_uuids)
+    return schemas.CopilotAccess(
+        models=granted.models,
+        mcp=granted.mcp,
+        disabled_capabilities=await get_disabled_copilot_capabilities(db, role_uuids),
+    )
+
+
+async def get_disabled_copilot_capabilities(
+    db: AsyncSession, role_uuids: list[UUID]
+) -> list[schemas.CopilotCapability]:
+    """The Copilot's web tools that none of the user's roles allows: searching the web
+    (SEARCH_WEB) and reading a page from it (FETCH_FROM_WEB)."""
+    flags = (
+        await db.execute(
+            select(models.Role.search_web, models.Role.fetch_from_web).where(
+                models.Role.uuid.in_(role_uuids)
+            )
+        )
+    ).all()
+    disabled = []
+    if not any(row.search_web for row in flags):
+        disabled.append(schemas.CopilotCapability.SEARCH_WEB)
+    if not any(row.fetch_from_web for row in flags):
+        disabled.append(schemas.CopilotCapability.FETCH_FROM_WEB)
+    return disabled
 
 
 async def set_role_copilot_access(
@@ -1027,9 +1056,22 @@ async def set_role_copilot_access(
     await db.commit()
 
 
+def disabled_mcp_tools(access: schemas.CopilotAccess) -> frozenset[str]:
+    """The names of the MCP tools that are switched off for the user, whichever server has them."""
+    return frozenset(
+        tool
+        for capability in access.disabled_capabilities
+        for tool in schemas.CAPABILITY_MCP_TOOLS[capability]
+    )
+
+
 def is_mcp_tool_allowed(
     access: schemas.CopilotAccess, server_url: str, tool_name: str
 ) -> bool:
+    # Switched off beats what the roles grant. It goes by the tool's name, not its server's address: a user
+    # who adds the same server again under another address must not get the tool back.
+    if tool_name in disabled_mcp_tools(access):
+        return False
     url = schemas.normalize_mcp_url(server_url)
     return any(
         grant.server_url == url and grant.tool_name in {schemas.ALL_MCP_TOOLS, tool_name}
@@ -1062,6 +1104,7 @@ def check_copilot_access(
         allowed=agent_allowed and denied_model is None and not denied_tools,
         denied_model=denied_model,
         denied_tools=denied_tools,
+        disabled_capabilities=access.disabled_capabilities,
     )
 
 

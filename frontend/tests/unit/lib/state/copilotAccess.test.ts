@@ -4,6 +4,7 @@ import {
   type CopilotAccess,
   grantAgentId,
   isMcpToolAllowed,
+  isMcpToolSwitchedOff,
   isModelAllowed,
   normalizeMcpUrl,
   selectModelId,
@@ -100,5 +101,80 @@ describe("allowedModels and selectModelId", () => {
   it("sends the first model when none is granted, for the service to refuse", () => {
     expect(selectModelId(granted, "unknown-agent", models, "smart")).toBe("fast");
     expect(selectModelId(none, "default-copilot", models, "smart")).toBe("fast");
+  });
+});
+
+describe("what an administrator switched off", () => {
+  // Every tool of both servers granted, as a role can grant them
+  const all: CopilotAccess = {
+    models: [],
+    mcp: [
+      { server_url: "https://mcp.example.com/mcp", tool_name: "*" },
+      { server_url: "https://another.example.com/mcp", tool_name: "*" },
+    ],
+  };
+  const searchOff: CopilotAccess = { ...all, disabled_capabilities: ["SEARCH_WEB"] };
+  const bothOff: CopilotAccess = {
+    ...all,
+    disabled_capabilities: ["SEARCH_WEB", "FETCH_FROM_WEB"],
+  };
+
+  it("takes the tools of that capability away, and no others", () => {
+    expect(
+      isMcpToolAllowed(searchOff, "https://mcp.example.com/mcp", "web_search"),
+    ).toBe(false);
+    expect(
+      isMcpToolAllowed(searchOff, "https://mcp.example.com/mcp", "fetch_webpage"),
+    ).toBe(true);
+    expect(
+      isMcpToolAllowed(searchOff, "https://mcp.example.com/mcp", "execute_sql"),
+    ).toBe(true);
+    expect(
+      isMcpToolAllowed(bothOff, "https://mcp.example.com/mcp", "fetch_webpage"),
+    ).toBe(false);
+  });
+
+  it("takes reading a fetched page away with fetching it", () => {
+    const fetchOff: CopilotAccess = {
+      ...all,
+      disabled_capabilities: ["FETCH_FROM_WEB"],
+    };
+    expect(
+      isMcpToolAllowed(fetchOff, "https://mcp.example.com/mcp", "inspect_webpage"),
+    ).toBe(false);
+    expect(
+      isMcpToolAllowed(searchOff, "https://mcp.example.com/mcp", "inspect_webpage"),
+    ).toBe(true);
+  });
+
+  it("goes by the tool's name, so the same tool on another server is as switched off", () => {
+    expect(
+      isMcpToolAllowed(searchOff, "https://another.example.com/mcp", "web_search"),
+    ).toBe(false);
+  });
+
+  it("beats a grant of that very tool", () => {
+    const granted: CopilotAccess = {
+      models: [],
+      mcp: [{ server_url: "https://mcp.example.com/mcp", tool_name: "web_search" }],
+      disabled_capabilities: ["SEARCH_WEB"],
+    };
+    expect(isMcpToolAllowed(granted, "https://mcp.example.com/mcp", "web_search")).toBe(
+      false,
+    );
+  });
+
+  it("grants nothing when it is on: the tool still needs a role that grants it", () => {
+    expect(isMcpToolSwitchedOff(all, "web_search")).toBe(false);
+    expect(isMcpToolSwitchedOff(null, "web_search")).toBe(false);
+    expect(
+      isMcpToolSwitchedOff({ ...all, disabled_capabilities: [] }, "web_search"),
+    ).toBe(false);
+    expect(isMcpToolAllowed(all, "https://mcp.example.com/mcp", "web_search")).toBe(
+      true,
+    );
+    expect(isMcpToolAllowed(none, "https://mcp.example.com/mcp", "web_search")).toBe(
+      false,
+    );
   });
 });

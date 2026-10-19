@@ -8,6 +8,11 @@ or keeps one, and ``scripts.init_users --new-password`` sets it. ``user_create.j
 empty: compose mounts it into the containers, and without a file on the host Docker would put
 a directory there.
 
+Ines, the Copilot's agent, takes two secrets from ``agent/.env``: the token with which she reports
+usage to the API (signed with the API's ``JWT_SECRET``) and the secret that signs the chat scopes she
+hands to the tools. They are written there, into the file that holds her model settings, which is
+created from ``agent/.env.example`` when it is missing and otherwise only has these two set.
+
     python -m scripts.create_local_env --admin-email <your-email>   # refuses to overwrite
     python -m scripts.create_local_env --admin-email <your-email> --force
     python -m scripts.create_local_env --admin-email <your-email> --config-only   # only the seed config
@@ -23,6 +28,7 @@ import hmac
 import json
 import secrets
 import sys
+import time
 from pathlib import Path
 
 ENVS = Path(__file__).resolve().parent.parent / "envs"
@@ -32,6 +38,9 @@ SQLITE_EXAMPLE = ENVS / ".env.sqlite.example"
 SQLITE_TARGET = ENVS / ".env.sqlite"
 CONFIG = Path(__file__).resolve().parent / "cfgs" / "config.toml"
 USER_CREATE = Path(__file__).resolve().parent.parent / "user_create.json"
+INES = Path(__file__).resolve().parents[3] / "agent"
+INES_EXAMPLE = INES / ".env.example"
+INES_TARGET = INES / ".env"
 
 WEB_URL = "http://localhost:3000"
 API_URL = "http://localhost:8000"
@@ -50,12 +59,32 @@ def _b64(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
 
 
-def jwt_hs256(payload: dict[str, str], secret: str) -> str:
+def jwt_hs256(payload: dict[str, object], secret: str) -> str:
     """A JWT signed with HS256, as ``jwt.encode`` writes it."""
     header = _b64(json.dumps({"alg": "HS256", "typ": "JWT"}, separators=(",", ":")).encode())
     body = _b64(json.dumps(payload, separators=(",", ":")).encode())
     signature = hmac.new(secret.encode(), f"{header}.{body}".encode(), hashlib.sha256)
     return f"{header}.{body}.{_b64(signature.digest())}"
+
+
+# How long the token Ines reports usage with is accepted for. The API refuses one that never runs
+# out (``api.auth_helpers.check_metering``), because it is pasted into another service's
+# configuration and could otherwise only be withdrawn by changing JWT_SECRET, which signs out every
+# user. ``scripts.create_metering_token`` mints a replacement; keep the two in step.
+METERING_TOKEN_DAYS = 365
+
+
+def metering_token(jwt_secret: str, now: float | None = None) -> str:
+    """The token Ines reports usage with, good for ``METERING_TOKEN_DAYS``."""
+    issued = int(time.time() if now is None else now)
+    return jwt_hs256(
+        {
+            "sub": "metering",
+            "iat": issued,
+            "exp": issued + METERING_TOKEN_DAYS * 24 * 60 * 60,
+        },
+        jwt_secret,
+    )
 
 
 def secrets_for(
@@ -105,6 +134,28 @@ email = {json.dumps(email)}
 first_name = "Workspace"
 last_name = "Administrator"
 """
+
+
+def ines_secrets(jwt_secret: str, current_scope_secret: str = "") -> dict[str, str]:
+    """What Ines needs that comes from the API's secrets: the token with which she reports usage
+    (what ``scripts.create_metering_token`` prints, and which runs out after
+    ``METERING_TOKEN_DAYS``) and a secret of her own, which stays as it was when she has one."""
+    return {
+        "INES_METERING_TOKEN": metering_token(jwt_secret),
+        "INES_SCOPE_SECRET": current_scope_secret or secrets.token_urlsafe(32),
+    }
+
+
+def write_ines_env(jwt_secret: str) -> Path | None:
+    """Set her two secrets in ``agent/.env``, which starts from ``agent/.env.example`` and is otherwise
+    left as it is (it holds her model settings). None when this checkout has no ``agent/``."""
+    if not INES_EXAMPLE.exists():
+        return None
+    text = INES_TARGET.read_text() if INES_TARGET.exists() else INES_EXAMPLE.read_text()
+    current = dict(line.partition("=")[::2] for line in text.splitlines()).get("INES_SCOPE_SECRET", "")
+    INES_TARGET.write_text(render(text, ines_secrets(jwt_secret, current.strip())))
+    INES_TARGET.chmod(0o600)
+    return INES_TARGET
 
 
 def render(example: str, values: dict[str, str]) -> str:
@@ -159,12 +210,15 @@ def main(argv: list[str] | None = None) -> int:
     CONFIG.write_text(seed_config(args.entity_name, args.admin_email))
     if not (args.config_only or args.sqlite) and not USER_CREATE.exists():
         USER_CREATE.write_text("{}\n")
+    ines = None if args.config_only or args.sqlite else write_ines_env(generated["jwt_secret"])
     sys.stdout.write(
         f"Wrote {CONFIG if args.config_only else f'{target} and {CONFIG}'}\n"
         f"The first start creates the administrator {args.admin_email} without a password. "
         "Set it with: docker compose run --rm init python -m scripts.init_users "
         f"--new-password {args.admin_email}\n"
     )
+    if ines:
+        sys.stdout.write(f"Set Ines's secrets in {ines}; set DEFAULT_MODEL and that provider's key there too.\n")
     return 0
 
 

@@ -20,7 +20,7 @@ if BACKEND_DIR not in sys.path:
 import pytest
 from uuid import uuid4
 
-from tests.fixtures.marketplace import superuser_override
+from tests.fixtures.base import superuser_override
 
 
 class TestEntityValidate:

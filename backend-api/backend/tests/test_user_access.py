@@ -32,7 +32,7 @@ from routers.app.helpers import (
     get_user_limits,
 )
 from tests.fixtures.base import _TEST_ENTITY_TYPE_UUID, bearer_client
-from tests.fixtures.marketplace import superuser_override
+from tests.fixtures.base import superuser_override
 from tests.fixtures.organization import (
     ADMIN_ENTITY,
     MEMBER_UUID,
@@ -611,6 +611,8 @@ class TestRoleAudit:
             copilot_tokens_day=1000,
             upload_size_gb=2,
             excel_add_in=True,
+            search_web=True,
+            fetch_from_web=False,
         )
         with patch("api.events.role_permission_events._create_role_audit_entry") as audit:
             track_role_insert(None, None, role)
@@ -623,6 +625,8 @@ class TestRoleAudit:
             "copilot_tokens_day": 1000,
             "upload_size_gb": 2,
             "excel_add_in": True,
+            "search_web": True,
+            "fetch_from_web": False,
         }
 
     @pytest.mark.asyncio

@@ -9,6 +9,9 @@ export interface RoleSettings {
   copilot_tokens_day: number | null;
   upload_size_gb: number | null;
   excel_add_in: boolean;
+  /** The Copilot's tools for the web: on for a user when any of their roles allows them. */
+  search_web: boolean;
+  fetch_from_web: boolean;
 }
 
 export interface RoleT extends RoleSettings {

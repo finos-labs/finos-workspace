@@ -200,14 +200,6 @@ describe("FollowUpSuggestions", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("renders nothing while the assistant is streaming", () => {
-    streamingState.streamingStatus = "streaming-started";
-    const { container } = render(
-      <FollowUpSuggestions suggestions={["Show revenue"]} />,
-    );
-    expect(container.innerHTML).toBe("");
-  });
-
   it("renders nothing while loading", () => {
     streamingState.loading = true;
     const { container } = render(

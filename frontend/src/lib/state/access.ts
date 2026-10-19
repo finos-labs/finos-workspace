@@ -41,26 +41,19 @@ export function canReceiveShares(access: UserAccess | null): boolean {
 type AccessState = {
   access: UserAccess | null;
   setAccess: (access: UserAccess) => void;
-  canSubmitMarketplace: boolean;
   usage: Usage | null;
   setUsage: (usage: Partial<Usage>) => void;
-  setAccessAndUsage: (
-    access: UserAccess,
-    canSubmitMarketplace: boolean,
-    usage: Usage | null,
-  ) => void;
+  setAccessAndUsage: (access: UserAccess, usage: Usage | null) => void;
 };
 
 export const useAccessStore = createWithEqualityFn<AccessState>()(
   (set) => ({
     access: null,
     setAccess: (access) => set({ access }),
-    canSubmitMarketplace: false,
     usage: null,
     setUsage: (usage) =>
       set((state) => ({ usage: { ...state.usage, ...usage } as Usage })),
-    setAccessAndUsage: (access, canSubmitMarketplace, usage) =>
-      set({ access, canSubmitMarketplace, usage }),
+    setAccessAndUsage: (access, usage) => set({ access, usage }),
   }),
   shallow,
 );

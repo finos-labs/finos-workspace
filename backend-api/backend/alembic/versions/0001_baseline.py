@@ -391,7 +391,6 @@ def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
         sa.Column("totp_active", sa.Boolean(), nullable=False),
         sa.Column("two_factor_auth", sa.Boolean(), nullable=False),
         sa.Column("temporary_password", sa.Boolean(), nullable=True),
-        sa.Column("auth_token", sa.Text(), nullable=True),
         sa.Column(
             "display_settings",
             api.models.model_helpers.UserDisplaySettingsType(),
@@ -888,36 +887,6 @@ def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
         )
 
     op.create_table(
-        "vendor",
-        sa.Column("name", sa.String(length=255), nullable=False),
-        sa.Column("owner_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=True),
-        sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("website_url", sa.String(length=512), nullable=True),
-        sa.Column("documentation_url", sa.String(length=512), nullable=True),
-        sa.Column("thumbnail_url", sa.Text(), nullable=True),
-        sa.Column("support_email", sa.String(length=255), nullable=True),
-        sa.Column("uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
-        sa.Column(
-            "created_date", api.models.model_helpers.AwareDateTime(), nullable=True
-        ),
-        sa.Column(
-            "updated_date", api.models.model_helpers.AwareDateTime(), nullable=True
-        ),
-        sa.ForeignKeyConstraint(
-            ["owner_uuid"],
-            ["user.uuid"],
-            name=op.f("fk_vendor_owner_uuid_user"),
-            ondelete="SET NULL",
-        ),
-        sa.PrimaryKeyConstraint("uuid"),
-        sa.UniqueConstraint("name"),
-    )
-    with op.batch_alter_table("vendor", schema=None) as batch_op:
-        batch_op.create_index(
-            batch_op.f("ix_vendor_owner_uuid"), ["owner_uuid"], unique=False
-        )
-
-    op.create_table(
         "widget_metadata",
         sa.Column("user_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
         sa.Column("name", sa.String(length=50), nullable=False),
@@ -1290,120 +1259,12 @@ def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
         )
 
     op.create_table(
-        "vendor_app",
-        sa.Column(
-            "vendor_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False
-        ),
-        sa.Column("owner_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=True),
-        sa.Column("name", sa.String(length=255), nullable=False),
-        sa.Column("version", sa.String(length=50), nullable=False),
-        sa.Column("short_description", sa.Text(), nullable=True),
-        sa.Column("category", sa.String(length=100), nullable=True),
-        sa.Column("tagline", sa.String(length=255), nullable=True),
-        sa.Column("thumbnail_url", sa.Text(), nullable=True),
-        sa.Column("thumbnail_url_dark", sa.Text(), nullable=True),
-        sa.Column("thumbnail_url_light", sa.Text(), nullable=True),
-        sa.Column("screenshots", api.models.model_helpers.JSONType(), nullable=True),
-        sa.Column("api_key_url", sa.String(length=512), nullable=True),
-        sa.Column("api_key_info_url", sa.String(length=512), nullable=True),
-        sa.Column("more_information_url", sa.String(length=512), nullable=True),
-        sa.Column("backend_base_url", sa.String(length=512), nullable=True),
-        sa.Column("apps_json_url", sa.String(length=512), nullable=True),
-        sa.Column("widgets_json_url", sa.String(length=512), nullable=True),
-        sa.Column("is_built_in", sa.Boolean(), nullable=False),
-        sa.Column("auth_type", api.models.model_helpers.JSONType(), nullable=False),
-        sa.Column("auth_fields", api.models.model_helpers.JSONType(), nullable=True),
-        sa.Column(
-            "status",
-            sa.Enum(
-                "submitted",
-                "verified",
-                "development",
-                "published",
-                "disabled",
-                "removed",
-                name="appstatus",
-            ),
-            nullable=False,
-        ),
-        sa.Column(
-            "apps_json_cache", api.models.model_helpers.GzipJsonType(), nullable=True
-        ),
-        sa.Column(
-            "widgets_json_cache", api.models.model_helpers.GzipJsonType(), nullable=True
-        ),
-        sa.Column("apps_json_version", sa.String(length=100), nullable=True),
-        sa.Column("widgets_json_version", sa.String(length=100), nullable=True),
-        sa.Column(
-            "last_fetched_at", api.models.model_helpers.AwareDateTime(), nullable=True
-        ),
-        sa.Column("last_fetch_status", sa.String(length=10), nullable=True),
-        sa.Column("last_fetch_error", sa.Text(), nullable=True),
-        sa.Column(
-            "last_verified_at", api.models.model_helpers.AwareDateTime(), nullable=True
-        ),
-        sa.Column(
-            "parent_app_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=True
-        ),
-        sa.Column("uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
-        sa.Column(
-            "created_date", api.models.model_helpers.AwareDateTime(), nullable=True
-        ),
-        sa.Column(
-            "updated_date", api.models.model_helpers.AwareDateTime(), nullable=True
-        ),
-        sa.ForeignKeyConstraint(
-            ["owner_uuid"],
-            ["user.uuid"],
-            name=op.f("fk_vendor_app_owner_uuid_user"),
-            ondelete="SET NULL",
-        ),
-        sa.ForeignKeyConstraint(
-            ["parent_app_uuid"],
-            ["vendor_app.uuid"],
-            name=op.f("fk_vendor_app_parent_app_uuid_vendor_app"),
-            ondelete="SET NULL",
-        ),
-        sa.ForeignKeyConstraint(
-            ["vendor_uuid"],
-            ["vendor.uuid"],
-            name=op.f("fk_vendor_app_vendor_uuid_vendor"),
-            ondelete="CASCADE",
-        ),
-        sa.PrimaryKeyConstraint("uuid"),
-        sa.UniqueConstraint(
-            "vendor_uuid", "name", "version", name="uq_vendor_app_name_version"
-        ),
-    )
-    with op.batch_alter_table("vendor_app", schema=None) as batch_op:
-        batch_op.create_index(
-            batch_op.f("ix_vendor_app_owner_uuid"), ["owner_uuid"], unique=False
-        )
-        batch_op.create_index(
-            batch_op.f("ix_vendor_app_parent_app_uuid"),
-            ["parent_app_uuid"],
-            unique=False,
-        )
-        batch_op.create_index(
-            batch_op.f("ix_vendor_app_status"), ["status"], unique=False
-        )
-        batch_op.create_index(
-            "ix_vendor_app_vendor_status", ["vendor_uuid", "status"], unique=False
-        )
-        batch_op.create_index(
-            batch_op.f("ix_vendor_app_vendor_uuid"), ["vendor_uuid"], unique=False
-        )
-
-    op.create_table(
         "api_source",
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("url", api.models.model_helpers.HttpUrlType(), nullable=False),
         sa.Column("user_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=True),
         sa.Column("endpointHeaders", sa.Text(), nullable=True),
         sa.Column("entity_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=True),
-        sa.Column(
-            "vendor_app_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=True
-        ),
         sa.Column("uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
         sa.Column(
             "created_date", api.models.model_helpers.AwareDateTime(), nullable=True
@@ -1424,12 +1285,6 @@ def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
         sa.ForeignKeyConstraint(
             ["user_uuid"], ["user.uuid"], name=op.f("fk_api_source_user_uuid_user")
         ),
-        sa.ForeignKeyConstraint(
-            ["vendor_app_uuid"],
-            ["vendor_app.uuid"],
-            name=op.f("fk_api_source_vendor_app_uuid_vendor_app"),
-            ondelete="CASCADE",
-        ),
         sa.PrimaryKeyConstraint("uuid"),
     )
     with op.batch_alter_table("api_source", schema=None) as batch_op:
@@ -1440,99 +1295,8 @@ def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
             batch_op.f("ix_api_source_user_uuid"), ["user_uuid"], unique=False
         )
         batch_op.create_index(
-            batch_op.f("ix_api_source_vendor_app_uuid"),
-            ["vendor_app_uuid"],
-            unique=False,
-        )
-        batch_op.create_index(
             "ix_user_entity_name_api_source",
             ["user_uuid", "entity_uuid", "name"],
-            unique=False,
-        )
-
-    op.create_table(
-        "rate_vendor_app",
-        sa.Column("user_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
-        sa.Column("app_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
-        sa.Column("rating", sa.Integer(), nullable=False),
-        sa.Column("review", sa.Text(), nullable=True),
-        sa.Column("uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
-        sa.Column(
-            "created_date", api.models.model_helpers.AwareDateTime(), nullable=True
-        ),
-        sa.Column(
-            "updated_date", api.models.model_helpers.AwareDateTime(), nullable=True
-        ),
-        sa.ForeignKeyConstraint(
-            ["app_uuid"],
-            ["vendor_app.uuid"],
-            name=op.f("fk_rate_vendor_app_app_uuid_vendor_app"),
-            ondelete="CASCADE",
-        ),
-        sa.ForeignKeyConstraint(
-            ["user_uuid"],
-            ["user.uuid"],
-            name=op.f("fk_rate_vendor_app_user_uuid_user"),
-            ondelete="CASCADE",
-        ),
-        sa.PrimaryKeyConstraint("uuid"),
-        sa.UniqueConstraint("user_uuid", "app_uuid", name="uq_user_app_rating"),
-    )
-    with op.batch_alter_table("rate_vendor_app", schema=None) as batch_op:
-        batch_op.create_index(
-            batch_op.f("ix_rate_vendor_app_app_uuid"), ["app_uuid"], unique=False
-        )
-        batch_op.create_index(
-            batch_op.f("ix_rate_vendor_app_user_uuid"), ["user_uuid"], unique=False
-        )
-
-    op.create_table(
-        "user_app_subscription",
-        sa.Column("user_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
-        sa.Column("app_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
-        sa.Column(
-            "status",
-            sa.Enum("active", "disconnected", name="subscriptionstatus"),
-            nullable=False,
-        ),
-        sa.Column(
-            "subscribed_at", api.models.model_helpers.AwareDateTime(), nullable=True
-        ),
-        sa.Column(
-            "disconnected_at", api.models.model_helpers.AwareDateTime(), nullable=True
-        ),
-        sa.Column("uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
-        sa.Column(
-            "created_date", api.models.model_helpers.AwareDateTime(), nullable=True
-        ),
-        sa.Column(
-            "updated_date", api.models.model_helpers.AwareDateTime(), nullable=True
-        ),
-        sa.ForeignKeyConstraint(
-            ["app_uuid"],
-            ["vendor_app.uuid"],
-            name=op.f("fk_user_app_subscription_app_uuid_vendor_app"),
-            ondelete="CASCADE",
-        ),
-        sa.ForeignKeyConstraint(
-            ["user_uuid"],
-            ["user.uuid"],
-            name=op.f("fk_user_app_subscription_user_uuid_user"),
-            ondelete="CASCADE",
-        ),
-        sa.PrimaryKeyConstraint("uuid"),
-        sa.UniqueConstraint("user_uuid", "app_uuid", name="uq_user_app_subscription"),
-    )
-    with op.batch_alter_table("user_app_subscription", schema=None) as batch_op:
-        batch_op.create_index(
-            "ix_user_app_sub_user_status", ["user_uuid", "status"], unique=False
-        )
-        batch_op.create_index(
-            batch_op.f("ix_user_app_subscription_app_uuid"), ["app_uuid"], unique=False
-        )
-        batch_op.create_index(
-            batch_op.f("ix_user_app_subscription_user_uuid"),
-            ["user_uuid"],
             unique=False,
         )
 

@@ -1,13 +1,13 @@
 import re
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeAlias, TypeVar
+from enum import StrEnum
+from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeVar
 from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID, uuid4
 
 from fastapi.responses import JSONResponse
 from pydantic import (
     AliasGenerator,
-    AliasPath,
     ConfigDict,
     EmailStr,
     Field,
@@ -156,93 +156,8 @@ def get_camel_config(**config: ConfigDict) -> ConfigDict:
     )
 
 
-def get_widget_metadata(
-    apps_json_cache: list[dict] | None,
-    widgets_json_cache: dict[str, dict] | None = None,
-) -> dict[Literal["widgets", "totalWidgets"], Any]:
-    """Extract app widget metadata and counts from cached manifests."""
-    if (
-        not apps_json_cache
-        or not isinstance(apps_json_cache, list)
-        or not widgets_json_cache
-        or not isinstance(widgets_json_cache, dict)
-    ):
-        return {"widgets": [], "totalWidgets": 0}
-
-    widgetCounts = {}
-    for app in apps_json_cache:
-        for tab in app.get("tabs", {}).values():
-            for layout in tab.get("layout", []):
-                widgetId = layout.get("i")
-                if widgetId:
-                    widgetCounts[widgetId] = widgetCounts.get(widgetId, 0) + 1
-
-    widgets = []
-    if widgets_json_cache and isinstance(widgets_json_cache, dict):
-        for widgetId, widget in widgets_json_cache.items():
-            if widgetId in widgetCounts and widget.get("name"):
-                widgets.append(
-                    AppWidgetMetadata(
-                        id=widgetId,
-                        name=widget.get("name"),
-                        description=widget.get("description"),
-                        count=widgetCounts[widgetId],
-                    )
-                )
-
-    totalWidgets = sum(widgetCounts.values())
-    return {"widgets": widgets, "totalWidgets": totalWidgets}
-
-
-def get_prompts(apps_json_cache: list | None) -> list[str]:
-    """Extract prompts from cached apps.json."""
-    if not apps_json_cache or not isinstance(apps_json_cache, list):
-        return []
-
-    prompts = []
-    for app in apps_json_cache:
-        if isinstance(app, dict) and "prompts" in app:
-            prompts.extend(app["prompts"])
-    return prompts
-
-
-def app_rating_to_average(ratings: list | None) -> float | None:
-    """Calculate average rating from a list of ratings."""
-    if not ratings:
-        return None
-
-    if (total_ratings := len(ratings)) == 0:
-        return None
-
-    rating_sum = sum(r.rating for r in ratings)
-    average_rating = rating_sum / total_ratings
-    return round(average_rating, 2)
-
-
-# Named replacements for inline lambdas inside Annotated[...] — Cython
-# can't serialise lambdas in those forward refs, so Pydantic later trips
-# on `<lambda>`. See marketplace_schemas._is_development_status for the
-# original example of this workaround.
-def _prompts_count(v: list | None) -> int:
-    return len(get_prompts(v))
-
-
-def _none_to_empty_str(v: str | None) -> str:
-    return v or ""
-
-
-def _is_development_status(v) -> bool:
-    return v == base.AppStatus.development
-
-
 def _is_not_none(v) -> bool:
     return v is not None
-
-
-VenderAppPrompts = Annotated[list[str], BeforeValidator(get_prompts)]
-PromptsCount = Annotated[int, BeforeValidator(_prompts_count)]
-AppRating: TypeAlias = Annotated[float | None, BeforeValidator(app_rating_to_average)]
-NoneToStr: TypeAlias = Annotated[str | None, BeforeValidator(_none_to_empty_str)]
 
 
 class SuccessReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]
@@ -435,50 +350,7 @@ class ApiSourceBase(BaseModel, extra="ignore"):  # type: ignore[call-arg]
 
 
 class CreateApiSource(ApiSourceBase):
-    vendor_app_uuid: None | UUID = None
-
-
-class AppWidgetMetadata(BaseModel):
-    id_: str = Field(serialization_alias="id", alias="id")
-    name: str
-    description: None | str = None
-    count: int
-
-
-class VendorAppSchema(BaseModel):
-    model_config = get_camel_config(from_attributes=True)
-
-    uuid: UUID
-    name: str
-    parent_app_uuid: UUID | None = Field(None, validation_alias="parent_app_uuid")
-    vendor_name: str = Field(..., validation_alias=AliasPath("vendor", "name"))
-    short_description: str | None = None
-    category: str | None = None
-    tagline: str | None = None
-    apps_json_url: str | None = None
-    widgets_json_url: str | None = None
-    thumbnail: NoneToStr = Field("", validation_alias="thumbnail_url")
-    thumbnail_dark: NoneToStr = Field("", validation_alias="thumbnail_url_dark")
-    thumbnail_light: NoneToStr = Field("", validation_alias="thumbnail_url_light")
-    version: str | None = None
-    widgets: list[AppWidgetMetadata] | None = Field(default_factory=list)
-    total_widgets: int | None = Field(0)
-
-    prompts: VenderAppPrompts = Field(default_factory=list, validation_alias="apps_json_cache")
-    widgets_json_cache: None | dict = None
-    apps_json_cache: None | list = None
-    average_rating: AppRating = Field(None, validation_alias="ratings")
-    is_development: Annotated[
-        bool,
-        BeforeValidator(_is_development_status),
-    ] = Field(False, validation_alias="status")
-
-    @model_validator(mode="after")
-    def populate_widgets(self) -> "VendorAppSchema":
-        widget_metadata = get_widget_metadata(self.apps_json_cache, self.widgets_json_cache)
-        self.widgets = widget_metadata.get("widgets", []) if widget_metadata else []
-        self.total_widgets = widget_metadata.get("totalWidgets", 0) if widget_metadata else 0
-        return self
+    pass
 
 
 class ReturnApiSource(ApiSourceBase, extra="ignore"):  # type: ignore[call-arg]
@@ -488,7 +360,6 @@ class ReturnApiSource(ApiSourceBase, extra="ignore"):  # type: ignore[call-arg]
     created_date: datetime = Field(serialization_alias="createdDate", alias="created_date")
     updated_date: datetime = Field(serialization_alias="updatedDate", alias="updated_date")
     is_entity_backend: Annotated[bool, BeforeValidator(_is_not_none)] = Field(validation_alias="entity_uuid")
-    vendor_app: VendorAppSchema | None = Field(None, validation_alias="vendor_app")
 
 
 class EntityTypeCreate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
@@ -731,7 +602,6 @@ def default_chats() -> list["Chat"]:
 
 class DashboardCompleteWithContext(DashboardComplete):
     model_config = main_config
-    can_submit_marketplace: bool = False
     access: UserAccess | None = None
     usage: UsageGet | None = None
     copilot_chats: list["ChatInfo | Chat"] | None = Field(default_factory=default_chats)
@@ -1138,6 +1008,26 @@ class MCPOAuthCompleted(BaseModel):
 ALL_MCP_TOOLS = "*"
 
 
+class CopilotCapability(StrEnum):
+    """What an administrator can switch off in the Copilot, on a role (Role.search_web,
+    Role.fetch_from_web). It is off for a user when none of their roles allows it.
+
+    Each stands for tools of the agent, whichever MCP server provides them (see
+    ``CAPABILITY_MCP_TOOLS``). A capability that is on changes nothing: what the roles grant
+    still decides. One that is off takes the tools away whatever the roles grant.
+    """
+
+    SEARCH_WEB = "SEARCH_WEB"
+    FETCH_FROM_WEB = "FETCH_FROM_WEB"
+
+
+# The MCP tools of each capability, by the name the tool has on its server.
+CAPABILITY_MCP_TOOLS: dict[CopilotCapability, frozenset[str]] = {
+    CopilotCapability.SEARCH_WEB: frozenset({"web_search"}),
+    CopilotCapability.FETCH_FROM_WEB: frozenset({"fetch_webpage", "inspect_webpage"}),
+}
+
+
 class CopilotModelGrant(BaseModel):
     """A model of a Copilot agent."""
 
@@ -1168,7 +1058,9 @@ class RoleCopilotAccess(BaseModel):
 
 
 class CopilotAccess(RoleCopilotAccess):
-    """What a user may use: the union of what their roles grant."""
+    """What a user may use: the union of what their roles grant, less what is switched off for them."""
+
+    disabled_capabilities: list[CopilotCapability] = Field(default_factory=list)
 
 
 class CopilotToolRef(BaseModel):
@@ -1221,6 +1113,8 @@ class CopilotAuthorizeResult(BaseModel):
     provider_keys: CopilotProviderKeys | None = Field(
         default=None, exclude_if=lambda value: value is None
     )
+    # What is switched off for the user, whether or not the request had tools of it: the agent tells the model.
+    disabled_capabilities: list[CopilotCapability] = Field(default_factory=list)
 
 
 class AppUserSchema(BaseModel):
@@ -1244,7 +1138,6 @@ class AppUserSchema(BaseModel):
     name: str | None = None
     role: str | None = None
     is_superuser: bool | None = None
-    can_submit_marketplace: bool | None = None
 
 
 class StoredFileSchema(BaseModel, extra="ignore"):  # type: ignore[call-arg]
@@ -1464,6 +1357,8 @@ class GetRoleWithUsers(BaseModel):
     copilot_tokens_day: int | None
     upload_size_gb: int | None
     excel_add_in: bool
+    search_web: bool
+    fetch_from_web: bool
 
     @classmethod
     def from_role(cls, role, users: list[str]) -> "GetRoleWithUsers":
@@ -1478,6 +1373,8 @@ class GetRoleWithUsers(BaseModel):
             copilot_tokens_day=role.copilot_tokens_day,
             upload_size_gb=role.upload_size_gb,
             excel_add_in=role.excel_add_in,
+            search_web=role.search_web,
+            fetch_from_web=role.fetch_from_web,
         )
 
 
@@ -1493,6 +1390,8 @@ class PostRole(BaseModel):
     copilot_tokens_day: int | None = Field(None, ge=0)
     upload_size_gb: int | None = Field(None, ge=0)
     excel_add_in: bool = False
+    search_web: bool = True
+    fetch_from_web: bool = True
 
 
 class PatchRole(BaseModel):
@@ -1505,6 +1404,8 @@ class PatchRole(BaseModel):
     copilot_tokens_day: int | None = Field(None, ge=0)
     upload_size_gb: int | None = Field(None, ge=0)
     excel_add_in: bool | None = None
+    search_web: bool | None = None
+    fetch_from_web: bool | None = None
 
     def changes(self) -> dict[str, Any]:
         """The role fields to set: the ones sent, where a null limit is no limit."""
@@ -1672,7 +1573,6 @@ class AppTokenWithContext(AppToken):
     user_skills: list[SkillReturn] | None = None
     user: AppUserReturn | None = None
     access: UserAccess | None = None
-    can_submit_marketplace: bool = False
     usage: UsageGet | None = None
     custom_copilots: list[CustomCopilot] | None = None
     mcp_servers: list[MCPServer] | None = None
@@ -1700,7 +1600,6 @@ class AppSession(BaseModel):
     entity_name: None | str
     role: None | str
     access: UserAccess
-    can_submit_marketplace: bool = False
     usage: UsageGet | None = None
     copilot_keys: CopilotKeysStatus
     user: SessionUser

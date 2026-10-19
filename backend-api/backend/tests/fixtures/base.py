@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import secrets
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from datetime import UTC
 from typing import Any, TypedDict
 from collections.abc import Mapping, Sequence
@@ -51,6 +51,17 @@ WEB_HEADERS = {auth_helpers.CLIENT_HEADER: "web", "Origin": TEST_ORIGIN}
 ADMIN_HEADERS = {auth_helpers.CLIENT_HEADER: "admin", "Origin": TEST_ORIGIN}
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def superuser_override():
+    """Bypass the is_superuser DB check so admin endpoints are callable."""
+    app.dependency_overrides[auth_helpers.get_current_superuser] = lambda: None
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(auth_helpers.get_current_superuser, None)
+
 
 _TEST_USER_UUID = "00000000-0000-0000-0000-000000000001"
 _TEST_SESSION_UUID = "00000000-0000-0000-0000-000000000002"

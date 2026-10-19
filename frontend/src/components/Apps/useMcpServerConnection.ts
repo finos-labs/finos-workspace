@@ -1,27 +1,23 @@
 import { useCallback } from "react";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
-import type { ListedAppMcpServer } from "~/types/listedApps";
+import type { AppMcpServer } from "~/types/appMcpServer";
 
 interface McpServerIdentity {
-  /** Marketplace app id; mutually-exclusive with sourceId */
-  vendorAppUuid?: string;
-  /** Custom backend source id; mutually-exclusive with vendorAppUuid */
+  /** Custom backend source id */
   sourceId?: string;
-  /** Display name persisted alongside the server. */
-  vendorName?: string;
 }
 
 /**
- * Shared store wiring for a single MCP server declared by a listed app. Both the
+ * Shared store wiring for a single MCP server declared by a backend. Both the
  * MCP hover popover and the app details modal read connection state and save
  * tokens through here so the logic lives in one place. A token is write-only: the
  * API keeps it encrypted and only says whether one is saved.
  */
 export function useMcpServerConnection(
-  mcpServer: ListedAppMcpServer | undefined,
+  mcpServer: AppMcpServer | undefined,
   identity: McpServerIdentity,
 ) {
-  const { vendorAppUuid, sourceId, vendorName } = identity;
+  const { sourceId } = identity;
 
   const {
     existingServer,
@@ -31,11 +27,7 @@ export function useMcpServerConnection(
     addServer,
     updateServer,
   } = useShallowMcpToolsStore((s) => {
-    const server = s.servers.find(
-      (x) =>
-        (vendorAppUuid && x.vendorAppUuid === vendorAppUuid) ||
-        (sourceId && x.sourceId === sourceId),
-    );
+    const server = s.servers.find((x) => sourceId && x.sourceId === sourceId);
     const conn = server ? s.getMCPConnection(server.id) : undefined;
     return {
       existingServer: server,
@@ -56,11 +48,9 @@ export function useMcpServerConnection(
       enabled: true,
       autoReconnect: true,
       tools: [],
-      vendorAppUuid,
-      vendorName,
       sourceId,
     });
-  }, [addServer, mcpServer, vendorAppUuid, vendorName, sourceId]);
+  }, [addServer, mcpServer, sourceId]);
 
   const saveToken = useCallback(
     (token: string) => {
@@ -84,22 +74,12 @@ export function useMcpServerConnection(
         enabled: true,
         autoReconnect: true,
         tools: [],
-        vendorAppUuid,
-        vendorName,
         sourceId,
         customHeaders,
         authType: "token",
       });
     },
-    [
-      existingServer,
-      updateServer,
-      addServer,
-      mcpServer,
-      vendorAppUuid,
-      vendorName,
-      sourceId,
-    ],
+    [existingServer, updateServer, addServer, mcpServer, sourceId],
   );
 
   // Without its token a token-auth server cannot connect, so it is turned off too

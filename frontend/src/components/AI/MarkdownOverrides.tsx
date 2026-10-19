@@ -14,12 +14,12 @@ import {
 } from "react";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import { format } from "sql-formatter";
+import { useDebounceValue } from "usehooks-ts";
 import { type ArtifactT, useShallowCopilotStore } from "~/lib/state/copilot";
 import { cn } from "../ds/utils";
 import { InlineMath } from "../Tex";
 import Artifact from "./Artifact";
 import { useExternalLinkAnchorProps } from "./ExternalLinkContext";
-import { useShallowStreamingStore } from "./hooks/useStreaming";
 import MessageTable from "./MessageTable";
 
 type StarryNightInstance = {
@@ -186,9 +186,6 @@ const TableComponent = memo(
 );
 
 const SAFE_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
-const SAFE_IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
-const SAFE_DATA_IMAGE_PATTERN =
-  /^data:image\/(?:png|jpe?g|gif|webp|avif);base64,[a-z0-9+/=\s]+$/i;
 
 function isSafeUrl(value: unknown, allowedProtocols: Set<string>) {
   if (typeof value !== "string") return false;
@@ -213,14 +210,6 @@ function hasControlCharacters(value: string) {
   return false;
 }
 
-export function isSafeMarkdownImageSrc(src: unknown): src is string {
-  if (typeof src !== "string") return false;
-  const value = src.trim();
-  // Keep base64 raster image support, but do not allow SVG/PDF data documents in chat.
-  if (SAFE_DATA_IMAGE_PATTERN.test(value)) return true;
-  return isSafeUrl(value, SAFE_IMAGE_PROTOCOLS);
-}
-
 const LinkComponent = memo(
   (props: ComponentPropsWithoutRef<"a">) => {
     const href = isSafeUrl(props.href, SAFE_LINK_PROTOCOLS) ? props.href : undefined;
@@ -242,23 +231,19 @@ const LinkComponent = memo(
   (p, n) => p.href === n.href && p.children === n.children,
 );
 
+/**
+ * The chat never loads an image. What it shows is written by a model, a web page or a file, and loading
+ * `![](address)` asks the server at that address for it, with whatever was put in the address: the user's data
+ * can leave that way, with no click. So an image in chat text is its alt text, and nothing is requested.
+ */
 const ImageComponent = memo(
-  (props: ComponentPropsWithoutRef<"img">) => {
-    const src = isSafeMarkdownImageSrc(props.src) ? props.src.trim() : undefined;
-    if (!src) return props.alt ? <span>{props.alt}</span> : null;
-
-    return (
-      <img
-        {...props}
-        src={src}
-        alt={props.alt ?? ""}
-        loading="lazy"
-        referrerPolicy="no-referrer"
-      />
-    );
-  },
-  (p, n) => p.src === n.src && p.alt === n.alt && p.title === n.title,
+  (props: ComponentPropsWithoutRef<"img">) =>
+    props.alt ? <span>{props.alt}</span> : null,
+  (p, n) => p.alt === n.alt,
 );
+
+/** For every markdown the chat shows: the `img` of markdown-to-jsx would otherwise render an `<img>`. */
+export const inertImageOverride = { img: { component: ImageComponent } };
 
 const ParagraphComponent = memo(
   (props: ComponentPropsWithoutRef<"p">) => {
@@ -270,11 +255,91 @@ const ParagraphComponent = memo(
   (p, n) => p.children === n.children,
 );
 
+const parseTableHTML = (code: string) => {
+  // Unescape underscores
+  code = code.replace(/\\_/g, "_");
+
+  // Ensures that table HTML is properly wrapped
+  if (!code.startsWith("<table")) {
+    if (code.startsWith("<thead") || code.startsWith("<tbody")) {
+      code = `<table>${code}</table>`;
+    } else if (code.startsWith("<tr")) {
+      code = `<table><tbody>${code}</tbody></table>`;
+    }
+  }
+
+  // A document of its own that nothing runs or loads in: an element made with `innerHTML` in this page starts
+  // loading its `src` and runs its `onerror` at once, even when it is never put on the page, and `code` is a
+  // model's text.
+  const doc = new DOMParser().parseFromString(code, "text/html");
+  const table = doc.querySelector("table");
+
+  if (!table) return null;
+
+  if (
+    table.children?.length === 1 &&
+    table.children?.[0]?.tagName?.toLowerCase() === "tbody"
+  ) {
+    const thead = doc.createElement("thead");
+    const firstRow = table.querySelector("tbody tr");
+    if (firstRow) {
+      thead.appendChild(firstRow.cloneNode(true));
+      table.insertBefore(thead, table.firstChild);
+      firstRow.remove();
+    }
+  }
+
+  return Array.from(table.children).map((child, index) => {
+    const ElemTag = child.tagName.toLowerCase() as "thead" | "tbody";
+    return (
+      <ElemTag key={`table-${ElemTag}-${index}`}>
+        {Array.from(child.children).map((row, rowIndex) => (
+          <tr key={`table-row-${rowIndex}`}>
+            {Array.from(row.children).map((cell, cellIndex) => {
+              const CellTag = cell.tagName.toLowerCase() as "td" | "th";
+              return (
+                <CellTag
+                  className={"!m-0 !p-2 align-top"}
+                  key={`table-cell-${cellIndex}`}
+                >
+                  {cell.innerHTML}
+                </CellTag>
+              );
+            })}
+          </tr>
+        ))}
+      </ElemTag>
+    );
+  });
+};
+
 const codeChildOf = (children: ReactNode): CodeChildProps | undefined =>
   isValidElement<CodeChildProps>(children) ? children.props : undefined;
 
 export const PreCodeComponent = memo(
-  (props: ComponentPropsWithoutRef<"pre">) => <pre {...props} data-ai-pre="true" />,
+  (props: ComponentPropsWithoutRef<"pre">) => {
+    const child = codeChildOf(props.children);
+    const code =
+      typeof child?.children === "string" ? child.children : child?.children?.[0] || "";
+
+    const validTable = useMemo(
+      () =>
+        child?.className === "lang-html" &&
+        ["<table", "<thead", "<tr"].some((tag) => code?.startsWith(tag)),
+      [code?.slice(0, 7), child?.className],
+    );
+    const [debouncedCode] = useDebounceValue(code, 500, {
+      leading: true,
+      maxWait: 300,
+    });
+    const children = useMemo(
+      () => validTable && parseTableHTML(debouncedCode),
+      [debouncedCode, validTable],
+    );
+
+    if (children) return <MessageTable children={children} />;
+    return <pre {...props} data-ai-pre="true" />;
+  },
   (p, n) =>
     p.className === n.className &&
     p.children === n.children &&
@@ -285,9 +350,6 @@ export const CodeComponent = memo(
   (props: ComponentPropsWithoutRef<"code">) => {
     const className = props.className || "";
     const starryNight = useStarryNight();
-    const isStreaming =
-      useShallowStreamingStore((state) => state.streamingStatus) ===
-      "streaming-started";
 
     const { scope, lang } = useMemo(() => {
       const matches = className.match(/lang-([\w-]+)/);
@@ -309,13 +371,13 @@ export const CodeComponent = memo(
           : typeof first === "string"
             ? first
             : "";
-      if (lang === "sql" && !isStreaming) code = formatSqlIndentation(code);
+      if (lang === "sql") code = formatSqlIndentation(code);
 
       const hast = starryNight.highlight(code, scope);
 
       const result = toJsxRuntime(hast, { Fragment, jsx, jsxs });
       return result.props.children;
-    }, [props.children, scope, lang, isStreaming, starryNight]);
+    }, [props.children, scope, lang, starryNight]);
 
     if (!scope)
       return (
@@ -379,7 +441,7 @@ export const MarkdownAIMessageOverrides = {
   agent: { component: AgentComponent },
   table: { component: TableComponent },
   a: { component: LinkComponent },
-  img: { component: ImageComponent },
+  ...inertImageOverride,
   p: { component: ParagraphComponent },
   pre: { component: PreCodeComponent },
   code: { component: CodeComponent },
@@ -391,10 +453,17 @@ export const MarkdownAIMessageOptions: MarkdownToJSX.Options = {
   overrides: MarkdownAIMessageOverrides,
 };
 
+/** For markdown shown in the chat panel that has no overrides of its own: no raw HTML, and no images. */
+export const InertMarkdownOptions: MarkdownToJSX.Options = {
+  disableParsingRawHTML: true,
+  overrides: { ...inertImageOverride },
+};
+
 export const CodeMarkdownOptions = {
   disableParsingRawHTML: true,
   renderRule,
   overrides: {
+    ...inertImageOverride,
     code: { component: CodeComponent },
     pre: { component: PreCodeComponent },
   },

@@ -63,7 +63,6 @@ const baseProps = {
   isOpen: true,
   onClose: vi.fn(),
   serverName: "Demo MCP",
-  vendorName: "Acme",
 };
 
 describe("McpTokenModal", () => {

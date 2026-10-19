@@ -1,7 +1,7 @@
 ---
 title: App Builder Index
 uri: workspace://app-builder/index
-use_when: You are about to build, review, debug, or extend an Workspace app and need to find the right resource to read next.
+use_when: You are about to build, review, debug, or extend a Workspace app and need to find the right resource to read next.
 language_specific: false
 related:
   - workspace://overview/what-is-workspace

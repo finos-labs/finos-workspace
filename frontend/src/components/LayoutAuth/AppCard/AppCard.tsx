@@ -14,20 +14,17 @@ import { getUserInitials } from "~/components/AdminRoles/AddUsersSelect";
 import { WidgetTooltipItem } from "~/components/AI/WidgetTooltipItem";
 import { McpAppPopover } from "~/components/Apps/McpAppPopover";
 import { Button } from "~/components/ds/atoms/Button";
-import { ConfirmDialog } from "~/components/ds/dialogs/ConfirmDialog";
 import { cn } from "~/components/ds/utils";
 import { AuthenticatedAvatar } from "~/components/General/Avatar";
 import { HoverPopover } from "~/components/HoverPopover";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { useCanSubmitApp } from "~/lib/appSubmissionFlag";
 import { getConfig } from "~/lib/runtimeConfig";
 import { canShare, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import { useShallowThemeStore } from "~/lib/state/theme";
-import { slugify } from "~/lib/utils/utils";
 import { AppCardDropdown } from "./AppCardDropdown";
 import { PopoverContent } from "./PopoverContent";
 import { SharedWithPopover } from "./SharedWithPopover";
@@ -53,33 +50,17 @@ const AppCard = memo<AppCardProps>((props) => {
   );
   const mayShare = useShallowAccessStore((state) => canShare(state.access));
   const navigate = useNavigate();
-  const canSubmitApp = useCanSubmitApp();
 
   const { source, refreshApiSourceById } = useShallowBackendConnectorStore((state) => ({
     source: template.source?.id ? state.getApiSourceById(template.source.id) : null,
     refreshApiSourceById: state.refreshApiSourceById,
   }));
 
-  const onListToMarketplace = useCallback(() => {
-    const sourceId = template.source?.id;
-    if (!sourceId) return;
-    // Open the marketplace tab + listing dialog seeded from this connected
-    // backend. ListedAppsTab (which has the submissions) resolves whether it's
-    // already listed and opens the existing one instead of a duplicate.
-    navigate(`?tab=apps-marketplace&list=${sourceId}`);
-  }, [template.source?.id, navigate]);
-
-  const vendorAppUuid = source?.vendorApp?.uuid || source?.vendorAppUuid || undefined;
-  const customSourceId = vendorAppUuid ? undefined : source?.id;
+  const customSourceId = source?.id;
 
   const { mcpServerEntry, mcpToolCount } = useShallowMcpToolsStore((s) => {
-    if (!(vendorAppUuid || customSourceId))
-      return { mcpServerEntry: undefined, mcpToolCount: 0 };
-    const server = s.servers.find(
-      (x) =>
-        (vendorAppUuid && x.vendorAppUuid === vendorAppUuid) ||
-        (customSourceId && x.sourceId === customSourceId),
-    );
+    if (!customSourceId) return { mcpServerEntry: undefined, mcpToolCount: 0 };
+    const server = s.servers.find((x) => x.sourceId === customSourceId);
     if (!server) return { mcpServerEntry: undefined, mcpToolCount: 0 };
     const conn = s.getMCPConnection(server.id);
     const ready = conn?.state === "ready";
@@ -106,7 +87,6 @@ const AppCard = memo<AppCardProps>((props) => {
   const [state, dispatch] = useStateReducer({
     isDescriptionTruncated: false,
     isRefreshing: false,
-    unsubscribeConfirm: false,
   });
   const isBackendLoading = source?.status === "pending" || state.isRefreshing;
 
@@ -179,54 +159,19 @@ const AppCard = memo<AppCardProps>((props) => {
     [template.description, descriptionRef],
   );
 
-  const isListedApp = template.type === "listed";
-  const isBackendApp =
-    template.source?.id && template.type !== "generated" && !isListedApp;
+  const isBackendApp = template.source?.id && template.type !== "generated";
   const isPersonalApp = template.type === "generated";
-  const listedAppDelete = isListedApp && (!props.fromMarketplace || template.onDelete);
 
   const tagElement = useMemo(() => {
     if (template.type === "generated") return <Tag name="Saved App" />;
 
-    const tagName = template.vendorName || template.source?.name;
+    const tagName = template.source?.name;
     if (tagName) return <Tag name={tagName} />;
 
     return null;
-  }, [template.type, template.source?.name, template.vendorName]);
+  }, [template.type, template.source?.name]);
 
   const dropDownItems = useMemo<AppCardDropdownItem[]>(() => {
-    if (isListedApp) {
-      const items: AppCardDropdownItem[] = [];
-      items.push({
-        label: "View details",
-        onClick: () =>
-          navigate(`/app?tab=apps-marketplace&app=${slugify(template.name)}`),
-      });
-      if (!props.fromMarketplace || template.onDelete) {
-        items.push({
-          label: "Disconnect",
-          onClick: () =>
-            template.onDelete
-              ? dispatch({ unsubscribeConfirm: true })
-              : setDeleteConfirm?.({ template, type: "listedApp" }),
-          color: "#E03C3C",
-        });
-      }
-      if (template.onRate) {
-        items.unshift({
-          label: "Rate App",
-          onClick: () => template.onRate?.(),
-        });
-      }
-      if (template.onOpen) {
-        items.unshift({
-          label: "Open App",
-          onClick: () => template.onOpen?.(),
-        });
-      }
-      return items;
-    }
-
     if (template.type === "shared" || !(isBackendApp || isPersonalApp)) return [];
 
     const elements: AppCardDropdownItem[] = [
@@ -266,30 +211,8 @@ const AppCard = memo<AppCardProps>((props) => {
       });
     }
 
-    // List a connected backend app to the marketplace (Steps 2-3). Sits above
-    // the destructive Delete row; label flips once a listing already exists.
-    if (
-      canSubmitApp &&
-      isBackendApp &&
-      template.type === "user" &&
-      template.source?.id
-    ) {
-      elements.splice(elements.length - 1, 0, {
-        label: "List app to marketplace",
-        onClick: onListToMarketplace,
-      });
-    }
-
     return elements;
-  }, [
-    isBackendApp,
-    isPersonalApp,
-    setDeleteConfirm,
-    template,
-    navigate,
-    onListToMarketplace,
-    canSubmitApp,
-  ]);
+  }, [isBackendApp, isPersonalApp, setDeleteConfirm, template, navigate]);
 
   const bottomItems = useMemo<ReactNode[]>(() => {
     const createdByInitials = template.createdBy
@@ -356,9 +279,8 @@ const AppCard = memo<AppCardProps>((props) => {
       );
     }
 
-    if (mcpServer && (vendorAppUuid || customSourceId)) {
+    if (mcpServer && customSourceId) {
       const displayCount = mcpToolCount > 0 ? mcpToolCount : 1;
-      const isSubscribed = !props.fromMarketplace || !!template.onDelete;
       items.push(
         <HoverPopover
           key="mcp"
@@ -375,16 +297,9 @@ const AppCard = memo<AppCardProps>((props) => {
           }
           content={
             <McpAppPopover
-              vendorAppUuid={vendorAppUuid}
               sourceId={customSourceId}
-              vendorName={
-                template.vendorName ||
-                source?.vendorApp?.vendorName ||
-                source?.name ||
-                undefined
-              }
               mcpServer={mcpServer}
-              isSubscribed={isSubscribed}
+              isSubscribed={true}
             />
           }
         />,
@@ -448,177 +363,137 @@ const AppCard = memo<AppCardProps>((props) => {
     uniqueId,
     widgetTooltipItems,
     mcpServer,
-    vendorAppUuid,
     customSourceId,
     mcpToolCount,
     source,
-    props.fromMarketplace,
   ]);
 
   const whiteLabel = getConfig().whiteLabel;
-  const isDevelopment = template.isDevelopment || source?.vendorApp?.isDevelopment;
 
   return (
-    <>
-      <div
-        role="button"
-        onClick={isBackendLoading ? undefined : template.onClick}
-        className={cn(
-          `bg-general-bg-primary border border-general-border-secondary
+    <div
+      role="button"
+      onClick={isBackendLoading ? undefined : template.onClick}
+      className={cn(
+        `bg-general-bg-primary border border-general-border-secondary
           hover:border-general-border-primary rounded p-2.5 flex flex-col cursor-pointer`,
-          className,
-          { "opacity-50 cursor-wait": isBackendLoading },
-        )}
+        className,
+        { "opacity-50 cursor-wait": isBackendLoading },
+      )}
+    >
+      <div
+        className="flex items-center justify-between cursor-auto!"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div
-          className="flex items-center justify-between cursor-auto!"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="min-w-0">{tagElement}</div>
-          {!hideActions && (
-            <div className="flex items-center gap-0.5 shrink-0">
-              {!isDevelopment && listedAppDelete && !bottomRight && (
-                <Tooltip message="This App is from App Marketplace">
-                  <div className="rounded-full bg-tag-green-bg p-0.5">
-                    <Icon id="check" className="size-3 text-tag-green-label" />
-                  </div>
-                </Tooltip>
-              )}
-              {isDevelopment && (
-                <Tooltip message="This app is in development and only visible to you">
-                  <div className="rounded-full bg-tag-yellow-bg p-0.5">
-                    <Tag name="Dev" color="yellow" />
-                  </div>
-                </Tooltip>
-              )}
-              {dropDownItems.length > 0 && <AppCardDropdown items={dropDownItems} />}
-            </div>
-          )}
-        </div>
-        <div className="mt-2.5 w-full rounded overflow-hidden bg-surface-card aspect-[5/3] border border-general-border-secondary">
-          <AuthenticatedAvatar
-            src={imgSrc}
-            source={template.source}
-            alt={template.name}
-            className="w-full h-full object-cover text-ds-text-body text-center text-2xs"
-            fallback={
-              <div className="w-full h-full flex items-center justify-center">
-                {whiteLabel.leftSidebarLogo ? (
-                  <img
-                    className="w-[100px] object-contain opacity-50"
-                    src={
-                      theme === "dark" && whiteLabel.leftSidebarLogoDark
-                        ? whiteLabel.leftSidebarLogoDark
-                        : whiteLabel.leftSidebarLogo
-                    }
-                    alt={whiteLabel.name || "Workspace"}
-                  />
-                ) : (
-                  <Icon
-                    id="material-symbols-image-outline"
-                    className="w-16 h-12 text-general-label-disabled"
-                  />
-                )}
-              </div>
-            }
-          />
-        </div>
-        <div className="mt-2.5 flex flex-col gap-2">
-          <div className="text-sm font-bold text-ds-text-heading truncate">
-            {template.name}
+        <div className="min-w-0">{tagElement}</div>
+        {!hideActions && (
+          <div className="flex items-center gap-0.5 shrink-0">
+            {dropDownItems.length > 0 && <AppCardDropdown items={dropDownItems} />}
           </div>
-          {state.isDescriptionTruncated ? (
-            <Tooltip
-              message={template.description}
-              position="top"
-              className="max-w-[300px]"
-            >
-              {descriptionElement}
-            </Tooltip>
-          ) : (
-            descriptionElement
-          )}
-        </div>
-        <div
-          className="flex items-center justify-between gap-2 mt-auto pt-4 cursor-auto!"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {bottomLeft ?? (
-            <div className="flex items-center">
-              {bottomItems.map((item, i) => (
-                <Fragment key={i}>
-                  {i > 0 && <div className="mx-2 h-3.5 w-px bg-surface-divider" />}
-                  {item}
-                </Fragment>
-              ))}
-            </div>
-          )}
-          {bottomRight ?? (
-            <div className="flex items-center gap-0.5">
-              {mayShare && isPersonalApp && template.onDelete && template.creator && (
-                <Tooltip message="Share app" position="top">
-                  <Button
-                    variant="secondary"
-                    size="xs"
-                    icon
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShareUserAppsPopupId(template.id);
-                    }}
-                  >
-                    <Icon id="share-07" className="size-3.5 text-ds-text-body" />
-                  </Button>
-                </Tooltip>
-              )}
-              {isBackendApp && template.type !== "shared" && (
-                <Tooltip
-                  message="Refresh backend associated with this app"
-                  position="top"
-                >
-                  <Button
-                    variant="secondary"
-                    size="xs"
-                    icon
-                    loading={isBackendLoading}
-                    disabled={isBackendLoading}
-                    onClick={handleRefreshBackend}
-                    loadingChildren={null}
-                  >
-                    <Icon
-                      id="refresh-icon-ds"
-                      className={cn("size-3.5 text-ds-text-body", {
-                        "animate-spin": isBackendLoading,
-                      })}
-                    />
-                  </Button>
-                </Tooltip>
-              )}
-            </div>
-          )}
-        </div>
+        )}
       </div>
-      {isListedApp && template.onDelete && (
-        <ConfirmDialog
-          open={state.unsubscribeConfirm}
-          onClose={() => dispatch({ unsubscribeConfirm: false })}
-          title="Remove App"
-          description="This app will be removed from My Apps. You can add it again anytime from the Apps Marketplace."
-          confirmButton={
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={async () => {
-                dispatch({ unsubscribeConfirm: false });
-                await template.onDelete?.();
-                template.onAfterDelete?.();
-              }}
-            >
-              Remove
-            </Button>
+      <div className="mt-2.5 w-full rounded overflow-hidden bg-surface-card aspect-[5/3] border border-general-border-secondary">
+        <AuthenticatedAvatar
+          src={imgSrc}
+          source={template.source}
+          alt={template.name}
+          className="w-full h-full object-cover text-ds-text-body text-center text-2xs"
+          fallback={
+            <div className="w-full h-full flex items-center justify-center">
+              {whiteLabel.leftSidebarLogo ? (
+                <img
+                  className="w-[100px] object-contain opacity-50"
+                  src={
+                    theme === "dark" && whiteLabel.leftSidebarLogoDark
+                      ? whiteLabel.leftSidebarLogoDark
+                      : whiteLabel.leftSidebarLogo
+                  }
+                  alt={whiteLabel.name || "Workspace"}
+                />
+              ) : (
+                <Icon
+                  id="material-symbols-image-outline"
+                  className="w-16 h-12 text-general-label-disabled"
+                />
+              )}
+            </div>
           }
         />
-      )}
-    </>
+      </div>
+      <div className="mt-2.5 flex flex-col gap-2">
+        <div className="text-sm font-bold text-ds-text-heading truncate">
+          {template.name}
+        </div>
+        {state.isDescriptionTruncated ? (
+          <Tooltip
+            message={template.description}
+            position="top"
+            className="max-w-[300px]"
+          >
+            {descriptionElement}
+          </Tooltip>
+        ) : (
+          descriptionElement
+        )}
+      </div>
+      <div
+        className="flex items-center justify-between gap-2 mt-auto pt-4 cursor-auto!"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {bottomLeft ?? (
+          <div className="flex items-center">
+            {bottomItems.map((item, i) => (
+              <Fragment key={i}>
+                {i > 0 && <div className="mx-2 h-3.5 w-px bg-surface-divider" />}
+                {item}
+              </Fragment>
+            ))}
+          </div>
+        )}
+        {bottomRight ?? (
+          <div className="flex items-center gap-0.5">
+            {mayShare && isPersonalApp && template.onDelete && template.creator && (
+              <Tooltip message="Share app" position="top">
+                <Button
+                  variant="secondary"
+                  size="xs"
+                  icon
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShareUserAppsPopupId(template.id);
+                  }}
+                >
+                  <Icon id="share-07" className="size-3.5 text-ds-text-body" />
+                </Button>
+              </Tooltip>
+            )}
+            {isBackendApp && template.type !== "shared" && (
+              <Tooltip
+                message="Refresh backend associated with this app"
+                position="top"
+              >
+                <Button
+                  variant="secondary"
+                  size="xs"
+                  icon
+                  loading={isBackendLoading}
+                  disabled={isBackendLoading}
+                  onClick={handleRefreshBackend}
+                  loadingChildren={null}
+                >
+                  <Icon
+                    id="refresh-icon-ds"
+                    className={cn("size-3.5 text-ds-text-body", {
+                      "animate-spin": isBackendLoading,
+                    })}
+                  />
+                </Button>
+              </Tooltip>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 });
 

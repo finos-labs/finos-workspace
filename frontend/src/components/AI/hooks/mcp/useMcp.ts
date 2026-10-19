@@ -31,6 +31,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { mcpServersSaved, useMcpToolsStore } from "~/lib/state/mcpTools";
 import { useThemeStore } from "~/lib/state/theme";
+import { isLoopbackUrl } from "~/lib/utils/mcp";
 import {
   createLocalMcpFetch,
   createMcpProxyFetch,
@@ -158,11 +159,12 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
     autoRetry,
     autoReconnect,
     transportType,
-    isLocal,
+    isLocal: isLocalOption,
     authType,
     handleDisconnect,
   } = useMemo(() => getOptions(options), [options]); // Memoize options to prevent unnecessary effect runs
 
+  const isLocal = isLocalOption || isLoopbackUrl(url);
   const usesTokenAuth = authType === "token";
 
   const [data, dispatch] = useStateReducer<MCPDataType>({

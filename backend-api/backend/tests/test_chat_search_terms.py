@@ -1,32 +1,40 @@
-"""The chat search's terms: in PostgreSQL the last word of a term becomes a prefix match
-(`:*`), and no term, however it is made, takes more than linear time."""
+r"""Unit tests for the search term of the chat search (api.crud).
+
+The term is the user's, so the prefix match of its last word is made without a
+regular expression: re.sub(r"(\w+)$", ...) takes time quadratic in its length.
+"""
 
 import re
 import time
 
 import pytest
 
-from api.crud import prefix_last_word
+from api.crud import prefix_match_last_word
 
 
 @pytest.mark.parametrize(
-    ("term", "expected"),
+    "term",
     [
-        ("hello world", "hello world:*"),
-        ("revenue_2025", "revenue_2025:*"),
-        ("naïve", "naïve:*"),
-        ("hello world!", "hello world!"),
-        ("trailing space ", "trailing space "),
-        ("", ""),
+        "",
+        "abc",
+        "abc def",
+        "abc!",
+        "abc ",
+        "abc\n",
+        "abc\n\n",
+        "abc_",
+        "été",
+        "abc 123",
+        "!!!",
+        "a",
     ],
 )
-def test_the_last_word_becomes_a_prefix(term, expected):
-    assert prefix_last_word(term) == expected
-    # As the regular expression it replaces had it
-    assert prefix_last_word(term) == re.sub(r"(\w+)$", r"\1:*", term)
+def test_matches_the_pattern_it_replaces(term):
+    assert prefix_match_last_word(term) == re.sub(r"(\w+)$", r"\1:*", term)
 
 
-def test_a_long_term_takes_linear_time():
-    start = time.perf_counter()
-    prefix_last_word("a" * 200_000 + "!")
-    assert time.perf_counter() - start < 0.1
+def test_takes_linear_time_on_a_long_term():
+    term = "a" * 200_000 + "!"
+    started = time.perf_counter()
+    assert prefix_match_last_word(term) == term
+    assert time.perf_counter() - started < 0.1

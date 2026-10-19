@@ -6,9 +6,7 @@ import { useShallowStreamingStore } from "./hooks/useStreaming";
 export const FollowUpSuggestions = memo(
   ({ suggestions }: { suggestions: string[] | null }) => {
     const { handleSubmitRef } = useCopilotContext();
-    const isBusy = useShallowStreamingStore(
-      (s) => s.streamingStatus === "streaming-started" || s.loading,
-    );
+    const isBusy = useShallowStreamingStore((s) => s.loading);
 
     if (!suggestions || suggestions.length === 0 || isBusy) return null;
 

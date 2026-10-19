@@ -11,17 +11,14 @@ import hashlib
 import json
 from datetime import UTC, datetime, timedelta
 
-import jwt
 import pytest
 from sqlalchemy import delete, update
 
 from api import auth_helpers, models
+from scripts.create_metering_token import create_metering_token
 from tests.fixtures.base import _AUTH_USER, bearer_client, settings, web_session_headers
 
-METERING = {
-    "X-Metering-Authorization": "Bearer "
-    + jwt.encode({"sub": "metering"}, settings.JWT_SECRET, algorithm="HS256")
-}
+METERING = {"X-Metering-Authorization": "Bearer " + create_metering_token()[0]}
 
 
 def _redis():

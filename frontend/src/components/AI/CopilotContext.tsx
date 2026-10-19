@@ -61,14 +61,12 @@ export function CopilotContext() {
     const customEntries = Object.entries(featureFlags || {}).filter(
       ([, val]) => typeof val === "object" && val !== null,
     ) as [string, FeatureMeta][];
-    const widgetGlobalSearchFF = Boolean(featureFlags?.["widget-global-search"]);
-    const generativeUiFF = Boolean(featureFlags?.["generative-ui"]);
     return {
       contextEnabled: widgetDashboardSelectFF,
       selectedCopilot: s.selectedCopilot,
       setSelectedCopilot: s.setSelectedCopilot,
       initializeCustomFeatures: s.initializeCustomFeatures,
-      enableSettings: someTruthy(widgetGlobalSearchFF, generativeUiFF, customEntries),
+      enableSettings: someTruthy(customEntries),
     };
   });
 
@@ -288,7 +286,6 @@ const SelectedWidgetBadges = memo(
     const copilot = useShallowCopilotDataStore((state) => ({
       selectedWidgets: state.copilotWidgets.selectedWidgets,
       toggleSelectedWidget: state.toggleSelectedWidget,
-      extraWidgetsEnabled: state.extraWidgetsEnabled,
       isMentionTrackedWidget: state.isMentionTrackedWidget,
       getCopilotWidgets: state.getCopilotWidgets,
       removeMentionTrackedWidget: state.removeMentionTrackedWidget,
@@ -458,7 +455,7 @@ const SelectedWidgetBadges = memo(
       >
         {contextEnabled
           ? currentDashboardId
-            ? copilot.extraWidgetsEnabled && widgetGlobalSearchFF
+            ? widgetGlobalSearchFF
               ? "Using all widgets available"
               : widgetDashboardSearchFF
                 ? "Using dashboard widgets"
@@ -483,20 +480,12 @@ function SettingsContent() {
     [copilot.selectedCopilot],
   );
 
-  const { customEntries, widgetGlobalSearchFF, generativeUiFF } =
-    useShallowCopilotStore((s) => {
-      const featureFlags = s.selectedCopilot?.features || {};
-      const customEntries = Object.entries(featureFlags || {}).filter(
+  const customEntries = useShallowCopilotStore(
+    (s) =>
+      Object.entries(s.selectedCopilot?.features || {}).filter(
         ([, val]) => typeof val === "object" && val !== null,
-      ) as [string, FeatureMeta][];
-      const widgetGlobalSearchFF = Boolean(featureFlags?.["widget-global-search"]);
-      const generativeUiFF = Boolean(featureFlags?.["generative-ui"]);
-      return {
-        widgetGlobalSearchFF,
-        generativeUiFF,
-        customEntries,
-      };
-    });
+      ) as [string, FeatureMeta][],
+  );
 
   const handleToggleCustomFeature = useCallback(
     (key: string, label: string) => {
@@ -528,80 +517,71 @@ function SettingsContent() {
 
   return (
     <>
-      {(widgetGlobalSearchFF || generativeUiFF) && <BuiltInFeatureToggles />}
+      {customEntries.map(([key, val]) => {
+        if (typeof val !== "object" || val === null) return null;
+        const featureType = val.type || "toggle";
 
-      {customEntries.length > 0 && (
-        <>
-          {(widgetGlobalSearchFF || generativeUiFF) && (
-            <div className="mx-3 my-1 border-t border-light-200 dark:border-dark-500" />
-          )}
-          {customEntries.map(([key, val]) => {
-            if (typeof val !== "object" || val === null) return null;
-            const featureType = val.type || "toggle";
+        if (featureType === "text") {
+          return (
+            <CustomFeatureText
+              key={`custom-feature-text-${key}`}
+              featureKey={key}
+              meta={val}
+              value={String(copilot.customFeatureStates?.[key] ?? "")}
+              onChange={handleSetCustomFeatureValue}
+            />
+          );
+        }
 
-            if (featureType === "text") {
-              return (
-                <CustomFeatureText
-                  key={`custom-feature-text-${key}`}
-                  featureKey={key}
-                  meta={val}
-                  value={String(copilot.customFeatureStates?.[key] ?? "")}
-                  onChange={handleSetCustomFeatureValue}
-                />
-              );
-            }
+        // An agent's model setting offers only the models the user's roles grant
+        if (key === MODEL_SETTING && settingModels.length) {
+          const agentId = copilot.selectedCopilot?.id ?? "";
+          const granted = allowedModels(access, agentId, settingModels);
+          if (!granted.length) return null;
+          return (
+            <CustomFeatureSelect
+              key={`custom-feature-select-${key}`}
+              featureKey={key}
+              meta={{
+                ...val,
+                options: granted.map((m) => ({ label: m.name, value: m.id })),
+              }}
+              value={
+                selectModelId(
+                  access,
+                  agentId,
+                  settingModels,
+                  String(copilot.customFeatureStates?.[key] ?? ""),
+                ) ?? ""
+              }
+              onChange={handleSetCustomFeatureValue}
+            />
+          );
+        }
 
-            // An agent's model setting offers only the models the user's roles grant
-            if (key === MODEL_SETTING && settingModels.length) {
-              const agentId = copilot.selectedCopilot?.id ?? "";
-              const granted = allowedModels(access, agentId, settingModels);
-              if (!granted.length) return null;
-              return (
-                <CustomFeatureSelect
-                  key={`custom-feature-select-${key}`}
-                  featureKey={key}
-                  meta={{
-                    ...val,
-                    options: granted.map((m) => ({ label: m.name, value: m.id })),
-                  }}
-                  value={
-                    selectModelId(
-                      access,
-                      agentId,
-                      settingModels,
-                      String(copilot.customFeatureStates?.[key] ?? ""),
-                    ) ?? ""
-                  }
-                  onChange={handleSetCustomFeatureValue}
-                />
-              );
-            }
+        if (featureType === "select" && val.options?.length) {
+          return (
+            <CustomFeatureSelect
+              key={`custom-feature-select-${key}`}
+              featureKey={key}
+              meta={val}
+              value={String(copilot.customFeatureStates?.[key] ?? "")}
+              onChange={handleSetCustomFeatureValue}
+            />
+          );
+        }
 
-            if (featureType === "select" && val.options?.length) {
-              return (
-                <CustomFeatureSelect
-                  key={`custom-feature-select-${key}`}
-                  featureKey={key}
-                  meta={val}
-                  value={String(copilot.customFeatureStates?.[key] ?? "")}
-                  onChange={handleSetCustomFeatureValue}
-                />
-              );
-            }
-
-            const enabled = Boolean(copilot.customFeatureStates?.[key]);
-            return (
-              <CustomFeatureToggle
-                key={`custom-feature-toggle-${key}`}
-                featureKey={key}
-                meta={val}
-                enabled={enabled}
-                onToggle={handleToggleCustomFeature}
-              />
-            );
-          })}
-        </>
-      )}
+        const enabled = Boolean(copilot.customFeatureStates?.[key]);
+        return (
+          <CustomFeatureToggle
+            key={`custom-feature-toggle-${key}`}
+            featureKey={key}
+            meta={val}
+            enabled={enabled}
+            onToggle={handleToggleCustomFeature}
+          />
+        );
+      })}
     </>
   );
 }
@@ -742,118 +722,5 @@ const CustomFeatureSelect = memo((props: CustomFeatureSelectProps) => {
         </SelectRoot>
       </div>
     </div>
-  );
-});
-
-const BuiltInFeatureToggles = memo(() => {
-  const copilot = useShallowCopilotDataStore((state) => ({
-    extraWidgetsEnabled: state.extraWidgetsEnabled,
-    toggleExtraWidgetsEnabled: state.toggleExtraWidgetsEnabled,
-    generativeUiEnabled: state.generativeUiEnabled,
-    toggleGenerativeUiEnabled: state.toggleGenerativeUiEnabled,
-  }));
-
-  const { widgetGlobalSearchFF, generativeUiFF } = useShallowCopilotStore((s) => {
-    const featureFlags = s.selectedCopilot?.features || {};
-    const widgetGlobalSearchFF = Boolean(featureFlags?.["widget-global-search"]);
-    const generativeUiFF = Boolean(featureFlags?.["generative-ui"]);
-    return {
-      widgetGlobalSearchFF,
-      generativeUiFF,
-    };
-  });
-
-  const handleToggleGenerativeUI = useCallback(() => {
-    const newState = copilot.toggleGenerativeUiEnabled();
-
-    showNotification({
-      id: "copilot-generative-ui-toggle",
-      message: newState ? "Generative UI Enabled" : "Generative UI Disabled",
-      description: newState
-        ? "The agent can now control your dashboard and automatically add or modify widgets based on your requests."
-        : "The agent will no longer be able to control your dashboard or modify widgets automatically.",
-      toastType: "info",
-    });
-  }, [copilot.toggleGenerativeUiEnabled]);
-
-  const handleToggleGlobalData = useCallback(() => {
-    const newState = copilot.toggleExtraWidgetsEnabled();
-
-    showNotification({
-      id: "copilot-global-data-toggle",
-      message: newState ? "Global Data Enabled" : "Global Data Disabled",
-      description: newState
-        ? "The agent can now access data from any widget in the library, not just those on your dashboard."
-        : "The agent will only access data from widgets currently on your dashboard.",
-      toastType: "info",
-    });
-  }, [copilot.toggleExtraWidgetsEnabled]);
-
-  return (
-    <>
-      <div className="px-3 py-2 group">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <HintLabel
-              tooltip={
-                widgetGlobalSearchFF
-                  ? "Expands the agent's data access beyond your current dashboard. When enabled, the agent can retrieve data from any widget in the library — not just the ones you've added to your dashboard."
-                  : "Global data is not enabled for this agent"
-              }
-              tooltipClassName="max-w-[280px]"
-              disabled={!widgetGlobalSearchFF}
-            >
-              Global data
-            </HintLabel>
-          </div>
-          <Switch
-            checked={copilot.extraWidgetsEnabled && widgetGlobalSearchFF}
-            onCheckedChange={handleToggleGlobalData}
-            disabled={!widgetGlobalSearchFF}
-            aria-label="Toggle global data"
-          />
-        </div>
-      </div>
-
-      <div className="px-3 py-2 group">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <HintLabel
-              tooltip={
-                generativeUiFF ? (
-                  <div className="flex flex-col gap-1.5">
-                    <span>Lets the agent control your dashboard directly:</span>
-                    <ul className="list-disc pl-3.5 space-y-0.5">
-                      <li>Add widgets from the library with the right parameters</li>
-                      <li>Update parameters on existing dashboard widgets</li>
-                      <li>
-                        Create widgets on the fly (e.g. HTML reports, notes, charts,
-                        etc.)
-                      </li>
-                    </ul>
-                    <span className="text-light-500 dark:text-light-400 italic">
-                      Try: "Using the financial statements of AAPL, create an HTML
-                      report with a DCF analysis and add it to the dashboard"
-                    </span>
-                  </div>
-                ) : (
-                  "Generative UI is not enabled for this agent"
-                )
-              }
-              tooltipClassName="max-w-[320px]"
-              disabled={!generativeUiFF}
-            >
-              Generative UI
-            </HintLabel>
-          </div>
-          <Switch
-            checked={copilot.generativeUiEnabled && generativeUiFF}
-            onCheckedChange={handleToggleGenerativeUI}
-            disabled={!generativeUiFF}
-            aria-label="Toggle generative UI"
-          />
-        </div>
-      </div>
-    </>
   );
 });

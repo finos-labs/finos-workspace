@@ -13,8 +13,6 @@ import type { McpServer } from "~/lib/state/mcpTools";
 import type { SharedItem } from "~/lib/state/sharedApp";
 import type { UserAppsSync } from "~/lib/state/userApps";
 
-export type DefaultSkillSlugs = "html-report" | "html-table" | "html-chart";
-
 export interface DisplaySettings {
   theme: "light" | "dark";
   showWidgetControlsEllipsis: boolean;
@@ -27,7 +25,6 @@ export interface DisplaySettings {
   lastVisitedPage?: string;
   collapsedPanelExpandOnHover?: boolean;
   autoHideWidgetNavbar?: boolean;
-  removedSkillSlugs?: DefaultSkillSlugs[]; // Track removed skills by slug to prevent re-adding default skills
 }
 
 export type SyncType = "owned" | "shared" | "entity_shared";
@@ -39,7 +36,6 @@ export interface DashSyncT {
   entity_shared?: Record<string, SharedItem>;
   entity_theme_settings: EntityThemeSettings;
   access?: UserAccess;
-  can_submit_marketplace?: boolean;
   usage?: Usage;
   copilot_chats?: Chat[];
   questions_history?: string[];
@@ -66,7 +62,6 @@ export interface LoginResponse {
   is_first_login: boolean;
   custom_copilots: CustomCopilot[];
   access: UserAccess;
-  can_submit_marketplace: boolean;
   usage: Usage;
   uuid: string;
   email: string;
@@ -101,9 +96,7 @@ export type SessionResponse = Pick<
   LoginResponse,
   "uuid" | "email" | "entity_name" | "role" | "access"
 > &
-  Partial<
-    Pick<LoginResponse, "can_submit_marketplace" | "usage" | "temporary_password">
-  > & {
+  Partial<Pick<LoginResponse, "usage" | "temporary_password">> & {
     user: Pick<UserResponse, "first_name" | "last_name" | "display_settings">;
   };
 
@@ -187,6 +180,7 @@ export interface SkillCatalogEntry {
 export interface SkillPayload {
   slug: string;
   description: string;
-  contentMarkdown: string;
+  /** The skill's instructions; absent for one of the agent's own skills, whose instructions the agent has. */
+  contentMarkdown?: string;
   source: "forced_slash" | "model_selected";
 }

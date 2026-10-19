@@ -261,13 +261,6 @@ EXCLUDED: list[ExcludedTable] = [
         "callback; the user signs in to the server again.",
     ),
     ExcludedTable(
-        "user_app_subscription", "user_uuid", "Marketplace subscriptions; no "
-        "marketplace in Lite."
-    ),
-    ExcludedTable("rate_vendor_app", "user_uuid", "Marketplace app reviews."),
-    ExcludedTable("vendor", "owner_uuid", "Marketplace publisher identity."),
-    ExcludedTable("vendor_app", "owner_uuid", "Marketplace published listings."),
-    ExcludedTable(
         "audit_entity_roles_permissions",
         "performed_by_uuid",
         "Org admin audit log; belongs to the entity, not the user.",
@@ -301,11 +294,6 @@ IMPORT_OVERRIDE_REASONS: dict[str, dict[str, str]] = {
         "deleted": "A soft-deleted Hub account imports as a live Lite account.",
     },
     "api_source": {
-        "vendor_app_uuid": (
-            "Points at a marketplace listing, which is EXCLUDED and will never "
-            "exist in Lite. With PRAGMA foreign_keys=ON this would fail the "
-            "insert outright."
-        ),
         "entity_uuid": "Org ownership does not transfer; these become personal.",
     },
     "dashboard_item": {
@@ -333,7 +321,7 @@ def import_overrides(spec: TableSpec) -> dict[str, Any]:
             "deleted": False,
         }
     if spec.table == "api_source":
-        return {"vendor_app_uuid": None, "entity_uuid": None}
+        return {"entity_uuid": None}
     if spec.table == "dashboard_item":
         return {"entity_uuid": None, "entity_share": False, "is_shared": False}
     if spec.table == "user_app":

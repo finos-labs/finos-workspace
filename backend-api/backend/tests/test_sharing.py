@@ -24,7 +24,7 @@ import pytest
 from sqlalchemy import select, update
 
 from api import models
-from tests.fixtures.marketplace import superuser_override
+from tests.fixtures.base import superuser_override
 from tests.fixtures.organization import (
     ADMIN_EMAIL,
     ADMIN_ENTITY,

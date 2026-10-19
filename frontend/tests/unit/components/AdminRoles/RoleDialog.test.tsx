@@ -223,19 +223,24 @@ describe("RoleDialog", () => {
       copilot_tokens_day: null,
       upload_size_gb: 2,
       excel_add_in: true,
+      search_web: true,
+      fetch_from_web: false,
     };
 
     const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement;
     const noLimit = (label: string) =>
       screen.getByRole("checkbox", { name: `${label}: no limit` });
     const LIMITS = ["Agent calls per day", "Agent tokens per day", "Upload size (GB)"];
+    const SEARCH_WEB = "Copilot may search the web (SEARCH_WEB)";
+    const FETCH_FROM_WEB = "Copilot may read pages from the web (FETCH_FROM_WEB)";
+    const checkbox = (name: string) => screen.getByRole("checkbox", { name });
     // The select's label names its form item, not the trigger
     const sharingSelect = () =>
       within(
         screen.getByText("Sharing").closest(".BB-FormSelect") as HTMLElement,
       ).getByRole("combobox");
 
-    it("starts a new role with no sharing, no limits and no Excel add-in", () => {
+    it("starts a new role with no sharing, no limits, no Excel add-in and the web tools on", () => {
       renderDialog();
 
       expect(sharingSelect()).toHaveTextContent("None");
@@ -245,6 +250,8 @@ describe("RoleDialog", () => {
         expect(field(label).value).toBe("");
       }
       expect(screen.getByRole("checkbox", { name: "Excel add-in" })).not.toBeChecked();
+      expect(checkbox(SEARCH_WEB)).toBeChecked();
+      expect(checkbox(FETCH_FROM_WEB)).toBeChecked();
     });
 
     it("shows the settings of the role it edits, a null limit as no limit", () => {
@@ -257,6 +264,8 @@ describe("RoleDialog", () => {
       expect(field("Agent tokens per day")).toBeDisabled();
       expect(field("Upload size (GB)").value).toBe("2");
       expect(screen.getByRole("checkbox", { name: "Excel add-in" })).toBeChecked();
+      expect(checkbox(SEARCH_WEB)).toBeChecked();
+      expect(checkbox(FETCH_FROM_WEB)).not.toBeChecked();
     });
 
     it("offers the three sharing levels", async () => {
@@ -279,6 +288,7 @@ describe("RoleDialog", () => {
       await userEvent.click(noLimit("Upload size (GB)"));
       await userEvent.type(field("Upload size (GB)"), "3");
       await userEvent.click(screen.getByRole("checkbox", { name: "Excel add-in" }));
+      await userEvent.click(checkbox(SEARCH_WEB));
 
       const save = screen.getByRole("button", { name: /^create role$/i });
       await waitFor(() => expect(save).toBeEnabled());
@@ -292,6 +302,8 @@ describe("RoleDialog", () => {
         copilot_tokens_day: 5000,
         upload_size_gb: 3,
         excel_add_in: true,
+        search_web: false,
+        fetch_from_web: true,
       });
     });
 
@@ -312,6 +324,8 @@ describe("RoleDialog", () => {
         copilot_tokens_day: null,
         upload_size_gb: 2,
         excel_add_in: true,
+        search_web: true,
+        fetch_from_web: false,
       });
     });
 
@@ -372,6 +386,8 @@ describe("RoleDialog", () => {
       copilot_tokens_day: 0,
       upload_size_gb: 0,
       excel_add_in: false,
+      search_web: true,
+      fetch_from_web: true,
     };
 
     it("removes a member via trash and the form becomes dirty", async () => {

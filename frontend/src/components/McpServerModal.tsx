@@ -19,6 +19,7 @@ import {
   PENDING_CONNECTION_STATES,
   useShallowMcpToolsStore,
 } from "~/lib/state/mcpTools";
+import { isLoopbackUrl } from "~/lib/utils/mcp";
 import { EndpointHeadersForm } from "./DataConnectors/EndpointHeadersForm";
 import { Checkbox } from "./ds/atoms/Checkbox";
 import { FormInput, Input } from "./ds/atoms/Input";
@@ -654,11 +655,11 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
                 label="URL"
                 placeholder="Remote MCP server URL"
                 {...field}
-                onBlur={(e) =>
-                  form.setValue("url", e.target.value.trim(), {
-                    shouldValidate: e.target.value.trim() !== "",
-                  })
-                }
+                onBlur={(e) => {
+                  const url = e.target.value.trim();
+                  form.setValue("url", url, { shouldValidate: url !== "" });
+                  if (isLoopbackUrl(url)) form.setValue("isLocal", true);
+                }}
               />
             )}
           />

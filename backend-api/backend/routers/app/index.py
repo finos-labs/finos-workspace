@@ -382,9 +382,6 @@ async def finish_sign_in(  # noqa: PLR0914
         "user_skills": user_skills,
         "user": user_data,
         "access": access,
-        "can_submit_marketplace": bool(
-            db_user.is_superuser or db_user.can_submit_marketplace
-        ),
         "usage": usage,
         "custom_copilots": custom_copilots,
         "mcp_servers": mcp_servers.servers if mcp_servers else None,
@@ -672,9 +669,6 @@ async def get_session(
         entity_name=account.name,
         role=account.role,
         access=await app_helpers.get_user_access(db, user.uuid),
-        can_submit_marketplace=bool(
-            account.is_superuser or account.can_submit_marketplace
-        ),
         usage=await helpers.get_user_usage(user),
         copilot_keys=await app_helpers.get_copilot_key_status(db, user.uuid),
         user=schemas.SessionUser(

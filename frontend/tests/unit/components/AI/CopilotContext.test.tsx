@@ -106,10 +106,6 @@ type CopilotDataStoreState = {
       name?: string;
     }>;
   };
-  extraWidgetsEnabled: boolean;
-  toggleExtraWidgetsEnabled: ReturnType<typeof vi.fn>;
-  generativeUiEnabled: boolean;
-  toggleGenerativeUiEnabled: ReturnType<typeof vi.fn>;
   toggleSelectedWidget: ReturnType<typeof vi.fn>;
   isMentionTrackedWidget: ReturnType<typeof vi.fn>;
   getCopilotWidgets: ReturnType<typeof vi.fn>;
@@ -144,10 +140,6 @@ describe("CopilotContext", () => {
       copilotWidgets: {
         selectedWidgets: [],
       },
-      extraWidgetsEnabled: false,
-      toggleExtraWidgetsEnabled: vi.fn(),
-      generativeUiEnabled: false,
-      toggleGenerativeUiEnabled: vi.fn(),
       toggleSelectedWidget: vi.fn(),
       isMentionTrackedWidget: vi.fn().mockReturnValue(false),
       getCopilotWidgets: vi.fn().mockReturnValue({ selectedWidgets: [] }),

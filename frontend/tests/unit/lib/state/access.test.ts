@@ -53,13 +53,12 @@ describe("sharing levels", () => {
 
 describe("useAccessStore", () => {
   afterEach(() => {
-    useAccessStore.setState({ access: null, canSubmitMarketplace: false, usage: null });
+    useAccessStore.setState({ access: null, usage: null });
   });
 
   it("starts with nothing granted", () => {
     const state = useAccessStore.getState();
     expect(state.access).toBeNull();
-    expect(state.canSubmitMarketplace).toBe(false);
     expect(state.usage).toBeNull();
   });
 
@@ -70,14 +69,11 @@ describe("useAccessStore", () => {
     expect(useAccessStore.getState().access).toEqual(access({ user_type: "Admin" }));
   });
 
-  it("sets access, marketplace submission and usage together", () => {
-    useAccessStore
-      .getState()
-      .setAccessAndUsage(access({ excel_add_in: true }), true, usage());
+  it("sets access and usage together", () => {
+    useAccessStore.getState().setAccessAndUsage(access({ excel_add_in: true }), usage());
 
     const state = useAccessStore.getState();
     expect(state.access?.excel_add_in).toBe(true);
-    expect(state.canSubmitMarketplace).toBe(true);
     expect(state.usage).toEqual(usage());
   });
 

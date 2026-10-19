@@ -13,15 +13,15 @@ Stores every secret the API uses again encrypted with AES-256-GCM, in the v1 for
   encrypted columns user.openai_api_key and user.perplexity_api_key.
 - The custom headers of MCP servers move out of the server list (mcp_servers.servers)
   into the encrypted column mcp_servers.headers, keyed by the normalized server URL.
-- user.auth_token (the SDK token, a JWT kept as issued) and session.api_token are dropped,
-  with the sessions the SDK signed in with. The API has no SDK routes.
+- session.api_token is dropped, with the sessions the SDK signed in with. The API has no
+  SDK routes (revision 9c4d7a2e1f35 dropped user.auth_token).
 - Invitations no longer hold a password: the generated ones are deleted from
   user_invite.data.
 
 downgrade() restores the schema, and the encrypted columns go back to the AES-CBC
 format. Nothing is written back in plain text: authenticator secrets are cleared (users
 set up their authenticator again), provider keys and MCP headers are dropped, and
-user.auth_token and session.api_token come back empty.
+session.api_token comes back empty.
 
 Revision ID: ff59d563599c
 Revises: bd12bc3c71ac
@@ -163,7 +163,6 @@ def upgrade():
         batch_op.add_column(sa.Column("totp_last_step", sa.BigInteger(), nullable=True))
         batch_op.add_column(sa.Column("openai_api_key", sa.Text(), nullable=True))
         batch_op.add_column(sa.Column("perplexity_api_key", sa.Text(), nullable=True))
-        batch_op.drop_column("auth_token")
     _encrypt_user_secrets()
 
     session = sa.table("session", sa.column("api_token", sa.String))
@@ -302,7 +301,6 @@ def downgrade():
     )
     op.execute(user.update().values(totp_secret=None, totp_active=False))
     with op.batch_alter_table("user", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("auth_token", sa.Text(), nullable=True))
         batch_op.drop_column("perplexity_api_key")
         batch_op.drop_column("openai_api_key")
         batch_op.drop_column("totp_last_step")

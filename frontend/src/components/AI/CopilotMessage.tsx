@@ -4,7 +4,6 @@ import { CopilotAIMessage, CopilotHumanMessage, CopilotSystemMessage } from ".";
 
 type CopilotMessageProps = {
   message: Message;
-  isLastGroup: boolean;
   showIcon: boolean;
   currentGroupId?: string;
   allGroups?: MessageGroup[];
@@ -15,7 +14,6 @@ type CopilotMessageProps = {
 export default function CopilotMessage(props: CopilotMessageProps) {
   const {
     message,
-    isLastGroup,
     showIcon,
     currentGroupId,
     allGroups,
@@ -41,7 +39,6 @@ export default function CopilotMessage(props: CopilotMessageProps) {
       return (
         <CopilotAIMessage
           message={message}
-          isLastGroup={isLastGroup}
           allGroups={allGroups}
           groupIndex={groupIndex}
         />
@@ -51,7 +48,6 @@ export default function CopilotMessage(props: CopilotMessageProps) {
     return null;
   }, [
     message,
-    isLastGroup,
     showIcon,
     currentGroupId,
     allGroups,

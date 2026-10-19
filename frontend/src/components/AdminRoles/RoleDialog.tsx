@@ -65,6 +65,8 @@ const createRoleSchema = (initialData: RoleT | undefined, roles: string[]) =>
       copilot_tokens_day: limit,
       upload_size_gb: limit,
       excel_add_in: z.boolean(),
+      search_web: z.boolean(),
+      fetch_from_web: z.boolean(),
     })
     .refine(
       (data) => {
@@ -106,6 +108,8 @@ function roleFormValues(role: RoleT | undefined): RoleForm {
     copilot_tokens_day: limitForm(role?.copilot_tokens_day),
     upload_size_gb: limitForm(role?.upload_size_gb),
     excel_add_in: role?.excel_add_in ?? false,
+    search_web: role?.search_web ?? true,
+    fetch_from_web: role?.fetch_from_web ?? true,
   };
 }
 
@@ -116,6 +120,8 @@ function roleSettings(values: RoleForm): RoleSettings {
     copilot_tokens_day: limitValue(values.copilot_tokens_day),
     upload_size_gb: limitValue(values.upload_size_gb),
     excel_add_in: values.excel_add_in,
+    search_web: values.search_web,
+    fetch_from_web: values.fetch_from_web,
   };
 }
 
@@ -123,6 +129,15 @@ const LIMIT_FIELDS = [
   { name: "copilot_calls_day", label: "Agent calls per day" },
   { name: "copilot_tokens_day", label: "Agent tokens per day" },
   { name: "upload_size_gb", label: "Upload size (GB)" },
+] as const;
+
+const SWITCH_FIELDS = [
+  { name: "excel_add_in", label: "Excel add-in" },
+  { name: "search_web", label: "Copilot may search the web (SEARCH_WEB)" },
+  {
+    name: "fetch_from_web",
+    label: "Copilot may read pages from the web (FETCH_FROM_WEB)",
+  },
 ] as const;
 
 export function RoleDialog(props: Props) {
@@ -414,18 +429,21 @@ export function RoleDialog(props: Props) {
                 })}
               </div>
 
-              <FormField
-                name="excel_add_in"
-                control={form.control}
-                render={({ field }) => (
-                  <Checkbox
-                    label="Excel add-in"
-                    labelClassName="max-w-none whitespace-nowrap ml-1"
-                    checked={field.value}
-                    onCheckedChange={(checked) => field.onChange(checked === true)}
-                  />
-                )}
-              />
+              {SWITCH_FIELDS.map(({ name, label }) => (
+                <FormField
+                  key={name}
+                  name={name}
+                  control={form.control}
+                  render={({ field }) => (
+                    <Checkbox
+                      label={label}
+                      labelClassName="max-w-none whitespace-nowrap ml-1"
+                      checked={field.value}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                    />
+                  )}
+                />
+              ))}
 
               <div className="space-y-2.5">
                 <FormField

@@ -79,10 +79,10 @@ export const ALL_AI_FEATURES = new Set([
   "widget-dashboard-select",
   "widget-dashboard-search",
   "widget-global-search",
-  "generative-ui",
   "mcp-tools",
   "agent-orchestration",
   "feedback",
+  "speech-to-text",
 ]);
 
 // Features that can be enabled by agents (user-specified in agent configs)
@@ -266,7 +266,6 @@ export function getDefaultCopilot(): Copilot {
         "widget-dashboard-select": true,
         "widget-dashboard-search": true,
         "widget-global-search": true,
-        "generative-ui": true,
         "mcp-tools": true,
         "agent-orchestration": true,
       },
@@ -546,12 +545,24 @@ export const butterflyTypes = [
   "Obsidian Daggerwing",
 ];
 
-// For srcDoc= iframes (HtmlViewer, Artifact) that run scripts (allowHtmlJsExecution).
-// No allow-same-origin: with it the content would run as this app's origin, reach the
-// page's memory and make requests with its session cookie. Without it the content runs
-// in an opaque origin, so its own requests carry `Origin: null`.
+// For srcDoc= iframes holding a file a user put there (HtmlViewer) that run scripts
+// (allowHtmlJsExecution). No allow-same-origin: with it the content would run as this app's
+// origin, reach the page's memory and make requests with its session cookie. Without it the
+// content runs in an opaque origin, so its own requests carry `Origin: null`.
 export const IFRAME_SRCDOC_SANDBOX_ATTRIBUTES =
   "allow-scripts allow-forms allow-downloads allow-popups";
+
+// For srcDoc= iframes holding what a model wrote (Artifact.tsx). A model's output is shaped by
+// whatever it has read — a fetched page, an uploaded document, a widget's rows — so it is not
+// content the deployment has decided to trust, and it does not get this app's origin. Without
+// `allow-same-origin` the document is on an opaque origin: script in it can still run and still
+// post its height to the parent, but it cannot reach this app's storage, session or DOM.
+// No `allow-forms` either: the artifact's own CSP sets `form-action 'none'`.
+export const ARTIFACT_SANDBOX_ATTRIBUTES = "allow-scripts allow-downloads allow-popups";
+
+// For an artifact whose scripts are off: nothing can run, so sharing the origin costs nothing and
+// lets the app measure the document's height by reading it directly.
+export const ARTIFACT_SANDBOX_ATTRIBUTES_NO_SCRIPTS = "allow-same-origin";
 
 // For src= iframes (Iframe.tsx) — external URL origin, NOT parent origin.
 // allow-same-origin lets external site use its own cookies/storage.

@@ -774,6 +774,14 @@ class AppSettings(BaseModel):
             self.ON_PREM_ADMIN_MAPPING = UUID(json_data["on_prem_admin_uuid"])
 
 
+class DefaultMCPServer(BaseModel):
+    """An MCP server that every user has without adding it."""
+
+    id: str
+    name: str
+    url: str
+
+
 class GeneralSettings(BaseModel):
     JWT_SECRET: str
     IS_WORKER_CONTAINER: bool = False
@@ -784,7 +792,6 @@ class GeneralSettings(BaseModel):
     MODE: Literal["production", "local", "test", "onprem", "lite"]
     # Requests carrying a valid X-Workspace-Authorization token skip rate limiting (development only)
     RATE_LIMIT_EXEMPT_ENABLED: bool = False
-    MARKETPLACE_MAX_DEVELOPER_APPS: int = 5
     # Sign-in providers (/app/{provider}-auth): the public ids of this deployment's OAuth
     # clients, to which every token the API accepts must have been issued. A provider whose
     # client id is not set refuses every sign-in.
@@ -827,6 +834,10 @@ class GeneralSettings(BaseModel):
     STORAGE_PROVIDER: Literal["aws", "azure", "gcp", "folder"] = "folder"
     GCP_STORAGE_BUCKET: str | None = None
     ALLOWED_MCP_HOSTNAMES: list[str] = Field(default_factory=list)
+    # MCP servers that every user has, enabled, in addition to the ones they add: a JSON list
+    # of {"id", "name", "url"}. A server the user has stored under the same URL wins, so a user
+    # can still switch a default off.
+    DEFAULT_MCP_SERVERS: list[DefaultMCPServer] = Field(default_factory=list)
 
     @field_validator("JWT_SECRET")
     @classmethod

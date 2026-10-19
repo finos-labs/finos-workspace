@@ -9,7 +9,6 @@ import { useAccessStore } from "~/lib/state/access";
 import { clearAgentToken, getAgentToken } from "~/lib/state/agentToken";
 import { useAuthStore } from "~/lib/state/auth";
 import { useCopilotStore } from "~/lib/state/copilot";
-import { useCopilotDataStore } from "~/lib/state/copilotData";
 import { getIdpTokens, setIdpTokens } from "~/lib/state/idpTokens";
 import { usePromptLibraryStore } from "~/lib/state/promptLibrary";
 import { useSidebarStore } from "~/lib/state/sidebar";
@@ -48,7 +47,6 @@ const session = (overrides: Partial<SessionResponse> = {}): SessionResponse => (
   entity_name: "Org",
   role: "member",
   access: makeAccess({ user_type: "Developer" }),
-  can_submit_marketplace: true,
   user: {
     first_name: "Ada",
     last_name: "Lovelace",
@@ -113,7 +111,6 @@ describe("useAuthStore", () => {
       expect(useAuthStore.getState().name).toEqual({ first: "Ada", last: "Lovelace" });
       expect(useAuthStore.getState().lastVisitedPage).toBe("/app/abc");
       expect(useAccessStore.getState().access?.user_type).toBe("Developer");
-      expect(useAccessStore.getState().canSubmitMarketplace).toBe(true);
     });
 
     it("loads the custom agents again, with their headers kept in memory", async () => {
@@ -192,7 +189,6 @@ describe("useAuthStore", () => {
       for (const store of [
         useThemeStore,
         useCopilotStore,
-        useCopilotDataStore,
         usePromptLibraryStore,
         useSidebarStore,
         useToastStore,
@@ -205,7 +201,7 @@ describe("useAuthStore", () => {
       await vi.waitFor(async () =>
         expect(await getStorage("user-apps-storage")).not.toBeNull(),
       );
-      expect(localStorage.length).toBeGreaterThanOrEqual(7);
+      expect(localStorage.length).toBeGreaterThanOrEqual(6);
 
       await useAuthStore.getState().logout();
 

@@ -253,6 +253,39 @@ class TestHorizontalPrivilegeEscalationUserData:
             # Should be forbidden
             assert response.status_code in {401, 403, 404, 405}
 
+    @pytest.mark.asyncio
+    async def test_cannot_read_or_revoke_other_users_access_token(
+        self, auth_client, second_user_client
+    ):
+        """User B should neither see nor revoke User A's personal access token.
+
+        A personal access token signs its holder in as its owner, so a user who could
+        list another's would learn what to attack, and one who could revoke another's
+        could cut off their access.
+        """
+        created = await auth_client.post(
+            "/app/workspace-mcp/tokens", json={"name": "User A's host"}
+        )
+        assert created.status_code == 200
+        token_uuid = created.json()["uuid"]
+
+        listed = await second_user_client.get("/app/workspace-mcp/tokens")
+        assert listed.status_code == 200
+        assert all(token["uuid"] != token_uuid for token in listed.json())
+
+        # The revoke is scoped to the caller's own tokens, so this matches nothing and does
+        # nothing. It answers 204 either way, which is what keeps it from telling a stranger
+        # whether the token exists; what matters is that the token is still there afterwards.
+        revoked = await second_user_client.delete(
+            f"/app/workspace-mcp/tokens/{token_uuid}"
+        )
+        assert revoked.status_code in {204, 401, 403, 404}
+
+        # User A still has it.
+        still_there = await auth_client.get("/app/workspace-mcp/tokens")
+        assert still_there.status_code == 200
+        assert any(token["uuid"] == token_uuid for token in still_there.json())
+
 
 # =============================================================================
 # VERTICAL PRIVILEGE ESCALATION TESTS

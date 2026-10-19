@@ -2,7 +2,6 @@ import isEqual from "lodash.isequal";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { getConfig } from "~/lib/runtimeConfig";
 import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { convertHeadersToRecord } from "~/lib/utils/widgetParams";
 import {
@@ -35,6 +34,35 @@ const getIframeOrigin = (iframeRef: React.RefObject<HTMLIFrameElement | null>) =
     return null;
   }
 };
+
+/** How many frames deep a page may nest its content (and still be taken for the widget's iframe). */
+const MAX_FRAME_DEPTH = 8;
+
+/**
+ * Whether `source` is `frame` or a frame inside it. A page that nests its content in sub-iframes (Streamlit
+ * does) sends from one of those, so the widget's own window is somewhere up its parent chain. Two iframes of
+ * the same origin are not each other's: judging by origin made every widget take the messages (and the
+ * handshake) of its siblings for its own.
+ */
+function isWindowWithin(
+  source: MessageEventSource | null,
+  frame: Window | null | undefined,
+): boolean {
+  if (!(source && frame)) return false;
+  let current = source as Window;
+  for (let depth = 0; depth < MAX_FRAME_DEPTH; depth++) {
+    if (current === frame) return true;
+    let parent: Window | null | undefined;
+    try {
+      parent = current.parent;
+    } catch {
+      return false;
+    }
+    if (!parent || parent === current) return false;
+    current = parent;
+  }
+  return false;
+}
 
 type PendingRequest = {
   resolve: (msg: WorkspaceDataMessage) => void;
@@ -90,10 +118,7 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
       if (bridgeSourceRef.current && event.source === bridgeSourceRef.current)
         return true;
 
-      const iframeOrigin = getIframeOrigin(iframeRef);
-      if (iframeOrigin && event.origin === iframeOrigin) return true;
-
-      return false;
+      return isWindowWithin(event.source, iframeRef.current?.contentWindow);
     },
     [iframeRef, bridgeSourceRef],
   );
@@ -231,11 +256,6 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
   }, [authHeaders, postAuth]);
 
   useEffect(() => {
-    if (!getConfig().data.allowHtmlJsExecution) {
-      console.debug("[iframe-protocol] disabled, skipping listener setup");
-      return;
-    }
-
     const ctrl = new AbortController();
     console.debug("[iframe-protocol] listener active, waiting for messages");
     window.addEventListener("message", handleMessage, { signal: ctrl.signal });
