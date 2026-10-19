@@ -1,5 +1,6 @@
 import Fuse from "fuse.js";
 import { useCallback, useMemo } from "react";
+import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowSkillsLibraryStore } from "~/lib/state/skillsLibrary";
 
 export const SKILL_TRIGGER = "/skill:";
@@ -14,19 +15,36 @@ export interface SkillSuggestion {
   slashText: string;
 }
 
+// Non-breaking space/hyphen to prevent textarea line breaks
+const toSlashText = (slug: string) =>
+  `/skill:${slug}`.replace(/ /g, "\u00A0").replace(/-/g, "\u2011");
+
 export function useSkillSuggestions() {
   const skills = useShallowSkillsLibraryStore((s) => s.skills);
+  const agentSkills = useShallowCopilotStore((s) => s.selectedCopilot?.skills);
 
   const skillOptions = useMemo((): SkillSuggestion[] => {
-    return skills.map((skill) => ({
-      type: "skill",
+    const own = skills.map((skill) => ({
+      type: "skill" as const,
       slug: skill.slug,
       description: skill.description,
       content: skill.content,
-      // Non-breaking space/hyphen to prevent textarea line breaks
-      slashText: `/skill:${skill.slug}`.replace(/ /g, "\u00A0").replace(/-/g, "\u2011"),
+      slashText: toSlashText(skill.slug),
     }));
-  }, [skills]);
+    // The agent's own skills, after the user's: a user's skill with the same slug takes its place. The agent has
+    // their instructions, so the menu shows what each is for.
+    const ownSlugs = new Set(skills.map((skill) => skill.slug));
+    const agents = (agentSkills ?? [])
+      .filter((skill) => !ownSlugs.has(skill.slug))
+      .map((skill) => ({
+        type: "skill" as const,
+        slug: skill.slug,
+        description: skill.description,
+        content: "",
+        slashText: toSlashText(skill.slug),
+      }));
+    return [...own, ...agents];
+  }, [skills, agentSkills]);
 
   const fuse = useMemo(
     () =>
@@ -62,6 +80,6 @@ export function useSkillSuggestions() {
   return {
     skillOptions,
     searchSkills,
-    hasSkills: skills.length > 0,
+    hasSkills: skillOptions.length > 0,
   };
 }

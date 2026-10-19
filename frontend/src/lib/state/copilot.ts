@@ -53,6 +53,8 @@ export const copilotSchema = z
       .optional(),
     headers: z.record(z.string(), z.string()).optional(),
     models: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
+    /** The skills that come with the agent, as its /agents.json lists them. The agent has their instructions. */
+    skills: z.array(z.object({ slug: z.string(), description: z.string() })).optional(),
   })
   .refine((data) => {
     if (data.hasStreaming !== undefined) {
@@ -273,6 +275,8 @@ export interface CopilotWidget {
   uuid?: string;
   name: string;
   description: string;
+  /** What the widget is (`iframe` for a page of a backend that the widget embeds). */
+  widget_type?: string;
   source?: string;
   category?: string;
   sub_category?: string;

@@ -14,9 +14,9 @@ const mockState = vi.hoisted(() => {
     id: "default-copilot",
     name: "Copilot",
     endpoints: { query: "https://ada.example/v1/query" },
+    skills: [{ slug: "html-report", description: "HTML reports" }],
     features: {
       "widget-global-search": true,
-      "generative-ui": true,
       "mcp-tools": false,
       "agent-orchestration": false,
     },
@@ -25,8 +25,6 @@ const mockState = vi.hoisted(() => {
   return {
     allWidget,
     selectedCopilot,
-    extraWidgetsEnabled: false,
-    generativeUiEnabled: true,
     temporaryWidgets: [] as CopilotWidget[],
   };
 });
@@ -48,7 +46,6 @@ vi.mock("~/components/AI/hooks/useGetFinalMessagesAndWidgets", () => ({
 vi.mock("~/lib/constants", () => ({
   ALL_AI_FEATURES: new Set([
     "widget-global-search",
-    "generative-ui",
     "mcp-tools",
     "agent-orchestration",
   ]),
@@ -74,8 +71,6 @@ vi.mock("~/lib/state/copilotData", () => ({
   useShallowCopilotDataStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       widgetSubsetData: [],
-      extraWidgetsEnabled: mockState.extraWidgetsEnabled,
-      generativeUiEnabled: mockState.generativeUiEnabled,
       copilotWidgetsLastUpdated: 0,
       getCopilotWidgets: () => ({
         selectedWidgets: [],
@@ -146,29 +141,27 @@ const makeAttachmentWidget = (uuid: string, name: string) => ({
 
 describe("useAiFetchRequestInit", () => {
   beforeEach(() => {
-    mockState.extraWidgetsEnabled = false;
-    mockState.generativeUiEnabled = true;
+    mockState.selectedCopilot.features["widget-global-search"] = true;
     mockState.temporaryWidgets = [];
   });
 
-  it("does not send extra widgets when only Generative UI is enabled", async () => {
-    const payloads = await getPayloads();
-
-    for (const payload of payloads) {
-      expect(payload.workspace_options["generative-ui"]).toBe(true);
-      expect(payload.workspace_options["widget-global-search"]).toBeUndefined();
-      expect(payload.widgets.extra).toEqual([]);
-    }
-  });
-
-  it("sends extra widgets when Global data is enabled", async () => {
-    mockState.extraWidgetsEnabled = true;
-
+  it("always sends the widgets of the whole library to an agent that can search them", async () => {
     const payloads = await getPayloads();
 
     for (const payload of payloads) {
       expect(payload.workspace_options["widget-global-search"]).toBe(true);
       expect(payload.widgets.extra).toEqual([mockState.allWidget]);
+    }
+  });
+
+  it("sends no library widgets to an agent that cannot search them", async () => {
+    mockState.selectedCopilot.features["widget-global-search"] = false;
+
+    const payloads = await getPayloads();
+
+    for (const payload of payloads) {
+      expect(payload.workspace_options["widget-global-search"]).toBeUndefined();
+      expect(payload.widgets.extra).toEqual([]);
     }
   });
 
@@ -191,5 +184,30 @@ describe("useAiFetchRequestInit", () => {
         "file-7c11d0aa-3b2f-4d6e-9c8b-2f0e5a1b4c6d",
       ]);
     }
+  });
+  it("sends a picked skill of the agent's by its slug, without instructions", async () => {
+    const { result } = renderHook(() => useAiFetchRequestInit());
+    const [getQueryFetchParams] = result.current;
+
+    const { init } = await getQueryFetchParams({
+      incomingMessage: "/skill:html-report make a report",
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(JSON.parse(init.body as string).selected_skills).toEqual([
+      { slug: "html-report", description: "HTML reports", source: "forced_slash" },
+    ]);
+  });
+
+  it("sends nothing for a picked slug that is neither the user's skill nor the agent's", async () => {
+    const { result } = renderHook(() => useAiFetchRequestInit());
+    const [getQueryFetchParams] = result.current;
+
+    const { init } = await getQueryFetchParams({
+      incomingMessage: "/skill:no-such-skill go",
+      abortSignal: new AbortController().signal,
+    });
+
+    expect(JSON.parse(init.body as string).selected_skills).toBeUndefined();
   });
 });

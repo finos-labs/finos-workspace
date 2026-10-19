@@ -25,6 +25,7 @@ import AdminResetUser2FADialog from "./AdminResetUser2FADialog";
 import AdminResetUserPasswordDialog from "./AdminResetUserPasswordDialog";
 import AdminUserPermissionsSection from "./AdminUserPermissionsSection";
 import AdminUserStatus from "./AdminUserStatus";
+import AdminUserWebAccess from "./AdminUserWebAccess";
 
 const uiShowRemoveFromOrgFF = getConfig().ui.showRemoveFromOrg;
 
@@ -43,6 +44,7 @@ interface UserInfo {
 interface BaseState extends UserInfo {
   generalInfoOpen: boolean;
   permissionsOpen: boolean;
+  webAccessOpen: boolean;
   openDelete: boolean;
   openRemove: boolean;
   openResetPassword: boolean;
@@ -53,6 +55,7 @@ interface BaseState extends UserInfo {
 const initialState = {
   generalInfoOpen: true,
   permissionsOpen: false,
+  webAccessOpen: false,
   openDelete: false,
   openRemove: false,
   openResetPassword: false,
@@ -277,6 +280,17 @@ export default function AdminUserDetailsDialog({ onClose, user, roles = [] }: Pr
             }
           >
             <AdminUserPermissionsSection userUuid={user.uuid} />
+          </SettingsMenu>
+
+          <SettingsMenu
+            title="Copilot web access"
+            canCollapse
+            open={state.webAccessOpen}
+            onOpenChange={(open) => dispatch({ webAccessOpen: open })}
+            tooltip="What the Copilot may do on the web for this user. It overrides the organization's setting, and a switch is saved when it is changed."
+            bodyClassName="p-3"
+          >
+            <AdminUserWebAccess userUuid={user.uuid} />
           </SettingsMenu>
 
           <div className="hidden">

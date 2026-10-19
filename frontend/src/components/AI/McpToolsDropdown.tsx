@@ -22,7 +22,7 @@ import { cn } from "~/lib/utils";
 import { MARKDOWN_SANITIZE_CONFIG } from "~/lib/utils/sanitize";
 import { DropdownMenuContentVariants } from "../ds/atoms/DropdownMenu";
 import { Input } from "../ds/atoms/Input";
-import { McpServerSourceTag } from "./McpServerSourceTag";
+import { inertImageOverride } from "./MarkdownOverrides";
 import { schemaParameters } from "./utils/mcpToolSchema";
 
 interface McpToolsDropdownProps {
@@ -32,7 +32,10 @@ interface McpToolsDropdownProps {
 }
 
 const markdownOptions = {
+  // A tool's description is written by whoever runs the server: no raw HTML, and no images.
+  disableParsingRawHTML: true,
   overrides: {
+    ...inertImageOverride,
     h1: {
       component: (props: ComponentProps<"h1">) => (
         <h1 {...props} className="text-sm font-bold text-ds-text-heading mt-2 mb-1" />
@@ -398,7 +401,6 @@ const McpServerItem = memo((props: { server: McpServer; searchQuery: string }) =
           <span className="text-xs text-ds-text-caption">
             ({displayToolCount}/{displayTotalToolCount})
           </span>
-          <McpServerSourceTag server={server} className="shrink-0" />
           <Icon
             id={isCollapsed ? "chevron-right" : "chevron-down"}
             className={cn("h-4 w-4 ml-auto text-ds-text-body", {

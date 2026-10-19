@@ -31,6 +31,35 @@ export async function getUsers() {
   return data;
 }
 
+/**
+ * What the Copilot may do on the web for a user (the tools SEARCH_WEB and FETCH_FROM_WEB). Part of the user's
+ * entitlement, which starts as a copy of the organization's: an administrator sets it here for one user.
+ * Empty (null) is on.
+ */
+export interface UserWebAccess {
+  search_web: boolean | null;
+  fetch_from_web: boolean | null;
+}
+
+export async function getUserWebAccess(userUuid: string): Promise<UserWebAccess> {
+  const { data } = await apiClient.get<UserWebAccess>(`/admin/entitlement/${userUuid}`);
+  return {
+    search_web: data.search_web ?? null,
+    fetch_from_web: data.fetch_from_web ?? null,
+  };
+}
+
+export async function patchUserWebAccess(
+  userUuid: string,
+  access: Partial<UserWebAccess>,
+) {
+  const { data } = await apiClient.patch<BaseResponse>(
+    `/admin/entitlement/${userUuid}`,
+    access,
+  );
+  return data;
+}
+
 export async function validateAdminAccess() {
   const { data } = await apiClient.get<BaseResponse>("/admin/validate");
   return data;

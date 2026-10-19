@@ -21,8 +21,6 @@ import {
   createAppsFuseOptions,
   tokenizeWords,
 } from "~/components/Apps/fuseSearch";
-import { ListedAppsTab } from "~/components/Apps/ListedAppsTab";
-import { RateAppDialog } from "~/components/Apps/RateAppDialog";
 import { deleteSourceWidgets } from "~/components/DataConnectors/common/helpers";
 import { Button } from "~/components/ds/atoms/Button";
 import { Checkbox } from "~/components/ds/atoms/Checkbox";
@@ -50,24 +48,15 @@ import { type UnifiedTemplate, useAllTemplates } from "~/hooks/useAllTemplates";
 
 import { useSharedTemplates } from "~/hooks/useSharedTemplates";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowUserAppsStore } from "~/lib/state/userApps";
 import { cn } from "~/lib/utils";
 
 const BETA_TAG = <Tag color="dark-blue">Beta</Tag>;
-const SHOW_MARKETPLACE = getConfig().ui.showMarketplace;
-
-const TABS = [
-  { label: "My Apps", id: "my-apps" },
-  ...(SHOW_MARKETPLACE ? [{ label: "Apps Marketplace", id: "apps-marketplace" }] : []),
-];
-
 const FILTER_OPTIONS: FilterOption[] = [
   { label: "All Apps", value: "all" },
   { label: "My Apps", value: "user" },
   { label: "Shared", value: "shared" },
-  { label: "Subscribed", value: "listed" },
 ];
 
 const sortOptions: SortOption[] = [
@@ -78,10 +67,9 @@ const sortOptions: SortOption[] = [
 ];
 
 const typeOrder: Record<string, number> = {
-  listed: 0,
-  shared: 1,
-  generated: 2,
-  user: 3,
+  shared: 0,
+  generated: 1,
+  user: 2,
 };
 
 const FUSE_KEYS: AppsFuseKey<UnifiedTemplate>[] = [
@@ -97,16 +85,6 @@ const FUSE_KEYS: AppsFuseKey<UnifiedTemplate>[] = [
 const fuseOptions = createAppsFuseOptions(FUSE_KEYS);
 
 export default function AppsPage() {
-  const [searchParams] = useSearchParams();
-
-  // Marketplace deep-link target: a shared ?tab=apps-marketplace&app=<slug> link.
-  // Scoping the query slug by tab keeps a future ?tab=my-apps&app=<slug> from
-  // opening this modal.
-  const marketplaceSlug =
-    searchParams.get("tab") === "apps-marketplace"
-      ? (searchParams.get("app") ?? undefined)
-      : undefined;
-
   return (
     <SettingsLayout
       title="Apps"
@@ -122,11 +100,10 @@ export default function AppsPage() {
           .
         </>
       }
-      tabs={TABS}
+      tabs={[]}
       defaultTab="my-apps"
     >
       <MyAppsTab />
-      {SHOW_MARKETPLACE && <ListedAppsTab appSlug={marketplaceSlug} />}
     </SettingsLayout>
   );
 }
@@ -151,7 +128,6 @@ function MyAppsTab() {
     filterOptions: FILTER_OPTIONS,
     showToast: false,
     deleteConfirm: null,
-    rateApp: null,
   }));
 
   const handleSetOptions = useCallback(
@@ -551,16 +527,6 @@ function MyAppsTab() {
         <DeleteConfirmDialog
           {...state.deleteConfirm}
           onClose={() => dispatch({ deleteConfirm: null })}
-          onAfterDelete={(app) => dispatch({ rateApp: app })}
-        />
-      )}
-
-      {state.rateApp && (
-        <RateAppDialog
-          app={state.rateApp}
-          isOpen
-          onClose={() => dispatch({ rateApp: null })}
-          context="unsubscribe"
         />
       )}
     </TabsPrimitive.Content>
@@ -569,15 +535,13 @@ function MyAppsTab() {
 
 type DeleteConfirmDialogProps = AppsPageState["deleteConfirm"] & {
   onClose: () => void;
-  onAfterDelete?: (app: { id: string; appName: string }) => void;
 };
 
 const DeleteConfirmDialog = memo((props: DeleteConfirmDialogProps) => {
-  const { template, type, onClose, onAfterDelete } = props;
+  const { template, type, onClose } = props;
 
   const { source, deleteApiSource } = useShallowBackendConnectorStore((s) => {
-    const { id, vendorApp } = template.source || {};
-    const sourceId = vendorApp?.uuid || id;
+    const sourceId = template.source?.id;
 
     return {
       source: sourceId ? s.getApiSourceById(sourceId) : null,
@@ -608,19 +572,13 @@ const DeleteConfirmDialog = memo((props: DeleteConfirmDialogProps) => {
           : "Backend deleted successfully",
       );
       onClose?.();
-      if (type === "listedApp" && source.vendorApp) {
-        onAfterDelete?.({
-          id: source.vendorApp.uuid,
-          appName: source.vendorApp.name,
-        });
-      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to delete backend");
     } finally {
       dispatch({ isDeleting: false });
     }
-  }, [source, deleteApiSource, backendAppsCount, onClose, onAfterDelete, type]);
+  }, [source, deleteApiSource, backendAppsCount, onClose]);
 
   return (
     <>
@@ -661,16 +619,15 @@ const DeleteConfirmDialog = memo((props: DeleteConfirmDialogProps) => {
 
       {template.type !== "generated" && source && (
         <ConfirmDialog
-          open={type === "backend" || type === "listedApp"}
+          open={type === "backend"}
           onClose={onClose}
-          title={type === "listedApp" ? "Disconnect from App" : "Delete Backend"}
+          title="Delete Backend"
           description={
             <span className="flex flex-col gap-3">
               <span className="block text-light-600 dark:text-dark-50">
-                Are you sure you want to{" "}
-                {type === "listedApp" ? "disconnect from" : "delete the backend"}{" "}
+                Are you sure you want to delete the backend{" "}
                 <span className="font-medium text-light-900 dark:text-light-100">
-                  {source.vendorApp?.name || source.name}
+                  {source.name}
                 </span>
                 ?
               </span>
@@ -680,8 +637,7 @@ const DeleteConfirmDialog = memo((props: DeleteConfirmDialogProps) => {
                   <span className="font-medium text-light-900 dark:text-light-100">
                     {backendAppsCount} apps
                   </span>{" "}
-                  associated with this{" "}
-                  {type === "listedApp" ? "marketplace listing" : "backend"}.
+                  associated with this backend.
                 </span>
               )}
               <span className="flex flex-col gap-2 text-amber-500 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-md border-[1.5px] border-amber-700 dark:border-amber-700">

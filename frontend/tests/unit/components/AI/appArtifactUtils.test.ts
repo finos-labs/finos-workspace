@@ -6,7 +6,7 @@ import {
 } from "~/components/AI/appArtifactUtils";
 import type { Item } from "~/lib/state/app";
 import type { Source } from "~/lib/state/backendConnector";
-import type { AppArtifactT, AppArtifactWidgetRef, Copilot } from "~/lib/state/copilot";
+import type { AppArtifactT, AppArtifactWidgetRef } from "~/lib/state/copilot";
 
 function makeSource(name: string, widgetIds: string[]): Source {
   return {
@@ -106,51 +106,19 @@ describe("buildAppArtifactSource", () => {
 });
 
 describe("shouldAutoOpenAppArtifact", () => {
-  const features = { "generative-ui": true } as Copilot["features"];
   const emptyDashboard = { data: { widgets: [] } } as unknown as Item;
 
-  it("returns true on an empty dashboard with generative UI enabled", () => {
+  it("returns true on an empty dashboard", () => {
     expect(
       shouldAutoOpenAppArtifact({
-        generativeUiEnabled: true,
-        features,
         currentDashboardItem: emptyDashboard,
       }),
     ).toBe(true);
   });
 
-  it("returns false when generative UI is globally disabled", () => {
-    expect(
-      shouldAutoOpenAppArtifact({
-        generativeUiEnabled: false,
-        features,
-        currentDashboardItem: emptyDashboard,
-      }),
-    ).toBe(false);
-  });
-
-  it("returns false when the agent lacks the generative-ui feature", () => {
-    expect(
-      shouldAutoOpenAppArtifact({
-        generativeUiEnabled: true,
-        features: { "generative-ui": false } as Copilot["features"],
-        currentDashboardItem: emptyDashboard,
-      }),
-    ).toBe(false);
-    expect(
-      shouldAutoOpenAppArtifact({
-        generativeUiEnabled: true,
-        features: undefined,
-        currentDashboardItem: emptyDashboard,
-      }),
-    ).toBe(false);
-  });
-
   it("returns false when the dashboard already has widgets", () => {
     expect(
       shouldAutoOpenAppArtifact({
-        generativeUiEnabled: true,
-        features,
         currentDashboardItem: {
           data: { widgets: [{ id: "w" }] },
         } as unknown as Item,
@@ -161,8 +129,6 @@ describe("shouldAutoOpenAppArtifact", () => {
   it("returns false for a folder or a missing dashboard", () => {
     expect(
       shouldAutoOpenAppArtifact({
-        generativeUiEnabled: true,
-        features,
         currentDashboardItem: {
           isFolder: true,
           data: { widgets: [] },
@@ -171,8 +137,6 @@ describe("shouldAutoOpenAppArtifact", () => {
     ).toBe(false);
     expect(
       shouldAutoOpenAppArtifact({
-        generativeUiEnabled: true,
-        features,
         currentDashboardItem: null,
       }),
     ).toBe(false);

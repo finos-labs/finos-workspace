@@ -8,7 +8,7 @@
  * - Pre-selected widget tracking
  * - Widget subset data management
  * - Runtime state for widgets
- * - Toggle states (extra widgets, generative UI)
+ * - Toggle state (extra widgets)
  */
 
 import { act } from "@testing-library/react";
@@ -89,8 +89,6 @@ describe("useCopilotDataStore", () => {
         mentionTrackedWidgetUuids: new Set<string>(),
         preSelectedWidgetUuids: new Set<string>(),
         widgetRuntimeState: new Map(),
-        extraWidgetsEnabled: false,
-        generativeUiEnabled: false,
       });
     });
   });
@@ -116,8 +114,6 @@ describe("useCopilotDataStore", () => {
       expect(state.mentionTrackedWidgetUuids.size).toBe(0);
       expect(state.preSelectedWidgetUuids.size).toBe(0);
       expect(state.widgetRuntimeState.size).toBe(0);
-      expect(state.extraWidgetsEnabled).toBe(false);
-      expect(state.generativeUiEnabled).toBe(false);
     });
   });
 
@@ -1042,54 +1038,6 @@ describe("useCopilotDataStore", () => {
     });
   });
 
-  describe("Toggle States", () => {
-    describe("toggleExtraWidgetsEnabled", () => {
-      it("should toggle extra widgets enabled state", () => {
-        expect(useCopilotDataStore.getState().extraWidgetsEnabled).toBe(false);
-
-        act(() => {
-          useCopilotDataStore.getState().toggleExtraWidgetsEnabled();
-        });
-
-        expect(useCopilotDataStore.getState().extraWidgetsEnabled).toBe(true);
-
-        act(() => {
-          useCopilotDataStore.getState().toggleExtraWidgetsEnabled();
-        });
-
-        expect(useCopilotDataStore.getState().extraWidgetsEnabled).toBe(false);
-      });
-
-      it("should return the new state", () => {
-        const result = useCopilotDataStore.getState().toggleExtraWidgetsEnabled();
-        expect(result).toBe(true);
-      });
-    });
-
-    describe("toggleGenerativeUiEnabled", () => {
-      it("should toggle generative UI enabled state", () => {
-        expect(useCopilotDataStore.getState().generativeUiEnabled).toBe(false);
-
-        act(() => {
-          useCopilotDataStore.getState().toggleGenerativeUiEnabled();
-        });
-
-        expect(useCopilotDataStore.getState().generativeUiEnabled).toBe(true);
-
-        act(() => {
-          useCopilotDataStore.getState().toggleGenerativeUiEnabled();
-        });
-
-        expect(useCopilotDataStore.getState().generativeUiEnabled).toBe(false);
-      });
-
-      it("should return the new state", () => {
-        const result = useCopilotDataStore.getState().toggleGenerativeUiEnabled();
-        expect(result).toBe(true);
-      });
-    });
-  });
-
   describe("Signature Tracking", () => {
     describe("updateSignaturesMap", () => {
       it("should update signatures map", async () => {
@@ -1183,8 +1131,6 @@ describe("useCopilotDataStore", () => {
               data: { content: "c" },
             },
           ],
-          extraWidgetsEnabled: true,
-          generativeUiEnabled: true,
           mentionTrackedWidgetUuids: new Set(["widget-1"]),
         });
       });

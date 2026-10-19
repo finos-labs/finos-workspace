@@ -14,9 +14,9 @@
 
 ---
 
-- #### Your own backends and the marketplace
+- #### Your own backends
 
-  Connect any backend that serves `widgets.json` and `apps.json`, and offer or find backends in the marketplace, where an administrator approves each listing.
+  Connect any backend that serves `widgets.json` and `apps.json`.
 
 ---
 

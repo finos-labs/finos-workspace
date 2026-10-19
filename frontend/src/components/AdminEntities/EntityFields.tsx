@@ -109,6 +109,11 @@ const FLAGS: { name: keyof EntitlementFormValues; label: string }[] = [
   { name: "bring_your_own_data", label: "Bring your own data" },
   { name: "bring_your_own_copilot", label: "Bring your own agent" },
   { name: "allow_custom_backends", label: "Allow custom backends" },
+  { name: "search_web", label: "Copilot may search the web (SEARCH_WEB)" },
+  {
+    name: "fetch_from_web",
+    label: "Copilot may read pages from the web (FETCH_FROM_WEB)",
+  },
   { name: "admin_access", label: "Admin access" },
   { name: "support", label: "Support" },
   { name: "excel_add_in", label: "Excel add-in" },

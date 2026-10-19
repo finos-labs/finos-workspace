@@ -44,7 +44,6 @@ const AdminEntities = lazy(() => import("./routes/admin/entities"));
 const AdminAccountSettings = lazy(() => import("./routes/admin/account"));
 const AdminApps = lazy(() => import("./routes/admin/apps"));
 const AdminGroups = lazy(() => import("./routes/admin/roles"));
-const AdminMarketplace = lazy(() => import("./routes/admin/marketplace"));
 
 const AdminThemeSettings = lazy(() => import("./routes/admin/themeSettings"));
 const AdminUsers = lazy(() => import("./routes/admin/users"));
@@ -246,11 +245,6 @@ const router = createBrowserRouter([
             element: <S children={<AdminApps />} />,
 
             id: "admin-apps",
-          },
-          {
-            path: "marketplace",
-            element: <S children={<AdminMarketplace />} />,
-            id: "admin-marketplace",
           },
           {
             path: "theme-settings",
