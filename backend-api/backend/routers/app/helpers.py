@@ -81,7 +81,14 @@ async def get_mcp_servers(db: AsyncSession, user: models.User) -> schemas.MCPSer
     )
     results = (await db.execute(query)).scalar_one_or_none()
 
-    return schemas.MCPServers(servers=results or [])
+    stored = schemas.MCPServers(servers=results or [])
+    has = {schemas.normalize_mcp_url(server.url) for server in stored.servers}
+    defaults = [
+        schemas.MCPServer(id=server.id, name=server.name, url=server.url, enabled=True)
+        for server in settings.DEFAULT_MCP_SERVERS
+        if schemas.normalize_mcp_url(server.url) not in has
+    ]
+    return schemas.MCPServers(servers=[*defaults, *stored.servers])
 
 
 async def get_copilot_chats(
@@ -336,6 +343,8 @@ async def insert_entitlement(db: AsyncSession, user_uuid: UUID, tier: TierType):
         support=tier_defaults.support,
         excel_add_in=tier_defaults.excel_add_in,
         data_add_ons_redistribution=tier_defaults.data_add_ons_redistribution,
+        search_web=tier_defaults.search_web,
+        fetch_from_web=tier_defaults.fetch_from_web,
         data_bundle_uuid=data_bundle_uuid,
     )
     await db.execute(query)
@@ -363,6 +372,8 @@ async def update_entitlement(db: AsyncSession, user_uuid: UUID, tier: TierType):
             support=tier_defaults.support,
             excel_add_in=tier_defaults.excel_add_in,
             data_add_ons_redistribution=tier_defaults.data_add_ons_redistribution,
+            search_web=tier_defaults.search_web,
+            fetch_from_web=tier_defaults.fetch_from_web,
             data_bundle_uuid=data_bundle_uuid,
         )
     )
@@ -440,6 +451,8 @@ async def get_entitlement(db: AsyncSession, user_uuid: UUID):
             models.Entitlement.data_add_ons_redistribution,
             models.Entitlement.data_bundle_uuid,
             models.Entitlement.allow_custom_backends,
+            models.Entitlement.search_web,
+            models.Entitlement.fetch_from_web,
             # DataBundle fields
             models.DataBundle.bundle_name,
             models.DataBundle.except_widgets,
@@ -555,6 +568,8 @@ async def insert_entity_entitlement(
         support=tier_defaults.support,
         excel_add_in=tier_defaults.excel_add_in,
         data_add_ons_redistribution=tier_defaults.data_add_ons_redistribution,
+        search_web=tier_defaults.search_web,
+        fetch_from_web=tier_defaults.fetch_from_web,
         data_bundle_uuid=data_bundle_uuid,
     )
     await db.execute(query)
@@ -629,6 +644,8 @@ async def get_entity_entitlement(db: AsyncSession, entity_uuid: UUID):
             models.EntityEntitlement.data_add_ons_redistribution,
             models.EntityEntitlement.data_bundle_uuid,
             models.EntityEntitlement.allow_custom_backends,
+            models.EntityEntitlement.search_web,
+            models.EntityEntitlement.fetch_from_web,
             # DataBundle fields
             models.DataBundle.bundle_name,
             models.DataBundle.except_widgets,
@@ -741,6 +758,8 @@ async def update_user_entitlement_with_entity_entitlement(
         data_add_ons_redistribution=entity_entitlements.data_add_ons_redistribution,
         data_bundle_uuid=entity_entitlements.data_bundle_uuid,
         allow_custom_backends=entity_entitlements.allow_custom_backends,
+        search_web=entity_entitlements.search_web,
+        fetch_from_web=entity_entitlements.fetch_from_web,
     )
     if has_entitlement_:
         query = (
@@ -1291,7 +1310,50 @@ async def get_user_copilot_access(
         mcp=granted.mcp,
         models_restricted=bool(granted.models),
         mcp_restricted=bool(granted.mcp),
+        disabled_capabilities=await get_disabled_copilot_capabilities(db, user_uuid),
     )
+
+
+async def get_disabled_copilot_capabilities(
+    db: AsyncSession, user_uuid: UUID
+) -> list[schemas.CopilotCapability]:
+    """What is switched off for a user in the Copilot, by an administrator.
+
+    The switches are flags of the user's entitlement, which starts as a copy of the entity's
+    (see ``update_user_entitlement_with_entity_entitlement``): an administrator can change
+    them for one user, and a change of the entity's reaches the users who have not set their own
+    (see the entity entitlement endpoint). A user without an entitlement follows the entity's.
+    A flag that was never set is on.
+    """
+    flags = (
+        await db.execute(
+            select(models.Entitlement.search_web, models.Entitlement.fetch_from_web)
+            .where(models.Entitlement.user_uuid == user_uuid)
+            .limit(1)
+        )
+    ).first()
+    if flags is None:
+        entity_uuid = await get_entity_uuid(db, user_uuid)
+        if entity_uuid is not None:
+            flags = (
+                await db.execute(
+                    select(
+                        models.EntityEntitlement.search_web,
+                        models.EntityEntitlement.fetch_from_web,
+                    )
+                    .where(models.EntityEntitlement.entity_uuid == entity_uuid)
+                    .limit(1)
+                )
+            ).first()
+    if flags is None:
+        return []
+    search_web, fetch_from_web = flags
+    disabled = []
+    if search_web is False:
+        disabled.append(schemas.CopilotCapability.SEARCH_WEB)
+    if fetch_from_web is False:
+        disabled.append(schemas.CopilotCapability.FETCH_FROM_WEB)
+    return disabled
 
 
 async def set_role_copilot_access(
@@ -1321,9 +1383,22 @@ async def set_role_copilot_access(
     await db.commit()
 
 
+def disabled_mcp_tools(access: schemas.CopilotAccess) -> frozenset[str]:
+    """The names of the MCP tools that are switched off for the user, whichever server has them."""
+    return frozenset(
+        tool
+        for capability in access.disabled_capabilities
+        for tool in schemas.CAPABILITY_MCP_TOOLS[capability]
+    )
+
+
 def is_mcp_tool_allowed(
     access: schemas.CopilotAccess, server_url: str, tool_name: str
 ) -> bool:
+    # Switched off beats what the roles grant. It goes by the tool's name, not its server's address: a user
+    # who adds the same server again under another address must not get the tool back.
+    if tool_name in disabled_mcp_tools(access):
+        return False
     if not access.mcp_restricted:
         return True
     url = schemas.normalize_mcp_url(server_url)
@@ -1355,6 +1430,7 @@ def check_copilot_access(
         allowed=denied_model is None and not denied_tools,
         denied_model=denied_model,
         denied_tools=denied_tools,
+        disabled_capabilities=access.disabled_capabilities,
     )
 
 

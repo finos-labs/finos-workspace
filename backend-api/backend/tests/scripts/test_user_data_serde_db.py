@@ -152,8 +152,7 @@ SAMPLES = _sample_rows()
 def source_db():
     """Stands in for the Hub database.
 
-    All tables are created, not just the exported ones: ApiSource.vendor_app is
-    a lazy="joined" relationship, so reading api_source LEFT JOINs vendor_app.
+    All tables are created, not just the exported ones.
     """
     engine = sa.create_engine("sqlite://")
     Base.metadata.create_all(engine)
@@ -275,11 +274,9 @@ def test_imported_user_has_a_password_nobody_holds(source_db, target_db):
     assert imported.is_superuser is False
 
 
-def test_marketplace_reference_is_cleared_on_import(source_db, target_db):
-    """vendor_app is EXCLUDED, so the FK would dangle in Lite."""
+def test_org_ownership_is_cleared_on_import(source_db, target_db):
     imported = target_db.get(models.ApiSource, SAMPLES["api_source"].uuid)
 
-    assert imported.vendor_app_uuid is None
     assert imported.entity_uuid is None
     assert imported.endpointHeaders == [{"Authorization": "Bearer sk-live-secret"}]
 

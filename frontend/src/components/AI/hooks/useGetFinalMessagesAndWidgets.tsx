@@ -132,35 +132,35 @@ export function useGetFinalMessagesAndWidgets() {
       };
 
       const processAiMessage = (message: AIMessage, nextMessage?: Message) => {
+        const basicAiMessage = () => ({
+          role: "ai",
+          content: restoreAiTags(message.content),
+          agent_id: message.copilotId,
+        });
+        let content: FunctionCallT | null;
         try {
-          // Function Call
-          const content = JSON.parse(message.content) as FunctionCallT;
-          if (!AVAILABLE_FUNCTIONS.includes(content.function)) {
+          content = JSON.parse(message.content) as FunctionCallT | null;
+        } catch (_) {
+          return basicAiMessage();
+        }
+        // An answer can be JSON too ("18", "true", a list): only an object that names a function is a call.
+        if (typeof content?.function !== "string") return basicAiMessage();
+        // Function Call
+        if (!AVAILABLE_FUNCTIONS.includes(content.function)) {
+          messagesToRemove.add(message.timestamp);
+          return null;
+        }
+        if (isWidgetDataFunctionCall(content)) {
+          if (content.function === "get_widget_data" && checkToolMessage(nextMessage)) {
             messagesToRemove.add(message.timestamp);
             return null;
           }
-          if (isWidgetDataFunctionCall(content)) {
-            if (
-              content.function === "get_widget_data" &&
-              checkToolMessage(nextMessage)
-            ) {
-              messagesToRemove.add(message.timestamp);
-              return null;
-            }
-            return {
-              role: "ai",
-              content: restoreAiTags(message.content),
-            };
-          }
-          return message;
-        } catch (_) {
-          // Basic AI message
           return {
             role: "ai",
             content: restoreAiTags(message.content),
-            agent_id: message.copilotId,
           };
         }
+        return message;
       };
       const processToolMessage = async (message: ToolMessage) => {
         if (!AVAILABLE_FUNCTIONS.includes(message.function)) {

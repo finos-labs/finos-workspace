@@ -65,7 +65,7 @@ const server = (overrides: Partial<McpServer> = {}): McpServer => ({
   url: "https://example.com/mcp",
   enabled: true,
   tools: [],
-  vendorAppUuid: "app-1",
+  sourceId: "src-1",
   ...overrides,
 });
 
@@ -85,8 +85,7 @@ describe("McpAppPopover", () => {
   it("adds an OAuth server immediately without opening a modal", () => {
     render(
       <McpAppPopover
-        vendorAppUuid="app-1"
-        vendorName="Acme"
+        sourceId="src-1"
         mcpServer={{ name: "OAuth MCP", url: "https://oauth.example.com/mcp" }}
         isSubscribed={true}
       />,
@@ -99,7 +98,7 @@ describe("McpAppPopover", () => {
       expect.objectContaining({
         name: "OAuth MCP",
         url: "https://oauth.example.com/mcp",
-        vendorAppUuid: "app-1",
+        sourceId: "src-1",
       }),
     );
     // OAuth path never carries a token authType nor custom headers.
@@ -112,8 +111,7 @@ describe("McpAppPopover", () => {
   it("opens the token modal instead of adding immediately for a token server", () => {
     render(
       <McpAppPopover
-        vendorAppUuid="app-1"
-        vendorName="Acme"
+        sourceId="src-1"
         mcpServer={{
           name: "Demo Token MCP",
           url: "https://example.com/mcp",
@@ -153,8 +151,7 @@ describe("McpAppPopover", () => {
 
     render(
       <McpAppPopover
-        vendorAppUuid="app-1"
-        vendorName="Acme"
+        sourceId="src-1"
         mcpServer={{
           name: "Demo Token MCP",
           url: "https://example.com/mcp",

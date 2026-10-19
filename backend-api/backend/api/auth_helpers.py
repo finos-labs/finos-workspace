@@ -5,18 +5,17 @@ import random
 import re
 from contextlib import suppress
 from datetime import timedelta
-from typing import Annotated, Any, Literal, TypeAlias, override
+from typing import Annotated, Any, Literal, TypeAlias
 from uuid import UUID
 
 import jwt
 from fastapi import Cookie, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.security.utils import get_authorization_scheme_param
-from jwt import PyJWTError
+from jwt import ExpiredSignatureError, PyJWTError
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.engine.row import Row
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from api.statics import butterfly_species
 from utilities.config import settings
@@ -55,34 +54,6 @@ LOCALHOST_ORIGINS = [
     "https://localhost:1420",
     "http://localhost",
 ]
-
-# Public, unauthenticated, read-only endpoints that anyone may call from any
-# origin (including localhost). The global CORSMiddleware only permits the
-# BACKEND_CORS_ORIGINS allowlist, so these paths are handled separately by
-# PublicCORSMiddleware. Matched exactly to avoid loosening sub-routes such as
-# /marketplace/apps/{app_id}/rate.
-PUBLIC_CORS_PATHS = frozenset({"/marketplace/apps"})
-
-
-class PublicCORSMiddleware(BaseHTTPMiddleware):
-    """Reflect `*` CORS for the whitelisted public paths in PUBLIC_CORS_PATHS.
-
-    Registered as the outermost middleware so it can answer the preflight
-    OPTIONS request before the restrictive global CORSMiddleware rejects an
-    unknown origin. All other paths fall through untouched.
-    """
-
-    @override
-    async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
-        if request.url.path not in PUBLIC_CORS_PATHS:
-            return response
-
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "*"
-        response.headers["Access-Control-Max-Age"] = "86400"
-        return response
 
 
 def check_valid(origin: str, url_path: str) -> bool:
@@ -686,6 +657,11 @@ def check_metering(request: Request) -> None:
     ``JWT_SECRET``) that only the operator and the Copilot service hold. Users
     authenticate as themselves and cannot mint it, so they cannot change the
     usage that their limits are checked against.
+
+    The token runs out (``exp``), and one without an expiry is refused: it is a
+    credential that is pasted into the configuration of another service, so one that
+    never ran out could only be withdrawn by changing ``JWT_SECRET``, which signs out
+    every user at the same time. ``scripts.create_metering_token`` mints a new one.
     """
     scheme, token = get_authorization_scheme_param(
         request.headers.get(METERING_HEADER, "")
@@ -693,7 +669,21 @@ def check_metering(request: Request) -> None:
     if scheme.lower() != "bearer" or not token:
         raise HTTPException(403, detail="Usage can only be reported by the Copilot service")
     try:
-        payload = decode_jwt(token)
+        # require=["exp"] refuses a token that never runs out; PyJWT checks the expiry itself.
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[ALGORITHM],
+            options={"require": ["exp"]},
+        )
+    except ExpiredSignatureError as e:
+        raise HTTPException(
+            403,
+            detail=(
+                "The metering token has expired. Mint a new one with "
+                "`python -m scripts.create_metering_token` and set INES_METERING_TOKEN to it."
+            ),
+        ) from e
     except PyJWTError as e:
         raise HTTPException(403, detail="Invalid metering token") from e
     if payload.get("sub") != METERING_SUBJECT:

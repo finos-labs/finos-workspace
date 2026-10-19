@@ -143,7 +143,7 @@ describe("CopilotMessage", () => {
         timestamp: Date.now(),
       };
 
-      render(<CopilotMessage {...baseProps} message={aiMessage} isLastGroup={true} />);
+      render(<CopilotMessage {...baseProps} message={aiMessage} />);
 
       expect(screen.getByTestId("ai-message")).toBeInTheDocument();
     });
@@ -250,14 +250,12 @@ describe("CopilotMessage", () => {
       };
 
       const { rerender } = render(
-        <CopilotMessage {...baseProps} message={aiMessage} isLastGroup={false} />,
+        <CopilotMessage {...baseProps} message={aiMessage} />,
       );
 
       expect(screen.getByTestId("ai-message")).toBeInTheDocument();
 
-      rerender(
-        <CopilotMessage {...baseProps} message={aiMessage} isLastGroup={true} />,
-      );
+      rerender(<CopilotMessage {...baseProps} message={aiMessage} />);
 
       expect(screen.getByTestId("ai-message")).toBeInTheDocument();
     });

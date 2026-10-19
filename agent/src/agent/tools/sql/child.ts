@@ -1,0 +1,44 @@
+/**
+ * The SQL tools' child process (see lib/isolate.ts): builds the database from the tables it is given, runs
+ * one tool, and answers with the text for the model and the events the tool queued.
+ */
+
+import { serveOnce } from "../../../lib/isolate-child";
+import type { SSEEvent } from "../../../protocol/types";
+import { runCreateArtifact, type CreateArtifactArgs } from "./create-artifact";
+import { runExecuteSql } from "./execute-sql";
+import { runPeekColumnValues } from "./peek-column-values";
+import { runPeekTable } from "./peek-table";
+
+export type SqlOp = "execute_sql" | "peek_table" | "peek_column_values" | "create_artifact";
+
+export interface SqlChildInput {
+  op: SqlOp;
+  args: unknown;
+  tables: [string, Record<string, unknown>[]][];
+}
+
+export interface SqlChildOutput {
+  text: string;
+  events: SSEEvent[];
+}
+
+export function runSqlOp(input: SqlChildInput): SqlChildOutput {
+  const events: SSEEvent[] = [];
+  const ctx = { pendingTables: new Map(input.tables), artifactQueue: events };
+  switch (input.op) {
+    case "execute_sql":
+      return { text: runExecuteSql(input.args as { sql: string }, ctx), events };
+    case "peek_table":
+      return { text: runPeekTable(input.args as { table_name?: string; limit?: number }, ctx), events };
+    case "peek_column_values":
+      return { text: runPeekColumnValues(input.args as { column: string; table_name?: string }, ctx), events };
+    case "create_artifact":
+      return { text: runCreateArtifact(input.args as CreateArtifactArgs, ctx), events };
+    default:
+      throw new Error(`Unknown SQL operation: ${String(input.op)}`);
+  }
+}
+
+// Only when this file is the entry point of the child: importing it (for runSqlOp) starts nothing.
+if (import.meta.main) await serveOnce(runSqlOp);

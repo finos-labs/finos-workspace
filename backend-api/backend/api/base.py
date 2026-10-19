@@ -220,26 +220,6 @@ class PermissionEnum(enum.Enum):
     edit = "edit"
 
 
-class AppStatus(enum.Enum):
-    submitted = "submitted"
-    verified = "verified"
-    development = "development"
-    published = "published"
-    disabled = "disabled"
-    removed = "removed"
-
-
-class AuthType(enum.Enum):
-    api_key = "api_key"
-    none = "none"
-    custom = "custom"
-
-
-class SubscriptionStatus(enum.Enum):
-    active = "active"
-    disconnected = "disconnected"
-
-
 class ChatMessageRole(enum.Enum):
     ai = "ai"
     human = "human"

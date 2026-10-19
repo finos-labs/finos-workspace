@@ -1,7 +1,5 @@
 import { memo, useEffect } from "react";
-import { useIsMarketplaceAdmin } from "~/hooks/useAdminMarketplace";
 import { useIsEntityAdmin } from "~/hooks/useEntityAdmin";
-import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowSidebarStore } from "~/lib/state/sidebar";
 import Sidebar from "../General/Sidebar";
 import SidebarNavButton from "../General/SidebarNavButton";
@@ -17,9 +15,7 @@ function AdminSidebar({
   const setEffectiveExpanded = useShallowSidebarStore(
     (state) => state.setEffectiveExpanded,
   );
-  const { isMarketplaceAdmin } = useIsMarketplaceAdmin();
   const { isEntityAdmin } = useIsEntityAdmin();
-  const showMarketplace = getConfig().ui.showMarketplace;
 
   useEffect(() => {
     setEffectiveExpanded(expandedState.left && !expandedState.collapsedLeft);
@@ -43,13 +39,6 @@ function AdminSidebar({
           <SidebarNavButton to="/admin/entities" title="Entities" icon="building-06" />
         )}
         <SidebarNavButton to="/admin/apps" title="Apps" icon="chart-icon" />
-        {showMarketplace && isMarketplaceAdmin && (
-          <SidebarNavButton
-            to="/admin/marketplace"
-            title="Marketplace"
-            icon="grid-01"
-          />
-        )}
         <SidebarNavButton
           to="/admin/theme-settings"
           title="Theme"

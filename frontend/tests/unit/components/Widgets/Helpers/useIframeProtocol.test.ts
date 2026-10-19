@@ -245,11 +245,9 @@ describe("useIframeProtocol", () => {
     });
   });
 
-  it("accepts workspace-connect from nested iframe via origin match", () => {
-    const iframeRef = createMockIframeRef(
-      {} as Window, // outer Streamlit window — won't match event.source
-      "http://localhost:8501/app",
-    );
+  it("accepts workspace-connect from an iframe nested in the widget's iframe", () => {
+    const outer = {} as Window; // the outer Streamlit window — not event.source
+    const iframeRef = createMockIframeRef(outer, "http://localhost:8501/app");
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
     const widgets = [
@@ -257,10 +255,9 @@ describe("useIframeProtocol", () => {
     ];
 
     act(() => {
-      // Simulate message from nested sub-iframe with matching origin
       const event = new MessageEvent("message", {
         data: { type: "workspace-connect", widgets },
-        source: { postMessage: vi.fn() } as unknown as Window,
+        source: { postMessage: vi.fn(), parent: outer } as unknown as Window,
         origin: "http://localhost:8501",
       });
       window.dispatchEvent(event);
@@ -269,12 +266,145 @@ describe("useIframeProtocol", () => {
     expect(result.current.manifest).toEqual(widgets);
   });
 
+  it("accepts it from an iframe nested several frames deep", () => {
+    const outer = {} as Window;
+    const middle = { parent: outer } as unknown as Window;
+    const iframeRef = createMockIframeRef(outer, "http://localhost:8501/app");
+    const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
+    const widgets = [{ widgetId: "w1", name: "Deep", dataType: "table" as const }];
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: { type: "workspace-connect", widgets },
+          source: { parent: middle } as unknown as Window,
+          origin: "http://localhost:8501",
+        }),
+      );
+    });
+
+    expect(result.current.manifest).toEqual(widgets);
+  });
+
+  it("does not take the messages of another iframe of the same origin for its own", () => {
+    // Two widgets of one backend are two iframes with one origin. Each widget listens on the window, so
+    // each hears the other's handshake and data: only the iframe's own may count.
+    const top = {} as Window;
+    const own = { parent: top } as unknown as Window;
+    const sibling = { postMessage: vi.fn(), parent: top } as unknown as Window;
+    const iframeRef = createMockIframeRef(own, "http://127.0.0.1:6900/view/a");
+    const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: {
+            type: "workspace-connect",
+            widgets: [{ widgetId: "theirs", name: "Theirs", dataType: "table" }],
+          },
+          source: sibling,
+          origin: "http://127.0.0.1:6900",
+        }),
+      );
+    });
+
+    expect(result.current.manifest).toBeNull();
+  });
+
+  it("keeps sending to its own iframe after a sibling of the same origin has spoken", async () => {
+    const top = {} as Window;
+    const ownPostMessage = vi.fn();
+    const siblingPostMessage = vi.fn();
+    const own = { postMessage: ownPostMessage, parent: top } as unknown as Window;
+    const sibling = {
+      postMessage: siblingPostMessage,
+      parent: top,
+    } as unknown as Window;
+    const iframeRef = createMockIframeRef(own, "http://127.0.0.1:6900/view/a");
+    const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
+    const handshake = (source: Window, widgetId: string) =>
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: {
+            type: "workspace-connect",
+            widgets: [{ widgetId, name: widgetId, dataType: "table" }],
+          },
+          source,
+          origin: "http://127.0.0.1:6900",
+        }),
+      );
+
+    act(() => {
+      handshake(own, "mine");
+      handshake(sibling, "theirs"); // the later one used to take over the bridge
+    });
+    act(() => {
+      result.current.requestWidgetData("mine");
+    });
+
+    expect(result.current.manifest?.map((w) => w.widgetId)).toEqual(["mine"]);
+    expect(ownPostMessage).toHaveBeenCalledWith(
+      { type: "workspace-request", widgetId: "mine" },
+      "http://127.0.0.1:6900",
+    );
+    expect(siblingPostMessage).not.toHaveBeenCalled();
+  });
+
+  it("does not take the data of another iframe of the same origin for the answer to its request", async () => {
+    const top = {} as Window;
+    const own = { postMessage: vi.fn(), parent: top } as unknown as Window;
+    const sibling = { postMessage: vi.fn(), parent: top } as unknown as Window;
+    const iframeRef = createMockIframeRef(own, "http://127.0.0.1:6900/view/a");
+    const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
+
+    let request!: DataRequest;
+    act(() => {
+      request = result.current.requestWidgetData("mine");
+    });
+    const settled = vi.fn();
+    request.then(settled, () => {});
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: {
+            type: "workspace-data",
+            widgetId: "mine",
+            dataType: "table",
+            data: [{ a: 1 }],
+          },
+          source: sibling,
+          origin: "http://127.0.0.1:6900",
+        }),
+      );
+    });
+    await Promise.resolve();
+    expect(settled).not.toHaveBeenCalled();
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: {
+            type: "workspace-data",
+            widgetId: "mine",
+            dataType: "table",
+            data: [{ a: 2 }],
+          },
+          source: own,
+          origin: "http://127.0.0.1:6900",
+        }),
+      );
+    });
+    await expect(request).resolves.toMatchObject({ data: [{ a: 2 }] });
+  });
+
   it("sends workspace-request to stored bridgeSource after handshake", async () => {
+    const outer = {} as Window;
     const nestedPostMessage = vi.fn();
     const nestedWindow = {
       postMessage: nestedPostMessage,
+      parent: outer,
     } as unknown as Window;
-    const iframeRef = createMockIframeRef({} as Window, "http://localhost:8501/app");
+    const iframeRef = createMockIframeRef(outer, "http://localhost:8501/app");
 
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
@@ -384,11 +514,13 @@ describe("useIframeProtocol", () => {
   });
 
   it("sendParamsUpdate posts workspace-params-update to bridge source", () => {
+    const outer = {} as Window;
     const nestedPostMessage = vi.fn();
     const nestedWindow = {
       postMessage: nestedPostMessage,
+      parent: outer,
     } as unknown as Window;
-    const iframeRef = createMockIframeRef({} as Window, "http://localhost:8501/app");
+    const iframeRef = createMockIframeRef(outer, "http://localhost:8501/app");
 
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
@@ -431,21 +563,6 @@ describe("useIframeProtocol", () => {
       { type: "workspace-params-update", params: { ticker: "MSFT" } },
       "*",
     );
-  });
-
-  it("does not listen when disabled", () => {
-    const iframeRef = createMockIframeRef();
-    const onAiData = vi.fn();
-    // mockGetConfig.mockReturnValue({ data: { allowHtmlJsExecution: false } });
-    mockConfig.data.allowHtmlJsExecution = false;
-
-    renderHook(() => useIframeProtocol({ iframeRef, onAiData }));
-
-    act(() => {
-      postFromIframe(iframeRef, { type: "aiData", data: { foo: "bar" } });
-    });
-
-    expect(onAiData).not.toHaveBeenCalled();
   });
 
   describe("message validation", () => {

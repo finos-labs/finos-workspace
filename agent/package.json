@@ -1,0 +1,59 @@
+{
+  "name": "ines",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --hot src/server.ts",
+    "dev:agent": "bun run --hot src/server.ts",
+    "dev:mcp": "bun run --hot mcp-server/src/server.ts",
+    "dev:all": "concurrently -n agent,mcp -c blue,green --kill-others 'bun run dev:agent' 'bun run dev:mcp'",
+    "typecheck": "bunx tsc --noEmit",
+    "test": "bun test tests/ mcp-server/test",
+    "test:coverage": "bun test tests/ mcp-server/test --coverage",
+    "evals": "bun run evals/runner.ts",
+    "evals:widget": "bun run evals/runner.ts -- --group=widget-selection",
+    "evals:intent": "bun run evals/runner.ts -- --group=intent",
+    "evals:workspace": "bun run evals/runner.ts -- --group=workspace-context",
+    "evals:routing": "bun run evals/runner.ts -- --group=tool-routing",
+    "evals:sql": "bun run evals/runner.ts -- --group=sql-analysis",
+    "evals:locale": "bun run evals/runner.ts -- --group=locale",
+    "evals:skills": "bun run evals/runner.ts -- --group=skills",
+    "smoke:rag": "bun run scripts/smoke-doc-rag.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/groq": "^3.0.72",
+    "@ai-sdk/openai": "^3.0.125",
+    "@ai-sdk/provider": "^3.0.18",
+    "@grpc/grpc-js": "^1.14.6",
+    "@hono/mcp": "^0.2.5",
+    "@logtape/hono": "^2.4.0",
+    "@logtape/logtape": "^2.4.0",
+    "@mixmark-io/domino": "^2.2.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@openrouter/ai-sdk-provider": "^2.10.0",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.221.0",
+    "@opentelemetry/resources": "^2.12.0",
+    "@opentelemetry/sdk-trace-node": "^2.12.0",
+    "@opentelemetry/semantic-conventions": "^1.43.0",
+    "ai": "6.0.142",
+    "cheerio": "1.2.0",
+    "exceljs": "4.4.0",
+    "gpt-tokenizer": "^3.4.0",
+    "hono": "^4.13.13",
+    "ioredis": "5.10.1",
+    "mammoth": "^1.13.0",
+    "ollama-ai-provider-v2": "^3.6.0",
+    "turndown": "^7.2.4",
+    "unpdf": "^1.8.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/turndown": "^5.0.6",
+    "concurrently": "9.2.1"
+  },
+  "overrides": {
+    "shell-quote": "^1.12.0"
+  }
+}

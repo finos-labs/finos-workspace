@@ -27,10 +27,7 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             "Manage Workspace data backends (the connections that power widgets).",
             "For list, returns each backend with id, name, url, status, and widget/app/agent counts.",
             "For add, requires name and url.",
-            (
-                "For update, requires backend_id and at least one of name, url, "
-                "endpoint_headers, or is_platform."
-            ),
+            "For update, requires backend_id and at least one of name, url, endpoint_headers.",
             "For refresh, requires backend_id; re-fetches widgets and templates from the backend URL.",
             "For remove, requires backend_id.",
             "To author or debug a custom backend's widgets.json or apps.json, read the "
@@ -71,7 +68,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
                 )
             ),
         ] = None,
-        is_platform: bool | None = None,
     ) -> ToolResponse:
         """List, add, update, refresh, or remove Workspace data backends."""
         allowed_operations = literal_values(BackendsOperation)
@@ -96,24 +92,12 @@ def register(server: FastMCP, run: CommandRunner) -> None:
                     f"manage_backends operation='{operation}' requires backend_id.",
                     details={"required": ["backend_id"]},
                 )
-            if operation == "update" and not (
-                name
-                or url
-                or endpoint_headers is not None
-                or is_platform is not None
-            ):
+            if operation == "update" and not (name or url or endpoint_headers is not None):
                 return invalid_request(
                     "manage_backends",
                     "manage_backends operation='update' requires at least one of "
-                    "name, url, endpoint_headers, or is_platform.",
-                    details={
-                        "required_one_of": [
-                            "name",
-                            "url",
-                            "endpoint_headers",
-                            "is_platform",
-                        ]
-                    },
+                    "name, url, or endpoint_headers.",
+                    details={"required_one_of": ["name", "url", "endpoint_headers"]},
                 )
 
         return await run(
@@ -125,7 +109,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
                 url=url,
                 endpoint_headers=endpoint_headers,
                 validate_widgets=validate_widgets,
-                is_platform=is_platform,
             )
         )
 

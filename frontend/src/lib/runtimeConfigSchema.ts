@@ -51,8 +51,6 @@ export const RuntimeConfigSchema = z.object({
   urls: z.object({
     backend: z.string().default(""),
     ai: z.string().default(""),
-    /** A remote marketplace to list apps from. Empty: this deployment's own backend is the marketplace. */
-    marketplace: z.string().default(""),
   }),
   authentication: z.object({
     allowEmailLogin: boolField(true),
@@ -88,7 +86,6 @@ export const RuntimeConfigSchema = z.object({
     showCopilotSwitcher: boolField(true),
     showRemoveFromOrg: boolField(true),
     defaultTheme: z.enum(["light", "dark"]).default("dark"),
-    showMarketplace: boolField(true),
   }),
   data: z.object({
     allowHtmlJsExecution: boolField(false),
@@ -138,7 +135,6 @@ export const ENV_NAMES = {
   urls: {
     backend: "VITE_BACKEND_URL",
     ai: "VITE_AI_API_URL",
-    marketplace: "VITE_MARKETPLACE_URL",
   },
   authentication: {
     allowEmailLogin: "VITE_AUTHENTICATION_ALLOW_EMAIL_LOGIN",
@@ -174,7 +170,6 @@ export const ENV_NAMES = {
     showCopilotSwitcher: "VITE_UI_SHOW_COPILOT_SWITCHER",
     showRemoveFromOrg: "VITE_UI_SHOW_REMOVE_FROM_ORG",
     defaultTheme: "VITE_UI_DEFAULT_THEME",
-    showMarketplace: "VITE_UI_SHOW_MARKETPLACE",
   },
   data: {
     allowHtmlJsExecution: "VITE_ALLOW_HTML_JS_EXECUTION",

@@ -1146,7 +1146,7 @@ export function EditPermissionsDialog({
                         <>
                           Set up and manage your prompts in the{" "}
                           <Link
-                            to="/app/prompts"
+                            to="/app/ai?tab=prompts"
                             className="text-brand-lighter underline"
                           >
                             Prompts

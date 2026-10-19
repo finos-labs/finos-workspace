@@ -77,13 +77,13 @@ The Workspace runs with its defaults, so this step is optional. To change a sett
 app, pass its variable with `-e` on the `docker run` command. The variables are the `VITE_*`
 ones of `frontend/.env`, which lists every setting with a comment and its default (for example
 `VITE_AI_API_URL` for the AI service, `VITE_DOCS_URL` for the documentation site,
-`VITE_UI_SHOW_MARKETPLACE=false` to hide the marketplace). Settings are read once at container
+`VITE_UI_SHOW_CHANGELOG=false` to hide the changelog). Settings are read once at container
 start: to change one, stop and remove the container and run it again with the new value.
 
 ```bash
 docker run -d -p 3000:3000 -v workspace-data:/data --name workspace \
   -e WORKSPACE_ADMIN_EMAIL=<your-email> \
-  -e VITE_UI_SHOW_MARKETPLACE=false \
+  -e VITE_UI_SHOW_CHANGELOG=false \
   <registry>/<repository>:latest
 ```
 

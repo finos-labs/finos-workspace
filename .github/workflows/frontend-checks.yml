@@ -23,7 +23,7 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
@@ -40,7 +40,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
@@ -57,7 +57,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: crate-ci/typos@v1
+      - uses: crate-ci/typos@7f9d0819ca1c008ade73f4b41fa9d258d48f605b # v1.51.1
         with:
           files: frontend/src frontend/CHANGELOG.md
           config: frontend/_typos.toml

@@ -37,6 +37,16 @@ vi.mock("~/lib/state/skillsLibrary", () => ({
   useShallowSkillsLibraryStore: mockUseShallowSkillsLibraryStore,
 }));
 
+/** The selected agent, with the skills its /agents.json lists. */
+const agentState = vi.hoisted(() => ({
+  agent: null as null | { name: string; skills: { slug: string; description: string }[] },
+}));
+
+vi.mock("~/lib/state/copilot", () => ({
+  useShallowCopilotStore: (selector: (state: unknown) => unknown) =>
+    selector({ selectedCopilot: agentState.agent }),
+}));
+
 vi.mock("usehooks-ts", () => ({
   useDebounceValue: (value: unknown) => [value],
 }));
@@ -261,6 +271,7 @@ function getSkillHeader(slug: string) {
 describe("SkillsTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    agentState.agent = null;
     setupMocks();
   });
 
@@ -737,6 +748,44 @@ describe("SkillsTab", () => {
         expect(screen.getByText("data-viz")).toBeInTheDocument();
         expect(screen.getByText("report-gen")).toBeInTheDocument();
       });
+    });
+  });
+  describe("The agent's skills", () => {
+    const ines = {
+      name: "Ines",
+      skills: [
+        { slug: "html-report", description: "HTML reports" },
+        { slug: "html-chart", description: "Chart colors" },
+      ],
+    };
+
+    it("lists them with the agent's name, and nothing to edit or delete", () => {
+      agentState.agent = ines;
+      renderSkillsTab();
+
+      expect(screen.getByText("html-report")).toBeInTheDocument();
+      expect(screen.getByText("HTML reports")).toBeInTheDocument();
+      expect(screen.getAllByText("Ines")).toHaveLength(2);
+      // Only the user's three skills can be edited or deleted.
+      expect(screen.getAllByTestId("icon-edit")).toHaveLength(mockSkills.length);
+      expect(screen.getAllByTestId("icon-trash-02")).toHaveLength(mockSkills.length);
+    });
+
+    it("shows them instead of the empty state when the user has no skills", () => {
+      agentState.agent = ines;
+      setupMocks([]);
+      renderSkillsTab();
+
+      expect(screen.queryByText("No Skills added")).not.toBeInTheDocument();
+      expect(screen.getByText("html-chart")).toBeInTheDocument();
+    });
+
+    it("give way to a user's skill with the same slug", () => {
+      agentState.agent = { name: "Ines", skills: [{ slug: "data-viz", description: "The agent's charts" }] };
+      renderSkillsTab();
+
+      expect(screen.getAllByText("data-viz")).toHaveLength(1);
+      expect(screen.queryByText("The agent's charts")).not.toBeInTheDocument();
     });
   });
 });

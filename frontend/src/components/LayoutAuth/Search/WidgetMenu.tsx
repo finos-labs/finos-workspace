@@ -1414,7 +1414,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
                 )}
                 {state.selectedOption === "external" && (
                   <Button variant="outlined" size="sm" className="mt-2">
-                    <Link to="/app/data-connectors" onClick={() => onOpenChange(false)}>
+                    <Link to="/app/widgets" onClick={() => onOpenChange(false)}>
                       Add an external source
                     </Link>
                   </Button>

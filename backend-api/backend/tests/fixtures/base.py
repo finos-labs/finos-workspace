@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from datetime import UTC
 from typing import Any, TypedDict
 from collections.abc import Mapping, Sequence
@@ -27,11 +27,23 @@ _BASE_TEST_ENV = {
 for key, value in _BASE_TEST_ENV.items():
     os.environ.setdefault(key, value)
 
+from api import auth_helpers  # noqa: E402
 from api.models import User  # noqa: E402
 from utilities.config import settings  # noqa: E402
 from main import app  # noqa: E402
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def superuser_override():
+    """Bypass the is_superuser DB check so admin endpoints are callable."""
+    app.dependency_overrides[auth_helpers.get_current_superuser] = lambda: None
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(auth_helpers.get_current_superuser, None)
+
 
 _TEST_USER_UUID = "00000000-0000-0000-0000-000000000001"
 _TEST_SESSION_UUID = "00000000-0000-0000-0000-000000000002"
