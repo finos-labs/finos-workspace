@@ -25,6 +25,8 @@ export type CopilotAccess = {
 };
 
 export const ALL_MCP_TOOLS = "*";
+/** A model grant of every model of its agent. */
+export const ALL_MODELS = "*";
 
 /** The form in which the backend stores and compares MCP server URLs. */
 export function normalizeMcpUrl(url: string): string {
@@ -50,9 +52,20 @@ export function isModelAllowed(
 ): boolean {
   const grantId = grantAgentId(agentId);
   return (
-    access?.models.some((g) => g.agent_id === grantId && g.model_id === modelId) ??
-    false
+    access?.models.some(
+      (g) =>
+        g.agent_id === grantId && (g.model_id === modelId || g.model_id === ALL_MODELS),
+    ) ?? false
   );
+}
+
+/** Whether a role of the user's grants them any model of the agent. */
+export function isAgentGranted(
+  access: CopilotAccess | null | undefined,
+  agentId: string,
+): boolean {
+  const grantId = grantAgentId(agentId);
+  return access?.models.some((g) => g.agent_id === grantId) ?? false;
 }
 
 /** Whether the tool is one of those that an administrator switched off for the user, on whichever server. */

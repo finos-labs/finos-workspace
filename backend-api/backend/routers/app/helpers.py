@@ -875,6 +875,112 @@ async def _convert_emails_to_uuids(db: AsyncSession, users: list[str]) -> list[U
     return [await _get_user_uuid_by_email(db, email) for email in users]
 
 
+# The roles every organization starts with (create_default_roles). They are roles like any
+# other: an admin changes them, takes them from users or deletes them.
+AGENT_USER_ROLE = "Agent User"
+SHARER_ROLE = "Sharer"
+# The id the default agent gives itself in its agents.json (AGENT_ID in agent/src/routes/agents.ts)
+DEFAULT_AGENT_ID = "default_agent"
+
+DEFAULT_ROLES: dict[str, dict] = {
+    # The default agent with every model it offers and every tool of the deployment's default
+    # MCP servers, with no daily limits. Every new user of the organization gets it.
+    AGENT_USER_ROLE: {
+        "description": "The agent, with every model it offers and the deployment's own tools, "
+        "with no daily limits. New users get this role.",
+        "sharing": models.SHARING_NONE,
+        "copilot_calls_day": None,
+        "copilot_tokens_day": None,
+        "upload_size_gb": None,
+        "search_web": True,
+        "fetch_from_web": True,
+    },
+    # Sharing and nothing else: no limit is lifted and no web tool switched on by it
+    SHARER_ROLE: {
+        "description": "Shares dashboards and apps with others; nothing else.",
+        "sharing": models.SHARING_SHARE,
+        "copilot_calls_day": 0,
+        "copilot_tokens_day": 0,
+        "upload_size_gb": 0,
+        "search_web": False,
+        "fetch_from_web": False,
+    },
+}
+
+
+async def _live_roles(db: AsyncSession, entity_uuid: UUID, names: list[str]) -> dict[str, UUID]:
+    """The organization's roles of these names that are not deleted, by name."""
+    rows = await db.execute(
+        select(models.Role.name, models.Role.uuid).where(
+            models.Role.entity_uuid == entity_uuid,
+            models.Role.name.in_(names),
+            models.Role.deleted_at.is_(None),
+        )
+    )
+    return {row.name: row.uuid for row in rows}
+
+
+async def create_default_roles(db: AsyncSession, entity_uuid: UUID) -> dict[str, UUID]:
+    """The organization's Agent User and Sharer roles (DEFAULT_ROLES), by name. A role of
+    that name the organization has already is kept as it is. Commits nothing."""
+    roles = await _live_roles(db, entity_uuid, list(DEFAULT_ROLES))
+    for name, role_settings in DEFAULT_ROLES.items():
+        if name in roles:
+            continue
+        roles[name] = uuid4()
+        await db.execute(
+            insert(models.Role).values(
+                uuid=roles[name], name=name, entity_uuid=entity_uuid, **role_settings
+            )
+        )
+        if name == AGENT_USER_ROLE:
+            await db.execute(
+                insert(models.RoleCopilotModel).values(
+                    role_uuid=roles[name],
+                    agent_id=DEFAULT_AGENT_ID,
+                    model_id=schemas.ALL_MODELS,
+                )
+            )
+            servers = {schemas.normalize_mcp_url(s.url) for s in settings.DEFAULT_MCP_SERVERS}
+            for server_url in sorted(servers):
+                await db.execute(
+                    insert(models.RoleMcpAccess).values(
+                        role_uuid=roles[name],
+                        server_url=server_url,
+                        tool_name=schemas.ALL_MCP_TOOLS,
+                    )
+                )
+    return roles
+
+
+async def give_default_roles(
+    db: AsyncSession, user_uuid: UUID, permissions_uuid: UUID | None, names: list[str]
+) -> None:
+    """Give the user these default roles of their organization, those it has and they have
+    not. Commits nothing."""
+    if permissions_uuid is None:
+        return
+    entity_uuid = await crud.get_user_entity_uuid(db, permissions_uuid)
+    if entity_uuid is None:
+        return
+    roles = await _live_roles(db, entity_uuid, names)
+    held = set(
+        (
+            await db.execute(
+                select(models.UserRole.role_uuid).where(
+                    models.UserRole.user_uuid == user_uuid,
+                    models.UserRole.role_uuid.in_(list(roles.values())),
+                )
+            )
+        ).scalars()
+    )
+    for role_uuid in roles.values():
+        if role_uuid not in held:
+            await db.execute(
+                insert(models.UserRole).values(user_uuid=user_uuid, role_uuid=role_uuid)
+            )
+
+
 async def role_exists(db: AsyncSession, role_uuid: UUID, entity_uuid: UUID) -> bool:
     query = select(models.Role.uuid).where(
         models.Role.uuid == role_uuid,
@@ -1052,15 +1158,16 @@ def check_copilot_access(
 ) -> schemas.CopilotAuthorizeResult:
     """Check a Copilot request against what the user may use.
 
-    A request that names a model must name one granted for its agent. A request without
-    a model leaves the choice to the agent, which the user may use only with a model of
-    it granted.
+    A request that names a model must name one granted for its agent, or the agent must be
+    granted every model (`*`). A request without a model leaves the choice to the agent,
+    which the user may use only with a model of it granted.
     """
     agent_allowed = any(m.agent_id == request.agent_id for m in access.models)
     denied_model = None
     if request.model:
         granted = {(m.agent_id, m.model_id) for m in access.models}
-        if (request.agent_id, request.model) not in granted:
+        named = {(request.agent_id, request.model), (request.agent_id, schemas.ALL_MODELS)}
+        if not named & granted:
             denied_model = request.model
 
     denied_tools = [

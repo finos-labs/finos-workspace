@@ -118,6 +118,35 @@ describe("RoleCopilotAccessDialog", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
+  it("grants every model of an agent with one box", async () => {
+    (getRoleCopilotAccess as Mock).mockResolvedValue({ models: [], mcp: [] });
+    renderDialog();
+
+    fireEvent.click(await screen.findByLabelText("All models"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(putRoleCopilotAccess).toHaveBeenCalledWith("role-1", {
+        models: [{ agent_id: "default_agent", model_id: "*" }],
+        mcp: [],
+      }),
+    );
+  });
+
+  it("shows a role that grants every model as such, not as a model named *", async () => {
+    (getRoleCopilotAccess as Mock).mockResolvedValue({
+      models: [{ agent_id: "default_agent", model_id: "*" }],
+      mcp: [],
+    });
+    renderDialog();
+
+    const all = await screen.findByLabelText("All models");
+    await waitFor(() => expect(all).toBeChecked());
+    expect(screen.getByLabelText("Fast")).toBeChecked();
+    expect(screen.getByLabelText("Fast")).toBeDisabled();
+    expect(screen.queryByLabelText("*")).not.toBeInTheDocument();
+  });
+
   it("grants every tool of a server with one box", async () => {
     (getRoleCopilotAccess as Mock).mockResolvedValue({ models: [], mcp: [] });
     renderDialog();

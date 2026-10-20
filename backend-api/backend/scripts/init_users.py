@@ -38,7 +38,7 @@ from api.models import (
     Session,
     User,
 )
-from routers import administration
+from routers import administration, app_helpers
 from routers.app.index import process_create_user, register_app_user
 
 CONFIG_PATH = Path(__file__).parent / "cfgs"
@@ -112,8 +112,8 @@ class SetupConfig:
 
     async def create_admin(self, admin_user: AdminUser, permissions_uuid: UUID) -> User:
         """The administrator the config names. A new account gets a random password that
-        nobody sees, until ``--new-password`` sets theirs; an account that exists keeps its
-        password."""
+        nobody sees, until ``--new-password`` sets theirs, and the organization's default
+        roles; an account that exists keeps its password and its roles."""
         logger.info(f"Checking for admin: {admin_user.email}")
         query = select(User).where(User.email == admin_user.email)
         result = await self.db.execute(query)
@@ -132,6 +132,12 @@ class SetupConfig:
                 password=password,
             )
             result = await self.db.execute(query)
+            await app_helpers.give_default_roles(
+                self.db,
+                result.inserted_primary_key[0],
+                permissions_uuid,
+                [app_helpers.AGENT_USER_ROLE, app_helpers.SHARER_ROLE],
+            )
             await self.db.commit()
             show(
                 f"The administrator {admin_user.email} was created. Set their password with: "

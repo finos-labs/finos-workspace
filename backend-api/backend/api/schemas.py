@@ -1005,6 +1005,8 @@ class MCPOAuthCompleted(BaseModel):
 
 
 ALL_MCP_TOOLS = "*"
+# A model grant of every model of its agent
+ALL_MODELS = "*"
 
 
 class CopilotCapability(StrEnum):
@@ -1028,7 +1030,7 @@ CAPABILITY_MCP_TOOLS: dict[CopilotCapability, frozenset[str]] = {
 
 
 class CopilotModelGrant(BaseModel):
-    """A model of a Copilot agent."""
+    """A model of a Copilot agent (`*` for all of them)."""
 
     model_config = main_config
     agent_id: str = Field(min_length=1, max_length=255)

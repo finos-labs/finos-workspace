@@ -62,7 +62,7 @@ def _conflict(exc: IntegrityError) -> HTTPException:
 async def create_entity(
     db: AsyncSession, entity: schemas.EntityPost
 ) -> schemas.AddEntityReturn:
-    """The entity, with its three user types, the admin's first."""
+    """The entity, with its three user types, the admin's first, and its default roles."""
     try:
         response = await db.execute(
             insert(Entity).values(
@@ -90,6 +90,7 @@ async def create_entity(
             for user_type in (models.DEVELOPER_TYPE, models.USER_TYPE)
         ],
     )
+    await app_helpers.create_default_roles(db, entity_uuid)
     await db.commit()
     return schemas.AddEntityReturn(
         entity_uuid=entity_uuid, permission_map_uuid=admin_map.inserted_primary_key[0]
@@ -204,8 +205,8 @@ async def create_user(
     db: AsyncSession, user: schemas.UserCreateAdmin, entity_uuid: UUID
 ) -> schemas.PasswordResetLink:
     """A user of the entity whose map `user.permissions_uuid` is, if they are not registered
-    or invited yet, with a random password nobody knows; the answer is the link with which
-    they set theirs."""
+    or invited yet, with a random password nobody knows, and its Agent User role; the answer
+    is the link with which they set theirs."""
     if user.role and not await app_helpers.role_exists(db, user.role, entity_uuid):
         raise HTTPException(404, detail="Role not found")
 
@@ -233,9 +234,11 @@ async def create_user(
 
     if role := user.role:
         await db.execute(insert(UserRole).values(user_uuid=user_uuid, role_uuid=role))
+    await app_helpers.give_default_roles(
+        db, user_uuid, user.permissions_uuid, [app_helpers.AGENT_USER_ROLE]
+    )
     await db.commit()
-    if user.role:
-        await app_helpers.roles_changed(db, [user_uuid])
+    await app_helpers.roles_changed(db, [user_uuid])
     return await password_reset_link(user_uuid)
 
 

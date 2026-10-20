@@ -6,6 +6,7 @@ import { getRoleCopilotAccess, putRoleCopilotAccess } from "~/api/entity_roles.a
 import { copilotModels, useShallowCopilotStore } from "~/lib/state/copilot";
 import {
   ALL_MCP_TOOLS,
+  ALL_MODELS,
   grantAgentId,
   normalizeMcpUrl,
 } from "~/lib/state/copilotAccess";
@@ -92,7 +93,7 @@ export default function RoleCopilotAccessDialog({ open, onClose, role }: Props) 
         name: g.agent_id,
         models: [],
       };
-      if (!agent.models.some((m) => m.id === g.model_id)) {
+      if (g.model_id !== ALL_MODELS && !agent.models.some((m) => m.id === g.model_id)) {
         agent.models = [...agent.models, { id: g.model_id, name: g.model_id }];
       }
       byId.set(g.agent_id, agent);
@@ -183,28 +184,44 @@ export default function RoleCopilotAccessDialog({ open, onClose, role }: Props) 
                 No agent with a choice of models is available.
               </p>
             )}
-            {agents.map((agent) => (
-              <div key={agent.agentId} className="flex flex-col gap-1">
-                <span className="body-xs-medium text-ds-text-caption">
-                  {agent.name}
-                </span>
-                {agent.models.map((model) => (
+            {agents.map((agent) => {
+              const all = models.has(modelKey(agent.agentId, ALL_MODELS));
+              return (
+                <div key={agent.agentId} className="flex flex-col gap-1">
+                  <span className="body-xs-medium text-ds-text-caption">
+                    {agent.name}
+                  </span>
                   <Checkbox
-                    key={model.id}
-                    label={model.name}
-                    checked={models.has(modelKey(agent.agentId, model.id))}
+                    label="All models"
+                    checked={all}
                     onCheckedChange={(on) =>
                       toggle(
                         models,
                         setModels,
-                        modelKey(agent.agentId, model.id),
+                        modelKey(agent.agentId, ALL_MODELS),
                         on === true,
                       )
                     }
                   />
-                ))}
-              </div>
-            ))}
+                  {agent.models.map((model) => (
+                    <Checkbox
+                      key={model.id}
+                      label={model.name}
+                      disabled={all}
+                      checked={all || models.has(modelKey(agent.agentId, model.id))}
+                      onCheckedChange={(on) =>
+                        toggle(
+                          models,
+                          setModels,
+                          modelKey(agent.agentId, model.id),
+                          on === true,
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              );
+            })}
           </section>
 
           <section

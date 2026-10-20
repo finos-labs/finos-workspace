@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { Button } from "~/components/ds/atoms/Button";
 import { type Usage, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
+import { isAgentGranted, useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { useCopilotKeys } from "./useCopilotKeys";
 import { useShallowStreamingStore } from "./useStreaming";
@@ -51,9 +52,30 @@ export function QueryLimitReached() {
 
   const { queriesLeft, usage } = useQueriesLeft();
   const setApiKeyDialogOpen = useShallowThemeStore((s) => s.setApiKeyDialogOpen);
-  const showWelcome = useShallowCopilotStore((s) => s.showWelcome);
+  const { showWelcome, selectedCopilot } = useShallowCopilotStore((s) => ({
+    showWelcome: s.showWelcome,
+    selectedCopilot: s.selectedCopilot,
+  }));
+  // A user whose roles grant nothing of the agent has no allowance either: say what is missing
+  const granted = useCopilotAccessStore((s) =>
+    isAgentGranted(s.access, selectedCopilot?.id ?? ""),
+  );
 
   const messageMemo = useMemo(() => {
+    if (!granted) {
+      return (
+        <div className="_message-content">
+          <div className="bg-[#7F1D1D33] border border-[#EF4444] rounded px-2.5 py-1 space-y-1">
+            <p className="text-[#DC2626] dark:text-[#EF4444] pt-1">
+              <span className="text-medium font-bold">
+                No role gives you the agent yet
+              </span>
+            </p>
+            <p className="pt-1 pb-2 text-xs">Ask your admin.</p>
+          </div>
+        </div>
+      );
+    }
     const {
       copilot_calls_limit,
       number_copilot_calls_day_count = 0,
@@ -92,7 +114,7 @@ export function QueryLimitReached() {
         </div>
       </div>
     );
-  }, [usage, setApiKeyDialogOpen]);
+  }, [granted, usage, setApiKeyDialogOpen]);
 
   useEffect(() => {
     if (limitReached && queriesLeft !== 0) {

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  ALL_MODELS,
   allowedModels,
   type CopilotAccess,
   grantAgentId,
+  isAgentGranted,
   isMcpToolAllowed,
   isMcpToolSwitchedOff,
   isModelAllowed,
@@ -55,6 +57,25 @@ describe("isModelAllowed", () => {
     expect(isModelAllowed(granted, "default-copilot", "fast")).toBe(true);
     expect(isModelAllowed(granted, "default-copilot", "smart")).toBe(false);
     expect(isModelAllowed(granted, "custom", "fast")).toBe(false);
+  });
+
+  it("allows every model of an agent granted with *, and of that agent only", () => {
+    const all: CopilotAccess = {
+      models: [{ agent_id: "default_agent", model_id: ALL_MODELS }],
+      mcp: [],
+    };
+    expect(isModelAllowed(all, "default-copilot", "fast")).toBe(true);
+    expect(isModelAllowed(all, "default-copilot", "ollama:stub")).toBe(true);
+    expect(isModelAllowed(all, "custom", "fast")).toBe(false);
+  });
+});
+
+describe("isAgentGranted", () => {
+  it("is whether a role grants any model of the agent", () => {
+    expect(isAgentGranted(granted, "default-copilot")).toBe(true);
+    expect(isAgentGranted(granted, "other")).toBe(false);
+    expect(isAgentGranted(none, "default-copilot")).toBe(false);
+    expect(isAgentGranted(null, "default-copilot")).toBe(false);
   });
 });
 

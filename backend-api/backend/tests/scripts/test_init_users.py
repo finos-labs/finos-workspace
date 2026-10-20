@@ -76,6 +76,11 @@ async def bootstrap_cleanup(db_session, monkeypatch, tmp_path):
         delete(models.User).where(models.User.email.in_([ADMIN_EMAIL, OTHER_EMAIL]))
     )
     if entity_uuid:
+        # Its default roles, and what they grant and to whom
+        roles = select(models.Role.uuid).where(models.Role.entity_uuid == entity_uuid)
+        for table in (models.UserRole, models.RoleCopilotModel, models.RoleMcpAccess):
+            await db_session.execute(delete(table).where(table.role_uuid.in_(roles)))
+        await db_session.execute(delete(models.Role).where(models.Role.entity_uuid == entity_uuid))
         await db_session.execute(
             delete(models.PermissionsEntityMap).where(
                 models.PermissionsEntityMap.entity_uuid == entity_uuid
@@ -128,6 +133,23 @@ async def test_bootstrap_creates_the_entity_and_a_working_admin(
 
     admin = await _admin(db_session)
     assert admin.is_superuser
+    # The organization starts with its default roles, and its administrator has both
+    roles = dict(
+        (
+            await db_session.execute(
+                select(models.Role.name, models.Role.uuid).where(
+                    models.Role.entity_uuid == entity.uuid
+                )
+            )
+        ).all()
+    )
+    assert set(roles) == {"Agent User", "Sharer"}
+    held = (
+        await db_session.execute(
+            select(models.UserRole.role_uuid).where(models.UserRole.user_uuid == admin.uuid)
+        )
+    ).scalars()
+    assert set(held) == set(roles.values())
     # The only output says how to set the password, and shows none
     created = CREATED.search(out)
     assert created
@@ -158,6 +180,23 @@ async def test_a_later_run_says_nothing_and_keeps_the_admins_password(
 
     assert not CREATED.findall(capsys.readouterr().out)
     assert base.verify_password(chosen, (await _admin(db_session)).password)
+
+
+@pytest.mark.asyncio
+async def test_a_later_run_gives_back_no_role_an_admin_took_away(db_session, bootstrap_cleanup):
+    await SetupConfig(_config(), db_session).run()
+    admin = await _admin(db_session)
+    await db_session.execute(delete(models.UserRole).where(models.UserRole.user_uuid == admin.uuid))
+    await db_session.commit()
+
+    await SetupConfig(_config(), db_session).run()
+
+    held = (
+        await db_session.execute(
+            select(models.UserRole.uuid).where(models.UserRole.user_uuid == admin.uuid)
+        )
+    ).scalars()
+    assert list(held) == []
 
 
 @pytest.mark.asyncio

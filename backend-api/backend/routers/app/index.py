@@ -57,7 +57,8 @@ async def process_create_user(
     db: AsyncSession,
     microsoft_id: str | None = None,
 ) -> UUID | bool:
-    "Creates the user for a pending invite; returns the new user's uuid, or False"
+    """Creates the user for a pending invite, with their organization's Agent User role;
+    returns the new user's uuid, or False"""
     query = select(
         UserInvite.data,
         UserInvite.email,
@@ -103,6 +104,9 @@ async def process_create_user(
             role_uuid=role,
         )
         await db.execute(role_insert)
+    await app_helpers.give_default_roles(
+        db, user_uuid, result.permissions_uuid, [app_helpers.AGENT_USER_ROLE]
+    )
     await db.commit()
 
     return user_uuid
