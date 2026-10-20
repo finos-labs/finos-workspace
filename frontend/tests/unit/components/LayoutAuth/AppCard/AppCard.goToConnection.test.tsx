@@ -154,6 +154,7 @@ describe("AppCard - Go to connection menu item", () => {
   beforeEach(() => {
     mockSource = null;
     mockNavigate.mockClear();
+    setAccess({ user_type: "Developer" });
   });
 
   it("shows 'Go to connection' for a user backend card", () => {
@@ -172,6 +173,14 @@ describe("AppCard - Go to connection menu item", () => {
     expect(mockNavigate).toHaveBeenCalledWith(
       "/app/connections?connectionId=backend-42",
     );
+  });
+
+  it("does NOT show 'Go to connection' to a User, whose page Connections is not", () => {
+    setAccess({ user_type: "User" });
+    renderCard(makeTemplate("user"));
+    expect(
+      screen.queryByRole("button", { name: "Go to connection" }),
+    ).not.toBeInTheDocument();
   });
 
   it("does NOT show 'Go to connection' for shared cards", () => {

@@ -21,7 +21,7 @@ import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { getConfig } from "~/lib/runtimeConfig";
-import { canShare, useShallowAccessStore } from "~/lib/state/access";
+import { canAddConnections, canShare, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import { useShallowThemeStore } from "~/lib/state/theme";
@@ -49,6 +49,9 @@ const AppCard = memo<AppCardProps>((props) => {
     }),
   );
   const mayShare = useShallowAccessStore((state) => canShare(state.access));
+  const mayAddConnections = useShallowAccessStore((state) =>
+    canAddConnections(state.access),
+  );
   const navigate = useNavigate();
 
   const { source, refreshApiSourceById } = useShallowBackendConnectorStore((state) => ({
@@ -204,7 +207,7 @@ const AppCard = memo<AppCardProps>((props) => {
     // the Connections page; link there and highlight it. Excludes shared/listed
     // backends, whose connection row id wouldn't match this source id.
     const connectionId = template.source?.id;
-    if (template.type === "user" && connectionId) {
+    if (template.type === "user" && connectionId && mayAddConnections) {
       elements.unshift({
         label: "Go to connection",
         onClick: () => navigate(`/app/connections?connectionId=${connectionId}`),
@@ -212,7 +215,14 @@ const AppCard = memo<AppCardProps>((props) => {
     }
 
     return elements;
-  }, [isBackendApp, isPersonalApp, setDeleteConfirm, template, navigate]);
+  }, [
+    isBackendApp,
+    isPersonalApp,
+    setDeleteConfirm,
+    template,
+    navigate,
+    mayAddConnections,
+  ]);
 
   const bottomItems = useMemo<ReactNode[]>(() => {
     const createdByInitials = template.createdBy

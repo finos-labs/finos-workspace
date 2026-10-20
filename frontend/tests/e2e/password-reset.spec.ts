@@ -1,5 +1,5 @@
 import { type Browser, expect, type Page, test } from "@playwright/test";
-import { submitLogin } from "./helpers";
+import { setPassword, submitLogin, takeLink } from "./helpers";
 
 const SIGNED_OUT = { cookies: [], origins: [] };
 const USED = "This link has expired or was used already. Ask your admin for a new one.";
@@ -17,23 +17,6 @@ async function openUser(page: Page, email: string) {
   const row = await userRow(page, email);
   await row.hover();
   await row.getByRole("button", { name: "Edit user" }).click();
-}
-
-/** The link the open dialog gives, once the dialog is closed with Done. */
-async function takeLink(page: Page) {
-  const link = await page.getByLabel("Password link").inputValue();
-  expect(link).toMatch(/\/reset-password#[\w-]{40,}$/);
-  await page.getByRole("button", { name: "Done" }).click();
-  return link;
-}
-
-async function setPassword(page: Page, link: string, password: string) {
-  await page.goto(link);
-  // The token is off the address once the page has it
-  await expect(page).toHaveURL(/\/reset-password$/);
-  await page.getByLabel("New Password", { exact: true }).fill(password);
-  await page.getByLabel("Confirm Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Set password" }).click();
 }
 
 /** Sets the password with the link in a browser of the user's own, and signs in with it. */

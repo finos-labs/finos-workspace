@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { getApiSources, removeCustomCopilot } from "~/api/auth.api";
 import type { BackendPermissionsT } from "~/api/user_roles.api";
@@ -115,8 +115,7 @@ type ConnectionsToolbarProps = {
   filterBy: FilterOption["value"];
   dispatch: StateDispatch<ConnectionsState>;
   selectedCount: number;
-  /** Left out for users who may not bring connections */
-  onConnectBackend?: () => void;
+  onConnectBackend: () => void;
   inputRef: RefObject<HTMLInputElement>;
   onRefresh: () => void;
   isRefreshing: boolean;
@@ -198,16 +197,14 @@ const ConnectionsToolbar = memo(
               />
             </Button>
           </Tooltip>
-          {onConnectBackend && (
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={onConnectBackend}
-              disabled={selectedCount > 0}
-            >
-              Connect Backend
-            </Button>
-          )}
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={onConnectBackend}
+            disabled={selectedCount > 0}
+          >
+            Connect Backend
+          </Button>
         </div>
       </div>
     );
@@ -617,7 +614,18 @@ const initialState: ConnectionsState = {
   userClosed: { active: false, inactive: false },
 };
 
+/**
+ * The connections of an Admin or a Developer, who bring their own. A User brings none: the page
+ * is not theirs, and sends them to Apps once the session says who they are.
+ */
 export default function ConnectionsPage() {
+  const access = useShallowAccessStore((s) => s.access);
+  if (!access) return null;
+  if (!canAddConnections(access)) return <Navigate to="/app" replace={true} />;
+  return <Connections />;
+}
+
+function Connections() {
   const [state, dispatch] = useStateReducer(initialState);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -653,7 +661,6 @@ export default function ConnectionsPage() {
 
   const permissions = useShallowPermissionsStore((s) => s.permissions);
   const setManageAppDialog = useShallowThemeStore((s) => s.setManageAppDialog);
-  const mayAdd = useShallowAccessStore((s) => canAddConnections(s.access));
 
   const { isFetching, refetch } = useQuery({
     queryKey: ["apiSources"],
@@ -983,7 +990,7 @@ export default function ConnectionsPage() {
           filterBy={state.filterBy}
           selectedCount={state.selectedConnections.size}
           dispatch={dispatch}
-          onConnectBackend={mayAdd ? handleConnectBackend : undefined}
+          onConnectBackend={handleConnectBackend}
           inputRef={inputRef}
           onRefresh={handleRefresh}
           isRefreshing={state.isRefreshing || isFetching}
@@ -1063,18 +1070,16 @@ export default function ConnectionsPage() {
             extraClassName="col-span-full rounded-lg bg-general-bg-primary p-12 h-[200px]"
             icon={true}
             firstMessage="No connections added"
-            secondMessage={mayAdd ? "Please connect your first backend" : null}
+            secondMessage="Please connect your first backend"
           >
-            {mayAdd && (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="mt-4"
-                onClick={handleConnectBackend}
-              >
-                Connect Backend
-              </Button>
-            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              className="mt-4"
+              onClick={handleConnectBackend}
+            >
+              Connect Backend
+            </Button>
           </SearchResultsNotFound>
         )}
       </div>

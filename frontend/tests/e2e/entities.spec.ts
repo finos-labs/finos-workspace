@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { userInfo } from "./helpers";
+import { addUser, deleteUser, userInfo } from "./helpers";
 
 const ENTITY_TYPES_URL = "/admin/entities?tab=entity-types";
 const USERS_URL = "/admin/entities?tab=users";
@@ -71,15 +71,7 @@ test("All users lists the superuser with their user type", async ({ page }) => {
 // A user an admin adds is moved to another user type of their entity, and deleted again
 test("a superuser moves a user to another user type", async ({ page }) => {
   const email = `e2e-move-${crypto.randomUUID().slice(0, 8)}@example.com`;
-  await page.goto("/admin/users");
-  await page.getByRole("button", { name: "Add users" }).click();
-  const addDialog = page.getByRole("dialog");
-  await addDialog.getByLabel("First name").fill("E2E");
-  await addDialog.getByLabel("Last name").fill("Move");
-  await addDialog.getByLabel("Email address").fill(email);
-  await addDialog.getByRole("button", { name: "Add", exact: true }).click();
-  await page.getByRole("button", { name: "Done" }).click();
-  await expect(addDialog).toBeHidden();
+  await addUser(page, email, "Move");
 
   try {
     const row = await allUsersRow(page, email);
@@ -95,13 +87,6 @@ test("a superuser moves a user to another user type", async ({ page }) => {
 
     await expect(rowWith(page, email)).toContainText("Developer");
   } finally {
-    await page.goto("/admin/users");
-    await page.getByPlaceholder("Search for users").fill(email);
-    const row = rowWith(page, email);
-    await row.hover();
-    await row.getByRole("button", { name: "Edit user" }).click();
-    await page.getByTestId("delete-account-button").click();
-    await page.getByRole("button", { name: "Yes, delete account" }).click();
-    await expect(page.getByTestId("delete-user-dialog")).toBeHidden();
+    await deleteUser(page, email);
   }
 });

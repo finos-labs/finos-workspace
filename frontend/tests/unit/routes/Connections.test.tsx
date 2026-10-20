@@ -2,10 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { forwardRef, type ReactNode } from "react";
-import { BrowserRouter, MemoryRouter, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BackendPermissionsT } from "~/api/user_roles.api";
 import type { ButtonProps } from "~/components/ds/atoms/Button";
+import { useAccessStore } from "~/lib/state/access";
 import type { ExternalCopilotHolder } from "~/lib/state/copilot";
 import ConnectionsPage from "~/routes/Connections";
 import { setAccess } from "../factories";
@@ -499,14 +506,43 @@ describe("ConnectionsPage", () => {
       });
     });
 
-    it("is not offered to a User, who cannot add connections", () => {
+    const renderAtTheRoute = () =>
+      render(
+        <MemoryRouter initialEntries={["/app/connections"]}>
+          <Routes>
+            <Route path="/app" element={<p>apps page</p>} />
+            <Route path="/app/connections" element={<ConnectionsPage />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+    it("sends a User, who brings no connections, to Apps", () => {
       setAccess({ user_type: "User" });
-      renderConnections();
+      renderAtTheRoute();
+
+      expect(screen.getByText("apps page")).toBeInTheDocument();
+      expect(screen.queryByText("My Backend")).not.toBeInTheDocument();
+    });
+
+    it("waits for the session to say who the user is", () => {
+      useAccessStore.setState({ access: null });
+      renderAtTheRoute();
+
+      expect(screen.queryByText("apps page")).not.toBeInTheDocument();
+      expect(screen.queryByText("My Backend")).not.toBeInTheDocument();
+    });
+
+    it.each([
+      "Admin",
+      "Developer",
+    ] as const)("is an %s's, who brings their own connections", (userType) => {
+      setAccess({ user_type: userType });
+      renderAtTheRoute();
 
       expect(screen.getByText("My Backend")).toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: /connect backend/i }),
-      ).not.toBeInTheDocument();
+        screen.getAllByRole("button", { name: /connect backend/i }).length,
+      ).toBeGreaterThan(0);
     });
   });
 

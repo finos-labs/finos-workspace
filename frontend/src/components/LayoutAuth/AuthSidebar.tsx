@@ -11,7 +11,11 @@ import useDetectOS from "~/hooks/useDetectOS";
 import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
 import { ENABLE_SHARING } from "~/lib/constants";
 import { useMobile } from "~/lib/providers/MobileProvider";
-import { canReceiveShares, useShallowAccessStore } from "~/lib/state/access";
+import {
+  canAddConnections,
+  canReceiveShares,
+  useShallowAccessStore,
+} from "~/lib/state/access";
 import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
 import { useShallowSidebarStore, useSidebarStore } from "~/lib/state/sidebar";
 import { useShallowThemeStore } from "~/lib/state/theme";
@@ -241,6 +245,8 @@ function TabLink(props: TabLinkProps) {
 }
 
 function LinksNav() {
+  // A User brings no connections, so the page is not theirs
+  const mayAddConnections = useShallowAccessStore((s) => canAddConnections(s.access));
   const linksMemo = useMemo(
     () => (
       <div key="auth-links" className="mt-4">
@@ -249,9 +255,10 @@ function LinksNav() {
             <TabLink key={`auth-link-${link.id}`} {...link} />
           ))}
 
-          {TABS_LINKS.connections.map((link) => (
-            <TabLink key={`auth-link-${link.id}`} {...link} />
-          ))}
+          {mayAddConnections &&
+            TABS_LINKS.connections.map((link) => (
+              <TabLink key={`auth-link-${link.id}`} {...link} />
+            ))}
         </div>
 
         <SidebarSection className="mt-4" id="library" title="Library">
@@ -263,7 +270,7 @@ function LinksNav() {
         </SidebarSection>
       </div>
     ),
-    [],
+    [mayAddConnections],
   );
 
   return (
