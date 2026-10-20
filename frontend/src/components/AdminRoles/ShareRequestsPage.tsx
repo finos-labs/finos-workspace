@@ -11,7 +11,6 @@ import {
 import { errorMessage } from "~/api/errors";
 import type { DataTableColumn } from "~/components/ds/molecules/DataTable";
 import { DataTable } from "~/components/ds/molecules/DataTable";
-import BrandedLoadingState from "~/components/General/BrandedLoadingState";
 import { Button } from "../ds/atoms/Button";
 
 type Decision = "approve" | "decline";
@@ -140,11 +139,8 @@ export function ShareRequestsPage() {
       value="share-requests"
       className="p-6 text-sm only-sm:h-screen"
     >
-      {isLoading ? (
-        <div className="flex h-full items-center justify-center py-20">
-          <BrandedLoadingState />
-        </div>
-      ) : error ? (
+      {/* The requests show when they are there: no loading animation in between */}
+      {isLoading ? null : error ? (
         <p className="text-xs">Error loading share requests.</p>
       ) : requests.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center min-h-[248px] bg-general-bg-primary rounded">

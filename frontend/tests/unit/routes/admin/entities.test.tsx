@@ -17,9 +17,6 @@ vi.mock("~/components/AdminEntities/EntityMapsTab", () => ({
 vi.mock("~/components/AdminEntities/UsersTab", () => ({
   UsersTab: () => <p>users tab</p>,
 }));
-vi.mock("~/components/General/BrandedLoadingState", () => ({
-  default: () => <p>loading</p>,
-}));
 
 function renderPage() {
   return render(
@@ -42,7 +39,7 @@ describe("AdminEntities page", () => {
     });
     renderPage();
 
-    expect(screen.getByText("loading")).toBeInTheDocument();
+    expect(screen.queryByText("Entity Management")).not.toBeInTheDocument();
     expect(screen.queryByText("admin home")).not.toBeInTheDocument();
   });
 

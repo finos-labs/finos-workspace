@@ -4,7 +4,6 @@ import { EntitiesTab } from "~/components/AdminEntities/EntitiesTab";
 import { EntityMapsTab } from "~/components/AdminEntities/EntityMapsTab";
 import { EntityRelationshipsTab } from "~/components/AdminEntities/EntityRelationshipsTab";
 import { UsersTab } from "~/components/AdminEntities/UsersTab";
-import BrandedLoadingState from "~/components/General/BrandedLoadingState";
 import { SettingsLayout } from "~/components/LayoutAuth/Skeleton/SettingsLayout";
 import { useIsEntityAdmin } from "~/hooks/useEntityAdmin";
 
@@ -18,13 +17,8 @@ const TABS = [
 export default function AdminEntities() {
   const { isEntityAdmin, isLoading } = useIsEntityAdmin();
 
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center bg-surface-page">
-        <BrandedLoadingState />
-      </div>
-    );
-  }
+  // Until the superuser check answers there is nothing to show: no loading animation
+  if (isLoading) return null;
 
   if (!isEntityAdmin) return <Navigate to="/admin" />;
 

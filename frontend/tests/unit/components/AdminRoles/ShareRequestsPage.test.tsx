@@ -65,6 +65,14 @@ describe("ShareRequestsPage", () => {
     (decideShareRequest as Mock).mockResolvedValue({ success: true });
   });
 
+  it("shows nothing while the requests load: no loading animation", () => {
+    (getShareRequests as Mock).mockReturnValue(new Promise(() => {}));
+    renderPage();
+
+    expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
   it("lists what developers asked to share, and with whom", async () => {
     (getShareRequests as Mock).mockResolvedValue([
       dashboardRequest,
