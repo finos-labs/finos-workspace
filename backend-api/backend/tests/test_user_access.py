@@ -1,8 +1,8 @@
 """
 Integration tests for what users may do.
 
-A user's type is the name of their permissions map. What they may do with shared items,
-the Excel add-in and their daily limits come from the roles an admin assigned them: the
+A user's type is the name of their permissions map. What they may do with shared items
+and their daily limits come from the roles an admin assigned them: the
 most any role allows, and nothing that no role grants. A new role has no limits, and a
 developer has none at all. An organization's sharing switch, which a superuser sets,
 turns sharing off for all its users.
@@ -31,7 +31,7 @@ from routers.app.helpers import (
     get_user_copilot_access,
     get_user_limits,
 )
-from tests.fixtures.base import _TEST_ENTITY_TYPE_UUID, bearer_client
+from tests.fixtures.base import _TEST_ENTITY_TYPE_UUID
 from tests.fixtures.base import superuser_override
 from tests.fixtures.organization import (
     ADMIN_ENTITY,
@@ -61,7 +61,7 @@ class TestAccessFromRoles:
     @pytest.mark.asyncio
     async def test_a_user_without_roles_gets_nothing(self, organization, db_session):
         assert await get_user_access(db_session, MEMBER_UUID) == schemas.UserAccess(
-            user_type="User", sharing="none", excel_add_in=False
+            user_type="User", sharing="none"
         )
         assert await get_user_limits(db_session, MEMBER_UUID) == schemas.UserLimits(
             copilot_calls_day=0, copilot_tokens_day=0, upload_size_gb=0
@@ -73,8 +73,7 @@ class TestAccessFromRoles:
     ):
         await organization.role(MEMBER_UUID)
 
-        access = await get_user_access(db_session, MEMBER_UUID)
-        assert (access.sharing, access.excel_add_in) == ("none", False)
+        assert (await get_user_access(db_session, MEMBER_UUID)).sharing == "none"
         assert await get_user_limits(db_session, MEMBER_UUID) == NO_LIMITS
 
     @pytest.mark.asyncio
@@ -134,7 +133,6 @@ class TestAccessFromRoles:
         await organization.role(
             MEMBER_UUID,
             sharing="share",
-            excel_add_in=True,
             copilot_calls_day=3,
             copilot_tokens_day=2_000,
             upload_size_gb=2,
@@ -147,8 +145,7 @@ class TestAccessFromRoles:
             upload_size_gb=0,
         )
 
-        access = await get_user_access(db_session, MEMBER_UUID)
-        assert (access.sharing, access.excel_add_in) == ("share", True)
+        assert (await get_user_access(db_session, MEMBER_UUID)).sharing == "share"
         assert await get_user_limits(db_session, MEMBER_UUID) == schemas.UserLimits(
             copilot_calls_day=5, copilot_tokens_day=2_000, upload_size_gb=2
         )
@@ -175,20 +172,16 @@ class TestAccessFromRoles:
     async def test_the_organization_switch_turns_sharing_off(
         self, organization, db_session
     ):
-        await organization.role(MEMBER_UUID, sharing="share", excel_add_in=True)
+        await organization.role(MEMBER_UUID, sharing="share")
         await organization.set_sharing_enabled(False)
 
-        access = await get_user_access(db_session, MEMBER_UUID)
-        assert access.sharing == "none"
-        # The switch is about sharing only
-        assert access.excel_add_in is True
+        assert (await get_user_access(db_session, MEMBER_UUID)).sharing == "none"
 
     @pytest.mark.asyncio
     async def test_deleted_roles_give_nothing(self, organization, db_session):
         role = await organization.role(
             MEMBER_UUID,
             sharing="share",
-            excel_add_in=True,
             copilot_calls_day=None,
             copilot_tokens_day=None,
             upload_size_gb=None,
@@ -200,8 +193,7 @@ class TestAccessFromRoles:
         )
         await db_session.commit()
 
-        access = await get_user_access(db_session, MEMBER_UUID)
-        assert (access.sharing, access.excel_add_in) == ("none", False)
+        assert (await get_user_access(db_session, MEMBER_UUID)).sharing == "none"
         assert (await get_user_limits(db_session, MEMBER_UUID)).copilot_calls_day == 0
 
     @pytest.mark.asyncio
@@ -212,7 +204,6 @@ class TestAccessFromRoles:
         await organization.role(
             user.uuid,
             sharing="share",
-            excel_add_in=True,
             copilot_calls_day=None,
             copilot_tokens_day=None,
             upload_size_gb=None,
@@ -225,7 +216,7 @@ class TestAccessFromRoles:
         await db_session.commit()
 
         assert await get_user_access(db_session, user.uuid) == schemas.UserAccess(
-            user_type=None, sharing="none", excel_add_in=False
+            user_type=None, sharing="none"
         )
         assert await get_user_limits(db_session, user.uuid) == schemas.UserLimits(
             copilot_calls_day=0, copilot_tokens_day=0, upload_size_gb=0
@@ -264,16 +255,12 @@ class TestAccessFromRoles:
 class TestAccessEndpoint:
     @pytest.mark.asyncio
     async def test_access_is_served_to_the_user(self, organization, auth_client):
-        await organization.role(MEMBER_UUID, sharing="receive", excel_add_in=True)
+        await organization.role(MEMBER_UUID, sharing="receive")
 
         response = await auth_client.get("/app/access")
 
         assert response.status_code == 200
-        assert response.json() == {
-            "user_type": "User",
-            "sharing": "receive",
-            "excel_add_in": True,
-        }
+        assert response.json() == {"user_type": "User", "sharing": "receive"}
 
     @pytest.mark.asyncio
     async def test_access_needs_a_session(self, client):
@@ -286,11 +273,7 @@ class TestAccessEndpoint:
 
         data = (await auth_client.get("/app/dash/validate-and-sync")).json()
 
-        assert data["access"] == {
-            "user_type": "User",
-            "sharing": "share",
-            "excel_add_in": False,
-        }
+        assert data["access"] == {"user_type": "User", "sharing": "share"}
 
     @pytest.mark.asyncio
     async def test_the_admin_changes_the_user_type(
@@ -318,11 +301,7 @@ class TestSignIn:
 
         assert response.status_code == 200, response.text
         data = response.json()
-        assert data["access"] == {
-            "user_type": "User",
-            "sharing": "none",
-            "excel_add_in": False,
-        }
+        assert data["access"] == {"user_type": "User", "sharing": "none"}
 
     @pytest.mark.asyncio
     async def test_a_new_user_lands_on_the_apps_page(self, organization, app_client):
@@ -351,77 +330,31 @@ class TestSignIn:
             expires = expires.replace(tzinfo=UTC)
         assert abs(expires - (before + timedelta(days=days))) < timedelta(minutes=5)
 
-    @pytest.mark.asyncio
-    async def test_the_excel_add_in_needs_a_role_that_grants_it(
-        self, organization, app_client
-    ):
-        user = await organization.add_user(password=PASSWORD)
-        await organization.role(user.uuid)
-
-        response = await app_client.post(
-            "/app/login", json=_login(user.email, source="excel")
-        )
-        assert response.status_code == 403
-        assert response.json()["detail"] == (
-            "Excel add-in access is not granted to your account"
-        )
-
-        # The web app does not need it
-        response = await app_client.post("/app/login", json=_login(user.email))
-        assert response.status_code == 200, response.text
-
-    @pytest.mark.asyncio
-    async def test_the_excel_add_in_signs_in_with_the_grant(
-        self, organization, app_client
-    ):
-        user = await organization.add_user(password=PASSWORD)
-        await organization.role(user.uuid, excel_add_in=True)
-
-        response = await app_client.post(
-            "/app/login", json=_login(user.email, source="excel")
-        )
-
-        assert response.status_code == 200, response.text
-        assert response.json()["access"]["excel_add_in"] is True
-
 
 class TestSignOut:
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(("source", "kept"), [("excel", "app"), ("app", "excel")])
-    async def test_signing_out_ends_the_sessions_of_its_own_kind(
-        self, organization, app_client, db_session, source, kept
+    async def test_signing_out_ends_the_web_apps_session(
+        self, organization, app_client, db_session
     ):
         user = await organization.add_user(password=PASSWORD)
-        await organization.role(user.uuid, excel_add_in=True)
-        for kind in ("excel", "app"):
-            response = await app_client.post(
-                "/app/login", json=_login(user.email, source=kind)
-            )
-            assert response.status_code == 200, response.text
-            if kind == "excel":
-                # The add-in is no browser: its session comes in the answer
-                excel_token = response.json()["access_token"]
-            else:
-                # The web app's session is the cookie only
-                assert "access_token" not in response.json()
+        response = await app_client.post("/app/login", json=_login(user.email))
+        assert response.status_code == 200, response.text
+        # The web app's session is the cookie only
+        assert "access_token" not in response.json()
 
-        if source == "excel":
-            async with bearer_client(excel_token) as excel:
-                response = await excel.post("/app/logout")
-        else:
-            response = await app_client.post("/app/logout")
+        response = await app_client.post("/app/logout")
         assert response.status_code == 200, response.text
         assert response.json() == {"success": True}
 
-        sources = (
+        sessions = (
             await db_session.execute(
-                select(models.Session.source).where(
+                select(models.Session.uuid).where(
                     models.Session.user_uuid == user.uuid,
                     models.Session.app_session.is_(True),
                 )
             )
         ).scalars()
-        assert list(sources) == [kept]
+        assert list(sessions) == []
 
 
 class TestOrganizations:
@@ -545,7 +478,7 @@ class TestLeavingTheOrganization:
     ):
         user = await organization.add_user()
         role_uuid = await organization.role(
-            user.uuid, sharing="share", excel_add_in=True, copilot_calls_day=None
+            user.uuid, sharing="share", copilot_calls_day=None
         )
         db_session.add(
             models.RoleCopilotModel(role_uuid=role_uuid, agent_id="agent", model_id="m")
@@ -563,41 +496,13 @@ class TestLeavingTheOrganization:
             )
         ).all()
         assert user_roles == []
-        access = await get_user_access(db_session, user.uuid)
-        assert (access.sharing, access.excel_add_in) == ("none", False)
+        assert (await get_user_access(db_session, user.uuid)).sharing == "none"
         assert (await get_user_limits(db_session, user.uuid)).copilot_calls_day == 0
         assert (await get_user_copilot_access(db_session, user.uuid)).models == []
 
         # Nor is the user listed among the role's members
         members = (await admin_client.get(f"/admin/role/{role_uuid}")).json()["users"]
         assert user.email not in members
-
-    @pytest.mark.asyncio
-    async def test_taking_the_excel_add_in_away_ends_its_sessions(
-        self, organization, app_client, admin_client, db_session
-    ):
-        user = await organization.add_user(password=PASSWORD)
-        role_uuid = await organization.role(user.uuid, excel_add_in=True)
-        for source in ("excel", "app"):
-            response = await app_client.post(
-                "/app/login", json=_login(user.email, source=source)
-            )
-            assert response.status_code == 200, response.text
-
-        response = await admin_client.patch(
-            f"/admin/role/{role_uuid}", json={"excel_add_in": False}
-        )
-        assert response.status_code == 200, response.text
-
-        sources = (
-            await db_session.execute(
-                select(models.Session.source).where(
-                    models.Session.user_uuid == user.uuid,
-                    models.Session.app_session.is_(True),
-                )
-            )
-        ).scalars()
-        assert sorted(sources) == ["app"]
 
 
 class TestRoleAudit:
@@ -610,7 +515,6 @@ class TestRoleAudit:
             copilot_calls_day=None,
             copilot_tokens_day=1000,
             upload_size_gb=2,
-            excel_add_in=True,
             search_web=True,
             fetch_from_web=False,
         )
@@ -624,7 +528,6 @@ class TestRoleAudit:
             "copilot_calls_day": None,
             "copilot_tokens_day": 1000,
             "upload_size_gb": 2,
-            "excel_add_in": True,
             "search_web": True,
             "fetch_from_web": False,
         }
@@ -635,7 +538,7 @@ class TestRoleAudit:
         role = await db_session.get(models.Role, role_uuid)
         role.sharing = "share"
         role.copilot_calls_day = None
-        role.excel_add_in = True
+        role.search_web = False
         try:
             with patch(
                 "api.events.role_permission_events._create_role_audit_entry"
@@ -647,7 +550,7 @@ class TestRoleAudit:
         assert audit.call_args.args[4] == {
             "sharing": {"old": "receive", "new": "share"},
             "copilot_calls_day": {"old": 5, "new": None},
-            "excel_add_in": {"old": False, "new": True},
+            "search_web": {"old": True, "new": False},
         }
 
 
@@ -666,18 +569,18 @@ class TestRoleSettings:
                 "copilot_calls_day": 10,
                 "copilot_tokens_day": None,
                 "upload_size_gb": 5,
-                "excel_add_in": True,
+                "search_web": False,
             },
         )
         assert response.status_code == 200, response.text
 
         role = (await admin_client.get(f"/admin/role/{role_uuid}")).json()
-        assert {key: role[key] for key in ("sharing", *schemas.ROLE_LIMITS, "excel_add_in")} == {
+        assert {key: role[key] for key in ("sharing", *schemas.ROLE_LIMITS, "search_web")} == {
             "sharing": "share",
             "copilot_calls_day": 10,
             "copilot_tokens_day": None,
             "upload_size_gb": 5,
-            "excel_add_in": True,
+            "search_web": False,
         }
         listed = next(
             item
@@ -707,14 +610,14 @@ class TestRoleSettings:
         assert role["copilot_calls_day"] is None
         assert role["copilot_tokens_day"] is None
         assert role["upload_size_gb"] is None
-        assert role["excel_add_in"] is False
+        assert (role["search_web"], role["fetch_from_web"]) == (True, True)
 
     @pytest.mark.asyncio
     async def test_patching_sets_what_is_sent_and_a_limit_back_to_none(
         self, organization, admin_client
     ):
         role_uuid = await organization.role(
-            sharing="receive", copilot_calls_day=4, upload_size_gb=2, excel_add_in=True
+            sharing="receive", copilot_calls_day=4, upload_size_gb=2, search_web=False
         )
         path = f"/admin/role/{role_uuid}"
 
@@ -722,21 +625,21 @@ class TestRoleSettings:
         assert response.status_code == 200
         role = (await admin_client.get(path)).json()
         assert role["copilot_calls_day"] is None
-        assert (role["sharing"], role["upload_size_gb"], role["excel_add_in"]) == (
+        assert (role["sharing"], role["upload_size_gb"], role["search_web"]) == (
             "receive",
             2,
-            True,
+            False,
         )
 
         response = await admin_client.patch(
-            path, json={"sharing": "share", "upload_size_gb": 3, "excel_add_in": False}
+            path, json={"sharing": "share", "upload_size_gb": 3, "search_web": True}
         )
         assert response.status_code == 200
         role = (await admin_client.get(path)).json()
-        assert (role["sharing"], role["upload_size_gb"], role["excel_add_in"]) == (
+        assert (role["sharing"], role["upload_size_gb"], role["search_web"]) == (
             "share",
             3,
-            False,
+            True,
         )
         assert role["copilot_calls_day"] is None
 
@@ -771,7 +674,7 @@ class TestRoleSettings:
         role_uuid = await organization.role(MEMBER_UUID)
 
         response = await auth_client.patch(
-            f"/admin/role/{role_uuid}", json={"sharing": "share", "excel_add_in": True}
+            f"/admin/role/{role_uuid}", json={"sharing": "share", "search_web": False}
         )
         assert response.status_code in {401, 403}
         assert (await auth_client.get("/app/access")).json()["sharing"] == "none"

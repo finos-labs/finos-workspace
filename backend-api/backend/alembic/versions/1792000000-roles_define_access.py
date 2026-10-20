@@ -4,8 +4,8 @@ Drops the tier, default_tier, data_bundle, entity_entitlement and entitlement ta
 entity.seats, entity.expiration_date and user.billing_active, and renames
 entitlement_usage to user_usage. Adds the organization's sharing switch
 (entity.sharing_enabled, on) and the role settings: sharing level, daily Copilot calls
-and tokens, upload size, Excel add-in and the Copilot's web tools (search_web,
-fetch_from_web). Every organization without a "Developer" permissions map gets one.
+and tokens, upload size and the Copilot's web tools (search_web, fetch_from_web). Every
+organization without a "Developer" permissions map gets one.
 
 The roles that exist share nothing and have no limits, as a new role. Their web tools are
 on, except where their organization's entitlement had switched them off; the switches set
@@ -13,7 +13,7 @@ for one user (entitlement) are not carried over. downgrade() restores the schema
 data.
 
 Revision ID: 4f1c8a2d9e63
-Revises: 9c4d7a2e1f35
+Revises: b6dd1da576b6
 Create Date: 2026-10-14
 
 """
@@ -29,7 +29,7 @@ from alembic import op  # type: ignore
 
 # revision identifiers, used by Alembic.
 revision = "4f1c8a2d9e63"
-down_revision = "9c4d7a2e1f35"
+down_revision = "b6dd1da576b6"
 branch_labels = None
 depends_on = None
 
@@ -60,9 +60,6 @@ def _role_columns() -> list[sa.Column]:
         sa.Column("copilot_calls_day", sa.Integer(), nullable=True),
         sa.Column("copilot_tokens_day", sa.BigInteger(), nullable=True),
         sa.Column("upload_size_gb", sa.Integer(), nullable=True),
-        sa.Column(
-            "excel_add_in", sa.Boolean(), server_default=sa.false(), nullable=False
-        ),
         *(
             sa.Column(switch, sa.Boolean(), server_default=sa.true(), nullable=False)
             for switch in WEB_SWITCHES
@@ -239,7 +236,6 @@ def _feature_columns() -> list[sa.Column]:
         sa.Column("bring_your_own_copilot", sa.Boolean(), nullable=True),
         sa.Column("admin_access", sa.Boolean(), nullable=True),
         sa.Column("support", sa.Boolean(), nullable=True),
-        sa.Column("excel_add_in", sa.Boolean(), nullable=True),
         sa.Column("data_add_ons_redistribution", sa.Boolean(), nullable=True),
         *(
             sa.Column(switch, sa.Boolean(), nullable=True, server_default=sa.true())
@@ -288,7 +284,6 @@ def _restore_removed_tables():
         sa.Column("except_widgets", json_type(), nullable=False),
         sa.Column("except_dashboard_templates", json_type(), nullable=False),
         sa.Column("except_team_collaboration", json_type(), nullable=True),
-        sa.Column("excel_add_in", sa.Boolean(), nullable=False),
         sa.Column("data_export", sa.Boolean(), nullable=False),
         sa.Column("providers", json_type(), nullable=True),
         sa.Column("dashboards_at_launch", json_type(), nullable=True),

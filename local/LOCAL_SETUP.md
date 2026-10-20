@@ -79,7 +79,7 @@ The backend reads `backend-api/backend/envs/.env`, the same file the root `docke
 | `DB_NAME` | `workspace` | The database the MySQL container creates |
 | `STORAGE_PROVIDER` | `folder` | Uploaded files go to `backend-api/backend/local_storage/` instead of cloud storage |
 | `JWT_SECRET`, `WORKSPACE_AES_KEY`, `WORKSPACE_AUTH_TOKEN`, `LOCAL_STORAGE_SECRET_KEY` | generated | `WORKSPACE_AUTH_TOKEN` is a JWT signed with `JWT_SECRET`; the example leaves them blank, and the API refuses to start without strong values |
-| `BACKEND_CORS_ORIGINS` | `http://localhost:3000`, `:3001`, `:1420`, `:5173` | The origins of the web app and the admin panel: the root `docker-compose.yml`'s, this stack's dev server and the admin panel's. Add the Excel add-in's `https` origin to use it against this stack |
+| `BACKEND_CORS_ORIGINS` | `http://localhost:3000`, `:3001`, `:1420`, `:5173` | The origins of the web app and the admin panel: the root `docker-compose.yml`'s, this stack's dev server and the admin panel's |
 
 `compose.yaml` overrides `FRONTENDURL` and `APPURL` with `http://localhost:1420`, the address of the dev server, so links and redirects point at it. The dev server on another port reaches the API because `http://localhost:1420` is one of `BACKEND_CORS_ORIGINS`. An MCP server on your machine or network that the API should reach goes in `ALLOWED_MCP_HOSTNAMES` (see `envs/.env.example`).
 

@@ -111,8 +111,8 @@ entry of `BACKEND_CORS_ORIGINS`.
 - `auth_client`, `admin_client` and `second_user_client` are the web app signed in: each
   has a session in the table (stored as its hash) and sends its cookie, the client header
   and the origin.
-- `bearer_client(token)` (`fixtures/base.py`) is a client that is not a browser (the Excel
-  add-in, the admin CLI): it sends `Authorization: Bearer <token>`.
+- `bearer_client(token)` (`fixtures/base.py`) is a client that is not a browser (the default
+  Copilot with an agent token): it sends `Authorization: Bearer <token>`.
 - `ADMIN_HEADERS` are the admin panel's headers, for `POST /login`, `GET /session` and
   the panel's cookie.
 

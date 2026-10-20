@@ -31,8 +31,8 @@ StoredFileT = TypeVar("StoredFileT", bound="StoredFile")
 
 main_config = ConfigDict(extra="forbid", from_attributes=True)
 # Who signs in at POST /app/login: the web app ("app", and "oauth-app" after a sign-in
-# provider) or the Excel add-in
-AppLoginSource = Literal["app", "oauth-app", "excel"]
+# provider)
+AppLoginSource = Literal["app", "oauth-app"]
 MetaDataWidgetType = Literal[
     "iframe",
     "copilot_table",
@@ -518,7 +518,6 @@ class UserAccess(BaseModel):
     model_config = main_config
     user_type: UserType | None
     sharing: SharingLevel
-    excel_add_in: bool
 
 
 class UserLimits(BaseModel):
@@ -1356,7 +1355,6 @@ class GetRoleWithUsers(BaseModel):
     copilot_calls_day: int | None
     copilot_tokens_day: int | None
     upload_size_gb: int | None
-    excel_add_in: bool
     search_web: bool
     fetch_from_web: bool
 
@@ -1372,7 +1370,6 @@ class GetRoleWithUsers(BaseModel):
             copilot_calls_day=role.copilot_calls_day,
             copilot_tokens_day=role.copilot_tokens_day,
             upload_size_gb=role.upload_size_gb,
-            excel_add_in=role.excel_add_in,
             search_web=role.search_web,
             fetch_from_web=role.fetch_from_web,
         )
@@ -1389,7 +1386,6 @@ class PostRole(BaseModel):
     copilot_calls_day: int | None = Field(None, ge=0)
     copilot_tokens_day: int | None = Field(None, ge=0)
     upload_size_gb: int | None = Field(None, ge=0)
-    excel_add_in: bool = False
     search_web: bool = True
     fetch_from_web: bool = True
 
@@ -1403,7 +1399,6 @@ class PatchRole(BaseModel):
     copilot_calls_day: int | None = Field(None, ge=0)
     copilot_tokens_day: int | None = Field(None, ge=0)
     upload_size_gb: int | None = Field(None, ge=0)
-    excel_add_in: bool | None = None
     search_web: bool | None = None
     fetch_from_web: bool | None = None
 
@@ -1552,9 +1547,7 @@ class EntityThemeSettings(BaseModel):
 class AppToken(BaseModel, extra="ignore"):  # type: ignore[call-arg]
     uuid: UUID
     email: EmailStr
-    # The session token, for the client that is not a browser only (the Excel add-in).
-    # The web app's session is an HttpOnly cookie it never sees.
-    access_token: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    # No session token: the web app's session is an HttpOnly cookie it never sees.
     username: str | None
     expiration_date: datetime
     temporary_password: bool

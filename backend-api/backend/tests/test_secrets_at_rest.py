@@ -242,16 +242,16 @@ class TestMcpServerHeaders:
     async def test_local_server_headers_are_never_served_to_a_bearer_session(
         self, auth_client, db_session
     ):
-        """An Excel or CLI session token never reads stored MCP header values."""
+        """A session token sent as a bearer never reads stored MCP header values."""
         local = "http://localhost:8123/mcp"
         await _save(auth_client, _server(url=local, customHeaders={"X-Local": "local-value"}))
         session_uuid = uuid4()
         token = await _create_session_record(
-            db_session, _AUTH_USER["user_uuid"], str(session_uuid), "excel"
+            db_session, _AUTH_USER["user_uuid"], str(session_uuid), "app"
         )
         try:
-            async with bearer_client(token) as excel:
-                response = await excel.post(
+            async with bearer_client(token) as bearer:
+                response = await bearer.post(
                     "/app/mcp-servers/local-headers", json={"url": local}
                 )
         finally:

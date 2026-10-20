@@ -44,7 +44,6 @@ export const mockUsage: Usage = {
 export const mockAccess: UserAccess = {
   user_type: "User",
   sharing: "none",
-  excel_add_in: false,
 };
 
 /** GET /app/session: the signed-in user restored from the session cookie. */

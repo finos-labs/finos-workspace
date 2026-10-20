@@ -547,15 +547,16 @@ class TestSignIn:
         servers.hosts.requests.clear()
         session_uuid = uuid4()
         token = await _create_session_record(
-            db_session, _AUTH_USER["user_uuid"], str(session_uuid), "excel"
+            db_session, _AUTH_USER["user_uuid"], str(session_uuid), "app"
         )
         try:
-            async with bearer_client(token) as excel:
+            # A session of the user's, sent as a bearer: only the web app's cookie is one
+            async with bearer_client(token) as bearer:
                 responses = [
-                    await _start(excel),
-                    await _proxy(excel),
-                    await excel.post("/app/mcp-oauth/disconnect", json={"server_url": MCP_URL}),
-                    await excel.post(
+                    await _start(bearer),
+                    await _proxy(bearer),
+                    await bearer.post("/app/mcp-oauth/disconnect", json={"server_url": MCP_URL}),
+                    await bearer.post(
                         "/app/mcp-servers/local-headers",
                         json={"url": "http://localhost:8123/mcp"},
                     ),

@@ -64,7 +64,6 @@ const createRoleSchema = (initialData: RoleT | undefined, roles: string[]) =>
       copilot_calls_day: limit,
       copilot_tokens_day: limit,
       upload_size_gb: limit,
-      excel_add_in: z.boolean(),
       search_web: z.boolean(),
       fetch_from_web: z.boolean(),
     })
@@ -107,7 +106,6 @@ function roleFormValues(role: RoleT | undefined): RoleForm {
     copilot_calls_day: limitForm(role?.copilot_calls_day),
     copilot_tokens_day: limitForm(role?.copilot_tokens_day),
     upload_size_gb: limitForm(role?.upload_size_gb),
-    excel_add_in: role?.excel_add_in ?? false,
     search_web: role?.search_web ?? true,
     fetch_from_web: role?.fetch_from_web ?? true,
   };
@@ -119,7 +117,6 @@ function roleSettings(values: RoleForm): RoleSettings {
     copilot_calls_day: limitValue(values.copilot_calls_day),
     copilot_tokens_day: limitValue(values.copilot_tokens_day),
     upload_size_gb: limitValue(values.upload_size_gb),
-    excel_add_in: values.excel_add_in,
     search_web: values.search_web,
     fetch_from_web: values.fetch_from_web,
   };
@@ -132,7 +129,6 @@ const LIMIT_FIELDS = [
 ] as const;
 
 const SWITCH_FIELDS = [
-  { name: "excel_add_in", label: "Excel add-in" },
   { name: "search_web", label: "Copilot may search the web (SEARCH_WEB)" },
   {
     name: "fetch_from_web",

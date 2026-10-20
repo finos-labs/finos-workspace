@@ -82,15 +82,13 @@ class TestMinting:
         # Without an allowed origin: no
         assert (await client.post("/app/copilot/token")).status_code == 403
 
-        # Nor with a bearer, nor with an agent token
+        # Nor with a session sent as a bearer
         user = await organization.add_user(password="TestPassword123!")  # noqa: S106
-        await organization.role(user.uuid, excel_add_in=True)
-        excel = await auth_helpers.create_login_token(
-            organization.db, user.uuid, timedelta(hours=1), app_session=True, source="excel"
+        session = await auth_helpers.create_login_token(
+            organization.db, user.uuid, timedelta(hours=1), app_session=True, source="app"
         )
-        async with bearer_client(excel) as add_in:
-            assert (await add_in.get("/app/user")).status_code == 200
-            assert (await add_in.post("/app/copilot/token")).status_code == 401
+        async with bearer_client(session) as bearer:
+            assert (await bearer.post("/app/copilot/token")).status_code == 401
 
 
 class TestItsThreeRoutes:

@@ -142,11 +142,7 @@ class TestAppLogin:
             assert app_client.cookies.get(SESSION_COOKIE)
             assert data["email"] == test_email
             assert data["uuid"] == test_user_uuid
-            assert data["access"] == {
-                "user_type": "Developer",
-                "sharing": "none",
-                "excel_add_in": False,
-            }
+            assert data["access"] == {"user_type": "Developer", "sharing": "none"}
         finally:
             await cleanup_test_user(db_session, user_uuid=test_user_uuid)
 

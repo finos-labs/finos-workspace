@@ -12,7 +12,6 @@ export type SharingLevel = "none" | "receive" | "share";
 export type UserAccess = {
   user_type: UserType | null;
   sharing: SharingLevel;
-  excel_add_in: boolean;
 };
 
 /** Today's usage against the user's limits; a null limit is no limit. */

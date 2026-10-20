@@ -11,7 +11,6 @@ Source code for Workspace and the components that build and run it.
 | `agent/` | Ines, the Copilot's agent, and `agent/mcp-server/`, the tools she uses (Bun + TypeScript); see [agent/README.md](agent/README.md) |
 | `lite/` | Single-image Docker packaging of the backend and frontend |
 | `local/` | Development stack with hot reload for the frontend and the API (`make up`); see [local/LOCAL_SETUP.md](local/LOCAL_SETUP.md) |
-| `excel-add-in/` | The Add-in for Excel (Office.js, TypeScript/React) |
 
 Each component keeps its own README with setup and development instructions.
 
@@ -233,7 +232,7 @@ it does not answer.
 ## Notes
 
 - The workflows in the root `.github/workflows/` are the ones GitHub Actions runs: the checks on pull requests
-  (`frontend-checks.yml`, `backend-checks.yml`, `excel-add-in-checks.yml`, `admin-frontend-checks.yml`,
+  (`frontend-checks.yml`, `backend-checks.yml`, `admin-frontend-checks.yml`,
   `pr-description.yml`), the end-to-end tests (`e2e.yml`), the Docker images and build check (`backend-image.yml`,
   `frontend-image.yml`, `pr-build-check.yml`), the deployment to the dev environment (`deploy-dev.yml`, which builds
   the images and deploys them) and the production frontend deployment (`prod-deploy.yml`). The app's settings are

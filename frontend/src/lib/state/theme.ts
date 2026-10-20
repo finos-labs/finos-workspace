@@ -9,7 +9,7 @@ import type { SearchTabId } from "~/components/LayoutAuth/Search/SearchDialog";
 import type { WidgetItem } from "~/components/LayoutAuth/Search/WidgetMenu";
 import { getConfig } from "~/lib/runtimeConfig";
 import type { DisplaySettings } from "~/types/auth.type";
-import type { Selector, SideBarItem } from "./app";
+import type { Selector } from "./app";
 import { useAuthStore } from "./auth";
 import type { Source } from "./backendConnector";
 
@@ -144,10 +144,6 @@ interface ThemeState {
   getDisplaySettings: () => DisplaySettings;
   updateDisplaySettings: (settings: Partial<DisplaySettings>) => void;
   debouncedUpdateSettings: () => Promise<void> | undefined;
-  excelExportPopup: boolean;
-  setExcelExportPopup: (popup: boolean) => void;
-  excelExportItem: SideBarItem | null;
-  setExcelExportItem: (item: SideBarItem | null) => void;
   setEditAppDialog: (dialogState: Partial<ThemeState["editAppDialog"]>) => void;
   exportFolderPopup: boolean;
   setExportFolderPopup: (popup: boolean) => void;
@@ -445,10 +441,6 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
             const settings = get().getDisplaySettings();
             updateUserDisplaySettings(settings);
           }, 5000),
-          excelExportPopup: false,
-          setExcelExportPopup: (popup) => set({ excelExportPopup: popup }),
-          excelExportItem: null,
-          setExcelExportItem: (item) => set({ excelExportItem: item }),
           exportFolderPopup: false,
           setExportFolderPopup: (popup) => set({ exportFolderPopup: popup }),
           exportFolderItem: null,

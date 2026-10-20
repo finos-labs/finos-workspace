@@ -447,8 +447,8 @@ def web_session_headers(session_token: str) -> dict[str, str]:
 
 @asynccontextmanager
 async def bearer_client(session_token: str, origin: str | None = TEST_ORIGIN):
-    """Yield an AsyncClient that is a client other than a browser (the Excel add-in, the
-    admin CLI): its session is a bearer token, and it has no cookies."""
+    """Yield an AsyncClient that is a client other than a browser (the default Copilot with
+    an agent token): it sends a bearer token, and it has no cookies."""
     headers = {"Authorization": f"Bearer {session_token}"}
     if origin is not None:
         headers["Origin"] = origin

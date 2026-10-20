@@ -275,7 +275,7 @@ async def remove_from_entity(
 
 async def move_user(db: AsyncSession, user_uuid: UUID, permissions_uuid: UUID) -> None:
     """The user takes the user type `permissions_uuid` is, of its entity. Leaving an entity
-    takes their shares and roles with it; every web and Excel session of the user ends."""
+    takes their shares and roles with it; every web session of the user ends."""
     old_entity_query = (
         select(PermissionsEntityMap.entity_uuid)
         .join(User, User.permissions_uuid == PermissionsEntityMap.uuid)
@@ -300,9 +300,7 @@ async def move_user(db: AsyncSession, user_uuid: UUID, permissions_uuid: UUID) -
         await crud.update_user_dashboards_new_entity(db, user_uuid, new_entity_uuid)
         await app_helpers.left_organization(db, user_uuid)
 
-    await auth_helpers.delete_user_app_sessions(
-        db, user_uuid, ["app", "oauth-app", "excel"]
-    )
+    await auth_helpers.delete_user_app_sessions(db, user_uuid, ["app", "oauth-app"])
 
 
 def users_query(email: str = "") -> Select:

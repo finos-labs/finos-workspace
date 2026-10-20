@@ -45,8 +45,7 @@ INES_TARGET = INES / ".env"
 WEB_URL = "http://localhost:3000"
 API_URL = "http://localhost:8000"
 # The browsers' origins the API serves: docker-compose.yml's web app and admin panel, the
-# dev server of local/compose.yaml and the admin panel's `vite` dev server. To use the Excel
-# add-in against the stack, add its https origin to BACKEND_CORS_ORIGINS in envs/.env.
+# dev server of local/compose.yaml and the admin panel's `vite` dev server.
 BACKEND_CORS_ORIGINS = [
     WEB_URL,
     "http://localhost:3001",

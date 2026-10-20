@@ -140,7 +140,6 @@ export const makeAuthUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
 export const makeAccess = (overrides: Partial<UserAccess> = {}): UserAccess => ({
   user_type: "User",
   sharing: "none",
-  excel_add_in: false,
   ...overrides,
 });
 

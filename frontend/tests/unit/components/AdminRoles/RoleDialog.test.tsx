@@ -222,7 +222,6 @@ describe("RoleDialog", () => {
       copilot_calls_day: 50,
       copilot_tokens_day: null,
       upload_size_gb: 2,
-      excel_add_in: true,
       search_web: true,
       fetch_from_web: false,
     };
@@ -240,7 +239,7 @@ describe("RoleDialog", () => {
         screen.getByText("Sharing").closest(".BB-FormSelect") as HTMLElement,
       ).getByRole("combobox");
 
-    it("starts a new role with no sharing, no limits, no Excel add-in and the web tools on", () => {
+    it("starts a new role with no sharing, no limits and the web tools on", () => {
       renderDialog();
 
       expect(sharingSelect()).toHaveTextContent("None");
@@ -249,7 +248,6 @@ describe("RoleDialog", () => {
         expect(field(label)).toBeDisabled();
         expect(field(label).value).toBe("");
       }
-      expect(screen.getByRole("checkbox", { name: "Excel add-in" })).not.toBeChecked();
       expect(checkbox(SEARCH_WEB)).toBeChecked();
       expect(checkbox(FETCH_FROM_WEB)).toBeChecked();
     });
@@ -263,7 +261,6 @@ describe("RoleDialog", () => {
       expect(noLimit("Agent tokens per day")).toBeChecked();
       expect(field("Agent tokens per day")).toBeDisabled();
       expect(field("Upload size (GB)").value).toBe("2");
-      expect(screen.getByRole("checkbox", { name: "Excel add-in" })).toBeChecked();
       expect(checkbox(SEARCH_WEB)).toBeChecked();
       expect(checkbox(FETCH_FROM_WEB)).not.toBeChecked();
     });
@@ -287,7 +284,6 @@ describe("RoleDialog", () => {
       await userEvent.type(field("Agent tokens per day"), "5000");
       await userEvent.click(noLimit("Upload size (GB)"));
       await userEvent.type(field("Upload size (GB)"), "3");
-      await userEvent.click(screen.getByRole("checkbox", { name: "Excel add-in" }));
       await userEvent.click(checkbox(SEARCH_WEB));
 
       const save = screen.getByRole("button", { name: /^create role$/i });
@@ -301,7 +297,6 @@ describe("RoleDialog", () => {
         copilot_calls_day: null,
         copilot_tokens_day: 5000,
         upload_size_gb: 3,
-        excel_add_in: true,
         search_web: false,
         fetch_from_web: true,
       });
@@ -323,7 +318,6 @@ describe("RoleDialog", () => {
         copilot_calls_day: 75,
         copilot_tokens_day: null,
         upload_size_gb: 2,
-        excel_add_in: true,
         search_web: true,
         fetch_from_web: false,
       });
@@ -385,7 +379,6 @@ describe("RoleDialog", () => {
       copilot_calls_day: 0,
       copilot_tokens_day: 0,
       upload_size_gb: 0,
-      excel_add_in: false,
       search_web: true,
       fetch_from_web: true,
     };

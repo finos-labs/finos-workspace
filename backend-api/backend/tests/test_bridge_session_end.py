@@ -26,7 +26,13 @@ from routers.app.workspace_mcp.bridge import (
     BrowserUnavailableError,
 )
 from routers.app.workspace_mcp.schemas import BrowserSessionStartRequest
-from tests.fixtures.base import TEST_BASE_URL, TEST_ORIGIN, WEB_HEADERS, app, bearer_client
+from tests.fixtures.base import (
+    TEST_BASE_URL,
+    TEST_ORIGIN,
+    WEB_HEADERS,
+    app,
+    web_session_headers,
+)
 from tests.test_workspace_mcp_bridge import FakeAsyncRedis, FakeSocket
 
 # The module: the package exports its APIRouter under the same name
@@ -254,10 +260,10 @@ async def _browser(headers: dict[str, str] | None = None):
         yield browser
 
 
-async def _sign_in(browser, email: str, source: str = "app"):
+async def _sign_in(browser, email: str):
     response = await browser.post(
         "/app/login",
-        json={"email": email, "password": PASSWORD, "source": source, "version": "v1.0.0"},
+        json={"email": email, "password": PASSWORD, "source": "app", "version": "v1.0.0"},
     )
     assert response.status_code == 200, response.text
     return response
@@ -282,13 +288,12 @@ class TestTheSocketClosesWhenItsSessionEnds:
                 async with _browser(WEB_HEADERS) as other:
                     await _sign_in(other, user.email)
             elif how == "password change":
-                # From the Excel add-in, whose session the change keeps
-                await organization.role(user.uuid, excel_add_in=True)
-                async with _browser({"Origin": TEST_ORIGIN}) as add_in:
-                    sign_in = await _sign_in(add_in, user.email, "excel")
-                    token = sign_in.json()["access_token"]
-                async with bearer_client(token) as add_in:
-                    response = await add_in.put(
+                # From another web session of the user's, which the change keeps
+                other = await auth_helpers.create_login_token(
+                    organization.db, user.uuid, timedelta(hours=1), app_session=True, source="app"
+                )
+                async with _browser(web_session_headers(other)) as elsewhere:
+                    response = await elsewhere.put(
                         "/user",
                         json={"old_password": PASSWORD, "new_password": "NewPassword456!"},
                     )

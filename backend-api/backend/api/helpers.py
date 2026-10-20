@@ -78,7 +78,7 @@ def refresh_usage_cache(user_uuid: UUID) -> None:
 
 def handle_add_login(
     user_uuid: UUID,
-    source: None | Literal["app", "oauth-app", "excel", "admin"],
+    source: None | Literal["app", "oauth-app", "admin"],
 ) -> None:
     try:
         rq_results.rq_que.enqueue(
@@ -95,7 +95,7 @@ def handle_add_login(
 async def check_first_login(
     db: AsyncSession,
     user_uuid: UUID,
-    sources: list[Literal["app", "oauth-app", "excel"]] | None = None,
+    sources: list[Literal["app", "oauth-app"]] | None = None,
 ) -> bool:
     """Check if the user is logging in for the first time"""
     query = (

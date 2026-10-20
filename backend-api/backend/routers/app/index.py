@@ -108,11 +108,6 @@ async def process_create_user(
     return user_uuid
 
 
-def same_kind_sources(source: str | None) -> list[Literal["app", "oauth-app", "excel"]]:
-    """Sessions that sign in and out together: the Excel add-in's, or the web app's."""
-    return ["excel"] if source == "excel" else ["app", "oauth-app"]
-
-
 @router.post("/logout", response_model=SuccessReturn)
 @limiter.limit("10/minute", exempt_when=exempt_service_token)
 async def logout(
@@ -120,9 +115,8 @@ async def logout(
     response: Response,
     db: AsyncSession = Depends(aget_write_db),
 ):
-    """Signs the web app (or the Excel add-in) out: its sessions end, with the agent tokens
-    minted for this one, and the web app's cookie is cleared even when its session had
-    already ended."""
+    """Signs the web app out: its sessions end, with the agent tokens minted for this one,
+    and the web app's cookie is cleared even when its session had already ended."""
     credential = auth_helpers.read_credential(request)
     session = (
         await db.execute(
@@ -134,14 +128,9 @@ async def logout(
     if session is not None:
         await auth_helpers.revoke_agent_tokens(session.uuid)
         await auth_helpers.delete_user_app_sessions(
-            db, session.user_uuid, same_kind_sources(session.source)
+            db, session.user_uuid, ["app", "oauth-app"]
         )
-    elif credential.kind == "bearer":
-        raise auth_helpers.credentials_exception
-    if credential.kind != "bearer":
-        auth_helpers.clear_session_cookie(
-            response, auth_helpers.CLIENT_COOKIES[credential.kind]
-        )
+    auth_helpers.clear_session_cookie(response, auth_helpers.CLIENT_COOKIES[credential.kind])
     return SuccessReturn(success=True)
 
 
@@ -192,10 +181,10 @@ async def _start_session(  # noqa: PLR0913, PLR0917
     source: str,
     remember: bool,
 ) -> tuple[str, timedelta]:
-    """A new session and its lifetime. The web app's ends its other sessions and is set
-    as the session cookie; the Excel add-in's ends the add-in's other sessions."""
+    """A new session of the web app and its lifetime: it ends the web app's other sessions
+    and is set as the session cookie."""
     lifetime = helpers.get_app_session_expiration(remember)
-    await auth_helpers.delete_user_app_sessions(db, user_uuid, same_kind_sources(source))
+    await auth_helpers.delete_user_app_sessions(db, user_uuid, ["app", "oauth-app"])
 
     token = await auth_helpers.create_login_token(
         db=db,
@@ -204,12 +193,9 @@ async def _start_session(  # noqa: PLR0913, PLR0917
         app_session=True,
         source=source,
     )
-    if source in auth_helpers.WEB_SOURCES:
-        auth_helpers.set_session_cookie(
-            response, auth_helpers.SESSION_COOKIE, token, lifetime
-        )
-        if auth_helpers.TOTP_COOKIE in request.cookies:
-            auth_helpers.clear_session_cookie(response, auth_helpers.TOTP_COOKIE)
+    auth_helpers.set_session_cookie(response, auth_helpers.SESSION_COOKIE, token, lifetime)
+    if auth_helpers.TOTP_COOKIE in request.cookies:
+        auth_helpers.clear_session_cookie(response, auth_helpers.TOTP_COOKIE)
     return token, lifetime
 
 
@@ -222,11 +208,9 @@ async def login(
     db: AsyncSession = Depends(aget_write_db),
 ):
     """Signs in. The web app's session is the `__Host-ws_session` cookie and the answer
-    carries no token; the Excel add-in gets its own in the answer, as a bearer."""
+    carries no token."""
     source = user.source or "app"
-    web = source in auth_helpers.WEB_SOURCES
-    if web:
-        auth_helpers.check_browser_sign_in(request, auth_helpers.WEB_CLIENT)
+    auth_helpers.check_browser_sign_in(request, auth_helpers.WEB_CLIENT)
 
     if not (
         result := (await db.execute(helpers.get_app_user_query(user.email))).first()
@@ -257,11 +241,6 @@ async def login(
         return JSONResponse(content={"message": "Invalid TOTP token"}, status_code=202)
 
     access = await app_helpers.get_user_access(db, db_user.uuid)
-    if source == "excel" and not access.excel_add_in:
-        raise HTTPException(
-            status_code=403,
-            detail="Excel add-in access is not granted to your account",
-        )
 
     if db_user.require_authenticator and not db_user.totp_active:
         return await _start_two_factor_enrollment(db, db_user.uuid, source)
@@ -291,7 +270,6 @@ async def finish_sign_in(  # noqa: PLR0914
 ) -> schemas.AppTokenWithContext:
     """Starts the session of a user who passed every check of a sign-in (POST /app/login,
     or POST /totp/activate finishing it), and answers with what the client needs."""
-    web = source in auth_helpers.WEB_SOURCES
     show_changelog = (
         db_user.latest_version is not None and db_user.latest_version != version
     )
@@ -334,7 +312,7 @@ async def finish_sign_in(  # noqa: PLR0914
     # Get User Data
     curr_user = await auth_helpers.generate_user_query(
         auth_helpers.session_filters(
-            auth_helpers.Credential("web" if web else "bearer", access_token)
+            auth_helpers.Credential("web", access_token)
         ),
         auth_helpers.CURRENT_APP_USER["columns"],
         auth_helpers.CURRENT_APP_USER["tables"],
@@ -365,7 +343,6 @@ async def finish_sign_in(  # noqa: PLR0914
     content = {
         "uuid": db_user.uuid,
         "email": db_user.email,
-        "access_token": None if web else access_token,
         "username": db_user.username,
         "expiration_date": base.get_now() + time_d,
         "temporary_password": bool(db_user.temporary_password) and source != "oauth-app",

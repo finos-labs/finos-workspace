@@ -49,8 +49,7 @@ See [DEVELOPMENT_SETUP.md](../DEVELOPMENT_SETUP.md) for the full workflow.
   and the admin panel hold theirs in HttpOnly cookies and name themselves in the
   `X-Workspace-Client` header (`web`, `admin`). A cookie request with an `Origin`, and
   every one that changes anything, must come from one of `BACKEND_CORS_ORIGINS`. Every answer to a request that carried a cookie or
-  a token is `Cache-Control: no-store`. Only the Excel add-in and the admin CLI
-  (`source: "cli"`) use `Authorization: Bearer`. The default Copilot acts for
+  a token is `Cache-Control: no-store`. No session is a bearer token. The default Copilot acts for
   the user with an agent token (`POST /app/copilot/token`), which only `GET /app/user`,
   `PUT /app/usage` and `POST /app/copilot/authorize` accept.
 
@@ -68,9 +67,7 @@ The API does not start without these, and refuses short or malformed values:
 one yourself: `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
 
 `BACKEND_CORS_ORIGINS` is required too: the origins of the web app and the admin panel,
-exactly as browsers send them (scheme, host and port; never `*`). Where the Excel add-in is
-used, its own `https` origin (its `VITE_ADDIN_BASE_URL`) belongs in
-`BACKEND_CORS_ORIGINS` too: it runs in a webview that enforces CORS. The
+exactly as browsers send them (scheme, host and port; never `*`). The
 session cookies reach the API only when it is on the same site as the web app: serve it
 under the web app's registrable domain, or under `/api` of the web app's origin as Lite
 does, over HTTPS. The cookies are scoped to the API's host, whatever the port, so a

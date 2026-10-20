@@ -17,7 +17,7 @@ import sqlalchemy as sa
 import sqlalchemy_utils
 
 BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BEFORE = "9c4d7a2e1f35"
+BEFORE = "b6dd1da576b6"
 REVISION = "4f1c8a2d9e63"
 # The head before develop was merged in, which a database that ran this branch is at
 BRANCH_HEAD = "8b5e2d7c1f40"
@@ -213,4 +213,23 @@ def test_a_database_from_before_the_merge_gets_the_switches_and_loses_the_market
     assert not inspector.has_table("vendor_app")
     assert "vendor_app_uuid" not in {column["name"] for column in inspector.get_columns("api_source")}
     assert "can_submit_marketplace" not in {column["name"] for column in inspector.get_columns("user")}
+    engine.dispose()
+
+
+def test_a_database_that_ran_this_branch_loses_the_excel_add_ins_role_switch(tmp_path):
+    """A database that reached 4f1c8a2d9e63 while it still added role.excel_add_in has the
+    column; revision f11377401858 drops it."""
+    db_path = str(tmp_path / "excel.db")
+    _alembic(db_path, "upgrade", "1ded5470241f")
+    engine = sa.create_engine(f"sqlite:///{db_path}")
+    with engine.begin() as conn:
+        conn.execute(
+            sa.text("ALTER TABLE role ADD COLUMN excel_add_in BOOLEAN DEFAULT 0 NOT NULL")
+        )
+
+    _alembic(db_path, "upgrade", "head")
+
+    columns = {column["name"] for column in sa.inspect(engine).get_columns("role")}
+    assert "excel_add_in" not in columns
+    assert {"search_web", "fetch_from_web"} <= columns
     engine.dispose()

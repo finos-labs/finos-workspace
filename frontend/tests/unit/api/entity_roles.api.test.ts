@@ -20,7 +20,6 @@ const SETTINGS: RoleSettings = {
   copilot_calls_day: 100,
   copilot_tokens_day: null,
   upload_size_gb: 5,
-  excel_add_in: true,
   search_web: true,
   fetch_from_web: false,
 };

@@ -17,7 +17,7 @@ describe("useAuthStore - login", () => {
       uuid: "user-uuid-123",
       is_first_login: false,
       show_changelog: false,
-      access: { user_type: "User", sharing: "none", excel_add_in: false },
+      access: { user_type: "User", sharing: "none" },
       user: {
         first_name: "Test",
         last_name: "User",

@@ -20,7 +20,6 @@ import RenamePopup from "../General/RenamePopup";
 import { SaveAppDialog } from "../General/SaveAppDialog";
 import { ShareUserAppDialog } from "../General/SharedAppsDialog";
 import { ShareDashboardDialog } from "../General/SharedDashboardDialog";
-import ExcelExportDialog from "../LayoutAuth/DropdownSubs/ExcelExportDialog";
 import AddPromptDialog from "./PromptLibrary/AddPromptDialog";
 import SearchDialog from "./Search/SearchDialog";
 import ShortcutDialog from "./ShortcutDialog";
@@ -34,7 +33,6 @@ export default function OuterComponents() {
     search,
     shareDashboardPopupId,
     shareUserAppsPopupId,
-    excelExportPopup,
     exportFolderPopup,
   } = useShallowThemeStore((state) => ({
     exportWidgetData: state.exportWidgetData,
@@ -44,15 +42,11 @@ export default function OuterComponents() {
     search: state.search,
     shareDashboardPopupId: state.shareDashboardPopupId,
     shareUserAppsPopupId: state.shareUserAppsPopupId,
-    excelExportPopup: state.excelExportPopup,
     exportFolderPopup: state.exportFolderPopup,
   }));
 
   const isMobile = useMobile((s) => s.isMobile);
-  const { mayShare, excelAddIn } = useShallowAccessStore((state) => ({
-    mayShare: canShare(state.access),
-    excelAddIn: !!state.access?.excel_add_in,
-  }));
+  const mayShare = useShallowAccessStore((state) => canShare(state.access));
 
   return (
     <>
@@ -74,7 +68,6 @@ export default function OuterComponents() {
       <CreateFolderPopup />
       {mayShare && shareDashboardPopupId && <ShareDashboardDialog />}
       {mayShare && shareUserAppsPopupId && <ShareUserAppDialog />}
-      {excelAddIn && excelExportPopup && <ExcelExportDialog />}
       {exportFolderPopup && <ExportFolderDialog />}
       <McpConnectionManager />
       <WorkspaceBridgeConnectionManager />

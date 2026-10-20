@@ -4,13 +4,12 @@ import OuterComponents from "~/components/LayoutAuth/OuterComponents";
 import type { SharingLevel } from "~/lib/state/access";
 import { setAccess } from "../../factories";
 
-// The share and Excel export dialogs have been asked for
+// The share dialogs have been asked for
 vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       shareDashboardPopupId: "dash-1",
       shareUserAppsPopupId: "app-1",
-      excelExportPopup: true,
     }),
 }));
 
@@ -24,9 +23,6 @@ vi.mock("~/components/General/SharedDashboardDialog", () => ({
 }));
 vi.mock("~/components/General/SharedAppsDialog", () => ({
   ShareUserAppDialog: () => <div data-testid="share-app-dialog" />,
-}));
-vi.mock("~/components/LayoutAuth/DropdownSubs/ExcelExportDialog", () => ({
-  default: () => <div data-testid="excel-export-dialog" />,
 }));
 
 vi.mock("~/components/AI/AddSkillDialog", () => ({ default: () => null }));
@@ -81,16 +77,5 @@ describe("OuterComponents", () => {
 
     expect(screen.queryByTestId("share-dashboard-dialog")).not.toBeInTheDocument();
     expect(screen.queryByTestId("share-app-dialog")).not.toBeInTheDocument();
-  });
-
-  it("opens the Excel export only when a role grants the Excel add-in", () => {
-    setAccess({ excel_add_in: false });
-    const { unmount } = render(<OuterComponents />);
-    expect(screen.queryByTestId("excel-export-dialog")).not.toBeInTheDocument();
-    unmount();
-
-    setAccess({ excel_add_in: true });
-    render(<OuterComponents />);
-    expect(screen.getByTestId("excel-export-dialog")).toBeInTheDocument();
   });
 });

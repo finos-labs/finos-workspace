@@ -1,12 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import EllipsisDropdownMenu from "~/components/EllipsisDropdown";
 import type { EllipsisDropdownMenuProps } from "~/components/MoveToDropDown/types";
-import { setAccess } from "../factories";
-
-// The deployment has the Excel add-in; the menu reads the switch when it loads
-vi.hoisted(() => vi.stubEnv("VITE_EXCEL_ADD_IN_ENABLED", "true"));
 
 const widgetContext = vi.hoisted(() => ({
   widgetRef: {
@@ -15,7 +11,6 @@ const widgetContext = vi.hoisted(() => ({
       widgetId: "test-widget",
       name: "Test Widget",
       type: "table",
-      connectionType: undefined as string | undefined,
     },
   },
   activeDashboardId: "dashboard-1",
@@ -48,15 +43,6 @@ describe("EllipsisDropdownMenu", () => {
     dispatch: vi.fn(),
     settings: {},
   };
-
-  beforeEach(() => {
-    widgetContext.widgetRef.current.connectionType = undefined;
-    setAccess();
-  });
-
-  afterAll(() => {
-    vi.unstubAllEnvs();
-  });
 
   it("renders the ellipsis trigger button", () => {
     render(<EllipsisDropdownMenu {...defaultProps} />);
@@ -164,7 +150,7 @@ describe("EllipsisDropdownMenu", () => {
     });
   });
 
-  describe("Export and Excel formula", () => {
+  describe("Export", () => {
     const openMenu = async (settings: EllipsisDropdownMenuProps["settings"]) => {
       render(<EllipsisDropdownMenu {...defaultProps} settings={settings} />);
       await userEvent.setup().click(screen.getByRole("button"));
@@ -174,22 +160,6 @@ describe("EllipsisDropdownMenu", () => {
       await openMenu({ showExport: true });
 
       expect(screen.getByText("Export")).toBeInTheDocument();
-    });
-
-    it("offers the Excel formula of a backend widget when a role grants the Excel add-in", async () => {
-      setAccess({ excel_add_in: true });
-      widgetContext.widgetRef.current.connectionType = "advanced-backend";
-      await openMenu({ showFunctions: true });
-
-      expect(screen.getByText("Excel formula")).toBeInTheDocument();
-    });
-
-    it("does not offer the Excel formula when no role grants the Excel add-in", async () => {
-      setAccess({ excel_add_in: false });
-      widgetContext.widgetRef.current.connectionType = "advanced-backend";
-      await openMenu({ showFunctions: true });
-
-      expect(screen.queryByText("Excel formula")).not.toBeInTheDocument();
     });
   });
 });

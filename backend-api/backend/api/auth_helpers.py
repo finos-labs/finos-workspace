@@ -5,9 +5,8 @@ session table stores. How a request carries it depends on the client:
 
 - The web app and the admin panel are browsers: their session is an HttpOnly cookie,
   `__Host-ws_session` and `__Host-ws_admin`. Every request that rides one names its client
-  in the `X-Workspace-Client` header ("web" or "admin"), which picks the cookie.
-- The Excel add-in sends `Authorization: Bearer <token>`. A session of the web app or the
-  admin panel is never accepted as a bearer.
+  in the `X-Workspace-Client` header ("web" or "admin"), which picks the cookie. A session
+  is never accepted as a bearer.
 - The default Copilot acts for the signed-in user with an agent token, a bearer that GET
   /app/user, PUT /app/usage and POST /app/copilot/authorize accept and nothing else.
 
@@ -68,16 +67,13 @@ WEB_SOURCES = ("app", "oauth-app")
 ADMIN_SOURCE = "admin"
 # A pending two-factor enrollment, by the web app's sign-in it finishes
 TOTP_ENROLL_SOURCES = {"app": "totp-enroll", "oauth-app": "totp-enroll-oauth"}
-# The clients that are not browsers, whose sessions are bearer tokens
-BEARER_SOURCES = ("excel",)
 
-CredentialKind = Literal["web", "admin", "totp", "bearer"]
+CredentialKind = Literal["web", "admin", "totp"]
 # The sessions each way of carrying a token may hold
 CREDENTIAL_SOURCES: dict[CredentialKind, tuple[str, ...]] = {
     "web": WEB_SOURCES,
     "admin": (ADMIN_SOURCE,),
     "totp": tuple(TOTP_ENROLL_SOURCES.values()),
-    "bearer": BEARER_SOURCES,
 }
 
 TOTP_ENROLL_LIFETIME = timedelta(minutes=5)
@@ -192,7 +188,7 @@ async def create_login_token(
 async def delete_user_app_sessions(
     db: AsyncSession,
     user_uuid: UUID,
-    sources: list[Literal["app", "oauth-app", "excel"]],
+    sources: list[Literal["app", "oauth-app"]],
 ) -> None:
     """Deletes the given user's app sessions from the given sources
 
@@ -202,7 +198,7 @@ async def delete_user_app_sessions(
         The database session
     user_uuid : UUID
         The user's UUID
-    sources : list[Literal["app", "oauth-app", "excel"]]
+    sources : list[Literal["app", "oauth-app"]]
         The sources to be deleted
     """
     filters = [
@@ -279,15 +275,9 @@ class Credential:
 
 def read_credential(request: Request, *, enrollment: bool = False) -> Credential:
     """The session token of a request: the cookie that its X-Workspace-Client header
-    names, or else a bearer token. With `enrollment` (POST /totp and POST /totp/activate),
-    a web client's pending two-factor enrollment cookie comes first."""
+    names. With `enrollment` (POST /totp and POST /totp/activate), a web client's pending
+    two-factor enrollment cookie comes first."""
     client = request.headers.get(CLIENT_HEADER)
-    if client is None:
-        scheme, token = get_authorization_scheme_param(request.headers.get("Authorization"))
-        if scheme.lower() != "bearer" or not token:
-            raise credentials_exception
-        return Credential("bearer", token)
-
     if client not in CLIENT_COOKIES:
         raise credentials_exception
     if enrollment and client == WEB_CLIENT and (token := request.cookies.get(TOTP_COOKIE)):
@@ -821,7 +811,7 @@ def token_checker(token: str, requirement: dict[str, str]) -> None:
 
 def check_service_token(token: str) -> None:
     """Checks that the given token is a workspace service token (WORKSPACE_AUTH_TOKEN)."""
-    for sub in ["workspace", "copilot", "excel", "app"]:
+    for sub in ["workspace", "copilot", "app"]:
         with suppress(Exception):
             return token_checker(token, {"sub": sub})
 

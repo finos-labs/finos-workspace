@@ -114,7 +114,7 @@ describe("Dashboard API functions", () => {
     const serve = (sharing: SharingLevel) =>
       vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
         if (url === "/app/access") {
-          return { data: { user_type: "User", sharing, excel_add_in: false } };
+          return { data: { user_type: "User", sharing } };
         }
         if (url === "/app/dash/sync/shared") {
           return { data: { shared, entity_shared: {} } };

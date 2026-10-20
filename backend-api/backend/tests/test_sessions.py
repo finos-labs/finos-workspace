@@ -3,9 +3,8 @@
 A session is a random token that only its client holds; the session table stores its
 SHA-256 hash, and a session ends when its time is up. The web app and the admin panel
 ride HttpOnly cookies that their X-Workspace-Client header names, and change nothing from
-an origin outside BACKEND_CORS_ORIGINS. Only the clients that are not browsers (the Excel
-add-in, the admin CLI) use bearer tokens. A pending two-factor enrollment is a
-cookie of its own that only POST /totp and POST /totp/activate accept.
+an origin outside BACKEND_CORS_ORIGINS. No session is a bearer token. A pending two-factor
+enrollment is a cookie of its own that only POST /totp and POST /totp/activate accept.
 """
 
 import hashlib
@@ -187,7 +186,7 @@ class TestTheWebAppsCookie:
         self, auth_client
     ):
         cookie = {"Cookie": f"{auth_helpers.SESSION_COOKIE}={_token_of(auth_client)}"}
-        for headers in (cookie, {**cookie, auth_helpers.CLIENT_HEADER: "excel"}):
+        for headers in (cookie, {**cookie, auth_helpers.CLIENT_HEADER: "other"}):
             async with _browser({**headers, "Origin": TEST_ORIGIN}) as browser:
                 assert (await browser.get("/app/user")).status_code == 401
 
@@ -397,19 +396,6 @@ class TestClientsThatAreNotBrowsers:
         assert response.status_code == 422
         assert await _sessions(db_session, user.uuid) == []
 
-    @pytest.mark.asyncio
-    async def test_the_excel_add_in_keeps_its_bearer(self, organization, app_client):
-        user = await organization.add_user(password=PASSWORD)
-        await organization.role(user.uuid, excel_add_in=True)
-        async with _browser({"Origin": TEST_ORIGIN}) as add_in:
-            response = await add_in.post("/app/login", json=_login(user.email, source="excel"))
-            assert response.status_code == 200, response.text
-            assert "set-cookie" not in response.headers
-            token = response.json()["access_token"]
-
-        async with bearer_client(token) as add_in:
-            assert (await add_in.get("/app/user")).json()["email"] == user.email
-
 
 class TestCORS:
     @pytest.mark.asyncio
@@ -527,20 +513,6 @@ class TestTwoFactorEnrollment:
         response = await app_client.post("/app/login", json=_login(user.email, code=code))
         assert response.status_code == 202
         assert response.json() == {"message": "Invalid TOTP token"}
-
-    @pytest.mark.asyncio
-    async def test_a_client_that_is_no_browser_gets_no_enrollment(
-        self, organization, authenticator_required, db_session
-    ):
-        user = await organization.add_user(password=PASSWORD)
-        await organization.role(user.uuid, excel_add_in=True)
-        async with _browser({"Origin": TEST_ORIGIN}) as add_in:
-            response = await add_in.post("/app/login", json=_login(user.email, source="excel"))
-        assert response.status_code == 202
-        assert response.json()["two_factor_required"] is True
-        assert "access_token" not in response.json()
-        assert "set-cookie" not in response.headers
-        assert await _sessions(db_session, user.uuid) == []
 
     @pytest.mark.asyncio
     async def test_activating_the_authenticator_finishes_a_provider_sign_in(

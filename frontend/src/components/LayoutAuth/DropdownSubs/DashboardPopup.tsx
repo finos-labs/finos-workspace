@@ -35,8 +35,6 @@ export function DashboardPopup(props: DashboardPopupProps) {
     toggleExportPopup,
     setRenamePopup,
     setShareDashboardPopupId,
-    setExcelExportPopup,
-    setExcelExportItem,
     setExportTemplatePopup,
     setGroupingVisible,
     setGenerateAppDashboardId,
@@ -45,8 +43,6 @@ export function DashboardPopup(props: DashboardPopupProps) {
     toggleExportPopup: s.toggleExportPopup,
     setRenamePopup: s.setRenamePopup,
     setShareDashboardPopupId: s.setShareDashboardPopupId,
-    setExcelExportPopup: s.setExcelExportPopup,
-    setExcelExportItem: s.setExcelExportItem,
     setExportTemplatePopup: s.setExportTemplatePopup,
     setGroupingVisible: s.setGroupingVisible,
     setGenerateAppDashboardId: s.setGenerateAppDashboardId,
@@ -59,10 +55,7 @@ export function DashboardPopup(props: DashboardPopupProps) {
     getTabById: s.getTabById,
   }));
 
-  const { mayShare, excelAddIn } = useShallowAccessStore((state) => ({
-    mayShare: canShare(state.access),
-    excelAddIn: !!state.access?.excel_add_in,
-  }));
+  const mayShare = useShallowAccessStore((state) => canShare(state.access));
 
   const hasAdvancedBackendWidgets = useMemo(() => {
     const tab = getTabById(item.index);
@@ -137,20 +130,6 @@ export function DashboardPopup(props: DashboardPopupProps) {
         disabled: item.index !== id,
         action: toggleExportPopup,
       },
-      ...(import.meta.env.VITE_EXCEL_ADD_IN_ENABLED === "true" && excelAddIn
-        ? [
-            {
-              shortcut: "e",
-              label: "Export to Excel",
-              action: () => {
-                setExcelExportItem(item);
-                setExcelExportPopup(true);
-              },
-              disabled: !hasAdvancedBackendWidgets,
-              disabledTooltip: "No Excel-compatible widgets found in this dashboard",
-            },
-          ]
-        : []),
       {
         shortcut: "t",
         label: "Export apps.json",
@@ -177,12 +156,9 @@ export function DashboardPopup(props: DashboardPopupProps) {
       handleExportTemplate,
       id,
       mayShare,
-      excelAddIn,
       item,
       moveTabToFolder,
       navigate,
-      setExcelExportItem,
-      setExcelExportPopup,
       setGenerateAppDashboardId,
       setGroupingVisible,
       setRenamePopup,

@@ -37,7 +37,6 @@ const role: RoleT = {
   copilot_calls_day: 0,
   copilot_tokens_day: 0,
   upload_size_gb: 0,
-  excel_add_in: false,
   search_web: true,
   fetch_from_web: true,
 };

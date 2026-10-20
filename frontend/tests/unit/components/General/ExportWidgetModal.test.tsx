@@ -44,7 +44,7 @@ describe("ExportWidgetModal", () => {
         widgetId: "123",
         possibleExportFormats: [
           { value: "csv", fn: vi.fn() },
-          { value: "xlsx", fn: vi.fn() },
+          { value: "pdf", fn: vi.fn() },
           { value: "png", fn: vi.fn() },
         ],
         selectedExportFormat: "csv",
@@ -67,7 +67,7 @@ describe("ExportWidgetModal", () => {
     render(<ExportWidgetModal />);
     expect(screen.getByText("CSV")).toBeInTheDocument();
     expect(screen.getByText("PNG")).toBeInTheDocument();
-    expect(screen.getByText("XLSX")).toBeInTheDocument();
+    expect(screen.getByText("PDF")).toBeInTheDocument();
   });
 
   it("calls the export function when the Export button is clicked", () => {

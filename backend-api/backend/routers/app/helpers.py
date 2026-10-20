@@ -12,7 +12,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.sql import quoted_name
 
 from api import base, crud, database, models, schemas
-from api.auth_helpers import CustomRow, delete_user_app_sessions
+from api.auth_helpers import CustomRow
 from utilities.config import settings
 
 EXCEPTION_401 = HTTPException(
@@ -447,21 +447,11 @@ def _user_roles(user_uuid: UUID, *columns):
     )
 
 
-async def has_excel_add_in(db: AsyncSession, user_uuid: UUID) -> bool:
-    query = (
-        _user_roles(user_uuid, models.Role.uuid)
-        .where(models.Role.excel_add_in.is_(True))
-        .limit(1)
-    )
-    return (await db.execute(query)).first() is not None
-
-
 async def get_user_access(db: AsyncSession, user_uuid: UUID) -> schemas.UserAccess:
     """What the user may do: their type, and what the roles an admin assigned them give."""
     return schemas.UserAccess(
         user_type=await get_user_type(db, user_uuid),
         sharing=(await crud.get_users_sharing(db, [user_uuid]))[user_uuid],
-        excel_add_in=await has_excel_add_in(db, user_uuid),
     )
 
 
@@ -506,12 +496,9 @@ def invalidate_usage_cache(user_uuid: UUID) -> None:
 
 async def roles_changed(db: AsyncSession, user_uuids: list[UUID]) -> None:
     """After the roles of users, or the settings of their roles, changed: their limits are
-    read again, and the shares their sharing no longer allows and the Excel add-in
-    sessions of users without the add-in are revoked."""
+    read again, and the shares their sharing no longer allows are revoked."""
     for user_uuid in user_uuids:
         invalidate_usage_cache(user_uuid)
-        if not await has_excel_add_in(db, user_uuid):
-            await delete_user_app_sessions(db, user_uuid, ["excel"])
     await crud.revoke_disallowed_shares(db, user_uuids)
 
 

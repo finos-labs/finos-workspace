@@ -2,7 +2,6 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import useIsMobile from "~/hooks/useIsMobile";
-import { useShallowAccessStore } from "~/lib/state/access";
 import { useAppStore } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn, dispatchSaveState } from "~/lib/utils";
@@ -13,8 +12,6 @@ import type { EllipsisDropdownMenuProps } from "./MoveToDropDown/types";
 import { getExportFns } from "./MoveToDropDown/utils";
 import Tooltip from "./Tooltip";
 import { useWidgetContext } from "./Widget.context";
-
-const excelAddInEnabled = import.meta.env.VITE_EXCEL_ADD_IN_ENABLED === "true";
 
 export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
   const { dispatch, settings, exportFns, isMinimized, onMinimizeToggle } = props;
@@ -29,7 +26,6 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
     (state) => state.setExportWidgetData,
   );
   const isMobile = useIsMobile();
-  const excelAddIn = useShallowAccessStore((state) => !!state.access?.excel_add_in);
 
   const exportFunctions = useMemo(() => getExportFns(exportFns), [exportFns]);
 
@@ -129,25 +125,6 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
         </DropdownMenuPrimitive.Item>,
       );
     }
-    if (
-      excelAddInEnabled &&
-      excelAddIn &&
-      settings?.showFunctions &&
-      widget?.connectionType === "advanced-backend"
-    ) {
-      exportItems.push(
-        <DropdownMenuPrimitive.Item
-          key={`${widget?.id}-functions`}
-          className="ws-dropdown-item"
-          onSelect={() => {
-            dispatch({ functionsModal: true });
-          }}
-        >
-          <Icon id="excel-file" key={`${widget?.id}-functions-icon`} />
-          Excel formula
-        </DropdownMenuPrimitive.Item>,
-      );
-    }
     if (settings?.showExport) {
       const isExportable = (widgetFromJSON?.exportable ?? widget?.exportable) !== false;
       exportItems.push(
@@ -182,7 +159,6 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
     setExportWidgetData,
     dispatch,
     duplicateWidgetCallback,
-    excelAddIn,
     isMinimized,
     onMinimizeToggle,
   ]);

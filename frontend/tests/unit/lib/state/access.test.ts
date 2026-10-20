@@ -70,10 +70,10 @@ describe("useAccessStore", () => {
   });
 
   it("sets access and usage together", () => {
-    useAccessStore.getState().setAccessAndUsage(access({ excel_add_in: true }), usage());
+    useAccessStore.getState().setAccessAndUsage(access({ sharing: "receive" }), usage());
 
     const state = useAccessStore.getState();
-    expect(state.access?.excel_add_in).toBe(true);
+    expect(state.access?.sharing).toBe("receive");
     expect(state.usage).toEqual(usage());
   });
 

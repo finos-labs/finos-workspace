@@ -26,8 +26,7 @@ BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:3001","http://lo
 `BACKEND_CORS_ORIGINS` names the origins of the web app and the admin panel exactly as the
 browser sends them (here: the compose stack's web app and admin panel, and their dev
 servers); it is required. Only these origins pass CORS, and the session cookies are accepted
-only from them. To use the Excel add-in against this stack, add its `https` origin (its
-`VITE_ADDIN_BASE_URL`, e.g. `https://localhost:1420`) to `BACKEND_CORS_ORIGINS`. An MCP server on a
+only from them. An MCP server on a
 private network (a compose service, a host on your LAN) must be listed by host name in
 `ALLOWED_MCP_HOSTNAMES`, because the API reaches users' MCP servers only at public
 addresses.
@@ -210,8 +209,8 @@ cd backend
 
 - Sessions are random tokens whose SHA-256 hash the `session` table stores. The web app
   (`X-Workspace-Client: web`) and the admin panel (`X-Workspace-Client: admin`) ride
-  their HttpOnly cookies; the Excel add-in and the admin CLI send
-  `Authorization: Bearer`. A session expires when its time is up, with no grace period.
+  their HttpOnly cookies; no session is a bearer token. A session expires when its time is
+  up, with no grace period.
 
 - `user_create.json` is both an output of `init_users.py` and an input to
   `AppSettings.__init__` (which sets `DEVELOPER_MAPPING` and `ON_PREM_ADMIN_MAPPING`).

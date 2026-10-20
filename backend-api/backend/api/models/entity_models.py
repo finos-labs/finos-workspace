@@ -14,7 +14,6 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    false,
     select,
     true,
 )
@@ -196,9 +195,6 @@ class Role(Base, UUIDMixin, DateMixin):
     copilot_calls_day: Mapped[int | None] = mapped_column(Integer)
     copilot_tokens_day: Mapped[int | None] = mapped_column(BigInteger)
     upload_size_gb: Mapped[int | None] = mapped_column(Integer)
-    excel_add_in: Mapped[bool] = mapped_column(
-        Boolean, default=False, server_default=false()
-    )
     # The Copilot's web tools: on for a user when any of their roles allows them
     search_web: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=true()
