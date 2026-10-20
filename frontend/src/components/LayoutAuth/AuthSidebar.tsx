@@ -11,6 +11,11 @@ import useDetectOS from "~/hooks/useDetectOS";
 import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
 import { ENABLE_SHARING } from "~/lib/constants";
 import { useMobile } from "~/lib/providers/MobileProvider";
+import {
+  canAddConnections,
+  canReceiveShares,
+  useShallowAccessStore,
+} from "~/lib/state/access";
 import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
 import { useShallowSidebarStore, useSidebarStore } from "~/lib/state/sidebar";
 import { useShallowThemeStore } from "~/lib/state/theme";
@@ -20,7 +25,6 @@ import {
 } from "~/lib/state/workspaceBridge";
 import { cn } from "~/lib/utils";
 import { groupVariants } from "../ds/atoms/Input";
-import FeatureLock from "../General/FeatureLock";
 import Sidebar from "../General/Sidebar";
 import Icon from "../Icon";
 import Tooltip from "../Tooltip";
@@ -39,8 +43,6 @@ type TabLinkProps = {
   href: string;
   label: string;
   icon: string;
-  locked?: boolean;
-  lockMessage?: string;
 };
 
 const TABS_LINKS: Record<string, TabLinkProps[]> = {
@@ -192,7 +194,7 @@ function AuthSidebar({ isMobile }: { isMobile?: boolean }) {
 function TabLink(props: TabLinkProps) {
   const collapsed = useShallowSidebarStore((state) => !state.effectiveExpanded);
 
-  const { id, href, label, icon, locked, lockMessage } = props;
+  const { id, href, label, icon } = props;
 
   const classNameCb = useCallback(
     (props: NavLinkRenderProps) =>
@@ -218,7 +220,7 @@ function TabLink(props: TabLinkProps) {
     [icon, label],
   );
 
-  const linkContent = useMemo(
+  return useMemo(
     () => (
       <Tooltip
         id={`links-${id}-tooltip`}
@@ -240,34 +242,11 @@ function TabLink(props: TabLinkProps) {
     ),
     [id, href, label, classNameCb, childrenCb, collapsed],
   );
-
-  if (locked) {
-    return collapsed ? (
-      <Tooltip id={`links-${id}-lock-tooltip`} message={lockMessage} position="right">
-        <span className="opacity-50">
-          <span className="pointer-events-none">
-            <NavLink
-              key={`auth-sidebar-${id}`}
-              to={href}
-              id={id}
-              end={true}
-              className={classNameCb}
-              children={childrenCb}
-            />
-          </span>
-        </span>
-      </Tooltip>
-    ) : (
-      <FeatureLock isLocked={true} message={lockMessage} className="max-w-[220px]">
-        {linkContent}
-      </FeatureLock>
-    );
-  }
-
-  return linkContent;
 }
 
 function LinksNav() {
+  // A User brings no connections, so the page is not theirs
+  const mayAddConnections = useShallowAccessStore((s) => canAddConnections(s.access));
   const linksMemo = useMemo(
     () => (
       <div key="auth-links" className="mt-4">
@@ -276,9 +255,10 @@ function LinksNav() {
             <TabLink key={`auth-link-${link.id}`} {...link} />
           ))}
 
-          {TABS_LINKS.connections.map((link) => (
-            <TabLink key={`auth-link-${link.id}`} {...link} />
-          ))}
+          {mayAddConnections &&
+            TABS_LINKS.connections.map((link) => (
+              <TabLink key={`auth-link-${link.id}`} {...link} />
+            ))}
         </div>
 
         <SidebarSection className="mt-4" id="library" title="Library">
@@ -290,7 +270,7 @@ function LinksNav() {
         </SidebarSection>
       </div>
     ),
-    [],
+    [mayAddConnections],
   );
 
   return (
@@ -492,6 +472,7 @@ type SharedDashboardsProps = {
 
 function SharedDashboards(props: SharedDashboardsProps) {
   const { maxHeight } = props;
+  const mayReceive = useShallowAccessStore((state) => canReceiveShares(state.access));
   const hasSharedItems = useShallowSharedAppStore(
     (state) => Object.keys(state.sharedItems ?? {}).length > 0,
   );
@@ -535,7 +516,7 @@ function SharedDashboards(props: SharedDashboardsProps) {
     [hasSharedItems, expandedShared, maxHeight, expandedMyDashboards],
   );
 
-  return ENABLE_SHARING !== "true" ? null : sharedSectionMemo;
+  return ENABLE_SHARING !== "true" || !mayReceive ? null : sharedSectionMemo;
 }
 
 type MyDashboardsProps = {

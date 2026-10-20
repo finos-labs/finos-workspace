@@ -18,7 +18,7 @@ import {
   validExtension,
 } from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
-import { useShallowAuthStore } from "~/lib/state/auth";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn, formatFileSize } from "~/lib/utils";
 import { type FileType, useFileContext } from "../../FileContext";
@@ -126,8 +126,6 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
     [dispatch, setFiles, filesRef],
   );
 
-  const user = useShallowAuthStore((s) => s.user);
-
   const uploadFile = useCallback(
     async (toUpload: File[]) => {
       const toUploadFileNames = toUpload.map((f) => f.name);
@@ -196,15 +194,9 @@ export default function UploadFilesTab1({ next }: { next: () => void }) {
                   const formData = new FormData();
                   formData.append("file", currFiles[fileIndex]);
                   try {
-                    const aiResponse = await fetch(
+                    const aiResponse = await fetchAgent(
                       `${getConfig().urls.ai}/v1/generate/widget_info/file`,
-                      {
-                        method: "POST",
-                        headers: {
-                          Authorization: `Bearer ${user?.token}`,
-                        },
-                        body: formData,
-                      },
+                      { method: "POST", body: formData },
                     );
                     if (aiResponse.ok) {
                       const data = await aiResponse.json();

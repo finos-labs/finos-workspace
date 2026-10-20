@@ -6,21 +6,26 @@ takes. What matters is that the value the importer reconstructs is
 indistinguishable from the one the exporter read.
 """
 
+import json
+import secrets
 from datetime import UTC, datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
 
 from api import models, schemas
+from api.crypto import AtRestCipher
 from scripts import user_data_scope as scope
 from scripts import user_data_serde as serde
+
+SEALER = AtRestCipher(secrets.token_urlsafe(32))
 
 
 def _round_trip(spec: scope.TableSpec, obj) -> dict:
     """encode -> serialise -> parse -> decode, the full archive path."""
-    encoded = serde.encode_row(spec, obj)
+    encoded = serde.encode_row(spec, obj, SEALER)
     reparsed = serde.loads_line(serde.dumps_line(encoded))
-    return serde.decode_row(spec, reparsed)
+    return serde.decode_row(spec, reparsed, SEALER)
 
 
 # --------------------------------------------------------------------------- #
@@ -94,25 +99,78 @@ def test_gzip_json_content_round_trips_structurally():
     assert _round_trip(spec, item)["content"] == content
 
 
-def test_encrypted_columns_travel_as_plaintext():
-    """Hub and Lite have different AES keys, so ciphertext would not decrypt."""
-    spec = scope.spec_by_table("custom_copilot")
-    headers = {"Authorization": "Bearer sk-secret-value"}
-    copilots = [{"name": "my copilot", "id": "abc"}]
-    copilot = models.CustomCopilot(
+def _copilot_with_credentials():
+    return models.CustomCopilot(
         uuid=uuid4(),
         user_uuid=uuid4(),
         url="https://example.com",
-        headers=headers,
-        copilots=copilots,
+        headers={"Authorization": "Bearer sk-secret-value"},
+        copilots=[{"name": "my copilot", "id": "abc"}],
     )
 
-    encoded = serde.encode_row(spec, copilot)
-    assert encoded["headers"] == headers, "must be readable plaintext, not ciphertext"
+
+def test_credentials_are_sealed_under_the_export_key():
+    """No credential is readable in the archive; the export key opens it again."""
+    spec = scope.spec_by_table("custom_copilot")
+    copilot = _copilot_with_credentials()
+
+    line = serde.dumps_line(serde.encode_row(spec, copilot, SEALER))
+    assert "sk-secret-value" not in line
+    assert "my copilot" not in line
+    assert set(json.loads(line)["headers"]) == {"__sealed__"}
 
     result = _round_trip(spec, copilot)
-    assert result["headers"] == headers
-    assert result["copilots"] == copilots
+    assert result["headers"] == {"Authorization": "Bearer sk-secret-value"}
+    assert result["copilots"] == [{"name": "my copilot", "id": "abc"}]
+
+
+@pytest.mark.parametrize(
+    ("table", "column", "value"),
+    [
+        ("user", "openai_api_key", "sk-openai-value"),
+        ("user", "perplexity_api_key", "pplx-value"),
+        ("api_source", "endpointHeaders", [{"X-API-KEY": "backend-key-value"}]),
+        ("mcp_servers", "headers", {"https://mcp.example.com/mcp": {"Authorization": "Bearer mcp-value"}}),
+        # A server URL may carry a credential in its path
+        ("mcp_servers", "servers", [{"id": "s", "url": "https://mcp.example.com/s/path-secret-value/mcp"}]),
+    ],
+)
+def test_every_credential_column_is_sealed(table, column, value):
+    spec = scope.spec_by_table(table)
+    assert serde.is_credential(spec.model.__table__.columns[column])
+    row = spec.model(**{column: value})
+
+    encoded = serde.encode_row(spec, row, SEALER)
+
+    assert set(encoded[column]) == {"__sealed__"}
+    assert json.dumps(value)[2:-2] not in serde.dumps_line(encoded)
+
+
+def test_a_wrong_export_key_does_not_open_a_credential():
+    spec = scope.spec_by_table("custom_copilot")
+    encoded = serde.encode_row(spec, _copilot_with_credentials(), SEALER)
+
+    with pytest.raises(serde.WrongExportKeyError):
+        serde.decode_row(spec, encoded, AtRestCipher(secrets.token_urlsafe(32)))
+
+
+def test_a_sealed_credential_opens_in_its_own_column_only():
+    """A seal is bound to its column: moved to another column of the archive, it does not
+    open."""
+    spec = scope.spec_by_table("custom_copilot")
+    encoded = serde.encode_row(spec, _copilot_with_credentials(), SEALER)
+    moved = {**encoded, "copilots": encoded["headers"]}
+
+    with pytest.raises(serde.WrongExportKeyError):
+        serde.decode_row(spec, moved, SEALER)
+
+
+def test_an_unsealed_credential_in_an_archive_is_refused():
+    spec = scope.spec_by_table("custom_copilot")
+    payload = {"uuid": str(uuid4()), "headers": {"Authorization": "Bearer planted"}}
+
+    with pytest.raises(serde.SerdeError, match="custom_copilot.headers"):
+        serde.decode_row(spec, payload, SEALER)
 
 
 def test_gzip_string_content_round_trips():
@@ -186,11 +244,11 @@ def test_password_is_never_encoded():
         uuid=uuid4(), email="a@b.co", clean_email="a@b.co", password="hunter2"
     )
 
-    encoded = serde.encode_row(spec, user)
+    encoded = serde.encode_row(spec, user, SEALER)
 
     assert "password" not in encoded
-    assert "auth_token" not in encoded
     assert "totp_secret" not in encoded
+    assert "totp_last_step" not in encoded
     assert "hunter2" not in serde.dumps_line(encoded)
 
 
@@ -203,7 +261,7 @@ def test_decode_ignores_a_redacted_column_smuggled_into_an_archive():
     spec = scope.spec_by_table("user")
     payload = {"uuid": str(uuid4()), "email": "a@b.co", "password": "$2b$12$fakehash"}
 
-    assert "password" not in serde.decode_row(spec, payload)
+    assert "password" not in serde.decode_row(spec, payload, SEALER)
 
 
 # --------------------------------------------------------------------------- #
@@ -218,7 +276,7 @@ def test_unknown_columns_are_dropped_not_fatal():
         "column_that_no_longer_exists": "whatever",
     }
 
-    decoded = serde.decode_row(spec, payload)
+    decoded = serde.decode_row(spec, payload, SEALER)
 
     assert "column_that_no_longer_exists" not in decoded
     assert serde.unknown_columns(spec, payload) == {"column_that_no_longer_exists"}
@@ -228,7 +286,7 @@ def test_malformed_uuid_names_the_offending_column():
     spec = scope.spec_by_table("copilot_chat")
 
     with pytest.raises(serde.SerdeError, match="copilot_chat.uuid"):
-        serde.decode_row(spec, {"uuid": "not-a-uuid"})
+        serde.decode_row(spec, {"uuid": "not-a-uuid"}, SEALER)
 
 
 def test_unencodable_type_is_rejected_loudly():
@@ -242,7 +300,7 @@ def test_unencodable_type_is_rejected_loudly():
 @pytest.mark.parametrize("spec", scope.INCLUDED, ids=lambda s: s.table)
 def test_every_exported_table_encodes_an_empty_instance(spec: scope.TableSpec):
     """Catches a new column of a type the codec has no rule for."""
-    encoded = serde.encode_row(spec, spec.model())
+    encoded = serde.encode_row(spec, spec.model(), SEALER)
 
     serde.dumps_line(encoded)
     assert set(encoded).isdisjoint(serde.redacted_columns(spec))

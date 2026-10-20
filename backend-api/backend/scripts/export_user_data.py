@@ -10,10 +10,10 @@ What travels is defined entirely by ``scripts.user_data_scope`` -- run
 ``--describe-scope`` to print the contract, which is also embedded in the
 archive.
 
-Note on secrets: custom backend headers and copilot credentials are written to
-the archive as **plaintext**. They have to be, because the destination instance
-encrypts under a different key. The archive is therefore as sensitive as the
-credentials it carries.
+Note on secrets: the credentials the account holds (backend and copilot headers,
+MCP server headers, provider keys) are sealed in the archive with AES-256-GCM under
+an export key made for this archive alone. The key is never written into the
+archive; it is shown once to whoever exports, and the import asks for it.
 """
 
 import argparse
@@ -22,6 +22,8 @@ import hashlib
 import io
 import json
 import re
+import secrets
+import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -34,6 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import noload
 
 from api import models
+from api.crypto import AtRestCipher
 from api.database import aget_read_db
 from api.storage import FileStorage
 from scripts import (
@@ -42,7 +45,7 @@ from scripts import (
 )
 from utilities.config import settings
 
-MANIFEST_VERSION = 1
+MANIFEST_VERSION = 2
 
 # Blob downloads run concurrently, bounded so a large account cannot exhaust
 # the object store's connection pool.
@@ -72,6 +75,8 @@ class ExportResult:
     """Files the account has that were not downloaded (no --with-files)."""
     missing_files: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    export_key: str = ""
+    """The key the archive's credentials are sealed under. Never written into it."""
 
     @property
     def total_rows(self) -> int:
@@ -221,10 +226,13 @@ uploaded file(s) from your Workspace account.
 
 ## SECURITY -- read this first
 
-This archive contains **unencrypted credentials**: the authentication headers
-for your custom backends and any custom copilots you configured. Anyone who
-opens this file can read those credentials.
+The credentials in this archive -- the headers of your custom backends, custom
+copilots and MCP servers, and your own provider keys -- are encrypted with an
+export key that is not in this archive. Whoever made the export was shown the key
+once; you need it to import. Without it the credentials cannot be read, and the
+import refuses to run.
 
+The rest of the archive (your dashboards, chats and files) is not encrypted.
 Store it somewhere private, and delete it once you have imported it -- but see
 "Your uploaded files" below first, because that folder is the only copy you get.
 
@@ -233,14 +241,14 @@ Store it somewhere private, and delete it once you have imported it -- but see
 
 1. Install Lite and start it, mounting the folder holding this archive:
 
-       docker run -d --name workspace -p 3000:3000 \\
+       docker run -d --name workspace -p 3000:3000 -p 8000:8000 \\
            -v workspace-data:/data \\
            -v /path/to/this/folder:/import \\
            lite
 
-2. Import this archive:
+2. Import this archive. It asks for the export key:
 
-       docker exec workspace workspace-import /import/{result.archive.name}
+       docker exec -it workspace workspace-import /import/{result.archive.name}
 
 3. Get the admin login and sign in at http://localhost:3000
 
@@ -283,7 +291,13 @@ async def build_archive(
         serde.assert_password_never_encoded(spec)
 
     user = await resolve_user(db, email)
-    result = ExportResult(archive=Path(), user_uuid=user.uuid, email=str(user.email))
+    result = ExportResult(
+        archive=Path(),
+        user_uuid=user.uuid,
+        email=str(user.email),
+        export_key=secrets.token_urlsafe(32),
+    )
+    sealer = AtRestCipher(result.export_key)
     result.archive = Path(
         f"workspace-export-{_safe_slug(email)}-"
         f"{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.zip"
@@ -317,7 +331,8 @@ async def build_archive(
             stored_files = rows
 
         body = "".join(
-            serde.dumps_line(serde.encode_row(spec, row)) + "\n" for row in rows
+            serde.dumps_line(serde.encode_row(spec, row, sealer)) + "\n"
+            for row in rows
         )
         encoded[spec.filename] = body
         result.tables[spec.table] = TableResult(
@@ -356,6 +371,7 @@ async def build_archive(
         "scope_version": scope.SCOPE_VERSION,
         "serde_version": serde.SERDE_VERSION,
         "exported_at": datetime.now(UTC).isoformat(),
+        "key_check": sealer.encrypt(serde.KEY_CHECK, serde.KEY_CHECK_CONTEXT),
         "source": {
             "database_type": settings.DATABASE_TYPE,
             "storage_provider": settings.STORAGE_PROVIDER,
@@ -482,9 +498,11 @@ def main(argv: list[str] | None = None) -> int:
         )
     for warning in result.warnings:
         logger.warning(warning)
-    logger.warning(
-        "This archive contains unencrypted backend and copilot credentials. "
-        "Treat it as a secret and delete it once it has been imported."
+    # Written to the terminal, never logged: the import needs it, and it is shown once.
+    sys.stdout.write(
+        f"\nExport key (shown once, not stored anywhere): {result.export_key}\n"
+        "The archive's credentials are sealed with it. Give it to the person "
+        "importing the archive separately from the file.\n\n"
     )
     return 0
 

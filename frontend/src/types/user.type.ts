@@ -6,7 +6,6 @@ export interface User {
   last_name: string;
   email: string;
   role: string;
-  billing_active: boolean;
   status: string;
   last_login: null | string;
   last_active: null | string;

@@ -1,13 +1,12 @@
 import { memo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { saveDashboards } from "~/api/dashboard.api";
-import FeatureLock from "~/components/General/FeatureLock";
 import Icon from "~/components/Icon";
 import type { IconId } from "~/components/Icon.types";
 import { docsUrl } from "~/lib/docsUrl";
 import { getConfig } from "~/lib/runtimeConfig";
+import { useShallowAccessStore } from "~/lib/state/access";
 import { useShallowAuthStore } from "~/lib/state/auth";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowSidebarStore } from "~/lib/state/sidebar";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { useShallowWorkspaceBridgeStore } from "~/lib/state/workspaceBridge";
@@ -24,7 +23,7 @@ import Tooltip from "../Tooltip";
 
 function UserInformation({ toggleHamburgerMenu }: { toggleHamburgerMenu: () => void }) {
   const { user, name } = useShallowAuthStore((s) => ({ user: s.user, name: s.name }));
-  const admin_access = useShallowFeatureFlagsStore((s) => s.featureFlags?.admin_access);
+  const isAdmin = useShallowAccessStore((s) => s.access?.user_type === "Admin");
   const { pathname } = useLocation();
   const fullName = [name.first, name.last].filter(Boolean).join(" ");
   if (!user) return null;
@@ -32,7 +31,7 @@ function UserInformation({ toggleHamburgerMenu }: { toggleHamburgerMenu: () => v
     <div className="space-y-2">
       {user.entity_name && (
         <Tag color="grey" className="text-2xs!">
-          {user.entity_name?.replace("Developer", "Free")}
+          {user.entity_name}
         </Tag>
       )}
       <div className="flex items-center gap-2">
@@ -42,25 +41,18 @@ function UserInformation({ toggleHamburgerMenu }: { toggleHamburgerMenu: () => v
           <div className="dark:text-dark-50 text-light-500">{user.email}</div>
         </div>
       </div>
-      {user.role === "Admin" && (
-        <FeatureLock isLocked={!admin_access}>
-          {pathname.startsWith("/admin") ? (
-            <Link to="/app" className="ws-dropdown-item" onClick={toggleHamburgerMenu}>
-              <Icon id="layout" />
-              <span>Workspace</span>
-            </Link>
-          ) : (
-            <Link
-              to="/admin"
-              className="ws-dropdown-item"
-              onClick={toggleHamburgerMenu}
-            >
-              <Icon id="user-edit" />
-              <span>Admin Portal</span>
-            </Link>
-          )}
-        </FeatureLock>
-      )}
+      {isAdmin &&
+        (pathname.startsWith("/admin") ? (
+          <Link to="/app" className="ws-dropdown-item" onClick={toggleHamburgerMenu}>
+            <Icon id="layout" />
+            <span>Workspace</span>
+          </Link>
+        ) : (
+          <Link to="/admin" className="ws-dropdown-item" onClick={toggleHamburgerMenu}>
+            <Icon id="user-edit" />
+            <span>Admin Portal</span>
+          </Link>
+        ))}
     </div>
   );
 }

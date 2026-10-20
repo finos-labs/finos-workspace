@@ -13,7 +13,6 @@ import {
 } from "~/lib/contexts/MyDataConnectorsContext";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { cn, handleWidgetDeletion } from "~/lib/utils";
 import { someTruthy } from "~/lib/utils/values";
 import { Button } from "../ds/atoms/Button";
@@ -454,9 +453,6 @@ function SourceTypeSection<T extends POSSIBLE_SOURCES>({
 
   const [isOpen, setIsOpen] = useState(!!hasMatchingBackend);
   const [userClosed, setUserClosed] = useState(false);
-  const isFullTier = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.tier === "full",
-  );
 
   const isEmpty = items.length === 0;
 

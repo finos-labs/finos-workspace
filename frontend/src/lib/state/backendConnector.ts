@@ -1,13 +1,14 @@
 import cloneDeep from "lodash/cloneDeep";
 import isEqual from "lodash.isequal";
+import { useMemo } from "react";
 import { toast } from "sonner";
 import { persist, subscribeWithSelector } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
 import { deleteApiSource } from "~/api/auth.api";
+import type { BackendPermissionsT, PermissionsT } from "~/api/user_roles.api";
 import ValidateApiSourceWorker from "~/apiSource.worker?worker";
-
 import {
   type CATEGORY_OPTIONS,
   updateWidgetEndpoints,
@@ -18,6 +19,15 @@ import type { ProcessedBackendT } from "~/hooks/useProcessBackendWidgets";
 import type { ProcessedTemplate, SharedPromptT } from "~/hooks/useSharedTemplates";
 import type { Selector } from "~/lib/state/app";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
+import {
+  usePermissionsStore,
+  useShallowPermissionsStore,
+} from "~/lib/state/permissions";
+import {
+  type EndpointHeaderRows,
+  splitEndpointHeaders,
+} from "~/lib/utils/endpointCredentials";
+import { isOnSourceOrigin } from "~/lib/utils/fetch";
 import { createIndexedDBStorage } from "~/lib/utils/indexDB";
 import type { InvalidItem } from "~/lib/utils/invalidItems";
 import { type ShowNotificationProps, showNotification } from "~/lib/utils/toast";
@@ -268,6 +278,8 @@ export interface BackendConnectorStore {
   hasApiSources: () => boolean;
   apiSources: Source[];
   isLoadingBackends: boolean;
+  /** Whether the API's list of the user's data backends, with their credentials, is in memory. */
+  sourcesLoaded: boolean;
   checkExistingBackend: (params: Record<"name" | "url" | "id", string>) => {
     name?: string;
     url?: string;
@@ -352,6 +364,7 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
         setWidgetMetadata: (widgetMetadata) => set({ widgetMetadata }),
         apiSources: [],
         isLoadingBackends: false,
+        sourcesLoaded: false,
         storedFiles: [],
         getApiSourceById: (id) => get().apiSources.find((source) => source.id === id),
         deleteApiSource: async (source, notify) => {
@@ -445,7 +458,6 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
                   ...widget,
                   widgetId: key,
                   subCategory,
-                  endpointHeaders: source.endpointHeaders,
                 };
                 return acc;
               },
@@ -554,7 +566,11 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
             } as Source;
           });
 
-          set({ apiSources, isLoadingBackends: apiSources.length > 0 });
+          set({
+            apiSources,
+            isLoadingBackends: apiSources.length > 0,
+            sourcesLoaded: true,
+          });
 
           if (apiSources.length === 0) return true;
           const needsSaveState = false;
@@ -667,13 +683,21 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
       {
         name: "backend-connector",
         storage: createIndexedDBStorage(),
+        // A source's credentials stay in page memory: the API sends them again with the
+        // source list. Its widgets are written without any rows of their own either.
         partialize: (state) =>
           ({
             apiSources: state.apiSources
               .filter((source) => source.status === "success")
-              .map((source) => ({
+              .map(({ endpointHeaders: _, widgets, ...source }) => ({
                 ...source,
-                endpointHeaders: undefined,
+                widgets:
+                  widgets &&
+                  Object.fromEntries(
+                    Object.entries(widgets).map(
+                      ([id, { endpointHeaders: _headers, ...widget }]) => [id, widget],
+                    ),
+                  ),
                 status: "rehydrated" as const,
               })),
           }) as unknown as BackendConnectorStore,
@@ -682,6 +706,116 @@ export const useBackendConnectorStore = createWithEqualityFn<BackendConnectorSto
   ),
   shallow,
 );
+
+/** A data backend a role shares with the user, which the API lists with its credentials. */
+function getRoleSharedBackend(
+  permissions: PermissionsT,
+  sourceId: string,
+): BackendPermissionsT | undefined {
+  return permissions.backends.find(
+    (backend) => backend.uuid === sourceId && backend.access === "access",
+  );
+}
+
+/**
+ * The credentials of the data backend a widget fetches from, looked up in page memory by
+ * the widget's source id when it fetches: one of the user's own backends, or one a role
+ * shares with them. Dashboards and apps never save them. They are given only for a `url`
+ * on that backend's origin.
+ */
+export function getSourceCredentials(
+  sourceId: string | null | undefined,
+  url: string | null | undefined,
+) {
+  if (!sourceId) return splitEndpointHeaders(null);
+  const own = useBackendConnectorStore.getState().getApiSourceById(sourceId);
+  const shared = getRoleSharedBackend(
+    usePermissionsStore.getState().permissions,
+    sourceId,
+  );
+  const rowsOf = (source?: { url: string; endpointHeaders: EndpointHeaderRows }) =>
+    source && isOnSourceOrigin(url, source.url) ? source.endpointHeaders : null;
+  return splitEndpointHeaders(rowsOf(own) ?? rowsOf(shared));
+}
+
+/** {@link getSourceCredentials} for a component, which renders again when they change. */
+export function useSourceCredentials(
+  sourceId: string | null | undefined,
+  url: string | null | undefined,
+) {
+  const own = useShallowBackendConnectorStore((state) => {
+    const source = sourceId ? state.getApiSourceById(sourceId) : undefined;
+    return source && isOnSourceOrigin(url, source.url)
+      ? (source.endpointHeaders ?? null)
+      : null;
+  });
+  const shared = useShallowPermissionsStore((state) => {
+    const source = sourceId
+      ? getRoleSharedBackend(state.permissions, sourceId)
+      : undefined;
+    return source && isOnSourceOrigin(url, source.url)
+      ? (source.endpointHeaders ?? null)
+      : null;
+  });
+  const rows = own ?? shared;
+  return useMemo(() => splitEndpointHeaders(rows), [rows]);
+}
+
+/**
+ * Whether a widget can fetch from its data backend in this page:
+ * - "none": it has no data backend (a file, an iframe, content of its own);
+ * - "available": the backend is one of the user's own, or a role shares it with them;
+ * - "pending": the user's backends are not loaded yet;
+ * - "unavailable": the backend is not the user's, as in a dashboard someone else shared
+ *   from a backend of their own. Saved content never carries credentials, so the widget
+ *   shows that the connection is not available instead of fetching without them.
+ */
+export type WidgetSourceState = "none" | "available" | "pending" | "unavailable";
+
+/** What a widget shows when its data backend is not one of the viewer's. */
+export const SOURCE_UNAVAILABLE_MESSAGE =
+  "This data connection is not available to you";
+
+/** Whether a widget in this {@link WidgetSourceState} may fetch now. */
+export const canFetchFromSource = (state: WidgetSourceState) =>
+  state === "none" || state === "available";
+
+type SourcedWidget = Pick<WidgetT, "sourceId" | "connectionType" | "isSharedWidget">;
+
+function sourceStateOf(
+  widget: SourcedWidget | null | undefined,
+  connector: Pick<BackendConnectorStore, "getApiSourceById" | "sourcesLoaded">,
+  permissions: PermissionsT,
+): WidgetSourceState {
+  const sourceId = widget?.connectionType === "file" ? null : widget?.sourceId;
+  if (!sourceId) return "none";
+  // A widget a role shares is let through, or not, by the role's access check
+  if (widget?.isSharedWidget) return "available";
+  if (
+    connector.getApiSourceById(sourceId) ||
+    getRoleSharedBackend(permissions, sourceId)
+  )
+    return "available";
+  return connector.sourcesLoaded ? "unavailable" : "pending";
+}
+
+/** {@link WidgetSourceState} of a widget, from what the page holds now. */
+export function getWidgetSourceState(widget: SourcedWidget | null | undefined) {
+  return sourceStateOf(
+    widget,
+    useBackendConnectorStore.getState(),
+    usePermissionsStore.getState().permissions,
+  );
+}
+
+/** {@link getWidgetSourceState} for a component, which renders again when it changes. */
+export function useWidgetSourceState(widget: SourcedWidget | null | undefined) {
+  const { sourceId, connectionType, isSharedWidget } = widget ?? {};
+  const permissions = useShallowPermissionsStore((state) => state.permissions);
+  return useShallowBackendConnectorStore((state) =>
+    sourceStateOf({ sourceId, connectionType, isSharedWidget }, state, permissions),
+  );
+}
 
 export function useShallowBackendConnectorStore<T>(
   selector: Selector<BackendConnectorStore, T>,

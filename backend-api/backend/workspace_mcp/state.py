@@ -77,7 +77,6 @@ class BridgeSessionManager:
         async with self._lock:
             session = BrowserSession(
                 session_id=str(uuid4()),
-                token=str(uuid4()),
                 client_name=request.client_name,
                 current_dashboard_id=request.current_dashboard_id,
                 current_tab_id=request.current_tab_id,
@@ -93,24 +92,29 @@ class BridgeSessionManager:
                 session=session,
                 websocket_url=(
                     f"{self._base_url.replace('http', 'ws', 1)}"
-                    f"{self._websocket_path}?session_id={session.session_id}&token={session.token}"
+                    f"{self._websocket_path}?session_id={session.session_id}"
                 ),
             )
+
+    def check_browser(self, *, session_id: str) -> BrowserSession:
+        """The currently bootstrapped browser session, when `session_id` names it."""
+        browser = self._require_session()
+        if browser.session.session_id != session_id:
+            raise BrowserUnavailableError("Invalid browser session credentials.")
+        return browser.session
 
     async def connect_browser(
         self,
         *,
         session_id: str,
-        token: str,
         socket: BrowserSocket,
     ) -> BrowserSession:
         """Attach the websocket for the currently bootstrapped browser session."""
         async with self._lock:
+            session = self.check_browser(session_id=session_id)
             browser = self._require_session()
-            if browser.session.session_id != session_id or browser.session.token != token:
-                raise BrowserUnavailableError("Invalid browser session credentials.")
             browser.socket = socket
-            return browser.session
+            return session
 
     async def disconnect_browser(self, *, session_id: str | None = None) -> None:
         """Detach the current browser websocket and fail pending commands."""

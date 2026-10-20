@@ -3,7 +3,7 @@
 import hashlib
 import hmac
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -12,7 +12,6 @@ import pytest
 
 from api import notifications
 from api.notifications import WebhookNotifier, notify_admins
-from tests.fixtures.base import _TEST_ENTITY_TYPE_UUID
 from tests.fixtures.base import superuser_override
 from utilities.config import settings
 
@@ -136,19 +135,11 @@ class TestEntityCreatedEvent:
     async def test_entity_creation_notifies_the_admins(self, auth_client):
         name = f"Notify Entity {uuid4().hex[:8]}"
         mock = AsyncMock(return_value=None)
-        with superuser_override(), patch("routers.entity.notify_admins", mock):
+        with superuser_override(), patch("routers.administration.notify_admins", mock):
             response = await auth_client.post(
                 "/entity/entity",
                 json={
                     "name": name,
-                    "entity_code": _TEST_ENTITY_TYPE_UUID,
-                    "email": "entity@example.com",
-                    "company_type": "other",
-                    "organization_size": "1-10",
-                    "aum": 0,
-                    "country": "US",
-                    "seats": 5,
-                    "expiration_date": (datetime.now(UTC) + timedelta(days=30)).isoformat(),
                     "admin_email": "entity-admin@example.com",
                 },
             )

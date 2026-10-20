@@ -40,6 +40,8 @@ type ShareData = {
     last_name?: string;
     created_date?: string;
     permissions?: "view" | "edit";
+    /** A developer's share that waits for an admin's approval */
+    pending?: boolean;
   };
 };
 
@@ -155,6 +157,8 @@ export function ShareAppDialog({
         await deleteUserAppShare(shareUserAppsPopupId, deletedEmails);
       }
 
+      // A developer's shares wait for an admin's approval
+      let pendingApproval = false;
       if (sharedEmails.length > 0) {
         const data = await shareUserApp(shareUserAppsPopupId, sharedEmails.join(","));
 
@@ -162,9 +166,15 @@ export function ShareAppDialog({
           toast.error("User App Share Failed", { description: data?.detail });
           return;
         }
+        pendingApproval = data.pending_approval === true;
       }
 
-      if (sharedEmails.length > 0 && tabHasBYODWidgets) {
+      if (pendingApproval) {
+        toast.success("Sent to an admin for approval", {
+          description:
+            "The people you chose get access once an admin approves the share.",
+        });
+      } else if (sharedEmails.length > 0 && tabHasBYODWidgets) {
         toast.success("User App shared permissions updated", {
           description:
             "Please note that shared users will not be able to view Data connectors widgets.",
@@ -422,6 +432,9 @@ export function ShareAppDialog({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {shareDataInfo?.[sharedUser.email]?.pending && (
+                      <span className="ws-tag">Waiting for approval</span>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleRemoveUser(sharedUser.email)}
@@ -508,18 +521,13 @@ function getWarningMessages(widgets: Widget[]) {
   const warningMessages = { type: false, api: false };
   const connectionTypes = ["file", "single", "advanced-backend"];
   const urlRegex = /(?:(secret|api|key|token|auth)(?<=\1(?:[^&\s]*)))/;
-  const headersRegex = /.*key.*|.*token.*|.*auth.*|.*secret.*|.*bearer.*|.*basic.*/;
 
   for (const widget of widgets) {
     if (!(widget?.connectionType && connectionTypes.includes(widget.connectionType)))
       continue;
 
     warningMessages.type = true;
-    const headersMessages = Object.keys(widget?.endpoint?.headers || {}).some(
-      (header) => headersRegex.test(header),
-    );
-
-    if (urlRegex.test(widget?.endpoint?.url ?? "") || headersMessages) {
+    if (urlRegex.test(widget?.endpoint?.url ?? "")) {
       warningMessages.api = true;
     }
   }

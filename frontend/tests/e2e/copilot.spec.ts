@@ -10,6 +10,10 @@ import { expect, test } from "@playwright/test";
  * app reaching Ines, Ines recognising the signed-in user, the Workspace allowing the question and
  * counting it, the agent loop, the text sink, the SSE protocol, and the chat rendering what came back.
  *
+ * The account the tests sign in as is the administrator init creates, who gets the organization's
+ * default roles: Agent User grants the agent with every model it offers and no daily limits. So
+ * this also tests that a fresh stack's administrator can ask the agent with no setup.
+ *
  * Without this the end-to-end suite can be green while the Copilot is completely broken: no other
  * test here asks it anything.
  */
@@ -35,6 +39,7 @@ test.describe("the Copilot", () => {
     );
     if (!opened) await page.keyboard.press("ControlOrMeta+KeyL");
     await expect(question).toBeVisible({ timeout: 30_000 });
+    await expect(question).toBeEnabled({ timeout: 30_000 });
 
     // The stub says the same thing to everything, so an answer already on screen — a chat this
     // account left open, or a retry of this test — would make "the answer is visible" true without
@@ -46,12 +51,17 @@ test.describe("the Copilot", () => {
     await question.press("Enter");
 
     // The question is in the chat as the user's message...
-    await expect(page.getByText("Say hello").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Say hello").first()).toBeVisible({
+      timeout: 30_000,
+    });
 
     // ...and an answer comes back that was not there before. The model is a stub but every other
     // step is the real one, and a cold agent signs the user in and asks the Workspace first.
     await expect
-      .poll(() => answers.count(), { timeout: 90_000, message: "the Copilot never answered" })
+      .poll(() => answers.count(), {
+        timeout: 90_000,
+        message: "the Copilot never answered",
+      })
       .toBeGreaterThan(before);
   });
 });

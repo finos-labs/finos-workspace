@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { deleteUserAppShare, syncUserApps } from "~/api/auth.api";
 import type { WidgetJsonT } from "~/components/types";
+import { canReceiveShares, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import { duplicateTabItem } from "~/lib/utils";
 import {
@@ -49,6 +50,7 @@ export interface UnifiedTemplate {
 
 export function useAllTemplates(isLoadingApiSources = false) {
   const userEmail = useShallowAuthStore((state) => state.user?.email || "");
+  const mayReceive = useShallowAccessStore((state) => canReceiveShares(state.access));
   const { data: sharedTemplatesData = [] } = useSharedTemplates({
     enabled: !isLoadingApiSources,
   });
@@ -150,111 +152,113 @@ export function useAllTemplates(isLoadingApiSources = false) {
       });
 
     // Map user-generated apps to template format
-    const generatedAppTemplates = [...userGeneratedApps, ...userSharedApps].map(
-      (app) => {
-        const widgets = app.widgets
-          .filter((w) => w.widgetId && w.name)
-          .map((w) => ({
-            name: w.name || w.widgetId,
-            count: 1,
-          }));
+    // Apps other users shared appear only for those who may receive shared items
+    const generatedAppTemplates = [
+      ...userGeneratedApps,
+      ...(mayReceive ? userSharedApps : []),
+    ].map((app) => {
+      const widgets = app.widgets
+        .filter((w) => w.widgetId && w.name)
+        .map((w) => ({
+          name: w.name || w.widgetId,
+          count: 1,
+        }));
 
-        const uniqueWidgets = widgets.reduce(
-          (acc, widget) => {
-            const existing = acc.find((w) => w.name === widget.name);
-            if (existing) {
-              existing.count += 1;
-            } else {
-              acc.push({ ...widget });
-            }
-            return acc;
-          },
-          [] as typeof widgets,
-        );
+      const uniqueWidgets = widgets.reduce(
+        (acc, widget) => {
+          const existing = acc.find((w) => w.name === widget.name);
+          if (existing) {
+            existing.count += 1;
+          } else {
+            acc.push({ ...widget });
+          }
+          return acc;
+        },
+        [] as typeof widgets,
+      );
 
-        return {
-          id: app.uuid,
+      return {
+        id: app.uuid,
+        name: app.name,
+        description: app.description,
+        type: "generated",
+        totalWidgets: app.widgets.length,
+        widgets: uniqueWidgets,
+        prompts: app.prompts || [],
+        selected_agent: app.selected_agent,
+        img: app.img,
+        img_dark: app.img_dark,
+        img_light: app.img_light,
+        isShared: app.isShared,
+        createdBy: app.createdBy,
+        creator: app.creator,
+        sharedWith: app.sharedWith,
+        onClick: () => {
+          const templateId = `custom-${app.uuid}` as const;
+          const { tabName, navigateTo } = getUntouchedAppTabInfo(
+            templateId,
+            app.name,
+            items,
+          );
+          if (navigateTo) {
+            if (navigate) navigate(navigateTo);
+            return;
+          }
+
+          const tabData = {
+            name: tabName,
+            type: "custom",
+            templateId,
+            widgets: app.widgets,
+            groups: app.groups || [],
+            gridLayout: app.gridLayout || {},
+          } as const;
+
+          // Directly create a new tab with the user-generated app data
+          const newTab = duplicateTabItem(
+            {
+              index: "",
+              children: [],
+              data: { ...tabData, name: tabName ?? app.name },
+            },
+            undefined,
+            false,
+          );
+          const index = newTab.index;
+
+          addTab(newTab, true);
+
+          if (navigate) {
+            // Navigate to the new dashboard after a brief delay to ensure it's created
+            setTimeout(() => {
+              const tab = getTabById(index);
+              if (!tab) return;
+              navigate(`/app/${index}`);
+            }, 100);
+          }
+        },
+        onDelete: async () => {
+          if (!app.uuid) throw new Error("The app has no uuid");
+          if (app.creator) return await removeUserApp(app.uuid);
+          if (userEmail) {
+            const data = await deleteUserAppShare(app.uuid, [userEmail]);
+            if (!data?.success)
+              throw new Error(data?.detail || "Failed to delete app share");
+
+            await syncUserApps();
+            toast.success("App share deleted successfully", {
+              id: "delete-app-share",
+              description: "You have successfully removed your access to this app.",
+            });
+          }
+        },
+        source: {
+          id: `generated-${app.uuid}`,
           name: app.name,
-          description: app.description,
-          type: "generated",
-          totalWidgets: app.widgets.length,
-          widgets: uniqueWidgets,
-          prompts: app.prompts || [],
-          selected_agent: app.selected_agent,
-          img: app.img,
-          img_dark: app.img_dark,
-          img_light: app.img_light,
-          isShared: app.isShared,
-          createdBy: app.createdBy,
-          creator: app.creator,
-          sharedWith: app.sharedWith,
-          onClick: () => {
-            const templateId = `custom-${app.uuid}` as const;
-            const { tabName, navigateTo } = getUntouchedAppTabInfo(
-              templateId,
-              app.name,
-              items,
-            );
-            if (navigateTo) {
-              if (navigate) navigate(navigateTo);
-              return;
-            }
-
-            const tabData = {
-              name: tabName,
-              type: "custom",
-              templateId,
-              widgets: app.widgets,
-              groups: app.groups || [],
-              gridLayout: app.gridLayout || {},
-            } as const;
-
-            // Directly create a new tab with the user-generated app data
-            const newTab = duplicateTabItem(
-              {
-                index: "",
-                children: [],
-                data: { ...tabData, name: tabName ?? app.name },
-              },
-              undefined,
-              false,
-            );
-            const index = newTab.index;
-
-            addTab(newTab, true);
-
-            if (navigate) {
-              // Navigate to the new dashboard after a brief delay to ensure it's created
-              setTimeout(() => {
-                const tab = getTabById(index);
-                if (!tab) return;
-                navigate(`/app/${index}`);
-              }, 100);
-            }
-          },
-          onDelete: async () => {
-            if (!app.uuid) throw new Error("The app has no uuid");
-            if (app.creator) return await removeUserApp(app.uuid);
-            if (userEmail) {
-              const data = await deleteUserAppShare(app.uuid, [userEmail]);
-              if (!data?.success)
-                throw new Error(data?.detail || "Failed to delete app share");
-
-              await syncUserApps();
-              toast.success("App share deleted successfully", {
-                id: "delete-app-share",
-                description: "You have successfully removed your access to this app.",
-              });
-            }
-          },
-          source: {
-            id: `generated-${app.uuid}`,
-            name: app.name,
-            createdDate: app.createdDate,
-          } as Partial<Source>,
-        } as UnifiedTemplate;
-      },
-    );
+          createdDate: app.createdDate,
+        } as Partial<Source>,
+      } as UnifiedTemplate;
+    });
 
     // Type assertion needed here because the inferred type might be too wide
     return [
@@ -267,6 +271,7 @@ export function useAllTemplates(isLoadingApiSources = false) {
     sharedTemplatesData,
     userGeneratedApps,
     userSharedApps,
+    mayReceive,
     addTab,
     navigate,
     items,

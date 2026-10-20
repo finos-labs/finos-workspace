@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  ALL_MODELS,
   allowedModels,
   type CopilotAccess,
+  grantAgentId,
+  isAgentGranted,
   isMcpToolAllowed,
   isMcpToolSwitchedOff,
   isModelAllowed,
@@ -9,24 +12,18 @@ import {
   selectModelId,
 } from "~/lib/state/copilotAccess";
 
-const open: CopilotAccess = {
-  models: [],
-  mcp: [],
-  models_restricted: false,
-  mcp_restricted: false,
-};
+const none: CopilotAccess = { models: [], mcp: [] };
 
-const restricted: CopilotAccess = {
+const granted: CopilotAccess = {
   models: [
-    { agent_id: "default-copilot", model_id: "fast" },
+    // The default agent's grants carry the id its agents.json gives it
+    { agent_id: "default_agent", model_id: "fast" },
     { agent_id: "custom", model_id: "smart" },
   ],
   mcp: [
     { server_url: "https://mcp.example.com/mcp", tool_name: "*" },
     { server_url: "https://tools.example.com/mcp", tool_name: "search" },
   ],
-  models_restricted: true,
-  mcp_restricted: true,
 };
 
 describe("normalizeMcpUrl", () => {
@@ -41,38 +38,65 @@ describe("normalizeMcpUrl", () => {
   });
 });
 
+describe("grantAgentId", () => {
+  it("files grants under the id the agent gives itself in its agents.json", () => {
+    // The web app knows the default agent as default-copilot
+    expect(grantAgentId("default-copilot")).toBe("default_agent");
+    expect(grantAgentId("custom")).toBe("custom");
+  });
+});
+
 describe("isModelAllowed", () => {
-  it("allows every model until a role grants some", () => {
-    expect(isModelAllowed(null, "any", "model")).toBe(true);
-    expect(isModelAllowed(open, "any", "model")).toBe(true);
+  it("allows no model when no role grants one or the access is not loaded", () => {
+    expect(isModelAllowed(null, "default-copilot", "fast")).toBe(false);
+    expect(isModelAllowed(undefined, "default-copilot", "fast")).toBe(false);
+    expect(isModelAllowed(none, "default-copilot", "fast")).toBe(false);
   });
 
   it("allows only the granted models of the granted agents", () => {
-    expect(isModelAllowed(restricted, "default-copilot", "fast")).toBe(true);
-    expect(isModelAllowed(restricted, "default-copilot", "smart")).toBe(false);
-    expect(isModelAllowed(restricted, "custom", "fast")).toBe(false);
+    expect(isModelAllowed(granted, "default-copilot", "fast")).toBe(true);
+    expect(isModelAllowed(granted, "default-copilot", "smart")).toBe(false);
+    expect(isModelAllowed(granted, "custom", "fast")).toBe(false);
+  });
+
+  it("allows every model of an agent granted with *, and of that agent only", () => {
+    const all: CopilotAccess = {
+      models: [{ agent_id: "default_agent", model_id: ALL_MODELS }],
+      mcp: [],
+    };
+    expect(isModelAllowed(all, "default-copilot", "fast")).toBe(true);
+    expect(isModelAllowed(all, "default-copilot", "ollama:stub")).toBe(true);
+    expect(isModelAllowed(all, "custom", "fast")).toBe(false);
+  });
+});
+
+describe("isAgentGranted", () => {
+  it("is whether a role grants any model of the agent", () => {
+    expect(isAgentGranted(granted, "default-copilot")).toBe(true);
+    expect(isAgentGranted(granted, "other")).toBe(false);
+    expect(isAgentGranted(none, "default-copilot")).toBe(false);
+    expect(isAgentGranted(null, "default-copilot")).toBe(false);
   });
 });
 
 describe("isMcpToolAllowed", () => {
-  it("allows every tool until a role grants some", () => {
-    expect(isMcpToolAllowed(null, "https://x.example.com", "t")).toBe(true);
-    expect(isMcpToolAllowed(open, "https://x.example.com", "t")).toBe(true);
+  it("allows no tool when no role grants one or the access is not loaded", () => {
+    expect(isMcpToolAllowed(null, "https://mcp.example.com/mcp", "t")).toBe(false);
+    expect(isMcpToolAllowed(undefined, "https://mcp.example.com/mcp", "t")).toBe(false);
+    expect(isMcpToolAllowed(none, "https://mcp.example.com/mcp", "t")).toBe(false);
   });
 
-  it("allows all tools of a granted server and only the granted tools of others", () => {
-    expect(isMcpToolAllowed(restricted, "https://MCP.example.com/mcp/", "any")).toBe(
+  it("allows all tools of a server granted with * and only the granted tools of others", () => {
+    expect(isMcpToolAllowed(granted, "https://MCP.example.com/mcp/", "any")).toBe(true);
+    expect(isMcpToolAllowed(granted, "https://tools.example.com/mcp", "search")).toBe(
       true,
     );
-    expect(
-      isMcpToolAllowed(restricted, "https://tools.example.com/mcp", "search"),
-    ).toBe(true);
-    expect(
-      isMcpToolAllowed(restricted, "https://tools.example.com/mcp", "delete"),
-    ).toBe(false);
-    expect(
-      isMcpToolAllowed(restricted, "https://other.example.com/mcp", "search"),
-    ).toBe(false);
+    expect(isMcpToolAllowed(granted, "https://tools.example.com/mcp", "delete")).toBe(
+      false,
+    );
+    expect(isMcpToolAllowed(granted, "https://other.example.com/mcp", "search")).toBe(
+      false,
+    );
   });
 });
 
@@ -80,33 +104,39 @@ describe("allowedModels and selectModelId", () => {
   const models = [{ id: "fast" }, { id: "smart" }];
 
   it("lists only the models of the agent that are granted", () => {
-    expect(allowedModels(restricted, "default-copilot", models)).toEqual([
-      { id: "fast" },
-    ]);
-    expect(allowedModels(open, "default-copilot", models)).toEqual(models);
-    expect(allowedModels(open, "default-copilot", undefined)).toEqual([]);
+    expect(allowedModels(granted, "default-copilot", models)).toEqual([{ id: "fast" }]);
+    expect(allowedModels(none, "default-copilot", models)).toEqual([]);
+    expect(allowedModels(null, "default-copilot", models)).toEqual([]);
+    expect(allowedModels(granted, "default-copilot", undefined)).toEqual([]);
   });
 
   it("keeps the user's model when they may use it", () => {
-    expect(selectModelId(open, "default-copilot", models, "smart")).toBe("smart");
+    expect(selectModelId(granted, "custom", models, "smart")).toBe("smart");
   });
 
   it("falls back to the first model the user may use", () => {
-    expect(selectModelId(restricted, "default-copilot", models, "smart")).toBe("fast");
-    expect(selectModelId(restricted, "default-copilot", models, undefined)).toBe(
-      "fast",
-    );
+    expect(selectModelId(granted, "default-copilot", models, "smart")).toBe("fast");
+    expect(selectModelId(granted, "default-copilot", models, undefined)).toBe("fast");
   });
 
   it("sends the first model when none is granted, for the service to refuse", () => {
-    expect(selectModelId(restricted, "unknown-agent", models, "smart")).toBe("fast");
+    expect(selectModelId(granted, "unknown-agent", models, "smart")).toBe("fast");
+    expect(selectModelId(none, "default-copilot", models, "smart")).toBe("fast");
   });
 });
 
 describe("what an administrator switched off", () => {
-  const searchOff: CopilotAccess = { ...open, disabled_capabilities: ["SEARCH_WEB"] };
+  // Every tool of both servers granted, as a role can grant them
+  const all: CopilotAccess = {
+    models: [],
+    mcp: [
+      { server_url: "https://mcp.example.com/mcp", tool_name: "*" },
+      { server_url: "https://another.example.com/mcp", tool_name: "*" },
+    ],
+  };
+  const searchOff: CopilotAccess = { ...all, disabled_capabilities: ["SEARCH_WEB"] };
   const bothOff: CopilotAccess = {
-    ...open,
+    ...all,
     disabled_capabilities: ["SEARCH_WEB", "FETCH_FROM_WEB"],
   };
 
@@ -127,7 +157,7 @@ describe("what an administrator switched off", () => {
 
   it("takes reading a fetched page away with fetching it", () => {
     const fetchOff: CopilotAccess = {
-      ...open,
+      ...all,
       disabled_capabilities: ["FETCH_FROM_WEB"],
     };
     expect(
@@ -144,27 +174,28 @@ describe("what an administrator switched off", () => {
     ).toBe(false);
   });
 
-  it("beats what the roles grant", () => {
+  it("beats a grant of that very tool", () => {
     const granted: CopilotAccess = {
-      ...restricted,
+      models: [],
+      mcp: [{ server_url: "https://mcp.example.com/mcp", tool_name: "web_search" }],
       disabled_capabilities: ["SEARCH_WEB"],
     };
     expect(isMcpToolAllowed(granted, "https://mcp.example.com/mcp", "web_search")).toBe(
       false,
     );
-    expect(
-      isMcpToolAllowed(granted, "https://mcp.example.com/mcp", "anything_else"),
-    ).toBe(true);
   });
 
-  it("changes nothing when nothing is switched off, or for a Workspace that does not say", () => {
-    expect(isMcpToolSwitchedOff(open, "web_search")).toBe(false);
+  it("grants nothing when it is on: the tool still needs a role that grants it", () => {
+    expect(isMcpToolSwitchedOff(all, "web_search")).toBe(false);
     expect(isMcpToolSwitchedOff(null, "web_search")).toBe(false);
     expect(
-      isMcpToolSwitchedOff({ ...open, disabled_capabilities: [] }, "web_search"),
+      isMcpToolSwitchedOff({ ...all, disabled_capabilities: [] }, "web_search"),
     ).toBe(false);
-    expect(isMcpToolAllowed(open, "https://mcp.example.com/mcp", "web_search")).toBe(
+    expect(isMcpToolAllowed(all, "https://mcp.example.com/mcp", "web_search")).toBe(
       true,
+    );
+    expect(isMcpToolAllowed(none, "https://mcp.example.com/mcp", "web_search")).toBe(
+      false,
     );
   });
 });

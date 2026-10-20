@@ -16,8 +16,9 @@ interface AdminEntityTableProps<T> {
   /** The text of a row that the search matches against. */
   searchText: (row: T) => string;
   searchPlaceholder: string;
-  addLabel: string;
-  onAdd: () => void;
+  /** The Add button; a table without `onAdd` has none. */
+  addLabel?: string;
+  onAdd?: () => void;
   onEdit: (row: T) => void;
   editLabel: string;
   isLoading: boolean;
@@ -92,9 +93,11 @@ export function AdminEntityTable<T>({
           onChange={(value: string) => setSearch(value)}
         />
         <div className="flex-1" />
-        <Button variant="primary" size="sm" onClick={onAdd}>
-          {addLabel}
-        </Button>
+        {onAdd && (
+          <Button variant="primary" size="sm" onClick={onAdd}>
+            {addLabel}
+          </Button>
+        )}
       </div>
       <div className="relative mt-6 min-h-[200px]">
         <DataTable

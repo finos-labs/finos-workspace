@@ -4,15 +4,23 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 from contextlib import asynccontextmanager, contextmanager
 from datetime import UTC
 from typing import Any, TypedDict
+from uuid import UUID
 from collections.abc import Mapping, Sequence
 
+import jwt
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, text
 from sqlalchemy.sql import Executable
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# The origin of the web app in the tests; requests are sent to
+# https://test, so that the client keeps and sends the API's secure session cookies
+TEST_ORIGIN = "http://test"
+TEST_BASE_URL = "https://test"
 
 _BASE_TEST_ENV = {
     "MODE": "test",
@@ -21,16 +29,25 @@ _BASE_TEST_ENV = {
     "FRONTENDURL": "http://localhost:3000",
     "SELFURL": "http://localhost:8000",
     "JWT_SECRET": "supersecretkeyfortestingonly12345",
-    "WORKSPACE_AES_KEY": "sixteenbytekey!!",
-    "DISABLE_CORS": "true",
+    "WORKSPACE_AES_KEY": "d29ya3NwYWNlLXRlc3Qtc3VpdGUtYXQtcmVzdC1rZXk",
+    "LOCAL_STORAGE_SECRET_KEY": "local-storage-signing-key-for-the-test-suite",
+    "BACKEND_CORS_ORIGINS": TEST_ORIGIN,
 }
 for key, value in _BASE_TEST_ENV.items():
     os.environ.setdefault(key, value)
+# The service token the API holds for the /app routes, as create_local_env writes it
+os.environ.setdefault(
+    "WORKSPACE_AUTH_TOKEN",
+    jwt.encode({"sub": "workspace"}, os.environ["JWT_SECRET"], algorithm="HS256"),
+)
 
-from api import auth_helpers  # noqa: E402
+from api import auth_helpers, crypto  # noqa: E402
 from api.models import User  # noqa: E402
 from utilities.config import settings  # noqa: E402
 from main import app  # noqa: E402
+
+# What the web app sends with every request; its session cookie comes on top
+WEB_HEADERS = {auth_helpers.CLIENT_HEADER: "web", "Origin": TEST_ORIGIN}
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +66,6 @@ _TEST_USER_UUID = "00000000-0000-0000-0000-000000000001"
 _TEST_SESSION_UUID = "00000000-0000-0000-0000-000000000002"
 _TEST_ENTITY_UUID = "00000000-0000-0000-0000-000000000003"
 _TEST_PERM_UUID = "00000000-0000-0000-0000-000000000004"
-_TEST_ENTITY_TYPE_UUID = "00000000-0000-0000-0000-000000000005"
 
 
 class UserConfig(TypedDict):
@@ -58,11 +74,7 @@ class UserConfig(TypedDict):
     session_uuid: str
     entity_uuid: str
     perm_uuid: str
-    entity_type_uuid: str
-    entity_type: str
-    entity_code: str
     entity_name: str
-    entity_email: str
     perm_name: str
     session_source: str
 
@@ -76,13 +88,9 @@ _AUTH_USER: UserConfig = {
     "session_uuid": _TEST_SESSION_UUID,
     "entity_uuid": _TEST_ENTITY_UUID,
     "perm_uuid": _TEST_PERM_UUID,
-    "entity_type_uuid": _TEST_ENTITY_TYPE_UUID,
-    "entity_type": "test_company",
-    "entity_code": "TST",
     "entity_name": "Test Entity",
-    "entity_email": "entity@example.com",
-    "perm_name": "admin",
-    "session_source": "integration_test",
+    "perm_name": "Developer",
+    "session_source": "app",
 }
 
 _ADMIN_USER: UserConfig = {
@@ -91,13 +99,9 @@ _ADMIN_USER: UserConfig = {
     "session_uuid": "00000000-0000-0000-0000-000000000011",
     "entity_uuid": "00000000-0000-0000-0000-000000000012",
     "perm_uuid": "00000000-0000-0000-0000-000000000013",
-    "entity_type_uuid": "00000000-0000-0000-0000-000000000014",
-    "entity_type": "admin_company",
-    "entity_code": "ADM",
     "entity_name": "Admin Entity",
-    "entity_email": "admin_entity@example.com",
     "perm_name": "Admin",
-    "session_source": "test_admin",
+    "session_source": "app",
 }
 
 _SECOND_USER: UserConfig = {
@@ -106,13 +110,9 @@ _SECOND_USER: UserConfig = {
     "session_uuid": "00000000-0000-0000-0000-000000000021",
     "entity_uuid": "00000000-0000-0000-0000-000000000022",
     "perm_uuid": "00000000-0000-0000-0000-000000000023",
-    "entity_type_uuid": "00000000-0000-0000-0000-000000000024",
-    "entity_type": "second_company",
-    "entity_code": "SEC",
     "entity_name": "Second Entity",
-    "entity_email": "second_entity@example.com",
-    "perm_name": "admin",
-    "session_source": "test_second",
+    "perm_name": "Developer",
+    "session_source": "app",
 }
 
 _USER_UUID_TABLE_DELETE_QUERIES = [
@@ -155,11 +155,12 @@ _DELETE_PERMISSIONS_BY_UUID = text(
     "DELETE FROM `permissions_entity_map` WHERE uuid = :uuid"
 )
 _DELETE_ENTITY_BY_UUID = text("DELETE FROM `entity` WHERE uuid = :uuid")
-_DELETE_ENTITY_TYPE_BY_UUID = text("DELETE FROM `entity_type` WHERE uuid = :uuid")
 
-_DEVELOPER_UUID = "22222222-2222-2222-2222-222222222222"
-_DEVELOPER_ENTITY_UUID = "33333333-3333-3333-3333-333333333333"
-_APP_ENTITY_TYPE_UUID = "55555555-5555-5555-5555-555555555555"
+# The default organization: init makes the first one, and users nobody placed get its User map
+# (settings.DEFAULT_USER_MAPPING, which user_create.json sets in a stack)
+_DEFAULT_USER_MAP_UUID = "22222222-2222-2222-2222-222222222222"
+_DEFAULT_ENTITY_UUID = "33333333-3333-3333-3333-333333333333"
+settings.DEFAULT_USER_MAPPING = UUID(_DEFAULT_USER_MAP_UUID)
 
 
 def _configure_test_settings(
@@ -269,7 +270,6 @@ async def _cleanup_test_user_records(
         (_DELETE_USER_BY_UUID, {"uuid": user_uuid}),
         (_DELETE_PERMISSIONS_BY_UUID, {"uuid": _TEST_PERM_UUID}),
         (_DELETE_ENTITY_BY_UUID, {"uuid": _TEST_ENTITY_UUID}),
-        (_DELETE_ENTITY_TYPE_BY_UUID, {"uuid": _TEST_ENTITY_TYPE_UUID}),
     ]
     await _execute_cleanup_statements(cleanup_session, statements)
 
@@ -282,7 +282,7 @@ async def _cleanup_user_fixture_records(
     user_config: UserConfig,
 ) -> None:
     """Remove fixture-specific rows for a user setup (hex UUID tables + entities)."""
-    from api.models.entity_models import Entity, EntityType, PermissionsEntityMap
+    from api.models.entity_models import Entity, PermissionsEntityMap
 
     await _set_fk_checks(db_session, enabled=False)
 
@@ -318,12 +318,6 @@ async def _cleanup_user_fixture_records(
         )
     except Exception:
         pass
-    try:
-        await db_session.execute(
-            delete(EntityType).where(EntityType.uuid == user_config["entity_type_uuid"])
-        )
-    except Exception:
-        pass
 
     await _set_fk_checks(db_session, enabled=True)
     await db_session.commit()
@@ -332,25 +326,10 @@ async def _cleanup_user_fixture_records(
 async def _create_user_fixture(
     db_session: AsyncSession, user_config: UserConfig
 ) -> User:
-    """Create EntityType, Entity, Permissions map, and User for a fixture."""
-    from api.models.entity_models import Entity, EntityType, PermissionsEntityMap
+    """Create Entity, Permissions map, and User for a fixture."""
+    from api.models.entity_models import Entity, PermissionsEntityMap
 
-    entity_type = EntityType(
-        uuid=user_config["entity_type_uuid"],
-        entity_type=user_config["entity_type"],
-        code=user_config["entity_code"],
-        active=True,
-        permission_hierarchy=0,
-    )
-    db_session.add(entity_type)
-    await db_session.commit()
-
-    entity = Entity(
-        uuid=user_config["entity_uuid"],
-        name=user_config["entity_name"],
-        entity_type_uuid=entity_type.uuid,
-        email=user_config["entity_email"],
-    )
+    entity = Entity(uuid=user_config["entity_uuid"], name=user_config["entity_name"])
     db_session.add(entity)
     await db_session.commit()
 
@@ -382,23 +361,30 @@ async def _create_session_record(
     user_uuid: str,
     session_uuid: str,
     source: str,
-) -> None:
-    """Create a session row for auth-based fixtures."""
+    *,
+    app_session: bool = True,
+    lifetime_seconds: int = 3600,
+) -> str:
+    """Create a session row for auth-based fixtures and return its token, which the
+    table stores as a hash only, as sign-in does."""
     from api.models import Session as SessionModel
     from datetime import datetime, timedelta
 
-    exp_aware = datetime.now(UTC) + timedelta(hours=1)
+    token = secrets.token_urlsafe(32)
+    exp_aware = datetime.now(UTC) + timedelta(seconds=lifetime_seconds)
     exp_naive = exp_aware.replace(tzinfo=None)
 
     new_session = SessionModel(
         uuid=session_uuid,
+        token_hash=crypto.hash_token(token),
         user_uuid=user_uuid,
         expiration_date=exp_naive,
-        app_session=True,
+        app_session=app_session,
         source=source,
     )
     db_session.add(new_session)
     await db_session.commit()
+    return token
 
 
 def _build_service_jwt() -> str:
@@ -414,43 +400,33 @@ def _build_service_jwt() -> str:
     return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
 
 
+def web_session_headers(session_token: str) -> dict[str, str]:
+    """The headers of the web app's requests with this session: its cookie, its client
+    header and its origin."""
+    return {**WEB_HEADERS, "Cookie": f"{auth_helpers.SESSION_COOKIE}={session_token}"}
+
+
 @asynccontextmanager
-async def _make_auth_client(service_jwt: str, session_token: str):
-    """Yield an AsyncClient with standard auth headers set."""
+async def bearer_client(session_token: str, origin: str | None = TEST_ORIGIN):
+    """Yield an AsyncClient that is a client other than a browser (the default Copilot with
+    an agent token): it sends a bearer token, and it has no cookies."""
+    headers = {"Authorization": f"Bearer {session_token}"}
+    if origin is not None:
+        headers["Origin"] = origin
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as auth_ac:
-        auth_ac.headers.update(
-            {
-                "X-Workspace-Authorization": f"Bearer {service_jwt}",
-                "Authorization": f"Bearer {session_token}",
-                "Origin": "http://test",
-            }
-        )
+    async with AsyncClient(
+        transport=transport, base_url=TEST_BASE_URL, headers=headers
+    ) as bearer_ac:
+        yield bearer_ac
+
+
+@asynccontextmanager
+async def _make_auth_client(session_token: str):
+    """Yield an AsyncClient that is the web app signed in with this session."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url=TEST_BASE_URL) as auth_ac:
+        auth_ac.headers.update(web_session_headers(session_token))
         yield auth_ac
-
-
-def _get_or_create_entity_type(session):
-    """Ensure the app entity type exists for /app endpoints."""
-    from api.models.entity_models import EntityType
-
-    entity_type = (
-        session.query(EntityType)
-        .filter(EntityType.uuid == _APP_ENTITY_TYPE_UUID)
-        .first()
-    )
-    if entity_type:
-        return entity_type
-
-    entity_type = EntityType(
-        uuid=_APP_ENTITY_TYPE_UUID,
-        entity_type="developer",
-        code="DEV",
-        active=True,
-        permission_hierarchy=0,
-    )
-    session.add(entity_type)
-    session.commit()
-    return entity_type
 
 
 def _get_or_create_entity(
@@ -458,8 +434,6 @@ def _get_or_create_entity(
     *,
     uuid: str,
     name: str,
-    email: str,
-    entity_type_uuid: str,
 ):
     """Ensure an Entity row exists for a given UUID."""
     from api.models.entity_models import Entity
@@ -468,13 +442,7 @@ def _get_or_create_entity(
     if entity:
         return entity
 
-    entity = Entity(
-        uuid=uuid,
-        name=name,
-        entity_type_uuid=entity_type_uuid,
-        email=email,
-        seats=100,
-    )
+    entity = Entity(uuid=uuid, name=name)
     session.add(entity)
     session.commit()
     return entity
@@ -515,19 +483,14 @@ def _seed_entities() -> None:
     engine = create_engine(sync_url)
 
     with Session(engine) as session:
-        entity_type = _get_or_create_entity_type(session)
-        developer_entity = _get_or_create_entity(
-            session,
-            uuid=_DEVELOPER_ENTITY_UUID,
-            name="Developer Entity",
-            email="developer@example.com",
-            entity_type_uuid=entity_type.uuid,
+        default_entity = _get_or_create_entity(
+            session, uuid=_DEFAULT_ENTITY_UUID, name="Default Organization"
         )
         _get_or_create_permission(
             session,
-            uuid=_DEVELOPER_UUID,
-            entity_uuid=developer_entity.uuid,
-            name="developer",
+            uuid=_DEFAULT_USER_MAP_UUID,
+            entity_uuid=default_entity.uuid,
+            name="User",
         )
 
     engine.dispose()
@@ -558,6 +521,11 @@ __all__ = [
     "_create_session_record",
     "_build_service_jwt",
     "_make_auth_client",
+    "web_session_headers",
+    "bearer_client",
+    "WEB_HEADERS",
+    "TEST_ORIGIN",
+    "TEST_BASE_URL",
     "_seed_entities",
     "_get_test_db_url_async",
     "_get_test_db_url_sync",

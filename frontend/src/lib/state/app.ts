@@ -53,7 +53,6 @@ import {
 import { createParamDefs } from "../utils/widgetParams";
 import { useAuthStore } from "./auth";
 import { useCopilotDataStore } from "./copilotData";
-import { useFeatureFlagsStore } from "./featureFlags";
 import { useSharedAppStore } from "./sharedApp";
 import { useSidebarStore } from "./sidebar";
 
@@ -1224,28 +1223,9 @@ export const useAppStore = createWithEqualityFn<AppState>()(
         const rootId = rootFolder.index;
         const mainTicker = defaultTicker;
 
-        let gridLayout = { ...(tab?.data?.gridLayout || {}) } as GridLayout;
+        const gridLayout = { ...(tab?.data?.gridLayout || {}) } as GridLayout;
         const widgets = [] as Widget[];
         const groups = tab?.data?.groups || [];
-        let tabWidgetsFiltered = tab?.data?.widgets || [];
-
-        const exceptWidgets =
-          useFeatureFlagsStore.getState().featureFlags?.data_bundle_info
-            ?.except_widgets || [];
-
-        if (exceptWidgets?.length > 0) {
-          tabWidgetsFiltered = tabWidgetsFiltered?.filter(
-            (w) => !(w.widgetId && exceptWidgets.includes(w.widgetId)),
-          );
-
-          // Removes widgets in gridlayout that are excluded
-          gridLayout = updateWidgetGridLayout({
-            widget: { id: "" } as Widget,
-            gridLayout,
-            tabWidgets: tabWidgetsFiltered,
-            removeWidget: true,
-          });
-        }
 
         const widgetsInGrid = Object.entries(gridLayout).reduce(
           (acc, [key, grid]) => {
@@ -1257,7 +1237,7 @@ export const useAppStore = createWithEqualityFn<AppState>()(
           {} as { [key: string]: GridData & { innerTab: string } },
         );
 
-        for (const w of tabWidgetsFiltered || []) {
+        for (const w of tab?.data?.widgets || []) {
           const paramGroups = groups.filter(
             (g): g is GroupTypeT<"param" | "endpointParam"> =>
               Object.values(w?.paramGroups || {}).includes(g.id),

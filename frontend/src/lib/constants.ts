@@ -4,7 +4,6 @@ import type { Copilot } from "./state/copilot";
 
 export const VERSION = import.meta.env.VITE_RELEASE_VERSION;
 
-export const USER_AGENT_BACKEND = "app";
 export const REFRESH_WIDGET_INTERVAL = 1000 * 60 * 15; // 15 minutes
 
 export const ENABLE_SHARING = "true";
@@ -546,15 +545,12 @@ export const butterflyTypes = [
   "Obsidian Daggerwing",
 ];
 
-// For srcDoc= iframes holding a file a user put there (HtmlViewer) — the document inherits this
-// app's origin. `allow-scripts` together with `allow-same-origin` means the sandbox holds nothing
-// back: the document runs script as this app, with its storage and its session. On-prem with
-// allowHtmlJsExecution enabled intentionally treats uploaded and fetched .html file widgets as
-// trusted executable content, and allow-same-origin is required so their API calls send the correct
-// Origin header (not `null`). Use this ONLY for content the deployment has decided to trust —
-// never for content a model wrote (see ARTIFACT_SANDBOX_ATTRIBUTES).
+// For srcDoc= iframes holding a file a user put there (HtmlViewer) that run scripts
+// (allowHtmlJsExecution). No allow-same-origin: with it the content would run as this app's
+// origin, reach the page's memory and make requests with its session cookie. Without it the
+// content runs in an opaque origin, so its own requests carry `Origin: null`.
 export const IFRAME_SRCDOC_SANDBOX_ATTRIBUTES =
-  "allow-scripts allow-forms allow-downloads allow-popups allow-same-origin";
+  "allow-scripts allow-forms allow-downloads allow-popups";
 
 // For srcDoc= iframes holding what a model wrote (Artifact.tsx). A model's output is shaped by
 // whatever it has read — a fetched page, an uploaded document, a widget's rows — so it is not
@@ -571,4 +567,4 @@ export const ARTIFACT_SANDBOX_ATTRIBUTES_NO_SCRIPTS = "allow-same-origin";
 // For src= iframes (Iframe.tsx) — external URL origin, NOT parent origin.
 // allow-same-origin lets external site use its own cookies/storage.
 // SAFE: a different origin cannot access this app's localStorage.
-export const IFRAME_SANDBOX_ATTRIBUTES = IFRAME_SRCDOC_SANDBOX_ATTRIBUTES;
+export const IFRAME_SANDBOX_ATTRIBUTES = `${IFRAME_SRCDOC_SANDBOX_ATTRIBUTES} allow-same-origin`;

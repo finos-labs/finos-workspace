@@ -5,8 +5,10 @@ from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Column,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -15,7 +17,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy_utils import EmailType, IPAddressType, UUIDType
+from sqlalchemy_utils import EmailType, UUIDType
 
 from api import base
 from api.models.entity_models import PermissionsEntityMap
@@ -23,6 +25,7 @@ from api.models.model_helpers import (
     AwareDateTime,
     Base,
     DateMixin,
+    EncryptedStringType,
     GzipJsonType,
     GzipStringType,
     JSONType,
@@ -47,10 +50,21 @@ class User(Base, UUIDMixin, DateMixin):
     clean_email: Mapped[str] = mapped_column(EmailType)
     username: Mapped[None | str] = mapped_column(String(50), unique=True)
     password: Mapped[str] = mapped_column(PasswordType, nullable=False)
-    totp_secret: Mapped[None | str] = mapped_column(String(32), default=None)
+    totp_secret: Mapped[None | str] = mapped_column(
+        EncryptedStringType("user.totp_secret"), default=None
+    )
+    # The last authenticator time step accepted, so that no code is accepted twice
+    totp_last_step: Mapped[None | int] = mapped_column(BigInteger, default=None)
     totp_active: Mapped[bool] = mapped_column(Boolean, default=False)
     two_factor_auth: Mapped[bool] = mapped_column(Boolean, default=False)
     temporary_password: Mapped[None | bool] = mapped_column(Boolean, default=False)
+    # The user's own Copilot provider keys; never returned to a browser
+    openai_api_key: Mapped[None | str] = mapped_column(
+        EncryptedStringType("user.openai_api_key")
+    )
+    perplexity_api_key: Mapped[None | str] = mapped_column(
+        EncryptedStringType("user.perplexity_api_key")
+    )
 
     logins = relationship("Login", back_populates="user")
 
@@ -74,7 +88,6 @@ class User(Base, UUIDMixin, DateMixin):
         ForeignKey("permissions_entity_map.uuid"), index=True
     )
     permissions: Mapped[Optional["PermissionsEntityMap"]] = relationship()
-    billing_active: Mapped[None | bool] = mapped_column(Boolean, default=False)
     app_start: Mapped[None | datetime] = mapped_column(AwareDateTime())
     latest_version: Mapped[None | str] = mapped_column(Text)
 
@@ -83,15 +96,21 @@ class User(Base, UUIDMixin, DateMixin):
 
 
 class Session(Base, UUIDMixin, DateMixin):
-    "A login session for a user"
+    """A login session for a user.
+
+    The client holds a random token (256 bits) and the table only its SHA-256 hash, which
+    every request looks the session up by. The row's uuid never leaves the server.
+    """
 
     __tablename__ = "session"
 
+    token_hash: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, index=True
+    )
     user_uuid: Mapped[None | UUID] = mapped_column(
         UUIDType, ForeignKey("user.uuid"), index=True
     )
     user = relationship("User")
-    api_token = Column(String(300), default=None)
     expiration_date: Mapped[None | datetime] = mapped_column(AwareDateTime())
     app_session: Mapped[bool] = mapped_column(Boolean, default=False)
     source = Column(String(20), default=None)
@@ -127,7 +146,6 @@ class Login(Base, UUIDMixin, DateMixin):
         UUIDType, ForeignKey("user.uuid"), index=True
     )
     user = relationship("User", back_populates="logins")
-    ip_address: Mapped[None | str] = mapped_column(IPAddressType)
     source = Column(String(20), default=None)
 
     def __str__(self) -> str:
@@ -187,3 +205,18 @@ class UserRole(Base, UUIDMixin, DateMixin):
         ForeignKey("role.uuid", ondelete="CASCADE"), index=True
     )
     role = relationship("Role")
+
+
+class UserUsage(Base, UUIDMixin, DateMixin):
+    """What a user has used today, metered against the limits of their roles."""
+
+    __tablename__ = "user_usage"
+
+    user_uuid: Mapped[UUID] = mapped_column(
+        UUIDType, ForeignKey("user.uuid"), index=True, unique=True
+    )
+    user = relationship("User")
+
+    number_copilot_calls_day_count = Column(Integer, nullable=False, default=0)
+    number_copilot_tokens_day_count = Column(BigInteger, nullable=False, default=0)
+    total_file_upload_size_gb_count = Column(Float, nullable=False, default=0)

@@ -4,6 +4,7 @@ import json
 import os
 import uuid
 from collections import OrderedDict
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Protocol
 from uuid import UUID
@@ -26,6 +27,13 @@ COMMAND_TIMEOUT_SECONDS = 30.0
 PRESENCE_TTL_SECONDS = 45
 SESSION_TTL_SECONDS = 300
 COMPLETED_RESULTS_MAX = 2048
+# The close code of a socket whose web session has ended (policy violation)
+SESSION_ENDED_CLOSE_CODE = 1008
+SESSION_ENDED_MESSAGE = "The Workspace session that opened the browser bridge has ended."
+NO_BROWSER_MESSAGE = "No active Workspace browser connected"
+
+# Whether the web session that opened a browser's socket still lasts
+SessionCheck = Callable[[], Awaitable[bool]]
 
 
 class BrowserSocket(Protocol):
@@ -44,7 +52,10 @@ class BrowserUnavailableError(RuntimeError):
 class ConnectedBrowser:
     user_uuid: UUID
     session: BrowserSession
-    socket: BrowserSocket | None = None
+    socket: BrowserSocket | None
+    # Whether the web session that opened the socket still lasts: the socket serves only
+    # while it does
+    authorized: SessionCheck
 
 
 @dataclass(slots=True)
@@ -93,13 +104,16 @@ class BridgeSessionManager:
     ) -> BrowserSessionStartResponse:
         await self.ensure_started()
         async with self._lock:
-            existing = self._active_by_user.pop(user_uuid, None)
-            if existing is not None:
-                existing.socket = None
+            # The browser this session replaces stops serving: its socket is closed, so
+            # that nothing it sends acts on the new one
+            if (replaced := self._active_by_user.pop(user_uuid, None)) is not None:
+                self._fail_pending_commands("Workspace browser session replaced.", user_uuid)
+                await self._delete_presence(user_uuid)
+                socket, replaced.socket = replaced.socket, None
+                await self._close_socket(socket)
 
             session = BrowserSession(
                 session_id=str(uuid.uuid4()),
-                token=str(uuid.uuid4()),
                 client_name=request.client_name,
                 current_dashboard_id=request.current_dashboard_id,
                 current_tab_id=request.current_tab_id,
@@ -117,61 +131,79 @@ class BridgeSessionManager:
             )
             websocket_url = (
                 f"{websocket_base}/app/workspace-mcp/bridge/ws"
-                f"?session_id={session.session_id}&token={session.token}"
+                f"?session_id={session.session_id}"
             )
             return BrowserSessionStartResponse(
                 session=session, websocket_url=websocket_url
             )
 
+    async def check_browser(self, *, session_id: str, user_uuid: UUID) -> BrowserSession:
+        """The bridge session `session_id`, when it is the user's and their active one."""
+        await self.ensure_started()
+        owner, session = await self._get_session(session_id)
+        active_session = await self._get_active_session(owner)
+        if owner != user_uuid or active_session.session_id != session_id:
+            raise BrowserUnavailableError("Invalid browser session credentials.")
+        return session
+
     async def connect_browser(
         self,
         *,
         session_id: str,
-        token: str,
+        user_uuid: UUID,
         socket: BrowserSocket,
-    ) -> tuple[UUID, BrowserSession]:
-        await self.ensure_started()
+        authorized: SessionCheck,
+    ) -> BrowserSession:
+        """Makes `socket` the user's browser while `authorized` holds; the socket it
+        replaces is closed."""
         async with self._lock:
-            user_uuid, session = await self._get_session(session_id)
-            active_session = await self._get_active_session(user_uuid)
-            if session.token != token or active_session.session_id != session_id:
-                raise BrowserUnavailableError("Invalid browser session credentials.")
+            session = await self.check_browser(session_id=session_id, user_uuid=user_uuid)
 
             previous = self._active_by_user.get(user_uuid)
-            if previous and previous.session.session_id != session_id:
+            if previous is not None and previous.socket is not socket:
                 await self._close_socket(previous.socket)
 
             browser = ConnectedBrowser(
-                user_uuid=user_uuid, session=session, socket=socket
+                user_uuid=user_uuid, session=session, socket=socket, authorized=authorized
             )
             self._active_by_user[user_uuid] = browser
             await self._write_presence(user_uuid, session)
-            return user_uuid, session
+            return session
 
-    async def disconnect_browser(
-        self, user_uuid: UUID, session_id: str | None = None
-    ) -> None:
+    async def disconnect_browser(self, user_uuid: UUID, socket: BrowserSocket) -> None:
+        """Forgets the user's browser when `socket` is still the one that serves."""
         async with self._lock:
             browser = self._active_by_user.get(user_uuid)
-            if browser is None:
-                return
-            if session_id and browser.session.session_id != session_id:
+            if browser is None or browser.socket is not socket:
                 return
             browser.socket = None
             self._active_by_user.pop(user_uuid, None)
             self._fail_pending_commands("Workspace browser disconnected.", user_uuid)
             await self._delete_presence(user_uuid)
 
+    async def check_session(self, user_uuid: UUID, socket: BrowserSocket) -> None:
+        """Refuses (BrowserUnavailableError) a socket that is not the user's browser, or
+        whose web session has ended; in that case the socket is closed (1008)."""
+        async with self._lock:
+            browser = self._active_by_user.get(user_uuid)
+        if browser is None or browser.socket is not socket:
+            raise BrowserUnavailableError(NO_BROWSER_MESSAGE)
+        await self._require_session(browser)
+
     async def handle_browser_message(
         self,
         user_uuid: UUID,
         raw_message: dict[str, Any],
+        socket: BrowserSocket,
     ) -> None:
+        """Acts on a message from `socket`, which must be the user's browser, while the web
+        session that opened it lasts."""
         payload = browser_message_adapter.validate_python(raw_message)
+        await self.check_session(user_uuid, socket)
         async with self._lock:
             browser = self._active_by_user.get(user_uuid)
-            if browser is None:
-                raise BrowserUnavailableError("No active Workspace browser connected")
+            if browser is None or browser.socket is not socket:
+                raise BrowserUnavailableError(NO_BROWSER_MESSAGE)
 
             if payload.type == "command_result":
                 request_id = payload.result.request_id
@@ -274,11 +306,27 @@ class BridgeSessionManager:
             "current_tab_id": browser.session.current_tab_id,
         }
 
+    async def _require_session(self, browser: ConnectedBrowser) -> None:
+        """Ends the browser, closing its socket (1008), once the web session that opened
+        it has ended: signed out, replaced by a new sign-in, ended by a password change or
+        reset, or expired."""
+        if await browser.authorized():
+            return
+        async with self._lock:
+            if self._active_by_user.get(browser.user_uuid) is browser:
+                self._active_by_user.pop(browser.user_uuid)
+                self._fail_pending_commands(SESSION_ENDED_MESSAGE, browser.user_uuid)
+                await self._delete_presence(browser.user_uuid)
+        socket, browser.socket = browser.socket, None
+        await self._close_socket(socket, SESSION_ENDED_CLOSE_CODE)
+        raise BrowserUnavailableError(SESSION_ENDED_MESSAGE)
+
     async def _execute_local_command(
         self,
         browser: ConnectedBrowser,
         command: dict[str, Any],
     ) -> dict[str, Any]:
+        await self._require_session(browser)
         request_id = command.get("request_id") or f"cmd_{uuid.uuid4().hex}"
         if request_id in self._completed_results:
             return self._completed_results[request_id]
@@ -490,11 +538,11 @@ class BridgeSessionManager:
         await self.redis.delete(self._presence_key(user_uuid))
 
     @staticmethod
-    async def _close_socket(socket: BrowserSocket | None) -> None:
+    async def _close_socket(socket: BrowserSocket | None, code: int = 1000) -> None:
         if socket is None:
             return
         with contextlib.suppress(RuntimeError):
-            await socket.close(code=1000)
+            await socket.close(code=code)
 
     @staticmethod
     def _session_key(session_id: str) -> str:

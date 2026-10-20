@@ -1,9 +1,6 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getEntityInfo } from "~/api/admin.api";
 import {
   buildEntityNameMap,
   buildUserRolesMap,
@@ -12,7 +9,6 @@ import {
   useUsers,
 } from "~/components/AdminRoles/adminUseQueries";
 import { AdminInviteUsersDialog } from "~/components/AdminUsers/AdminInviteUsersDialog";
-import AdminUserBillingStatus from "~/components/AdminUsers/AdminUserBillingStatus";
 import AdminUserDetailsDialog from "~/components/AdminUsers/AdminUserDetailsDialog";
 import AdminUserStatus from "~/components/AdminUsers/AdminUserStatus";
 import ExportUsersDialog from "~/components/AdminUsers/ExportUsersDialog";
@@ -52,8 +48,6 @@ function userSortValue(
       return (entityNameMap.get(user.permissions_uuid) ?? "").toLowerCase();
     case "status":
       return (user.status ?? "").toLowerCase();
-    case "billing_active":
-      return user.billing_active ? 1 : 0;
     case "last_active": {
       const value = user.last_active ?? user.last_login;
       return value ? Date.parse(value) : null;
@@ -108,16 +102,7 @@ export default function AdminUsers() {
     [rolesQuery.data],
   );
 
-  const entityInfoQuery = useQuery({
-    queryKey: ["admin", "entityInfo"],
-    queryFn: getEntityInfo,
-    enabled: true,
-  });
   const users = usersQuery.data ?? undefined;
-  const navigate = useNavigate();
-  const entityInfo = entityInfoQuery.data ?? undefined;
-  const remainingSeats =
-    entityInfo && (entityInfo.seats ?? 0) - (entityInfo.used_seats ?? 0);
 
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
@@ -165,7 +150,7 @@ export default function AdminUsers() {
       {
         id: "email",
         header: "Email",
-        width: "19%",
+        width: "24%",
         minWidth: 200,
         sortable: true,
         cell: (user) => user.email || "-",
@@ -181,7 +166,7 @@ export default function AdminUsers() {
       {
         id: "roles",
         header: "Roles",
-        width: "14%",
+        width: "20%",
         minWidth: 140,
         truncate: false,
         cell: (user) => (
@@ -199,15 +184,7 @@ export default function AdminUsers() {
         truncate: false,
         cell: (user) => <AdminUserStatus value={user.status} />,
       },
-      {
-        id: "billing_active",
-        header: "Billing Status",
-        width: "11%",
-        minWidth: 130,
-        sortable: true,
-        truncate: false,
-        cell: (user) => <AdminUserBillingStatus value={user.billing_active} />,
-      },
+
       {
         id: "last_active",
         header: "Last Active",
@@ -279,18 +256,6 @@ export default function AdminUsers() {
     [dispatch],
   );
 
-  const expirationDate = useMemo(() => {
-    if (entityInfo?.expiration_date) {
-      const date = new Date(entityInfo.expiration_date);
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    }
-    return "N/A";
-  }, [entityInfo?.expiration_date]);
-
   return (
     <SettingsLayout title="User Management" tabs={[]} defaultTab="users">
       <TabsPrimitive.Content
@@ -301,19 +266,7 @@ export default function AdminUsers() {
           <p className="text-xs text-ds-text-heading">
             <span className="text-ds-text-subtitle font-medium">Users:</span>{" "}
             <span className="text-ds-text-caption">
-              {entityInfoQuery.isLoading ? "" : (users?.length ?? 0)}
-            </span>
-          </p>
-          <p className="text-xs text-ds-text-heading">
-            <span className="text-ds-text-subtitle font-medium">Seats Remaining:</span>{" "}
-            <span className="text-ds-text-caption">
-              {entityInfoQuery.isLoading ? "" : remainingSeats}
-            </span>
-          </p>
-          <p className="text-xs text-ds-text-heading">
-            <span className="text-ds-text-subtitle font-medium">Expiration Date:</span>{" "}
-            <span className="text-ds-text-caption">
-              {entityInfoQuery.isLoading ? "" : expirationDate}
+              {usersQuery.isLoading ? "" : (users?.length ?? 0)}
             </span>
           </p>
         </div>

@@ -9,6 +9,7 @@ pytest_plugins = [
     "tests.fixtures.db",
     "tests.fixtures.clients",
     "tests.fixtures.mocks",
+    "tests.fixtures.organization",
 ]
 
 

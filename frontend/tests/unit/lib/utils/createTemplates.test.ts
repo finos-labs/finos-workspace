@@ -383,13 +383,12 @@ describe("createTemplates utility functions", () => {
       const headlines = widgets.find((widget) => widget.widgetId === "headlines");
 
       expect(price?.sourceName).toBe("Backend A");
-      expect(price?.endpointHeaders).toEqual([
-        { key: "x", value: "from-a", location: "headers" },
-      ]);
+      expect(price?.sourceId).toBe("a");
       expect(headlines?.sourceName).toBe("Backend B");
-      expect(headlines?.endpointHeaders).toEqual([
-        { key: "x", value: "from-b", location: "headers" },
-      ]);
+      expect(headlines?.sourceId).toBe("b");
+      // Credentials are looked up by the source id when a widget fetches, never copied
+      expect(price).not.toHaveProperty("endpointHeaders");
+      expect(headlines).not.toHaveProperty("endpointHeaders");
     });
 
     it("ignores an existing untouched dashboard when dashboardBehavior is 'new'", async () => {

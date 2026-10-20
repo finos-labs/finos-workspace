@@ -418,6 +418,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         widgets,
         mockBackendUrl,
         mockHeaders,
+        {},
       );
 
       expect(failedEndpoints).toEqual([]);
@@ -449,6 +450,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         widgets,
         mockBackendUrl,
         mockHeaders,
+        {},
       );
 
       expect(failedEndpoints).toHaveLength(1);
@@ -477,6 +479,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         widgets,
         mockBackendUrl,
         mockHeaders,
+        {},
       );
 
       expect(failedEndpoints).toHaveLength(1);
@@ -505,7 +508,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
       });
 
       const signal = new AbortController().signal;
-      await validateBackendEndpoints(widgets, mockBackendUrl, mockHeaders, signal);
+      await validateBackendEndpoints(widgets, mockBackendUrl, mockHeaders, {}, signal);
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -547,6 +550,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         widgets,
         mockBackendUrl,
         mockHeaders,
+        {},
       );
 
       // Should skip 422 errors as they're expected for widgets with required params

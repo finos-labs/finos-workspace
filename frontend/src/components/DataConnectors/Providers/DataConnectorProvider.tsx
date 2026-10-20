@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import { DataConnectorContext, type DcTabT } from "./DataConnectorContext";
 
 export function DataConnectorProvider({
@@ -15,6 +16,7 @@ export function DataConnectorProvider({
   const inDashboard = useMemo(() => !!dashBoardId, [dashBoardId]);
   const navigate = useNavigate();
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+  const mayAdd = useShallowAccessStore((s) => canAddConnections(s.access));
 
   const setOpen = useCallback(
     (
@@ -80,7 +82,8 @@ export function DataConnectorProvider({
     () => ({
       open: searchParams.get("modal") === "data-connectors",
       mode: (searchParams.get("mode") as "create" | "edit" | "add-widget") || "create",
-      dcTab: (searchParams.get("dcTab") as DcTabT) || "file",
+      // Users who may not bring connections only get the iframe tab
+      dcTab: mayAdd ? (searchParams.get("dcTab") as DcTabT) || "file" : "website",
       id: searchParams.get("id") || "",
       widgetId: searchParams.get("widgetId") || "",
       setOpen,
@@ -95,6 +98,7 @@ export function DataConnectorProvider({
       searchParams.get("dcTab"),
       searchParams.get("id"),
       searchParams.get("widgetId"),
+      mayAdd,
       inDashboard,
       onWidgetAdded,
     ],

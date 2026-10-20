@@ -15,7 +15,7 @@ Session Management
 Multiple concurrent sessions for same user
 Session invalidation on password change
 Session expiry behavior
-Logout invalidates specific session vs all sessions
+Logout invalidates the specific session
 Token Security
 
 Expired JWT rejection

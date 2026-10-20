@@ -9,7 +9,9 @@ revision drops them there.
 A table that is still in use can hold a foreign key into one that is going away
 (``api_source.vendor_app_uuid`` points at ``vendor_app``), and a database that enforces
 its keys refuses to drop the table while that key exists. So the links from the tables
-that stay are dropped first, then the tables themselves, children before parents.
+that stay are dropped first, then the tables themselves, children before parents. The
+indexes on a column that goes are dropped with it: SQLite rebuilds the table and would
+create them again on the column that is no longer there.
 
 Like b179074b50c6, every step asks the database what it has first, so this revision changes
 nothing on a database created by the current revisions and running it again is safe.
@@ -76,10 +78,17 @@ def upgrade():
             for key in inspector.get_foreign_keys(table)
             if key.get("referred_table") in going and key.get("name")
         ]
+        indexes = [
+            index["name"]
+            for index in inspector.get_indexes(table)
+            if column in index["column_names"] and index.get("name")
+        ]
         with op.batch_alter_table(table, schema=None) as batch_op:
             if not sqlite:
                 for key in keys:
                     batch_op.drop_constraint(key["name"], type_="foreignkey")
+            for index in indexes:
+                batch_op.drop_index(index)
             batch_op.drop_column(column)
 
     for table in REMOVED_TABLES:

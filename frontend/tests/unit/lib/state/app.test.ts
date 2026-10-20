@@ -57,18 +57,6 @@ vi.mock("~/lib/state/copilotData", () => ({
   },
 }));
 
-vi.mock("~/lib/state/featureFlags", () => ({
-  useFeatureFlagsStore: {
-    getState: () => ({
-      featureFlags: {
-        data_bundle_info: {
-          except_widgets: [],
-        },
-      },
-    }),
-  },
-}));
-
 vi.mock("~/lib/state/sharedApp", () => ({
   useSharedAppStore: {
     getState: () => ({

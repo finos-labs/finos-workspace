@@ -128,7 +128,7 @@ export function useMcpExecutor() {
           );
         }
 
-        // Get the MCP connection from use-mcp's connection registry
+        // Get the MCP connection from the connection registry
         if (!mcpConnection?.callTool) {
           throw new Error(`No active MCP connection found for server ${server.name}.`);
         }

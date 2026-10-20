@@ -4,7 +4,6 @@ on:
   pull_request:
     paths:
       - "backend-api/backend/**"
-      - "backend-api/admin_cli/**"
       - ".github/workflows/backend-checks.yml"
   workflow_dispatch:
 
@@ -28,7 +27,7 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install ruff==0.15.22
-      - run: ruff check --output-format=github backend admin_cli
+      - run: ruff check --output-format=github backend
 
   tests:
     name: Tests

@@ -2,10 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import {
   getEntities,
-  getEntityEntitlement,
   getEntityMaps,
   getEntityRelationships,
-  getEntityTypes,
+  getEntityUsers,
   validateEntityAdmin,
 } from "~/api/entities.api";
 
@@ -15,10 +14,9 @@ export const entityAdminKeys = {
   root: ROOT,
   validate: [...ROOT, "validate"] as const,
   entities: [...ROOT, "entities"] as const,
-  entityTypes: [...ROOT, "entityTypes"] as const,
   relationships: [...ROOT, "relationships"] as const,
   maps: [...ROOT, "maps"] as const,
-  entitlement: (entityUuid: string) => [...ROOT, "entitlement", entityUuid] as const,
+  users: [...ROOT, "users"] as const,
 };
 
 const STALE_TIME = 1000 * 60;
@@ -49,13 +47,6 @@ export const useEntities = () =>
     staleTime: STALE_TIME,
   });
 
-export const useEntityTypes = () =>
-  useQuery({
-    queryKey: entityAdminKeys.entityTypes,
-    queryFn: getEntityTypes,
-    staleTime: STALE_TIME,
-  });
-
 export const useEntityRelationships = () =>
   useQuery({
     queryKey: entityAdminKeys.relationships,
@@ -70,8 +61,9 @@ export const useEntityMaps = () =>
     staleTime: STALE_TIME,
   });
 
-export const useEntityEntitlement = (entityUuid: string) =>
+export const useEntityUsers = () =>
   useQuery({
-    queryKey: entityAdminKeys.entitlement(entityUuid),
-    queryFn: () => getEntityEntitlement(entityUuid),
+    queryKey: entityAdminKeys.users,
+    queryFn: getEntityUsers,
+    staleTime: STALE_TIME,
   });

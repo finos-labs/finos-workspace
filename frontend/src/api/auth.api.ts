@@ -4,8 +4,10 @@ import { z } from "zod";
 import type { SearchableChat } from "~/components/AI/hooks/useChatSearch";
 import type { WidgetJsonT, WidgetT } from "~/components/types";
 import type { WidgetId } from "~/components/Widgets";
-import { convertHeadersToRecord } from "~/lib/api";
+import { fetchBackend } from "~/lib/api";
 import { type Extension, VERSION } from "~/lib/constants";
+import { getConfig } from "~/lib/runtimeConfig";
+import type { Usage, UserAccess } from "~/lib/state/access";
 import {
   type Source,
   type StoredFile,
@@ -22,7 +24,6 @@ import {
   type HumanMessage,
 } from "~/lib/state/copilot";
 import type { EntityThemeSettings } from "~/lib/state/entityTheme";
-import type { Usage } from "~/lib/state/featureFlags";
 import type { McpServer } from "~/lib/state/mcpTools";
 import {
   type UserAppReturn,
@@ -30,16 +31,17 @@ import {
   useUserAppsStore,
 } from "~/lib/state/userApps";
 import { createURL, createURLString, processWidgetId, uuidv4 } from "~/lib/utils";
+import { addExtraHeaders } from "~/lib/utils/widgetParams";
 import type {
   Detail,
   Login2FAResponse,
   LoginResponse,
   MetaDataWidgetType,
   Prompt,
+  SessionResponse,
   Skill,
   SkillCreate,
   SuccessReturn,
-  UserResponse,
   WidgetMetadataResponse,
 } from "~/types/auth.type";
 import { handleWidgetMetadata } from "~/utils/dataConnectorsHelpers";
@@ -93,7 +95,6 @@ export async function login(
       email,
       password,
       remember,
-      ip_address: "",
       source: "app",
       totp_token: totpToken,
       version: VERSION,
@@ -111,17 +112,24 @@ export async function validateUser() {
   return data;
 }
 
-let logoutCalled = false;
+/** The signed-in user from the session cookie, or null when there is no valid session. */
+export async function getSession(): Promise<SessionResponse | null> {
+  const { data } = await apiClient
+    .get<SessionResponse>("/app/session")
+    .catch((_e: AxiosError) => ({ data: null }));
+  return data;
+}
 
-export async function logout() {
-  if (logoutCalled) return;
-
-  logoutCalled = true;
-  const { data } = await apiClient.post("/app/logout").catch((e: AxiosError) => {
-    console.error("Logout failed:", e);
-    const success = [e?.response?.status, e?.status].some((v) => v === 401);
-    return { data: { success } as SuccessReturn };
-  });
+/** Ends the web session; the API deletes it and clears the session cookie. */
+export async function logout(): Promise<SuccessReturn> {
+  const { data } = await apiClient
+    .post<SuccessReturn>("/app/logout")
+    .catch((e: AxiosError) => {
+      console.error("Logout failed:", e);
+      // A session the API no longer knows is as good as ended
+      const success = [e?.response?.status, e?.status].some((v) => v === 401);
+      return { data: { success } as SuccessReturn };
+    });
   return data;
 }
 
@@ -139,12 +147,46 @@ export async function googleLogin(
   }
 }
 
+/**
+ * A single-use nonce for a Microsoft or Okta sign-in, issued by the API right before it.
+ * The provider puts it in the ID token, and the API accepts that token only with the
+ * nonce it issued to this browser (it keeps it bound to an HttpOnly cookie), so an ID
+ * token the page forwards elsewhere cannot be used to sign in.
+ */
+export async function getSignInNonce(): Promise<string> {
+  const { data } = await apiClient.post<{ nonce: string }>("/app/sign-in/nonce");
+  return data.nonce;
+}
+
+/** What the API answers (400) when a sign-in's nonce expired or was used already. */
+export const SIGN_IN_EXPIRED = "The sign-in has expired; please sign in again";
+
+/**
+ * Runs a Microsoft or Okta sign-in with a nonce the API issues right before it. A nonce
+ * lives five minutes and serves one attempt: when the API answers that it expired, the
+ * sign-in starts once more with a new one.
+ */
+export async function withSignInNonce<
+  T extends { response: LoginResponse | Login2FAResponse },
+>(signIn: (nonce: string) => Promise<T>): Promise<T> {
+  const first = await signIn(await getSignInNonce());
+  const { response } = first;
+  const expired =
+    response.status === 400 &&
+    "detail" in response &&
+    response.detail === SIGN_IN_EXPIRED;
+  return expired ? signIn(await getSignInNonce()) : first;
+}
+
+/** Signs in with Microsoft: the API verifies the ID token MSAL issued for this app. */
 export async function microsoftLogin(
   token: string,
-): Promise<LoginResponse | Login2FAResponse | Detail> {
+  idToken: string,
+): Promise<LoginResponse | Login2FAResponse> {
   try {
     const { data, status } = await apiClient.post("/app/microsoft-auth", {
       token,
+      id_token: idToken,
       version: VERSION,
     });
     return { status, ...data };
@@ -153,12 +195,15 @@ export async function microsoftLogin(
   }
 }
 
+/** Signs in with Okta: the API verifies the ID token Okta issued for this app. */
 export async function oktaLogin(
   token: string,
-): Promise<LoginResponse | Login2FAResponse | Detail> {
+  idToken: string,
+): Promise<LoginResponse | Login2FAResponse> {
   try {
     const { data, status } = await apiClient.post("/app/okta-auth", {
       token,
+      id_token: idToken,
       version: VERSION,
     });
     return { status, ...data };
@@ -178,13 +223,6 @@ export async function removeCustomCopilot(uuid: string) {
 }
 export async function putCustomCopilot(copilot: ExternalCopilotHolder) {
   const { data } = await apiClient.put("/app/custom-copilot", copilot);
-  return data;
-}
-
-export async function getUserChats(): Promise<{
-  chats: Chat[];
-}> {
-  const { data } = await apiClient.get("/app/copilot-chats");
   return data;
 }
 
@@ -236,11 +274,6 @@ export async function getCopilotChat(chatUuid: string): Promise<Chat | null> {
   return data;
 }
 
-export async function getUser(): Promise<UserResponse> {
-  const { data } = await apiClient.get<UserResponse>("/app/user");
-  return data;
-}
-
 export async function updatePassword(
   oldPassword: string,
   newPassword: string,
@@ -256,19 +289,24 @@ export async function updatePassword(
   return status;
 }
 
-export async function updateFullName(first: string, last: string): Promise<number> {
+/** Sets a new password with the link an admin gave: the HTTP status, and what the API
+ * said went wrong. */
+export async function resetPassword(
+  token: string,
+  newPassword: string,
+): Promise<{ status: number; detail?: string }> {
   try {
-    const { status } = await apiClient
-      .put("/user", {
-        first_name: first,
-        last_name: last,
-      })
-      .catch((e: AxiosError) => {
-        return { status: getErrorResponse(e).status || 500 };
-      });
-    return status;
+    const { status } = await apiClient.post("/app/reset-password", {
+      token,
+      new_password: newPassword,
+    });
+    return { status };
   } catch (e) {
-    return getErrorResponse(e).status || 500;
+    const { status, data } = getErrorResponse(e);
+    return {
+      status: status || 500,
+      detail: typeof data.detail === "string" ? data.detail : undefined,
+    };
   }
 }
 
@@ -284,17 +322,26 @@ export async function generateQRCode(): Promise<{
   }
 }
 
-export async function activateQRCode(totp_token: number): Promise<number> {
-  try {
-    const { status } = await apiClient
-      .post("/totp/activate", { totp_token })
-      .catch((e: AxiosError) => {
-        return { status: getErrorResponse(e).status || 500 };
-      });
-    return status;
-  } catch (e) {
-    return getErrorResponse(e).status || 500;
-  }
+/**
+ * Turns on the authenticator set up with generateQRCode once the user enters a code from
+ * it. A wrong code is a 401 that says nothing about the session, so this bypasses the
+ * apiClient's sign-out on 401. At sign-in (the enrollment cookie) the API then starts the
+ * web session as POST /app/login does, with the sign-in's `remember`, and the code is
+ * used up: the page reads that session with getSession.
+ */
+export async function activateTotp(
+  totpToken: number,
+  signIn?: { remember: boolean },
+): Promise<number> {
+  const response = await fetchBackend(`${getConfig().urls.backend}/totp/activate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      totp_token: totpToken,
+      ...(signIn && { remember: signIn.remember, version: VERSION }),
+    }),
+  }).catch(() => null);
+  return response?.status ?? 500;
 }
 
 export async function getApiSources(): Promise<Source[]> {
@@ -328,25 +375,11 @@ export async function deleteApiSource(sourceUuid: string): Promise<{ status: num
   return { status };
 }
 
-type StoredFileReturn = {
-  uuid: string;
-  extension: Extension;
-  file_widget_uuid: string | null;
-  original_file_name: null | string;
-  size: number;
-  isGlobal: boolean;
-};
-
 type PresignedUrlReturn = {
   pre_signed_url: string;
   stored_file_uuid: string;
   original_file_name: string;
 };
-
-export async function getStoredFiles(): Promise<StoredFileReturn[]> {
-  const { data } = await apiClient.get<StoredFileReturn[]>("/app/files");
-  return data;
-}
 
 export async function getFileWidgets(): Promise<StoredFile[]> {
   const { data } = await apiClient
@@ -390,7 +423,7 @@ export async function getStoredFileBlob(fileUrl: string): Promise<Blob> {
 
 export async function getPreSignedUrl(
   fileUuid: string,
-  expiration = 3600,
+  expiration = 900,
 ): Promise<PresignedUrlReturn> {
   const { data } = await apiClient
     .get<PresignedUrlReturn>(`/app/files/${fileUuid}/presigned-url`, {
@@ -429,19 +462,8 @@ export async function deleteFileWidget(
   }
 }
 
-export async function getWidgetMetadata(
-  widgetType?: MetaDataWidgetType,
-  name?: string | null,
-  widgetId?: string | null,
-): Promise<WidgetMetadataItem[]> {
-  const params = new URLSearchParams();
-  if (widgetType) params.append("widget_type", widgetType);
-  if (name) params.append("name", name);
-  if (widgetId) params.append("widget_id", widgetId);
-
-  const { data } = await apiClient.get<WidgetMetadataItem[]>("/app/widget-metadata", {
-    params,
-  });
+export async function getWidgetMetadata(): Promise<WidgetMetadataItem[]> {
+  const { data } = await apiClient.get<WidgetMetadataItem[]>("/app/widget-metadata");
   return data;
 }
 
@@ -460,10 +482,8 @@ export async function getUserAppsData(): Promise<UserAppsSync> {
   return data;
 }
 
-export async function syncUserApps(updateUserApps?: (apps: UserAppsSync) => void) {
+export async function syncUserApps() {
   const data = await getUserAppsData();
-  if (updateUserApps) return updateUserApps(data);
-
   useUserAppsStore.getState().updateUserApps(data);
 }
 
@@ -546,13 +566,9 @@ export async function getUserAppShareUsers(userAppUuid: string) {
 export async function patchWidgetMetadata(
   widgetMetadata: Partial<WidgetMetadataResponse>,
   widgetId?: string,
-  widgetType?: MetaDataWidgetType,
-  name?: string,
 ): Promise<SuccessReturn> {
   const params = new URLSearchParams();
   if (widgetId) params.append("widget_id", widgetId);
-  if (widgetType) params.append("widget_type", widgetType);
-  if (name) params.append("name", name);
 
   const { data } = await apiClient.patch<SuccessReturn>(
     "/app/widget-metadata",
@@ -571,18 +587,17 @@ export async function deleteWidgetMetadata(
   return data;
 }
 
-export async function userHasEntity(): Promise<{ success: boolean }> {
-  const { data } = await apiClient.get("/app/user-has-entity");
+export async function getUsage(): Promise<Usage> {
+  const { data } = await apiClient
+    .get<Usage>("/app/usage")
+    .catch(() => ({ data: {} as Usage }));
+
   return data;
 }
 
-export async function getUsage(): Promise<Usage> {
-  const { data, status } = await apiClient
-    .get<Usage>("/app/usage")
-    .catch((e: AxiosError) => {
-      return { status: e?.response?.status || 500, data: {} as Usage };
-    });
-
+/** What the roles an admin assigned the signed-in user let them do. */
+export async function getAccess(): Promise<UserAccess> {
+  const { data } = await apiClient.get<UserAccess>("/app/access");
   return data;
 }
 
@@ -599,7 +614,7 @@ export const getUserPrompts = async (): Promise<Prompt[]> => {
 export const createUserSkill = async (skill: SkillCreate) => {
   const { data } = await apiClient
     .post<Skill[]>("/app/skills", skill)
-    .catch((e: AxiosError) => ({ data: null, status: e?.response?.status || 500 }));
+    .catch(() => ({ data: null }));
   return data;
 };
 
@@ -607,19 +622,14 @@ export const deleteUserSkills = async (skillId: string | string[]) => {
   const skillIds = Array.isArray(skillId) ? skillId : [skillId];
   const { data } = await apiClient
     .delete<Skill[]>("/app/skills", { data: skillIds })
-    .catch((e: AxiosError) => ({ data: null, status: e?.response?.status || 500 }));
+    .catch(() => ({ data: null }));
   return data;
 };
 
 export const updateUserSkill = async (skillId: string, skill: SkillCreate) => {
   const { data } = await apiClient
     .patch<Skill[]>(`/app/skills/${skillId}`, skill)
-    .catch((e: AxiosError) => ({ data: null, status: e?.response?.status || 500 }));
-  return data;
-};
-
-export const getUserSkills = async () => {
-  const { data } = await apiClient.get<Skill[]>("/app/skills");
+    .catch(() => ({ data: null }));
   return data;
 };
 
@@ -680,8 +690,11 @@ export async function fetchAgentsData(
   holder: Partial<CustomCopilot>,
   signal?: AbortSignal,
 ): Promise<Copilot[]> {
-  const { headers } = convertHeadersToRecord(holder?.headers ?? {});
-  const initRequest: RequestInit = { headers, signal };
+  // The identity headers go out with the request only; they are never kept on the agents
+  const initRequest: RequestInit = {
+    headers: addExtraHeaders(holder?.headers),
+    signal,
+  };
 
   let res: Response;
   try {
@@ -734,7 +747,7 @@ export async function fetchAgentsData(
         }
       }
       if (copilot.image) copilot.image = createURLString(copilot.image, holder.url);
-      return { ...copilot, id: copilot.id ?? id, headers, holderUuid: holder?.uuid };
+      return { ...copilot, id: copilot.id ?? id, holderUuid: holder?.uuid };
     },
   );
 
@@ -748,6 +761,16 @@ export async function fetchAgentsData(
     }
     throw error;
   }
+}
+
+/** The default agent, as the agents.json of the AI API describes it; that file is public. */
+export async function fetchDefaultAgent(
+  signal?: AbortSignal,
+): Promise<Copilot | undefined> {
+  const url = getConfig().urls.ai;
+  if (!url) return undefined;
+  const agents = await fetchAgentsData({ url }, signal);
+  return agents.find((agent) => agent.id === "default_agent");
 }
 
 export function hasCopilotConflict(
