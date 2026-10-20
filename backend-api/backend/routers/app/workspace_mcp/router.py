@@ -1,4 +1,6 @@
+import asyncio
 import contextlib
+from functools import partial
 from typing import Annotated
 from uuid import UUID
 
@@ -35,12 +37,13 @@ bridge_manager = BridgeSessionManager(
         settings.get_async_redis_session("app") if not settings.is_test() else None
     )
 )
+# How often a bridge socket checks that the web session that opened it still lasts
+SESSION_CHECK_SECONDS = 10.0
 
 
 @router.get(
     "/app/workspace-mcp/tokens",
     response_model=list[TokenMetadata],
-    dependencies=[Depends(auth_helpers.check_origin)],
 )
 async def list_tokens(
     user: Annotated[
@@ -63,7 +66,6 @@ async def list_tokens(
 @router.post(
     "/app/workspace-mcp/tokens",
     response_model=TokenCreateResponse,
-    dependencies=[Depends(auth_helpers.check_origin)],
 )
 async def create_token(
     request: TokenCreateRequest,
@@ -98,7 +100,6 @@ async def create_token(
 @router.delete(
     "/app/workspace-mcp/tokens/{token_uuid}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(auth_helpers.check_origin)],
 )
 async def revoke_token(
     token_uuid: UUID,
@@ -125,7 +126,6 @@ async def revoke_token(
 @router.post(
     "/app/workspace-mcp/bridge/session/start",
     response_model=BrowserSessionStartResponse,
-    dependencies=[Depends(auth_helpers.check_origin)],
 )
 async def start_bridge_session(
     payload: BrowserSessionStartRequest,
@@ -149,17 +149,48 @@ async def start_bridge_session(
     )
 
 
+async def close_when_session_ends(
+    web_session: auth_helpers.WebSocketSession, websocket: WebSocket
+) -> None:
+    """Checks every few seconds, and when the web session expires, that it still lasts;
+    once it has ended (or the socket no longer serves) the socket is closed (1008)."""
+    while True:
+        remaining = (web_session.expiration_date - base.get_now()).total_seconds()
+        await asyncio.sleep(min(SESSION_CHECK_SECONDS, max(remaining, 1.0)))
+        try:
+            await bridge_manager.check_session(web_session.user_uuid, websocket)
+        except BrowserUnavailableError:
+            with contextlib.suppress(RuntimeError):
+                await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+
+
 @router.websocket("/app/workspace-mcp/bridge/ws")
 async def bridge_websocket(websocket: WebSocket):
-    await websocket.accept()
+    """The web app's bridge socket. Before the handshake is accepted it must come from one
+    of the web app's origins with a valid web session cookie, for the user's active bridge
+    session; otherwise it is refused (1008). It serves while that web session lasts: once
+    the session is signed out, replaced by a new sign-in, ended by a password change or
+    reset, or expired, the socket is closed (1008), whichever worker holds it."""
     session_id = websocket.query_params.get("session_id", "")
-    token = websocket.query_params.get("token", "")
-
+    web_session = await auth_helpers.websocket_session(websocket)
+    if web_session is None:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+    user_uuid = web_session.user_uuid
     try:
-        user_uuid, session = await bridge_manager.connect_browser(
+        await bridge_manager.check_browser(session_id=session_id, user_uuid=user_uuid)
+    except BrowserUnavailableError:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    await websocket.accept()
+    try:
+        session = await bridge_manager.connect_browser(
             session_id=session_id,
-            token=token,
+            user_uuid=user_uuid,
             socket=websocket,
+            authorized=partial(auth_helpers.web_session_alive, web_session.session_uuid),
         )
     except BrowserUnavailableError as error:
         await websocket.send_json(
@@ -168,20 +199,25 @@ async def bridge_websocket(websocket: WebSocket):
                 error=BridgeError(code="unauthorized", message=str(error)),
             ).model_dump(mode="json")
         )
-        await websocket.close(code=1008)
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
     await websocket.send_json(
         SessionReadyEvent(type="session_ready", session=session).model_dump(mode="json")
     )
 
+    watcher = asyncio.create_task(close_when_session_ends(web_session, websocket))
     try:
         while True:
             message = await websocket.receive_json()
-            await bridge_manager.handle_browser_message(user_uuid, message)
+            await bridge_manager.handle_browser_message(user_uuid, message, websocket)
     except WebSocketDisconnect:
         pass
+    except BrowserUnavailableError:
+        with contextlib.suppress(RuntimeError):
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
     finally:
-        await bridge_manager.disconnect_browser(user_uuid, session.session_id)
+        watcher.cancel()
+        await bridge_manager.disconnect_browser(user_uuid, websocket)
         with contextlib.suppress(RuntimeError):
             await websocket.close()

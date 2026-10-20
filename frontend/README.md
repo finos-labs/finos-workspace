@@ -86,7 +86,7 @@ bun run test:e2e                     # Playwright, against a running stack
 bunx playwright test tests/e2e --ui  # Playwright with its interactive UI
 ```
 
-The end-to-end tests sign in to a running stack with an account that exists there; `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` name it, and `E2E_BASE_URL` (default `http://localhost:3000`) and `E2E_ADMIN_URL` (default `http://localhost:3001`) say where the stack is. [TESTING.md](./TESTING.md) has the details, along with the testing guide: patterns, mocking, and coverage.
+The end-to-end tests sign in to a running stack with an account that exists there; `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` name it, and `E2E_BASE_URL` (default `http://localhost:3000`) says where the stack is. [TESTING.md](./TESTING.md) has the details, along with the testing guide: patterns, mocking, and coverage.
 
 ## Adding icons
 

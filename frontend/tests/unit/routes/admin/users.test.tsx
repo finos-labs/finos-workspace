@@ -11,7 +11,6 @@ const makeUser = (over: Partial<User>): User => ({
   last_name: "",
   email: "",
   role: "",
-  billing_active: true,
   status: "active",
   last_login: null,
   last_active: null,
@@ -43,13 +42,6 @@ vi.mock("~/components/AdminRoles/adminUseQueries", () => ({
   useEntityRoles: () => ({ data: [] }),
   buildEntityNameMap: () => new Map(),
   buildUserRolesMap: () => new Map(),
-}));
-
-vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({
-    data: { seats: 10, used_seats: 3, expiration_date: null },
-    isLoading: false,
-  }),
 }));
 
 vi.mock("~/components/LayoutAuth/Skeleton/SettingsLayout", () => ({

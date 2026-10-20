@@ -22,15 +22,11 @@ export type MoveToOnSelectProps = {
 type ExportFn = ((title: string) => void) | null;
 
 export type ExportFns = Partial<
-  Record<
-    "csvFunction" | "excelFunction" | "pngFunction" | "pdfFunction" | "txtFunction",
-    ExportFn
-  >
+  Record<"csvFunction" | "pngFunction" | "pdfFunction" | "txtFunction", ExportFn>
 >;
 
 export type EllipsisSettings = {
   showSettings?: boolean;
-  showFunctions?: boolean;
   showParameters?: boolean;
   showShare?: boolean;
   showDuplicate?: boolean;

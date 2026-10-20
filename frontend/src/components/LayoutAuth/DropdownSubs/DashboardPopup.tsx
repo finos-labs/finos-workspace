@@ -2,11 +2,10 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import clsx from "clsx";
 import { Fragment, memo, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import FeatureLock from "~/components/General/FeatureLock";
 import MoveTo from "~/components/LayoutAuth/DropdownSubs/MoveTo";
 import Tooltip from "~/components/Tooltip";
+import { canShare, useShallowAccessStore } from "~/lib/state/access";
 import { type SideBarItem, useShallowAppStore } from "~/lib/state/app";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { dispatchSaveState } from "~/lib/utils";
 
@@ -15,7 +14,6 @@ type PopupMenuItem = {
   label: string;
   color?: string;
   action?: () => void;
-  locked?: boolean;
   disabled?: boolean;
   disabledTooltip?: string;
 };
@@ -37,8 +35,6 @@ export function DashboardPopup(props: DashboardPopupProps) {
     toggleExportPopup,
     setRenamePopup,
     setShareDashboardPopupId,
-    setExcelExportPopup,
-    setExcelExportItem,
     setExportTemplatePopup,
     setGroupingVisible,
     setGenerateAppDashboardId,
@@ -47,8 +43,6 @@ export function DashboardPopup(props: DashboardPopupProps) {
     toggleExportPopup: s.toggleExportPopup,
     setRenamePopup: s.setRenamePopup,
     setShareDashboardPopupId: s.setShareDashboardPopupId,
-    setExcelExportPopup: s.setExcelExportPopup,
-    setExcelExportItem: s.setExcelExportItem,
     setExportTemplatePopup: s.setExportTemplatePopup,
     setGroupingVisible: s.setGroupingVisible,
     setGenerateAppDashboardId: s.setGenerateAppDashboardId,
@@ -61,9 +55,7 @@ export function DashboardPopup(props: DashboardPopupProps) {
     getTabById: s.getTabById,
   }));
 
-  const isFullTier = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.tier === "full",
-  );
+  const mayShare = useShallowAccessStore((state) => canShare(state.access));
 
   const hasAdvancedBackendWidgets = useMemo(() => {
     const tab = getTabById(item.index);
@@ -113,14 +105,17 @@ export function DashboardPopup(props: DashboardPopupProps) {
           window.open(`/app/${item.index}`, "_blank");
         },
       },
-      {
-        shortcut: "t",
-        label: "Share",
-        action: () => {
-          setShareDashboardPopupId(item.index);
-        },
-        locked: !isFullTier,
-      },
+      ...(mayShare
+        ? [
+            {
+              shortcut: "t",
+              label: "Share",
+              action: () => {
+                setShareDashboardPopupId(item.index);
+              },
+            },
+          ]
+        : []),
       {
         shortcut: "t",
         label: "Delete",
@@ -134,23 +129,7 @@ export function DashboardPopup(props: DashboardPopupProps) {
         label: "Export PDF",
         disabled: item.index !== id,
         action: toggleExportPopup,
-        locked: !isFullTier,
       },
-      ...(import.meta.env.VITE_EXCEL_ADD_IN_ENABLED === "true"
-        ? [
-            {
-              shortcut: "e",
-              label: "Export to Excel",
-              action: () => {
-                setExcelExportItem(item);
-                setExcelExportPopup(true);
-              },
-              locked: !isFullTier,
-              disabled: !hasAdvancedBackendWidgets,
-              disabledTooltip: "No Excel-compatible widgets found in this dashboard",
-            },
-          ]
-        : []),
       {
         shortcut: "t",
         label: "Export apps.json",
@@ -162,7 +141,6 @@ export function DashboardPopup(props: DashboardPopupProps) {
         shortcut: "t",
         label: "Save App",
         action: () => setGenerateAppDashboardId(item.index),
-        locked: !isFullTier,
       },
       {
         shortcut: "t",
@@ -177,12 +155,10 @@ export function DashboardPopup(props: DashboardPopupProps) {
       duplicateTab,
       handleExportTemplate,
       id,
-      isFullTier,
+      mayShare,
       item,
       moveTabToFolder,
       navigate,
-      setExcelExportItem,
-      setExcelExportPopup,
       setGenerateAppDashboardId,
       setGroupingVisible,
       setRenamePopup,
@@ -196,7 +172,7 @@ export function DashboardPopup(props: DashboardPopupProps) {
   return (
     <div key={`dashboard-popup-${item.index}`}>
       {tabMenuItems.map(
-        ({ label, color, action: actionCb, locked, disabled, disabledTooltip }, i) =>
+        ({ label, color, action: actionCb, disabled, disabledTooltip }, i) =>
           label === "Move to" ? (
             <MoveTo
               key={`${label}-${i}`}
@@ -210,39 +186,35 @@ export function DashboardPopup(props: DashboardPopupProps) {
               {(label === "Export PDF" || label === "Export apps.json") && (
                 <DropdownMenuPrimitive.Separator className="my-1 h-px w-full bg-light-200 dark:bg-dark-500" />
               )}
-              <FeatureLock isLocked={!!locked}>
-                {disabled && !locked ? (
-                  <Tooltip
-                    message={
-                      disabledTooltip ||
-                      "You need to be inside the dashboard to be able to use this feature."
-                    }
-                    position="right"
-                  >
-                    <DropdownMenuPrimitive.Item
-                      onClick={(e) => e.stopPropagation()}
-                      className="ws-dropdown-item hover:bg-transparent! dark:hover:bg-transparent! opacity-50 cursor-not-allowed"
-                    >
-                      <span className={clsx("grow", color)}>{label}</span>
-                    </DropdownMenuPrimitive.Item>
-                  </Tooltip>
-                ) : (
+              {disabled ? (
+                <Tooltip
+                  message={
+                    disabledTooltip ||
+                    "You need to be inside the dashboard to be able to use this feature."
+                  }
+                  position="right"
+                >
                   <DropdownMenuPrimitive.Item
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-
-                      if (locked) return;
-
-                      actionCb?.();
-                      setOpen?.(false);
-                    }}
-                    className="ws-dropdown-item"
+                    onClick={(e) => e.stopPropagation()}
+                    className="ws-dropdown-item hover:bg-transparent! dark:hover:bg-transparent! opacity-50 cursor-not-allowed"
                   >
                     <span className={clsx("grow", color)}>{label}</span>
                   </DropdownMenuPrimitive.Item>
-                )}
-              </FeatureLock>
+                </Tooltip>
+              ) : (
+                <DropdownMenuPrimitive.Item
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    actionCb?.();
+                    setOpen?.(false);
+                  }}
+                  className="ws-dropdown-item"
+                >
+                  <span className={clsx("grow", color)}>{label}</span>
+                </DropdownMenuPrimitive.Item>
+              )}
             </Fragment>
           ),
       )}

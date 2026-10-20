@@ -16,14 +16,13 @@ import { McpAppPopover } from "~/components/Apps/McpAppPopover";
 import { Button } from "~/components/ds/atoms/Button";
 import { cn } from "~/components/ds/utils";
 import { AuthenticatedAvatar } from "~/components/General/Avatar";
-import FeatureLock from "~/components/General/FeatureLock";
 import { HoverPopover } from "~/components/HoverPopover";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { getConfig } from "~/lib/runtimeConfig";
+import { canAddConnections, canShare, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { AppCardDropdown } from "./AppCardDropdown";
@@ -49,12 +48,11 @@ const AppCard = memo<AppCardProps>((props) => {
       setShareUserAppsPopupId: state.setShareUserAppsPopupId,
     }),
   );
-  const isFullTier = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.tier === "full",
+  const mayShare = useShallowAccessStore((state) => canShare(state.access));
+  const mayAddConnections = useShallowAccessStore((state) =>
+    canAddConnections(state.access),
   );
   const navigate = useNavigate();
-
-  const isSaveAppLocked = !isFullTier;
 
   const { source, refreshApiSourceById } = useShallowBackendConnectorStore((state) => ({
     source: template.source?.id ? state.getApiSourceById(template.source.id) : null,
@@ -191,7 +189,6 @@ const AppCard = memo<AppCardProps>((props) => {
     if (template.creator && isPersonalApp) {
       elements.unshift({
         label: "Edit",
-        locked: isSaveAppLocked,
         onClick: () =>
           setEditAppDialog({
             isOpen: true,
@@ -210,7 +207,7 @@ const AppCard = memo<AppCardProps>((props) => {
     // the Connections page; link there and highlight it. Excludes shared/listed
     // backends, whose connection row id wouldn't match this source id.
     const connectionId = template.source?.id;
-    if (template.type === "user" && connectionId) {
+    if (template.type === "user" && connectionId && mayAddConnections) {
       elements.unshift({
         label: "Go to connection",
         onClick: () => navigate(`/app/connections?connectionId=${connectionId}`),
@@ -221,10 +218,10 @@ const AppCard = memo<AppCardProps>((props) => {
   }, [
     isBackendApp,
     isPersonalApp,
-    isSaveAppLocked,
     setDeleteConfirm,
     template,
     navigate,
+    mayAddConnections,
   ]);
 
   const bottomItems = useMemo<ReactNode[]>(() => {
@@ -465,23 +462,20 @@ const AppCard = memo<AppCardProps>((props) => {
         )}
         {bottomRight ?? (
           <div className="flex items-center gap-0.5">
-            {isPersonalApp && template.onDelete && template.creator && (
-              <FeatureLock isLocked={isSaveAppLocked} tooltipPosition="top">
-                <Tooltip message="Share app" position="top">
-                  <Button
-                    variant="secondary"
-                    size="xs"
-                    icon
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (isSaveAppLocked) return;
-                      setShareUserAppsPopupId(template.id);
-                    }}
-                  >
-                    <Icon id="share-07" className="size-3.5 text-ds-text-body" />
-                  </Button>
-                </Tooltip>
-              </FeatureLock>
+            {mayShare && isPersonalApp && template.onDelete && template.creator && (
+              <Tooltip message="Share app" position="top">
+                <Button
+                  variant="secondary"
+                  size="xs"
+                  icon
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShareUserAppsPopupId(template.id);
+                  }}
+                >
+                  <Icon id="share-07" className="size-3.5 text-ds-text-body" />
+                </Button>
+              </Tooltip>
             )}
             {isBackendApp && template.type !== "shared" && (
               <Tooltip

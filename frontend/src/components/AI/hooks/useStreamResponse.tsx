@@ -6,8 +6,8 @@ import { useLocalStorage } from "usehooks-ts";
 import { useCallbackRef } from "~/hooks/useRefHooks";
 import { useCopilotContext } from "~/lib/contexts/CopilotChatContext";
 import { getConfig } from "~/lib/runtimeConfig";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useAppStore, useShallowAppStore } from "~/lib/state/app";
-import { useShallowAuthStore } from "~/lib/state/auth";
 import {
   type BackendTemplate,
   useShallowBackendConnectorStore,
@@ -129,7 +129,6 @@ function useStreamResponse(stopSubmit: () => void) {
 
   const queriesLeft = useQueriesLeft()?.queriesLeft;
 
-  const userToken = useShallowAuthStore((s) => s.user?.token);
   const addTab = useShallowAppStore((s) => s.addTab);
   const apiSources = useShallowBackendConnectorStore((s) => s.apiSources);
 
@@ -229,7 +228,7 @@ function useStreamResponse(stopSubmit: () => void) {
       if (!(!titleManuallyUpdated && titleNeedsUpdate && messages.length > 1)) return;
       const { url, init } = await getUpdateCopilotTitleFetchParams({ xTraceId });
       try {
-        const response = await fetch(url, init);
+        const response = await fetchAgent(url, init);
         if (!response.ok) throw new Error(response.statusText);
         const data = await response.json();
         copilot.updateCopilotLabelAndSetTitleNeedsUpdate(data, false);
@@ -238,11 +237,7 @@ function useStreamResponse(stopSubmit: () => void) {
         return;
       }
     },
-    [
-      copilot.getCurrentChat,
-      copilot.updateCopilotLabelAndSetTitleNeedsUpdate,
-      userToken,
-    ],
+    [copilot.getCurrentChat, copilot.updateCopilotLabelAndSetTitleNeedsUpdate],
   );
 
   const processStream = useCallback(
@@ -408,7 +403,7 @@ function useStreamResponse(stopSubmit: () => void) {
         abortSignal,
         targetAgent,
       });
-      const response = await fetch(queryUrl, init);
+      const response = await fetchAgent(queryUrl, init);
       if (!response.ok) throw new Error(response.statusText);
       const reader = response.body?.getReader();
       if (!isReadableStream(reader))
@@ -455,7 +450,7 @@ function useStreamResponse(stopSubmit: () => void) {
           targetAgent,
         });
 
-        const response = await fetch(queryUrl, init);
+        const response = await fetchAgent(queryUrl, init);
 
         if (!response.ok) throw new Error(response.statusText);
 
@@ -976,7 +971,7 @@ function useStreamResponse(stopSubmit: () => void) {
           .replace(/\u2011/g, "-"),
         abortSignal: newAbortController.signal,
       });
-      const response = await fetch(queryUrl, init);
+      const response = await fetchAgent(queryUrl, init);
       if (!response.ok) {
         const errBody = await response.text().catch(() => "");
         console.error(`[copilot] ${response.status} ${queryUrl}:`, errBody);

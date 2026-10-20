@@ -1,12 +1,13 @@
 """
 Integration tests for Copilot metering.
 
-An admin sets a daily Copilot query limit and a daily token limit for each user of their
-organization (``number_copilot_calls_day`` and ``number_copilot_tokens_day`` on the user's
-entitlement). The limits are checked against the usage that the service serving the
-Copilot reports to ``PUT /app/usage``. Limits are changeable by that organization's admins
-and usage is writable by that service, and by nobody else: a limit its own holder can raise
-or a counter its own holder can reset is not a limit.
+An admin sets a daily Copilot query limit and a daily token limit on the roles of their
+organization (``copilot_calls_day`` and ``copilot_tokens_day``). A user's limits are the
+highest of their roles, a role without a limit lifts it, and a user without roles may use
+nothing. The limits are checked against the usage that the service serving the Copilot
+reports to ``PUT /app/usage``. Limits are changeable by that organization's admins and
+usage is writable by that service, and by nobody else: a limit its own holder can raise or
+a counter its own holder can reset is not a limit.
 """
 
 import os
@@ -19,108 +20,35 @@ if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
-from uuid import UUID, uuid4
+from uuid import UUID
 
+import jwt
 import pytest
-from sqlalchemy import delete, update
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from api import models
-import jwt
-
 from scripts.create_metering_token import create_metering_token
 from tests.fixtures.base import (
-    _ADMIN_USER,
-    _AUTH_USER,
     _SECOND_USER,
     _build_service_jwt,
-    _get_test_db_url_async,
     settings,
 )
-from tests.fixtures.db import TestAsyncSessionLocal
+from tests.fixtures.organization import MEMBER_EMAIL, MEMBER_UUID
 
-MEMBER_UUID = UUID(_AUTH_USER["user_uuid"])
 OUTSIDER_UUID = UUID(_SECOND_USER["user_uuid"])
 
 
-@pytest.fixture(autouse=True)
-async def worker_database(client):
-    """Point the usage cache refresh, which opens its own sessions, at the test database."""
-    engine = create_async_engine(_get_test_db_url_async(), pool_pre_ping=True)
-    sessions = TestAsyncSessionLocal(
-        async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+@pytest.fixture
+async def metered(organization):
+    """The role of the test user: 2 queries and 100 tokens a day."""
+    return await organization.role(
+        MEMBER_UUID, copilot_calls_day=2, copilot_tokens_day=100
     )
-    with (
-        patch("api.worker_tasks.AsyncReadSessionLocal", sessions),
-        patch("api.worker_tasks.AsyncWriteSessionLocal", sessions),
-    ):
-        yield
-    await engine.dispose()
-
-
-async def _give_limit(
-    db_session, user_uuid: UUID, limit: int, token_limit: int | None = None
-) -> None:
-    """Give a user an entitlement with a daily Copilot query limit."""
-    await _drop_limit(db_session, user_uuid)
-    db_session.add(
-        models.Entitlement(
-            user_uuid=user_uuid,
-            tier_id=models.FULL_TIER_ID,
-            number_copilot_calls_day=limit,
-            number_copilot_tokens_day=token_limit,
-            total_file_upload_size_gb=1,
-            share_widgets="private",
-            bring_your_own_data=False,
-            bring_your_own_copilot=False,
-            admin_access=False,
-            support=False,
-            excel_add_in=False,
-            data_add_ons_redistribution=False,
-        )
-    )
-    await db_session.commit()
-    settings.redis_cache(f"usage:{user_uuid}", delete=True)
-
-
-async def _drop_limit(db_session, user_uuid: UUID) -> None:
-    for table in (models.EntitlementUsage, models.Entitlement):
-        await db_session.execute(delete(table).where(table.user_uuid == user_uuid))
-    await db_session.commit()
-    settings.redis_cache(f"usage:{user_uuid}", delete=True)
 
 
 @pytest.fixture
-async def member(auth_client, admin_client, db_session):
-    """A regular user of the admin's organization, limited to 2 queries a day."""
-    member_perm = models.PermissionsEntityMap(
-        uuid=uuid4(), entity_uuid=_ADMIN_USER["entity_uuid"], name="User"
-    )
-    db_session.add(member_perm)
-    await db_session.commit()
-    await db_session.execute(
-        update(models.User)
-        .where(models.User.uuid == MEMBER_UUID)
-        .values(permissions_uuid=member_perm.uuid)
-    )
-    await db_session.commit()
-    await _give_limit(db_session, MEMBER_UUID, 2, token_limit=100)
-
-    yield auth_client
-
-    await _drop_limit(db_session, MEMBER_UUID)
-    await db_session.execute(
-        update(models.User)
-        .where(models.User.uuid == MEMBER_UUID)
-        .values(permissions_uuid=_AUTH_USER["perm_uuid"])
-    )
-    await db_session.execute(
-        delete(models.PermissionsEntityMap).where(
-            models.PermissionsEntityMap.uuid == member_perm.uuid
-        )
-    )
-    await db_session.commit()
+async def member(metered, auth_client):
+    """The test user, a member of the admin's organization with the metered role."""
+    return auth_client
 
 
 METERING = {"X-Metering-Authorization": "Bearer " + create_metering_token()[0]}
@@ -131,6 +59,10 @@ async def _use(client, count: int = 1, **usage):
     return await client.put(
         "/app/usage", json={"add_copilot_count": count, **usage}, headers=METERING
     )
+
+
+async def _limits(client) -> dict:
+    return (await client.get("/app/usage")).json()
 
 
 class TestLimitEnforcement:
@@ -149,9 +81,43 @@ class TestLimitEnforcement:
     async def test_usage_reports_the_limit(self, member):
         await _use(member)
 
-        data = (await member.get("/app/usage")).json()
+        data = await _limits(member)
         assert data["copilot_calls_limit"] == 2
         assert data["number_copilot_calls_day_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_a_user_without_roles_may_not_query(self, organization, auth_client):
+        assert (await _limits(auth_client))["copilot_calls_limit"] == 0
+
+        response = await _use(auth_client)
+        assert response.status_code == 422
+        assert "limit of 0" in response.json()["message"]
+
+
+class TestLimitsComeFromRoles:
+    @pytest.mark.asyncio
+    async def test_the_highest_limit_of_the_users_roles_applies(
+        self, organization, member
+    ):
+        await organization.role(MEMBER_UUID, copilot_calls_day=5, copilot_tokens_day=50)
+
+        data = await _limits(member)
+        assert data["copilot_calls_limit"] == 5
+        assert data["copilot_tokens_limit"] == 100
+
+    @pytest.mark.asyncio
+    async def test_a_role_without_a_limit_lifts_it(self, organization, member):
+        await organization.role(MEMBER_UUID, copilot_calls_day=None)
+
+        assert (await _limits(member))["copilot_calls_limit"] is None
+        for _ in range(5):
+            assert (await _use(member)).status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_roles_of_other_users_do_not_count(self, organization, member):
+        await organization.role(copilot_calls_day=None)
+
+        assert (await _limits(member))["copilot_calls_limit"] == 2
 
 
 class TestTokenMetering:
@@ -160,12 +126,12 @@ class TestTokenMetering:
         response = await _use(member, 1, add_copilot_tokens=40)
         assert response.status_code == 200
 
-        data = (await member.get("/app/usage")).json()
+        data = await _limits(member)
         assert data["copilot_tokens_limit"] == 100
         assert data["number_copilot_tokens_day_count"] == 40
 
         await _use(member, 0, add_copilot_tokens=25)
-        data = (await member.get("/app/usage")).json()
+        data = await _limits(member)
         assert data["number_copilot_tokens_day_count"] == 65
 
     @pytest.mark.asyncio
@@ -175,7 +141,7 @@ class TestTokenMetering:
         assert (await _use(member, 1, add_copilot_tokens=90)).status_code == 200
         # A query that is already running cannot be refused, so its tokens are recorded
         assert (await _use(member, 0, add_copilot_tokens=30)).status_code == 200
-        data = (await member.get("/app/usage")).json()
+        data = await _limits(member)
         assert data["number_copilot_tokens_day_count"] == 120
 
         response = await _use(member)
@@ -183,8 +149,11 @@ class TestTokenMetering:
         assert "token limit of 100" in response.json()["message"]
 
     @pytest.mark.asyncio
-    async def test_no_token_limit_means_unlimited(self, member, db_session):
-        await _give_limit(db_session, MEMBER_UUID, 2, token_limit=None)
+    async def test_no_token_limit_means_unlimited(self, metered, member, admin_client):
+        response = await admin_client.patch(
+            f"/admin/role/{metered}", json={"copilot_tokens_day": None}
+        )
+        assert response.status_code == 200
 
         assert (await _use(member, 1, add_copilot_tokens=10_000_000)).status_code == 200
         assert (await _use(member)).status_code == 200
@@ -198,7 +167,7 @@ class TestUsersCannotWriteUsage:
         response = await member.put("/app/usage", json={"reset_copilot_count": True})
         assert response.status_code == 403
 
-        data = (await member.get("/app/usage")).json()
+        data = await _limits(member)
         assert data["number_copilot_calls_day_count"] == 2
         assert data["number_copilot_tokens_day_count"] == 50
 
@@ -262,36 +231,36 @@ class TestUsersCannotWriteUsage:
         await _use(member, 2, add_copilot_tokens=50)
 
         assert (await _use(member, 0, subtract_copilot_count=1)).status_code == 200
-        data = (await member.get("/app/usage")).json()
+        data = await _limits(member)
         assert data["number_copilot_calls_day_count"] == 1
 
         response = await _use(member, 0, reset_copilot_count=True)
         assert response.status_code == 200
-        data = (await member.get("/app/usage")).json()
+        data = await _limits(member)
         assert data["number_copilot_calls_day_count"] == 0
         assert data["number_copilot_tokens_day_count"] == 0
 
 
 class TestAdminSetsLimit:
     @pytest.mark.asyncio
-    async def test_admin_reads_the_limit(self, member, admin_client):
-        response = await admin_client.get(f"/admin/entitlement/{MEMBER_UUID}")
+    async def test_admin_reads_the_limit(self, metered, admin_client):
+        response = await admin_client.get(f"/admin/role/{metered}")
         assert response.status_code == 200
-        assert response.json()["number_copilot_calls_day"] == 2
+        assert response.json()["copilot_calls_day"] == 2
+        assert response.json()["copilot_tokens_day"] == 100
 
     @pytest.mark.asyncio
-    async def test_admin_sets_the_token_limit(self, member, admin_client):
+    async def test_admin_sets_the_token_limit(self, metered, member, admin_client):
         await _use(member, 1, add_copilot_tokens=100)
         assert (await _use(member)).status_code == 422
 
         response = await admin_client.patch(
-            f"/admin/entitlement/{MEMBER_UUID}",
-            json={"number_copilot_tokens_day": 500},
+            f"/admin/role/{metered}", json={"copilot_tokens_day": 500}
         )
         assert response.status_code == 200
 
         assert (await _use(member)).status_code == 200
-        assert (await member.get("/app/usage")).json()["copilot_tokens_limit"] == 500
+        assert (await _limits(member))["copilot_tokens_limit"] == 500
 
     @pytest.mark.asyncio
     async def test_admin_resets_usage(self, member, admin_client):
@@ -301,49 +270,83 @@ class TestAdminSetsLimit:
         response = await admin_client.post(f"/admin/usage/{MEMBER_UUID}/reset")
         assert response.status_code == 200
 
-        data = (await member.get("/app/usage")).json()
+        data = await _limits(member)
         assert data["number_copilot_calls_day_count"] == 0
         assert data["number_copilot_tokens_day_count"] == 0
         assert (await _use(member)).status_code == 200
 
     @pytest.mark.asyncio
-    async def test_raised_limit_unblocks_the_user(self, member, admin_client):
+    async def test_raised_limit_unblocks_the_user(self, metered, member, admin_client):
         await _use(member)
         await _use(member)
         assert (await _use(member)).status_code == 422
 
         response = await admin_client.patch(
-            f"/admin/entitlement/{MEMBER_UUID}", json={"number_copilot_calls_day": 5}
+            f"/admin/role/{metered}", json={"copilot_calls_day": 5}
         )
         assert response.status_code == 200
 
         assert (await _use(member)).status_code == 200
-        assert (await member.get("/app/usage")).json()["copilot_calls_limit"] == 5
+        assert (await _limits(member))["copilot_calls_limit"] == 5
 
     @pytest.mark.asyncio
-    async def test_lowered_limit_applies_at_once(self, member, admin_client):
+    async def test_lowered_limit_applies_at_once(self, metered, member, admin_client):
         assert (await _use(member)).status_code == 200
         # Warm the usage cache with the old limit
-        assert (await member.get("/app/usage")).json()["copilot_calls_limit"] == 2
+        assert (await _limits(member))["copilot_calls_limit"] == 2
 
         response = await admin_client.patch(
-            f"/admin/entitlement/{MEMBER_UUID}", json={"number_copilot_calls_day": 1}
+            f"/admin/role/{metered}", json={"copilot_calls_day": 1}
         )
         assert response.status_code == 200
 
-        assert (await member.get("/app/usage")).json()["copilot_calls_limit"] == 1
+        assert (await _limits(member))["copilot_calls_limit"] == 1
         assert (await _use(member)).status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_joining_a_role_applies_at_once(
+        self, organization, member, admin_client
+    ):
+        generous = await organization.role(copilot_calls_day=10)
+        assert (await _limits(member))["copilot_calls_limit"] == 2
+
+        response = await admin_client.patch(
+            f"/admin/role/{generous}", json={"users": [MEMBER_EMAIL]}
+        )
+        assert response.status_code == 200
+
+        assert (await _limits(member))["copilot_calls_limit"] == 10
+
+    @pytest.mark.asyncio
+    async def test_leaving_the_role_applies_at_once(self, metered, member, admin_client):
+        assert (await _limits(member))["copilot_calls_limit"] == 2
+
+        response = await admin_client.patch(f"/admin/role/{metered}", json={"users": []})
+        assert response.status_code == 200
+
+        assert (await _limits(member))["copilot_calls_limit"] == 0
+        assert (await _use(member)).status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_deleting_the_role_applies_at_once(
+        self, metered, member, admin_client
+    ):
+        assert (await _limits(member))["copilot_calls_limit"] == 2
+
+        assert (await admin_client.delete(f"/admin/role/{metered}")).status_code == 200
+
+        assert (await _limits(member))["copilot_calls_limit"] == 0
 
 
 class TestOnlyOwnOrganizationAdminsSetLimits:
     @pytest.mark.asyncio
-    async def test_member_cannot_patch_own_entitlement(self, member):
+    async def test_member_cannot_change_the_limits_of_their_role(self, metered, member):
         response = await member.patch(
-            "/app/entitlement", json={"number_copilot_calls_day": 1_000_000}
+            f"/admin/role/{metered}", json={"copilot_calls_day": 1_000_000}
         )
         assert response.status_code in {401, 403}
 
-        assert (await member.get("/app/usage")).json()["copilot_calls_limit"] == 2
+        assert (await _limits(member))["copilot_calls_limit"] == 2
 
     @pytest.mark.asyncio
     async def test_member_cannot_reset_usage_through_the_admin_endpoint(self, member):
@@ -354,31 +357,21 @@ class TestOnlyOwnOrganizationAdminsSetLimits:
         assert (await _use(member)).status_code == 422
 
     @pytest.mark.asyncio
-    async def test_member_cannot_use_the_admin_endpoint(self, member):
-        response = await member.patch(
-            f"/admin/entitlement/{MEMBER_UUID}",
-            json={"number_copilot_calls_day": 1_000_000},
-        )
-        assert response.status_code in {401, 403}
-
-    @pytest.mark.asyncio
     async def test_admin_cannot_set_limits_outside_the_organization(
-        self, member, admin_client, second_user_client, db_session
+        self, organization, member, admin_client, second_user_client, db_session
     ):
-        await _give_limit(db_session, OUTSIDER_UUID, 2)
-        try:
-            path = f"/admin/entitlement/{OUTSIDER_UUID}"
+        outside = await organization.role(
+            OUTSIDER_UUID, entity_uuid=_SECOND_USER["entity_uuid"], copilot_calls_day=2
+        )
+        path = f"/admin/role/{outside}"
 
-            response = await admin_client.patch(
-                path, json={"number_copilot_calls_day": 1_000_000}
-            )
-            assert response.status_code == 403
+        response = await admin_client.patch(path, json={"copilot_calls_day": 1_000_000})
+        assert response.status_code == 404
 
-            assert (await admin_client.get(path)).status_code == 403
-            response = await admin_client.post(f"/admin/usage/{OUTSIDER_UUID}/reset")
-            assert response.status_code == 403
-            assert (await second_user_client.get("/app/usage")).json()[
-                "copilot_calls_limit"
-            ] == 2
-        finally:
-            await _drop_limit(db_session, OUTSIDER_UUID)
+        assert (await admin_client.get(path)).status_code == 404
+        response = await admin_client.post(f"/admin/usage/{OUTSIDER_UUID}/reset")
+        assert response.status_code == 403
+        # The outside role still allows 2 calls a day (the outsider, a developer, has
+        # no limits whatever their roles say)
+        db_session.expire_all()
+        assert (await db_session.get(models.Role, outside)).copilot_calls_day == 2

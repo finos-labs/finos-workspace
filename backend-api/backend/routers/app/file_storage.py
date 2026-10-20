@@ -9,11 +9,11 @@ from typing import Annotated, Any
 from uuid import UUID, uuid4
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from fastapi import APIRouter, Body, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse
 from loguru import logger
-from sqlalchemy import false, insert, or_, select
+from sqlalchemy import false, func, insert, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask
 
@@ -23,14 +23,47 @@ from api.helpers import refresh_usage_cache
 from api.models.workspace_models import PostStoredFile, StoredFile
 from api.schemas import SuccessReturn
 from api.storage import FileStorage
-from routers.app.helpers import get_dashboard_shared_file_uuids, get_shared_file_uuids
+from routers.app.helpers import (
+    check_may_add_connections,
+    get_shared_file_uuids,
+    get_user_limits,
+)
 from utilities.config import settings
 
 router = APIRouter(
     prefix="/app",
     tags=["app-file-storage"],
-    dependencies=[Depends(auth_helpers.check_origin)],
 )
+# The pre-signed downloads: the URL's signature is their whole credential, with no session
+# or client header. Agents fetch them server to server; like every request, they name an
+# allowed Origin (an agent sends its WORKSPACE_ORIGIN), or the API refuses them with 403.
+signed_router = APIRouter(prefix="/app", tags=["app-file-storage"])
+
+
+async def check_upload_limit(
+    db: AsyncSession, user_uuid: UUID, files: list[UploadFile]
+) -> None:
+    """Refuse an upload that would take the user's files over the upload limit of their
+    roles."""
+    limit = (await get_user_limits(db, user_uuid)).upload_size_gb
+    if limit is None:
+        return
+
+    used_query = select(func.sum(StoredFile.size)).where(
+        StoredFile.creater_uuid == user_uuid
+    )
+    total_bytes = (await db.execute(used_query)).scalar_one_or_none() or 0
+    for item in files:
+        if not item.filename:
+            continue
+        item.file.seek(0, io.SEEK_END)
+        total_bytes += item.file.tell()
+        item.file.seek(0)
+
+    if total_bytes / (1024**3) > limit:
+        raise HTTPException(
+            413, detail=f"The upload size limit of {limit} GB would be exceeded"
+        )
 
 
 @router.post("/files", response_model=list[schemas.PendingFileReturn])
@@ -47,6 +80,8 @@ async def post_files(
     If the file is not used in a file widget within 24 hours,
     it will be automatically deleted from the S3 bucket.
     """
+    await check_may_add_connections(db, user.uuid)
+    await check_upload_limit(db, user.uuid, files)
 
     tasks = []
     for item in files:
@@ -135,7 +170,7 @@ async def get_user_stored_file(
         if user_uuid and stored_file.creater_uuid != user_uuid:
             raise HTTPException(403, detail="User does not have access to this file")
 
-    if not await FileStorage.check_file_exists(stored_file):
+    if not stored_file or not await FileStorage.check_file_exists(stored_file):
         raise HTTPException(404, detail="File not found")
 
     return stored_file
@@ -153,7 +188,7 @@ async def get_file(
     return FileStorage.get_stream(stored_file)
 
 
-@router.get("/files/presigned/{file_name}", response_class=StreamingResponse)
+@signed_router.get("/files/presigned/{file_name}", response_class=StreamingResponse)
 async def get_signed_file(
     file_name: str,
     Expires: int,
@@ -177,19 +212,26 @@ async def get_signed_file(
     return FileStorage.get_stream(stored_file)
 
 
+# A pre-signed URL opens the file without a session: it lives 15 minutes at most
+PRESIGNED_URL_MAX_SECONDS = 900
+
+
 @router.get(
     "/files/{file_name}/presigned-url", response_model=schemas.PreSignedUrlReturn
 )
 async def get_presigned_url(
     file_name: str,
-    expiration: int = 3600,
+    expiration: Annotated[int, Query(ge=1)] = PRESIGNED_URL_MAX_SECONDS,
     user=Depends(auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_read_db),
 ):
-    """Get a pre-signed URL for a file in the file storage bucket."""
+    """Get a pre-signed URL for a file in the file storage bucket. A longer expiration
+    than 15 minutes is cut to 15 minutes."""
     stored_file = await get_user_stored_file(file_name, user, db)
     presign_url = await FileStorage.create_presigned_url(
-        stored_file.bucket, stored_file.s3_file_name, expiration
+        stored_file.bucket,
+        stored_file.s3_file_name,
+        min(expiration, PRESIGNED_URL_MAX_SECONDS),
     )
 
     return schemas.PreSignedUrlReturn(
@@ -358,22 +400,3 @@ async def get_files(
         },
         background=BackgroundTask(zip_io.close),
     )
-
-
-@router.get("/files", response_model=list[schemas.StoredFileReturn])
-async def get_user_stored_files(
-    dashboard_uuid: UUID | None = None,
-    user=Depends(auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)),
-    db: AsyncSession = Depends(aget_read_db),
-):
-    """Get all stored files for a user. This includes files that are not linked to a file widget."""
-    shared_file_uuids = await get_dashboard_shared_file_uuids(db, user, dashboard_uuid)
-
-    select_query = select(StoredFile).where(
-        or_(
-            StoredFile.creater_uuid == user.uuid,
-            StoredFile.is_global.is_(True),
-            StoredFile.uuid.in_(shared_file_uuids),
-        )
-    )
-    return (await db.execute(select_query)).scalars().all()

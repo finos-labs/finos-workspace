@@ -1,7 +1,7 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import AdminHome from "~/routes/admin/index";
+import AdminHome, { RenderNoData } from "~/routes/admin/index";
 
 const mockNavigate = vi.fn();
 
@@ -59,5 +59,37 @@ describe("AdminHome", () => {
     );
 
     expect(container.innerHTML).toBe("");
+  });
+});
+
+describe("RenderNoData", () => {
+  it("shows nothing while the data loads: no loading animation", () => {
+    const { container } = render(
+      <RenderNoData isLoading={true} isError={false}>
+        No rows yet
+      </RenderNoData>,
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("says what is missing once the data is there", () => {
+    render(
+      <RenderNoData isLoading={false} isError={false}>
+        No rows yet
+      </RenderNoData>,
+    );
+
+    expect(screen.getByText("No rows yet")).toBeInTheDocument();
+  });
+
+  it("says that something went wrong", () => {
+    render(
+      <RenderNoData isLoading={false} isError={true}>
+        No rows yet
+      </RenderNoData>,
+    );
+
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
   });
 });

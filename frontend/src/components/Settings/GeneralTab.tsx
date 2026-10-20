@@ -4,10 +4,8 @@ import { Checkbox } from "~/components/Forms/Checkbox";
 import Icon from "~/components/Icon";
 import Tooltip from "~/components/Tooltip";
 import { getConfig } from "~/lib/runtimeConfig";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn } from "~/lib/utils";
-import FeatureLock from "../General/FeatureLock";
 
 function FontSizeDiv({ fontSize }: { fontSize: string }) {
   return (
@@ -33,10 +31,6 @@ export default function GeneralTab() {
       fontSize: state.fontSize,
       updateDisplaySettings: state.updateDisplaySettings,
     }));
-
-  const isFullTier = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.tier === "full",
-  );
 
   return (
     <TabsPrimitive.Content className="mt-5 mb-5 text-xs" value="general">
@@ -141,21 +135,19 @@ export default function GeneralTab() {
             </p>
 
             <div className="flex flex-col gap-3">
-              <FeatureLock isLocked={!isFullTier}>
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    checked={aiEnhancements}
-                    onChange={(aiEnhancements) =>
-                      updateDisplaySettings({ aiEnhancements })
-                    }
-                    id="ai-enhancements"
-                  />
-                  <label htmlFor="ai-enhancements" className="grow">
-                    Enable AI-powered features that rely on third-party LLM vendors
-                    (e.g. OpenAI)
-                  </label>
-                </div>
-              </FeatureLock>
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  checked={aiEnhancements}
+                  onChange={(aiEnhancements) =>
+                    updateDisplaySettings({ aiEnhancements })
+                  }
+                  id="ai-enhancements"
+                />
+                <label htmlFor="ai-enhancements" className="grow">
+                  Enable AI-powered features that rely on third-party LLM vendors (e.g.
+                  OpenAI)
+                </label>
+              </div>
             </div>
           </div>
         )}

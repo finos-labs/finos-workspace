@@ -81,10 +81,10 @@ describe("AdminInviteUsersDialog", () => {
     // Further checks can be added here to verify props passed to InviteSingleUser and ImportUsers
   });
 
-  it("displays error message when no permissions UUID is found", () => {
-    renderComponent([{ name: "Other", uuid: "other-uuid" }]);
+  it("displays error message when the organization has no User map", () => {
+    renderComponent([{ name: "Admin", uuid: "admin-uuid" }]);
     expect(
-      screen.getByText("This entity does not have a User entitlement, please add one."),
+      screen.getByText("This organization has no User type to add users to."),
     ).toBeInTheDocument();
   });
 

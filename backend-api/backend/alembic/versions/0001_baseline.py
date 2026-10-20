@@ -43,7 +43,6 @@ def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
             api.models.model_helpers.JSONType(),
             nullable=True,
         ),
-        sa.Column("excel_add_in", sa.Boolean(), nullable=False),
         sa.Column("data_export", sa.Boolean(), nullable=False),
         sa.Column("providers", api.models.model_helpers.JSONType(), nullable=True),
         sa.Column(
@@ -120,7 +119,6 @@ def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
         sa.Column("bring_your_own_copilot", sa.Boolean(), nullable=True),
         sa.Column("admin_access", sa.Boolean(), nullable=True),
         sa.Column("support", sa.Boolean(), nullable=True),
-        sa.Column("excel_add_in", sa.Boolean(), nullable=True),
         sa.Column("data_add_ons_redistribution", sa.Boolean(), nullable=True),
         sa.Column("uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
         sa.Column(
@@ -188,7 +186,6 @@ def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
         sa.Column("bring_your_own_copilot", sa.Boolean(), nullable=True),
         sa.Column("admin_access", sa.Boolean(), nullable=True),
         sa.Column("support", sa.Boolean(), nullable=True),
-        sa.Column("excel_add_in", sa.Boolean(), nullable=True),
         sa.Column("data_add_ons_redistribution", sa.Boolean(), nullable=True),
         sa.Column("allow_custom_backends", sa.Boolean(), nullable=True),
         sa.Column(
@@ -499,8 +496,8 @@ def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
         "custom_copilot",
         sa.Column("user_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
         sa.Column("url", sa.String(length=200), nullable=False),
-        sa.Column("headers", api.models.model_helpers.EncryptedType(), nullable=True),
-        sa.Column("copilots", api.models.model_helpers.EncryptedType(), nullable=True),
+        sa.Column("headers", sa.Text(), nullable=True),
+        sa.Column("copilots", sa.Text(), nullable=True),
         sa.Column("uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
         sa.Column(
             "created_date", api.models.model_helpers.AwareDateTime(), nullable=True
@@ -583,7 +580,6 @@ def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
         sa.Column("bring_your_own_copilot", sa.Boolean(), nullable=True),
         sa.Column("admin_access", sa.Boolean(), nullable=True),
         sa.Column("support", sa.Boolean(), nullable=True),
-        sa.Column("excel_add_in", sa.Boolean(), nullable=True),
         sa.Column("data_add_ons_redistribution", sa.Boolean(), nullable=True),
         sa.Column("allow_custom_backends", sa.Boolean(), nullable=True),
         sa.Column(
@@ -1263,9 +1259,7 @@ def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("url", api.models.model_helpers.HttpUrlType(), nullable=False),
         sa.Column("user_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=True),
-        sa.Column(
-            "endpointHeaders", api.models.model_helpers.EncryptedType(), nullable=True
-        ),
+        sa.Column("endpointHeaders", sa.Text(), nullable=True),
         sa.Column("entity_uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=True),
         sa.Column("uuid", sqlalchemy_utils.types.uuid.UUIDType(), nullable=False),
         sa.Column(

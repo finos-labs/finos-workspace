@@ -23,8 +23,9 @@ export function getOktaAuth(): OktaAuth | null {
         redirectUri: window.location.origin,
         scopes: ["openid", "profile", "email"],
         pkce: true,
+        // Okta's tokens stay in page memory, never in browser storage
         tokenManager: {
-          storage: "sessionStorage",
+          storage: "memory",
         },
       };
       try {

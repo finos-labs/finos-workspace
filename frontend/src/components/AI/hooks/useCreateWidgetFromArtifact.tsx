@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { createMetaDataWidget } from "~/api/auth.api";
 import { getConfig } from "~/lib/runtimeConfig";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useShallowAppStore } from "~/lib/state/app";
-import { useShallowAuthStore } from "~/lib/state/auth";
 import { useCopilotStore, useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowThemeStore } from "~/lib/state/theme";
@@ -47,7 +47,6 @@ export function useCreateWidgetFromArtifact() {
   const [searchParams] = useSearchParams();
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const userToken = useShallowAuthStore((s) => s.user?.token);
   const { addWidget, addTab } = useShallowAppStore((s) => ({
     addWidget: s.addWidget,
     addTab: s.addTab,
@@ -128,15 +127,15 @@ export function useCreateWidgetFromArtifact() {
         },
       };
 
-      const response = await fetch(`${getConfig().urls.ai}/v1/generate/widget_info`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${userToken}`,
-        } as HeadersInit,
-        body: JSON.stringify(requestPayload),
-        signal,
-      });
+      const response = await fetchAgent(
+        `${getConfig().urls.ai}/v1/generate/widget_info`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestPayload),
+          signal,
+        },
+      );
 
       if (!response.ok) {
         throw new Error(`API call failed with status ${response.status}`);
@@ -144,7 +143,7 @@ export function useCreateWidgetFromArtifact() {
 
       return await response.json();
     },
-    [userToken, getConversationContext],
+    [getConversationContext],
   );
 
   const widgetCreation = useCallback(

@@ -11,11 +11,13 @@
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { postMCPServers } from "~/api/auth.api";
+import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import {
   type AgentToolConfig,
   dedupeIframeServersByUrl,
   type McpConnection,
   type McpServer,
+  mcpServersSaved,
   useMcpToolsStore,
 } from "~/lib/state/mcpTools";
 
@@ -60,9 +62,23 @@ const createMockConnection = (
   ...overrides,
 });
 
+/** Every server these tests use, with all its tools granted to the user by a role. */
+const grantedServerUrls = [
+  "https://test.example.com",
+  "https://widget.example.com/mcp",
+  "https://shared.example.com",
+  "https://first.example.com/mcp",
+  "https://second.example.com/mcp",
+  "https://other.example.com/mcp",
+];
+
 describe("useMcpToolsStore", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useCopilotAccessStore.getState().setAccess({
+      models: [],
+      mcp: grantedServerUrls.map((server_url) => ({ server_url, tool_name: "*" })),
+    });
     // Reset store to initial state
     act(() => {
       useMcpToolsStore.setState({
@@ -314,6 +330,130 @@ describe("useMcpToolsStore", () => {
       });
 
       expect(postMCPServers).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("write-only server headers", () => {
+    it("saves new header values at once and keeps only their names", async () => {
+      act(() => {
+        useMcpToolsStore.getState().addServer(
+          createMockServer({
+            id: "server-1",
+            customHeaders: { Authorization: "Bearer secret-token", "X-Team": "t1" },
+          }),
+        );
+      });
+      await mcpServersSaved();
+
+      expect(postMCPServers).toHaveBeenCalledWith([
+        expect.objectContaining({
+          id: "server-1",
+          customHeaders: { Authorization: "Bearer secret-token", "X-Team": "t1" },
+        }),
+      ]);
+      const saved = useMcpToolsStore.getState().servers[0];
+      expect(saved.customHeaders).toBeUndefined();
+      expect(saved.customHeaderNames).toEqual(["Authorization", "X-Team"]);
+      expect(saved.hasToken).toBe(true);
+      expect(JSON.stringify(useMcpToolsStore.getState().servers)).not.toContain(
+        "secret-token",
+      );
+    });
+
+    it("removes a saved header with null", async () => {
+      act(() => {
+        useMcpToolsStore.setState({
+          servers: [
+            createMockServer({
+              id: "server-1",
+              customHeaderNames: ["Authorization"],
+              hasToken: true,
+            }),
+          ],
+        });
+      });
+
+      act(() => {
+        useMcpToolsStore
+          .getState()
+          .updateServer("server-1", { customHeaders: { authorization: null } });
+      });
+      await mcpServersSaved();
+
+      const saved = useMcpToolsStore.getState().servers[0];
+      expect(saved.customHeaderNames).toEqual([]);
+      expect(saved.hasToken).toBe(false);
+    });
+
+    it("keeps the values in memory for the next save when a save fails", async () => {
+      vi.mocked(postMCPServers).mockResolvedValueOnce({ status: 500 });
+      act(() => {
+        useMcpToolsStore
+          .getState()
+          .addServer(
+            createMockServer({ id: "server-1", customHeaders: { "X-Key": "k" } }),
+          );
+      });
+      await mcpServersSaved();
+
+      expect(useMcpToolsStore.getState().servers[0].customHeaders).toEqual({
+        "X-Key": "k",
+      });
+    });
+
+    it("forgets the saved header names when a server moves to another URL", () => {
+      act(() => {
+        useMcpToolsStore.setState({
+          servers: [
+            createMockServer({
+              id: "server-1",
+              url: "https://old.example.com/mcp",
+              customHeaderNames: ["Authorization"],
+              hasToken: true,
+            }),
+          ],
+        });
+      });
+
+      act(() => {
+        useMcpToolsStore
+          .getState()
+          .updateServer("server-1", { url: "https://new.example.com/mcp" });
+      });
+
+      const server = useMcpToolsStore.getState().servers[0];
+      expect(server.customHeaderNames).toEqual([]);
+      expect(server.hasToken).toBe(false);
+    });
+
+    it("takes the server list from the API without header values", () => {
+      act(() => {
+        useMcpToolsStore.getState().updateServers([
+          createMockServer({
+            id: "server-1",
+            customHeaders: { "X-Key": "k" },
+            customHeaderNames: ["X-Key"],
+          }),
+        ]);
+      });
+
+      const server = useMcpToolsStore.getState().servers[0];
+      expect(server.customHeaders).toBeUndefined();
+      expect(server.customHeaderNames).toEqual(["X-Key"]);
+    });
+
+    it("forgets every server on sign-out", () => {
+      act(() => {
+        useMcpToolsStore
+          .getState()
+          .updateServers([createMockServer({ id: "server-1" })]);
+      });
+
+      act(() => {
+        useMcpToolsStore.getState().clearAllStorage();
+      });
+
+      expect(useMcpToolsStore.getState().servers).toEqual([]);
     });
   });
 

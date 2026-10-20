@@ -2,23 +2,20 @@ import * as HoverCard from "@radix-ui/react-hover-card";
 import dayjs from "dayjs";
 import { type FC, memo, useCallback, useEffect, useState } from "react";
 import { getUsage } from "~/api/auth.api";
-import { useShallowAuthStore } from "~/lib/state/auth";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
+import { useShallowAccessStore } from "~/lib/state/access";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn } from "~/lib/utils";
 import { Button } from "../ds/atoms/Button";
 import Icon from "../Icon";
+import { useCopilotKeys } from "./hooks/useCopilotKeys";
 import useQueriesLeft from "./hooks/useQueriesLeft";
 
 const CopilotUsageInfo: FC = () => {
   const { queriesLeft, usage } = useQueriesLeft(true);
-  const { setUsage, isFullTier } = useShallowFeatureFlagsStore((state) => ({
-    setUsage: state.setUsage,
-    isFullTier: state.featureFlags?.tier === "full",
-  }));
+  const setUsage = useShallowAccessStore((state) => state.setUsage);
 
   const setApiKeyDialogOpen = useShallowThemeStore((s) => s.setApiKeyDialogOpen);
-  const openaiApiKey = useShallowAuthStore((s) => s.openaiApiKey);
+  const { has_openai_key: hasOpenaiKey } = useCopilotKeys();
 
   const [timeLeft, setTimeLeft] = useState("");
 
@@ -69,7 +66,7 @@ const CopilotUsageInfo: FC = () => {
           sideOffset={5}
           side="top"
         >
-          {!openaiApiKey && (
+          {!hasOpenaiKey && (
             <>
               <div className="flex items-center">
                 <Icon
@@ -116,7 +113,7 @@ const CopilotUsageInfo: FC = () => {
               </div>
             </>
           )}
-          {openaiApiKey && (
+          {hasOpenaiKey && (
             <>
               <div className="flex items-center">
                 <Icon

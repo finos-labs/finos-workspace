@@ -5,6 +5,7 @@ import { apiClient } from "~/api/api";
 import { getApiSources } from "~/api/auth.api";
 import { saveDashboards } from "~/api/dashboard.api";
 import { useCreateRef } from "~/hooks/useRefHooks";
+import { useShallowAccessStore } from "~/lib/state/access";
 import { useShallowAppStore } from "~/lib/state/app";
 import { useAuthStore, useShallowAuthStore } from "~/lib/state/auth";
 import {
@@ -15,7 +16,6 @@ import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
 import { useCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowEntityThemeStore } from "~/lib/state/entityTheme";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import { useSharedAppStore } from "~/lib/state/sharedApp";
 import { useShallowSkillsLibraryStore } from "~/lib/state/skillsLibrary";
@@ -49,9 +49,7 @@ export default function useSyncItems() {
   const updateOnlySharedItems = useSharedAppStore(
     (state) => state.updateOnlySharedItems,
   );
-  const setFeatureFlagsAndUsage = useShallowFeatureFlagsStore(
-    (state) => state.setFeatureFlagsAndUsage,
-  );
+  const setAccessAndUsage = useShallowAccessStore((state) => state.setAccessAndUsage);
   const updateThemeState = useShallowThemeStore((state) => state.updateThemeState);
   const updateMCPServers = useShallowMcpToolsStore((state) => state.updateServers);
   const updateUserSkills = useShallowSkillsLibraryStore((state) => state.updateSkills);
@@ -85,8 +83,8 @@ export default function useSyncItems() {
     onSuccess: (dashboardsData) => {
       queueMicrotask(async () => {
         const data = dashboardsData;
-        if (data.feature_entitlements) {
-          setFeatureFlagsAndUsage(data.feature_entitlements, data.usage ?? null);
+        if (data.access) {
+          setAccessAndUsage(data.access, data.usage ?? null);
         }
 
         updateChats(data.copilot_chats, { questionsHistory: data.questions_history });
@@ -107,8 +105,8 @@ export default function useSyncItems() {
         useCopilotAccessStore.getState().setAccess(data.copilot_access);
         updateUserApps(data.user_apps || {}, true);
         updateUserSkills(data.user_skills || []);
-        if (pathname === "/app") return;
-
+        // Data backend credentials are never persisted: after a reload only this
+        // refetch puts them back in page memory, whatever page the user is on
         refetchApiSources();
       });
     },

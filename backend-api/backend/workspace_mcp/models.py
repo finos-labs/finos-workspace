@@ -72,10 +72,10 @@ class BrowserSessionContext(Model):
 
 
 class BrowserSession(Model):
-    """Active browser session metadata."""
+    """Active browser session metadata. The page's websocket is admitted by its origin,
+    so the id is no secret."""
 
     session_id: str
-    token: str
     client_name: str
     current_dashboard_id: str | None = None
     current_tab_id: str | None = None
@@ -158,7 +158,6 @@ class AgentTool(BaseModel):
     endpoint: str | None = None
     description: str | None = None
     input_schema: dict[str, Any] | None = None
-    auth_token: str | None = None
 
 
 class WorkspaceSnapshot(Model):

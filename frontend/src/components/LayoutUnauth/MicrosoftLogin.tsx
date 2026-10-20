@@ -18,13 +18,9 @@ export default function MicrosoftLogin({
       type="button"
       className="w-full h-[40px] _add_data_button body-sm-medium bg-[#F2F2F2] dark:bg-[#F2F2F2] hover:bg-[#e3e3e3] dark:hover:bg-[#e3e3e3] focus:bg-[#D9D9D9] dark:focus:bg-[#D9D9D9] text-dark-600 dark:text-dark-600"
       onClick={async () => {
-        try {
-          setIsLoading(true);
-          await handleLogin(instance);
-          setIsLoading(false);
-        } catch (error) {
-          setIsLoading(false);
-        }
+        setIsLoading(true);
+        await handleLogin(instance);
+        setIsLoading(false);
       }}
       loading={isLoading}
     >

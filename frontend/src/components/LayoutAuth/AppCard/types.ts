@@ -48,6 +48,5 @@ export interface AppCardDropdownItem {
   label: string;
   onClick: () => void;
   disabled?: boolean;
-  locked?: boolean;
   color?: string;
 }

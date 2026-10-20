@@ -118,7 +118,6 @@ function getStatusProperties(state: McpConnection["state"]) {
       case "discovering":
       case "connecting":
       case "authenticating":
-      case "pending_auth":
         return "bg-alert-warning";
       case "disconnected":
         return "bg-light-400 dark:bg-dark-300";
@@ -149,7 +148,6 @@ function getStatusProperties(state: McpConnection["state"]) {
       case "failed":
         return "Connection failed";
       case "authenticating":
-      case "pending_auth":
         return "Authentication required";
       case "disconnected":
         return "Disconnected";
@@ -378,6 +376,8 @@ const mcpServerSchema = z.object({
       }),
     )
     .default([]),
+  // Saved headers to delete: the API never sends their values back
+  removedHeaders: z.array(z.string()).default([]),
 });
 
 export type McpServerSchema = z.infer<typeof mcpServerSchema>;
@@ -510,7 +510,13 @@ interface ManageMcpServerProps extends McpServerModalProps {
   existingServerId?: string;
 }
 
-const initialState = { name: "", url: "", clientName: "", customHeaders: [] };
+const initialState = {
+  name: "",
+  url: "",
+  clientName: "",
+  customHeaders: [],
+  removedHeaders: [],
+};
 
 export function ManageMcpServer(props: ManageMcpServerProps) {
   const { onClose, existingServerId } = props;
@@ -536,8 +542,13 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
       clientName: serverToEdit?.clientName || "",
       isLocal: serverToEdit?.isLocal,
       customHeaders: [],
+      removedHeaders: [],
     },
   });
+  const removedHeaders = form.watch("removedHeaders") ?? [];
+  const savedHeaderNames = (serverToEdit?.customHeaderNames ?? []).filter(
+    (name) => !removedHeaders.includes(name),
+  );
 
   const handleSave = useCallback(
     (server: McpServerSchema) => {
@@ -552,13 +563,16 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
         customHeaders: undefined,
       };
 
-      if (server.customHeaders && server.customHeaders.length > 0) {
-        const headersObject: Record<string, string> = {};
-        for (const header of server.customHeaders) {
-          if (header.key.trim() && header.value.trim()) {
-            headersObject[header.key.trim()] = header.value.trim();
-          }
+      // Header values are write-only: a value sets the header, null deletes a saved one,
+      // and a saved header left alone keeps its value
+      const headersObject: Record<string, string | null> = {};
+      for (const name of server.removedHeaders) headersObject[name] = null;
+      for (const header of server.customHeaders) {
+        if (header.key.trim() && header.value.trim()) {
+          headersObject[header.key.trim()] = header.value.trim();
         }
+      }
+      if (Object.keys(headersObject).length > 0) {
         newServerData.customHeaders = headersObject;
       }
       try {
@@ -590,9 +604,8 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
         url: serverToEdit.url,
         clientName: serverToEdit.clientName || "",
         isLocal: serverToEdit.isLocal,
-        customHeaders: Object.entries(serverToEdit.customHeaders || {}).map(
-          ([key, value]) => ({ key, value }),
-        ),
+        customHeaders: [],
+        removedHeaders: [],
       });
     } else {
       form.reset(initialState);
@@ -690,6 +703,30 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
           />
 
           <div className="overflow-y-auto max-h-[200px] pr-1">
+            {savedHeaderNames.map((name) => (
+              <div
+                key={name}
+                className="flex items-center gap-2 body-xs-regular text-ds-text-body mb-2"
+              >
+                <span className="flex-1 truncate">
+                  {name}: saved. Add it again below to replace its value.
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Remove ${name}`}
+                  onClick={() =>
+                    form.setValue("removedHeaders", [...removedHeaders, name], {
+                      shouldDirty: true,
+                    })
+                  }
+                >
+                  <Icon
+                    id="circled-cross-icon"
+                    className="h-4 w-4 text-light-600 dark:text-light-300"
+                  />
+                </button>
+              </div>
+            ))}
             <EndpointHeadersForm name="customHeaders" />
           </div>
         </form>

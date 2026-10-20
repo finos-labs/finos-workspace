@@ -87,7 +87,11 @@ done
 if [ "$SEED" = 1 ]; then
   echo ">> seeding admin user (init_users)"
   docker exec fastapi sh -c "cd /opt/code && python -m scripts.init_users" >/dev/null 2>&1 || \
-    echo "   (init_users failed — DB may already be seeded)"
+    echo "   (init_users failed)"
+  # The administrator gets the password the simulator signs in with, read from standard input
+  printf '%s\n' "${ADMIN_PASSWORD:?set ADMIN_EMAIL and ADMIN_PASSWORD}" | \
+    docker exec -i fastapi sh -c 'cd /opt/code && python -m scripts.init_users --new-password "$1"' \
+      _ "${ADMIN_EMAIL:?set ADMIN_EMAIL and ADMIN_PASSWORD}"
 fi
 
 if [ "$NORUN" = 1 ]; then
@@ -98,4 +102,5 @@ fi
 echo ">> running load simulator"
 BASE_URL="http://localhost:$HOST_PORT" USERS="$USERS" DURATION="$DURATION" RAMP="$RAMP" \
   MCP_USERS="$MCP_USERS" API_MCP="$API_MCP" \
+  WORKSPACE_AUTH_TOKEN="$(docker exec fastapi printenv WORKSPACE_AUTH_TOKEN)" \
   "$PYTHON" "$SCRIPT_DIR/load_simulator.py"

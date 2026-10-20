@@ -10,6 +10,7 @@ import {
   ScrollButton,
 } from "~/components/AI";
 import { useMobile } from "~/lib/providers/MobileProvider";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useThemeStore } from "~/lib/state/theme";
 import { CopilotSetLoadingOnResize } from "../DraggableCard/SetLoadingOnResize";
@@ -105,18 +106,21 @@ export function CopilotChat() {
 }
 
 function NoCopilotSelected() {
+  const mayAdd = useShallowAccessStore((s) => canAddConnections(s.access));
   return (
     <CopilotWrapper>
       <div className="flex h-full flex-col">
         <CopilotHeader showChatActions={false} />
         <div className="flex flex-1 flex-col items-center justify-center gap-2">
           <span>No agent selected</span>
-          <Button
-            size="xs"
-            onClick={() => useThemeStore.getState().setShowAddAgentsDialog(true)}
-          >
-            Add Agent
-          </Button>
+          {mayAdd && (
+            <Button
+              size="xs"
+              onClick={() => useThemeStore.getState().setShowAddAgentsDialog(true)}
+            >
+              Add Agent
+            </Button>
+          )}
         </div>
       </div>
     </CopilotWrapper>

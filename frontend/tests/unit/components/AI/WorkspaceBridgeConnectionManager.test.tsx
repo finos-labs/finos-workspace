@@ -179,20 +179,16 @@ describe("WorkspaceBridgeConnectionManager", () => {
       data: {
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",
         },
-        websocket_url:
-          "ws://127.0.0.1:8787/bridge/ws?session_id=session-123&token=token-123",
+        websocket_url: "ws://127.0.0.1:8787/bridge/ws?session_id=session-123",
       },
     } as AxiosResponse);
     useAuthStore.setState({
       user: {
         email: "user@mail.test",
-        username: "test",
-        token: "session-token",
         entity_name: null,
         role: null,
         uuid: "user-1",
@@ -248,7 +244,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",
@@ -284,7 +279,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",
@@ -408,7 +402,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",
@@ -452,7 +445,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",
@@ -486,7 +478,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",
@@ -547,7 +538,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",
@@ -601,7 +591,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",
@@ -779,7 +768,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",
@@ -815,11 +803,9 @@ describe("WorkspaceBridgeConnectionManager", () => {
       data: {
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
         },
-        websocket_url:
-          "ws://127.0.0.1:8787/bridge/ws?session_id=session-123&token=token-123",
+        websocket_url: "ws://127.0.0.1:8787/bridge/ws?session_id=session-123",
       },
     } as AxiosResponse);
     const { rerender } = render(<WorkspaceBridgeConnectionManager />);
@@ -843,7 +829,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
         },
       });
@@ -896,7 +881,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",
@@ -958,7 +942,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",
@@ -1009,7 +992,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",
@@ -1062,7 +1044,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",
@@ -1095,7 +1076,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",
@@ -1128,7 +1108,6 @@ describe("WorkspaceBridgeConnectionManager", () => {
         type: "session_ready",
         session: {
           session_id: "session-123",
-          token: "token-123",
           client_name: "workspace-ui",
           current_dashboard_id: "dashboard-123",
           current_tab_id: "tab-news",

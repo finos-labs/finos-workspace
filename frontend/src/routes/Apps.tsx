@@ -48,6 +48,7 @@ import { type UnifiedTemplate, useAllTemplates } from "~/hooks/useAllTemplates";
 
 import { useSharedTemplates } from "~/hooks/useSharedTemplates";
 import { useStateReducer } from "~/hooks/useStateReducer";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowUserAppsStore } from "~/lib/state/userApps";
 import { cn } from "~/lib/utils";
@@ -85,20 +86,24 @@ const FUSE_KEYS: AppsFuseKey<UnifiedTemplate>[] = [
 const fuseOptions = createAppsFuseOptions(FUSE_KEYS);
 
 export default function AppsPage() {
+  // The Connections page is an Admin's or a Developer's, who bring their own
+  const mayAddConnections = useShallowAccessStore((s) => canAddConnections(s.access));
   return (
     <SettingsLayout
       title="Apps"
       description={
-        <>
-          Manage your Apps in the{" "}
-          <Link
-            to="/app/connections"
-            className="text-brand-main dark:text-brand-lighter hover:underline"
-          >
-            Connections page
-          </Link>
-          .
-        </>
+        mayAddConnections && (
+          <>
+            Manage your Apps in the{" "}
+            <Link
+              to="/app/connections"
+              className="text-brand-main dark:text-brand-lighter hover:underline"
+            >
+              Connections page
+            </Link>
+            .
+          </>
+        )
       }
       tabs={[]}
       defaultTab="my-apps"

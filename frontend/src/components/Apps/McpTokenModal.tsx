@@ -17,8 +17,11 @@ interface McpTokenModalProps {
   onClose: () => void;
   /** MCP server name, used in copy. */
   serverName: string;
-  /** Existing token (already stripped of the `Bearer ` prefix) for prefill state. */
-  currentToken?: string;
+  /**
+   * Whether a token is saved. Its value never comes back to the page: a new one replaces
+   * it.
+   */
+  hasSavedToken?: boolean;
   /** Receives the cleaned token (no `Bearer ` prefix). */
   onSave: (token: string) => void;
   /** When provided, renders a destructive "Remove token" action. */
@@ -31,25 +34,21 @@ export function McpTokenModal({
   isOpen,
   onClose,
   serverName,
-  currentToken,
+  hasSavedToken = false,
   onSave,
   onRemove,
   error,
 }: McpTokenModalProps) {
-  const hasSavedToken = Boolean(currentToken);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [state, dispatch] = useStateReducer({
-    token: currentToken ?? "",
-    dismissedError: false,
-  });
+  const [state, dispatch] = useStateReducer({ token: "", dismissedError: false });
 
   const resetState = useCallback(
     (close?: boolean) => {
-      dispatch({ token: close ? "" : (currentToken ?? ""), dismissedError: false });
+      dispatch({ token: "", dismissedError: false });
       if (close) onClose();
     },
-    [onClose, currentToken],
+    [onClose],
   );
 
   const handleSave = useCallback(() => {
@@ -59,8 +58,8 @@ export function McpTokenModal({
     resetState(true);
   }, [state.token, onSave, resetState]);
 
-  const heading = hasSavedToken ? "Edit token" : "Add token";
-  const submitLabel = hasSavedToken ? "Update" : "Add";
+  const heading = hasSavedToken ? "Replace token" : "Add token";
+  const submitLabel = hasSavedToken ? "Replace" : "Add";
   const isSubmitDisabled = !stripBearerPrefix(state.token);
   const shownError = state.dismissedError ? undefined : error;
 
@@ -90,8 +89,11 @@ export function McpTokenModal({
           <DialogTitle>{heading}</DialogTitle>
 
           <DialogDescription>
-            Paste your access token for {serverName}. It is stored only for this MCP
-            server and sent as an authorization header on its requests.
+            {hasSavedToken
+              ? `A token is saved for ${serverName}. Paste a new one to replace it.`
+              : `Paste your access token for ${serverName}.`}{" "}
+            It is stored encrypted for this MCP server only and sent as an authorization
+            header on its requests.
           </DialogDescription>
 
           <div className="flex flex-col gap-1.5">

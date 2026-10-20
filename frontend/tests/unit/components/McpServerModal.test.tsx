@@ -66,13 +66,16 @@ vi.mock("~/components/ds/dialogs/Dialog", () => ({
   DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
+const mockSetValue = vi.fn();
+
 vi.mock("~/components/ds/molecules/Form", () => ({
   Form: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   useForm: () => ({
     control: {},
     handleSubmit: (cb: () => void) => () => cb(),
     getValues: () => ({ customHeaders: [] }),
-    setValue: vi.fn(),
+    setValue: mockSetValue,
+    watch: () => [],
     reset: vi.fn(),
     formState: { isValid: true, isSubmitting: false, isDirty: false },
   }),
@@ -127,20 +130,15 @@ vi.mock("~/components/ds/atoms/Checkbox", () => ({
   Checkbox: ({ label }: { label: ReactNode }) => <label>{label}</label>,
 }));
 
-// Tooltip renders children and exposes message as aria-label for button queries
+// Tooltip renders only its children
 vi.mock("~/components/Tooltip", () => ({
   default: ({
     children,
-    message,
   }: {
     children: ReactNode;
     message: ReactNode;
     position?: string;
-  }) => (
-    <span aria-label={typeof message === "string" ? message : undefined}>
-      {children}
-    </span>
-  ),
+  }) => <span>{children}</span>,
 }));
 
 vi.mock("~/components/Icon", () => ({
@@ -257,6 +255,27 @@ describe("ManageMcpServer", () => {
         "Connect Workspace to your data and tools. Supports streamable HTTP only (stdio and SSE are not supported).",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("lists the saved headers by name only and lets one be removed", () => {
+    resetMockState();
+    mockGetServerById.mockReturnValue({
+      id: "s1",
+      name: "Server",
+      url: "https://mcp.example.com/mcp",
+      enabled: true,
+      tools: [],
+      customHeaderNames: ["Authorization"],
+      hasToken: true,
+    } satisfies McpServer);
+
+    render(<ManageMcpServer open={true} existingServerId="s1" onClose={vi.fn()} />);
+
+    expect(screen.getByText(/Authorization: saved/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Remove Authorization" }));
+    expect(mockSetValue).toHaveBeenCalledWith("removedHeaders", ["Authorization"], {
+      shouldDirty: true,
+    });
   });
 });
 

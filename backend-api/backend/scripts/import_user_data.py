@@ -4,7 +4,8 @@
 
 Reads the archive produced by ``scripts.export_user_data`` and recreates the
 account here. The archive is read directly -- there is no need to unzip it
-first.
+first. Its credentials are sealed under the export key shown when it was made:
+the command asks for it on the terminal.
 
 Design notes:
 
@@ -24,6 +25,7 @@ Everything that travels, and everything reset on arrival, is defined by
 
 import argparse
 import asyncio
+import getpass
 import json
 import sys
 from dataclasses import dataclass, field
@@ -37,13 +39,14 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import models
+from api.crypto import AtRestCipher, DecryptionError
 from api.database import aget_write_db
 from scripts import (
     user_data_scope as scope,
     user_data_serde as serde,
 )
 
-SUPPORTED_MANIFEST_VERSIONS = {1}
+SUPPORTED_MANIFEST_VERSIONS = {2}
 
 
 class ImportError_(Exception):
@@ -107,6 +110,22 @@ def read_manifest(zf: ZipFile) -> dict[str, Any]:
     return manifest
 
 
+def open_sealer(manifest: dict[str, Any], export_key: str) -> AtRestCipher:
+    """The cipher of the archive's export key, once the key is known to open it."""
+    wrong = ImportError_(
+        "The export key does not open this archive. Use the key that was shown "
+        "when the archive was exported."
+    )
+    try:
+        sealer = AtRestCipher(export_key.strip())
+        opened = sealer.decrypt(manifest.get("key_check") or "", serde.KEY_CHECK_CONTEXT)
+    except (ValueError, DecryptionError) as exc:
+        raise wrong from exc
+    if opened != serde.KEY_CHECK:
+        raise wrong
+    return sealer
+
+
 def read_rows(zf: ZipFile, spec: scope.TableSpec) -> list[dict[str, Any]] | None:
     """Parse one table's JSONL. None means the archive does not contain it."""
     try:
@@ -122,14 +141,14 @@ def read_rows(zf: ZipFile, spec: scope.TableSpec) -> list[dict[str, Any]] | None
 async def resolve_permissions_uuid(db: AsyncSession) -> UUID:
     """Find this instance's non-admin permission map.
 
-    init_users creates exactly two per entity, "Admin" and "User". Imported
-    accounts join as regular users.
+    Every entity has three, "Admin", "Developer" and "User". Imported accounts
+    join as regular users.
     """
     maps = (
         (
             await db.execute(
                 select(models.PermissionsEntityMap).where(
-                    models.PermissionsEntityMap.name == "User"
+                    models.PermissionsEntityMap.name == models.USER_TYPE
                 )
             )
         )
@@ -243,9 +262,12 @@ def count_archived_files(zf: ZipFile) -> int:
 # --------------------------------------------------------------------------- #
 # Import
 # --------------------------------------------------------------------------- #
-async def import_archive(archive_path: Path, *, force: bool = False) -> ImportResult:
+async def import_archive(
+    archive_path: Path, export_key: str, *, force: bool = False
+) -> ImportResult:
     zf = open_archive(archive_path)
     manifest = read_manifest(zf)
+    sealer = open_sealer(manifest, export_key)
 
     email = manifest["user"]["email"]
     user_uuid = UUID(manifest["user"]["uuid"])
@@ -274,7 +296,12 @@ async def import_archive(archive_path: Path, *, force: bool = False) -> ImportRe
                         f"{', '.join(sorted(unknown))} from a newer export"
                     )
 
-                kwargs = serde.decode_row(spec, payload) | overrides
+                try:
+                    kwargs = serde.decode_row(spec, payload, sealer) | overrides
+                except serde.WrongExportKeyError as exc:
+                    raise ImportError_(
+                        f"A credential in {spec.table} does not open with the export key."
+                    ) from exc
 
                 if spec.table == "user":
                     kwargs["permissions_uuid"] = permissions_uuid
@@ -326,9 +353,15 @@ def main(argv: list[str] | None = None) -> int:
     if not args.archive:
         parser.error("an archive path is required (or use --describe-scope)")
 
+    if not sys.stdin.isatty():
+        parser.error("the export key is asked for on the terminal: run with docker exec -it")
+    export_key = getpass.getpass("Export key: ")
+
     logger.info(f"Importing {args.archive}")
     try:
-        result = asyncio.run(import_archive(Path(args.archive), force=args.force))
+        result = asyncio.run(
+            import_archive(Path(args.archive), export_key, force=args.force)
+        )
     except ImportError_ as exc:
         logger.error(f"Import failed: {exc}")
         return 1

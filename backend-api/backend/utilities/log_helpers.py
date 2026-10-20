@@ -20,15 +20,57 @@ LOGURU_FORMAT = (
 )
 
 
-FILTER_REGEX = re.compile(
-    r"(.*?{?['\",]?(?:api|key|token|auth)['\"]?:\s*)['\"]?[\s]*?(.*?)(.*?)['\",}.]",
-    re.IGNORECASE | re.MULTILINE,
-)
+MASK = "********"
 
-URL_QUERY_FILTER = re.compile(
-    r"((?:\?|&)(api|key|token|auth|_)*?)=(?:.*?)(?:'|\"|&|$)",
-    re.IGNORECASE | re.MULTILINE,
+# Names whose values never reach a log: credential headers, any key that holds a token,
+# secret, password or key, and the signatures of pre-signed URLs (Signature,
+# X-Amz-Signature, sig). The lookahead finds the word inside a name; the name
+# itself is then taken whole and possessively, so a failed match never backtracks
+# through it (every pattern here runs in time linear in the message). "KeyError: 'x'"
+# names a missing key, not a credential.
+_MASKED_NAME = (
+    r"(?!KeyError\b)"
+    r"(?=sig(?![\w-])"
+    r"|[\w-]*?(?:authorization|cookie|token|secret|password|key|signature))[\w-]++"
 )
+# A quoted value up to its closing quote, or to the end of the line when it has none
+_QUOTED_VALUE = r"""'(?:\\.|[^'\\\n])*+'?|"(?:\\.|[^"\\\n])*+"?"""
+
+# 'name': 'value', "name": "value" and 'name': 123, as in dict reprs and JSON
+_QUOTED_PAIR = re.compile(
+    rf"""(?P<q>['"])(?P<name>{_MASKED_NAME})(?P=q)(?P<sep>\s*+:\s*+)"""
+    rf"""(?P<value>{_QUOTED_VALUE}|(?!['"\[{{(])[^,}}\]\s]++)""",
+    re.IGNORECASE,
+)
+# name: value and name=value: header lines, query strings, form bodies, f-strings
+_BARE_PAIR = re.compile(
+    rf"""(?<![\w-])(?P<name>{_MASKED_NAME})(?P<sep>\s*+[:=]\s*+)"""
+    rf"""(?P<value>{_QUOTED_VALUE}|(?!['"\[{{(*])[^\s,;&'"}}\])]++)""",
+    re.IGNORECASE,
+)
+# The credential of an Authorization value, wherever it appears
+_AUTH_SCHEME = re.compile(
+    r"\b(?P<scheme>Bearer|Basic|Digest)\s++[A-Za-z0-9\-._~+/]++=*", re.IGNORECASE
+)
+# Workspace tokens by their prefixes, and the session cookies by their names
+_WORKSPACE_TOKEN = re.compile(r"\bws_mcp_[A-Za-z0-9_-]++")
+_SESSION_COOKIE = re.compile(r"(?P<name>__Host-ws_\w++)=[^;\s'\",]++")
+
+
+def _mask_value(match: re.Match) -> str:
+    value = match["value"]
+    quote = value[0] if value[0] in "'\"" else ""
+    closing = quote if quote and len(value) > 1 and value[-1] == quote else ""
+    return match.group(0)[: match.start("value") - match.start()] + quote + MASK + closing
+
+
+def redact(message: str) -> str:
+    """The message with every credential it carries masked."""
+    message = _AUTH_SCHEME.sub(rf"\g<scheme> {MASK}", message)
+    message = _WORKSPACE_TOKEN.sub(MASK, message)
+    message = _SESSION_COOKIE.sub(rf"\g<name>={MASK}", message)
+    message = _QUOTED_PAIR.sub(_mask_value, message)
+    return _BARE_PAIR.sub(_mask_value, message)
 
 
 def get_secrets() -> dict[str, str]:
@@ -48,7 +90,6 @@ def get_secrets() -> dict[str, str]:
         "LOG_LEVEL",
         "REDIS_DB_BOT",
         "REDIS_DB_APP",
-        "REDIS_DB_SDK",
         "REDIS_SSL_CERT_REQ",
     ]:
         if key in base_dict:
@@ -62,12 +103,11 @@ def get_secrets() -> dict[str, str]:
 
 
 def obfuscate_secrets(message: str) -> str:
-
-    for key, value in get_secrets().items():
-        message = message.replace(value, key)
-
-    cleaned_message = FILTER_REGEX.sub(r"\1'********'", message)
-    return URL_QUERY_FILTER.sub(r"\1=********'", cleaned_message)
+    """The message with the value of every setting masked, and every credential it carries.
+    A value is masked, not named: nothing taken from the settings is written out."""
+    for value in get_secrets().values():
+        message = message.replace(value, MASK)
+    return redact(message)
 
 
 class InterceptHandler(logging.Handler):
@@ -111,11 +151,13 @@ def serialize(record: dict) -> str:
     ):
         return None
 
+    # Redacted before JSON encoding: once quotes are escaped the patterns no longer see
+    # the names
     subset = {
         "asctime": record["time"].strftime("%Y-%m-%d %H:%M:%S.%f"),
         "levelname": record["level"].name,
         "name": record["name"],
-        "message": record["message"],
+        "message": obfuscate_secrets(record["message"]),
         "function": record["function"],
         "line": record["line"],
     }
@@ -123,7 +165,7 @@ def serialize(record: dict) -> str:
     if exception := record.get("exception"):
         subset["exc_info"] = {
             "type": None if exception.type is None else exception.type.__name__,
-            "value": str(exception.value),
+            "value": obfuscate_secrets(str(exception.value)),
             "traceback": traceback.format_tb(exception.traceback),
         }
 
@@ -152,7 +194,8 @@ def setup_logging(settings: "Settings") -> None:
             "colorize": settings.LOGURU_COLORIZE,
             "format": LOGURU_FORMAT,
             "level": settings.LOG_LEVEL,
-            "diagnose": True,
+            # diagnose would print the values of local variables, credentials included
+            "diagnose": False,
             "backtrace": False,
         }
     ]
@@ -171,6 +214,10 @@ def setup_logging(settings: "Settings") -> None:
         if name not in seen:
             seen.add(name.split(".")[0])
             logging.getLogger(name).handlers = [intercept_handler]
+    # The HTTP clients log the full URL of every request at INFO, and a URL can carry a
+    # credential: only their warnings and errors are logged
+    for name in ("httpx", "httpcore"):
+        logging.getLogger(name).setLevel(logging.WARNING)
 
     logger.configure(handlers=HANDLERS)
-    logger.add(jsonsink)
+    logger.add(jsonsink, diagnose=False, backtrace=False)

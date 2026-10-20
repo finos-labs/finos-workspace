@@ -13,7 +13,6 @@ from routers import app_helpers
 router = APIRouter(
     prefix="/app/user-apps",
     tags=["app-user-apps"],
-    dependencies=[Depends(auth_helpers.check_origin)],
 )
 
 
@@ -158,10 +157,18 @@ async def get_shares(
             permissions=shared.permissions,
             created_date=shared.created_date,
         )
+    for waiting in await crud.get_waiting_shares(db, user.uuid, app_uuid=app_uuid):
+        final_result[waiting.email] = schemas.UserAppShareReturn(
+            first_name=waiting.first_name,
+            last_name=waiting.last_name,
+            permissions=waiting.permissions,
+            created_date=waiting.created_date,
+            pending=True,
+        )
     return final_result
 
 
-@router.post("/{app_uuid}/share", response_model=schemas.SuccessReturn)
+@router.post("/{app_uuid}/share", response_model=schemas.ShareReturn)
 async def add_share(
     app_uuid: UUID,
     share: schemas.ShareUserApp,
@@ -175,41 +182,33 @@ async def add_share(
             status_code=400, detail="The user does not have permissions"
         )
     await validate_app_ownership(db, app_uuid, user.uuid)
+    await crud.check_may_share(db, user.uuid)
     clean_shares = await crud.get_app_shares_without_existing(
         db, share, app_uuid, user.email
     )
     if not clean_shares:
-        return schemas.SuccessReturn.success_instance()
+        return schemas.ShareReturn.success_instance()
 
     user_permissions, user_uuids = (
         await crud.get_new_sharing_permissions(
             db, clean_shares, user.permissions_uuid, app_uuid=app_uuid
         )
     )
+    await crud.check_share_recipients(db, user_uuids)
 
-    found_user = bool(user_permissions)
-    if user_permissions:
-        await db.execute(insert(UserAppShare), user_permissions)
-        await db.execute(
-            update(UserApp)
-            .where(
-                UserApp.uuid == app_uuid,
-                UserApp.user_uuid == user.uuid,
-            )
-            .values(is_shared=True)
-        )
-        await db.commit()
-        await crud.share_files(db, user.uuid, user_uuids, user_app_uuid=app_uuid)
-
-    if not found_user:
+    if not user_permissions:
         raise HTTPException(
             status_code=402, detail="User not found in your organization"
         )
+    if await app_helpers.shares_need_approval(db, user.uuid):
+        await crud.request_shares(db, user.uuid, user_permissions, app_uuid=app_uuid)
+        return schemas.ShareReturn(success=True, pending_approval=True)
 
-    return schemas.SuccessReturn.success_instance()
+    await crud.apply_shares(db, user.uuid, user_permissions, app_uuid=app_uuid)
+    return schemas.ShareReturn.success_instance()
 
 
-@router.patch("/{app_uuid}/share", response_model=schemas.SuccessReturn)
+@router.patch("/{app_uuid}/share", response_model=schemas.ShareReturn)
 async def update_share(
     app_uuid: UUID,
     share: schemas.ShareUserApp,
@@ -217,8 +216,14 @@ async def update_share(
     user: User = Depends(auth_helpers.GetCurrentUser(["uuid", "email"], app_session=True)),
 ):
     await validate_app_ownership(db, app_uuid, user.uuid)
+    await crud.check_may_share(db, user.uuid)
     current_shares_query = (
-        select(User.email, UserAppShare.permissions, UserAppShare.uuid)
+        select(
+            User.email,
+            UserAppShare.permissions,
+            UserAppShare.uuid,
+            UserAppShare.shared_user_uuid,
+        )
         .join(UserAppShare, User.uuid == UserAppShare.shared_user_uuid)
         .where(
             UserAppShare.user_app_uuid == app_uuid,
@@ -229,19 +234,38 @@ async def update_share(
     current_shares_response = (await db.execute(current_shares_query)).mappings().all()
     if not current_shares_response:
         await crud.handle_user_app_is_shared(db, app_uuid)
-        return schemas.SuccessReturn.success_instance()
+        return schemas.ShareReturn.success_instance()
+    await crud.check_share_recipients(
+        db, [x.shared_user_uuid for x in current_shares_response]
+    )
     current_shares = {x.email: (x.permissions, x.uuid) for x in current_shares_response}
     updates = []
     for key, value in current_shares.items():
         if value[0] != share.shares[key]:
             data = {"uuid": value[1], "permissions": share.shares[key]}
             updates.append(data)
+    if updates and await app_helpers.shares_need_approval(db, user.uuid):
+        recipients = {x.uuid: x.shared_user_uuid for x in current_shares_response}
+        await crud.request_shares(
+            db,
+            user.uuid,
+            [
+                {
+                    "user_app_uuid": app_uuid,
+                    "shared_user_uuid": recipients[change["uuid"]],
+                    "permissions": change["permissions"],
+                }
+                for change in updates
+            ],
+            app_uuid=app_uuid,
+        )
+        return schemas.ShareReturn(success=True, pending_approval=True)
     if updates:
         await db.execute(update(UserAppShare), updates)
         await db.commit()
 
     await crud.handle_user_app_is_shared(db, app_uuid)
-    return schemas.SuccessReturn.success_instance()
+    return schemas.ShareReturn.success_instance()
 
 
 @router.delete("/{app_uuid}/share", response_model=schemas.SuccessReturn)
@@ -284,6 +308,7 @@ async def delete_share(
 
         await crud.unshare_files(db, user.uuid, user_uuids, user_app_uuid=app_uuid)
 
+    await crud.cancel_share_requests(db, user.uuid, share.shares, app_uuid=app_uuid)
     await crud.handle_user_app_is_shared(db, app_uuid)
 
     return {"success": True}
@@ -310,6 +335,7 @@ async def see_available_users(
         raise HTTPException(status_code=400, detail="Unable to find the user's entity")
     all_users_query = (
         select(
+            User.uuid,
             User.email,
             User.first_name,
             User.last_name,
@@ -322,6 +348,9 @@ async def see_available_users(
         )
     )
     all_users = (await db.execute(all_users_query)).mappings().all()
+    # Only users who may receive shared items can be shared with
+    recipients = set(await crud.get_share_recipients(db, [x.uuid for x in all_users]))
+    all_users = [x for x in all_users if x.uuid in recipients]
 
     shared_users_query = (
         select(

@@ -1,6 +1,7 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import type { ReactNode } from "react";
 import { ExtensionOptions } from "~/lib/constants";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import { cn } from "~/lib/utils";
 import { BaseDialog } from "../ds/dialogs/BaseDialog";
 import { DialogDescription, DialogTitle } from "../ds/dialogs/Dialog";
@@ -54,6 +55,9 @@ export const DataConnectionTabs = ({
   showIcons?: boolean;
 }) => {
   const { dcTab, setTab, mode } = useDataConnectorContext();
+  // Users who may not bring connections can only add iframes
+  const mayAdd = useShallowAccessStore((s) => canAddConnections(s.access));
+  const showApps = showAppsSection && mayAdd;
 
   return (
     <TabsPrimitive.Root
@@ -65,7 +69,7 @@ export const DataConnectionTabs = ({
     >
       {mode === "create" && (
         <TabsPrimitive.List className="flex gap-1 overflow-auto p-2.5 sm:min-w-[180px] sm:flex-col sm:border-r sm:border-surface-divider only-sm:overflow-x-auto only-sm:flex-shrink-0">
-          {showAppsSection && (
+          {showApps && (
             <>
               <MenuTab
                 value="backend"
@@ -77,27 +81,31 @@ export const DataConnectionTabs = ({
               <p className="ws-uppercase-small-title ml-1 only-sm:hidden">My Widgets</p>
             </>
           )}
-          {dataTypes.map(({ id, label, icon }) => (
-            <MenuTab
-              value={id}
-              label={label}
-              key={id}
-              icon={icon}
-              showIcon={showIcons}
-            />
-          ))}
+          {dataTypes
+            .filter(({ id }) => mayAdd || id !== "file")
+            .map(({ id, label, icon }) => (
+              <MenuTab
+                value={id}
+                label={label}
+                key={id}
+                icon={icon}
+                showIcon={showIcons}
+              />
+            ))}
         </TabsPrimitive.List>
       )}
-      <Content
-        value="file"
-        title={
-          mode === "edit" ? "File" : "Create New Widgets from Single or Multiple File"
-        }
-        description={`Supported file formats: ${ExtensionOptions.map((e) => e.toUpperCase()).join(", ")}.`}
-      >
-        <FileContent />
-      </Content>
-      {showAppsSection && (
+      {mayAdd && (
+        <Content
+          value="file"
+          title={
+            mode === "edit" ? "File" : "Create New Widgets from Single or Multiple File"
+          }
+          description={`Supported file formats: ${ExtensionOptions.map((e) => e.toUpperCase()).join(", ")}.`}
+        >
+          <FileContent />
+        </Content>
+      )}
+      {showApps && (
         <Content
           value="backend"
           title={mode === "edit" ? "App" : "Integrate your own Apps"}

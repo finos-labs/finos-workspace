@@ -188,6 +188,10 @@ const ParamValueSchema = z.discriminatedUnion("type", [
               ),
             )
             .optional(),
+          // An endpoint input lists its options from the backend, as an endpoint
+          // parameter does
+          optionsEndpoint: z.string().optional(),
+          optionsParams: z.record(z.string(), z.unknown()).optional(),
         }),
       )
       .optional(),
@@ -480,8 +484,6 @@ export const ExternalWidgetSchema = WidgetSchemaBase.extend({
     .object({
       url: z.string(),
       method: z.enum(["GET", "POST"]),
-      headers: z.record(z.string(), z.string()).optional(),
-      query: z.record(z.string(), z.string()).optional(),
     })
     .optional(),
   data: z

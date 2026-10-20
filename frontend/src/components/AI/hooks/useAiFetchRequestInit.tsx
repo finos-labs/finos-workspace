@@ -6,7 +6,6 @@ import {
   getDefaultCopilot,
   MAX_COPILOT_LINKS,
 } from "~/lib/constants";
-import { useShallowAuthStore } from "~/lib/state/auth";
 import {
   type ArtifactT,
   type Copilot,
@@ -14,6 +13,8 @@ import {
   type CopilotWidget,
   type CopilotWidgets,
   type Message,
+  MODEL_SETTING,
+  modelSettingModels,
   useShallowCopilotStore,
 } from "~/lib/state/copilot";
 import { getCopilotAccess, selectModelId } from "~/lib/state/copilotAccess";
@@ -24,7 +25,6 @@ import { extractUrlsFromText } from "~/lib/utils";
 import type { DashboardInfoT } from "~/lib/utils/workspaceDashboard";
 import type { SkillCatalogEntry, SkillPayload } from "~/types/auth.type";
 import { useGetCopilotRequestHeaders } from "./useGetCopilotRequestHeaders";
-import { useGetCustomApiKeys } from "./useGetCustomApiKeys";
 import { useGetFinalMessagesAndWidgets } from "./useGetFinalMessagesAndWidgets";
 
 const featureFlagMapping = {
@@ -42,6 +42,26 @@ const getEnabledFeatures = (features: Copilot["features"] | undefined) => {
   ) as Partial<Record<keyof typeof featureFlagMapping, boolean>>;
 
   return featuresEnabled;
+};
+
+/**
+ * The options a request sends. An agent that offers its models through its model setting
+ * gets the one the user picked there when their roles grant it, else the first they grant.
+ */
+const withGrantedModelSetting = (
+  options: Record<string, boolean | string>,
+  agent: Copilot | null | undefined,
+) => {
+  const models = modelSettingModels(agent);
+  if (!agent?.id || !models.length) return options;
+  const picked = options[MODEL_SETTING];
+  const modelId = selectModelId(
+    getCopilotAccess(),
+    agent.id,
+    models,
+    typeof picked === "string" ? picked : undefined,
+  );
+  return modelId ? { ...options, [MODEL_SETTING]: modelId } : options;
 };
 
 /**
@@ -65,8 +85,6 @@ export function parseSkillSlashCommands(message: string) {
 
 export function useAiFetchRequestInit() {
   const { id: currentDashboardId } = useParams();
-
-  const userToken = useShallowAuthStore((s) => s.user?.token);
 
   const getEnabledToolsForAgent = useShallowMcpToolsStore(
     (s) => s.getEnabledToolsForAgent,
@@ -149,7 +167,6 @@ export function useAiFetchRequestInit() {
   ]);
 
   const getCopilotRequestHeaders = useGetCopilotRequestHeaders();
-  const getCustomApiKeys = useGetCustomApiKeys();
   const getFinalMessagesAndWidgets = useGetFinalMessagesAndWidgets();
 
   const getQueryFetchParams = useCallback(
@@ -159,7 +176,6 @@ export function useAiFetchRequestInit() {
       const { incomingMessage, abortSignal, targetAgent } = props;
       const { selectedWidgets, temporaryWidgets, allWidgets, workspaceState } =
         getCopilotWidgets(targetAgent);
-      const customApiKeys = getCustomApiKeys();
 
       const features = targetAgent?.features || selectedCopilot?.features;
       const {
@@ -248,10 +264,11 @@ export function useAiFetchRequestInit() {
         messages: finalMessages,
         context: context,
         urls: extractUrls(incomingMessage, MAX_COPILOT_LINKS),
-        api_keys: customApiKeys,
         workspace_state: finalWorkspaceState,
         workspace_options: Object.fromEntries(
-          Object.entries(workspaceOptions).filter(
+          Object.entries(
+            withGrantedModelSetting(workspaceOptions, agentForModel),
+          ).filter(
             ([flag]) =>
               (!targetAgent && flag === "agent-orchestration") || features?.[flag],
           ),
@@ -287,9 +304,7 @@ export function useAiFetchRequestInit() {
     },
     [
       workspaceOptions,
-      userToken,
       selectedCopilot,
-      getCustomApiKeys,
       getCopilotRequestHeaders,
       getCopilotWidgets,
       widgetSubsetData,
@@ -312,7 +327,6 @@ export function useAiFetchRequestInit() {
       const { xHeaders, abortSignal, targetAgent } = props;
       const { selectedWidgets, temporaryWidgets, allWidgets, workspaceState } =
         getCopilotWidgets(targetAgent);
-      const customApiKeys = getCustomApiKeys();
 
       const features = targetAgent?.features || selectedCopilot?.features;
       const {
@@ -372,10 +386,11 @@ export function useAiFetchRequestInit() {
         },
         messages: finalMessages,
         context: context,
-        api_keys: customApiKeys,
         workspace_state: finalWorkspaceState,
         workspace_options: Object.fromEntries(
-          Object.entries(workspaceOptions).filter(
+          Object.entries(
+            withGrantedModelSetting(workspaceOptions, agentForModel),
+          ).filter(
             ([flag]) =>
               (!targetAgent && flag === "agent-orchestration") || features?.[flag],
           ),
@@ -404,7 +419,6 @@ export function useAiFetchRequestInit() {
       getEnabledToolsForAgent,
       getCopilotWidgets,
       getCopilotRequestHeaders,
-      getCustomApiKeys,
       widgetSubsetData,
       workspaceOptions,
       getSelectedModelForAgent,
@@ -422,11 +436,9 @@ export function useAiFetchRequestInit() {
     ): Promise<{ url: string; init: RequestInit }> => {
       const { xTraceId } = props;
       const { finalMessages } = await getFinalMessagesAndWidgets();
-      const customApiKeys = getCustomApiKeys();
 
       const payload: UpdateTitlePayload = {
         messages: finalMessages,
-        api_keys: customApiKeys,
       };
       return {
         url: `${getAiApiUrl()}/v1/generate/chat/title`,
@@ -437,12 +449,7 @@ export function useAiFetchRequestInit() {
         },
       };
     },
-    [
-      getFinalMessagesAndWidgets,
-      getCopilotRequestHeaders,
-      getCustomApiKeys,
-      currentDashboardId,
-    ],
+    [getFinalMessagesAndWidgets, getCopilotRequestHeaders, currentDashboardId],
   );
 
   return [
@@ -617,9 +624,6 @@ type HumanQueryPayload = {
   messages: Message[];
   context: CopilotContextItem[];
   urls: string[];
-  api_keys?: {
-    openai_api_key?: string;
-  };
   workspace_state?: WorkspaceStateT;
   workspace_options?: Record<string, boolean | string>;
   timezone: string;
@@ -633,9 +637,6 @@ type FunctionCallPayload = {
   widgets: CopilotWidgets;
   messages: Message[];
   context: CopilotContextItem[];
-  api_keys?: {
-    openai_api_key?: string;
-  };
   workspace_state?: WorkspaceStateT;
   workspace_options?: Record<string, boolean | string>;
   tools: AgentToolConfig[]; // CRITICAL: Include tools for sequential execution
@@ -645,9 +646,6 @@ type FunctionCallPayload = {
 
 type UpdateTitlePayload = {
   messages: Message[];
-  api_keys?: {
-    openai_api_key?: string;
-  };
   workspace_state?: WorkspaceStateT;
   workspace_options?: Record<string, boolean | string>;
 };

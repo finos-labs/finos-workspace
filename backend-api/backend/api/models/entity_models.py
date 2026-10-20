@@ -7,13 +7,14 @@ from uuid import UUID
 from sqlalchemy import (
     BigInteger,
     Boolean,
-    Column,
+    CheckConstraint,
     ForeignKey,
     Integer,
     String,
     Text,
     UniqueConstraint,
     select,
+    true,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -26,6 +27,21 @@ from api.models.model_helpers import (
     GzipJsonType,
     UUIDMixin,
 )
+
+# A user's type is the name of their permissions map. Admins administer their
+# organization; admins and developers may bring their own connections (data connectors,
+# MCP servers, custom Copilots and file uploads); users work with what roles give them.
+ADMIN_TYPE = "Admin"
+DEVELOPER_TYPE = "Developer"
+USER_TYPE = "User"
+USER_TYPES = (ADMIN_TYPE, DEVELOPER_TYPE, USER_TYPE)
+CONNECTION_TYPES = (ADMIN_TYPE, DEVELOPER_TYPE)
+
+# What a role lets its users do with shared items, from least to most.
+SHARING_NONE = "none"
+SHARING_RECEIVE = "receive"
+SHARING_SHARE = "share"
+SHARING_LEVELS = (SHARING_NONE, SHARING_RECEIVE, SHARING_SHARE)
 
 
 async def entity_get_supreme(db: AsyncSession, self_uuid: UUID) -> None | UUID:
@@ -50,37 +66,17 @@ async def entity_get_supreme(db: AsyncSession, self_uuid: UUID) -> None | UUID:
     return None
 
 
-class EntityType(Base, UUIDMixin, DateMixin):
-    """Stores the types of entities and system information"""
-
-    __tablename__ = "entity_type"
-
-    entity_type: Mapped[str] = mapped_column(String(100))
-    code: Mapped[str] = mapped_column(String(3), unique=True)
-    active = Column(Boolean, default=False)
-    permission_hierarchy = Column(Integer, default=0, nullable=False)
-
-
 class Entity(Base, UUIDMixin, DateMixin):
-    """Stores names and details of entities"""
+    """An organization: its name, and the switches that act on it"""
 
     __tablename__ = "entity"
 
     name: Mapped[None | str] = mapped_column(String(100), unique=True)
-    entity_type_uuid: Mapped[UUID] = mapped_column(
-        ForeignKey("entity_type.uuid"), index=True
-    )
-    entity_type: Mapped["EntityType"] = relationship(
-        foreign_keys=[entity_type_uuid], lazy="selectin"
-    )
-    email: Mapped[None | str] = mapped_column(String(200))
-    company_type: Mapped[None | str] = mapped_column(String(20))
-    organization_size: Mapped[None | str] = mapped_column(String(20))
-    aum: Mapped[None | int] = mapped_column(BigInteger, default=0)
-    country: Mapped[None | str] = mapped_column(String(60))
     require_authenticator: Mapped[bool] = mapped_column(Boolean, default=False)
-    seats: Mapped[None | int] = mapped_column(Integer, default=1)
-    expiration_date: Mapped[None | datetime] = mapped_column(AwareDateTime())
+    # The superuser's switch; on, the organization's roles decide who shares
+    sharing_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=true()
+    )
 
     async def get_all_children(self, db: AsyncSession) -> list["Entity"]:
         """Returns self, children, and children of children recursively"""
@@ -162,10 +158,27 @@ class Role(Base, UUIDMixin, DateMixin):
         UniqueConstraint(
             "entity_uuid", "name", "deleted_at", name="uix_role_entity_name_deleted_at"
         ),
+        CheckConstraint(
+            "sharing IN ('none', 'receive', 'share')", name="check_role_sharing"
+        ),
     )
 
     name: Mapped[str] = mapped_column(String(100))
     description: Mapped[str] = mapped_column(Text)
+    sharing: Mapped[str] = mapped_column(
+        String(10), default=SHARING_NONE, server_default=SHARING_NONE
+    )
+    # Daily limits; NULL is no limit, which a new role has.
+    copilot_calls_day: Mapped[int | None] = mapped_column(Integer)
+    copilot_tokens_day: Mapped[int | None] = mapped_column(BigInteger)
+    upload_size_gb: Mapped[int | None] = mapped_column(Integer)
+    # The Copilot's web tools: on for a user when any of their roles allows them
+    search_web: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=true()
+    )
+    fetch_from_web: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=true()
+    )
     entity_uuid: Mapped[UUID] = mapped_column(
         ForeignKey("entity.uuid", ondelete="CASCADE"), index=True
     )
@@ -232,7 +245,7 @@ class RolePrompt(Base, UUIDMixin, DateMixin):
 
 
 class RoleCopilotModel(Base, UUIDMixin, DateMixin):
-    """A Copilot model that a role may use. A role with none leaves models unrestricted."""
+    """A Copilot model that a role may use."""
 
     __tablename__ = "role_copilot_model"
     __table_args__ = (
@@ -252,8 +265,7 @@ class RoleCopilotModel(Base, UUIDMixin, DateMixin):
 class RoleMcpAccess(Base, UUIDMixin, DateMixin):
     """An MCP server, or one tool of it, that a role may use.
 
-    ``tool_name`` is ``*`` for every tool of the server. A role with none leaves MCP
-    tools unrestricted.
+    ``tool_name`` is ``*`` for every tool of the server.
     """
 
     __tablename__ = "role_mcp_access"

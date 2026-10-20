@@ -21,8 +21,9 @@ import {
 } from "~/lib/constants";
 import { useTabContext } from "~/lib/contexts/TabContext";
 import { getConfig } from "~/lib/runtimeConfig";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useShallowAppStore } from "~/lib/state/app";
-import { useShallowAuthStore } from "~/lib/state/auth";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { uuidv4 } from "~/lib/utils";
@@ -44,7 +45,7 @@ export function useDragAndDropFiles(locked: boolean) {
   const { isShared } = useTabContext();
   const { files, setFiles } = useFileContext();
 
-  const user = useShallowAuthStore((state) => state.user);
+  const mayUpload = useShallowAccessStore((s) => canAddConnections(s.access));
   const addWidget = useShallowAppStore((state) => state.addWidget);
   const aiEnhancements = useShallowThemeStore((state) => state.aiEnhancements);
 
@@ -115,13 +116,10 @@ export function useDragAndDropFiles(locked: boolean) {
                   const formData = new FormData();
                   formData.append("file", files[fileIndex]);
                   try {
-                    const aiResponse = await fetch(
+                    const aiResponse = await fetchAgent(
                       `${getConfig().urls.ai}/v1/generate/widget_info/file`,
                       {
                         method: "POST",
-                        headers: {
-                          Authorization: `Bearer ${user?.token}`,
-                        },
                         body: formData,
                         signal: abortController?.signal,
                       },
@@ -246,7 +244,7 @@ export function useDragAndDropFiles(locked: boolean) {
         setFiles([]);
       });
     },
-    [user?.token, id, setFiles, addWidget, aiEnhancements, setStoredFiles],
+    [id, setFiles, addWidget, aiEnhancements, setStoredFiles],
   );
 
   const toastUpload = useCallback(
@@ -473,7 +471,7 @@ export function useDragAndDropFiles(locked: boolean) {
       return toastUpload(toUpload);
     },
     noClick: true,
-    disabled: locked || isShared || isMobile,
+    disabled: locked || isShared || isMobile || !mayUpload,
   });
 
   return { getRootProps, getInputProps, isDragActive };

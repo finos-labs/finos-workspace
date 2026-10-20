@@ -1,11 +1,13 @@
-import re
+import json
 import time
 import tomllib
 
 import jwt
 import pytest
 
+from api import crypto
 from scripts import create_local_env as local_env
+from utilities.config import Settings, check_strong_secret
 
 EXAMPLE = """\
 DB_HOST=mysql # a note
@@ -109,8 +111,13 @@ def test_main_writes_secrets_that_differ_between_runs(tmp_path, monkeypatch, con
         runs.append(parse(target.read_text()))
 
     assert runs[0]["JWT_SECRET"] != runs[1]["JWT_SECRET"]
-    assert len(runs[0]["WORKSPACE_AES_KEY"]) == 16
+    assert runs[0]["WORKSPACE_AES_KEY"] != runs[1]["WORKSPACE_AES_KEY"]
     assert runs[0]["JWT_SECRET"] != "placeholder"
+    # Strong enough for the API to start with them
+    for run in runs:
+        assert len(crypto.decode_key_material(run["WORKSPACE_AES_KEY"])) >= 32
+        for name in ("JWT_SECRET", "LOCAL_STORAGE_SECRET_KEY"):
+            assert check_strong_secret(name, run[name]) == run[name]
 
 
 def test_main_refuses_to_overwrite_without_force(tmp_path, monkeypatch, config):
@@ -146,46 +153,63 @@ def test_main_needs_an_administrator(tmp_path, monkeypatch, config):
         local_env.main([])
 
 
-def test_the_seed_config_names_the_administrator_the_init_script_reads(
-    tmp_path, monkeypatch, config
-):
+def test_the_seed_config_names_the_administrator_and_no_password(tmp_path, monkeypatch, config):
     example = tmp_path / ".env.example"
     example.write_text(EXAMPLE)
     monkeypatch.setattr(local_env, "EXAMPLE", example)
     monkeypatch.setattr(local_env, "TARGET", tmp_path / ".env")
 
-    assert local_env.main([*ADMIN, "--entity-name", "Acme", "--admin-password", "Secret!123"]) == 0
+    assert local_env.main([*ADMIN, "--entity-name", "Acme"]) == 0
 
     seed = tomllib.loads(config.read_text())
     assert seed["entity"]["name"] == "Acme"
-    assert seed["admins"][0]["email"] == "admin@mail.test"
-    assert seed["admins"][0]["password"] == "Secret!123"
-    assert config.stat().st_mode & 0o077 == 0
+    assert seed["admins"] == [
+        {"email": "admin@mail.test", "first_name": "Workspace", "last_name": "Administrator"}
+    ]
+    # init_users makes the password up when it creates the account; no file holds it
+    assert "password" not in config.read_text()
+    assert "password" not in (tmp_path / ".env").read_text().lower()
 
 
-def test_a_generated_password_meets_the_sign_in_rules():
-    for _ in range(50):
-        password = local_env.admin_password()
-
-        assert len(password) == 16
-        assert re.search(r"[A-Z]", password)
-        assert re.search(r"[a-z]", password)
-        assert re.search(r"\d", password)
-        assert re.search(r"[!@#$%&*+?]", password)
-        assert " " not in password
+def test_the_administrator_password_is_no_option():
+    with pytest.raises(SystemExit):
+        local_env.main([*ADMIN, "--admin-password", "Secret!123"])
 
 
 def test_the_seed_config_quotes_what_it_is_given():
-    seed = tomllib.loads(local_env.seed_config('A "quoted" name', "a@mail.test", 'p"w\\'))
+    seed = tomllib.loads(local_env.seed_config('A "quoted" name', 'a"b\\@mail.test'))
 
     assert seed["entity"]["name"] == 'A "quoted" name'
-    assert seed["admins"][0]["password"] == 'p"w\\'
+    assert seed["admins"][0]["email"] == 'a"b\\@mail.test'
 
 
-def test_the_seed_config_takes_the_number_of_seats():
-    seed = tomllib.loads(local_env.seed_config("Acme", "a@mail.test", "pw", seats=250))
+def test_the_web_app_is_an_allowed_origin():
+    values = local_env.settings("a-secret", "0123456789abcdef", "storage")
 
-    assert seed["entity"]["seats"] == 250
+    assert json.loads(values["BACKEND_CORS_ORIGINS"]) == [
+        "http://localhost:3000",
+        "http://localhost:1420",
+    ]
+
+
+def _api_settings(monkeypatch, env_file) -> Settings:
+    """The API's settings from a written file alone: the test run's own variables would
+    win over the file."""
+    for key in parse(env_file.read_text()):
+        monkeypatch.delenv(key, raising=False)
+    return Settings(_env_file=env_file)
+
+
+def test_the_compose_environment_starts_the_api(tmp_path, monkeypatch, config):
+    target = tmp_path / ".env"
+    monkeypatch.setattr(local_env, "TARGET", target)
+
+    assert local_env.main(ADMIN) == 0
+
+    loaded = _api_settings(monkeypatch, target)
+    assert loaded.MODE == "production"
+    assert loaded.BACKEND_CORS_ORIGINS == local_env.BACKEND_CORS_ORIGINS
+    assert loaded.GOOGLE_OAUTH_CLIENT_ID is None
 
 
 def test_config_only_leaves_the_environment_file_alone(tmp_path, monkeypatch, config):
