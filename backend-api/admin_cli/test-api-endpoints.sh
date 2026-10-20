@@ -138,7 +138,6 @@ ENTITLEMENT_RESPONSE=$(api_request PATCH "/entity/entitlement/$ENTITY_UUID?updat
     \"tier\": \"full\",
     \"number_copilot_calls_day\": 10000,
     \"total_file_upload_size_gb\": 10,
-    \"excel_add_in\": 1,
     \"bundle_name\": \"On-Premise\"
 }")
 

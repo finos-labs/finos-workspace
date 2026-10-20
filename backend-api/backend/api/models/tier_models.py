@@ -51,7 +51,6 @@ class TierDefaults(Base, UUIDMixin, DateMixin):
     bring_your_own_copilot = Column(Boolean)
     admin_access = Column(Boolean)
     support = Column(Boolean)
-    excel_add_in = Column(Boolean)
     data_add_ons_redistribution = Column(Boolean)
     # What the Copilot may do on the web: the agent's tools for searching it and for reading a page.
     # None is allowed, as for every flag of a tier or entitlement that was written before the flag existed.
@@ -88,7 +87,6 @@ class EntityEntitlement(Base, UUIDMixin, DateMixin):
     bring_your_own_copilot = Column(Boolean)
     admin_access = Column(Boolean)
     support = Column(Boolean)
-    excel_add_in = Column(Boolean)
     data_add_ons_redistribution = Column(Boolean)
     allow_custom_backends: Mapped[bool | None] = mapped_column(Boolean, default=True)
     # What the Copilot may do on the web: the agent's tools for searching it and for reading a page.
@@ -130,7 +128,6 @@ class Entitlement(Base, UUIDMixin, DateMixin):
     bring_your_own_copilot = Column(Boolean)
     admin_access = Column(Boolean)
     support = Column(Boolean)
-    excel_add_in = Column(Boolean)
     data_add_ons_redistribution = Column(Boolean)
     allow_custom_backends: Mapped[bool | None] = mapped_column(Boolean, default=True)
     # What the Copilot may do on the web: the agent's tools for searching it and for reading a page.
@@ -160,7 +157,6 @@ class DataBundle(Base, UUIDMixin, DateMixin):
     except_widgets: Mapped[list[str]] = mapped_column(JSONType)
     except_dashboard_templates: Mapped[list[str]] = mapped_column(JSONType)
     except_team_collaboration: Mapped[list[str] | None] = mapped_column(JSONType)
-    excel_add_in = Column(Boolean, nullable=False, default=False)
     data_export = Column(Boolean, nullable=False, default=False)
     providers: Mapped[list[str] | None] = mapped_column(JSONType)
     dashboards_at_launch: Mapped[list[str] | None] = mapped_column(JSONType)
