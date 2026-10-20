@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WidgetItem } from "~/components/LayoutAuth/Search/WidgetMenu";
-import type { SideBarItem } from "~/lib/state/app";
 import { useThemeStore } from "~/lib/state/theme";
 import { malformed, partial } from "../../mocks";
 
@@ -98,8 +97,6 @@ describe("useThemeStore", () => {
       initialSelectedSearchTab: "widgets",
       pulseAnimationButtonsAlreadyClicked: false,
       isResizingGridElement: "",
-      excelExportPopup: false,
-      excelExportItem: null,
     });
 
     // Reset document state
@@ -158,8 +155,6 @@ describe("useThemeStore", () => {
       expect(state.initialSelectedSearchTab).toBe("widgets");
       expect(state.pulseAnimationButtonsAlreadyClicked).toBe(false);
       expect(state.isResizingGridElement).toBe("");
-      expect(state.excelExportPopup).toBe(false);
-      expect(state.excelExportItem).toBeNull();
     });
   });
 
@@ -353,17 +348,6 @@ describe("useThemeStore", () => {
     it("should toggle export template popup", () => {
       useThemeStore.getState().setExportTemplatePopup(true);
       expect(useThemeStore.getState().exportTemplatePopup).toBe(true);
-    });
-
-    it("should toggle excel export popup", () => {
-      useThemeStore.getState().setExcelExportPopup(true);
-      expect(useThemeStore.getState().excelExportPopup).toBe(true);
-    });
-
-    it("should set excel export item", () => {
-      const item = partial<SideBarItem>({ index: "test-item", data: { name: "Test" } });
-      useThemeStore.getState().setExcelExportItem(item);
-      expect(useThemeStore.getState().excelExportItem).toEqual(item);
     });
   });
 

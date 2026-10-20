@@ -139,7 +139,7 @@ async def create_login_token(  # noqa: PLR0913,PLR0917
 async def delete_user_app_sessions(
     db: AsyncSession,
     user_uuid: UUID,
-    sources: list[Literal["app", "oauth-app", "excel"]] | None = None,
+    sources: list[Literal["app", "oauth-app"]] | None = None,
 ) -> None:
     """Deletes all app sessions for the given user
 
@@ -149,7 +149,7 @@ async def delete_user_app_sessions(
         The database session
     user_uuid : UUID
         The user's UUID
-    sources : list[Literal["app", "oauth-app", "excel"]] | None
+    sources : list[Literal["app", "oauth-app"]] | None
         The sources to be deleted
     """
     filters = [models.Session.user_uuid == user_uuid, models.Session.app_session.is_(True)]
@@ -639,7 +639,7 @@ def check_origin(token: str = Depends(origin_oauth2_scheme)) -> None:
     token : str
         The token to be checked
     """
-    for sub in ["workspace", "copilot", "excel", "app"]:
+    for sub in ["workspace", "copilot", "app"]:
         with suppress(Exception):
             return token_checker(token, {"sub": sub})
 

@@ -413,9 +413,7 @@ async def put_user(
     await app_helpers.update_user_entitlement_with_entity_entitlement(db, user_uuid)
 
     # Destroy all other app sessions for the user
-    await auth_helpers.delete_user_app_sessions(
-        db, user_uuid, ["app", "oauth-app", "excel"]
-    )
+    await auth_helpers.delete_user_app_sessions(db, user_uuid, ["app", "oauth-app"])
     return {"success": True}
 
 

@@ -80,7 +80,6 @@ DEFAULT_DATA_BUNDLE = schemas.DataBundle(
     except_widgets=[],
     except_dashboard_templates=[],
     except_team_collaboration=None,
-    excel_add_in=1,
     data_export=1,
     providers=None,
     dashboards_at_launch=[],
