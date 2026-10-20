@@ -1,7 +1,7 @@
 name: Deploy to dev
 
 # A push to develop that changes the backend, the frontend or the agent (Ines,
-# in ines/) builds every image from that commit, pushes them to ECR as
+# in agent/) builds every image from that commit, pushes them to ECR as
 # dev-<commit>, and deploys them to the dev environment with the infrastructure
 # repository's .github/scripts/deploy-workspace.sh, its chart and the
 # environment's values file. Only the image tags come from here. The run's summary lists what is
@@ -24,7 +24,7 @@ on:
     paths:
       - "backend-api/backend/**"
       - "frontend/**"
-      - "ines/**"
+      - "agent/**"
   workflow_dispatch:
 
 # One run at a time, and a running deploy is never cancelled. A run that is
@@ -104,7 +104,7 @@ jobs:
             exit 1
           fi
 
-  # Ines and the MCP server with her tools: the two targets of ines/Dockerfile.
+  # Ines and the MCP server with her tools: the two targets of agent/Dockerfile.
   agent:
     runs-on: ubuntu-latest
     env:
@@ -128,7 +128,7 @@ jobs:
             if output=$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="$IMAGE_TAG" 2>&1); then
               echo "$repository:$IMAGE_TAG is already in ECR."
             elif grep -q ImageNotFoundException <<< "$output"; then
-              docker build --target "$target" --build-arg GIT_SHA="$GITHUB_SHA" -t "$ECR_REGISTRY/$repository:$IMAGE_TAG" ines
+              docker build --target "$target" --build-arg GIT_SHA="$GITHUB_SHA" -t "$ECR_REGISTRY/$repository:$IMAGE_TAG" agent
               docker push "$ECR_REGISTRY/$repository:$IMAGE_TAG"
             else
               echo "$output" >&2
