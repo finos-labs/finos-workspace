@@ -1,4 +1,4 @@
-import type { Server } from "node:http";
+import type { Server } from "node:https";
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { type ReceivedRequest, startEchoBackend } from "./echoBackend";
 import { authFile, deleteDashboard } from "./helpers";
@@ -10,7 +10,7 @@ import { type ApiResponse, type PageApi, pageApi } from "./plugins/api";
  * path, query, headers and body its definition declares.
  */
 
-const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
+const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const BACKEND_PORT = Number(process.env.E2E_ECHO_BACKEND_PORT ?? 7791);
 const WIDGET = "E2E team report";
 
@@ -39,7 +39,7 @@ async function arrived(match: (r: ReceivedRequest) => boolean) {
 
 test.beforeAll(async ({ browser }, testInfo) => {
   test.setTimeout(120000);
-  const baseURL = testInfo.project.use.baseURL ?? "http://localhost:3000";
+  const baseURL = testInfo.project.use.baseURL ?? "https://localhost:3000";
   ({ server: backend, received } = await startEchoBackend(
     BACKEND_PORT,
     new URL(baseURL).origin,
@@ -52,7 +52,7 @@ test.beforeAll(async ({ browser }, testInfo) => {
   sourceUuid = crypto.randomUUID();
   await json(
     await api.post(`/app/data-connectors/api-source/${sourceUuid}`, {
-      data: { name: "E2E request mapping", url: `http://localhost:${BACKEND_PORT}` },
+      data: { name: "E2E request mapping", url: `https://localhost:${BACKEND_PORT}` },
     }),
   );
 

@@ -1,13 +1,18 @@
 #!/bin/sh
-# The TLS material of the plugin proxy test (tests/e2e/plugin-proxies.spec.ts): a
-# certificate authority made for the run, which the API trusts through
-# WIDGET_PLUGIN_PROXY_CA_FILE, and a certificate it signs for the test upstream's name.
-# The authority's key is deleted once it has signed, so nothing else can be signed.
+# TLS material for the end-to-end tests: a certificate authority made for the run
+# (ca.pem) and a certificate it signs for one host name (cert.pem, key.pem). The
+# authority's key is deleted once it has signed, so nothing else can be signed.
 #
-# Usage: make-proxy-tls.sh <directory> [<host name>]
+# - The stack's: `make-tls.sh tests/e2e/tls/certs localhost`, which the TLS front of
+#   docker-compose.e2e.yml serves the web app, the API and Ines with.
+# - The plugin proxy test's upstream (plugin-proxies.spec.ts):
+#   `make-tls.sh <directory> proxy-upstream.e2e.test`, whose authority the API trusts
+#   through WIDGET_PLUGIN_PROXY_CA_FILE.
+#
+# Usage: make-tls.sh <directory> <host name>
 set -eu
 dir="$1"
-host="${2:-proxy-upstream.e2e.test}"
+host="$2"
 mkdir -p "$dir"
 cd "$dir"
 

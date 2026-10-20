@@ -1,4 +1,5 @@
-import { createServer, type Server } from "node:http";
+import { createServer, type Server } from "node:https";
+import { localhostTls } from "./tls";
 
 /**
  * A Workspace backend that records every request it receives, for the request mapping
@@ -62,8 +63,9 @@ export function startEchoBackend(
   origin: string,
 ): Promise<{ server: Server; received: ReceivedRequest[] }> {
   const received: ReceivedRequest[] = [];
-  const server = createServer((request, response) => {
-    const url = new URL(request.url ?? "/", `http://localhost:${port}`);
+  // Over HTTPS, as the stack is: a page on HTTPS may not fetch http://localhost in WebKit
+  const server = createServer(localhostTls(), (request, response) => {
+    const url = new URL(request.url ?? "/", `https://localhost:${port}`);
     let body = "";
     request.on("data", (chunk) => {
       body += chunk;

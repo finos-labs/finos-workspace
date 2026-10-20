@@ -25,7 +25,7 @@ import {
  */
 
 const PLUGINS_DIR = process.env.E2E_PLUGINS_DIR;
-const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
+const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const REACH_PORT = Number(process.env.E2E_REACH_PORT ?? 7793);
 const REACH = `http://localhost:${REACH_PORT}`;
 const RUN = Math.random().toString(36).slice(2, 8);
@@ -102,7 +102,7 @@ async function openDashboard() {
 
 test.beforeAll(async ({ browser }, testInfo) => {
   test.setTimeout(120000);
-  const baseURL = testInfo.project.use.baseURL ?? "http://localhost:3000";
+  const baseURL = testInfo.project.use.baseURL ?? "https://localhost:3000";
   ({ server: reach, hits } = await startReachServer(REACH_PORT));
   context = await browser.newContext({ storageState: authFile, baseURL });
   page = await context.newPage();

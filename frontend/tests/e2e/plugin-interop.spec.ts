@@ -18,7 +18,7 @@ import {
  */
 
 const PLUGINS_DIR = process.env.E2E_PLUGINS_DIR;
-const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
+const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const FAILURES = [
   "Plugin sandbox unavailable",
   "Failed to load",
@@ -46,7 +46,7 @@ async function json(response: ApiResponse) {
 
 test.beforeAll(async ({ browser }, testInfo) => {
   test.setTimeout(180000);
-  const baseURL = testInfo.project.use.baseURL ?? "http://localhost:3000";
+  const baseURL = testInfo.project.use.baseURL ?? "https://localhost:3000";
   const files = await fetchInteropModules(testInfo.outputPath("wheels"));
   const versions: Record<string, string> = {};
   for (const module of INTEROP_MODULES) {

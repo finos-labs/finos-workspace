@@ -53,3 +53,6 @@ ai_artifacts
 # Storybook
 storybook-static/
 
+
+# The e2e stack's TLS material (tests/e2e/make-tls.sh)
+tests/e2e/tls/certs/

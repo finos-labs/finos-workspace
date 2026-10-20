@@ -1,9 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * End-to-end tests against a running stack (`docker compose up` serves the web app on
- * port 3000). They sign in as an account that exists there, which they name through
- * E2E_USER_EMAIL and E2E_USER_PASSWORD; see TESTING.md.
+ * End-to-end tests against a running stack over HTTPS (docker-compose.e2e.yml serves the
+ * web app on https://localhost:3000). They sign in as an account that exists there, which
+ * they name through E2E_USER_EMAIL and E2E_USER_PASSWORD; see TESTING.md.
  */
 
 // Specs that also run in Firefox and WebKit: the widget plugins' (a plugin's frame, its
@@ -19,7 +19,10 @@ export default defineConfig({
   workers: 1,
   reporter: "html",
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",
+    baseURL: process.env.E2E_BASE_URL ?? "https://localhost:3000",
+    // The stack's certificate comes from a certificate authority made for the run
+    // (tests/e2e/make-tls.sh), which the browsers do not know
+    ignoreHTTPSErrors: true,
     trace: "on-first-retry",
   },
   projects: [

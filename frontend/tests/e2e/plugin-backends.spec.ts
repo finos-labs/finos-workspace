@@ -27,7 +27,7 @@ import {
  */
 
 const PLUGINS_DIR = process.env.E2E_PLUGINS_DIR;
-const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
+const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const HOST = process.env.E2E_BACKEND_HOST ?? "plugin-backend.e2e.test";
 const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT ?? 7794);
 const DATA_PORT = Number(process.env.E2E_DATA_PORT ?? 7795);
@@ -65,7 +65,7 @@ async function json(response: ApiResponse) {
 
 test.beforeAll(async ({ browser }, testInfo) => {
   test.setTimeout(120000);
-  const baseURL = testInfo.project.use.baseURL ?? "http://localhost:3000";
+  const baseURL = testInfo.project.use.baseURL ?? "https://localhost:3000";
   const version = writePackage(PLUGINS_DIR ?? "", forecastManifest(PLUGIN), {
     "entry.js": FORECAST_ENTRY,
   });

@@ -1,6 +1,14 @@
-# What the end-to-end tests add to the stack: a model that always says the same thing.
+# What the end-to-end tests add to the stack: HTTPS, and a model that always says the same thing.
 #
+#   frontend/tests/e2e/make-tls.sh frontend/tests/e2e/tls/certs localhost
 #   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build
+#
+# Web app https://localhost:3000, API https://localhost:8000, Ines https://localhost:7777, served by
+# the `tls` front below with a certificate from a certificate authority made for the run
+# (frontend/tests/e2e/tls/certs/ca.pem). A deployment serves HTTPS, and the session cookie is Secure:
+# WebKit does not count http://localhost as secure, so over plain HTTP it never sends the cookie and
+# every WebKit test would run signed out. WEB_URL, API_URL and AI_API_URL name other addresses, as
+# for the stack on its own.
 #
 # The stack on its own has no model — `create_local_env` leaves DEFAULT_MODEL blank and a provider
 # key is a secret, which a pull request from a fork does not get. So the tests cannot ask the Copilot
@@ -12,6 +20,43 @@
 # stack as it was, with a real model configured in agent/.env.
 
 services:
+  tls:
+    image: nginx:1.31.7-alpine
+    restart: unless-stopped
+    volumes:
+      - ./frontend/tests/e2e/tls/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/tests/e2e/tls/certs:/etc/nginx/certs:ro
+    ports:
+      - "3000:3000"
+      - "8000:8000"
+      - "7777:7777"
+    depends_on:
+      - web
+      - api
+      - ines
+    networks:
+      - workspace
+
+  # The services publish nothing themselves: the TLS front takes their ports
+  web:
+    ports: !reset []
+    environment:
+      BACKEND_URL: ${API_URL:-https://localhost:8000}
+      AI_API_URL: ${AI_API_URL:-https://localhost:7777}
+
+  api:
+    ports: !reset []
+    environment:
+      APPURL: ${WEB_URL:-https://localhost:3000}
+      FRONTENDURL: ${WEB_URL:-https://localhost:3000}
+      SELFURL: ${API_URL:-https://localhost:8000}
+      BACKEND_CORS_ORIGINS: '["${WEB_URL:-https://localhost:3000}"]'
+
+  ines-mcp:
+    environment:
+      WORKSPACE_ORIGIN: ${WEB_URL:-https://localhost:3000}
+      WORKSPACE_PUBLIC_URL: ${API_URL:-https://localhost:8000}
+
   stub-model:
     build: ./agent/tests/stub-model
     image: workspace-stub-model:local
@@ -26,7 +71,11 @@ services:
       - workspace
 
   ines:
+    ports: !reset []
     environment:
+      WORKSPACE_ORIGIN: ${WEB_URL:-https://localhost:3000}
+      WORKSPACE_PUBLIC_URL: ${API_URL:-https://localhost:8000}
+      INES_CORS_ORIGINS: ${WEB_URL:-https://localhost:3000}
       # `environment` wins over the `env_file` that leaves these blank, so the stack keeps the rest
       # of agent/.env (her secrets, which create_local_env writes) and takes its model from here.
       DEFAULT_MODEL: ollama:stub

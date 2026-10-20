@@ -124,17 +124,25 @@ bun run test:integration
 
 ### E2E Tests
 
-The tests run against a running stack and sign in as an account that exists there. Start the
-whole stack from the repository root (`docker compose up --build`, see the root README) and name
-the administrator it created: the address in `backend-api/backend/scripts/cfgs/config.toml`, and
-the password you set for it:
+The tests run against a running stack over HTTPS, as a deployment serves it, and sign in as an
+account that exists there. The session cookie is Secure, and WebKit does not count
+http://localhost as secure. Start the whole stack from the repository root with
+`docker-compose.e2e.yml`, which puts a TLS front before the web app, the API and Ines with a
+certificate from a certificate authority made for the purpose, and name the administrator it
+created: the address in `backend-api/backend/scripts/cfgs/config.toml`, and the password you set
+for it:
 
 ```bash
 # from the repository root, once
+frontend/tests/e2e/make-tls.sh frontend/tests/e2e/tls/certs localhost
+docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build
 docker compose run --rm init python -m scripts.init_users --new-password <the administrator's email>
 export E2E_USER_EMAIL=<the administrator's email>
 export E2E_USER_PASSWORD=<their password>
-# E2E_BASE_URL defaults to http://localhost:3000
+# The browsers ignore the unknown authority (playwright.config.ts); the tests' own servers that
+# call the API trust it through Node
+export NODE_EXTRA_CA_CERTS="$PWD/frontend/tests/e2e/tls/certs/ca.pem"
+# E2E_BASE_URL defaults to https://localhost:3000, E2E_API_URL to https://localhost:8000
 
 # Run all E2E tests
 bun run test:e2e
@@ -151,8 +159,7 @@ bunx playwright codegen tests/e2e
 
 The `setup` project signs in once and keeps the session in `playwright/.auth/user.json`; the
 other projects start from it. `.github/workflows/e2e.yml` runs the same tests in CI against a
-stack of its own, with an administrator whose password the run reads from the `init` service's
-log.
+stack of its own, over HTTPS, with an administrator whose password the run sets.
 
 Every spec runs in the `chromium` project; the widget plugin specs (`plugin*.spec.ts`) also run
 in `firefox` and `webkit`, since a plugin's frame, policy and workers are where the engines

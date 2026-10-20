@@ -47,17 +47,21 @@ jobs:
           echo "E2E_PLUGINS_DIR=$RUNNER_TEMP/widget-plugins" >> "$GITHUB_ENV"
           echo "E2E_INTEROP=1" >> "$GITHUB_ENV"
 
+      # Over HTTPS, as e2e.yml runs it (docker-compose.e2e.yml)
+      - name: Make the stack's certificate
+        run: frontend/tests/e2e/make-tls.sh frontend/tests/e2e/tls/certs localhost
+
       - name: Build and start the stack
         run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" up -d --build
 
       - name: Wait for the stack
         run: |
-          for url in http://localhost:8000/health http://localhost:3000/; do
+          for url in https://localhost:8000/health https://localhost:3000/; do
             for _ in $(seq 1 60); do
-              curl -fsS -o /dev/null "$url" && break
+              curl -fsS --cacert frontend/tests/e2e/tls/certs/ca.pem -o /dev/null "$url" && break
               sleep 5
             done
-            curl -fsS -o /dev/null "$url"
+            curl -fsS --cacert frontend/tests/e2e/tls/certs/ca.pem -o /dev/null "$url"
           done
 
       # The administrator has no password until one is set, as an operator sets it: read

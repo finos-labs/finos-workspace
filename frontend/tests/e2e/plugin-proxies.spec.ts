@@ -18,7 +18,7 @@ import {
  * secret.
  *
  * The upstream runs on this machine with a certificate for E2E_PROXY_HOST, signed by a CA
- * made for the run (tests/e2e/plugins/make-proxy-tls.sh writes both into
+ * made for the run (tests/e2e/make-tls.sh writes both into
  * E2E_PROXY_TLS_DIR). The API trusts that CA through WIDGET_PLUGIN_PROXY_CA_FILE and
  * resolves E2E_PROXY_HOST to this machine, an address that is not public. Without
  * E2E_PLUGINS_DIR and E2E_PROXY_TLS_DIR the tests are skipped.
@@ -26,7 +26,7 @@ import {
 
 const PLUGINS_DIR = process.env.E2E_PLUGINS_DIR;
 const TLS_DIR = process.env.E2E_PROXY_TLS_DIR;
-const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
+const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const HOST = process.env.E2E_PROXY_HOST ?? "proxy-upstream.e2e.test";
 const PORT = Number(process.env.E2E_PROXY_PORT ?? 7792);
 const LISTEN = process.env.E2E_PROXY_LISTEN ?? "127.0.0.1";
@@ -61,7 +61,7 @@ async function json(response: ApiResponse) {
 
 test.beforeAll(async ({ browser }, testInfo) => {
   test.setTimeout(120000);
-  const baseURL = testInfo.project.use.baseURL ?? "http://localhost:3000";
+  const baseURL = testInfo.project.use.baseURL ?? "https://localhost:3000";
   version = writePackage(PLUGINS_DIR ?? "", quotesManifest(ORIGIN, PLUGIN), {
     "entry.js": QUOTES_ENTRY,
   });

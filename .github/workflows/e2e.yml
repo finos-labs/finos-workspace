@@ -41,7 +41,7 @@ jobs:
       - name: Mount a widget plugins directory
         run: |
           mkdir -p "$RUNNER_TEMP/widget-plugins"
-          frontend/tests/e2e/plugins/make-proxy-tls.sh "$RUNNER_TEMP/proxy-tls" proxy-upstream.e2e.test
+          frontend/tests/e2e/make-tls.sh "$RUNNER_TEMP/proxy-tls" proxy-upstream.e2e.test
           cat > "$RUNNER_TEMP/compose.plugins.yml" <<EOF
           services:
             api:
@@ -63,8 +63,18 @@ jobs:
           echo "E2E_PROXY_LISTEN=0.0.0.0" >> "$GITHUB_ENV"
           echo "E2E_BACKEND_LISTEN=0.0.0.0" >> "$GITHUB_ENV"
 
-      # docker-compose.e2e.yml adds the stubbed model and points Ines at it, so the tests can ask
-      # the Copilot a question without a provider key (a pull request from a fork gets no secrets).
+      # The stack runs over HTTPS, as a deployment does (docker-compose.e2e.yml): its certificate
+      # for localhost comes from a certificate authority made for this run. The browsers ignore
+      # that the authority is unknown (playwright.config.ts); the tests' own servers that call
+      # the API, and curl, trust it.
+      - name: Make the stack's certificate
+        run: |
+          frontend/tests/e2e/make-tls.sh frontend/tests/e2e/tls/certs localhost
+          echo "NODE_EXTRA_CA_CERTS=$GITHUB_WORKSPACE/frontend/tests/e2e/tls/certs/ca.pem" >> "$GITHUB_ENV"
+
+      # docker-compose.e2e.yml adds the TLS front and the stubbed model and points Ines at it, so the
+      # tests can ask the Copilot a question without a provider key (a pull request from a fork gets
+      # no secrets).
       - name: Build and start the stack
         run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" up -d --build
 
@@ -73,12 +83,12 @@ jobs:
       # closest check on it is that her container is up, which compose's health check already is.
       - name: Wait for the stack
         run: |
-          for url in http://localhost:8000/health http://localhost:3000/ http://localhost:7777/status; do
+          for url in https://localhost:8000/health https://localhost:3000/ https://localhost:7777/status; do
             for _ in $(seq 1 60); do
-              curl -fsS -o /dev/null "$url" && break
+              curl -fsS --cacert "$NODE_EXTRA_CA_CERTS" -o /dev/null "$url" && break
               sleep 5
             done
-            curl -fsS -o /dev/null "$url"
+            curl -fsS --cacert "$NODE_EXTRA_CA_CERTS" -o /dev/null "$url"
           done
 
       # The administrator has no password until one is set, as an operator sets it: read

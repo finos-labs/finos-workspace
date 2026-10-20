@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import type { Server } from "node:http";
+import type { Server } from "node:https";
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { authFile, deleteDashboard, userInfo } from "./helpers";
 import { type ApiResponse, grantPlugins, type PageApi, pageApi } from "./plugins/api";
@@ -23,7 +23,7 @@ import {
  */
 
 const PLUGINS_DIR = process.env.E2E_PLUGINS_DIR;
-const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
+const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const BACKEND_PORT = Number(process.env.E2E_PLUGINS_BACKEND_PORT ?? 7790);
 const BACKEND_NAME = "E2E plugin widgets";
 
@@ -113,7 +113,7 @@ async function addWidgets(names: string[]) {
 test.beforeAll(async ({ browser }, testInfo) => {
   test.setTimeout(120000);
   started = Date.now();
-  const baseURL = testInfo.project.use.baseURL ?? "http://localhost:3000";
+  const baseURL = testInfo.project.use.baseURL ?? "https://localhost:3000";
   versions = {
     "e2e-table": writePackage(PLUGINS_DIR ?? "", tableManifest(), {
       "entry.js": TABLE_ENTRY,
@@ -159,7 +159,7 @@ test.beforeAll(async ({ browser }, testInfo) => {
   sourceUuid = crypto.randomUUID();
   await json(
     await api.post(`/app/data-connectors/api-source/${sourceUuid}`, {
-      data: { name: BACKEND_NAME, url: `http://localhost:${BACKEND_PORT}` },
+      data: { name: BACKEND_NAME, url: `https://localhost:${BACKEND_PORT}` },
     }),
   );
 
