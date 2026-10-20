@@ -78,7 +78,7 @@ def refresh_usage_cache(user_uuid: UUID) -> None:
 
 def handle_add_login(
     user_uuid: UUID,
-    source: None | Literal["app", "oauth-app", "admin"],
+    source: None | Literal["app", "oauth-app"],
 ) -> None:
     try:
         rq_results.rq_que.enqueue(

@@ -1,5 +1,10 @@
 import type { UserType } from "~/lib/state/access";
-import type { Entity, EntityMapItem, EntityType } from "~/types/entity.type";
+import type {
+  Entity,
+  EntityMapItem,
+  EntityType,
+  EntityUser,
+} from "~/types/entity.type";
 import { apiClient } from "./api";
 
 /** What the entity endpoints answer lists with. */
@@ -77,6 +82,16 @@ export const getEntities = () => getAllPages<Entity>("/entity/entity");
 export const getEntityRelationships = () =>
   getAllPages<EntityRelationship>("/entity/entity-relationship");
 export const getEntityMaps = () => getAllPages<EntityMapItem>("/entity/entity-map");
+/** Every user of every entity, but the deleted ones. */
+export const getEntityUsers = () => getAllPages<EntityUser>("/entity/user");
+
+/** Moves the user to the permission map: a user type of an entity. */
+export async function moveEntityUser(uuid: string, permissionsUuid: string) {
+  const { data } = await apiClient.put<SuccessResponse>(`/entity/user/${uuid}`, {
+    permissions_uuid: permissionsUuid,
+  });
+  return data;
+}
 
 export async function createEntityType(body: EntityTypeBody) {
   const { data } = await apiClient.post<SuccessResponse>("/entity/entity-type", body);

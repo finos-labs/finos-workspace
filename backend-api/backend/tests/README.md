@@ -113,8 +113,6 @@ entry of `BACKEND_CORS_ORIGINS`.
   and the origin.
 - `bearer_client(token)` (`fixtures/base.py`) is a client that is not a browser (the default
   Copilot with an agent token): it sends `Authorization: Bearer <token>`.
-- `ADMIN_HEADERS` are the admin panel's headers, for `POST /login`, `GET /session` and
-  the panel's cookie.
 
 ```python
 @pytest.mark.asyncio

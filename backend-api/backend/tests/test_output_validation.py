@@ -175,7 +175,7 @@ class TestSensitiveDataLeakPrevention:
     async def test_no_environment_variables_in_error(self, client):
         """Error responses should not expose environment variables"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": "test@test.com",
                 "password": "x" * 10000,

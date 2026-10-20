@@ -17,7 +17,7 @@ from sqlalchemy import delete, text
 from sqlalchemy.sql import Executable
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# The origin of the web app and the admin panel in the tests; requests are sent to
+# The origin of the web app in the tests; requests are sent to
 # https://test, so that the client keeps and sends the API's secure session cookies
 TEST_ORIGIN = "http://test"
 TEST_BASE_URL = "https://test"
@@ -48,8 +48,6 @@ from main import app  # noqa: E402
 
 # What the web app sends with every request; its session cookie comes on top
 WEB_HEADERS = {auth_helpers.CLIENT_HEADER: "web", "Origin": TEST_ORIGIN}
-# What the admin panel sends with every request
-ADMIN_HEADERS = {auth_helpers.CLIENT_HEADER: "admin", "Origin": TEST_ORIGIN}
 
 logger = logging.getLogger(__name__)
 
@@ -603,7 +601,6 @@ __all__ = [
     "web_session_headers",
     "bearer_client",
     "WEB_HEADERS",
-    "ADMIN_HEADERS",
     "TEST_ORIGIN",
     "TEST_BASE_URL",
     "_seed_entities",

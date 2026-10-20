@@ -1,9 +1,9 @@
 """Sessions: hashed tokens, cookies, the client header, CSRF and CORS.
 
 A session is a random token that only its client holds; the session table stores its
-SHA-256 hash, and a session ends when its time is up. The web app and the admin panel
-ride HttpOnly cookies that their X-Workspace-Client header names, and change nothing from
-an origin outside BACKEND_CORS_ORIGINS. No session is a bearer token. A pending two-factor
+SHA-256 hash, and a session ends when its time is up. The web app rides an HttpOnly
+cookie with its X-Workspace-Client header, and changes nothing from an origin outside
+BACKEND_CORS_ORIGINS. No session is a bearer token. A pending two-factor
 enrollment is a cookie of its own that only POST /totp and POST /totp/activate accept.
 """
 
@@ -22,7 +22,6 @@ from api.context import session_uuid_ctx
 from api.sign_in_providers import SignInIdentity
 from tests.fixtures.base import (
     _AUTH_USER,
-    ADMIN_HEADERS,
     TEST_BASE_URL,
     TEST_ORIGIN,
     WEB_HEADERS,
@@ -208,21 +207,9 @@ class TestTheWebAppsCookie:
         async with bearer_client(_token_of(auth_client)) as bearer:
             assert (await bearer.get("/app/user")).status_code == 401
             assert (await bearer.get("/admin/role")).status_code == 401
-            assert (await bearer.post("/logout")).status_code == 401
+            assert (await bearer.post("/app/logout")).status_code == 401
         # And it still works as the cookie it is
         assert (await auth_client.get("/app/user")).status_code == 200
-
-    @pytest.mark.asyncio
-    async def test_each_client_reads_its_own_cookie_only(self, auth_client):
-        token = _token_of(auth_client)
-        async with _browser(
-            {**ADMIN_HEADERS, "Cookie": f"{auth_helpers.ADMIN_COOKIE}={token}"}
-        ) as panel:
-            assert (await panel.get("/session")).status_code == 401
-        async with _browser(
-            {**ADMIN_HEADERS, "Cookie": f"{auth_helpers.SESSION_COOKIE}={token}"}
-        ) as panel:
-            assert (await panel.get("/session")).status_code == 401
 
     @pytest.mark.asyncio
     async def test_the_session_bootstrap_after_a_reload(self, auth_client, client):
@@ -257,132 +244,6 @@ class TestTheWebAppsCookie:
             response = await stale.post("/app/logout")
             assert response.status_code == 200
             assert auth_helpers.SESSION_COOKIE in _set_cookies(response)
-
-
-async def _superuser(organization, db_session):
-    user = await organization.add_user(password=PASSWORD)
-    await db_session.execute(
-        update(models.User).where(models.User.uuid == user.uuid).values(is_superuser=True)
-    )
-    await db_session.commit()
-    return user
-
-
-class TestTheAdminPanelsCookie:
-    @pytest.mark.asyncio
-    async def test_sign_in_session_and_sign_out(self, organization, client, db_session):
-        user = await _superuser(organization, db_session)
-        async with _browser(ADMIN_HEADERS) as panel:
-            response = await panel.post(
-                "/login", json={"email": user.email, "password": PASSWORD, "remember": True}
-            )
-            assert response.status_code == 200, response.text
-            assert response.json() == {"email": user.email, "is_superuser": True}
-            cookie = _set_cookies(response)[auth_helpers.ADMIN_COOKIE]
-            assert "httponly" in cookie and "secure" in cookie and "samesite=strict" in cookie
-            assert auth_helpers.SESSION_COOKIE not in panel.cookies
-
-            (session,) = await _sessions(db_session, user.uuid)
-            assert (session.source, session.app_session) == ("admin", False)
-
-            assert (await panel.get("/session")).json() == {
-                "email": user.email,
-                "is_superuser": True,
-            }
-            # The panel's session is no web app session
-            assert (await panel.get("/app/user")).status_code == 401
-
-            response = await panel.post("/logout")
-            assert response.status_code == 200
-            assert "max-age=0" in _set_cookies(response)[auth_helpers.ADMIN_COOKIE]
-            assert await _sessions(db_session, user.uuid) == []
-            assert (await panel.get("/session")).status_code == 401
-
-    @pytest.mark.asyncio
-    async def test_only_a_superuser_signs_in_to_the_panel(
-        self, organization, client, db_session
-    ):
-        user = await organization.add_user(models.ADMIN_TYPE, password=PASSWORD)
-        async with _browser(ADMIN_HEADERS) as panel:
-            response = await panel.post(
-                "/login", json={"email": user.email, "password": PASSWORD}
-            )
-        assert response.status_code == 403, response.text
-        assert "set-cookie" not in response.headers
-        assert await _sessions(db_session, user.uuid) == []
-
-    @pytest.mark.asyncio
-    async def test_a_former_superusers_panel_session_holds_nothing(
-        self, organization, client, db_session
-    ):
-        """The panel's session holds only while its user is a superuser: once they no
-        longer are, it is refused everywhere, the organization admin's routes too."""
-        user = await _superuser(organization, db_session)
-        await organization.set_type(user.uuid, models.ADMIN_TYPE)
-        paths = ("/session", "/admin/role", "/entity/entity")
-        async with _browser(ADMIN_HEADERS) as panel:
-            response = await panel.post(
-                "/login", json={"email": user.email, "password": PASSWORD}
-            )
-            assert response.status_code == 200, response.text
-            for path in paths:
-                assert (await panel.get(path)).status_code == 200, path
-
-            await db_session.execute(
-                update(models.User)
-                .where(models.User.uuid == user.uuid)
-                .values(is_superuser=False)
-            )
-            await db_session.commit()
-            for path in paths:
-                assert (await panel.get(path)).status_code == 401, path
-
-    @pytest.mark.asyncio
-    async def test_the_panel_keeps_the_organizations_authenticator_rule(
-        self, organization, authenticator_required, client, db_session
-    ):
-        """As POST /app/login: without the authenticator the organization requires, a
-        202 and no session; with it, its code."""
-        user = await _superuser(organization, db_session)
-        body = {"email": user.email, "password": PASSWORD}
-        async with _browser(ADMIN_HEADERS) as panel:
-            response = await panel.post("/login", json=body)
-            assert response.status_code == 202, response.text
-            assert response.json()["two_factor_required"] is True
-            assert "set-cookie" not in response.headers
-            assert await _sessions(db_session, user.uuid) == []
-
-            totp = pyotp.TOTP(pyotp.random_base32())
-            await db_session.execute(
-                update(models.User)
-                .where(models.User.uuid == user.uuid)
-                .values(totp_secret=totp.secret, totp_active=True)
-            )
-            await db_session.commit()
-            response = await panel.post("/login", json=body)
-            assert response.status_code == 202
-            assert response.json() == {"message": "Invalid TOTP token"}
-            assert await _sessions(db_session, user.uuid) == []
-
-            response = await panel.post(
-                "/login", json={**body, "totp_token": int(totp.now())}
-            )
-            assert response.status_code == 200, response.text
-            assert auth_helpers.ADMIN_COOKIE in _set_cookies(response)
-
-    @pytest.mark.asyncio
-    async def test_the_panels_sign_in_needs_its_header(self, organization, client):
-        user = await organization.add_user(password=PASSWORD)
-        async with _browser({"Origin": TEST_ORIGIN}) as browser:
-            response = await browser.post(
-                "/login", json={"email": user.email, "password": PASSWORD}
-            )
-            assert response.status_code == 400
-        async with _browser(WEB_HEADERS) as browser:
-            response = await browser.post(
-                "/login", json={"email": user.email, "password": PASSWORD}
-            )
-            assert response.status_code == 400
 
 
 class TestClientsThatAreNotBrowsers:

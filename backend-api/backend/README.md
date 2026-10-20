@@ -46,8 +46,8 @@ See [DEVELOPMENT_SETUP.md](../DEVELOPMENT_SETUP.md) for the full workflow.
   its SHA-256 (`crypto.hash_token`). No secret goes into a plain column, a log line or a
   response to the browser. Random secrets come from the `secrets` module.
 - Sessions (`api/auth_helpers.py`) are random tokens stored as their SHA-256. The web app
-  and the admin panel hold theirs in HttpOnly cookies and name themselves in the
-  `X-Workspace-Client` header (`web`, `admin`). A cookie request with an `Origin`, and
+  holds its own in an HttpOnly cookie and names itself in the `X-Workspace-Client` header
+  (`web`). A cookie request with an `Origin`, and
   every one that changes anything, must come from one of `BACKEND_CORS_ORIGINS`. Every answer to a request that carried a cookie or
   a token is `Cache-Control: no-store`. No session is a bearer token. The default Copilot acts for
   the user with an agent token (`POST /app/copilot/token`), which only `GET /app/user`,
@@ -66,9 +66,9 @@ The API does not start without these, and refuses short or malformed values:
 `python -m scripts.create_local_env` writes all of them, random, into `envs/.env`. To make
 one yourself: `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
 
-`BACKEND_CORS_ORIGINS` is required too: the origins of the web app and the admin panel,
-exactly as browsers send them (scheme, host and port; never `*`). The
-session cookies reach the API only when it is on the same site as the web app: serve it
+`BACKEND_CORS_ORIGINS` is required too: the origins of the web app, exactly as browsers
+send them (scheme, host and port; never `*`). The
+session cookie reaches the API only when it is on the same site as the web app: serve it
 under the web app's registrable domain, or under `/api` of the web app's origin as Lite
 does, over HTTPS. The cookies are scoped to the API's host, whatever the port, so a
 deployment serves the API on a host of its own that no other server shares. On localhost

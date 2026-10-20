@@ -3,10 +3,9 @@
 A session is a random token (256 bits) that the client holds and whose SHA-256 hash the
 session table stores. How a request carries it depends on the client:
 
-- The web app and the admin panel are browsers: their session is an HttpOnly cookie,
-  `__Host-ws_session` and `__Host-ws_admin`. Every request that rides one names its client
-  in the `X-Workspace-Client` header ("web" or "admin"), which picks the cookie. A session
-  is never accepted as a bearer.
+- The web app is a browser: its session is the HttpOnly cookie `__Host-ws_session`. Every
+  request that rides it names the web app in the `X-Workspace-Client` header ("web"). A
+  session is never accepted as a bearer.
 - The default Copilot acts for the signed-in user with an agent token, a bearer that GET
   /app/user, PUT /app/usage and POST /app/copilot/authorize accept and nothing else.
 
@@ -52,27 +51,22 @@ credentials_exception = HTTPException(
     headers={"WWW-Authenticate": "Bearer"},
 )
 
-# The session cookies, one per browser client, and the cookie of a pending two-factor
-# enrollment (POST /totp and POST /totp/activate only)
+# The web app's session cookie, and the cookie of a pending two-factor enrollment (POST
+# /totp and POST /totp/activate only)
 SESSION_COOKIE = "__Host-ws_session"
-ADMIN_COOKIE = "__Host-ws_admin"
 TOTP_COOKIE = "__Host-ws_totp"
 CLIENT_HEADER = "X-Workspace-Client"
 WEB_CLIENT = "web"
-ADMIN_CLIENT = "admin"
-CLIENT_COOKIES = {WEB_CLIENT: SESSION_COOKIE, ADMIN_CLIENT: ADMIN_COOKIE}
 
 # Session sources: who signed in
 WEB_SOURCES = ("app", "oauth-app")
-ADMIN_SOURCE = "admin"
 # A pending two-factor enrollment, by the web app's sign-in it finishes
 TOTP_ENROLL_SOURCES = {"app": "totp-enroll", "oauth-app": "totp-enroll-oauth"}
 
-CredentialKind = Literal["web", "admin", "totp"]
+CredentialKind = Literal["web", "totp"]
 # The sessions each way of carrying a token may hold
 CREDENTIAL_SOURCES: dict[CredentialKind, tuple[str, ...]] = {
     "web": WEB_SOURCES,
-    "admin": (ADMIN_SOURCE,),
     "totp": tuple(TOTP_ENROLL_SOURCES.values()),
 }
 
@@ -254,11 +248,13 @@ def clearing_cookie(refusal: HTTPException, name: str) -> HTTPException:
     )
 
 
-def check_browser_sign_in(request: Request, client: str) -> None:
-    """A sign-in that hands out a session cookie comes from the client's page, which names
-    the client (its origin is an allowed one, as every request's is)."""
-    if request.headers.get(CLIENT_HEADER) != client:
-        raise HTTPException(400, detail=f'Sign in with the {CLIENT_HEADER} header "{client}"')
+def check_browser_sign_in(request: Request) -> None:
+    """A sign-in that hands out the session cookie comes from the web app's page, which
+    names the web app (its origin is an allowed one, as every request's is)."""
+    if request.headers.get(CLIENT_HEADER) != WEB_CLIENT:
+        raise HTTPException(
+            400, detail=f'Sign in with the {CLIENT_HEADER} header "{WEB_CLIENT}"'
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -274,32 +270,28 @@ class Credential:
 
 
 def read_credential(request: Request, *, enrollment: bool = False) -> Credential:
-    """The session token of a request: the cookie that its X-Workspace-Client header
-    names. With `enrollment` (POST /totp and POST /totp/activate), a web client's pending
-    two-factor enrollment cookie comes first."""
-    client = request.headers.get(CLIENT_HEADER)
-    if client not in CLIENT_COOKIES:
+    """The session token of a request: the web app's cookie, on a request whose
+    X-Workspace-Client header names the web app. With `enrollment` (POST /totp and POST
+    /totp/activate), a pending two-factor enrollment cookie comes first."""
+    if request.headers.get(CLIENT_HEADER) != WEB_CLIENT:
         raise credentials_exception
-    if enrollment and client == WEB_CLIENT and (token := request.cookies.get(TOTP_COOKIE)):
+    if enrollment and (token := request.cookies.get(TOTP_COOKIE)):
         return Credential("totp", token)
-    if not (token := request.cookies.get(CLIENT_COOKIES[client])):
+    if not (token := request.cookies.get(SESSION_COOKIE)):
         raise credentials_exception
-    return Credential("web" if client == WEB_CLIENT else "admin", token)
+    return Credential("web", token)
 
 
 def session_filters(
     credential: Credential, app_session: bool = False
 ) -> list[ColumnElement[bool]]:
     """The session a credential holds: its hash, of a source it may carry, of a user who
-    is not deleted. An admin panel session holds only while its user is a superuser: one
-    who no longer is has no panel session left."""
+    is not deleted."""
     filters = [
         models.Session.token_hash == crypto.hash_token(credential.token),
         models.Session.source.in_(credential.sources),
         models.User.deleted.is_(False),
     ]
-    if credential.kind == ADMIN_CLIENT:
-        filters.append(models.User.is_superuser.is_(True))
     if app_session:
         filters.append(models.Session.app_session.is_(True))
     return filters

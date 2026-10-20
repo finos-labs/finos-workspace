@@ -22,7 +22,7 @@ import pytest
 from uuid import uuid4
 from sqlalchemy import text
 
-from tests.fixtures.base import ADMIN_HEADERS
+from tests.fixtures.base import WEB_HEADERS
 
 
 class TestEmailValidation:
@@ -32,7 +32,7 @@ class TestEmailValidation:
     async def test_email_invalid_format_no_at(self, client):
         """Email without @ should fail validation"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={"email": "invalidemail.com", "password": "ValidPassword123!"},
         )
         assert response.status_code == 422
@@ -45,7 +45,7 @@ class TestEmailValidation:
     async def test_email_invalid_format_no_domain(self, client):
         """Email without domain should fail validation"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={"email": "invalid@", "password": "ValidPassword123!"},
         )
         assert response.status_code == 422
@@ -58,7 +58,7 @@ class TestEmailValidation:
     async def test_email_invalid_format_spaces(self, client):
         """Email with spaces should fail validation"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={"email": "invalid email@test.com", "password": "ValidPassword123!"},
         )
         assert response.status_code == 422
@@ -78,7 +78,7 @@ class TestEmailValidation:
 
         for email in malicious_emails:
             response = await client.post(
-                "/login",
+                "/app/login",
                 json={"email": email, "password": "ValidPassword123!"},
             )
             # Rejected by validation or by the credential check, never a 500
@@ -100,7 +100,7 @@ class TestEmailValidation:
 
         for email in xss_emails:
             response = await client.post(
-                "/login",
+                "/app/login",
                 json={"email": email, "password": "ValidPassword123!"},
             )
             # Rejected by validation or by the credential check, never a 500
@@ -117,7 +117,7 @@ class TestEmailValidation:
 
         for email in unicode_emails:
             response = await client.post(
-                "/login",
+                "/app/login",
                 json={"email": email, "password": "ValidPassword123!"},
             )
             # May be a valid internationalized email (unknown user) or a validation error
@@ -131,7 +131,7 @@ class TestPasswordValidation:
     async def test_password_min_length_7_chars_fails(self, client):
         """Password with 7 chars should fail (min is 8)"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "Short1!",  # 7 chars
@@ -145,12 +145,12 @@ class TestPasswordValidation:
     async def test_password_min_length_8_chars_succeeds(self, client):
         """Password with exactly 8 chars should pass validation"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "Valid12!",  # 8 chars
             },
-            headers=ADMIN_HEADERS,
+            headers=WEB_HEADERS,
         )
         # Passes validation and reaches the credential check
         assert response.status_code == 401
@@ -159,7 +159,7 @@ class TestPasswordValidation:
     async def test_password_empty_fails(self, client):
         """Empty password should fail validation"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "",
@@ -175,7 +175,7 @@ class TestPasswordValidation:
     async def test_password_whitespace_only_fails(self, client):
         """Password with only whitespace should fail or be rejected"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "        ",  # 8 spaces
@@ -188,7 +188,7 @@ class TestPasswordValidation:
     async def test_password_unicode_characters(self, client):
         """Password with unicode characters should be handled"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "Pässwörd123!",  # Unicode chars
@@ -202,7 +202,7 @@ class TestPasswordValidation:
         """Very long password should be handled"""
         long_password = "A" * 1000 + "1!"
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": long_password,
@@ -264,7 +264,7 @@ class TestJSONPayloadValidation:
     @pytest.mark.asyncio
     async def test_missing_required_fields(self, client):
         """Missing required fields should return 422"""
-        response = await client.post("/login", json={})
+        response = await client.post("/app/login", json={})
         assert response.status_code == 422
         data = response.json()
         assert "detail" in data
@@ -288,7 +288,7 @@ class TestJSONPayloadValidation:
     async def test_wrong_type_for_field(self, client):
         """Wrong type for field should return 422"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": 12345,  # Should be string
                 "password": ["array", "not", "string"],
@@ -300,7 +300,7 @@ class TestJSONPayloadValidation:
     async def test_null_values_for_required_fields(self, client):
         """Null values for required fields should return 422"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={"email": None, "password": None},
         )
         assert response.status_code == 422
@@ -338,7 +338,7 @@ class TestJSONPayloadValidation:
     async def test_invalid_json_syntax(self, client):
         """Invalid JSON syntax should return appropriate error"""
         response = await client.post(
-            "/login",
+            "/app/login",
             content=b'{"email": "test@test.com", "password": }',  # Invalid JSON
             headers={"Content-Type": "application/json"},
         )
@@ -353,7 +353,7 @@ class TestContentTypeValidation:
     async def test_missing_content_type_for_json_endpoint(self, client):
         """Missing Content-Type for JSON endpoint should be handled"""
         response = await client.post(
-            "/login",
+            "/app/login",
             content=b'{"email": "test@test.com", "password": "password123"}',
             # No Content-Type header
         )
@@ -364,7 +364,7 @@ class TestContentTypeValidation:
     async def test_wrong_content_type(self, client):
         """Wrong Content-Type should be handled"""
         response = await client.post(
-            "/login",
+            "/app/login",
             content=b'{"email": "test@test.com", "password": "password123"}',
             headers={"Content-Type": "text/plain"},
         )

@@ -134,7 +134,7 @@ async def logout(
         await auth_helpers.delete_user_app_sessions(
             db, session.user_uuid, ["app", "oauth-app"]
         )
-    auth_helpers.clear_session_cookie(response, auth_helpers.CLIENT_COOKIES[credential.kind])
+    auth_helpers.clear_session_cookie(response, auth_helpers.SESSION_COOKIE)
     return SuccessReturn(success=True)
 
 
@@ -214,7 +214,7 @@ async def login(
     """Signs in. The web app's session is the `__Host-ws_session` cookie and the answer
     carries no token."""
     source = user.source or "app"
-    auth_helpers.check_browser_sign_in(request, auth_helpers.WEB_CLIENT)
+    auth_helpers.check_browser_sign_in(request)
 
     if not (
         result := (await db.execute(helpers.get_app_user_query(user.email))).first()
@@ -470,7 +470,7 @@ async def post_reset_password(
     """Sets the password of the user an administrator's password reset link was issued
     for (POST /admin/reset-password/{user_uuid}). The link is used up, every session of
     the user ends, and the user signs in with the new password."""
-    auth_helpers.check_browser_sign_in(request, auth_helpers.WEB_CLIENT)
+    auth_helpers.check_browser_sign_in(request)
     user_uuid = await auth_helpers.take_password_reset(reset.token)
     result = (
         None
@@ -496,7 +496,7 @@ async def post_reset_password(
 async def post_sign_in_nonce(request: Request, response: Response):
     """The nonce for the web app's next sign-in with Microsoft or Okta, which only this
     browser can use, once, within five minutes (api/sign_in_providers.py)."""
-    auth_helpers.check_browser_sign_in(request, auth_helpers.WEB_CLIENT)
+    auth_helpers.check_browser_sign_in(request)
     return schemas.SignInNonce(
         nonce=await sign_in_providers.issue_sign_in_nonce(response)
     )
@@ -514,7 +514,7 @@ async def oauth_auth(
     """Endpoint for OAuth Authentication, both for sign-in and sign-up. The provider's
     token must have been issued to this deployment's client, and Microsoft's or Okta's ID
     token must carry this browser's sign-in nonce (api/sign_in_providers.py)."""
-    auth_helpers.check_browser_sign_in(request, auth_helpers.WEB_CLIENT)
+    auth_helpers.check_browser_sign_in(request)
     if provider == "google":
         identity = await sign_in_providers.google_identity(data.token)
         return await handle_oauth_user(request, response, db, identity, data)

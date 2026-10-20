@@ -66,9 +66,9 @@ app = FastAPI(
     generate_unique_id_function=lambda route: route.name,
 )
 
-# Only the web app and the admin panel, by their exact origins, may read answers and send
-# the session cookies. Their client header (auth_helpers.CLIENT_HEADER) needs this
-# preflight, so no other origin can make a request that rides a session cookie.
+# Only the web app, by its exact origins, may read answers and send the session cookie. Its
+# client header (auth_helpers.CLIENT_HEADER) needs this preflight, so no other origin can
+# make a request that rides the session cookie.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.settings.BACKEND_CORS_ORIGINS,

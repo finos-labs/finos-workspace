@@ -819,9 +819,9 @@ class GeneralSettings(BaseModel):
     RQ_TIMEOUT: int = 10
     CLEAR_UNCONFIRMED_FILES_DATE: str = "2024-10-07"
     WORKSPACE_AUTH_TOKEN: str | None = None
-    # The origins of the web app and the admin panel, exactly as the browser sends them
-    # (scheme, host and port). Their session cookies are accepted only from them. Required:
-    # there is no default and no wildcard.
+    # The origins of the web app, exactly as the browser sends them (scheme, host and
+    # port). Its session cookie is accepted only from them. Required: there is no default
+    # and no wildcard.
     BACKEND_CORS_ORIGINS: list[str] | str
     # Origins matching this regular expression are allowed as well, for hosts that
     # can't be listed ahead of time, such as a preview per pull request. The whole
@@ -859,8 +859,8 @@ class GeneralSettings(BaseModel):
     def check_cors_origins(cls, origins: list[str]) -> list[str]:
         if not origins:
             raise ValueError(
-                "BACKEND_CORS_ORIGINS must name the origins of the web app and the admin "
-                'panel, e.g. ["http://localhost:3000", "http://localhost:3001"]'
+                "BACKEND_CORS_ORIGINS must name the origins of the web app, "
+                'e.g. ["http://localhost:3000"]'
             )
         return check_origins("BACKEND_CORS_ORIGINS", origins)
 

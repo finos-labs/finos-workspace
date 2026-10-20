@@ -7,7 +7,6 @@ The backend and admin tooling of Workspace.
 | Directory | Description |
 |---|---|
 | `backend/` | FastAPI application: API server, database models, migrations, background workers |
-| `admin_frontend/` | Admin dashboard (Vite + React); the root `docker-compose.yml` serves it on port 3001 |
 
 ## Getting started
 

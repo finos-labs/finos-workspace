@@ -20,7 +20,7 @@ from utilities.log_helpers import MASK, redact
     [
         ("Request headers: {'authorization': 'Bearer abc.def'}", "abc.def"),
         ("{'cookie': '__Host-ws_session=SESSIONVALUE; theme=dark'}", "SESSIONVALUE"),
-        ("{'set-cookie': '__Host-ws_admin=ADMINVALUE; Path=/'}", "ADMINVALUE"),
+        ("{'set-cookie': '__Host-ws_totp=TOTPVALUE; Path=/'}", "TOTPVALUE"),
         ("{'x-workspace-authorization': 'Bearer service.jwt'}", "service.jwt"),
         ("{'x-metering-authorization': 'Bearer metering.jwt'}", "metering.jwt"),
         ("{'x-api-key': 'backend-key-1'}", "backend-key-1"),
@@ -142,7 +142,7 @@ async def test_validation_errors_do_not_log_the_request_body():
             headers={"Origin": "http://test"},
         ) as client:
             response = await client.post(
-                "/login",
+                "/app/login",
                 json={"email": "user@mail.test", "password": "weak-pass-in-body"},
             )
     finally:

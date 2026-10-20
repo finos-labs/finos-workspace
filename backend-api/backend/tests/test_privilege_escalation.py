@@ -602,7 +602,7 @@ class TestRateLimitBypass:
             client.headers.update(headers)
             # Make requests - rate limits should still apply
             response = await client.post(
-                "/login",
+                "/app/login",
                 json={"email": "test@test.com", "password": "wrong"},
             )
             # Should get 401 (invalid login) not 200 (bypassed)

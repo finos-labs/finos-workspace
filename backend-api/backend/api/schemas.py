@@ -251,14 +251,6 @@ class PreSignedUrlReturn(BaseModel):
     original_file_name: str
 
 
-class AdminSession(BaseModel):
-    """Who is signed in to the admin panel (POST /login, GET /session)."""
-
-    model_config = main_config
-    email: str
-    is_superuser: bool
-
-
 class AgentToken(BaseModel):
     """A token for the default Copilot to act for the signed-in user (POST
     /app/copilot/token). It is accepted on GET /app/user, PUT /app/usage and POST
@@ -677,8 +669,11 @@ class UserCreateAppAdmin(BaseModel):
 
 
 class UserUpdateAdmin(BaseModel):
+    """PUT /entity/user/{user_uuid}: the permission map (an entity's user type) the user
+    moves to."""
+
     model_config = main_config
-    permissions_uuid: None | str = None
+    permissions_uuid: UUID
 
 
 class TotpToken(BaseModel, extra="forbid"):  # type: ignore[call-arg]

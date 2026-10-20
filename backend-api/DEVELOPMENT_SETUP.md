@@ -20,23 +20,21 @@ For local Docker development the important host-facing values are:
 
 ```ini
 MODE=production
-BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:3001","http://localhost:1420","http://localhost:5173"]
+BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:1420"]
 ```
 
-`BACKEND_CORS_ORIGINS` names the origins of the web app and the admin panel exactly as the
-browser sends them (here: the compose stack's web app and admin panel, and their dev
-servers); it is required. Only these origins pass CORS, and the session cookies are accepted
-only from them. An MCP server on a
+`BACKEND_CORS_ORIGINS` names the origins of the web app exactly as the browser sends them
+(here: the compose stack's web app and its dev server); it is required. Only these origins
+pass CORS, and the session cookie is accepted only from them. An MCP server on a
 private network (a compose service, a host on your LAN) must be listed by host name in
 `ALLOWED_MCP_HOSTNAMES`, because the API reaches users' MCP servers only at public
 addresses.
 
-The web app and the admin panel keep their sessions in HttpOnly cookies
-(`__Host-ws_session`, `__Host-ws_admin`), which browsers send to the API only when it is
-on the same site as the page. In a deployment, serve the API under the web app's
+The web app keeps its session in an HttpOnly cookie (`__Host-ws_session`), which browsers
+send to the API only when it is on the same site as the page. In a deployment, serve the API under the web app's
 registrable domain (for example `api.<your-domain>` beside `app.<your-domain>`), or under
 `/api` of the web app's own origin as Lite does, and use HTTPS. On `http://localhost`,
-Chromium and Firefox accept these secure cookies.
+Chromium and Firefox accept this secure cookie.
 
 `docker-compose-local-dev.yml` overrides `DB_HOST` and `REDIS_HOST` inside the
 API and RQ worker containers to use Docker networking (`mysql`, `redis`), so the
@@ -208,8 +206,7 @@ cd backend
   header; a service from anywhere else sends it.
 
 - Sessions are random tokens whose SHA-256 hash the `session` table stores. The web app
-  (`X-Workspace-Client: web`) and the admin panel (`X-Workspace-Client: admin`) ride
-  their HttpOnly cookies; no session is a bearer token. A session expires when its time is
+  (`X-Workspace-Client: web`) rides its HttpOnly cookie; no session is a bearer token. A session expires when its time is
   up, with no grace period.
 
 - `user_create.json` is both an output of `init_users.py` and an input to

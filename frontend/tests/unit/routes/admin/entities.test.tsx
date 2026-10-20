@@ -17,6 +17,9 @@ vi.mock("~/components/AdminEntities/EntityRelationshipsTab", () => ({
 vi.mock("~/components/AdminEntities/EntityMapsTab", () => ({
   EntityMapsTab: () => <p>maps tab</p>,
 }));
+vi.mock("~/components/AdminEntities/UsersTab", () => ({
+  UsersTab: () => <p>users tab</p>,
+}));
 vi.mock("~/components/General/BrandedLoadingState", () => ({
   default: () => <p>loading</p>,
 }));
@@ -66,6 +69,7 @@ describe("AdminEntities page", () => {
 
     expect(screen.getByText("Entity Management")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Entity types" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "All users" })).toBeInTheDocument();
     expect(screen.getByText("entities tab")).toBeInTheDocument();
   });
 });

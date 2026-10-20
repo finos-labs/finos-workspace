@@ -280,7 +280,8 @@ async def remove_from_entity(
 
 async def move_user(db: AsyncSession, user_uuid: UUID, permissions_uuid: UUID) -> None:
     """The user takes the user type `permissions_uuid` is, of its entity. Leaving an entity
-    takes their shares and roles with it; every web session of the user ends."""
+    takes their shares and roles with it, and they get the new entity's Agent User, as a
+    new user of it does; every web session of the user ends."""
     old_entity_query = (
         select(PermissionsEntityMap.entity_uuid)
         .join(User, User.permissions_uuid == PermissionsEntityMap.uuid)
@@ -291,8 +292,12 @@ async def move_user(db: AsyncSession, user_uuid: UUID, permissions_uuid: UUID) -
         PermissionsEntityMap.uuid == permissions_uuid
     )
     new_entity_uuid = (await db.execute(new_entity_query)).scalar_one_or_none()
+    if new_entity_uuid is None:
+        raise HTTPException(404, detail="Permission map not found")
     response = await db.execute(
-        update(User).where(User.uuid == user_uuid).values(permissions_uuid=permissions_uuid)
+        update(User)
+        .where(User.uuid == user_uuid, User.deleted.is_(False))
+        .values(permissions_uuid=permissions_uuid)
     )
     await db.commit()
     if response.rowcount == 0:  # type: ignore
@@ -304,12 +309,22 @@ async def move_user(db: AsyncSession, user_uuid: UUID, permissions_uuid: UUID) -
         await crud.remove_shares_both_ways(db, user_uuid)
         await crud.update_user_dashboards_new_entity(db, user_uuid, new_entity_uuid)
         await app_helpers.left_organization(db, user_uuid)
+        await app_helpers.give_default_roles(
+            db, user_uuid, permissions_uuid, [app_helpers.AGENT_USER_ROLE]
+        )
+        await db.commit()
+        await app_helpers.roles_changed(db, [user_uuid])
 
     await auth_helpers.delete_user_app_sessions(db, user_uuid, ["app", "oauth-app"])
 
 
 def users_query(email: str = "") -> Select:
-    query = select(User.uuid, User.email, User.permissions_uuid)
+    """The users that are not deleted, by email; those whose email contains `email`."""
+    query = (
+        select(User.uuid, User.email, User.permissions_uuid)
+        .where(User.deleted.is_(False))
+        .order_by(User.email)
+    )
     return query.where(User.email.contains(email)) if email else query
 
 

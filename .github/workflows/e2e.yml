@@ -45,7 +45,7 @@ jobs:
       # closest check on it is that her container is up, which compose's health check already is.
       - name: Wait for the stack
         run: |
-          for url in http://localhost:8000/health http://localhost:3000/ http://localhost:3001/ http://localhost:7777/status; do
+          for url in http://localhost:8000/health http://localhost:3000/ http://localhost:7777/status; do
             for _ in $(seq 1 60); do
               curl -fsS -o /dev/null "$url" && break
               sleep 5

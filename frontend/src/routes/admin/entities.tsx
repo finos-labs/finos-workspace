@@ -4,6 +4,7 @@ import { EntitiesTab } from "~/components/AdminEntities/EntitiesTab";
 import { EntityMapsTab } from "~/components/AdminEntities/EntityMapsTab";
 import { EntityRelationshipsTab } from "~/components/AdminEntities/EntityRelationshipsTab";
 import { EntityTypesTab } from "~/components/AdminEntities/EntityTypesTab";
+import { UsersTab } from "~/components/AdminEntities/UsersTab";
 import BrandedLoadingState from "~/components/General/BrandedLoadingState";
 import { SettingsLayout } from "~/components/LayoutAuth/Skeleton/SettingsLayout";
 import { useIsEntityAdmin } from "~/hooks/useEntityAdmin";
@@ -13,6 +14,7 @@ const TABS = [
   { label: "Entity types", id: "entity-types", disabled: false },
   { label: "Relationships", id: "relationships", disabled: false },
   { label: "Permission maps", id: "permission-maps", disabled: false },
+  { label: "All users", id: "users", disabled: false },
 ];
 
 export default function AdminEntities() {
@@ -31,7 +33,7 @@ export default function AdminEntities() {
   return (
     <SettingsLayout
       title="Entity Management"
-      description="Organizations, whether they may share, and how they relate."
+      description="Organizations, whether they may share, how they relate, and their users."
       tabs={TABS}
       defaultTab="entities"
     >
@@ -46,6 +48,9 @@ export default function AdminEntities() {
       </TabsPrimitive.Content>
       <TabsPrimitive.Content value="permission-maps" className="outline-none">
         <EntityMapsTab />
+      </TabsPrimitive.Content>
+      <TabsPrimitive.Content value="users" className="outline-none">
+        <UsersTab />
       </TabsPrimitive.Content>
     </SettingsLayout>
   );

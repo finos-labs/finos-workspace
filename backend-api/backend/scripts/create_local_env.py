@@ -17,8 +17,8 @@ created from ``agent/.env.example`` when it is missing and otherwise only has th
     python -m scripts.create_local_env --admin-email <your-email> --force
     python -m scripts.create_local_env --admin-email <your-email> --config-only   # only the seed config
 
-The web app is served on port 3000, the admin panel on port 3001 and the API on port 8000, as
-in ``docker-compose.yml``. Only the standard library is needed.
+The web app is served on port 3000 and the API on port 8000, as in ``docker-compose.yml``.
+Only the standard library is needed.
 """
 
 import argparse
@@ -44,14 +44,9 @@ INES_TARGET = INES / ".env"
 
 WEB_URL = "http://localhost:3000"
 API_URL = "http://localhost:8000"
-# The browsers' origins the API serves: docker-compose.yml's web app and admin panel, the
-# dev server of local/compose.yaml and the admin panel's `vite` dev server.
-BACKEND_CORS_ORIGINS = [
-    WEB_URL,
-    "http://localhost:3001",
-    "http://localhost:1420",
-    "http://localhost:5173",
-]
+# The browsers' origins the API serves: docker-compose.yml's web app and the dev server of
+# local/compose.yaml.
+BACKEND_CORS_ORIGINS = [WEB_URL, "http://localhost:1420"]
 
 
 def _b64(data: bytes) -> str:

@@ -306,7 +306,7 @@ class TestTheLink:
         "headers",
         [
             {},
-            {auth_helpers.CLIENT_HEADER: "admin", "Origin": TEST_ORIGIN},
+            {auth_helpers.CLIENT_HEADER: "other", "Origin": TEST_ORIGIN},
             {auth_helpers.CLIENT_HEADER: "web", "Origin": "https://elsewhere.example"},
         ],
     )

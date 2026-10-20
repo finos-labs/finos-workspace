@@ -183,14 +183,12 @@ def test_the_seed_config_quotes_what_it_is_given():
     assert seed["admins"][0]["email"] == 'a"b\\@mail.test'
 
 
-def test_the_web_app_and_the_admin_panel_are_allowed_origins():
+def test_the_web_app_is_an_allowed_origin():
     values = local_env.settings("a-secret", "0123456789abcdef", "storage")
 
     assert json.loads(values["BACKEND_CORS_ORIGINS"]) == [
         "http://localhost:3000",
-        "http://localhost:3001",
         "http://localhost:1420",
-        "http://localhost:5173",
     ]
 
 

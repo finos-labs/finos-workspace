@@ -156,7 +156,7 @@ class TestItsThreeRoutes:
                 ("POST", "/app/copilot/token"),
                 ("GET", "/admin/role"),
                 ("GET", "/entity/entity-type"),
-                ("POST", "/logout"),
+                ("POST", "/app/logout"),
             ):
                 response = await agent.request(method, path)
                 assert response.status_code == 401, (method, path, response.text)

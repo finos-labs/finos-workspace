@@ -234,12 +234,12 @@ class TestAppLogin:
 
 
 class TestLogout:
-    """Tests for POST /logout endpoint"""
+    """Tests for POST /app/logout endpoint"""
 
     @pytest.mark.asyncio
     async def test_logout_unauthenticated(self, client):
         """Logout without auth should return 401 or 403"""
-        response = await client.post("/logout")
+        response = await client.post("/app/logout")
         assert response.status_code in {401, 403}
         data = response.json()
         assert "detail" in data
@@ -247,7 +247,7 @@ class TestLogout:
     @pytest.mark.asyncio
     async def test_logout_authenticated(self, auth_client):
         """Logout with valid session should return 200 with success=True"""
-        response = await auth_client.post("/logout")
+        response = await auth_client.post("/app/logout")
         assert response.status_code == 200
         data = response.json()
         assert data.get("success") is True
@@ -255,7 +255,7 @@ class TestLogout:
     @pytest.mark.asyncio
     async def test_logout_is_not_a_get(self, auth_client):
         """Signing out changes state, so it is never a GET: there is no such route"""
-        response = await auth_client.get("/logout")
+        response = await auth_client.get("/app/logout")
         assert response.status_code in {404, 405}
         assert (await auth_client.get("/app/user")).status_code == 200
 

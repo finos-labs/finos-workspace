@@ -17,7 +17,7 @@ Each component keeps its own README with setup and development instructions.
 ## Running the whole stack
 
 `docker-compose.yml` builds and starts everything: MySQL, Redis, the API, the background
-worker, the web app, the admin panel, Ines, the Copilot's agent, and the MCP server with the tools she uses.
+worker, the web app, Ines, the Copilot's agent, and the MCP server with the tools she uses.
 
 ```bash
 (cd backend-api/backend && python3 -m scripts.create_local_env --admin-email <your-email>)
@@ -30,8 +30,7 @@ docker compose up --build        # on Apple silicon: PLATFORM=linux/arm64 docker
 - `envs/.env` starts from `envs/.env.example`, points it at the compose services and fills in
   random keys: `JWT_SECRET`, `WORKSPACE_AUTH_TOKEN` (a JWT signed with it), `WORKSPACE_AES_KEY`
   (32 bytes, base64url: it encrypts the credentials stored in the database) and
-  `LOCAL_STORAGE_SECRET_KEY`. It names the origins of the web app and the admin panel in
-  `BACKEND_CORS_ORIGINS`.
+  `LOCAL_STORAGE_SECRET_KEY`. It names the origins of the web app in `BACKEND_CORS_ORIGINS`.
 - `scripts/cfgs/config.toml` names the organization (`--entity-name`) and the administrator that
   the first start creates. It holds no password.
 - `user_create.json` starts empty. Compose mounts it into the containers and the first start fills it in.
@@ -41,8 +40,7 @@ docker compose up --build        # on Apple silicon: PLATFORM=linux/arm64 docker
 
 It refuses to overwrite the first two unless you pass `--force`; `--force` also gives Ines a new metering token.
 
-The web app is on <http://localhost:3000>, the admin panel on <http://localhost:3001>, the API on <http://localhost:8000> and
-Ines on <http://localhost:7777>. The MCP server and the metrics ports publish nothing: the web app reaches the tools through the API,
+The web app is on <http://localhost:3000>, the API on <http://localhost:8000> and Ines on <http://localhost:7777>. The MCP server and the metrics ports publish nothing: the web app reaches the tools through the API,
 and Prometheus reaches the metrics from inside the deployment. The first start
 creates the organization and the administrator listed in
 `backend-api/backend/scripts/cfgs/config.toml`, without a password. Set it (typed twice, not shown):
@@ -80,7 +78,7 @@ panel, are used when the images are built, so changing them needs `docker compos
 | Variable | Default | What it does |
 |---|---|---|
 | `PLATFORM` | `linux/amd64` | CPU architecture the api, worker and web images are built for. Use `linux/arm64` on Apple silicon. |
-| `API_URL` | `http://localhost:8000` | The API's address as the browser sees it. It becomes `BACKEND_URL` of the web container and is built into the admin panel (`VITE_API_URL`). Set `SELFURL` in `envs/.env` to the same address. |
+| `API_URL` | `http://localhost:8000` | The API's address as the browser sees it. It becomes `BACKEND_URL` of the web container. Set `SELFURL` in `envs/.env` to the same address. |
 | `AI_API_URL` | `http://localhost:7777` | Ines's address as the browser sees it. The browser calls her directly. |
 | `WEB_URL` | unset: every origin | The web app's address as the browser sees it. When set, Ines allows requests from this origin only (`INES_CORS_ORIGINS`); unset, she allows every origin. The browser calls Ines directly, so the origin is whatever address you opened the web app on — `localhost`, `127.0.0.1`, your machine's address on the network, a tunnel — and an origin she does not allow is a Copilot that fails with nothing in the interface to say why. A developer machine cannot know which address you will use, and the API allows every origin here too (`DISABLE_CORS=1`), so the default matches it. Set it for a deployment: Ines refuses to start with users and no origins at all. It is also the Origin of Ines's calls to the API (`WORKSPACE_ORIGIN`), `http://localhost:3000` when unset. |
 | `AI_COPILOT_ENABLED` | `true` | Shows the Copilot panel. Must be `true` or `false`. |
@@ -147,7 +145,7 @@ an origin it does not allow: with `DISABLE_CORS=0`, list it in `BACKEND_CORS_ORI
 | `DEFAULT_MODEL` | always; no default | The model, written `<provider>:<model>` where `<model>` is whatever that provider calls it. Every call the agent makes uses it unless the user picks another model in the Workspace settings. |
 | `NVIDIA_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY` | the one of the provider `DEFAULT_MODEL` names | Registers the provider with the prefix `nvidia:`, `openai:`, `openrouter:` or `groq:`. A provider without a key is left out, and a model that names it fails with "No provider for model". |
 | `OLLAMA_BASE_URL` | for `ollama:` models | Default `http://localhost:11434/api`. Inside the container `localhost` is the container itself, so for Ollama on your machine use `http://host.docker.internal:11434/api`. |
-| `INES_MODELS` | optional | More models users may pick, comma-separated, written the same way. Ines offers `DEFAULT_MODEL` and these, and refuses any other: the keys are the operator's, so a user cannot spend them on a model the operator did not choose. The role grants in the admin panel choose among them. |
+| `INES_MODELS` | optional | More models users may pick, comma-separated, written the same way. Ines offers `DEFAULT_MODEL` and these, and refuses any other: the keys are the operator's, so a user cannot spend them on a model the operator did not choose. The role grants (Admin → Roles, a role's Copilot access) choose among them. |
 | `INES_TRANSCRIBE_MODEL` | for dictation | The model that turns what a user says into the text of a question, written `<provider>:<model>` with that provider's key: `groq` (e.g. `groq:whisper-large-v3-turbo`), `openai` (e.g. `openai:gpt-4o-mini-transcribe`) or `nvidia`, NVIDIA's hosted speech models named as on build.nvidia.com (e.g. `nvidia:openai/whisper-large-v3`). The web app records in any browser and Ines transcribes; unset, the chat has no microphone. |
 | `INES_METERING_TOKEN`, `INES_SCOPE_SECRET` | `create_local_env` writes them | The token with which Ines reports usage to the API (what `python -m scripts.create_metering_token` prints), and a secret of at least 16 characters that signs the chat scopes the tools receive (see below). Ines does not start without them. |
 | `INES_AUTH` | default `workspace` | `workspace`: every caller signs in with the API. `none`: no users and nothing counted, for a development machine only; Ines then logs a warning. |
@@ -176,7 +174,7 @@ The Workspace owns the users, their roles and their usage limits, and Ines asks 
 Every request to Ines (apart from `/agents.json`, `/status` and `/ready`) carries the user's session token, and the API says whose
 it is. For each question Ines then asks the API, with the token it trusts only the operator and Ines to hold:
 
-- **the model and the tools.** What the user's roles grant (admin panel, a role's Copilot access) is what Ines allows. A model the
+- **the model and the tools.** What the user's roles grant (Admin → Roles, a role's Copilot access) is what Ines allows. A model the
   roles do not grant is refused in the chat; a tool they do not grant is left out. Without a grant there is no access.
 - **the daily limit.** The first request of a turn is counted against the user's daily limit of questions, and the tokens it
   used are added to their daily tokens; when a limit is reached the chat says so in the API's words. Setting the limits is the
@@ -232,8 +230,7 @@ it does not answer.
 ## Notes
 
 - The workflows in the root `.github/workflows/` are the ones GitHub Actions runs: the checks on pull requests
-  (`frontend-checks.yml`, `backend-checks.yml`, `admin-frontend-checks.yml`,
-  `pr-description.yml`), the end-to-end tests (`e2e.yml`), the Docker images and build check (`backend-image.yml`,
+  (`frontend-checks.yml`, `backend-checks.yml`, `pr-description.yml`), the end-to-end tests (`e2e.yml`), the Docker images and build check (`backend-image.yml`,
   `frontend-image.yml`, `pr-build-check.yml`), the deployment to the dev environment (`deploy-dev.yml`, which builds
   the images and deploys them) and the production frontend deployment (`prod-deploy.yml`). The app's settings are
   defaults in its code; the values the dev environment sets differently are in the infrastructure repository. Each deployment file's header lists the repository variables and

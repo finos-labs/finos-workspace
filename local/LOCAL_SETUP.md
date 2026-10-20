@@ -2,7 +2,7 @@
 
 Everything for working on the app on your own machine lives in this folder. One command starts the frontend, the backend API and its worker, MySQL and Redis, and code edits show up without restarting anything.
 
-To run the built images instead (web app, admin panel and API, as a user would), use `docker-compose.yml` at the repository root; its [README section](../README.md#running-the-whole-stack) explains it. The two stacks use port 8000, so run one at a time.
+To run the built images instead (web app and API, as a user would), use `docker-compose.yml` at the repository root; its [README section](../README.md#running-the-whole-stack) explains it. The two stacks use port 8000, so run one at a time.
 
 ## Before you start
 
@@ -56,8 +56,6 @@ Without `make`, use Docker Compose directly from this folder: `docker compose up
 | `mysql` | 3306 | Database, user `root`, password `root`, database `workspace` |
 | `redis` | 6379 | Cache and job queue |
 
-The admin panel (`backend-api/admin_frontend`) is not part of this stack; it runs in the root `docker-compose.yml`.
-
 ## Making changes
 
 - Frontend code: the browser reloads on save.
@@ -79,7 +77,7 @@ The backend reads `backend-api/backend/envs/.env`, the same file the root `docke
 | `DB_NAME` | `workspace` | The database the MySQL container creates |
 | `STORAGE_PROVIDER` | `folder` | Uploaded files go to `backend-api/backend/local_storage/` instead of cloud storage |
 | `JWT_SECRET`, `WORKSPACE_AES_KEY`, `WORKSPACE_AUTH_TOKEN`, `LOCAL_STORAGE_SECRET_KEY` | generated | `WORKSPACE_AUTH_TOKEN` is a JWT signed with `JWT_SECRET`; the example leaves them blank, and the API refuses to start without strong values |
-| `BACKEND_CORS_ORIGINS` | `http://localhost:3000`, `:3001`, `:1420`, `:5173` | The origins of the web app and the admin panel: the root `docker-compose.yml`'s, this stack's dev server and the admin panel's |
+| `BACKEND_CORS_ORIGINS` | `http://localhost:3000`, `:1420` | The origins of the web app: the root `docker-compose.yml`'s and this stack's dev server |
 
 `compose.yaml` overrides `FRONTENDURL` and `APPURL` with `http://localhost:1420`, the address of the dev server, so links and redirects point at it. The dev server on another port reaches the API because `http://localhost:1420` is one of `BACKEND_CORS_ORIGINS`. An MCP server on your machine or network that the API should reach goes in `ALLOWED_MCP_HOSTNAMES` (see `envs/.env.example`).
 

@@ -36,6 +36,14 @@ export interface EntityMapItem {
   entity: Entity;
 }
 
+/** A user as a superuser's list of every user has them. */
+export interface EntityUser {
+  uuid: string;
+  email: string;
+  /** Their user type and its entity; none for a user removed from their organization. */
+  permissions: EntityMapItem | null;
+}
+
 export interface EntitySettings {
   require_authenticator: boolean;
 }
