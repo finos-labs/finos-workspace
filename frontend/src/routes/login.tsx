@@ -166,9 +166,9 @@ export default function LoginPage() {
               className="w-full space-y-6 force-light"
             >
               <img
-                className="max-h-[130px] rounded-none"
+                className="mx-auto block h-auto w-full max-w-[220px] object-contain"
                 src={getConfig().whiteLabel.loginImage}
-                alt="workspace"
+                alt="FINOS Workspace"
               />
               {authenticationAllowEmailLoginFF && (
                 <div>
