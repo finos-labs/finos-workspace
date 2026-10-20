@@ -29,9 +29,3 @@
 - #### Users, roles and entities
 
   Sign in with a password and an authenticator app, or with Google, Microsoft Entra ID or Okta. Administrators manage the users and roles of their organization, and a superuser manages entities with their seats, expiry and entitlements in the Admin area.
-
----
-
-- #### Excel add-in
-
-  The Excel add-in works with the accounts of your Workspace.

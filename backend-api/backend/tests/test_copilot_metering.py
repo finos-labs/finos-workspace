@@ -76,7 +76,6 @@ async def _give_limit(
             bring_your_own_copilot=False,
             admin_access=False,
             support=False,
-            excel_add_in=False,
             data_add_ons_redistribution=False,
         )
     )

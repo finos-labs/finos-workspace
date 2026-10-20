@@ -6,7 +6,6 @@ import type { ExportFns, MoveToOnSelectProps } from "./types";
 export function getExportFns(exportFns?: ExportFns) {
   const exportFunctions = [
     { value: "CSV", fn: exportFns?.csvFunction },
-    { value: "XLSX", fn: exportFns?.excelFunction },
     { value: "PNG", fn: exportFns?.pngFunction },
     { value: "PDF", fn: exportFns?.pdfFunction },
     { value: "TXT", fn: exportFns?.txtFunction },

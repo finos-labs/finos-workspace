@@ -71,5 +71,5 @@ If you find yourself designing one big monolithic widget with a custom UI inside
 ## Out of scope here
 
 - **Building AI Agent backends.** Agents are a separate backend surface (`/agents.json` + `/query` SSE), not the widget-backend surface this skill covers.
-- **Excel Add-in / PWA / enterprise deployment.** End-user / deployment surfaces, not authoring.
+- **PWA / enterprise deployment.** End-user / deployment surfaces, not authoring.
 - **Specific UI affordances (per-widget chat buttons, fullscreen, etc.).** Runtime features; check Workspace directly if you need to confirm one.

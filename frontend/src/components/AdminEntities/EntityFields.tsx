@@ -116,7 +116,6 @@ const FLAGS: { name: keyof EntitlementFormValues; label: string }[] = [
   },
   { name: "admin_access", label: "Admin access" },
   { name: "support", label: "Support" },
-  { name: "excel_add_in", label: "Excel add-in" },
   { name: "data_add_ons_redistribution", label: "Data add-ons redistribution" },
 ];
 

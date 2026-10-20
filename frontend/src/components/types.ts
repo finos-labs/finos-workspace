@@ -202,9 +202,6 @@ export type Widget = {
   sourceId?: string; // Source id for the widget.
   sourceName?: string; // Source name for the widget for external widgets.
 
-  // 🔹 Computed / Derived Data
-  excelDataFunction?: string[]; // Excel functions for the widget data.
-
   // 🔹 Runtime / Storage
   storage?: WidgetStorage;
 

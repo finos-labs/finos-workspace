@@ -15,8 +15,6 @@ import { getExportFns } from "./MoveToDropDown/utils";
 import Tooltip from "./Tooltip";
 import { useWidgetContext } from "./Widget.context";
 
-const excelAddInEnabled = import.meta.env.VITE_EXCEL_ADD_IN_ENABLED === "true";
-
 export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
   const { dispatch, settings, exportFns, onExport, isMinimized, onMinimizeToggle } =
     props;
@@ -134,26 +132,6 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
       );
     }
     // Full tier items
-    if (
-      excelAddInEnabled &&
-      settings?.showFunctions &&
-      widget?.connectionType === "advanced-backend"
-    ) {
-      fullTierItems.push(
-        <FeatureLock isLocked={!isFullTier} key={`${widget?.id}-excel-lock`}>
-          <DropdownMenuPrimitive.Item
-            key={`${widget?.id}-functions`}
-            className="ws-dropdown-item"
-            onSelect={() => {
-              dispatch({ functionsModal: true });
-            }}
-          >
-            <Icon id="excel-file" key={`${widget?.id}-functions-icon`} />
-            Excel formula
-          </DropdownMenuPrimitive.Item>
-        </FeatureLock>,
-      );
-    }
     if (settings?.showExport) {
       const isExportable = (widgetFromJSON?.exportable ?? widget?.exportable) !== false;
       fullTierItems.push(

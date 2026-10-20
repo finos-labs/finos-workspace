@@ -37,7 +37,6 @@ export interface EntityEntitlement {
   bring_your_own_copilot: boolean | null;
   admin_access: boolean | null;
   support: boolean | null;
-  excel_add_in: boolean | null;
   data_add_ons_redistribution: boolean | null;
   allow_custom_backends: boolean | null;
   /** The Copilot's tools for the web (SEARCH_WEB, FETCH_FROM_WEB): on unless false. */

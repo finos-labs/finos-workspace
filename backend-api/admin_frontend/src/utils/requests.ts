@@ -95,7 +95,6 @@ export interface EntitlementBase {
   bring_your_own_copilot: boolean | undefined;
   admin_access: boolean | undefined;
   support: boolean | undefined;
-  excel_add_in: boolean | undefined;
   data_add_ons_redistribution: boolean | undefined;
   // The Copilot's tools for the web: on unless switched off (empty is on).
   search_web: boolean | null | undefined;

@@ -1206,7 +1206,6 @@ def entitlement_sample(args: argparse.Namespace) -> None:
         "bring_your_own_copilot": True,
         "admin_access": True,
         "support": True,
-        "excel_add_in": True,
         "data_add_ons_redistribution": True,
         "bundle_name": "On-Premise",
         "allow_custom_backends": True,

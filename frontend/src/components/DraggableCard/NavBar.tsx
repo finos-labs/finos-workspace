@@ -43,7 +43,6 @@ import {
 } from "~/lib/utils/toast";
 import { linkifyText } from "~/utils/linkifyText";
 import EllipsisDropdownMenu from "../EllipsisDropdown";
-import FunctionsDialog from "../FunctionsDialogDraggableCard";
 import Icon from "../Icon";
 import type { IconId } from "../Icon.types";
 import { MetadataDialog } from "../MetadataDialogDraggableCard";
@@ -58,7 +57,6 @@ import GroupDropdown from "../Widgets/Helpers/GroupDropdown";
 export type DraggableState = {
   isFullscreen: boolean;
   settingsModal: boolean;
-  functionsModal: boolean;
   metadataModal: boolean;
   parametersModal: boolean;
   isMinimized: boolean;
@@ -67,7 +65,6 @@ export type DraggableState = {
 const initialState: DraggableState = {
   isFullscreen: false,
   settingsModal: false,
-  functionsModal: false,
   metadataModal: false,
   parametersModal: false,
   isMinimized: false,
@@ -119,7 +116,6 @@ export interface NavBarProps {
   settings?: {
     showMetadata?: boolean;
     showSettings?: boolean;
-    showFunctions?: boolean;
     showParameters?: boolean;
     showShare?: boolean;
     showDuplicate?: boolean;
@@ -131,7 +127,6 @@ export interface NavBarProps {
   };
   exportFns?: {
     csvFunction?: (title: string) => void;
-    excelFunction?: (title: string) => void;
     pngFunction?: (title: string) => void;
     pdfFunction?: (title: string) => void;
     txtFunction?: (title: string) => void;
@@ -368,7 +363,6 @@ const widgetDescriptionRegex = /file-.*/;
 const DefaultSettings = {
   showMetadata: true,
   showSettings: true,
-  showFunctions: true,
   showParameters: true,
   showShare: true,
   showDuplicate: true,
@@ -731,18 +725,11 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
     );
 
     const ellipsisSettings = useMemo(() => {
-      const hasFunctions =
-        !widgetRef?.current?.external &&
-        (widgetFromJSON?.excelDataFunction?.length ?? 0) > 0;
       const output = {
         ...settings,
         // we enable metadata if its one of our widgets
         showMetadata: ValidWidgetIds.includes(cleanWidgetId),
         showSettings: settingsChildren === null ? false : settings.showSettings,
-        showFunctions:
-          settings?.showFunctions !== undefined && hasFunctions
-            ? settings?.showFunctions
-            : hasFunctions || widgetRef?.current?.external,
         showMinimize: shouldShowMinimizeButton,
       };
 
@@ -750,8 +737,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
     }, [
       Object.values(settings || {}),
       settingsChildren === null,
-      widgetRef,
-      widgetFromJSON,
       cleanWidgetId,
       shouldShowMinimizeButton,
     ]);
@@ -1108,12 +1093,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                   extraActions={extraActions}
                   onSubmit={onSaveSettings}
                   className={settingsDialogClassName}
-                />
-              )}
-              {state.functionsModal && (
-                <FunctionsDialog
-                  open={state.functionsModal}
-                  setOpen={(value: boolean) => dispatch({ functionsModal: value })}
                 />
               )}
               {!isMobile && (
