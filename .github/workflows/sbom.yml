@@ -14,8 +14,11 @@ name: SBOM
 # lockfile does not record come from the npm registry and PyPI. The SBOMs carry
 # no serial number or timestamp, so the same dependencies give the same files.
 #
-# Needs the repository setting "Allow GitHub Actions to create and approve pull
-# requests" (Settings > Actions > General).
+# The branch and the pull request are pushed and opened as the openbq-sbom-bot
+# GitHub App (variable SBOM_APP_ID, secret SBOM_APP_PRIVATE_KEY), with a token
+# limited to this repository. GITHUB_TOKEN may not open pull requests here, and a
+# pull request it opens runs no workflows, so the SBOM pull request would get no
+# checks.
 on:
   push:
     branches:
@@ -33,9 +36,9 @@ concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
 
+# GITHUB_TOKEN only reads: the App's token does the writing.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 env:
   SYFT_VERSION: 1.54.1
@@ -47,7 +50,19 @@ jobs:
     name: Generate the SBOMs
     runs-on: ubuntu-latest
     steps:
+      - name: Get a token to push the SBOMs and open their pull request
+        id: token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SBOM_APP_ID }}
+          private-key: ${{ secrets.SBOM_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      # The checkout keeps the App's token, so the git push below uses it.
       - uses: actions/checkout@v7
+        with:
+          token: ${{ steps.token.outputs.token }}
 
       - name: Install Syft
         run: |
@@ -78,7 +93,8 @@ jobs:
 
       - name: Open a pull request with the SBOMs that changed
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          APP_SLUG: ${{ steps.token.outputs.app-slug }}
         run: |
           git add --all sbom
           pr=$(gh pr list --base develop --head "$BRANCH" --state open --json number --jq '.[].number')
@@ -93,8 +109,9 @@ jobs:
             echo "Pull request #$pr already has these SBOMs."
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # The commit is the App's bot user's, with GitHub's noreply address for it.
+          git config user.name "$APP_SLUG[bot]"
+          git config user.email "$(gh api "/users/$APP_SLUG%5Bbot%5D" --jq .id)+$APP_SLUG[bot]@users.noreply.github.com"
           git commit -m "Update the SBOMs"
           git push --force origin "HEAD:refs/heads/$BRANCH"
           if [ -z "$pr" ]; then
