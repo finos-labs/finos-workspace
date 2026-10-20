@@ -112,8 +112,9 @@ The rest of `envs/.env.example` stays as it is: `DATABASE_TYPE=mysql`, `DB_PORT=
 - `OKTA_DOMAIN` is for Okta sign-in. `ADMIN_NOTIFY_*` sends admin notifications to a webhook; without a URL they are logged.
 - `DEFAULT_MCP_SERVERS` is a JSON list of `{"id", "name", "url"}`: MCP servers that every user has, enabled, besides the ones
   they add (a user's own entry for the same URL wins, so they can still switch one off). Compose sets it to Ines's tools,
-  `http://ines-mcp:8787/mcp`. The URL is the one the API calls, so it may be an address only the deployment can resolve; the
-  API refuses `localhost` and raw IP addresses for MCP servers unless they are in `ALLOWED_MCP_HOSTNAMES`.
+  `http://ines-mcp:8787/mcp`. The URL is the one the API calls, so it may be an address only the deployment can resolve: the
+  API reaches a default server's host and port wherever they are. Other MCP servers it reaches only at public addresses (it
+  refuses `localhost` and raw IP addresses) unless their host is in `ALLOWED_MCP_HOSTNAMES`.
 
 `.env.example` explains every setting in comments.
 

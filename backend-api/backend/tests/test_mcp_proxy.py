@@ -3,11 +3,11 @@
 A proxied request names its MCP server and goes to that server only: the same scheme, host
 and port, and the server's path or a path under it (the messages endpoint an SSE server
 announces is the one exception, tested in test_mcp_oauth). The API's MCP client resolves
-every host itself,
-refuses addresses that are not on the public internet (private, loopback, link-local and
-the cloud metadata services, shared, reserved, multicast, and IPv6 addresses carrying any
-of them) unless the host is one of ALLOWED_MCP_HOSTNAMES, and connects to the address it
-checked. It follows no redirect and keeps no cookie. No test here uses a network.
+every host itself, refuses addresses that are not on the public internet (private,
+loopback, link-local and the cloud metadata services, shared, reserved, multicast, and IPv6
+addresses carrying any of them) unless the host is one of ALLOWED_MCP_HOSTNAMES, or the
+host and port of one of DEFAULT_MCP_SERVERS, and connects to the address it checked. It
+follows no redirect and keeps no cookie. No test here uses a network.
 """
 
 import httpx
@@ -22,7 +22,7 @@ from routers.app.index import (
     under_mcp_server_path,
 )
 from tests.fixtures.mcp_network import FakeHosts, FakeNetwork
-from utilities.config import settings
+from utilities.config import DefaultMCPServer, settings
 
 SERVER = "https://mcp.example.com/mcp"
 PUBLIC = "93.184.215.14"
@@ -253,6 +253,27 @@ class TestTheMcpClient:
 
         assert response.status_code == 200
         assert hosts.connections == [("intranet.example.com", 80)]
+
+    @pytest.mark.asyncio
+    async def test_the_default_servers_may_be_private_on_their_own_port(
+        self, hosts, mcp_client, monkeypatch
+    ):
+        """The servers every user has, such as the agent's tools in the compose stack"""
+        monkeypatch.setattr(
+            settings,
+            "DEFAULT_MCP_SERVERS",
+            [DefaultMCPServer(id="tools", name="Tools", url="http://Ines-MCP:8787/mcp")],
+        )
+        hosts.add("ines-mcp", "172.18.0.5", handler=_ok)
+
+        response = await mcp_client.post("http://ines-mcp:8787/mcp", json={})
+
+        assert response.status_code == 200
+        assert hosts.connections == [("ines-mcp", 8787)]
+        # Any other port of the host is the public-address check's, as for any server
+        with pytest.raises(mcp_oauth.BlockedAddressError):
+            await mcp_client.get("http://ines-mcp:9000/")
+        assert hosts.connections == [("ines-mcp", 8787)]
 
     @pytest.mark.asyncio
     async def test_a_host_that_does_not_resolve_is_not_reached(self, hosts, mcp_client):

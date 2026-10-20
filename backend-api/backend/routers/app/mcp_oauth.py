@@ -22,9 +22,9 @@ access logs would keep it.
 The discovery, registration and token requests use the official MCP SDK's OAuth models
 and discovery rules (mcp.shared.auth, mcp.client.auth). Every request the API sends for
 MCP, to a server or to an address its metadata names, goes through `mcp_http`: it
-connects only to public addresses (or to the hosts of ALLOWED_MCP_HOSTNAMES), resolving
-the host once and connecting to the address it checked, follows no redirect and keeps no
-cookie.
+connects only to public addresses (or to the hosts of ALLOWED_MCP_HOSTNAMES, and to the
+host and port of each of DEFAULT_MCP_SERVERS), resolving the host once and connecting to
+the address it checked, follows no redirect and keeps no cookie.
 """
 
 import asyncio
@@ -105,10 +105,19 @@ def is_public_address(address: str) -> bool:
     return ip.is_global and not ip.is_multicast
 
 
-def may_reach_any_address(host: str) -> bool:
-    """Whether a host is one of the MCP servers this deployment names (ALLOWED_MCP_HOSTNAMES),
-    which may be on a private network."""
-    return host.lower() in {name.lower() for name in settings.ALLOWED_MCP_HOSTNAMES}
+def may_reach_any_address(host: str, port: int) -> bool:
+    """Whether a host is one of the MCP servers this deployment names, which may be on a
+    private network: any port of a host of ALLOWED_MCP_HOSTNAMES, and the host and port of
+    each of DEFAULT_MCP_SERVERS (the servers every user has, such as the agent's tools)."""
+    host = host.lower()
+    if host in {name.lower() for name in settings.ALLOWED_MCP_HOSTNAMES}:
+        return True
+    return (host, port) in {_host_and_port(server.url) for server in settings.DEFAULT_MCP_SERVERS}
+
+
+def _host_and_port(url: str) -> tuple[str, int]:
+    parts = urlsplit(url)
+    return (parts.hostname or "").lower(), parts.port or (443 if parts.scheme == "https" else 80)
 
 
 async def resolve_host(host: str, port: int) -> list[str]:
@@ -149,7 +158,9 @@ class _PublicNetwork(httpcore.AsyncNetworkBackend):
         local_address: str | None = None,
         socket_options: Any = None,
     ) -> httpcore.AsyncNetworkStream:
-        address = host if may_reach_any_address(host) else await public_address(host, port)
+        address = (
+            host if may_reach_any_address(host, port) else await public_address(host, port)
+        )
         return await self._network.connect_tcp(
             address,
             port,

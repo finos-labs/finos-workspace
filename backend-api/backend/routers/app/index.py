@@ -1584,8 +1584,8 @@ async def mcp_proxy(
     headers, and the access token of their sign-in, refreshed when it has expired or the
     server refuses it. The browser's own headers reach the server only as far as the
     protocol needs them. The server must be on the public internet (or one of
-    ALLOWED_MCP_HOSTNAMES), redirects are not followed, and only the protocol's headers of
-    the answer reach the browser. When the server wants credentials the user has not
+    ALLOWED_MCP_HOSTNAMES or DEFAULT_MCP_SERVERS), redirects are not followed, and only
+    the protocol's headers of the answer reach the browser. When the server wants credentials the user has not
     given, the answer is 401 with `auth_required` and the server's URL. Tool calls are
     limited to the tools the user's roles grant. Only the web app reaches it, by its
     session cookie.
