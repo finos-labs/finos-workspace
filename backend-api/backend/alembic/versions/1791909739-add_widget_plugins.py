@@ -5,7 +5,7 @@ the plugins directory, a superuser's approval of a version, each entity's enable
 viz-type handler choices, role grants, events and blocked-request reports.
 
 Revision ID: 5e2b8c41d907
-Revises: 9c4d7a2e1f35
+Revises: b6dd1da576b6
 Create Date: 2026-10-13
 
 """
@@ -18,7 +18,7 @@ from alembic import op  # type: ignore
 
 # revision identifiers, used by Alembic.
 revision = "5e2b8c41d907"
-down_revision = "9c4d7a2e1f35"
+down_revision = "b6dd1da576b6"
 branch_labels = None
 depends_on = None
 
