@@ -66,7 +66,6 @@ _TEST_USER_UUID = "00000000-0000-0000-0000-000000000001"
 _TEST_SESSION_UUID = "00000000-0000-0000-0000-000000000002"
 _TEST_ENTITY_UUID = "00000000-0000-0000-0000-000000000003"
 _TEST_PERM_UUID = "00000000-0000-0000-0000-000000000004"
-_TEST_ENTITY_TYPE_UUID = "00000000-0000-0000-0000-000000000005"
 
 
 class UserConfig(TypedDict):
@@ -75,11 +74,7 @@ class UserConfig(TypedDict):
     session_uuid: str
     entity_uuid: str
     perm_uuid: str
-    entity_type_uuid: str
-    entity_type: str
-    entity_code: str
     entity_name: str
-    entity_email: str
     perm_name: str
     session_source: str
 
@@ -93,11 +88,7 @@ _AUTH_USER: UserConfig = {
     "session_uuid": _TEST_SESSION_UUID,
     "entity_uuid": _TEST_ENTITY_UUID,
     "perm_uuid": _TEST_PERM_UUID,
-    "entity_type_uuid": _TEST_ENTITY_TYPE_UUID,
-    "entity_type": "test_company",
-    "entity_code": "TST",
     "entity_name": "Test Entity",
-    "entity_email": "entity@example.com",
     "perm_name": "Developer",
     "session_source": "app",
 }
@@ -108,11 +99,7 @@ _ADMIN_USER: UserConfig = {
     "session_uuid": "00000000-0000-0000-0000-000000000011",
     "entity_uuid": "00000000-0000-0000-0000-000000000012",
     "perm_uuid": "00000000-0000-0000-0000-000000000013",
-    "entity_type_uuid": "00000000-0000-0000-0000-000000000014",
-    "entity_type": "admin_company",
-    "entity_code": "ADM",
     "entity_name": "Admin Entity",
-    "entity_email": "admin_entity@example.com",
     "perm_name": "Admin",
     "session_source": "app",
 }
@@ -123,11 +110,7 @@ _SECOND_USER: UserConfig = {
     "session_uuid": "00000000-0000-0000-0000-000000000021",
     "entity_uuid": "00000000-0000-0000-0000-000000000022",
     "perm_uuid": "00000000-0000-0000-0000-000000000023",
-    "entity_type_uuid": "00000000-0000-0000-0000-000000000024",
-    "entity_type": "second_company",
-    "entity_code": "SEC",
     "entity_name": "Second Entity",
-    "entity_email": "second_entity@example.com",
     "perm_name": "Developer",
     "session_source": "app",
 }
@@ -172,13 +155,11 @@ _DELETE_PERMISSIONS_BY_UUID = text(
     "DELETE FROM `permissions_entity_map` WHERE uuid = :uuid"
 )
 _DELETE_ENTITY_BY_UUID = text("DELETE FROM `entity` WHERE uuid = :uuid")
-_DELETE_ENTITY_TYPE_BY_UUID = text("DELETE FROM `entity_type` WHERE uuid = :uuid")
 
 # The default organization: init makes the first one, and users nobody placed get its User map
 # (settings.DEFAULT_USER_MAPPING, which user_create.json sets in a stack)
 _DEFAULT_USER_MAP_UUID = "22222222-2222-2222-2222-222222222222"
 _DEFAULT_ENTITY_UUID = "33333333-3333-3333-3333-333333333333"
-_APP_ENTITY_TYPE_UUID = "55555555-5555-5555-5555-555555555555"
 settings.DEFAULT_USER_MAPPING = UUID(_DEFAULT_USER_MAP_UUID)
 
 
@@ -289,7 +270,6 @@ async def _cleanup_test_user_records(
         (_DELETE_USER_BY_UUID, {"uuid": user_uuid}),
         (_DELETE_PERMISSIONS_BY_UUID, {"uuid": _TEST_PERM_UUID}),
         (_DELETE_ENTITY_BY_UUID, {"uuid": _TEST_ENTITY_UUID}),
-        (_DELETE_ENTITY_TYPE_BY_UUID, {"uuid": _TEST_ENTITY_TYPE_UUID}),
     ]
     await _execute_cleanup_statements(cleanup_session, statements)
 
@@ -302,7 +282,7 @@ async def _cleanup_user_fixture_records(
     user_config: UserConfig,
 ) -> None:
     """Remove fixture-specific rows for a user setup (hex UUID tables + entities)."""
-    from api.models.entity_models import Entity, EntityType, PermissionsEntityMap
+    from api.models.entity_models import Entity, PermissionsEntityMap
 
     await _set_fk_checks(db_session, enabled=False)
 
@@ -338,12 +318,6 @@ async def _cleanup_user_fixture_records(
         )
     except Exception:
         pass
-    try:
-        await db_session.execute(
-            delete(EntityType).where(EntityType.uuid == user_config["entity_type_uuid"])
-        )
-    except Exception:
-        pass
 
     await _set_fk_checks(db_session, enabled=True)
     await db_session.commit()
@@ -352,25 +326,10 @@ async def _cleanup_user_fixture_records(
 async def _create_user_fixture(
     db_session: AsyncSession, user_config: UserConfig
 ) -> User:
-    """Create EntityType, Entity, Permissions map, and User for a fixture."""
-    from api.models.entity_models import Entity, EntityType, PermissionsEntityMap
+    """Create Entity, Permissions map, and User for a fixture."""
+    from api.models.entity_models import Entity, PermissionsEntityMap
 
-    entity_type = EntityType(
-        uuid=user_config["entity_type_uuid"],
-        entity_type=user_config["entity_type"],
-        code=user_config["entity_code"],
-        active=True,
-        permission_hierarchy=0,
-    )
-    db_session.add(entity_type)
-    await db_session.commit()
-
-    entity = Entity(
-        uuid=user_config["entity_uuid"],
-        name=user_config["entity_name"],
-        entity_type_uuid=entity_type.uuid,
-        email=user_config["entity_email"],
-    )
+    entity = Entity(uuid=user_config["entity_uuid"], name=user_config["entity_name"])
     db_session.add(entity)
     await db_session.commit()
 
@@ -470,37 +429,11 @@ async def _make_auth_client(session_token: str):
         yield auth_ac
 
 
-def _get_or_create_entity_type(session):
-    """Ensure the app entity type exists for /app endpoints."""
-    from api.models.entity_models import EntityType
-
-    entity_type = (
-        session.query(EntityType)
-        .filter(EntityType.uuid == _APP_ENTITY_TYPE_UUID)
-        .first()
-    )
-    if entity_type:
-        return entity_type
-
-    entity_type = EntityType(
-        uuid=_APP_ENTITY_TYPE_UUID,
-        entity_type="Default",
-        code="DEF",
-        active=True,
-        permission_hierarchy=0,
-    )
-    session.add(entity_type)
-    session.commit()
-    return entity_type
-
-
 def _get_or_create_entity(
     session,
     *,
     uuid: str,
     name: str,
-    email: str,
-    entity_type_uuid: str,
 ):
     """Ensure an Entity row exists for a given UUID."""
     from api.models.entity_models import Entity
@@ -509,12 +442,7 @@ def _get_or_create_entity(
     if entity:
         return entity
 
-    entity = Entity(
-        uuid=uuid,
-        name=name,
-        entity_type_uuid=entity_type_uuid,
-        email=email,
-    )
+    entity = Entity(uuid=uuid, name=name)
     session.add(entity)
     session.commit()
     return entity
@@ -555,13 +483,8 @@ def _seed_entities() -> None:
     engine = create_engine(sync_url)
 
     with Session(engine) as session:
-        entity_type = _get_or_create_entity_type(session)
         default_entity = _get_or_create_entity(
-            session,
-            uuid=_DEFAULT_ENTITY_UUID,
-            name="Default Organization",
-            email="default@example.com",
-            entity_type_uuid=entity_type.uuid,
+            session, uuid=_DEFAULT_ENTITY_UUID, name="Default Organization"
         )
         _get_or_create_permission(
             session,

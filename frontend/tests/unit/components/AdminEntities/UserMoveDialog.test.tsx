@@ -12,18 +12,6 @@ vi.mock("~/api/entities.api", () => ({ moveEntityUser: vi.fn() }));
 const entity = (uuid: string, name: string): Entity => ({
   uuid,
   name,
-  entity_type: {
-    uuid: "7d4f3a52-1b1e-4c7a-9a43-3f7a2b1c9e10",
-    entity_type: "Default",
-    code: "DEF",
-    active: true,
-    permission_hierarchy: 1,
-  },
-  email: null,
-  company_type: null,
-  country: null,
-  aum: null,
-  organization_size: null,
   sharing_enabled: true,
 });
 

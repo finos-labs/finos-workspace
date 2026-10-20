@@ -23,16 +23,7 @@ MEMBER_EMAIL = _AUTH_USER["email"]
 
 def admin_entity_body(sharing_enabled: bool) -> dict:
     """What a superuser puts for the admin's organization."""
-    return {
-        "name": _ADMIN_USER["entity_name"],
-        "entity_code": _ADMIN_USER["entity_type_uuid"],
-        "email": _ADMIN_USER["entity_email"],
-        "company_type": "other",
-        "organization_size": "1-10",
-        "aum": 0,
-        "country": "US",
-        "sharing_enabled": sharing_enabled,
-    }
+    return {"name": _ADMIN_USER["entity_name"], "sharing_enabled": sharing_enabled}
 
 
 def forget_usage(*user_uuids: UUID) -> None:

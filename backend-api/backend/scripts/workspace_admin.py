@@ -1,4 +1,4 @@
-"""The admin CLI: entities, entity types, users and data backends, from inside the API
+"""The admin CLI: entities, users and data backends, from inside the API
 container, where it works on the database itself. It sends no request to the API.
 
     docker compose exec api python -m scripts.workspace_admin <resource> <action>
@@ -167,10 +167,7 @@ async def entity_by_uuid(db: AsyncSession, entity_uuid: UUID) -> dict[str, Any]:
 
 
 def entity_post(data: dict[str, Any]) -> schemas.EntityPost:
-    """An entity of a config file, which names its type `entity_type_uuid`."""
-    data = dict(data)
-    if "entity_type_uuid" in data and "entity_code" not in data:
-        data["entity_code"] = data.pop("entity_type_uuid")
+    """An entity of a config file."""
     return schemas.EntityPost(**data)
 
 
@@ -235,8 +232,7 @@ def entity_list(args: argparse.Namespace) -> None:
         page,
         args.json,
         lambda i: (
-            f"{i['uuid']} | {get_val(i, 'entity_type.code')} | {i['name']} | "
-            f"{get_val(i, 'entity_type.entity_type')} | "
+            f"{i['uuid']} | {i['name']} | "
             f"Sharing: {'on' if i.get('sharing_enabled') else 'off'}"
         ),
     )
@@ -247,13 +243,7 @@ def entity_sample(args: argparse.Namespace) -> None:
         json.dumps(
             {
                 "name": "string (Required) - the name of the organization",
-                "entity_type_uuid": "UUID (Required) - the entity type (entity-type list)",
-                "email": "email (Required) - General contact email for the entity",
                 "admin_email": "email (Required) - Email of the primary admin",
-                "company_type": "string (Required) - e.g., 'Investment Firm'",
-                "organization_size": "string (Required) - e.g., '10-50'",
-                "aum": "integer (Required) - Assets Under Management",
-                "country": "string (Required) - ISO country code or name",
                 "sharing_enabled": "boolean (Optional) - Whether the entity's roles may allow "
                 "sharing dashboards and apps (default: true)",
             },
@@ -267,10 +257,6 @@ def entity_show(args: argparse.Namespace) -> None:
     fields = [
         ("Entity", "name"),
         ("UUID", "uuid"),
-        ("Code", "entity_type.code"),
-        ("Type", "entity_type.entity_type"),
-        ("Email", "email"),
-        ("Country", "country"),
         ("Sharing enabled", "sharing_enabled"),
     ]
     render_record(entity, fields, args.json)
@@ -281,14 +267,7 @@ async def update_entity(
 ) -> None:
     """The entity with the given fields changed and the others as they are."""
     current = await entity_by_uuid(db, entity_uuid)
-    values = {
-        key: current.get(key)
-        for key in schemas.EntityBase.model_fields
-        if key != "entity_code"
-    }
-    values["entity_code"] = str(current["entity_type"]["uuid"])
-    if "entity_type_uuid" in changes and "entity_code" not in changes:
-        changes = {**changes, "entity_code": changes["entity_type_uuid"]}
+    values = {key: current.get(key) for key in schemas.EntityBase.model_fields}
     values.update({key: value for key, value in changes.items() if key in values})
     await administration.update_entity(db, entity_uuid, schemas.EntityBase(**values))
 
@@ -315,48 +294,6 @@ def entity_delete(args: argparse.Namespace) -> None:
         print_json({"success": True})
     else:
         say(f"✓ Entity {args.entity_uuid} deleted")
-
-
-# --- Entity types ---------------------------------------------------------------------
-
-
-async def create_entity_type(db: AsyncSession, name: str, code: str) -> UUID:
-    await administration.create_entity_type(
-        db,
-        schemas.EntityTypeCreate(
-            entity_type=name, code=code, active=True, permission_hierarchy=0
-        ),
-    )
-    query = select(models.EntityType.uuid).where(models.EntityType.code == code)
-    return (await db.execute(query)).scalar_one()
-
-
-def entity_type_create(args: argparse.Namespace) -> None:
-    type_uuid = perform(lambda db: create_entity_type(db, args.name, args.code))
-    if args.json:
-        print_json({"uuid": type_uuid})
-    else:
-        say(f"✓ Entity type created: {type_uuid}")
-
-
-def entity_type_list(args: argparse.Namespace) -> None:
-    page = perform(
-        lambda db: page_of(
-            db,
-            administration.entity_types_query(),
-            args.page,
-            args.size,
-            lambda row: dict(row._mapping),
-        )
-    )
-    render_page(
-        page,
-        args.json,
-        lambda i: (
-            f"{i['uuid']} | {i['code']} | {i['entity_type']} | "
-            f"Active: {i.get('active', False)} | Level: {i.get('permission_hierarchy', 0)}"
-        ),
-    )
 
 
 # --- Users ----------------------------------------------------------------------------
@@ -574,16 +511,7 @@ def data_backend_list(args: argparse.Namespace) -> None:
 
 # --- Provisioning ---------------------------------------------------------------------
 
-REQUIRED_ENTITY_FIELDS = (
-    "name",
-    "entity_type_uuid",
-    "email",
-    "company_type",
-    "organization_size",
-    "aum",
-    "country",
-    "admin_email",
-)
+REQUIRED_ENTITY_FIELDS = ("name", "admin_email")
 
 
 def config_errors(data: dict[str, Any]) -> list[str]:
@@ -632,12 +560,6 @@ def provision_sample(args: argparse.Namespace) -> None:
             {
                 "entity": {
                     "name": "<entity name>",
-                    "entity_type_uuid": "<UUID of Entity Type>",
-                    "email": "<contact-email>",
-                    "company_type": "Investment Firm",
-                    "organization_size": "10-50",
-                    "aum": 10000000,
-                    "country": "USA",
                     "sharing_enabled": True,
                     "admin_email": "<admin-email>",
                 },
@@ -745,15 +667,6 @@ def _entity_commands(resources) -> None:
         entity_actions, "delete", entity_delete, "Delete an entity that has no users"
     )
     sub.add_argument("entity_uuid", type=UUID, help="UUID of the entity")
-
-
-def _entity_type_commands(resources) -> None:
-    entity_type = resources.add_parser("entity-type", help="Manage entity definitions")
-    type_actions = entity_type.add_subparsers(dest="verb", required=True, help="Action")
-    sub = _action(type_actions, "create", entity_type_create, "Define a new entity type")
-    sub.add_argument("--name", required=True, help="Display name for the entity type")
-    sub.add_argument("--code", required=True, help="Internal code identifier")
-    _paged(_action(type_actions, "list", entity_type_list, "List available entity types"))
 
 
 def _user_commands(resources) -> None:
@@ -886,7 +799,6 @@ def parser() -> argparse.ArgumentParser:
     )
     for commands in (
         _entity_commands,
-        _entity_type_commands,
         _user_commands,
         _data_backend_commands,
         _provision_commands,

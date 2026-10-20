@@ -149,8 +149,6 @@ bunx playwright test tests/e2e/auth.spec.ts
 bunx playwright codegen tests/e2e
 ```
 
-The entity-type test adds a row each run (entity types cannot be deleted), so run the suite against a stack you can throw away; `docker compose down -v` clears it.
-
 The `setup` project signs in once and keeps the session in `playwright/.auth/user.json`; the
 other projects start from it. `.github/workflows/e2e.yml` runs the same tests in CI against a
 stack of its own, with an administrator whose password the run reads from the `init` service's

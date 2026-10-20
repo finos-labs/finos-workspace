@@ -1,10 +1,5 @@
 import type { UserType } from "~/lib/state/access";
-import type {
-  Entity,
-  EntityMapItem,
-  EntityType,
-  EntityUser,
-} from "~/types/entity.type";
+import type { Entity, EntityMapItem, EntityUser } from "~/types/entity.type";
 import { apiClient } from "./api";
 
 /** What the entity endpoints answer lists with. */
@@ -30,20 +25,7 @@ export interface EntityRelationship {
 /** The fields that make an entity, as the backend takes them. */
 export interface EntityBody {
   name: string;
-  entity_code: string;
-  email: string;
-  company_type: string;
-  organization_size: string;
-  aum: number;
-  country: string;
   sharing_enabled: boolean;
-}
-
-export interface EntityTypeBody {
-  entity_type: string;
-  code: string;
-  active: boolean;
-  permission_hierarchy: number;
 }
 
 export interface EntityAdminBody {
@@ -77,7 +59,6 @@ export async function validateEntityAdmin() {
   return data;
 }
 
-export const getEntityTypes = () => getAllPages<EntityType>("/entity/entity-type");
 export const getEntities = () => getAllPages<Entity>("/entity/entity");
 export const getEntityRelationships = () =>
   getAllPages<EntityRelationship>("/entity/entity-relationship");
@@ -90,19 +71,6 @@ export async function moveEntityUser(uuid: string, permissionsUuid: string) {
   const { data } = await apiClient.put<SuccessResponse>(`/entity/user/${uuid}`, {
     permissions_uuid: permissionsUuid,
   });
-  return data;
-}
-
-export async function createEntityType(body: EntityTypeBody) {
-  const { data } = await apiClient.post<SuccessResponse>("/entity/entity-type", body);
-  return data;
-}
-
-export async function updateEntityType(uuid: string, body: EntityTypeBody) {
-  const { data } = await apiClient.put<SuccessResponse>(
-    `/entity/entity-type/${uuid}`,
-    body,
-  );
   return data;
 }
 

@@ -21,9 +21,9 @@ To run the whole stack, follow the root [README](../README.md). See [DEVELOPMENT
 
 ## Admin CLI
 
-`backend/scripts/workspace_admin.py` manages entities, entity types, users and data
-backends. It runs inside the API container and works on the database itself: it sends no
-request to the API, so it needs no sign-in.
+`backend/scripts/workspace_admin.py` manages entities, users and data backends. It runs
+inside the API container and works on the database itself: it sends no request to the API,
+so it needs no sign-in.
 
 ```bash
 docker compose exec api python -m scripts.workspace_admin --help    # the root docker-compose.yml
@@ -33,7 +33,6 @@ docker exec workspace workspace-admin --help                         # Lite
 | Command | Does |
 |---|---|
 | `entity create --config <file>`, `entity list`, `entity show <uuid>`, `entity update <uuid> --data '<json>'`, `entity delete <uuid>` | Entities; `entity sample` prints a config |
-| `entity-type create --name <name> --code <code>`, `entity-type list` | Entity types |
 | `user create <entity-uuid> --email <email> --first-name <name> --last-name <name> [--role admin\|developer\|user]` | Prints the link with which the user sets their password (once, within 24 hours) |
 | `user reset-password <email>` | The password stops working, every session ends; prints the link that sets a new one |
 | `user list [--email <part>]`, `user move --entity-uuid <uuid> --email <email> [--role ...]`, `user delete <email>` | `delete` removes the user from their entity |

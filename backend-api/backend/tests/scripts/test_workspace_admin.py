@@ -19,8 +19,6 @@ from tests.fixtures.base import _set_fk_checks
 from utilities.config import settings
 from utilities.log_helpers import setup_logging, stdoutSink
 
-TYPE_CODE = "CLI"
-
 
 @pytest.fixture
 async def cli(db_session, monkeypatch, capsys):
@@ -67,35 +65,18 @@ async def cli(db_session, monkeypatch, capsys):
     await db_session.execute(
         delete(models.Entity).where(models.Entity.uuid.in_(created["entities"]))
     )
-    await db_session.execute(
-        delete(models.EntityType).where(models.EntityType.code == TYPE_CODE)
-    )
     await _set_fk_checks(db_session, enabled=True)
     await db_session.commit()
 
 
 async def _entity(cli, tmp_path, **changes) -> str:
-    """A new entity of a new entity type, made with the CLI; its uuid."""
-    status, out, _ = await cli("entity-type", "list", "--json")
-    types = {item["code"]: item["uuid"] for item in json.loads(out)["items"]}
-    if TYPE_CODE not in types:
-        status, out, err = await cli(
-            "entity-type", "create", "--name", "CLI tests", "--code", TYPE_CODE, "--json"
-        )
-        assert status == 0, err
-        types[TYPE_CODE] = json.loads(out)["uuid"]
+    """A new entity, made with the CLI; its uuid."""
     config = tmp_path / f"entity-{uuid4().hex[:6]}.json"
     config.write_text(
         json.dumps(
             {
                 "name": f"CLI entity {uuid4().hex[:8]}",
-                "entity_type_uuid": types[TYPE_CODE],
-                "email": "contact@example.com",
                 "admin_email": "admin@example.com",
-                "company_type": "other",
-                "organization_size": "1-10",
-                "aum": 0,
-                "country": "US",
                 **changes,
             }
         )
@@ -132,7 +113,6 @@ class TestEntities:
         assert status == 0
         shown = json.loads(out)
         assert shown["sharing_enabled"] is True
-        assert shown["entity_type"]["code"] == TYPE_CODE
 
         status, out, _ = await cli(
             "entity", "update", entity_uuid, "--data", '{"sharing_enabled": false}'
@@ -143,7 +123,7 @@ class TestEntities:
         assert json.loads(out)["name"] == shown["name"]
 
         status, out, _ = await cli("entity", "list")
-        assert f"{entity_uuid} | {TYPE_CODE} | {shown['name']}" in out
+        assert f"{entity_uuid} | {shown['name']} | Sharing: off" in out
 
         status, out, _ = await cli("entity", "delete", entity_uuid)
         assert (status, out.strip()) == (0, f"✓ Entity {entity_uuid} deleted")
@@ -337,11 +317,6 @@ class TestDataBackends:
 class TestProvisioning:
     @pytest.mark.asyncio
     async def test_an_entity_with_its_admins_and_users_in_one_go(self, cli, tmp_path):
-        await _entity(cli, tmp_path)  # the entity type
-        status, out, _ = await cli("entity-type", "list", "--json")
-        type_uuid = next(
-            i["uuid"] for i in json.loads(out)["items"] if i["code"] == TYPE_CODE
-        )
         admin, member = (f"cli-{uuid4().hex[:8]}@example.com" for _ in range(2))
         cli.created["emails"] += [admin, member]
         person = {"first_name": "Cli", "last_name": "Person"}
@@ -351,13 +326,7 @@ class TestProvisioning:
                 {
                     "entity": {
                         "name": f"CLI provisioned {uuid4().hex[:8]}",
-                        "entity_type_uuid": type_uuid,
-                        "email": "contact@example.com",
                         "admin_email": admin,
-                        "company_type": "other",
-                        "organization_size": "1-10",
-                        "aum": 0,
-                        "country": "US",
                     },
                     "admins": [{"email": admin, **person}],
                     "users": [{"email": member, **person}],
@@ -390,5 +359,5 @@ class TestProvisioning:
         status, out, _ = await cli("provision", "check", "--config", str(config))
 
         assert status == 1
-        assert "Entity missing required field: entity_type_uuid" in out
+        assert "Entity missing required field: admin_email" in out
         assert "User (users #0) missing field: first_name" in out

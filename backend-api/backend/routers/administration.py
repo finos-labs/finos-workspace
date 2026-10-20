@@ -1,5 +1,5 @@
 """What the superuser's routes (/entity, /admin) and the admin CLI (scripts/workspace_admin.py)
-do to entities, entity types, users and data backends. The routes check who may do it; these
+do to entities, users and data backends. The routes check who may do it; these
 functions do it. A refusal is an HTTPException: the routes answer with it, the CLI prints it.
 """
 
@@ -7,56 +7,21 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import Select, delete, insert, select, update
-from sqlalchemy.exc import DataError, IntegrityError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import auth_helpers, crud, models, schemas
 from api.base import clean_email, get_now, random_password
-from api.models import Entity, EntityType, PermissionsEntityMap, User, UserInvite, UserRole
+from api.models import Entity, PermissionsEntityMap, User, UserInvite, UserRole
 from api.notifications import notify_admins
 from routers import app_helpers
 from utilities.config import settings
 
-# --- Entity types ---------------------------------------------------------------------
-
-
-async def create_entity_type(
-    db: AsyncSession, entity_type: schemas.EntityTypeCreate
-) -> None:
-    try:
-        await db.execute(
-            insert(EntityType).values(
-                entity_type=entity_type.entity_type,
-                code=entity_type.code,
-                active=entity_type.active,
-                permission_hierarchy=entity_type.permission_hierarchy,
-            )
-        )
-        await db.commit()
-    except IntegrityError as exc:
-        raise HTTPException(409, detail="Entity type already exists") from exc
-    except DataError as exc:
-        raise HTTPException(400, detail="Bad data submitted") from exc
-
-
-def entity_types_query() -> Select:
-    return select(
-        EntityType.entity_type,
-        EntityType.code,
-        EntityType.active,
-        EntityType.permission_hierarchy,
-        EntityType.uuid,
-    )
-
-
 # --- Entities -------------------------------------------------------------------------
 
 
-def _conflict(exc: IntegrityError) -> HTTPException:
-    detail = (
-        exc.orig.args[1] if exc.orig.args and len(exc.orig.args) > 1 else "Invalid code"
-    )
-    return HTTPException(409, detail=detail)
+# An entity's name is unique
+NAME_TAKEN = HTTPException(409, detail="An entity with this name already exists")
 
 
 async def create_entity(
@@ -65,20 +30,11 @@ async def create_entity(
     """The entity, with its three user types, the admin's first, and its default roles."""
     try:
         response = await db.execute(
-            insert(Entity).values(
-                name=entity.name,
-                entity_type_uuid=entity.entity_code,
-                email=entity.email,
-                company_type=entity.company_type,
-                organization_size=entity.organization_size,
-                aum=entity.aum,
-                country=entity.country,
-                sharing_enabled=entity.sharing_enabled,
-            )
+            insert(Entity).values(name=entity.name, sharing_enabled=entity.sharing_enabled)
         )
         entity_uuid = response.inserted_primary_key[0]
     except IntegrityError as exc:
-        raise _conflict(exc) from exc
+        raise NAME_TAKEN from exc
 
     admin_map = await db.execute(
         insert(PermissionsEntityMap).values(name=models.ADMIN_TYPE, entity_uuid=entity_uuid)
@@ -115,16 +71,7 @@ async def update_entity(
     query = (
         update(Entity)
         .where(Entity.uuid == entity_uuid)
-        .values(
-            name=entity.name,
-            entity_type_uuid=entity.entity_code,
-            email=entity.email,
-            company_type=entity.company_type,
-            organization_size=entity.organization_size,
-            aum=entity.aum,
-            country=entity.country,
-            sharing_enabled=entity.sharing_enabled,
-        )
+        .values(name=entity.name, sharing_enabled=entity.sharing_enabled)
     )
     try:
         response = await db.execute(query)
@@ -132,7 +79,7 @@ async def update_entity(
         if response.rowcount == 0:  # type: ignore
             raise HTTPException(404, detail="Entity not found")
     except IntegrityError as exc:
-        raise _conflict(exc) from exc
+        raise NAME_TAKEN from exc
 
     if sharing_was_enabled and not entity.sharing_enabled:
         await crud.revoke_disallowed_shares(
@@ -141,35 +88,13 @@ async def update_entity(
 
 
 def entities_query() -> Select:
-    return (
-        select(
-            Entity.uuid,
-            Entity.name,
-            EntityType,
-            Entity.email,
-            Entity.company_type,
-            Entity.organization_size,
-            Entity.aum,
-            Entity.country,
-            Entity.sharing_enabled,
-        )
-        .select_from(Entity)
-        .join(EntityType, Entity.entity_type_uuid == EntityType.uuid)
-    )
+    return select(Entity.uuid, Entity.name, Entity.sharing_enabled).order_by(Entity.name)
 
 
 def entity_return(item) -> schemas.EntityReturn:
     """An entity as entities_query() selects it."""
     return schemas.EntityReturn(
-        uuid=item.uuid,
-        name=item.name,
-        entity_type=item[2].__dict__,
-        email=item.email,
-        company_type=item.company_type,
-        organization_size=item.organization_size,
-        aum=item.aum,
-        country=item.country,
-        sharing_enabled=item.sharing_enabled,
+        uuid=item.uuid, name=item.name, sharing_enabled=item.sharing_enabled
     )
 
 

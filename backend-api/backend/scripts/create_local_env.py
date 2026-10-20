@@ -118,10 +118,6 @@ def seed_config(entity_name: str, email: str) -> str:
     return f"""\
 [entity]
 name = {json.dumps(entity_name)}
-aum = 1000
-company_type = "CORPORATION"
-organization_size = "SMALL"
-country = "DOM"
 
 [[admins]]
 email = {json.dumps(email)}

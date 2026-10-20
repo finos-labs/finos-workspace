@@ -4,29 +4,15 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { updateEntity } from "~/api/entities.api";
 import { EntityEditDialog } from "~/components/AdminEntities/EntityEditDialog";
-import type { Entity, EntityType } from "~/types/entity.type";
+import type { Entity } from "~/types/entity.type";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 vi.mock("~/api/entities.api", () => ({ updateEntity: vi.fn() }));
 
-const ENTITY_TYPE: EntityType = {
-  uuid: "7d4f3a52-1b1e-4c7a-9a43-3f7a2b1c9e10",
-  entity_type: "Default",
-  code: "DEF",
-  active: true,
-  permission_hierarchy: 1,
-};
-
 const entity = (sharing_enabled: boolean): Entity => ({
   uuid: "0d1b9b0e-7c2b-4a58-8d63-5c1f6f0c8a21",
   name: "Acme",
-  entity_type: ENTITY_TYPE,
-  email: "ops@acme.com",
-  company_type: "Fund",
-  country: "USA",
-  aum: 5,
-  organization_size: "Small",
   sharing_enabled,
 });
 
@@ -34,11 +20,7 @@ function renderDialog(sharingEnabled: boolean) {
   const onClose = vi.fn();
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <EntityEditDialog
-        entity={entity(sharingEnabled)}
-        entityTypes={[ENTITY_TYPE]}
-        onClose={onClose}
-      />
+      <EntityEditDialog entity={entity(sharingEnabled)} onClose={onClose} />
     </QueryClientProvider>,
   );
   return { onClose };

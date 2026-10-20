@@ -8,9 +8,6 @@ vi.mock("~/hooks/useEntityAdmin", () => ({ useIsEntityAdmin: vi.fn() }));
 vi.mock("~/components/AdminEntities/EntitiesTab", () => ({
   EntitiesTab: () => <p>entities tab</p>,
 }));
-vi.mock("~/components/AdminEntities/EntityTypesTab", () => ({
-  EntityTypesTab: () => <p>types tab</p>,
-}));
 vi.mock("~/components/AdminEntities/EntityRelationshipsTab", () => ({
   EntityRelationshipsTab: () => <p>relationships tab</p>,
 }));
@@ -68,7 +65,8 @@ describe("AdminEntities page", () => {
     renderPage();
 
     expect(screen.getByText("Entity Management")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Entity types" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Permission maps" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Entity types" })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "All users" })).toBeInTheDocument();
     expect(screen.getByText("entities tab")).toBeInTheDocument();
   });

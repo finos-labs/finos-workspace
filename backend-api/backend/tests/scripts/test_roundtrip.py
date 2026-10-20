@@ -53,21 +53,9 @@ def _enable_fks(engine):
         dbapi_conn.execute("PRAGMA foreign_keys=ON")
 
 
-def _entity_type(session):
-    """entity.entity_type_uuid is NOT NULL, so every entity needs one."""
-    entity_type = models.EntityType(
-        uuid=uuid4(), entity_type="CORPORATION", code="CORPORATION"
-    )
-    session.add(entity_type)
-    session.flush()
-    return entity_type.uuid
-
-
 def _seed_source(session):
     """A Hub account with something in every table that travels."""
-    entity = models.Entity(
-        uuid=uuid4(), name="Hub Org", entity_type_uuid=_entity_type(session)
-    )
+    entity = models.Entity(uuid=uuid4(), name="Hub Org")
     session.add(entity)
     session.add(
         models.PermissionsEntityMap(uuid=HUB_MAP, entity_uuid=entity.uuid, name="User")
@@ -191,11 +179,7 @@ def _seed_source(session):
 def _seed_destination(session):
     """A fresh Lite install, as scripts.init_users leaves it."""
     session.add(
-        models.Entity(
-            uuid=LITE_ENTITY,
-            name="Lite",
-            entity_type_uuid=_entity_type(session),
-        )
+        models.Entity(uuid=LITE_ENTITY, name="Lite")
     )
     session.flush()
     session.add_all([

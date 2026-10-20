@@ -354,26 +354,8 @@ class ReturnApiSource(ApiSourceBase, extra="ignore"):  # type: ignore[call-arg]
     is_entity_backend: Annotated[bool, BeforeValidator(_is_not_none)] = Field(validation_alias="entity_uuid")
 
 
-class EntityTypeCreate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    entity_type: str
-    code: str
-    active: bool
-    permission_hierarchy: int
-
-
-class EntityTypeReturn(EntityTypeCreate):  # type: ignore[call-arg]
-    model_config = ConfigDict(extra="ignore", from_attributes=True)
-    uuid: UUID
-
-
 class EntityBase(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     name: str
-    entity_code: str
-    email: EmailStr
-    company_type: str
-    organization_size: str
-    aum: int
-    country: str
     sharing_enabled: bool
 
 
@@ -386,12 +368,6 @@ class EntityReturn(BaseModel):
     model_config = ConfigDict(extra="ignore", from_attributes=True)
     uuid: UUID
     name: str
-    entity_type: EntityTypeReturn
-    email: None | str
-    company_type: None | str
-    organization_size: None | str
-    aum: None | int
-    country: None | str
     sharing_enabled: bool
 
 

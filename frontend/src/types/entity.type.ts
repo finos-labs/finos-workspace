@@ -7,23 +7,10 @@ export const USER_TYPES = [
   "User",
 ] as const satisfies readonly UserType[];
 
-export interface EntityType {
-  uuid: string;
-  entity_type: string;
-  code: string;
-  active: boolean;
-  permission_hierarchy: number;
-}
-
+/** An organization: its name, and whether its roles may let its users share. */
 export interface Entity {
   uuid: string;
   name: string;
-  entity_type: EntityType;
-  email: string | null;
-  company_type: string | null;
-  country: string | null;
-  aum: number | null;
-  organization_size: string | null;
   /** Whether the roles of this organization may let its users share and receive items. */
   sharing_enabled: boolean;
 }

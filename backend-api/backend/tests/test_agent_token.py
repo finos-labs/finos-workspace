@@ -155,7 +155,7 @@ class TestItsThreeRoutes:
                 ("GET", "/app/dash/sync"),
                 ("POST", "/app/copilot/token"),
                 ("GET", "/admin/role"),
-                ("GET", "/entity/entity-type"),
+                ("GET", "/entity/entity"),
                 ("POST", "/app/logout"),
             ):
                 response = await agent.request(method, path)

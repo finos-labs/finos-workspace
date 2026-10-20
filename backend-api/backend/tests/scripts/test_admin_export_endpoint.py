@@ -36,8 +36,8 @@ ADMIN_A = uuid4()  # org admin of entity A
 SUPERUSER = uuid4()
 
 
-def _entity(session, uuid, name, entity_type_uuid):
-    session.add(models.Entity(uuid=uuid, name=name, entity_type_uuid=entity_type_uuid))
+def _entity(session, uuid, name):
+    session.add(models.Entity(uuid=uuid, name=name))
     session.flush()
 
 
@@ -61,14 +61,8 @@ def sessions(tmp_path_factory):
     Base.metadata.create_all(sync)
 
     with Session(sync) as session:
-        # entity_type.code is UNIQUE, so both orgs share one type.
-        etype = models.EntityType(
-            uuid=uuid4(), entity_type="CORPORATION", code="CORP"
-        )
-        session.add(etype)
-        session.flush()
-        _entity(session, ENTITY_A, "Org A", etype.uuid)
-        _entity(session, ENTITY_B, "Org B", etype.uuid)
+        _entity(session, ENTITY_A, "Org A")
+        _entity(session, ENTITY_B, "Org B")
         session.add_all([
             models.PermissionsEntityMap(uuid=MAP_A, entity_uuid=ENTITY_A, name="Admin"),
             models.PermissionsEntityMap(uuid=MAP_B, entity_uuid=ENTITY_B, name="Admin"),

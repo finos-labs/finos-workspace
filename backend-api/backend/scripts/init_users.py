@@ -33,7 +33,6 @@ from api.models import (
     ADMIN_TYPE,
     USER_TYPE,
     Entity,
-    EntityType,
     PermissionsEntityMap,
     Session,
     User,
@@ -67,10 +66,6 @@ class AdminUser(UserConfig):
 
 class EntityConfig(BaseModel):
     name: str
-    aum: int
-    company_type: str
-    organization_size: str
-    country: str
 
 
 class Config(BaseModel):
@@ -89,13 +84,11 @@ class SetupConfig:
     db: AsyncSession
     config: Config
     admin_user: type[User] | None
-    code: str
 
     def __init__(self, config: Config, db: AsyncSession):
         self.db = db
         self.config = config
         self.admin_user: type[User] | None = None
-        self.code = config.entity.name[:3].upper()
 
     async def add_entity(self, entity: schemas.EntityPost) -> schemas.AddEntityReturn:
         return await administration.create_entity(self.db, entity)
@@ -166,29 +159,9 @@ class SetupConfig:
         return user
 
     async def create_entity(self):
-        query = select(EntityType.uuid).where(EntityType.code == self.code)
-        result = await self.db.execute(query)
-
-        main_admin = self.config.admins[0]
-
-        if (entity_type_uuid := result.scalars().first()) is None:
-            query = insert(EntityType).values(
-                entity_type="Default",
-                code=self.code,
-                active=True,
-                permission_hierarchy=2,
-            )
-
-            result = await self.db.execute(query)
-            await self.db.commit()
-            entity_type_uuid = result.inserted_primary_key[0]
-
         return await self.add_entity(
             schemas.EntityPost(
-                email=main_admin.email,
-                admin_email=main_admin.email,
-                entity_code=str(entity_type_uuid),
-                **self.config.entity.model_dump(),
+                name=self.config.entity.name, admin_email=self.config.admins[0].email
             ),
         )
 

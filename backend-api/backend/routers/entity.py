@@ -14,7 +14,6 @@ from api import auth_helpers, crud, models, schemas
 from api.database import aget_read_db, aget_write_db
 from api.models import (
     Entity,
-    EntityType,
     PermissionsEntityMap,
     User,
 )
@@ -32,54 +31,6 @@ async def validate_entity_admin(
 ):
     """Frontend visibility probe for entity management: 200 for superusers, 401 otherwise."""
     return schemas.SuccessReturn.success_instance()
-
-
-@router.post("/entity-type", response_model=schemas.SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
-async def add_entity_type(
-    request: Request,
-    entity_type: schemas.EntityTypeCreate,
-    db: AsyncSession = Depends(aget_write_db),
-    _=Depends(auth_helpers.get_current_superuser),
-):
-    await administration.create_entity_type(db, entity_type)
-    return {"success": True}
-
-
-@router.put("/entity-type/{type_uuid}", response_model=schemas.SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
-async def put_entity_type(
-    type_uuid: UUID,
-    request: Request,
-    entity_type: schemas.EntityTypeCreate,
-    db: AsyncSession = Depends(aget_write_db),
-    _=Depends(auth_helpers.get_current_superuser),
-):
-    try:
-        query = (
-            update(EntityType)
-            .where(EntityType.uuid == type_uuid)
-            .values(**entity_type.model_dump())
-        )
-        response = await db.execute(query)
-        await db.commit()
-        if response.rowcount == 0:  # type: ignore
-            raise HTTPException(404, detail="Entity type not found")
-    except IntegrityError as exc:
-        raise HTTPException(409, detail="Entity type already exists") from exc
-    except DataError as exc:
-        raise HTTPException(400, detail="Bad data submitted") from exc
-    return {"success": True}
-
-
-@router.get("/entity-type", response_model=CustomPage[schemas.EntityTypeReturn])
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
-async def get_entity_types(
-    request: Request,
-    db: AsyncSession = Depends(aget_read_db),
-    _=Depends(auth_helpers.get_current_superuser),
-):
-    return await paginate(db, administration.entity_types_query())
 
 
 @router.post("/entity", response_model=schemas.AddEntityReturn)

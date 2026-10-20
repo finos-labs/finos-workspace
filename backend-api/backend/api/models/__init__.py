@@ -12,7 +12,6 @@ from .entity_models import (
     Entity,
     EntityRelationship,
     EntityThemeSettings,
-    EntityType,
     PermissionsEntityMap,
     Role,
     RoleBackend,

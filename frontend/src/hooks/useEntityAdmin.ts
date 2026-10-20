@@ -4,7 +4,6 @@ import {
   getEntities,
   getEntityMaps,
   getEntityRelationships,
-  getEntityTypes,
   getEntityUsers,
   validateEntityAdmin,
 } from "~/api/entities.api";
@@ -15,7 +14,6 @@ export const entityAdminKeys = {
   root: ROOT,
   validate: [...ROOT, "validate"] as const,
   entities: [...ROOT, "entities"] as const,
-  entityTypes: [...ROOT, "entityTypes"] as const,
   relationships: [...ROOT, "relationships"] as const,
   maps: [...ROOT, "maps"] as const,
   users: [...ROOT, "users"] as const,
@@ -46,13 +44,6 @@ export const useEntities = () =>
   useQuery({
     queryKey: entityAdminKeys.entities,
     queryFn: getEntities,
-    staleTime: STALE_TIME,
-  });
-
-export const useEntityTypes = () =>
-  useQuery({
-    queryKey: entityAdminKeys.entityTypes,
-    queryFn: getEntityTypes,
     staleTime: STALE_TIME,
   });
 

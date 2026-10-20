@@ -8,7 +8,6 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
-    Column,
     ForeignKey,
     Integer,
     String,
@@ -67,34 +66,12 @@ async def entity_get_supreme(db: AsyncSession, self_uuid: UUID) -> None | UUID:
     return None
 
 
-class EntityType(Base, UUIDMixin, DateMixin):
-    """Stores the types of entities and system information"""
-
-    __tablename__ = "entity_type"
-
-    entity_type: Mapped[str] = mapped_column(String(100))
-    code: Mapped[str] = mapped_column(String(3), unique=True)
-    active = Column(Boolean, default=False)
-    permission_hierarchy = Column(Integer, default=0, nullable=False)
-
-
 class Entity(Base, UUIDMixin, DateMixin):
-    """Stores names and details of entities"""
+    """An organization: its name, and the switches that act on it"""
 
     __tablename__ = "entity"
 
     name: Mapped[None | str] = mapped_column(String(100), unique=True)
-    entity_type_uuid: Mapped[UUID] = mapped_column(
-        ForeignKey("entity_type.uuid"), index=True
-    )
-    entity_type: Mapped["EntityType"] = relationship(
-        foreign_keys=[entity_type_uuid], lazy="selectin"
-    )
-    email: Mapped[None | str] = mapped_column(String(200))
-    company_type: Mapped[None | str] = mapped_column(String(20))
-    organization_size: Mapped[None | str] = mapped_column(String(20))
-    aum: Mapped[None | int] = mapped_column(BigInteger, default=0)
-    country: Mapped[None | str] = mapped_column(String(60))
     require_authenticator: Mapped[bool] = mapped_column(Boolean, default=False)
     # The superuser's switch; on, the organization's roles decide who shares
     sharing_enabled: Mapped[bool] = mapped_column(

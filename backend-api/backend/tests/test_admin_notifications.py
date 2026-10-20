@@ -12,7 +12,6 @@ import pytest
 
 from api import notifications
 from api.notifications import WebhookNotifier, notify_admins
-from tests.fixtures.base import _TEST_ENTITY_TYPE_UUID
 from tests.fixtures.base import superuser_override
 from utilities.config import settings
 
@@ -141,12 +140,6 @@ class TestEntityCreatedEvent:
                 "/entity/entity",
                 json={
                     "name": name,
-                    "entity_code": _TEST_ENTITY_TYPE_UUID,
-                    "email": "entity@example.com",
-                    "company_type": "other",
-                    "organization_size": "1-10",
-                    "aum": 0,
-                    "country": "US",
                     "admin_email": "entity-admin@example.com",
                 },
             )

@@ -31,7 +31,6 @@ from routers.app.helpers import (
     get_user_copilot_access,
     get_user_limits,
 )
-from tests.fixtures.base import _TEST_ENTITY_TYPE_UUID
 from tests.fixtures.base import superuser_override
 from tests.fixtures.organization import (
     ADMIN_ENTITY,
@@ -370,12 +369,6 @@ class TestOrganizations:
                 "/entity/entity",
                 json={
                     "name": f"Typed Entity {uuid4().hex[:8]}",
-                    "entity_code": _TEST_ENTITY_TYPE_UUID,
-                    "email": "typed-entity@example.com",
-                    "company_type": "other",
-                    "organization_size": "1-10",
-                    "aum": 0,
-                    "country": "US",
                     "admin_email": "typed-entity-admin@example.com",
                 },
             )

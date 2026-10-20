@@ -40,13 +40,7 @@ def _type(monkeypatch, text: str) -> None:
 
 def _config() -> Config:
     return Config(
-        entity={
-            "name": ENTITY_NAME,
-            "aum": 0,
-            "company_type": "CORPORATION",
-            "organization_size": "SMALL",
-            "country": "DOM",
-        },
+        entity={"name": ENTITY_NAME},
         admins=[
             {
                 "email": ADMIN_EMAIL,
@@ -69,7 +63,6 @@ async def bootstrap_cleanup(db_session, monkeypatch, tmp_path):
             select(models.Entity.uuid).where(models.Entity.name == ENTITY_NAME)
         )
     ).scalar_one_or_none()
-    type_code = ENTITY_NAME[:3].upper()
     users = select(models.User.uuid).where(models.User.email.in_([ADMIN_EMAIL, OTHER_EMAIL]))
     await db_session.execute(delete(models.Session).where(models.Session.user_uuid.in_(users)))
     await db_session.execute(
@@ -87,9 +80,6 @@ async def bootstrap_cleanup(db_session, monkeypatch, tmp_path):
             )
         )
         await db_session.execute(delete(models.Entity).where(models.Entity.uuid == entity_uuid))
-    await db_session.execute(
-        delete(models.EntityType).where(models.EntityType.code == type_code)
-    )
     await _set_fk_checks(db_session, enabled=True)
     await db_session.commit()
 
