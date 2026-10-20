@@ -134,14 +134,14 @@ async def get_user_api_sources(
     user=Depends(auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_read_db),
 ):
-    """Get all API sources for a user: their own, if they may bring connections, and on
-    premises the backends of their organization"""
+    """Get all API sources for a user: their own, if they may bring connections, and the
+    backends of their organization"""
     filters = ()
+    # Never compared with None: that would match every user's own backends
+    if (entity_uuid := await crud.get_user_entity_uuid(db, user.permissions_uuid)) is not None:
+        filters += (ApiSource.entity_uuid == entity_uuid,)
     if await app_helpers.may_add_connections(db, user.uuid):
         filters += (ApiSource.user_uuid == user.uuid,)
-    if settings.is_onprem():
-        entity_uuid = await crud.get_user_entity_uuid(db, user.permissions_uuid)
-        filters += (ApiSource.entity_uuid == entity_uuid,)
     if not filters:
         return []
 

@@ -758,8 +758,9 @@ class NotificationSettings(BaseModel):
 
 class AppSettings(BaseModel):
     INVITE_EXPIRATION: timedelta = timedelta(weeks=52)
-    DEVELOPER_MAPPING: UUID = UUID("22222222-2222-2222-2222-222222222222")
-    ON_PREM_ADMIN_MAPPING: UUID | None = None
+    # The first organization's User map, which init writes to user_create.json: an invite
+    # without a user type, a user without a map and a first sign-in with a provider get it
+    DEFAULT_USER_MAPPING: UUID | None = None
     APPURL: str
 
     def __init__(self, **data: Any):
@@ -770,8 +771,7 @@ class AppSettings(BaseModel):
 
         with suppress(Exception):
             json_data = json.loads(create_user.read_text())
-            self.DEVELOPER_MAPPING = UUID(json_data["permissions_uuid"])
-            self.ON_PREM_ADMIN_MAPPING = UUID(json_data["on_prem_admin_uuid"])
+            self.DEFAULT_USER_MAPPING = UUID(json_data["permissions_uuid"])
 
 
 class DefaultMCPServer(BaseModel):
@@ -789,7 +789,7 @@ class GeneralSettings(BaseModel):
 
     FRONTENDURL: str
     SELFURL: str
-    MODE: Literal["production", "local", "test", "onprem", "lite"]
+    MODE: Literal["production", "local", "test", "lite"]
     # Requests carrying a valid X-Workspace-Authorization token skip rate limiting (development only)
     RATE_LIMIT_EXEMPT_ENABLED: bool = False
     # Sign-in providers (/app/{provider}-auth): the public ids of this deployment's OAuth
@@ -868,10 +868,7 @@ class GeneralSettings(BaseModel):
         return self.MODE == "test"
 
     def is_prod(self) -> bool:
-        return self.MODE in {"production", "onprem", "lite"}
-
-    def is_onprem(self) -> bool:
-        return self.MODE == "onprem"
+        return self.MODE in {"production", "lite"}
 
     def is_lite(self) -> bool:
         return self.MODE == "lite"

@@ -8,6 +8,7 @@ import secrets
 from contextlib import asynccontextmanager, contextmanager
 from datetime import UTC
 from typing import Any, TypedDict
+from uuid import UUID
 from collections.abc import Mapping, Sequence
 
 import jwt
@@ -175,9 +176,12 @@ _DELETE_PERMISSIONS_BY_UUID = text(
 _DELETE_ENTITY_BY_UUID = text("DELETE FROM `entity` WHERE uuid = :uuid")
 _DELETE_ENTITY_TYPE_BY_UUID = text("DELETE FROM `entity_type` WHERE uuid = :uuid")
 
-_DEVELOPER_UUID = "22222222-2222-2222-2222-222222222222"
-_DEVELOPER_ENTITY_UUID = "33333333-3333-3333-3333-333333333333"
+# The default organization: init makes the first one, and users nobody placed get its User map
+# (settings.DEFAULT_USER_MAPPING, which user_create.json sets in a stack)
+_DEFAULT_USER_MAP_UUID = "22222222-2222-2222-2222-222222222222"
+_DEFAULT_ENTITY_UUID = "33333333-3333-3333-3333-333333333333"
 _APP_ENTITY_TYPE_UUID = "55555555-5555-5555-5555-555555555555"
+settings.DEFAULT_USER_MAPPING = UUID(_DEFAULT_USER_MAP_UUID)
 
 
 def _configure_test_settings(
@@ -482,8 +486,8 @@ def _get_or_create_entity_type(session):
 
     entity_type = EntityType(
         uuid=_APP_ENTITY_TYPE_UUID,
-        entity_type="developer",
-        code="DEV",
+        entity_type="Default",
+        code="DEF",
         active=True,
         permission_hierarchy=0,
     )
@@ -554,18 +558,18 @@ def _seed_entities() -> None:
 
     with Session(engine) as session:
         entity_type = _get_or_create_entity_type(session)
-        developer_entity = _get_or_create_entity(
+        default_entity = _get_or_create_entity(
             session,
-            uuid=_DEVELOPER_ENTITY_UUID,
-            name="Developer Entity",
-            email="developer@example.com",
+            uuid=_DEFAULT_ENTITY_UUID,
+            name="Default Organization",
+            email="default@example.com",
             entity_type_uuid=entity_type.uuid,
         )
         _get_or_create_permission(
             session,
-            uuid=_DEVELOPER_UUID,
-            entity_uuid=developer_entity.uuid,
-            name="Developer",
+            uuid=_DEFAULT_USER_MAP_UUID,
+            entity_uuid=default_entity.uuid,
+            name="User",
         )
 
     engine.dispose()

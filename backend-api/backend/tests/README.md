@@ -85,9 +85,9 @@ The `/app` endpoints require specific entities and permissions to exist in the d
 
 The seed function creates the following records after database migrations run:
 
-1. **EntityType** - A single entity type record for "app" entities
-2. **Entity (Developer)** - The organization that users without one are put into
-3. **PermissionsEntityMap** - Its "Developer" permissions map, `DEVELOPER_MAPPING`
+1. **EntityType** - A single entity type record, "Default"
+2. **Entity (Default Organization)** - The organization that users without one are put into
+3. **PermissionsEntityMap** - Its "User" permissions map, `DEFAULT_USER_MAPPING`
 
 ### UUID References
 
@@ -95,8 +95,8 @@ The seed function uses specific UUIDs that align with the application's settings
 
 | Record | UUID | Purpose |
 |--------|------|---------|
-| DEVELOPER_MAPPING | `22222222-2222-2222-2222-222222222222` | Developer permissions map |
-| Developer Entity | `33333333-3333-3333-3333-333333333333` | Developer entity record |
+| DEFAULT_USER_MAPPING | `22222222-2222-2222-2222-222222222222` | The default organization's User map |
+| Default Organization | `33333333-3333-3333-3333-333333333333` | The default organization |
 | EntityType | `55555555-5555-5555-5555-555555555555` | Entity type record |
 
 ### How the clients authenticate

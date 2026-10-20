@@ -1,6 +1,6 @@
 # .dockerignore for the one-box build (docker/onebox/Dockerfile), which uses
 # the repo root as build context. Other Dockerfiles in the repo use narrower
-# contexts (backend/, on-prem-deploy/docker/) and ship their own ignore files.
+# contexts (backend/) and ship their own ignore files.
 
 # Heavy / unrelated dirs
 .git
@@ -9,7 +9,6 @@
 .vscode
 admin_cli
 admin_frontend
-on-prem-deploy
 
 # Python build artifacts
 **/__pycache__

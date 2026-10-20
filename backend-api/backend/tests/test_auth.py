@@ -116,7 +116,7 @@ class TestAppLogin:
         """Login with valid credentials should return 200 and set the session cookie,
         with no token in the body
 
-        A user without an organization is put into the default one, as a developer.
+        A user without an organization is put into the default one, as a User.
         """
         test_password = "TestPassword123!"
         test_user_uuid = str(uuid4())
@@ -142,7 +142,7 @@ class TestAppLogin:
             assert app_client.cookies.get(SESSION_COOKIE)
             assert data["email"] == test_email
             assert data["uuid"] == test_user_uuid
-            assert data["access"] == {"user_type": "Developer", "sharing": "none"}
+            assert data["access"] == {"user_type": "User", "sharing": "none"}
         finally:
             await cleanup_test_user(db_session, user_uuid=test_user_uuid)
 

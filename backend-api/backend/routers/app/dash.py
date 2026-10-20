@@ -19,7 +19,6 @@ from api.models import (
 )
 from api.rate_limit import LIMIT_DEFAULT, exempt_service_token, limiter
 from routers import app_helpers
-from utilities.config import settings
 
 router = APIRouter(
     prefix="/app/dash",
@@ -52,20 +51,15 @@ async def get_shared_items(
         auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)
     ),
 ):
-    if user.permissions_uuid != settings.DEVELOPER_MAPPING or settings.is_onprem():
-        tasks: list[asyncio.Task[crud.UserDashboards]] = [
-            asyncio.create_task(app_helpers.dashboard_task("shared", user.uuid)),
-            asyncio.create_task(
-                app_helpers.dashboard_task(
-                    "entity_shared", user.uuid, user.permissions_uuid
-                )
-            ),
-        ]
-        shared, entity_shared = await asyncio.gather(*tasks)
-        entity_shared = {k: v for k, v in entity_shared.items() if k not in shared}
-        return schemas.DashboardShared(shared=shared, entity_shared=entity_shared)
-
-    return schemas.DashboardShared(shared={}, entity_shared={})
+    tasks: list[asyncio.Task[crud.UserDashboards]] = [
+        asyncio.create_task(app_helpers.dashboard_task("shared", user.uuid)),
+        asyncio.create_task(
+            app_helpers.dashboard_task("entity_shared", user.uuid, user.permissions_uuid)
+        ),
+    ]
+    shared, entity_shared = await asyncio.gather(*tasks)
+    entity_shared = {k: v for k, v in entity_shared.items() if k not in shared}
+    return schemas.DashboardShared(shared=shared, entity_shared=entity_shared)
 
 
 @router.get("/sync", response_model=schemas.DashboardComplete)

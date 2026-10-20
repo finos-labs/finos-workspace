@@ -48,7 +48,6 @@ FASTAPI_KWARGS = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await helpers.create_developer_mapping()
     await start_background_tasks()
     await init_audit_listeners()
     if config.settings.PROMETHEUS:

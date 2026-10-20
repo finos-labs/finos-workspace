@@ -19,7 +19,7 @@ The `.env` file at `backend/envs/.env` is the single source of configuration.
 For local Docker development the important host-facing values are:
 
 ```ini
-MODE=onprem
+MODE=production
 BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:3001","http://localhost:1420","http://localhost:5173"]
 ```
 
@@ -213,5 +213,5 @@ cd backend
   up, with no grace period.
 
 - `user_create.json` is both an output of `init_users.py` and an input to
-  `AppSettings.__init__` (which sets `DEVELOPER_MAPPING` and `ON_PREM_ADMIN_MAPPING`).
+  `AppSettings.__init__` (which sets `DEFAULT_USER_MAPPING`: the first organization's User map).
   Always delete it before a clean init to avoid circular contamination.

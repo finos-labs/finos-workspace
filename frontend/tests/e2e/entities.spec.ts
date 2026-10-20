@@ -18,7 +18,7 @@ test("a superuser finds Entities in the Admin area", async ({ page }) => {
 test("the entity types the stack starts with are listed", async ({ page }) => {
   await page.goto(ENTITY_TYPES_URL);
 
-  await expect(rowWith(page, "On-Premise")).toBeVisible();
+  await expect(rowWith(page, "Default")).toBeVisible();
 });
 
 test("an entity type can be added and renamed", async ({ page }) => {

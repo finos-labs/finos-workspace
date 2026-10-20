@@ -23,7 +23,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 
 from api import models
 from api.storage import FileStorage
@@ -246,8 +246,7 @@ class TestServingConnections:
         db_session.add(backend)
         await db_session.commit()
         try:
-            with patch.object(settings, "MODE", "onprem"):
-                response = await auth_client.get("/app/data-connectors/api-source")
+            response = await auth_client.get("/app/data-connectors/api-source")
         finally:
             await db_session.execute(
                 delete(models.ApiSource).where(models.ApiSource.uuid == backend.uuid)
@@ -256,6 +255,25 @@ class TestServingConnections:
 
         assert response.status_code == 200
         assert [item["id"] for item in response.json()] == [str(backend.uuid)]
+
+    @pytest.mark.asyncio
+    async def test_a_user_without_an_organization_is_served_nobodys_backends(
+        self, organization, auth_client, db_session
+    ):
+        # Another user's own backend, which has no organization
+        other = await organization.add_user()
+        await _store_connections(db_session, other.uuid)
+        await db_session.execute(
+            update(models.User)
+            .where(models.User.uuid == MEMBER_UUID)
+            .values(permissions_uuid=None)
+        )
+        await db_session.commit()
+
+        response = await auth_client.get("/app/data-connectors/api-source")
+
+        assert response.status_code == 200
+        assert response.json() == []
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(

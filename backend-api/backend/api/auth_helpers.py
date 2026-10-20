@@ -775,12 +775,6 @@ def decode_jwt(token: str) -> dict[str, str]:
     return jwt.decode(token, settings.JWT_SECRET, algorithms=ALGORITHM)  # type: ignore
 
 
-ON_PREM_TOKEN: dict | None = None
-if settings.is_onprem():
-    with suppress(Exception):
-        ON_PREM_TOKEN = decode_jwt(settings.WORKSPACE_AUTH_TOKEN)
-
-
 def token_checker(token: str, requirement: dict[str, str]) -> None:
     """Checks that the given token matches the given requirements
 
@@ -793,13 +787,6 @@ def token_checker(token: str, requirement: dict[str, str]) -> None:
     """
     try:
         payload = decode_jwt(token)
-
-        if ON_PREM_TOKEN:
-            token_value: None | str = payload.get("auth", None)
-            if token_value != ON_PREM_TOKEN.get("auth"):
-                raise credentials_exception
-            # token matches, so we can return
-            return
 
         for key, value in requirement.items():
             token_value: None | str = payload.get(key, None)

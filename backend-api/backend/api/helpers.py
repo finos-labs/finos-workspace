@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import models, worker_tasks
 from api.database import AsyncWriteSessionLocal
-from api.models import DashboardItem, Entity, EntityType, PermissionsEntityMap, User
+from api.models import DashboardItem, Entity, PermissionsEntityMap, User
 from utilities import rq_results
 from utilities.config import settings
 
@@ -196,82 +196,6 @@ def get_app_user_query(email: str):
     if "@" in email:
         return query.where(User.email == email).limit(1)
     return query.where(User.username == email).limit(1)
-
-
-DEFAULT_ENTITY_TYPE_CODE = "DEF"
-
-
-async def get_or_create_entity_type(db: AsyncSession, code: str) -> UUID:
-    select_query = select(EntityType.uuid).where(
-        EntityType.code == code, EntityType.active.is_(True)
-    )
-    response = (await db.execute(select_query)).first()
-    if response:
-        return response.uuid
-    create_query = insert(EntityType).values(
-        code=code, active=True, permission_hierarchy=0, entity_type="Default"
-    )
-    return (await db.execute(create_query)).inserted_primary_key[0]
-
-
-async def get_or_create_entity(db: AsyncSession, entity_type: UUID, name: str) -> UUID:
-    select_query = select(Entity.uuid).where(
-        Entity.name == name, Entity.entity_type_uuid == entity_type
-    )
-    response = (await db.execute(select_query)).first()
-    if response:
-        return response.uuid
-    create_query = insert(Entity).values(
-        name=name,
-        entity_type_uuid=entity_type,
-        email=None,
-        company_type=None,
-        organization_size=None,
-        aum=None,
-        country=None,
-    )
-    return (await db.execute(create_query)).inserted_primary_key[0]
-
-
-async def create_developer_mapping():
-    async with AsyncWriteSessionLocal.session() as db:
-        try:
-            # Check if entity already exists
-            check_query = (
-                select(Entity.uuid).where(Entity.name == "Developer").limit(1)
-            )
-            response = (await db.execute(check_query)).scalar_one_or_none()
-            if response:
-                return
-
-            entity_type_uuid = await get_or_create_entity_type(
-                db, DEFAULT_ENTITY_TYPE_CODE
-            )
-            entity_uuid = await get_or_create_entity(
-                db, entity_type_uuid, "Developer"
-            )
-            create_mapping_q = insert(PermissionsEntityMap).values(
-                uuid=settings.DEVELOPER_MAPPING,
-                entity_uuid=entity_uuid,
-                name=models.DEVELOPER_TYPE,
-            )
-            await db.execute(create_mapping_q)
-            await db.execute(
-                insert(PermissionsEntityMap),
-                [
-                    {"entity_uuid": entity_uuid, "name": user_type}
-                    for user_type in (models.ADMIN_TYPE, models.USER_TYPE)
-                ],
-            )
-            await db.commit()
-
-        except IntegrityError as e:
-            handle_duplicate_pk(e)
-            await db.rollback()
-        except Exception as e:
-            if not settings.is_onprem():
-                logger.exception(e)
-            await db.rollback()
 
 
 async def get_managed_users(db: AsyncSession, admin_result: UUID):

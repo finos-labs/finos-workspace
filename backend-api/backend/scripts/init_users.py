@@ -29,7 +29,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api import base, schemas
 from api.base import clean_email
 from api.database import aget_write_db
-from api.helpers import create_developer_mapping
 from api.models import (
     ADMIN_TYPE,
     USER_TYPE,
@@ -168,7 +167,7 @@ class SetupConfig:
 
         if (entity_type_uuid := result.scalars().first()) is None:
             query = insert(EntityType).values(
-                entity_type="On-Premise",
+                entity_type="Default",
                 code=self.code,
                 active=True,
                 permission_hierarchy=2,
@@ -206,10 +205,7 @@ class SetupConfig:
 
         await self.init_admins(permissions_map[ADMIN_TYPE])
 
-        user_create = {
-            "on_prem_admin_uuid": permissions_map[ADMIN_TYPE],
-            "permissions_uuid": permissions_map[USER_TYPE],
-        }
+        user_create = {"permissions_uuid": permissions_map[USER_TYPE]}
         with USER_CREATE_JSON_PATH.open("w", encoding="utf-8", newline="\n") as f:
             f.write(json.dumps(jsonable_encoder(user_create), indent=4))
 
@@ -239,9 +235,6 @@ async def setup_configs():
     for file in CONFIG_PATH.glob("*.toml"):
         with file.open("rb") as f:
             configs.append(Config(**tomllib.load(f)))
-
-    with suppress(Exception):
-        await create_developer_mapping()
 
     async for db in aget_write_db():
         for config in configs:

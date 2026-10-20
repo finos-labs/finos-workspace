@@ -324,26 +324,19 @@ async def dashboard_task(
 
 
 async def get_dashboards_complete(user: models.User) -> schemas.DashboardComplete:
-    if user.permissions_uuid != settings.DEVELOPER_MAPPING or settings.is_onprem():
-        tasks: list[asyncio.Task[crud.UserDashboards]] = [
-            asyncio.create_task(dashboard_task("owned", user.uuid)),
-            asyncio.create_task(dashboard_task("shared", user.uuid)),
-            asyncio.create_task(
-                dashboard_task("entity_shared", user.uuid, user.permissions_uuid)
-            ),
-        ]
+    tasks: list[asyncio.Task[crud.UserDashboards]] = [
+        asyncio.create_task(dashboard_task("owned", user.uuid)),
+        asyncio.create_task(dashboard_task("shared", user.uuid)),
+        asyncio.create_task(
+            dashboard_task("entity_shared", user.uuid, user.permissions_uuid)
+        ),
+    ]
 
-        owned, shared, entity_shared = await asyncio.gather(*tasks)
+    owned, shared, entity_shared = await asyncio.gather(*tasks)
 
-        entity_shared = {k: v for k, v in entity_shared.items() if k not in shared}
+    entity_shared = {k: v for k, v in entity_shared.items() if k not in shared}
 
-        return schemas.DashboardComplete(
-            owned=owned, shared=shared, entity_shared=entity_shared
-        )
-
-    owned = await dashboard_task("owned", user.uuid)
-
-    return schemas.DashboardComplete(owned=owned, shared={}, entity_shared={})
+    return schemas.DashboardComplete(owned=owned, shared=shared, entity_shared=entity_shared)
 
 
 def check_login(user: schemas.UserLogin, db_user: schemas.AppUserSchema | None):
@@ -557,11 +550,14 @@ async def _create_usage(user: models.User, db: AsyncSession) -> schemas.UsageGet
 
 
 async def assign_default_mapping(db: AsyncSession, user_uuid: UUID):
-    """Puts a user that has no permissions mapping into the default one."""
+    """Puts a user that has no permissions mapping into the default one: the first
+    organization's User map. Without one (no user_create.json) the user stays as they are."""
+    if settings.DEFAULT_USER_MAPPING is None:
+        return
     update_query = (
         update(models.User)
         .where(models.User.uuid == user_uuid)
-        .values(permissions_uuid=settings.DEVELOPER_MAPPING)
+        .values(permissions_uuid=settings.DEFAULT_USER_MAPPING)
     )
     await db.execute(update_query)
     await db.commit()
@@ -1822,16 +1818,15 @@ async def get_shared_file_uuids(
 
     shared_uuids = [uuid for item in results for uuid in item] if results else []
 
-    if user.permissions_uuid != settings.DEVELOPER_MAPPING or settings.is_onprem():
-        permissions = await get_user_role_permissions(db, user.uuid)
-        role_permissions = flatten_permissions(permissions.model_dump())
-        if role_permissions.files:
-            shared_uuids.extend(
-                [
-                    file.stored_file_uuid
-                    for file in role_permissions.files
-                    if file.stored_file_uuid and file.access != "no-access"
-                ]
-            )
+    permissions = await get_user_role_permissions(db, user.uuid)
+    role_permissions = flatten_permissions(permissions.model_dump())
+    if role_permissions.files:
+        shared_uuids.extend(
+            [
+                file.stored_file_uuid
+                for file in role_permissions.files
+                if file.stored_file_uuid and file.access != "no-access"
+            ]
+        )
 
     return list(set(shared_uuids))

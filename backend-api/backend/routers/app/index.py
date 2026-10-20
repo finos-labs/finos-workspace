@@ -72,7 +72,7 @@ async def process_create_user(
         return False
 
     if result.permissions_uuid is None:
-        result.permissions_uuid = settings.DEVELOPER_MAPPING
+        result.permissions_uuid = settings.DEFAULT_USER_MAPPING
 
     if await crud.check_new_user(db, result.email):
         return False
@@ -318,7 +318,8 @@ async def finish_sign_in(  # noqa: PLR0914
         auth_helpers.CURRENT_APP_USER["tables"],
     )
 
-    if settings.is_onprem():
+    # The organization's backends; a user without one has none (never compared with None)
+    if db_user.entity_uuid is not None:
         entity_query = select(models.ApiSource).where(
             models.ApiSource.entity_uuid == db_user.entity_uuid
         )
@@ -421,7 +422,7 @@ async def handle_oauth_user(
             first_name=identity.given_name,
             last_name=identity.family_name,
             email=identity.email,
-            permissions_uuid=settings.DEVELOPER_MAPPING,
+            permissions_uuid=settings.DEFAULT_USER_MAPPING,
         )
         extra_info = schemas.RegisterAppUser()
         invite_uuid = await register_app_user(

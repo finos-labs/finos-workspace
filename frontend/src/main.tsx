@@ -332,7 +332,7 @@ function bootstrap() {
     applyFontFamily(config.whiteLabel.fontFamily);
   }
 
-  // Override HTML meta tags from runtime config (no SEO needed for on-prem)
+  // Override HTML meta tags from runtime config
   applyWhiteLabelMeta(config.whiteLabel);
 
   const root = createRoot(document.getElementById("root") as HTMLElement);

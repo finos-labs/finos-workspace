@@ -19,8 +19,8 @@ const ENTITY: Entity = {
   name: "Acme",
   entity_type: {
     uuid: TYPE_UUID,
-    entity_type: "On-Premise",
-    code: "OPR",
+    entity_type: "Default",
+    code: "DEF",
     active: true,
     permission_hierarchy: 1,
   },

@@ -209,7 +209,7 @@ def test_the_compose_environment_starts_the_api(tmp_path, monkeypatch, config):
     assert local_env.main(ADMIN) == 0
 
     loaded = _api_settings(monkeypatch, target)
-    assert loaded.MODE == "onprem"
+    assert loaded.MODE == "production"
     assert loaded.BACKEND_CORS_ORIGINS == local_env.BACKEND_CORS_ORIGINS
     assert loaded.GOOGLE_OAUTH_CLIENT_ID is None
 

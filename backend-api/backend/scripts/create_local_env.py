@@ -109,7 +109,7 @@ def settings(
         "DB_NAME": "workspace",
         "REDIS_HOST": "redis",
         "STORAGE_PROVIDER": "folder",
-        "MODE": "onprem",
+        "MODE": "production",
         "FRONTENDURL": WEB_URL,
         "APPURL": WEB_URL,
         "SELFURL": API_URL,

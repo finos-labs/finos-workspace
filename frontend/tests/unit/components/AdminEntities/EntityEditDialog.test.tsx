@@ -12,8 +12,8 @@ vi.mock("~/api/entities.api", () => ({ updateEntity: vi.fn() }));
 
 const ENTITY_TYPE: EntityType = {
   uuid: "7d4f3a52-1b1e-4c7a-9a43-3f7a2b1c9e10",
-  entity_type: "On-Premise",
-  code: "OPR",
+  entity_type: "Default",
+  code: "DEF",
   active: true,
   permission_hierarchy: 1,
 };

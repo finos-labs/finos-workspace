@@ -73,7 +73,7 @@ The backend reads `backend-api/backend/envs/.env`, the same file the root `docke
 
 | Setting | Value | Why |
 |---|---|---|
-| `MODE` | `onprem` | The mode the backend's own development guide uses |
+| `MODE` | `production` | The mode the backend's own development guide uses |
 | `SELFURL` | `http://localhost:8000` | Links the backend builds point at the API |
 | `DB_HOST`, `REDIS_HOST` | `mysql`, `redis` | The container names |
 | `DB_NAME` | `workspace` | The database the MySQL container creates |

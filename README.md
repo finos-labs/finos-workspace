@@ -92,13 +92,13 @@ the code, so the API does not start without them.
 
 | Variable | Written by `create_local_env` | What it is |
 |---|---|---|
-| `MODE` | `onprem` | One of `production`, `local`, `test`, `onprem` or `lite`. |
+| `MODE` | `production` | One of `production`, `local`, `test` or `lite`. |
 | `FRONTENDURL` | `http://localhost:3000` | Address of the web app. |
 | `APPURL` | `http://localhost:3000` | Address of the web app that the API uses for links back to it, such as login redirects. |
 | `SELFURL` | `http://localhost:8000` | The API's own address, used to build links to files. |
 | `WORKSPACE_AES_KEY` | random, 16 characters | Encrypts stored data. Never change it once the database has data. |
 | `JWT_SECRET` | random | Signs the sign-in tokens. |
-| `WORKSPACE_AUTH_TOKEN` | a JWT signed with `JWT_SECRET` | The service token of an on-premises deployment. |
+| `WORKSPACE_AUTH_TOKEN` | a JWT signed with `JWT_SECRET` | The deployment's service token: requests that carry it are exempt from rate limits. |
 | `LOCAL_STORAGE_SECRET_KEY` | random | Signs the links to uploaded files. The code's own default is a fixed string, so always set it. |
 | `STORAGE_PROVIDER` | `folder` | Where uploaded files go: `folder` (the `storage` volume), `aws`, `azure` or `gcp`. |
 | `DB_HOST`, `DB_NAME`, `REDIS_HOST` | `mysql`, `workspace`, `redis` | The compose services. The `api`, `init` and `worker` services also set `DB_HOST` and `REDIS_HOST` themselves, and compose's value wins. |

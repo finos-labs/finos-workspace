@@ -128,12 +128,11 @@ async def bulk_dashboard_insert_update(  # noqa: PLR0912
         cleaner_update = [{"uuid": x.uuid, "content": x.content} for x in to_update]
         await db.execute(update(DashboardItem), cleaner_update)
 
-        if permissions_uuid != settings.DEVELOPER_MAPPING or settings.is_onprem():
-            from api.helpers import handle_share_files  # noqa
+        from api.helpers import handle_share_files  # noqa
 
-            await db.commit()
-            for item in to_update:
-                handle_share_files(owner_uuid, item.uuid)
+        await db.commit()
+        for item in to_update:
+            handle_share_files(owner_uuid, item.uuid)
 
     if to_delete:
         query = delete(DashboardItem).where(
@@ -817,9 +816,6 @@ async def get_user_dashboards_entity_shared(
     exclude_uuids: list[UUID] | None = None,
 ) -> UserDashboards:
     "Gets all dashboards that are shared with all user's in the current user's entity"
-    if permissions_uuid == settings.DEVELOPER_MAPPING and not settings.is_onprem():
-        return {}
-
     if (await get_users_sharing(db, [user_uuid]))[user_uuid] == models.SHARING_NONE:
         return {}
 
