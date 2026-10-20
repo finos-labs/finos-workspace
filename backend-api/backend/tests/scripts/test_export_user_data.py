@@ -106,8 +106,16 @@ def _seed(session):
             original_file_name="gone.csv",
             size=99,
         ),
-        # Excluded: a live session and a login record.
-        models.Session(uuid=uuid4(), user_uuid=TARGET_UUID, api_token="secret-token"),
+        # Excluded: a live session and a Workspace MCP token.
+        models.Session(uuid=uuid4(), user_uuid=TARGET_UUID, token_hash="e" * 64),
+        models.PersonalAccessToken(
+            uuid=uuid4(),
+            user_uuid=TARGET_UUID,
+            name="Workspace MCP",
+            token_type="workspace_mcp",
+            token_hash="secret-token",
+            token_prefix="ws_mcp_",
+        ),
     ])
 
     # The other user's data -- none of this may appear in the archive.
@@ -358,14 +366,33 @@ async def test_archive_documents_its_own_scope(archive):
     assert "RESET ON IMPORT" in scope_text
 
 
-async def test_readme_warns_about_plaintext_credentials(archive):
-    """The archive carries live credentials; the user has to be told."""
-    _, zf = archive
+async def test_readme_explains_the_export_key(archive):
+    """The credentials are sealed; the user has to be told they need the key."""
+    result, zf = archive
     readme = zf.read("README.md").decode("utf-8")
 
-    assert "unencrypted credentials" in readme
-    assert "workspace-import" in readme, "must tell them how to import"
+    assert "export key" in readme
+    assert "docker exec -it workspace workspace-import" in readme, "must tell them how to import"
     assert "password is **not** carried over" in readme
+    assert result.export_key not in readme
+
+
+async def test_no_credential_or_export_key_is_readable_in_the_archive(archive):
+    result, zf = archive
+    everything = b"".join(zf.read(n) for n in zf.namelist())
+
+    assert b"sk-target" not in everything, "the backend's key must be sealed"
+    assert result.export_key.encode() not in everything, "the key opens it: never inside"
+    source = _rows(zf, "api_source")[0]
+    assert set(source["endpointHeaders"]) == {"__sealed__"}
+
+
+async def test_each_export_has_its_own_key(tmp_path):
+    first = await exporter.export_user(TARGET_EMAIL, tmp_path / "a")
+    second = await exporter.export_user(TARGET_EMAIL, tmp_path / "b")
+
+    assert len(first.export_key) >= 43
+    assert first.export_key != second.export_key
 
 
 async def test_password_is_absent_from_the_whole_archive(archive):

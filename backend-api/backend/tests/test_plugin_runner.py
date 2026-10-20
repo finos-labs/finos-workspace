@@ -330,6 +330,7 @@ async def test_the_broker_relay_passes_a_broker_call_and_nothing_more(short_dir)
     call = (
         b"POST /internal/plugin-broker/data/sales HTTP/1.1\r\nHost: workspace-broker\r\n"
         b"X-Workspace-Call: wpc1.token\r\nContent-Type: application/json\r\nCookie: x=1\r\n"
+        b"Origin: http://localhost:3000\r\n"
         b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n" + body
     )
     second = b"GET /plugins HTTP/1.1\r\nHost: api\r\n\r\n"
@@ -341,6 +342,7 @@ async def test_the_broker_relay_passes_a_broker_call_and_nothing_more(short_dir)
     lines = head.split(b"\r\n")
     assert lines[0] == b"POST /internal/plugin-broker/data/sales HTTP/1.1"
     assert b"Connection: close" in lines and b"x-workspace-call: wpc1.token" in lines
+    assert b"origin: http://localhost:3000" in lines
     # Only the broker's headers go through, and nothing after the one request
     assert not any(line.lower().startswith(b"cookie") for line in lines)
     assert b"/plugins" not in forwarded

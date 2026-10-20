@@ -1,13 +1,8 @@
 import type { Server } from "node:http";
-import {
-  type APIRequestContext,
-  type BrowserContext,
-  expect,
-  type Page,
-  test,
-} from "@playwright/test";
+import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { type ReceivedRequest, startEchoBackend } from "./echoBackend";
 import { authFile, deleteDashboard } from "./helpers";
+import { type ApiResponse, type PageApi, pageApi } from "./plugins/api";
 
 /**
  * The request mapping of `widgets.json` (docs/widget-plugins/WIDGETS-JSON.md 4) on the
@@ -23,7 +18,7 @@ test.describe.configure({ mode: "serial" });
 
 let context: BrowserContext;
 let page: Page;
-let api: APIRequestContext;
+let api: PageApi;
 let backend: Server;
 let received: ReceivedRequest[];
 let sourceUuid: string;
@@ -31,7 +26,7 @@ let dashboardId: string;
 
 const card = () => page.locator("div.group\\/widget").filter({ hasText: WIDGET });
 
-async function json(response: Awaited<ReturnType<APIRequestContext["get"]>>) {
+async function json(response: ApiResponse) {
   expect(response.ok(), `${response.url()}: ${response.status()}`).toBe(true);
   return response.json();
 }
@@ -42,7 +37,7 @@ async function arrived(match: (r: ReceivedRequest) => boolean) {
   return received.find(match) as ReceivedRequest;
 }
 
-test.beforeAll(async ({ browser, playwright }, testInfo) => {
+test.beforeAll(async ({ browser }, testInfo) => {
   test.setTimeout(120000);
   const baseURL = testInfo.project.use.baseURL ?? "http://localhost:3000";
   ({ server: backend, received } = await startEchoBackend(
@@ -53,14 +48,7 @@ test.beforeAll(async ({ browser, playwright }, testInfo) => {
   context = await browser.newContext({ storageState: authFile, baseURL });
   page = await context.newPage();
   await page.goto("/app");
-  const token = await page.evaluate(
-    () => JSON.parse(localStorage.getItem("auth-storage") ?? "{}")?.state?.user?.token,
-  );
-  expect(token, "signed in").toBeTruthy();
-  api = await playwright.request.newContext({
-    baseURL: API_URL,
-    extraHTTPHeaders: { Authorization: `Bearer ${token}` },
-  });
+  api = await pageApi(context, API_URL);
   sourceUuid = crypto.randomUUID();
   await json(
     await api.post(`/app/data-connectors/api-source/${sourceUuid}`, {

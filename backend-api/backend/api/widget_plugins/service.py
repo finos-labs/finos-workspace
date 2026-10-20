@@ -2,7 +2,7 @@
 
 Discovery (``discovery.py``) reports what is in the plugins directory. This module
 records it, applies the decisions of superusers (approve, revoke, override) and entity
-admins (enable, access mode, narrowing, handlers, role grants), and computes
+admins (enable, narrowing, handlers, role grants), and computes
 availability for a user (docs/widget-plugins/DESIGN.md 6.4). The SPA never decides.
 """
 
@@ -24,8 +24,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api import models
 from api.base import get_now
 from api.models.widget_plugin_models import (
-    ACCESS_EVERYONE,
-    ACCESS_ROLES,
     PLUGIN_DISABLED,
     PLUGIN_ENABLED,
     PLUGIN_REVOKED,
@@ -638,7 +636,7 @@ async def _platform_entry(db: AsyncSession, plugin: models.WidgetPlugin) -> dict
     active = _active(plugin, versions)
     enabled_for = (
         await db.execute(
-            select(models.EntityWidgetPlugin.entity_uuid, models.EntityWidgetPlugin.access_mode).where(
+            select(models.EntityWidgetPlugin.entity_uuid).where(
                 models.EntityWidgetPlugin.plugin_uuid == plugin.uuid,
                 models.EntityWidgetPlugin.enabled.is_(True),
             )
@@ -659,7 +657,7 @@ async def _platform_entry(db: AsyncSession, plugin: models.WidgetPlugin) -> dict
         "overrides": plugin.overrides or {},
         "enabled_entities": len(enabled_for),
         # For the entity dialogs' read-only Plugins line (DESIGN.md 8.5)
-        "enabled_for": [{"entity_uuid": r.entity_uuid, "access_mode": r.access_mode} for r in enabled_for],
+        "enabled_for": [{"entity_uuid": r.entity_uuid} for r in enabled_for],
         "versions": [_version_view(plugin, v, active) for v in versions],
         "secrets": await secret_values.status(db, plugin, versions),
         "backend": backend_status(plugin),
@@ -707,7 +705,6 @@ async def platform_plugin(db: AsyncSession, plugin_id: str) -> dict[str, Any]:
                 "entity_uuid": e.uuid,
                 "name": e.name,
                 "enabled": bool(rows[e.uuid].enabled) if e.uuid in rows else False,
-                "access_mode": rows[e.uuid].access_mode if e.uuid in rows else None,
             }
             for e in entities
         ],
@@ -743,7 +740,7 @@ async def approve(
     *,
     digest: str,
     acknowledged: list[str],
-    actor_uuid: UUID,
+    actor_uuid: UUID | None,
 ) -> dict[str, Any]:
     """Approve one version and make it the active one."""
     _require_feature()
@@ -825,7 +822,7 @@ async def approve(
     return {"plugin_id": plugin.plugin_id, "active_version": row.version, "status": plugin.status}
 
 
-async def set_status(db: AsyncSession, plugin_id: str, revoke: bool, actor_uuid: UUID) -> dict[str, Any]:
+async def set_status(db: AsyncSession, plugin_id: str, revoke: bool, actor_uuid: UUID | None) -> dict[str, Any]:
     """Revoke a plugin (the kill switch), or restore it."""
     plugin = await _plugin_or_404(db, plugin_id)
     if revoke:
@@ -845,7 +842,7 @@ async def set_overrides(  # noqa: PLR0913 - the override's parts and who sets th
     csp: dict[str, list[str]] | None,
     server_network: list[str] | None,
     confirmations: list[str],
-    actor_uuid: UUID,
+    actor_uuid: UUID | None,
 ) -> dict[str, Any]:
     """Replace a plugin's overrides. A CSP directive in the override replaces the author's
     list for it; directives left out keep the author's list. ``server_network`` replaces
@@ -889,7 +886,7 @@ async def set_overrides(  # noqa: PLR0913 - the override's parts and who sets th
     return {"plugin_id": plugin.plugin_id, "overrides": plugin.overrides or {}}
 
 
-async def set_secret(db: AsyncSession, plugin_id: str, name: str, value: str, actor_uuid: UUID) -> None:
+async def set_secret(db: AsyncSession, plugin_id: str, name: str, value: str, actor_uuid: UUID | None) -> None:
     """Set a secret's value, write-only (SERVER-SIDE 4). Rotation is setting it again."""
     plugin = await _plugin_or_404(db, plugin_id)
     if name not in secret_values.declared(await _versions(db, plugin)):
@@ -915,7 +912,7 @@ async def set_secret(db: AsyncSession, plugin_id: str, name: str, value: str, ac
     await db.commit()
 
 
-async def clear_secret(db: AsyncSession, plugin_id: str, name: str, actor_uuid: UUID) -> None:
+async def clear_secret(db: AsyncSession, plugin_id: str, name: str, actor_uuid: UUID | None) -> None:
     """Remove the value a superuser set. A value the deployment sets stays."""
     plugin = await _plugin_or_404(db, plugin_id)
     row = (await secret_values.stored(db, plugin.uuid)).get(name)
@@ -1020,7 +1017,6 @@ async def entity_listing(db: AsyncSession, entity_uuid: UUID) -> list[dict[str, 
                 ],
                 "admin_settings_schema": (manifest.get("adminSettings") or {}).get("schema"),
                 "enabled": bool(row and row.enabled),
-                "access_mode": row.access_mode if row else ACCESS_ROLES,
                 "settings": (row.settings if row else None)
                 or (manifest.get("adminSettings") or {}).get("defaults")
                 or {},
@@ -1054,7 +1050,7 @@ async def update_entity(  # noqa: PLR0912, PLR0915 - one block per setting
     entity_uuid: UUID,
     plugin_id: str,
     changes: dict[str, Any],
-    actor_uuid: UUID,
+    actor_uuid: UUID | None,
 ) -> None:
     """Enable or disable a plugin for an entity and set how it is used there.
 
@@ -1071,18 +1067,12 @@ async def update_entity(  # noqa: PLR0912, PLR0915 - one block per setting
     if row is None:
         row = await _added_or_existing(
             db,
-            models.EntityWidgetPlugin(
-                entity_uuid=entity_uuid, plugin_uuid=plugin.uuid, enabled=False, access_mode=ACCESS_ROLES
-            ),
+            models.EntityWidgetPlugin(entity_uuid=entity_uuid, plugin_uuid=plugin.uuid, enabled=False),
             _entity_row_query(entity_uuid, plugin),
         )
 
     if "enabled" in changes and changes["enabled"] is not None:
         row.enabled = bool(changes["enabled"])
-    if changes.get("access_mode") is not None:
-        if changes["access_mode"] not in {ACCESS_EVERYONE, ACCESS_ROLES}:
-            raise HTTPException(422, detail="access_mode is everyone or roles")
-        row.access_mode = changes["access_mode"]
     if changes.get("narrowed_permissions") is not None:
         unknown = set(changes["narrowed_permissions"]) - PERMISSIONS
         if unknown:
@@ -1190,8 +1180,8 @@ async def entity_backends(db: AsyncSession, entity_uuid: UUID) -> list[dict[str,
     return [{"uuid": str(r.uuid), "name": r.name} for r in rows]
 
 
-async def update_all_entities(db: AsyncSession, plugin_id: str, changes: dict[str, Any], actor_uuid: UUID) -> int:
-    """Enable or disable a plugin, and set its access mode, for every entity."""
+async def update_all_entities(db: AsyncSession, plugin_id: str, changes: dict[str, Any], actor_uuid: UUID | None) -> int:
+    """Enable or disable a plugin for every entity."""
     entity_uuids = (await db.execute(select(models.Entity.uuid))).scalars().all()
     for entity_uuid in entity_uuids:
         await update_entity(db, entity_uuid, plugin_id, changes, actor_uuid)
@@ -1266,25 +1256,12 @@ async def user_entity(db: AsyncSession, user_uuid: UUID) -> UUID | None:
     ).scalar_one_or_none()
 
 
-async def _excluded_widgets(db: AsyncSession, user_uuid: UUID) -> set[str]:
-    excluded = (
-        await db.execute(
-            select(models.DataBundle.except_widgets)
-            .join(models.Entitlement, models.Entitlement.data_bundle_uuid == models.DataBundle.uuid)
-            .where(models.Entitlement.user_uuid == user_uuid)
-            .limit(1)
-        )
-    ).scalar_one_or_none()
-    return {w for w in excluded or [] if isinstance(w, str)}
-
-
 async def available(db: AsyncSession, user_uuid: UUID) -> list[dict[str, Any]]:
     """The plugins, and their widgets, this user may use, with everything the host needs.
 
     available(user, plugin, widget) = plugin enabled at the deployment, its active
-    version active, the plugin enabled for the user's entity, and either the entity
-    lets everyone use it or one of the user's roles grants the widget (or ``*``), and
-    the user's data bundle does not exclude ``plugin:<id>:<widget>``.
+    version active, the plugin enabled for the user's entity, and one of the user's
+    roles grants the widget (or ``*``).
     """
     if not feature_enabled():
         return []
@@ -1330,7 +1307,6 @@ async def available(db: AsyncSession, user_uuid: UUID) -> list[dict[str, Any]]:
         )
     ).all():
         granted.setdefault(plugin_uuid, set()).add(widget_id)
-    excluded = await _excluded_widgets(db, user_uuid)
 
     plugins = []
     for plugin, version, entity_row in rows:
@@ -1339,11 +1315,8 @@ async def available(db: AsyncSession, user_uuid: UUID) -> list[dict[str, Any]]:
         narrowed = set(entity_row.narrowed_permissions or [])
         widgets = []
         for widget in _widgets(manifest):
-            if entity_row.access_mode != ACCESS_EVERYONE:
-                grants = granted.get(plugin.uuid, set())
-                if "*" not in grants and widget["id"] not in grants:
-                    continue
-            if f"plugin:{plugin.plugin_id}:{widget['id']}" in excluded:
+            grants = granted.get(plugin.uuid, set())
+            if "*" not in grants and widget["id"] not in grants:
                 continue
             permissions = [
                 p

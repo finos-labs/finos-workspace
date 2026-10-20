@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import auth_helpers, models
 from api.database import aget_read_db, aget_write_db
-from api.rate_limit import LIMIT_DEFAULT, exempt_user_agent, limiter
+from api.rate_limit import LIMIT_DEFAULT, limiter
 from api.widget_plugins import backends, broker, calls, service, widgets_schema
 from api.widget_plugins.manifest import PLUGIN_ID_PATTERN, VERSION_PATTERN, WIDGET_ID_PATTERN
 from api.widget_plugins.proxy import NAME_PATTERN, PROXY_ID_PATTERN, CallError
@@ -40,11 +40,7 @@ DATA_SOURCE_PATTERN = r"^[a-z][a-z0-9_-]{0,63}$"
 
 platform_router = APIRouter(prefix="/plugins", tags=TAGS)
 admin_router = APIRouter(prefix="/admin", tags=TAGS)
-app_router = APIRouter(
-    prefix="/app/widget-plugins",
-    tags=TAGS,
-    dependencies=[Depends(auth_helpers.check_origin)],
-)
+app_router = APIRouter(prefix="/app/widget-plugins", tags=TAGS)
 # Plugin backends read data here with the token of the call they serve; no session
 broker_router = APIRouter(prefix="/internal/plugin-broker", tags=TAGS)
 
@@ -96,7 +92,6 @@ class EntityChanges(BaseModel):
     model_config = closed
 
     enabled: bool | None = None
-    access_mode: Literal["everyone", "roles"] | None = None
     narrowed_permissions: list[str] | None = Field(default=None, max_length=32)
     csp_narrow: dict[str, list[str]] | None = None
     server_network_narrow: list[Annotated[str, StringConstraints(max_length=255)]] | None = Field(
@@ -114,7 +109,6 @@ class AllEntitiesChanges(BaseModel):
     model_config = closed
 
     enabled: bool
-    access_mode: Literal["everyone", "roles"] | None = None
 
 
 class RoleGrant(BaseModel):
@@ -379,8 +373,8 @@ async def put_entity_plugin(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """Enable the plugin for this entity, choose everyone or roles, narrow it, set its
-    admin settings and the viz types it renders here."""
+    """Enable the plugin for this entity, narrow it, set its admin settings and the viz
+    types it renders here. Its roles grant its widgets."""
     await service.update_entity(
         db, await _admin_entity(db, admin), plugin_id, body.model_dump(mode="json", exclude_unset=True), admin.uuid
     )
@@ -424,8 +418,8 @@ async def put_role_plugin_access(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """Replace the plugin widgets a role grants. Plugins whose entity access is
-    "roles" are available only through these grants."""
+    """Replace the plugin widgets a role grants: a plugin reaches users only through
+    these grants."""
     if not await app_helpers.role_exists(db, role_uuid, await _admin_entity(db, admin)):
         raise HTTPException(404, detail="Role not found")
     await service.set_role_grants(db, role_uuid, [g.model_dump() for g in body.grants])
@@ -438,7 +432,7 @@ async def put_role_plugin_access(
 
 
 @app_router.get("")
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT)
 async def get_available_plugins(
     request: Request,
     response: Response,
@@ -453,7 +447,7 @@ async def get_available_plugins(
 
 
 @app_router.get("/widgets-schema")
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT)
 async def get_widgets_schema(
     request: Request,
     response: Response,
@@ -565,7 +559,7 @@ async def post_backend_call(
 
 
 @app_router.post("/report")
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT)
 async def post_plugin_report(
     request: Request,
     body: ReportBody,

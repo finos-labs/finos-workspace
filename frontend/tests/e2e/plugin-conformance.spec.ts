@@ -1,13 +1,8 @@
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-import {
-  type APIRequestContext,
-  type BrowserContext,
-  expect,
-  type Page,
-  test,
-} from "@playwright/test";
-import { authFile, deleteDashboard } from "./helpers";
+import { type BrowserContext, expect, type Page, test } from "@playwright/test";
+import { authFile, deleteDashboard, userInfo } from "./helpers";
+import { type ApiResponse, grantPlugins, type PageApi, pageApi } from "./plugins/api";
 import {
   CONFORMANCE_ENTRY,
   conformanceManifest,
@@ -35,17 +30,18 @@ test.skip(!PLUGINS_DIR, "E2E_PLUGINS_DIR names the API's plugins directory");
 
 let context: BrowserContext;
 let page: Page;
-let api: APIRequestContext;
+let api: PageApi;
+let roleUuid: string | undefined;
 let dashboardId: string;
 
 const frame = () => page.frameLocator('iframe[title^="E2E conformance"]');
 
-async function json(response: Awaited<ReturnType<APIRequestContext["get"]>>) {
+async function json(response: ApiResponse) {
   expect(response.ok(), `${response.url()}: ${response.status()}`).toBe(true);
   return response.json();
 }
 
-test.beforeAll(async ({ browser, playwright }, testInfo) => {
+test.beforeAll(async ({ browser }, testInfo) => {
   test.setTimeout(120000);
   const baseURL = testInfo.project.use.baseURL ?? "http://localhost:3000";
   const version = writePackage(PLUGINS_DIR ?? "", conformanceManifest(PLUGIN), {
@@ -55,14 +51,7 @@ test.beforeAll(async ({ browser, playwright }, testInfo) => {
   context = await browser.newContext({ storageState: authFile, baseURL });
   page = await context.newPage();
   await page.goto("/app");
-  const token = await page.evaluate(
-    () => JSON.parse(localStorage.getItem("auth-storage") ?? "{}")?.state?.user?.token,
-  );
-  expect(token, "signed in").toBeTruthy();
-  api = await playwright.request.newContext({
-    baseURL: API_URL,
-    extraHTTPHeaders: { Authorization: `Bearer ${token}` },
-  });
+  api = await pageApi(context, API_URL);
 
   await json(await api.post("/plugins/rescan"));
   const plugin = (await json(await api.get(`/plugins/${PLUGIN}`))) as {
@@ -83,9 +72,10 @@ test.beforeAll(async ({ browser, playwright }, testInfo) => {
   );
   await json(
     await api.put(`/admin/plugins/${PLUGIN}`, {
-      data: { enabled: true, access_mode: "everyone" },
+      data: { enabled: true },
     }),
   );
+  roleUuid = await grantPlugins(api, userInfo().email, "E2E conformance", [PLUGIN]);
 
   await page.goto("/app");
   await page.waitForLoadState("networkidle");
@@ -104,6 +94,7 @@ test.beforeAll(async ({ browser, playwright }, testInfo) => {
 test.afterAll(async () => {
   if (page && dashboardId) await deleteDashboard(page, dashboardId);
   if (api) {
+    if (roleUuid) await api.delete(`/admin/role/${roleUuid}`);
     rmSync(join(PLUGINS_DIR ?? "", PLUGIN), { recursive: true, force: true });
     await api.post("/plugins/rescan");
     await api.delete(`/plugins/${PLUGIN}`);

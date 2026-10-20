@@ -90,25 +90,18 @@ class TestCopilotChats:
     """Tests for /app/copilot-chats endpoints"""
 
     @pytest.mark.asyncio
-    async def test_get_chats_unauthenticated(self, client):
-        """Should fail without auth"""
-        response = await client.get("/app/copilot-chats")
-        assert response.status_code in {401, 403}
-        # Validate error response structure
-        data = response.json()
-        assert isinstance(data, dict)
-        assert "detail" in data or "message" in data or "error" in data
+    async def test_the_sync_serves_saved_chats(self, auth_client):
+        """Chats saved through POST come back with the dashboard sync"""
+        chat_uuid = str(uuid4())
+        response = await auth_client.post(
+            "/app/copilot-chats",
+            json={"chats": {chat_uuid: {"createdAt": 1771459200000, "label": "Saved"}}},
+        )
+        assert response.status_code == 200, response.text
 
-    @pytest.mark.asyncio
-    async def test_get_chats_authenticated(self, auth_client):
-        """Should return chat history"""
-        response = await auth_client.get("/app/copilot-chats")
-        assert response.status_code == 200
-        # Validate response structure
-        data = response.json()
-        assert isinstance(data, (list, dict))
-        content_type = response.headers.get("content-type", "")
-        assert "application/json" in content_type
+        synced = await auth_client.get("/app/dash/validate-and-sync")
+        assert synced.status_code == 200
+        assert chat_uuid in [chat["uuid"] for chat in synced.json()["copilot_chats"]]
 
     @pytest.mark.asyncio
     async def test_save_chats_unauthenticated(self, client):
@@ -174,25 +167,6 @@ class TestSkills:
     """Tests for /app/skills endpoints"""
 
     @pytest.mark.asyncio
-    async def test_get_skills_unauthenticated(self, client):
-        """Should fail without auth"""
-        response = await client.get("/app/skills")
-        assert response.status_code in {401, 403}
-        data = response.json()
-        assert isinstance(data, dict)
-        assert "detail" in data or "message" in data or "error" in data
-
-    @pytest.mark.asyncio
-    async def test_get_skills_authenticated(self, auth_client):
-        """Should return saved skills"""
-        response = await auth_client.get("/app/skills")
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-        content_type = response.headers.get("content-type", "")
-        assert "application/json" in content_type
-
-    @pytest.mark.asyncio
     async def test_save_skills_unauthenticated(self, client):
         """Should fail without auth"""
         response = await client.post("/app/skills", json={})
@@ -213,14 +187,14 @@ class TestSkills:
 
     @pytest.mark.asyncio
     async def test_skills_roundtrip(self, auth_client):
-        """Should persist and retrieve skill payloads"""
+        """Should persist skill payloads and serve them back with the dashboard sync"""
         payload = _build_skill_payload()
         save_response = await auth_client.post("/app/skills", json=payload)
         assert save_response.status_code == 200
 
-        get_response = await auth_client.get("/app/skills")
-        assert get_response.status_code == 200
-        saved_skills = get_response.json()
+        sync_response = await auth_client.get("/app/dash/validate-and-sync")
+        assert sync_response.status_code == 200
+        saved_skills = sync_response.json()["user_skills"]
         assert isinstance(saved_skills, list)
         assert any(skill.get("slug") == payload["slug"] for skill in saved_skills)
 

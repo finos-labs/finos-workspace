@@ -1,14 +1,9 @@
 import { rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { join } from "node:path";
-import {
-  type APIRequestContext,
-  type BrowserContext,
-  expect,
-  type Page,
-  test,
-} from "@playwright/test";
+import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { authFile, deleteDashboard, userInfo } from "./helpers";
+import { type ApiResponse, type PageApi, pageApi } from "./plugins/api";
 import {
   journeyEntry,
   journeyManifest,
@@ -44,7 +39,7 @@ test.skip(!PLUGINS_DIR, "E2E_PLUGINS_DIR names the API's plugins directory");
 
 let context: BrowserContext;
 let page: Page;
-let api: APIRequestContext;
+let api: PageApi;
 let reach: Server;
 let hits: string[];
 let roleUuid: string;
@@ -54,7 +49,7 @@ const frame = () => page.frameLocator('iframe[title^="E2E journey"]');
 const card = () =>
   page.locator("div.group\\/widget").filter({ hasText: "E2E journey" });
 
-async function json(response: Awaited<ReturnType<APIRequestContext["get"]>>) {
+async function json(response: ApiResponse) {
   expect(response.ok(), `${response.url()}: ${response.status()}`).toBe(true);
   return response.json();
 }
@@ -105,21 +100,14 @@ async function openDashboard() {
   await expect(card()).toBeVisible({ timeout: 30000 });
 }
 
-test.beforeAll(async ({ browser, playwright }, testInfo) => {
+test.beforeAll(async ({ browser }, testInfo) => {
   test.setTimeout(120000);
   const baseURL = testInfo.project.use.baseURL ?? "http://localhost:3000";
   ({ server: reach, hits } = await startReachServer(REACH_PORT));
   context = await browser.newContext({ storageState: authFile, baseURL });
   page = await context.newPage();
   await page.goto("/app");
-  const token = await page.evaluate(
-    () => JSON.parse(localStorage.getItem("auth-storage") ?? "{}")?.state?.user?.token,
-  );
-  expect(token, "signed in").toBeTruthy();
-  api = await playwright.request.newContext({
-    baseURL: API_URL,
-    extraHTTPHeaders: { Authorization: `Bearer ${token}` },
-  });
+  api = await pageApi(context, API_URL);
 });
 
 test.afterAll(async () => {
@@ -173,8 +161,6 @@ test("entity-admin-enables-it-and-grants-a-role", async () => {
   const plugin = page.getByTestId(`entity-plugin-${PLUGIN}`);
   await plugin.getByRole("switch", { name: "Enabled" }).click();
   await expect(plugin.getByRole("switch", { name: "Enabled" })).toBeChecked();
-  // Roles only, the default: nobody may use it yet
-  await expect(plugin.getByLabel("Who may use it")).toHaveValue("roles");
 
   await page.goto("/admin/roles");
   const roleRow = page.getByRole("row").filter({ hasText: ROLE });
@@ -246,7 +232,7 @@ test("the-activity-log-and-the-entity-dialog-name-the-plugin", async () => {
     .click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByTestId("entity-plugins")).toContainText(
-    "End-to-end journey (roles)",
+    "End-to-end journey",
   );
   await dialog.getByRole("button", { name: "Cancel" }).click();
 });

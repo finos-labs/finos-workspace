@@ -90,6 +90,14 @@ describe("useGlobalTitleManager", () => {
     expect(document.title).toBe("Login | Workspace");
   });
 
+  it("titles the page of a password reset link", () => {
+    mockUseLocation.mockReturnValue({ pathname: "/reset-password" });
+
+    renderHook(() => useGlobalTitleManager());
+
+    expect(document.title).toBe("Set a new password | Workspace");
+  });
+
   it("should respect custom brand name in static page titles", () => {
     mockUseLocation.mockReturnValue({ pathname: "/app/settings" });
     mockGetConfig.mockReturnValue({

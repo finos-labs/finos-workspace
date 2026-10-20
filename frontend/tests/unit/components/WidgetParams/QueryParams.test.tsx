@@ -450,3 +450,47 @@ describe("RenderParamsForRow", () => {
     expect(screen.getByText("Market")).toBeInTheDocument();
   });
 });
+
+describe("forms", () => {
+  function makeFormsWidget(): DeepPartial<WidgetT> {
+    const form = (paramName: string, label: string | undefined, input: string) => ({
+      paramName,
+      type: "form" as const,
+      label,
+      endpoint: `https://backend.test/${paramName}`,
+      inputParams: [{ paramName: input, type: "text" as const, label: input }],
+    });
+    return {
+      id: "widget-1",
+      widgetId: "notes",
+      external: true,
+      data: {},
+      storage: { params: {} },
+      params: [
+        form("note", "Add note", "Text"),
+        form("flag", "Flag a row", "Reason"),
+        form("archive", undefined, "Until"),
+      ],
+    };
+  }
+
+  it("opens each of a widget's forms from a button named by the form's label", async () => {
+    mocks.useQueries.mockImplementation(({ queries }) =>
+      queries.map(() => ({ data: [] })),
+    );
+    mocks.widget = makeFormsWidget();
+
+    render(<ParamsHarness />);
+
+    expect(screen.getByRole("button", { name: "Add note" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Flag a row" })).toBeInTheDocument();
+    // A form with no label is named by its paramName
+    expect(screen.getByRole("button", { name: "archive" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open Form" })).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Flag a row" }));
+
+    expect(await screen.findByText("Reason")).toBeInTheDocument();
+    expect(screen.queryByText("Text")).toBeNull();
+  });
+});

@@ -126,9 +126,12 @@ bun run test:integration
 
 The tests run against a running stack and sign in as an account that exists there. Start the
 whole stack from the repository root (`docker compose up --build`, see the root README) and name
-the administrator it created, from `backend-api/backend/scripts/cfgs/config.toml`:
+the administrator it created: the address in `backend-api/backend/scripts/cfgs/config.toml`, and
+the password you set for it:
 
 ```bash
+# from the repository root, once
+docker compose run --rm init python -m scripts.init_users --new-password <the administrator's email>
 export E2E_USER_EMAIL=<the administrator's email>
 export E2E_USER_PASSWORD=<their password>
 # E2E_BASE_URL defaults to http://localhost:3000
@@ -146,11 +149,10 @@ bunx playwright test tests/e2e/auth.spec.ts
 bunx playwright codegen tests/e2e
 ```
 
-The entity-type test adds a row each run (entity types cannot be deleted), so run the suite against a stack you can throw away; `docker compose down -v` clears it.
-
 The `setup` project signs in once and keeps the session in `playwright/.auth/user.json`; the
 other projects start from it. `.github/workflows/e2e.yml` runs the same tests in CI against a
-stack of its own, with an administrator whose password is generated for the run.
+stack of its own, with an administrator whose password the run reads from the `init` service's
+log.
 
 Every spec runs in the `chromium` project; the widget plugin specs (`plugin*.spec.ts`) also run
 in `firefox` and `webkit`, since a plugin's frame, policy and workers are where the engines
@@ -403,7 +405,7 @@ import {
   mockValidateResponse,
   mockDashboardData,
   mockUsage,
-  mockFeatureFlags,
+  mockAccess,
 } from "~/tests/mocks/handlers";
 ```
 
@@ -413,7 +415,7 @@ import {
 | `mockValidateResponse` | Token validation response |
 | `mockDashboardData` | Dashboard sync response (owned/shared) |
 | `mockUsage` | Usage limits and current usage |
-| `mockFeatureFlags` | Feature tier and enabled features |
+| `mockAccess` | What the user's roles let them do (`GET /app/access`) |
 
 ### Handler Organization
 
@@ -429,14 +431,15 @@ http.post(`${BASE_URL}/app/logout`, ...)
 http.get(`${BASE_URL}/app/dash/sync`, ...)
 http.post(`${BASE_URL}/app/dash/sync`, ...)
 
-// ============ Usage & Tier Endpoints ============
+// ============ Usage & Access Endpoints ============
 http.get(`${BASE_URL}/app/usage`, ...)
+http.get(`${BASE_URL}/app/access`, ...)
 
 // ============ Data Connector Endpoints ============
 http.get(`${BASE_URL}/app/data-connectors/api-source`, ...)
 
 // ============ Copilot Endpoints ============
-http.get(`${BASE_URL}/app/copilot-chats`, ...)
+http.post(`${BASE_URL}/app/copilot-chats`, ...)
 
 // ============ Passthrough Handlers ============
 http.all("https://test-backend.com/*", () => passthrough())

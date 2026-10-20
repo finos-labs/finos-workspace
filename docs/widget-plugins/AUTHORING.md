@@ -9,7 +9,7 @@ The reference for people who build widget plugins for Workspace. It covers what 
 A plugin is a package of files that adds widget types to Workspace. Its code is an [Anywidget front-end module](https://anywidget.dev/en/afm/) (AFM 0.11): the same `render({ model, el })` contract that Jupyter widgets use.
 
 - **It is placed, not installed.** Whoever deploys Workspace puts the package in the API's plugins directory. Nothing in the app uploads, fetches or installs a plugin.
-- **It is reviewed before it runs.** A superuser reads what the version asks for and approves it. An organization's admin enables it and chooses who may use it. A new version never replaces the active one until it is approved.
+- **It is reviewed before it runs.** A superuser reads what the version asks for and approves it. An organization's admin enables it and grants it to roles. A new version never replaces the active one until it is approved.
 - **It runs in a sandboxed frame.** Each widget instance gets its own `iframe` with an opaque origin, no storage, no cookies, no popups, and a Content Security Policy that allows no network unless the plugin declares hosts and an admin approves them. The host checks everything the frame asks for against the plugin's permissions.
 - **It never sees credentials.** The host fetches a widget's data and pushes it into the frame. A call that needs a key goes through a declared proxy or the plugin's own backend: the server adds the secret.
 
@@ -347,7 +347,7 @@ The backend answers three requests, over HTTP on its internal address:
 - **Network.** `server.network` names what the backend contacts: https origins, and `tcp://host:port` for anything else, such as a database. The deployment enforces it around the backend. A host that belongs to the deployment rather than your package, such as its database, is added by a superuser's override; name it in your `purpose` texts and README.
 - **Arguments** are checked by the API against the route's `args` before the call (the types of section 7). A route's string may have a `maxLength` up to 32,768, since it travels in the call's JSON body; a proxy's stays at 2,048.
 - **The caller** is `{}`, or `{ "id": "<pseudonymous id>" }` when the admin approved `identity: "pseudonymous"`: stable for a user within your plugin, different in every other plugin, and never the user's name, email or Workspace id.
-- **Data of the user.** To read a data source you declare, send the call's token to the broker: `POST <API>/internal/plugin-broker/data/<data-source-id>` with `X-Workspace-Call: <token>` and `{ "path": "/<path under the backend's URL>", "method": "GET", "query": {...}, "body": ... }`. It answers `{ "status", "content_type", "body" }`. The organization chooses which of its backends serves each data source, the user's own access applies, and the backend's credentials are added by the API; you never hold them. The token lasts 60 seconds and cannot be read or changed.
+- **Data of the user.** To read a data source you declare, send the call's token to the broker: `POST <API>/internal/plugin-broker/data/<data-source-id>` with `X-Workspace-Call: <token>`, `Origin: <WORKSPACE_ORIGIN>` (the web app's origin, which the deployment gives your backend; the API refuses a request from an origin it does not allow) and `{ "path": "/<path under the backend's URL>", "method": "GET", "query": {...}, "body": ... }`. It answers `{ "status", "content_type", "body" }`. The organization chooses which of its backends serves each data source, the user's own access applies, and the backend's credentials are added by the API; you never hold them. The token lasts 60 seconds and cannot be read or changed.
 - **Limits.** A route's `maxBytes` is at most 5 MiB (default 1 MiB) and `timeoutMs` at most 30 seconds (default 10); the deployment caps both. Calls are rate limited and at most 8 of a plugin run at once. After repeated failures (time-outs, errors, a 5xx) the API pauses calls to the backend for a short time. A 4xx you return is passed on as a refusal and does not count.
 - **In the frame,** a refused call rejects with `out_of_scope` for a route the widget does not list, `invalid_args`, `not_granted`, `rate_limited`, `timeout`, `too_large`, and otherwise `unavailable` (not registered, another version, paused, a secret not set, your error).
 - **The admin reviews** that code runs on the server, each route and the secrets it sends, each data source and the pseudonymous id.
@@ -383,7 +383,7 @@ There is no developer mode. Run your own Workspace (the repository's `local/LOCA
 
 1. Mount a plugins directory into the API and set `WIDGET_PLUGINS_DIR`.
 2. Build into `<dir>/<id>/<version>/` and check it (section 10).
-3. In Admin, Widgets, Deployment: Rescan, review, approve. Under Plugin widgets, enable it and choose who may use it.
+3. In Admin, Widgets, Deployment: Rescan, review, approve. Under Plugin widgets, enable it, and in Roles and Access grant it to a role you hold.
 4. Add the widget to a dashboard.
 5. To change it, publish a new version and approve it. Editing an approved version's files blocks it.
 

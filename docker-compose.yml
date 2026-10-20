@@ -1,14 +1,14 @@
-# The whole Workspace: database, cache, API, background worker, web app, admin panel, Ines, the
-# Copilot's agent, and the MCP server with the tools she uses.
+# The whole Workspace: database, cache, API, background worker, web app, Ines, the Copilot's
+# agent, and the MCP server with the tools she uses.
 #
 #   (cd backend-api/backend && python3 -m scripts.create_local_env --admin-email <your-email>)
 #   # ...which also writes agent/.env: set DEFAULT_MODEL and that provider's key in it
 #   docker compose up --build
 #
-# Web app http://localhost:3000, admin panel http://localhost:3001, API http://localhost:8000,
-# Ines http://localhost:7777.
+# Web app http://localhost:3000, API http://localhost:8000, Ines http://localhost:7777.
 # The first start creates the organization and the administrator listed in
-# backend-api/backend/scripts/cfgs/config.toml.
+# backend-api/backend/scripts/cfgs/config.toml, without a password. Set it with
+#   docker compose run --rm init python -m scripts.init_users --new-password <email>
 #
 # On Apple silicon build for the host's architecture: PLATFORM=linux/arm64 docker compose up --build
 name: workspace
@@ -78,9 +78,9 @@ services:
       args:
         PLATFORM: ${PLATFORM:-linux/amd64}
     image: workspace-api:local
-    # Runs as root because the files mounted below belong to whoever checked the repository out
-    # (uid 1001 on a GitHub runner), and the image's own user, uid 1000, can neither write
-    # user_create.json nor read the seed config.toml (mode 600).
+    # Runs as root because user_create.json, mounted below, belongs to whoever checked the
+    # repository out (uid 1001 on a GitHub runner), and the image's own user, uid 1000, cannot
+    # write it.
     user: root
     command:
       - sh
@@ -262,21 +262,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    networks:
-      - workspace
-
-  # The operator's admin panel: entities, entity types, relationships and permission maps.
-  admin:
-    build:
-      context: ./backend-api/admin_frontend
-      args:
-        VITE_API_URL: ${API_URL:-http://localhost:8000}
-    image: workspace-admin:local
-    restart: unless-stopped
-    ports:
-      - "3001:80"
-    depends_on:
-      - api
     networks:
       - workspace
 

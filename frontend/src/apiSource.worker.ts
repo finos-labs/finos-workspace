@@ -28,6 +28,8 @@ const debouncedPartialResults = debounce(
 );
 
 self.onmessage = async (e: MessageEvent<EventData>) => {
+  // Only the page that started the worker posts to it, which names no other origin
+  if (e.origin && e.origin !== self.location.origin) return;
   const { apiSources, extraHeaders, pluginVizTypes = [], widgetsSchema } = e.data;
 
   const results: ResultT[] = [];

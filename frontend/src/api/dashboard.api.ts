@@ -1,13 +1,15 @@
 import axiosRetry from "axios-retry";
 import { getConfig } from "~/lib/runtimeConfig";
+import { canReceiveShares, useAccessStore } from "~/lib/state/access";
 import { type Item, type Items, useAppStore } from "~/lib/state/app";
 import { useAuthStore } from "~/lib/state/auth";
-import { useFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useSharedAppStore } from "~/lib/state/sharedApp";
 import { diffItemsWithRemote, dispatchSaveState } from "~/lib/utils";
+import { WORKSPACE_CLIENT, WORKSPACE_CLIENT_HEADER } from "~/lib/utils/fetch";
 import { NotificationId, showNotificationWithRememberMe } from "~/lib/utils/toast";
 import type { DashShared, DashSync } from "~/types/auth.type";
 import { apiClient } from "./api";
+import { getAccess } from "./auth.api";
 
 axiosRetry(apiClient, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
 
@@ -46,13 +48,14 @@ export function saveDashboardsOnExit() {
   if (Object.keys(diff).length === 0) return;
   sentOnExit = items;
   const body = JSON.stringify({ items: diff });
-  const token = useAuthStore.getState().user?.token;
+  // The web session's cookie, as the app's other calls to the API send it
   fetch(`${getConfig().urls.backend.replace(/\/$/, "")}/app/dash/sync`, {
     method: "POST",
     keepalive: new TextEncoder().encode(body).length <= KEEPALIVE_BYTES,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      [WORKSPACE_CLIENT_HEADER]: WORKSPACE_CLIENT,
     },
     body,
   }).then(
@@ -84,13 +87,14 @@ export async function getSharedDashboards<T extends DashShared>(): Promise<T> {
   return data as T;
 }
 
+/** Refreshes the user's access, then the dashboards shared with them if they may receive any. */
 export async function getSharedDashboardsAndUpdate() {
-  const { featureFlags } = useFeatureFlagsStore.getState();
-  const isFreeTier = featureFlags?.tier === "basic";
+  const access = await getAccess();
+  useAccessStore.getState().setAccess(access);
 
-  if (isFreeTier) return;
-
-  const remoteData = await getSharedDashboards();
+  const remoteData: Partial<DashShared> = canReceiveShares(access)
+    ? await getSharedDashboards()
+    : {};
   useSharedAppStore.getState().updateOnlySharedItems({
     shared: remoteData.shared ?? {},
     entityShared: remoteData.entity_shared ?? {},

@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { apiClient } from "~/api/api";
 import {
   type CreateWidgetParams,
   useCreateWidgetFromArtifact,
@@ -45,15 +46,6 @@ vi.mock("~/lib/state/app", () => ({
     }),
 }));
 
-// Mock auth store
-vi.mock("~/lib/state/auth", () => ({
-  useShallowAuthStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      user: { token: "test-token" },
-    }),
-  useAuthStore: () => ({ getState: () => ({}) }),
-}));
-
 // Mock theme store
 vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: (selector: (state: Record<string, unknown>) => unknown) =>
@@ -74,6 +66,10 @@ global.fetch = vi.fn();
 describe("useCreateWidgetFromArtifact", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The API mints the agent token the default Copilot is called with
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { token: "agent-token", expires_in: 1800 },
+    });
     mockCreateMetaDataWidget.mockResolvedValue("new-widget-id");
     mockAddWidget.mockResolvedValue(undefined);
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({

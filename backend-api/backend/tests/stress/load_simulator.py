@@ -14,8 +14,11 @@ Usually launched via run_stress.sh (which brings up the stack first). To run dir
 already-running stack:
     BASE_URL=http://localhost:8001 USERS=20 DURATION=20 python tests/stress/load_simulator.py
 
-Config via env: BASE_URL, USERS, DURATION, RAMP, MCP_USERS, API_MCP, ADMIN_EMAIL, ADMIN_PASSWORD,
-THINK_MIN, THINK_MAX, FRONTEND_UA. See tests/stress/README.md.
+Config via env: BASE_URL, ORIGIN, USERS, DURATION, RAMP, MCP_USERS, API_MCP, ADMIN_EMAIL,
+ADMIN_PASSWORD, THINK_MIN, THINK_MAX. See tests/stress/README.md.
+
+The simulated users are the web app: they sign in for the session cookie and send it with
+the web app's client header and an origin from the stack's BACKEND_CORS_ORIGINS (ORIGIN).
 
 NOTE: in single-process dev (uvicorn --reload, WORKERS=1) MCP commands take the bridge's
 local fast path; the redis publish/reply path only fires with WORKERS>1. Session/presence
@@ -34,6 +37,12 @@ from collections import defaultdict
 import aiohttp
 
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:8001")
+# The web app's origin, one of the stack's BACKEND_CORS_ORIGINS
+ORIGIN = os.environ.get("ORIGIN", "http://localhost:3000")
+SESSION_COOKIE = "__Host-ws_session"
+# The stack's service token: with RATE_LIMIT_EXEMPT_ENABLED (the stress overlay sets it) the
+# simulated users, who share one address, skip rate limiting
+SERVICE_TOKEN = os.environ.get("WORKSPACE_AUTH_TOKEN", "")
 USERS = int(os.environ.get("USERS", "12"))
 DURATION = float(os.environ.get("DURATION", "30"))
 ADMIN_EMAIL = os.environ["ADMIN_EMAIL"]
@@ -50,9 +59,7 @@ MCP_USERS = int(os.environ.get("MCP_USERS", "0"))
 API_MCP = os.environ.get("API_MCP", "1") != "0"
 MCP_ACTIONS = {"mcp_snapshot", "mcp_move"}
 SAMPLE_INTERVAL = float(os.environ.get("SAMPLE_INTERVAL", "0.25"))
-# Must contain WORKSPACE_FRONTEND_USER_AGENT to be exempt from rate limiting. This dev stack
-# sets it to "test" in envs/.env (the config default is "colinlovedrust"). Override if yours differs.
-UA = f"{os.environ.get('FRONTEND_UA', 'test')}-loadsim"
+
 
 # Action mix (weights). Tune to taste.
 ACTIONS = [
@@ -67,7 +74,7 @@ ACTIONS = [
     ("mcp_move", 2),
 ]
 
-# Authenticated GET reads (Bearer access_token). action -> path.
+# Authenticated GET reads (the web app's session). action -> path.
 GET_PATHS = {
     "validate_and_sync": "/app/dash/validate-and-sync",
     "api_source": "/app/data-connectors/api-source",
@@ -110,21 +117,40 @@ class Stats:
             self.fail_msgs[action][detail] += 1
 
 
+def web(session_token: str) -> dict[str, str]:
+    """The headers of a web app request with this session."""
+    headers = {
+        "Cookie": f"{SESSION_COOKIE}={session_token}",
+        "X-Workspace-Client": "web",
+        "Origin": ORIGIN,
+    }
+    if SERVICE_TOKEN:
+        headers["X-Workspace-Authorization"] = f"Bearer {SERVICE_TOKEN}"
+    return headers
+
+
 async def login(session: aiohttp.ClientSession) -> str:
+    """Signs in as the web app and returns the session cookie's value."""
     async with session.post(
         f"{BASE_URL}/app/login",
-        json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD, "remember": False},
+        headers={"X-Workspace-Client": "web", "Origin": ORIGIN},
+        json={
+            "email": ADMIN_EMAIL,
+            "password": ADMIN_PASSWORD,
+            "remember": False,
+            "source": "app",
+        },
     ) as resp:
         body = await resp.json()
-        if resp.status != 200 or "access_token" not in body:
+        if resp.status != 200 or SESSION_COOKIE not in resp.cookies:
             raise RuntimeError(f"login failed: {resp.status} {body}")
-        return body["access_token"]
+        return resp.cookies[SESSION_COOKIE].value
 
 
 async def create_mcp_token(session: aiohttp.ClientSession, access_token: str) -> str:
     async with session.post(
         f"{BASE_URL}/app/workspace-mcp/tokens",
-        headers={"Authorization": f"Bearer {access_token}"},
+        headers=web(access_token),
         json={"name": "loadsim"},
     ) as resp:
         body = await resp.json()
@@ -138,7 +164,7 @@ async def fetch_dashboards(
 ) -> list[tuple[str, dict]]:
     async with session.get(
         f"{BASE_URL}/app/dash/sync",
-        headers={"Authorization": f"Bearer {access_token}", "User-Agent": UA},
+        headers=web(access_token),
     ) as resp:
         body = await resp.json()
     owned = body.get("owned", {})
@@ -149,7 +175,7 @@ async def provision_user_dashboards(
     session: aiohttp.ClientSession, access_token: str, base_content: dict, n: int
 ) -> list[str]:
     """Create one dashboard per user so saves don't contend on the same rows."""
-    auth = {"Authorization": f"Bearer {access_token}", "User-Agent": UA}
+    auth = web(access_token)
     uuids = [str(uuidlib.uuid4()) for _ in range(n)]
 
     async def create(u: str):
@@ -168,7 +194,7 @@ async def provision_user_dashboards(
 async def cleanup_dashboards(
     session: aiohttp.ClientSession, access_token: str, uuids: list[str]
 ):
-    auth = {"Authorization": f"Bearer {access_token}", "User-Agent": UA}
+    auth = web(access_token)
     async with session.post(
         f"{BASE_URL}/app/dash/sync",
         headers=auth,
@@ -183,13 +209,18 @@ async def start_bridge_browser(
     """Open a bridge session + WebSocket and auto-answer command_requests like the Workspace UI."""
     async with session.post(
         f"{BASE_URL}/app/workspace-mcp/bridge/session/start",
-        headers={"Authorization": f"Bearer {access_token}"},
+        headers=web(access_token),
         json={"client_name": "workspace-ui"},
     ) as resp:
         body = await resp.json()
     ws_url = body["websocket_url"]
 
-    ws = await session.ws_connect(ws_url, heartbeat=20)
+    # The socket is admitted by the session cookie and the web app's origin
+    ws = await session.ws_connect(
+        ws_url,
+        heartbeat=20,
+        headers={"Cookie": f"{SESSION_COOKIE}={access_token}", "Origin": ORIGIN},
+    )
 
     async def pump():
         async for msg in ws:
@@ -271,7 +302,7 @@ async def user_loop(
     do_validate: bool = True,
 ):
     await asyncio.sleep(ramp_delay)  # staggered arrival, not a thundering herd
-    auth = {"Authorization": f"Bearer {access_token}", "User-Agent": UA}
+    auth = web(access_token)
     # validate-and-sync is the once-per-session "dashboard open" call; do it once then work.
     rotation = [
         (a, w)

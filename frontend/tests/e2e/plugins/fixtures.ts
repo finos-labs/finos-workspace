@@ -742,13 +742,15 @@ export interface BackendRequest {
 
 /**
  * The plugin's backend, as a deployer would run it: the RPC of SERVER-SIDE.md 5.6. Its
- * route reads the data source through the API's broker with the call's token, and
- * answers with what it read and what it learned of the caller.
+ * route reads the data source through the API's broker with the call's token and the
+ * web app's origin (the deployment's WORKSPACE_ORIGIN), and answers with what it read and
+ * what it learned of the caller.
  */
 export function startPluginBackend(options: {
   port: number;
   listen: string;
   apiUrl: string;
+  origin: string;
   identity: () => Record<string, unknown>;
   secret: () => string;
 }) {
@@ -771,6 +773,7 @@ export function startPluginBackend(options: {
       headers: {
         "Content-Type": "application/json",
         "X-Workspace-Call": String(request.headers["x-workspace-call"] ?? ""),
+        Origin: options.origin,
       },
       body: JSON.stringify({
         path: "/sales",

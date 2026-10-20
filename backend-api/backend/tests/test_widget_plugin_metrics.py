@@ -7,7 +7,16 @@ from prometheus_client import REGISTRY
 
 from tests.fixtures.plugin_proxies import CALL, call, ready
 from tests.fixtures.upstream import Answer
-from tests.fixtures.widget_plugins import approve, enable, manifest, plugin_view, rescan, version_view, write_package
+from tests.fixtures.widget_plugins import (
+    approve,
+    enable,
+    grant,
+    manifest,
+    plugin_view,
+    rescan,
+    version_view,
+    write_package,
+)
 
 
 def value(name: str, **labels: str) -> float:
@@ -48,7 +57,8 @@ class TestDiscoveryAndApproval:
         directory = write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
-        await enable(superuser, access_mode="everyone")
+        await enable(superuser)
+        await grant(superuser)
         digest = version_view(await plugin_view(superuser))["digest"]
         base = f"/app/widget-plugins/test-chart/{digest}/files"
 
@@ -69,7 +79,8 @@ class TestReports:
         write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
-        await enable(superuser, access_mode="everyone")
+        await enable(superuser)
+        await grant(superuser)
 
         img = Counted("widget_plugin_csp_reports_total", directive="img-src")
         failures = Counted(

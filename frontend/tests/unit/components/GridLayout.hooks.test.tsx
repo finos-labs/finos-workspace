@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { useDropzone } from "react-dropzone";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { useDragAndDropFiles } from "~/components/GridLayout.hooks";
+import type { UserType } from "~/lib/state/access";
+import { setAccess } from "../factories";
 
 vi.mock("react-dropzone", () => ({
   useDropzone: vi.fn(),
@@ -83,6 +85,7 @@ describe("useDragAndDropFiles", () => {
       getInputProps: vi.fn(),
       isDragActive: false,
     });
+    setAccess({ user_type: "Developer" });
   });
 
   it("uses the DOCX MIME type in the dashboard dropzone accept config", () => {
@@ -97,5 +100,16 @@ describe("useDragAndDropFiles", () => {
         }),
       }),
     );
+  });
+
+  it.each<[UserType, boolean]>([
+    ["Admin", false],
+    ["Developer", false],
+    ["User", true],
+  ])("disables dropping files on the dashboard for %s: %s", (userType, disabled) => {
+    setAccess({ user_type: userType });
+    renderHook(() => useDragAndDropFiles(false));
+
+    expect(useDropzone).toHaveBeenCalledWith(expect.objectContaining({ disabled }));
   });
 });

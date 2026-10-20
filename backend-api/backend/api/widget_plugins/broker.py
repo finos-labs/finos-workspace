@@ -19,7 +19,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import models
-from utilities.config import settings
+from routers.app.helpers import may_add_connections
 
 from . import backends, metrics, service
 from .proxy import CallError
@@ -30,8 +30,8 @@ _METHODS = {"GET", "POST"}
 
 
 async def readable_backend(db: AsyncSession, user_uuid: UUID, entity_uuid: UUID, backend_uuid: UUID):
-    """The backend, when this user may read it as the app lets them: their own, one of
-    their entity's on an on-premise deployment, or one a role of theirs gives access to."""
+    """The backend, when this user may read it as the app lets them: one of their entity's,
+    their own when they may bring connections, or one a role of theirs gives access to."""
     granted = (
         select(models.RoleBackend.backend_uuid)
         .join(models.UserRole, models.UserRole.role_uuid == models.RoleBackend.role_uuid)
@@ -43,9 +43,9 @@ async def readable_backend(db: AsyncSession, user_uuid: UUID, entity_uuid: UUID,
             models.RoleBackend.access == "access",
         )
     )
-    rules = [models.ApiSource.user_uuid == user_uuid, models.ApiSource.uuid.in_(granted)]
-    if settings.is_onprem():
-        rules.append(models.ApiSource.entity_uuid == entity_uuid)
+    rules = [models.ApiSource.entity_uuid == entity_uuid, models.ApiSource.uuid.in_(granted)]
+    if await may_add_connections(db, user_uuid):
+        rules.append(models.ApiSource.user_uuid == user_uuid)
     return (
         await db.execute(select(models.ApiSource).where(models.ApiSource.uuid == backend_uuid, or_(*rules)))
     ).scalar_one_or_none()

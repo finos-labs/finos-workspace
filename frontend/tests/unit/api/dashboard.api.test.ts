@@ -13,9 +13,11 @@ import {
   saveDashboardsOnExit,
   shareDashboard,
 } from "~/api/dashboard.api";
+import { type SharingLevel, useAccessStore } from "~/lib/state/access";
 import type { Item } from "~/lib/state/app";
 import { showNotificationWithRememberMe } from "~/lib/utils/toast";
 import { partial } from "../mocks";
+import "../../mocks/runtimeConfig";
 
 // Mock apiClient
 vi.mock("~/api/api", () => ({
@@ -47,20 +49,6 @@ vi.mock("~/lib/state/auth", () => ({
   useAuthStore: {
     getState: vi.fn().mockReturnValue({
       logout: vi.fn(),
-      user: { token: "session-token" },
-    }),
-  },
-}));
-
-vi.mock("~/lib/runtimeConfig", () => ({
-  getConfig: () => ({ urls: { backend: "http://api.example.org/" } }),
-}));
-
-// Mock useFeatureFlagsStore
-vi.mock("~/lib/state/featureFlags", () => ({
-  useFeatureFlagsStore: {
-    getState: vi.fn().mockReturnValue({
-      featureFlags: { tier: "full" },
     }),
   },
 }));
@@ -85,17 +73,6 @@ vi.mock("~/lib/utils/toast", () => ({
   showNotificationWithRememberMe: vi.fn(),
   NotificationId: { SaveDashboards: "save-dashboards" },
 }));
-
-// // Mock setup for useFeatureFlagsStore
-// const mockUseFeatureFlagsStore = (tier: string) => {
-//   vi.mock("~/lib/state/featureFlags", () => ({
-//     useFeatureFlagsStore: vi.fn(() => ({
-//       getState: vi.fn().mockReturnValue({
-//         featureFlags: { tier },
-//       }),
-//     })),
-//   }));
-// };
 
 // Test suite
 describe("Dashboard API functions", () => {
@@ -169,12 +146,14 @@ describe("Dashboard API functions", () => {
 
       saveDashboardsOnExit();
 
-      expect(fetch).toHaveBeenCalledWith("http://api.example.org/app/dash/sync", {
+      // Matches mockConfig.urls.backend from tests/mocks/runtimeConfig
+      expect(fetch).toHaveBeenCalledWith("http://localhost:3000/app/dash/sync", {
         method: "POST",
         keepalive: true,
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer session-token",
+          "X-Workspace-Client": "web",
         },
         body: JSON.stringify({ items: changed }),
       });
@@ -238,72 +217,65 @@ describe("Dashboard API functions", () => {
   });
 
   describe("getSharedDashboardsAndUpdate", () => {
-    beforeEach(() => {
-      // Clear all mocks before each test to ensure a clean state
-      vi.clearAllMocks();
-    });
+    const shared = {
+      "55d809ef-19d1-4e63-8dce-ce57f66e5536": { creator: false, content: {} },
+    };
 
-    // The expect condition is not working. Either the mock is not working or the function is not being called.
-    it("should update shared dashboards for full tier", async () => {
-      const { useSharedAppStore } = await import("~/lib/state/sharedApp");
-      const { useFeatureFlagsStore } = await import("~/lib/state/featureFlags");
-
-      const updateOnlySharedItemsMock = vi.fn();
-      vi.mocked(useSharedAppStore.getState).mockReturnValue(
-        partial({
-          updateOnlySharedItems: updateOnlySharedItemsMock,
-        }),
-      );
-
-      vi.mocked(useFeatureFlagsStore.getState).mockReturnValue(
-        partial({
-          featureFlags: { tier: "full" },
-        }),
-      );
-
-      // Mock the API call
-      vi.spyOn(apiClient, "get").mockResolvedValue({
-        data: {
-          shared: {
-            "55d809ef-19d1-4e63-8dce-ce57f66e5536": {
-              creator: false,
-              content: {},
-            },
-          },
-          entity_shared: {},
-        },
+    /** The server's answers: the user's access, then the dashboards shared with them. */
+    const serve = (sharing: SharingLevel) =>
+      vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
+        if (url === "/app/access") {
+          return { data: { user_type: "User", sharing } };
+        }
+        if (url === "/app/dash/sync/shared") {
+          return { data: { shared, entity_shared: {} } };
+        }
+        throw new Error(`unexpected GET ${url}`);
       });
 
-      // Call the function
-      await getSharedDashboardsAndUpdate();
+    const sharedStore = async () => {
+      const { useSharedAppStore } = await import("~/lib/state/sharedApp");
+      const updateOnlySharedItems = vi.fn();
+      vi.mocked(useSharedAppStore.getState).mockReturnValue(
+        partial({ updateOnlySharedItems }),
+      );
+      return updateOnlySharedItems;
+    };
 
-      // Assert that updateOnlySharedItems was called
-      expect(updateOnlySharedItemsMock).toHaveBeenCalled();
+    beforeEach(() => {
+      useAccessStore.setState({ access: null });
     });
 
-    it("should not update shared dashboards for basic tier", async () => {
-      const { useSharedAppStore } = await import("~/lib/state/sharedApp");
-      const { useFeatureFlagsStore } = await import("~/lib/state/featureFlags");
+    it.each<SharingLevel>([
+      "receive",
+      "share",
+    ])("loads the dashboards shared with a user whose sharing is %s", async (sharing) => {
+      const updateOnlySharedItems = await sharedStore();
+      serve(sharing);
 
-      const updateOnlySharedItemsMock = vi.fn();
-      vi.mocked(useSharedAppStore.getState).mockReturnValue(
-        partial({
-          updateOnlySharedItems: updateOnlySharedItemsMock,
-        }),
-      );
-
-      // Mock the feature flags to be basic
-      vi.mocked(useFeatureFlagsStore.getState).mockReturnValue(
-        partial({
-          featureFlags: { tier: "basic" },
-        }),
-      );
-
-      // Call the function
       await getSharedDashboardsAndUpdate();
 
-      // Assert that updateOnlySharedItems was not called
-      expect(updateOnlySharedItemsMock).not.toHaveBeenCalled();
+      expect(apiClient.get).toHaveBeenCalledWith("/app/dash/sync/shared");
+      expect(updateOnlySharedItems).toHaveBeenCalledWith({
+        shared,
+        entityShared: {},
+      });
+      expect(useAccessStore.getState().access?.sharing).toBe(sharing);
+    });
+
+    it("clears shared dashboards without asking for them when the user cannot receive", async () => {
+      const updateOnlySharedItems = await sharedStore();
+      serve("none");
+
+      await getSharedDashboardsAndUpdate();
+
+      expect(apiClient.get).toHaveBeenCalledWith("/app/access");
+      expect(apiClient.get).not.toHaveBeenCalledWith("/app/dash/sync/shared");
+      expect(updateOnlySharedItems).toHaveBeenCalledWith({
+        shared: {},
+        entityShared: {},
+      });
+      expect(useAccessStore.getState().access?.sharing).toBe("none");
     });
   });
 

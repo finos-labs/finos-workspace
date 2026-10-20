@@ -397,11 +397,17 @@ export default function Iframe() {
     const pathNames = new Set(fromBackend ? placeholders(state.url) : []);
     let page = state.url;
     if (pathNames.size) {
-      const built = buildWidgetRequest({
-        endpoint: { url: state.url, method: "GET" },
-        params: (widget.params ?? []).filter((param) => pathNames.has(param.paramName)),
-        storage: { params: effectiveIframeParams },
-      });
+      // The page's address carries no credentials; the frame gets them only through the protocol
+      const built = buildWidgetRequest(
+        {
+          endpoint: { url: state.url, method: "GET" },
+          params: (widget.params ?? []).filter((param) =>
+            pathNames.has(param.paramName),
+          ),
+          storage: { params: effectiveIframeParams },
+        },
+        undefined,
+      );
       if (!built?.ok) return { src: "", problems: built?.problems ?? [] };
       page = built.request.url;
     }

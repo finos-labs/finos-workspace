@@ -12,6 +12,8 @@ import time
 from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy import update
+
 from api import models
 from api.widget_plugins import backends
 from api.widget_plugins.manifest import Manifest
@@ -333,13 +335,23 @@ class TestBroker:
 
     @pytest.mark.asyncio
     async def test_the_users_access_applies(  # noqa: PLR0913 - the parts of the setup
-        self, member, superuser, plugins_dir, plugin_backend, data_source
+        self, member, superuser, plugins_dir, plugin_backend, data_source, db_session
     ):
+        """A member reads the organization's backends. A backend that is no longer the
+        organization's is read only by a user a role of theirs gives it to."""
         token = await _token(member, superuser, plugins_dir, plugin_backend)
         await enable(superuser, data_sources={"sales": str(data_source.uuid)})
-        response = await member.post(BROKER, headers={"X-Workspace-Call": token}, json={"path": "/sales"})
+        await db_session.execute(
+            update(models.ApiSource).where(models.ApiSource.uuid == data_source.uuid).values(entity_uuid=None)
+        )
+        await db_session.commit()
+        call = lambda: member.post(BROKER, headers={"X-Workspace-Call": token}, json={"path": "/sales"})  # noqa: E731
+
+        response = await call()
         assert (response.status_code, response.json()["detail"]["code"]) == (403, "not_permitted")
         assert data_source.server.received == []
+        await _grant(member, db_session, data_source.uuid)
+        assert (await call()).status_code == 200
 
     @pytest.mark.asyncio
     async def test_refusals(self, member, superuser, plugins_dir, plugin_backend, data_source, db_session):  # noqa: PLR0913

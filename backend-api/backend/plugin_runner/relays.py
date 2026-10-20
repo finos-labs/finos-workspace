@@ -10,7 +10,9 @@
   deployment listen there), link-local (a cloud's metadata service), multicast or
   unspecified. The connection goes to the address that was checked.
 - **The broker.** With ``broker = true``, ``POST /internal/plugin-broker/data/<id>`` and
-  nothing else reaches the API, one request a connection.
+  nothing else reaches the API, one request a connection, with the backend's
+  ``Content-Type``, ``X-Workspace-Call`` and ``Origin`` (the API refuses a request whose
+  Origin it does not allow) and no other header.
 
 Logs name the backend, the endpoint and the outcome; never what passes through.
 """
@@ -33,7 +35,7 @@ MAX_CONNECTIONS = 64
 MAX_HEAD = 16 * 1024
 MAX_BROKER_BODY = 1024 * 1024
 BROKER_PATH = re.compile(r"^/internal/plugin-broker/data/[a-z][a-z0-9_-]{0,63}$")
-BROKER_HEADERS = ("content-type", "x-workspace-call")
+BROKER_HEADERS = ("content-type", "x-workspace-call", "origin")
 REQUEST_LINE = re.compile(r"^POST (?P<target>\S+) HTTP/1\.1$")
 
 Handler = Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitable[None]]

@@ -59,7 +59,7 @@ describe("the widget request (WIDGETS-JSON 4.1)", () => {
   );
 
   it("builds the request of the design's example", () => {
-    const request = sent(buildWidgetRequest(teamReport, { theme: "dark" }));
+    const request = sent(buildWidgetRequest(teamReport, undefined, { theme: "dark" }));
     expect(request.method).toBe("POST");
     expect(request.url).toBe(
       `${BACKEND}/teams/platform/report?period=month&theme=dark`,
@@ -79,7 +79,7 @@ describe("the widget request (WIDGETS-JSON 4.1)", () => {
   it("builds the option lookup of the design's example", () => {
     const team = teamReport.params[0] as ParamDefT<"endpoint">;
     const request = sent(
-      buildOptionsRequest(team, { params: teamReport.params }, teamReport.endpoint),
+      buildOptionsRequest(team, { params: teamReport.params }, undefined),
     );
     expect(request.method).toBe("POST");
     expect(request.url).toBe(`${BACKEND}/teams/search`);
@@ -90,6 +90,7 @@ describe("the widget request (WIDGETS-JSON 4.1)", () => {
     const request = sent(
       buildWidgetRequest(
         widget("/data", [{ paramName: "q", type: "text" }], { q: "x" }),
+        undefined,
       ),
     );
     expect(request.method).toBe("GET");
@@ -98,10 +99,13 @@ describe("the widget request (WIDGETS-JSON 4.1)", () => {
   });
 
   it("is nothing without an endpoint, and a data URI as it is", () => {
-    expect(buildWidgetRequest({ endpoint: undefined, params: [] })).toBeNull();
+    expect(
+      buildWidgetRequest({ endpoint: undefined, params: [] }, undefined),
+    ).toBeNull();
     const data = "data:text/markdown,%23%20Hi";
     expect(
-      sent(buildWidgetRequest({ endpoint: { url: data, method: "GET" } })).url,
+      sent(buildWidgetRequest({ endpoint: { url: data, method: "GET" } }, undefined))
+        .url,
     ).toBe(data);
   });
 });
@@ -111,14 +115,17 @@ describe("path params (4.2)", () => {
 
   it("encodes the value as one path segment", () => {
     const request = sent(
-      buildWidgetRequest(widget("/items/{id}", [...params], { id: "a/b?c#d" })),
+      buildWidgetRequest(
+        widget("/items/{id}", [...params], { id: "a/b?c#d" }),
+        undefined,
+      ),
     );
     expect(request.url).toBe(`${BACKEND}/items/a%2Fb%3Fc%23d`);
   });
 
   it("sends a path param nowhere else", () => {
     const request = sent(
-      buildWidgetRequest(widget("/items/{id}", [...params], { id: 7 })),
+      buildWidgetRequest(widget("/items/{id}", [...params], { id: 7 }), undefined),
     );
     expect(request.url).toBe(`${BACKEND}/items/7`);
   });
@@ -126,7 +133,12 @@ describe("path params (4.2)", () => {
   it("does not send the request when the value is empty", () => {
     for (const value of ["", null, undefined])
       expect(
-        problems(buildWidgetRequest(widget("/items/{id}", [...params], { id: value }))),
+        problems(
+          buildWidgetRequest(
+            widget("/items/{id}", [...params], { id: value }),
+            undefined,
+          ),
+        ),
       ).toEqual([{ paramName: "id", kind: "missing", message: "`id` needs a value" }]);
   });
 
@@ -134,21 +146,26 @@ describe("path params (4.2)", () => {
     const zero = widget("/items/{id}", [{ paramName: "id", type: "number" }], {
       id: 0,
     });
-    expect(sent(buildWidgetRequest(zero)).url).toBe(`${BACKEND}/items/0`);
+    expect(sent(buildWidgetRequest(zero, undefined)).url).toBe(`${BACKEND}/items/0`);
     const no = widget("/flags/{on}", [{ paramName: "on", type: "boolean" }], {
       on: false,
     });
-    expect(sent(buildWidgetRequest(no)).url).toBe(`${BACKEND}/flags/false`);
+    expect(sent(buildWidgetRequest(no, undefined)).url).toBe(`${BACKEND}/flags/false`);
   });
 
   it("refuses a placeholder that names no param, and a list", () => {
-    expect(problems(buildWidgetRequest(widget("/items/{nope}", [])))[0]).toMatchObject({
+    expect(
+      problems(buildWidgetRequest(widget("/items/{nope}", []), undefined))[0],
+    ).toMatchObject({
       paramName: "nope",
       kind: "invalid",
     });
     expect(
       problems(
-        buildWidgetRequest(widget("/items/{id}", [...params], { id: ["a", "b"] })),
+        buildWidgetRequest(
+          widget("/items/{id}", [...params], { id: ["a", "b"] }),
+          undefined,
+        ),
       )[0].kind,
     ).toBe("invalid");
   });
@@ -157,6 +174,7 @@ describe("path params (4.2)", () => {
     const request = sent(
       buildWidgetRequest(
         widget("/items/{id}", [{ paramName: "id", type: "text", value: "d" }]),
+        undefined,
       ),
     );
     expect(request.url).toBe(`${BACKEND}/items/d`);
@@ -165,7 +183,9 @@ describe("path params (4.2)", () => {
 
 describe("values (4.3)", () => {
   const post = (params: Partial<ParamDef>[], values: Record<string, unknown>) =>
-    sent(buildWidgetRequest(widget("/x", params, values, { method: "POST" })));
+    sent(
+      buildWidgetRequest(widget("/x", params, values, { method: "POST" }), undefined),
+    );
 
   it("joins many values with commas in the query and sends an array in the body", () => {
     const params: Partial<ParamDef>[] = [
@@ -194,6 +214,7 @@ describe("values (4.3)", () => {
     const request = sent(
       buildWidgetRequest(
         widget("/x", [{ paramName: "d", type: "date" }], { d: "$currentDate-1d" }),
+        undefined,
       ),
     );
     expect(new URL(request.url).searchParams.get("d")).toBe(
@@ -214,6 +235,7 @@ describe("values (4.3)", () => {
           ],
           { a: "", b: 0, c: false, d: [] },
         ),
+        undefined,
       ),
     );
     expect(request.url).toBe(`${BACKEND}/x?b=0&c=false`);
@@ -224,6 +246,7 @@ describe("values (4.3)", () => {
       problems(
         buildWidgetRequest(
           widget("/x", [{ paramName: "n", type: "number" }], { n: "x" }),
+          undefined,
         ),
       ),
     ).toEqual([{ paramName: "n", kind: "invalid", message: "`n` is not a number" }]);
@@ -233,6 +256,7 @@ describe("values (4.3)", () => {
     const request = sent(
       buildWidgetRequest(
         widget("/x", [{ paramName: "a", type: "text" }], { a: "1", z: "2" }),
+        undefined,
       ),
     );
     expect(request.url).toBe(`${BACKEND}/x?a=1`);
@@ -245,6 +269,7 @@ describe("rules (4.4)", () => {
       problems(
         buildWidgetRequest(
           widget("/x", [{ paramName: "b", type: "text", in: "body" }], { b: "v" }),
+          undefined,
         ),
       )[0].message,
     ).toBe("`b` goes in the body, which needs the method POST");
@@ -258,6 +283,7 @@ describe("rules (4.4)", () => {
             widget("/x", [{ paramName: name, type: "text", in: "header" }], {
               [name]: "v",
             }),
+            undefined,
           ),
         )[0].message,
       ).toBe(`\`${name}\` cannot be sent as a header`);
@@ -272,7 +298,8 @@ describe("rules (4.4)", () => {
     expect(
       problems(
         buildWidgetRequest(
-          widget("/x", params, { "x-api-key": "a", TOKEN: "b" }, credentials),
+          widget("/x", params, { "x-api-key": "a", TOKEN: "b" }),
+          credentials,
         ),
       ).map((p) => p.paramName),
     ).toEqual(["x-api-key", "TOKEN"]);
@@ -284,23 +311,18 @@ describe("rules (4.4)", () => {
     ];
     for (const value of ["café", "a\nb", "x".repeat(1025)])
       expect(
-        problems(buildWidgetRequest(widget("/x", params, { "X-Name": value })))[0].kind,
+        problems(
+          buildWidgetRequest(widget("/x", params, { "X-Name": value }), undefined),
+        )[0].kind,
       ).toBe("invalid");
   });
 
   it("adds the connection's query credentials and sends its headers apart", () => {
     const request = sent(
-      buildWidgetRequest(
-        widget(
-          "/x",
-          [{ paramName: "a", type: "text" }],
-          { a: "1" },
-          {
-            headers: { "X-API-Key": "secret" },
-            query: { token: "t" },
-          },
-        ),
-      ),
+      buildWidgetRequest(widget("/x", [{ paramName: "a", type: "text" }], { a: "1" }), {
+        headers: { "X-API-Key": "secret" },
+        query: { token: "t" },
+      }),
     );
     expect(request.url).toBe(`${BACKEND}/x?token=t&a=1`);
     expect(request.credentials).toEqual({ "X-API-Key": "secret" });
@@ -311,12 +333,10 @@ describe("rules (4.4)", () => {
 describe("the cache key (4.6)", () => {
   const key = (value: string, secret: string) => {
     const built = buildWidgetRequest(
-      widget(
-        "/x",
-        [{ paramName: "X-Region", type: "text", in: "header" }],
-        { "X-Region": value },
-        { headers: { "X-API-Key": secret } },
-      ),
+      widget("/x", [{ paramName: "X-Region", type: "text", in: "header" }], {
+        "X-Region": value,
+      }),
+      { headers: { "X-API-Key": secret }, query: {} },
     );
     sent(built);
     return requestKey(built as BuiltRequest);
@@ -343,6 +363,7 @@ describe("the cache key (4.6)", () => {
               method: "POST",
             },
           ),
+          undefined,
         ) as BuiltRequest,
       );
     expect(body("1")).not.toEqual(body("2"));
@@ -434,14 +455,18 @@ describe("a form's submission", () => {
   });
 
   it("fills the endpoint from the inputs and the widget's params, and posts every input", () => {
-    const request = sent(buildFormRequest(form, { note: "n1", body: "hi" }, owner));
+    const request = sent(
+      buildFormRequest(form, { note: "n1", body: "hi" }, owner, undefined),
+    );
     expect(request.method).toBe("PUT");
     expect(request.url).toBe(`${BACKEND}/accounts/a%201/notes/n1`);
     expect(JSON.parse(request.body ?? "")).toEqual({ note: "n1", body: "hi" });
   });
 
   it("is not sent while a placeholder has no value", () => {
-    expect(problems(buildFormRequest(form, { body: "hi" }, owner))[0]).toMatchObject({
+    expect(
+      problems(buildFormRequest(form, { body: "hi" }, owner, undefined))[0],
+    ).toMatchObject({
       paramName: "note",
       kind: "missing",
     });

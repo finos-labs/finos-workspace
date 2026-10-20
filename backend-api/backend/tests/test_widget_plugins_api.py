@@ -22,9 +22,9 @@ from api.widget_plugins import service
 from tests.fixtures.base import _SECOND_USER, settings
 from tests.fixtures.plugin_backends import backend_manifest
 from tests.fixtures.widget_plugins import (
-    MEMBER,
     approve,
     enable,
+    grant,
     manifest,
     plugin_view,
     rescan,
@@ -128,17 +128,20 @@ class TestConcurrentSaves:
         write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
-        await enable(superuser, access_mode="roles")
+        await enable(superuser)
+        await grant(superuser)
 
         async def not_there_yet(*_args):
             return None
 
         with monkeypatch.context() as patch:
             patch.setattr(service, "_entity_row", not_there_yet)
-            response = await superuser.put("/admin/plugins/test-chart", json={"access_mode": "everyone"})
+            response = await superuser.put(
+                "/admin/plugins/test-chart", json={"narrowed_permissions": ["core:params:write"]}
+            )
         assert response.status_code == 200, response.text
-        rows = (await db_session.execute(select(models.EntityWidgetPlugin.access_mode))).scalars().all()
-        assert rows == ["everyone"]
+        rows = (await db_session.execute(select(models.EntityWidgetPlugin.narrowed_permissions))).scalars().all()
+        assert rows == [["core:params:write"]]
         assert len((await user_listing(member))["plugins"]) == 1
 
     @pytest.mark.asyncio
@@ -169,15 +172,17 @@ class TestAvailability:
         assert (await user_listing(member))["plugins"] == []
         await approve(superuser)
         assert (await user_listing(member))["plugins"] == []
-        await enable(superuser)  # roles only, and no role grants it
+        await enable(superuser)  # and no role grants it
         assert (await user_listing(member))["plugins"] == []
+        await grant(superuser)
+        assert len((await user_listing(member))["plugins"]) == 1
 
     @pytest.mark.asyncio
-    async def test_roles_or_everyone(self, member, superuser, plugins_dir):
+    async def test_roles_grant_the_widgets(self, member, superuser, plugins_dir):
         write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
-        await enable(superuser, access_mode="roles")
+        await enable(superuser)
 
         analysts = await member.role("Analysts")
         response = await superuser.put(
@@ -194,9 +199,6 @@ class TestAvailability:
         await superuser.put(f"/admin/role/{analysts}/plugin-access", json={"grants": []})
         assert (await user_listing(member))["plugins"] == []
 
-        await enable(superuser, access_mode="everyone")
-        assert len((await user_listing(member))["plugins"]) == 1
-
     @pytest.mark.asyncio
     async def test_a_role_the_user_does_not_hold_grants_nothing(self, member, superuser, plugins_dir):
         write_package(plugins_dir)
@@ -208,11 +210,14 @@ class TestAvailability:
         assert (await user_listing(member))["plugins"] == []
 
     @pytest.mark.asyncio
-    async def test_other_entities_see_nothing(self, superuser, second_user_client, plugins_dir):
+    async def test_other_entities_see_nothing(self, superuser, second_user_client, second_user_grant, plugins_dir):
+        """A role of another entity grants its plugin, but that entity has not enabled it."""
         write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
-        await enable(superuser, access_mode="everyone")
+        await enable(superuser)
+        await grant(superuser)
+        await second_user_grant()
         assert (await user_listing(second_user_client))["plugins"] == []
 
     @pytest.mark.asyncio
@@ -232,43 +237,23 @@ class TestAvailability:
         write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
-        await enable(superuser, access_mode="everyone")
+        await enable(superuser)
+        await grant(superuser)
         assert (await superuser.post("/plugins/test-chart/revoke")).status_code == 200
         assert (await user_listing(member))["plugins"] == []
         assert (await superuser.post("/plugins/test-chart/restore")).status_code == 200
         assert len((await user_listing(member))["plugins"]) == 1
 
-    @pytest.mark.asyncio
-    async def test_a_data_bundle_can_exclude_a_widget(self, member, superuser, db_session, plugins_dir):
-        write_package(plugins_dir)
-        await rescan(superuser)
-        await approve(superuser)
-        await enable(superuser, access_mode="everyone")
-        bundle = models.DataBundle(
-            uuid=uuid4(), bundle_name=f"bundle-{uuid4().hex[:8]}", except_widgets=["plugin:test-chart:chart"]
-        )
-        db_session.add(bundle)
-        await db_session.commit()
-        await db_session.execute(delete(models.Entitlement).where(models.Entitlement.user_uuid == MEMBER))
-        entitlement = models.Entitlement(
-            uuid=uuid4(), user_uuid=MEMBER, tier_id=models.FULL_TIER_ID, data_bundle_uuid=bundle.uuid
-        )
-        db_session.add(entitlement)
-        await db_session.commit()
-        try:
-            assert (await user_listing(member))["plugins"] == []
-        finally:
-            await db_session.execute(delete(models.Entitlement).where(models.Entitlement.uuid == entitlement.uuid))
-            await db_session.execute(delete(models.DataBundle).where(models.DataBundle.uuid == bundle.uuid))
-            await db_session.commit()
-
 
 class TestSuperuserEntities:
     @pytest.mark.asyncio
-    async def test_the_detail_shows_every_entity_and_the_events(self, superuser, second_user_client, plugins_dir):
+    async def test_the_detail_shows_every_entity_and_the_events(
+        self, superuser, second_user_client, second_user_grant, plugins_dir
+    ):
         write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
+        await second_user_grant()
         assert (await second_user_client.get("/plugins/test-chart")).status_code in {401, 403}
 
         response = await superuser.get("/plugins/test-chart")
@@ -277,27 +262,27 @@ class TestSuperuserEntities:
         assert detail["active_version"] == "1.0.0"
         entities = {e["entity_uuid"]: e for e in detail["entities"]}
         second = _SECOND_USER["entity_uuid"]
-        assert entities[second] == {**entities[second], "enabled": False, "access_mode": None}
+        assert entities[second] == {**entities[second], "enabled": False}
         assert "approved" in [e["action"] for e in detail["events"]]
 
-        response = await superuser.put(
-            f"/plugins/test-chart/entities/{second}", json={"enabled": True, "access_mode": "everyone"}
-        )
+        response = await superuser.put(f"/plugins/test-chart/entities/{second}", json={"enabled": True})
         assert response.status_code == 200, response.text
         assert len((await user_listing(second_user_client))["plugins"]) == 1
         detail = (await superuser.get("/plugins/test-chart")).json()
         assert {e["entity_uuid"]: e["enabled"] for e in detail["entities"]}[second] is True
         # The listing says which entities use it, for the entity dialogs
-        assert (await plugin_view(superuser))["enabled_for"] == [{"entity_uuid": second, "access_mode": "everyone"}]
+        assert (await plugin_view(superuser))["enabled_for"] == [{"entity_uuid": second}]
         assert (await superuser.get("/plugins/not-a-plugin")).status_code == 404
 
     @pytest.mark.asyncio
-    async def test_enable_for_every_entity(self, member, superuser, second_user_client, plugins_dir):
+    async def test_enable_for_every_entity(self, member, superuser, second_user_client, second_user_grant, plugins_dir):
         write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
+        await grant(superuser)
+        await second_user_grant()
 
-        response = await superuser.put("/plugins/test-chart/entities", json={"enabled": True, "access_mode": "everyone"})
+        response = await superuser.put("/plugins/test-chart/entities", json={"enabled": True})
         assert response.status_code == 200, response.text
         assert response.json()["entities"] >= 2
         assert len((await user_listing(member))["plugins"]) == 1
@@ -317,7 +302,8 @@ class TestPolicy:
         )
         await rescan(superuser)
         await approve(superuser)
-        await enable(superuser, access_mode="everyone")
+        await enable(superuser)
+        await grant(superuser)
         [plugin] = (await user_listing(member))["plugins"]
         assert plugin["csp"]["img-src"] == ["data:", "blob:", "https://tiles.example.com"]
         assert plugin["csp"]["connect-src"] == ["'none'"]
@@ -347,7 +333,8 @@ class TestPolicy:
         write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
-        await enable(superuser, access_mode="everyone", narrowed_permissions=["core:params:write"])
+        await enable(superuser, narrowed_permissions=["core:params:write"])
+        await grant(superuser)
         [plugin] = (await user_listing(member))["plugins"]
         assert plugin["widgets"][0]["permissions"] == ["core:data:read", "core:default"]
 
@@ -357,7 +344,8 @@ class TestFiles:
         directory = write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
-        await enable(superuser, access_mode="everyone")
+        await enable(superuser)
+        await grant(superuser)
         [plugin] = (await user_listing(member))["plugins"]
         return directory, plugin
 
@@ -395,11 +383,13 @@ class TestFiles:
         assert version_view(await plugin_view(superuser))["state"] == "blocked"
 
     @pytest.mark.asyncio
-    async def test_users_without_access_get_nothing(self, superuser, second_user_client, plugins_dir):
+    async def test_users_without_access_get_nothing(self, superuser, second_user_client, second_user_grant, plugins_dir):
         write_package(plugins_dir)
         await rescan(superuser)
         view = await approve(superuser)
-        await enable(superuser, access_mode="everyone")
+        await enable(superuser)
+        await grant(superuser)
+        await second_user_grant()
         response = await second_user_client.get(f"/app/widget-plugins/test-chart/{view['digest']}/files/entry.js")
         assert response.status_code == 404
 
@@ -410,7 +400,8 @@ class TestVersions:
         write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
-        await enable(superuser, access_mode="everyone")
+        await enable(superuser)
+        await grant(superuser)
 
         write_package(plugins_dir, manifest(version="1.1.0", csp={"connect-src": ["https://api.example.com"]}))
         summary = await rescan(superuser)
@@ -434,7 +425,8 @@ class TestVersions:
         directory = write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
-        await enable(superuser, access_mode="everyone")
+        await enable(superuser)
+        await grant(superuser)
 
         moved = plugins_dir.parent / "moved"
         directory.rename(moved)
@@ -541,7 +533,8 @@ class TestHandlers:
         await rescan(superuser)
         for plugin_id in ("a-chart", "b-chart"):
             await approve(superuser, plugin_id)
-            await enable(superuser, plugin_id, access_mode="everyone")
+            await enable(superuser, plugin_id)
+            await grant(superuser, plugin_id)
         assert (await user_listing(member))["vizHandlers"]["test_chart"]["plugin"] == "a-chart"
         await enable(superuser, "b-chart", handlers={"test_chart": "chart"})
         assert (await user_listing(member))["vizHandlers"]["test_chart"]["plugin"] == "b-chart"
@@ -553,7 +546,8 @@ class TestReports:
         write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
-        await enable(superuser, access_mode="everyone")
+        await enable(superuser)
+        await grant(superuser)
         response = await member.post(
             "/app/widget-plugins/report",
             json={
@@ -599,7 +593,8 @@ class TestNoInstallPath:
         before = _tree_hashes(plugins_dir)
         await rescan(superuser)
         view = await approve(superuser)
-        await enable(superuser, access_mode="everyone")
+        await enable(superuser)
+        await grant(superuser)
         await superuser.put("/plugins/test-chart/overrides", json={"csp": {"img-src": ["data:"]}})
         await member.get(f"/app/widget-plugins/test-chart/{view['digest']}/files/entry.js")
         await superuser.post("/plugins/test-chart/revoke")

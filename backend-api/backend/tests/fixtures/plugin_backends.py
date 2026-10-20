@@ -22,6 +22,7 @@ from tests.fixtures.widget_plugins import (
     ADMIN_ENTITY,
     approve,
     enable,
+    grant,
     manifest,
     plugin_view,
     rescan,
@@ -93,12 +94,13 @@ async def plugin_backend(monkeypatch):
 
 
 async def ready_backend(superuser, plugins_dir, backend: FakeBackend, *, secret: bool = True, **changes) -> dict:
-    """Discover, approve and enable the plugin for everyone, set its secret, and have the
+    """Discover, approve, enable and grant the plugin, set its secret, and have the
     stand-in answer the approved version's identity. Returns the version's view."""
     write_package(plugins_dir, backend_manifest(**changes))
     await rescan(superuser)
     await approve(superuser)
-    await enable(superuser, access_mode="everyone")
+    await enable(superuser)
+    await grant(superuser)
     if secret:
         response = await superuser.put("/plugins/test-chart/secrets/api_key", json={"value": BACKEND_SECRET})
         assert response.status_code == 200, response.text

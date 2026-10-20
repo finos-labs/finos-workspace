@@ -12,6 +12,7 @@ import { buildIframeWidget } from "~/components/Widgets/custom/buildIframeWidget
 import { useParamGroupBindings } from "~/components/Widgets/Helpers/useParamGroupBindings";
 import { useJsonData } from "~/lib/api";
 import { useShallowAppStore } from "~/lib/state/app";
+import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { buildWidgetRequest } from "~/lib/utils/widgetRequest";
 import {
@@ -141,11 +142,15 @@ function PluginWidgetBody({ resolved }: { resolved: ResolvedPluginWidget }) {
   const handle = pluginWidget.handles.find((h) => h.type === vizType);
   const endpointUrl = widget.endpoint?.url ?? "";
   const readsData = permissions.has("core:data:read") && !!endpointUrl;
+  const credentials = useSourceCredentials(widget.sourceId, endpointUrl);
   // The endpoint gets the site's theme, as markdown and html endpoints do, and answers
   // again when it changes
   const request = useMemo(
-    () => buildWidgetRequest(widget, { theme: theme === "light" ? "light" : "dark" }),
-    [widget.endpoint, widget.params, widget.storage?.params, theme],
+    () =>
+      buildWidgetRequest(widget, credentials, {
+        theme: theme === "light" ? "light" : "dark",
+      }),
+    [widget.endpoint, widget.params, widget.storage?.params, theme, credentials],
   );
   const dataKey = widget.data?.dataKey;
   const { data, isLoading, error, dataUpdatedAt } = useJsonData(

@@ -9,12 +9,19 @@ class FakeSocket:
     def __init__(self):
         self.sent: list[object] = []
         self.closed = False
+        self.close_code: int | None = None
 
     async def send_json(self, data: object) -> None:
         self.sent.append(data)
 
     async def close(self, code: int = 1000) -> None:
         self.closed = True
+        self.close_code = code
+
+
+async def session_lasts() -> bool:
+    """The web session that opened a test's browser socket lasts."""
+    return True
 
 
 class FakePubSub:
@@ -109,8 +116,9 @@ async def test_bridge_start_session_replaces_existing_user_session():
     with pytest.raises(BrowserUnavailableError):
         await manager.connect_browser(
             session_id=first.session.session_id,
-            token=first.session.token,
+            user_uuid=user_uuid,
             socket=FakeSocket(),
+            authorized=session_lasts,
         )
 
 
@@ -131,8 +139,9 @@ async def test_bridge_executes_connected_browser_command():
     socket = FakeSocket()
     await manager.connect_browser(
         session_id=start.session.session_id,
-        token=start.session.token,
+        user_uuid=user_uuid,
         socket=socket,
+        authorized=session_lasts,
     )
 
     command_task = asyncio.create_task(
@@ -155,6 +164,7 @@ async def test_bridge_executes_connected_browser_command():
                 "data": {"dashboards": []},
             },
         },
+        socket,
     )
 
     result = await command_task
@@ -215,7 +225,10 @@ async def test_disconnect_only_fails_that_users_pending_commands():
         # Register the browser directly: the credential handshake in
         # connect_browser requires Redis-backed active-session lookup.
         manager._active_by_user[user_uuid] = ConnectedBrowser(
-            user_uuid=user_uuid, session=start.session, socket=FakeSocket()
+            user_uuid=user_uuid,
+            session=start.session,
+            socket=FakeSocket(),
+            authorized=session_lasts,
         )
 
     user_a = uuid4()
@@ -233,7 +246,7 @@ async def test_disconnect_only_fails_that_users_pending_commands():
     assert len(manager._pending_commands) == 2
 
     # User A's browser disconnects.
-    await manager.disconnect_browser(user_a)
+    await manager.disconnect_browser(user_a, manager._active_by_user[user_a].socket)
 
     # User A's in-flight command fails fast.
     result_a = await task_a
@@ -262,7 +275,7 @@ async def test_completed_results_cache_is_bounded():
     )
     socket = FakeSocket()
     manager._active_by_user[user] = ConnectedBrowser(
-        user_uuid=user, session=start.session, socket=socket
+        user_uuid=user, session=start.session, socket=socket, authorized=session_lasts
     )
 
     for i in range(cap * 3):
@@ -284,6 +297,7 @@ async def test_completed_results_cache_is_bounded():
                     "data": {},
                 },
             },
+            socket,
         )
         await task
 
@@ -330,8 +344,9 @@ async def test_bridge_routes_command_across_processes_via_redis():
     socket = FakeSocket()
     await holder.connect_browser(
         session_id=start.session.session_id,
-        token=start.session.token,
+        user_uuid=user_uuid,
         socket=socket,
+        authorized=session_lasts,
     )
 
     # caller has no local browser for this user -> must publish over Redis to holder.
@@ -360,6 +375,7 @@ async def test_bridge_routes_command_across_processes_via_redis():
                 "data": {"dashboards": []},
             },
         },
+        socket,
     )
 
     result = await asyncio.wait_for(command_task, timeout=2.0)

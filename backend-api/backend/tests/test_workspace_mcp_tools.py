@@ -406,7 +406,6 @@ async def test_timeout_error_includes_snapshot_hint():
 
     await state.connect_browser(
         session_id=start.session.session_id,
-        token=start.session.token,
         socket=Socket(),
     )
 

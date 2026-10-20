@@ -2,3 +2,5 @@
 .zed/
 kb/
 .cursor/
+.claude/
+**/node_modules

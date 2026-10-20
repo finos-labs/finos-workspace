@@ -2,7 +2,7 @@
 
 Everything for working on the app on your own machine lives in this folder. One command starts the frontend, the backend API and its worker, MySQL and Redis, and code edits show up without restarting anything.
 
-To run the built images instead (web app, admin panel and API, as a user would), use `docker-compose.yml` at the repository root; its [README section](../README.md#running-the-whole-stack) explains it. The two stacks use port 8000, so run one at a time.
+To run the built images instead (web app and API, as a user would), use `docker-compose.yml` at the repository root; its [README section](../README.md#running-the-whole-stack) explains it. The two stacks use port 8000, so run one at a time.
 
 ## Before you start
 
@@ -20,13 +20,13 @@ cd local
 ADMIN_EMAIL=<your-email> make up
 ```
 
-`ADMIN_EMAIL` names the first administrator. It is needed only while `backend-api/backend/envs/.env` does not exist; the first `make up` creates that file with random secrets, and `backend-api/backend/scripts/cfgs/config.toml` with the organization and the administrator, whose password is random. Both files are yours: neither is for git. Later runs only need `make up`.
+`ADMIN_EMAIL` names the first administrator. It is needed only while `backend-api/backend/envs/.env` does not exist; the first `make up` creates that file with random secrets, and `backend-api/backend/scripts/cfgs/config.toml` with the organization and the administrator's address. Both files are yours: neither is for git. Later runs only need `make up`.
 
 The first run builds the backend images and installs the frontend packages, so it takes several minutes. Later runs reuse the images and start much faster. `make up` waits until the app answers and then prints where to go:
 
 - App: <http://localhost:1420>
 - Backend: <http://localhost:8000>
-- Sign in as the administrator in `backend-api/backend/scripts/cfgs/config.toml` (email and password).
+- Sign in as the administrator in `backend-api/backend/scripts/cfgs/config.toml`. The `init` step creates the account without a password; set it, typed twice and not shown, with `docker compose run --rm init python -m scripts.init_users --new-password <your-email>` in this folder. The same command sets a new one.
 
 ## Commands
 
@@ -56,8 +56,6 @@ Without `make`, use Docker Compose directly from this folder: `docker compose up
 | `mysql` | 3306 | Database, user `root`, password `root`, database `workspace` |
 | `redis` | 6379 | Cache and job queue |
 
-The admin panel (`backend-api/admin_frontend`) is not part of this stack; it runs in the root `docker-compose.yml`.
-
 ## Making changes
 
 - Frontend code: the browser reloads on save.
@@ -73,14 +71,15 @@ The backend reads `backend-api/backend/envs/.env`, the same file the root `docke
 
 | Setting | Value | Why |
 |---|---|---|
-| `MODE` | `onprem` | The mode the backend's own development guide uses |
+| `MODE` | `production` | The mode the backend's own development guide uses |
 | `SELFURL` | `http://localhost:8000` | Links the backend builds point at the API |
 | `DB_HOST`, `REDIS_HOST` | `mysql`, `redis` | The container names |
 | `DB_NAME` | `workspace` | The database the MySQL container creates |
 | `STORAGE_PROVIDER` | `folder` | Uploaded files go to `backend-api/backend/local_storage/` instead of cloud storage |
-| `JWT_SECRET`, `WORKSPACE_AES_KEY`, `WORKSPACE_AUTH_TOKEN`, `LOCAL_STORAGE_SECRET_KEY` | generated | `WORKSPACE_AUTH_TOKEN` is a JWT signed with `JWT_SECRET`; the example's values are placeholders |
+| `JWT_SECRET`, `WORKSPACE_AES_KEY`, `WORKSPACE_AUTH_TOKEN`, `LOCAL_STORAGE_SECRET_KEY` | generated | `WORKSPACE_AUTH_TOKEN` is a JWT signed with `JWT_SECRET`; the example leaves them blank, and the API refuses to start without strong values |
+| `BACKEND_CORS_ORIGINS` | `http://localhost:3000`, `:1420` | The origins of the web app: the root `docker-compose.yml`'s and this stack's dev server |
 
-`compose.yaml` overrides `FRONTENDURL` and `APPURL` with `http://localhost:1420`, the address of the dev server, so links and redirects point at it. The example file turns CORS off (`DISABLE_CORS=1`), which the dev server on another port relies on.
+`compose.yaml` overrides `FRONTENDURL` and `APPURL` with `http://localhost:1420`, the address of the dev server, so links and redirects point at it. The dev server on another port reaches the API because `http://localhost:1420` is one of `BACKEND_CORS_ORIGINS`. An MCP server on your machine or network that the API should reach goes in `ALLOWED_MCP_HOSTNAMES` (see `envs/.env.example`).
 
 Edit `envs/.env` freely, then `make restart s=backend`. To get a fresh one, delete it, and `config.toml` next to it, and run `ADMIN_EMAIL=<your-email> make up`; if the database already holds the old administrator, run `make reset` instead.
 
@@ -95,7 +94,7 @@ Widget plugins are packages built outside this repository (`docs/widget-plugins/
 1. Pick a directory on your machine for packages. In `compose.yaml`, uncomment the `volumes` example under `backend` and put that directory in place of `<plugins directory>`. In `envs/.env`, set `WIDGET_PLUGINS_DIR=/opt/widget-plugins`. Then `make up`: a new mount needs the container recreated, which `make restart` does not do.
 2. Build the plugin into `<plugins directory>/<plugin-id>/<version>/`, with its `plugin.json`.
 3. Check it with the server's own validator, from `backend-api/backend`: `python -m scripts.plugin_check <plugins directory>/<plugin-id>/<version>`. `--digest` prints the checksum for the manifest and the version digest.
-4. Sign in as the administrator, open Admin, Widgets, Deployment: Rescan, review what the version asks for, approve it, and enable it for your organization. Under Plugin widgets, choose who may use it (everyone, or roles you grant on the Roles page). `backend-api/admin_cli/workspace-admin plugin ...` does the same from a terminal.
+4. Sign in as the administrator, open Admin, Widgets, Deployment: Rescan, review what the version asks for, approve it, and enable it for your organization. Under Plugin widgets, enable it, and on the Roles page grant it to a role you hold: a role is the only way to a plugin. `python -m scripts.workspace_admin plugin ...`, run in the backend container, does the same from a terminal.
 5. Change the plugin by publishing a new version directory and approving it. Editing the files of an approved version blocks it: versions are immutable.
 6. A plugin that calls a keyed service through a proxy needs its secret: set it on the plugin's page under Deployment (the value is never shown again), or put it in a file `<secrets directory>/<plugin-id>/<secret-name>` mounted into the API with `WIDGET_PLUGIN_SECRETS_DIR`. The API refuses to call an address that is not public, which includes your own machine: to let a plugin reach a service there, override its server network on the same page and confirm private hosts. A service whose certificate your own authority signs needs that authority's file mounted and named by `WIDGET_PLUGIN_PROXY_CA_FILE`.
 

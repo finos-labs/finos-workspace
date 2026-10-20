@@ -258,6 +258,9 @@ export function validateWidgetItems(
   };
   if (items.fileError) return items;
 
+  // The ids are the backend's: the map of valid widgets is built from entries, which only
+  // defines properties of its own, so no id reaches a setter or a prototype
+  const valid: [string, WidgetsType[string]][] = [];
   for (const [widgetId, widget] of Object.entries(object as Record<string, unknown>)) {
     // The top level allows the schema's own keys beside the widgets
     if (widgetId === "$schema" || widgetId === "$id") continue;
@@ -306,11 +309,11 @@ export function validateWidgetItems(
     }
 
     definition.params = createParamDefs(definition);
-    items.valid[widgetId] = definition as WidgetsType[string];
+    valid.push([widgetId, definition as WidgetsType[string]]);
     if (!isRenderableVizType(type as string, context.pluginTypes))
       items.unrendered.push(widgetId);
   }
-  return items;
+  return { ...items, valid: Object.fromEntries(valid) as WidgetsType };
 }
 
 /** The widgets.json problems as one message: the file's, or each invalid widget's. */
@@ -723,7 +726,7 @@ export async function validateBackend(
   }, options.apps);
 
   const agentsPromise = getPromise(async () => {
-    const agentsUrl = createURL("agents.json", backendUrl);
+    const agentsUrl = createURL("agents.json", backendUrl, newParams);
     return fetch(agentsUrl, reqInit);
   }, options.agents);
 
@@ -860,7 +863,9 @@ export async function validateSource(
       .map((item) => item.id),
   );
 
-  const tabWidgets = {} as { [appName: string]: { [tabId: string]: string[] } };
+  // The widget ids of each app's tabs, by app name and tab id: names from the backend's
+  // apps, which a map keeps apart from any object's own properties
+  const tabWidgets = new Map<string, Map<string, string[]>>();
 
   for (const t of loadedTemplates) {
     for (const tab of Object.values(t.tabs || {})) {
@@ -868,16 +873,18 @@ export async function validateSource(
         const widgetId = layout.i;
         if (getJsonWidget(widgetId)?.name) continue; // skip if it's a built-in widget
 
-        if (!tabWidgets[t.name]) tabWidgets[t.name] = {};
-        if (!tabWidgets[t.name][tab.id]) tabWidgets[t.name][tab.id] = [];
-        tabWidgets[t.name][tab.id].push(widgetId);
+        const appTabs = tabWidgets.get(t.name) ?? new Map<string, string[]>();
+        const ids = appTabs.get(tab.id) ?? [];
+        ids.push(widgetId);
+        appTabs.set(tab.id, ids);
+        tabWidgets.set(t.name, appTabs);
       }
     }
   }
 
   // check for widgets used in apps that are missing from the backend widgets
-  for (const [appName, item] of Object.entries(tabWidgets)) {
-    for (const [tabId, widgetIds] of Object.entries(item)) {
+  for (const [appName, item] of tabWidgets) {
+    for (const [tabId, widgetIds] of item) {
       const missingWidgetIds = widgetIds.filter(
         (id) =>
           !(

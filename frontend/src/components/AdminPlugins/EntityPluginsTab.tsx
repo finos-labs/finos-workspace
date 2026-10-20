@@ -51,8 +51,8 @@ export function EntityPluginsTab() {
   return (
     <div className="flex flex-col gap-4">
       <p className="body-xs-regular text-ds-text-caption">
-        Every plugin is off until you enable it. Enabled, it is available to everyone in
-        your organization, or only to the roles you give it in{" "}
+        Every plugin is off until you enable it. Enabled, its widgets are available to
+        the roles you give them in{" "}
         <Link to="/admin/roles" className="ws-hyper-link">
           Roles and Access
         </Link>
@@ -152,22 +152,9 @@ function EntityPluginCard({
             disabled={isPending}
             onCheckedChange={(on) => update({ enabled: on })}
           />
-          <select
-            aria-label="Who may use it"
-            className="rounded border border-general-border-secondary bg-transparent p-1 body-xs-regular"
-            value={plugin.access_mode}
-            disabled={isPending}
-            onChange={(e) =>
-              update({
-                access_mode: e.target.value as EntityPluginChanges["access_mode"],
-              })
-            }
-          >
-            <option value="roles">
-              Roles you choose ({plugin.role_grants} granted)
-            </option>
-            <option value="everyone">Everyone in your organization</option>
-          </select>
+          <span className="body-xs-regular text-ds-text-caption">
+            Role grants: {plugin.role_grants}
+          </span>
           <Button size="xs" variant="secondary" onClick={() => setOpen(!open)}>
             {open ? "Less" : "More"}
           </Button>

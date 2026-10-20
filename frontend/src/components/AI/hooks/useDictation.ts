@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { fetchAgent } from "~/lib/state/agentToken";
 import type { Copilot } from "~/lib/state/copilot";
 import { encodeWav } from "~/lib/utils/wav";
 import { useGetCopilotRequestHeaders } from "./useGetCopilotRequestHeaders";
@@ -58,12 +59,14 @@ export function useDictation(
       const url = transcribeUrl(agent);
       if (!url) throw new Error("The agent has no address for speech to text.");
       const wav = encodeWav(await toMono16k(recording), SAMPLE_RATE);
-      const headers = getCopilotRequestHeaders(undefined, agent ?? undefined);
+      const headers = new Headers(
+        getCopilotRequestHeaders(undefined, agent ?? undefined),
+      );
       // A form says its own type, with the boundary of its parts.
-      delete headers["Content-Type"];
+      headers.delete("Content-Type");
       const form = new FormData();
       form.set("audio", new Blob([wav], { type: "audio/wav" }), "dictation.wav");
-      const response = await fetch(url, { method: "POST", headers, body: form });
+      const response = await fetchAgent(url, { method: "POST", headers, body: form });
       if (!response.ok) throw new Error(`Speech to text failed: ${response.status}`);
       const { text } = (await response.json()) as { text?: string };
       if (text?.trim()) onText(text.trim());

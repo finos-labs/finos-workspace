@@ -11,9 +11,9 @@ import {
 import { usePluginRegistryStore } from "~/plugins/registry";
 
 export const pluginKeys = {
-  available: (token?: string) => ["widget-plugins", "available", token] as const,
-  widgetsSchema: (token?: string) =>
-    ["widget-plugins", "widgets-schema", token] as const,
+  available: (userUuid?: string) => ["widget-plugins", "available", userUuid] as const,
+  widgetsSchema: (userUuid?: string) =>
+    ["widget-plugins", "widgets-schema", userUuid] as const,
   platform: ["widget-plugins", "platform"] as const,
   detail: (pluginId: string) => ["widget-plugins", "detail", pluginId] as const,
   entity: ["widget-plugins", "entity"] as const,
@@ -39,20 +39,20 @@ const REFRESH = {
  * revoked or updated for the entity), the connected backends are validated again.
  */
 export function usePluginRegistrySync() {
-  const token = useShallowAuthStore((state) => state.user?.token);
+  const userUuid = useShallowAuthStore((state) => state.user?.uuid);
   const setListing = usePluginRegistryStore((state) => state.setListing);
 
   const { data } = useQuery({
-    queryKey: pluginKeys.available(token),
+    queryKey: pluginKeys.available(userUuid),
     queryFn: getAvailablePlugins,
-    enabled: !!token,
+    enabled: !!userUuid,
     retry: 1,
     ...REFRESH,
   });
   const { data: schema, error: schemaError } = useQuery({
-    queryKey: pluginKeys.widgetsSchema(token),
+    queryKey: pluginKeys.widgetsSchema(userUuid),
     queryFn: getWidgetsSchema,
-    enabled: !!token,
+    enabled: !!userUuid,
     retry: 2,
     ...REFRESH,
   });
@@ -83,10 +83,10 @@ export function usePluginRegistrySync() {
   }, [schemaError, schema]);
 
   useEffect(() => {
-    if (token) return;
+    if (userUuid) return;
     usePluginRegistryStore.getState().clear();
     setDefaultPluginVizTypes([]);
     setDefaultWidgetsSchema(undefined);
     schemaId.current = null;
-  }, [token]);
+  }, [userUuid]);
 }

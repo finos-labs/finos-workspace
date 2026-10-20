@@ -2,6 +2,7 @@ import {
   type ActivityLogEntry,
   ROLE_RESOURCE_LABELS,
   type RoleAuditLogReturn,
+  type RoleSettings,
   type RoleT,
 } from "~/components/AdminRoles/types";
 import type { CopilotModelGrant, McpGrant } from "~/lib/state/copilotAccess";
@@ -10,7 +11,7 @@ import { apiClient } from "./api";
 interface SuccessResponse {
   success: boolean;
 }
-interface EntityRoleResponse {
+interface EntityRoleResponse extends RoleSettings {
   uuid: string;
   name: string;
   description: string;

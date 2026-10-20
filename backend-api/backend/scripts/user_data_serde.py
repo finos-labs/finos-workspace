@@ -2,7 +2,7 @@
 
 Rows are read and written through the ORM, so SQLAlchemy's ``TypeDecorator``
 layer has already run by the time this module sees a value: gzip blobs arrive
-as dicts, ``EncryptedType`` columns arrive as *plaintext* dicts, ``UUIDType``
+as dicts, encrypted columns arrive decrypted, ``UUIDType``
 arrives as ``UUID``. This module's only job is turning those Python values into
 JSON and back.
 
@@ -11,9 +11,12 @@ a column that changes type cannot silently start round-tripping wrong.
 
 Two behaviours worth knowing about:
 
-* ``EncryptedType`` values are written to the archive as plaintext. Hub and Lite
-  have different ``WORKSPACE_AES_KEY`` values, so ciphertext would be undecryptable
-  at the destination. The ORM re-encrypts under the target's key on insert.
+* Encrypted columns (``EncryptedType``, ``EncryptedStringType``) hold credentials.
+  The source and the destination encrypt under different ``WORKSPACE_AES_KEY``
+  values, so the archive carries them sealed under a key of its own instead: the
+  export key, made for one archive and never written into it. A sealed value is
+  bound to its column ("<table>.<column>"), as at rest. The import needs the key
+  to open them, and the ORM encrypts them under the destination's key on insert.
 * ``PasswordType`` is never encoded. Its ``process_bind_param`` bcrypt hashes on
   every write, so a hash round-tripped through the ORM would be double-hashed
   and the account would become unloggable.
@@ -34,23 +37,36 @@ from sqlalchemy import (
 )
 from sqlalchemy_utils import ScalarListType, UUIDType
 
+from api.crypto import AtRestCipher, DecryptionError
 from api.models.model_helpers import (
     DATETIME,
     AwareDateTime,
     BasePydanticType,
+    EncryptedStringType,
+    EncryptedType,
     PasswordType,
 )
 from scripts.user_data_scope import TableSpec, redacted_columns
 
 # Bumped when the on-disk encoding changes in a way older archives cannot satisfy.
-SERDE_VERSION = 1
+SERDE_VERSION = 3
 
 # Marker for values with no native JSON representation.
 _BYTES_KEY = "__bytes__"
+# Marker for a credential sealed under the export key.
+_SEALED_KEY = "__sealed__"
+# Sealed into the manifest, so the import tells a wrong export key before it touches
+# the database.
+KEY_CHECK = b"workspace-export-key"
+KEY_CHECK_CONTEXT = "manifest.key_check"
 
 
 class SerdeError(Exception):
     """Raised when a value cannot be encoded or decoded."""
+
+
+class WrongExportKeyError(Exception):
+    """The export key given does not open the archive's credentials."""
 
 
 # --------------------------------------------------------------------------- #
@@ -96,23 +112,46 @@ def is_exportable(column: Column) -> bool:
     return column.computed is None
 
 
-def encode_row(spec: TableSpec, obj: Any) -> dict[str, Any]:
-    """Encode one ORM instance into a JSON-safe dict, dropping redacted columns."""
+def is_credential(column: Column) -> bool:
+    """Whether a column holds a secret the database keeps encrypted."""
+    return isinstance(column.type, EncryptedType | EncryptedStringType)
+
+
+def seal_context(column: Column) -> str:
+    """What a credential sealed under the export key is bound to: its column."""
+    return f"{column.table.name}.{column.name}"
+
+
+def encode_row(spec: TableSpec, obj: Any, sealer: AtRestCipher) -> dict[str, Any]:
+    """Encode one ORM instance into a JSON-safe dict, dropping redacted columns and
+    sealing credentials under the export key."""
     dropped = set(redacted_columns(spec))
-    return {
-        column.key: encode_value(getattr(obj, column.key))
-        for column in spec.model.__table__.columns
-        if column.key not in dropped and is_exportable(column)
-    }
+    row = {}
+    for column in spec.model.__table__.columns:
+        if column.key in dropped or not is_exportable(column):
+            continue
+        value = encode_value(getattr(obj, column.key))
+        if value is not None and is_credential(column):
+            sealed = sealer.encrypt(json.dumps(value).encode("utf-8"), seal_context(column))
+            value = {_SEALED_KEY: sealed}
+        row[column.key] = value
+    return row
 
 
 # --------------------------------------------------------------------------- #
 # Decoding: JSON-safe -> Python, driven by the column's declared type
 # --------------------------------------------------------------------------- #
-def _decode_for_column(column: Column, value: Any) -> Any:
-    """Decode one value using its column type."""
+def _decode_for_column(column: Column, value: Any, sealer: AtRestCipher) -> Any:
+    """Decode one value using its column type, opening a sealed credential."""
     if value is None:
         return None
+    if is_credential(column):
+        if not (isinstance(value, dict) and set(value) == {_SEALED_KEY}):
+            raise ValueError("a credential is not sealed")
+        try:
+            value = json.loads(sealer.decrypt(value[_SEALED_KEY], seal_context(column)))
+        except DecryptionError as exc:
+            raise WrongExportKeyError from exc
     return _decode_typed(column.type, value)
 
 
@@ -173,7 +212,9 @@ def _decode_plain(value: Any) -> Any:
     return value
 
 
-def decode_row(spec: TableSpec, payload: dict[str, Any]) -> dict[str, Any]:
+def decode_row(
+    spec: TableSpec, payload: dict[str, Any], sealer: AtRestCipher
+) -> dict[str, Any]:
     """Decode an archive row into kwargs for constructing ``spec.model``.
 
     Unknown keys are dropped rather than raising: an archive written by an older
@@ -190,7 +231,7 @@ def decode_row(spec: TableSpec, payload: dict[str, Any]) -> dict[str, Any]:
         if not is_exportable(columns[key]):
             continue
         try:
-            decoded[key] = _decode_for_column(columns[key], raw)
+            decoded[key] = _decode_for_column(columns[key], raw, sealer)
         except (ValueError, TypeError) as exc:
             raise SerdeError(
                 f"Could not decode {spec.table}.{key} from {raw!r}: {exc}"

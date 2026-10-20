@@ -1,19 +1,13 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import isEqual from "lodash.isequal";
-import { memo, type ReactNode, useCallback, useMemo } from "react";
-import { createJSONStorage, persist, subscribeWithSelector } from "zustand/middleware";
-import { useShallow } from "zustand/react/shallow";
-import { createWithEqualityFn } from "zustand/traditional";
+import { memo, type ReactNode, useCallback, useMemo, useState } from "react";
+import { type QueryOptions, type TResponseCb, useJsonData } from "~/lib/api";
 import {
-  convertHeadersToRecord,
-  type QueryOptions,
-  type TResponseCb,
-  useJsonData,
-} from "~/lib/api";
-import type { Selector } from "~/lib/state/app";
-import type { Source } from "~/lib/state/backendConnector";
+  type Source,
+  useShallowBackendConnectorStore,
+  useSourceCredentials,
+} from "~/lib/state/backendConnector";
+import { createURLString } from "~/lib/utils/widgetParams";
 import { plainRequest } from "~/lib/utils/widgetRequest";
-import { Avatar as DSAvatar } from "../ds/atoms/Avatar";
 import { cn } from "../ds/utils";
 
 const avatarVariants = cva(
@@ -48,6 +42,7 @@ export interface AvatarProps extends VariantProps<typeof avatarVariants> {
   imageClassName?: string;
   onError?: () => void;
   headers?: Record<string, string>;
+  params?: Record<string, string>;
   cacheKey?: string;
 }
 
@@ -62,26 +57,47 @@ function alternativeText(alt: string) {
     .join("");
 }
 
+// The image types base64 data is recognised by, from the start of its encoding
+const BASE64_IMAGE_TYPES: [prefix: string, type: string][] = [
+  ["iVBORw0KGgo", "image/png"],
+  ["/9j/", "image/jpeg"],
+  ["R0lGOD", "image/gif"],
+  ["UklGR", "image/webp"],
+  ["PHN2Zy", "image/svg+xml"],
+  ["PD94bWwg", "image/svg+xml"],
+  ["AAABAA", "image/x-icon"],
+];
+
+/** The data URI of `text` when it is an image's base64 data. */
+function base64ImageUri(text: string) {
+  const data = text.trim();
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) return undefined;
+  const type = BASE64_IMAGE_TYPES.find(([prefix]) => data.startsWith(prefix))?.[1];
+  return type ? `data:${type};base64,${data}` : undefined;
+}
+
+// The image a response carries: an image file, or sent as text, an SVG, a data URI or
+// base64 data. The body is read once.
 const responseCb: TResponseCb<string> = async (response, resolve, reject) => {
   try {
-    const contentType = response.headers.get("content-type") || "";
+    const blob = await response.blob();
+    const contentType = response.headers.get("content-type") || blob.type;
 
     if (contentType.includes("text") || contentType.includes("application/json")) {
-      const textContent = await response.text();
-      if (textContent.startsWith("data:")) return resolve(textContent);
-
-      if (/^[A-Za-z0-9+/]+=*$/.test(textContent.substring(0, 100))) {
-        const dataUri = `data:${contentType};base64,${textContent}`;
-
-        return resolve(dataUri);
+      const text = (await blob.text()).trim();
+      if (text.startsWith("data:")) return resolve(text);
+      const base64 = base64ImageUri(text);
+      if (base64) return resolve(base64);
+      if (/^(<\?xml[^>]*>\s*)?<svg[\s>]/i.test(text)) {
+        return resolve(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(text)}`);
       }
+      return reject(new Error("Failed to load image"));
     }
 
-    const imageBlob = await response.blob();
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = (err) => reject(err);
-    reader.readAsDataURL(imageBlob);
+    reader.readAsDataURL(blob);
   } catch (err) {
     reject("Failed to load image");
   }
@@ -99,64 +115,52 @@ export const Avatar = memo((props: AvatarProps) => {
     imageClassName = "",
     fallback,
     headers,
+    params,
     cacheKey = src ?? "",
   } = props;
 
-  const { isBase64OrLocal, enabled, setError } = useShallowAvatarStore((state) => ({
-    isBase64OrLocal: src?.startsWith("data:") || src?.startsWith("/"),
-    enabled: !!src && !state.isError(cacheKey),
-    setError: state.setError,
-  }));
-
-  const onError = useCallback(() => {
-    setError(cacheKey);
-    if (props.onError) props.onError();
-  }, [setError, cacheKey, props.onError]);
+  // A data URI, or a path on the Workspace itself, is shown as it is
+  const isInline = !!src && (src.startsWith("data:") || src.startsWith("/"));
+  // An image that needs a data backend's credentials comes only through the request that
+  // carries them
+  const needsCredentials =
+    Object.keys(headers ?? {}).length + Object.keys(params ?? {}).length > 0;
+  const [failedSrc, setFailedSrc] = useState<string>();
 
   const queryOptions = useMemo<QueryOptions<string>>(
     () => ({
-      request: src ? plainRequest(src, headers) : null,
-      queryKey: [cacheKey],
+      request: src
+        ? plainRequest(src, { headers: headers ?? {}, query: params ?? {} })
+        : null,
+      // By the credentials' names, never their values: the image is fetched again when
+      // its backend's credentials arrive
+      queryKey: [cacheKey, Object.keys(headers ?? {}), Object.keys(params ?? {})],
       responseCb,
     }),
-    [src, headers, cacheKey],
+    [src, headers, params, cacheKey],
   );
 
-  const { data, isLoading, isError } = useJsonData<string>(queryOptions, {
-    enabled: enabled && !isBase64OrLocal,
+  const { data, isError } = useJsonData<string>(queryOptions, {
+    enabled: !!src && !isInline,
     staleTime: Number.POSITIVE_INFINITY,
     refetchInterval: false,
     retry: false,
-    placeholderData: (prevData, prevQuery) => {
-      if (prevData) return prevData;
-      if (isBase64OrLocal) return src;
-      if (prevQuery?.state?.data) return prevQuery.state.data;
-      return src;
-    },
+    // An image that failed is not asked for again while the page is open
+    retryOnMount: false,
   });
 
-  const canRender = enabled && (!isLoading || isError);
+  // The fetched image. Until it arrives, a public image is shown from its address; one
+  // that needs credentials is not, before its fetch has failed. A page cannot fetch an
+  // image from a host that does not share it, which an <img> still shows.
+  const shownSrc = isInline
+    ? src
+    : (data ?? (needsCredentials && !isError ? undefined : src));
+  const showImage = !!shownSrc && shownSrc !== failedSrc;
 
-  const { corsFallback, imgFallback } = useMemo(() => {
-    const props = { src, alt, size: variant };
-    const imgFallback = fallback ?? alternativeText(alt);
-
-    const corsFallback = (
-      <DSAvatar
-        {...props}
-        key={src}
-        fallback={imgFallback}
-        className={cn(
-          "bg-transparent dark:text-white text-black",
-          className,
-          extraClassName,
-        )}
-        delayMs={100}
-      />
-    );
-
-    return { corsFallback, imgFallback };
-  }, [src, alt, variant, fallback, className, extraClassName]);
+  const onError = useCallback(() => {
+    setFailedSrc(shownSrc);
+    if (props.onError) props.onError();
+  }, [shownSrc, props.onError]);
 
   return (
     <span
@@ -170,44 +174,26 @@ export const Avatar = memo((props: AvatarProps) => {
       )}
       data-testid="avatar"
     >
-      {canRender ? (
+      {showImage ? (
         <img
-          src={data || src}
+          src={shownSrc}
           alt={alt}
           decoding="async"
           draggable={false}
           className={imageClassName}
           onError={onError}
         />
-      ) : isLoading || enabled ? (
-        imgFallback
       ) : (
-        corsFallback
+        (fallback ?? alternativeText(alt))
       )}
     </span>
   );
-
-  // return (
-  //   <AvatarPrimitive.Root
-  //     className={clsx(
-  //       "inline-flex items-center justify-center rounded-[2px]",
-  //       extraClassName,
-  //     )}
-  //     data-testid="avatar"
-  //     style={{ width: size, height: size }}
-  //   >
-  //     <AvatarPrimitive.Image src={src} alt={alt} />
-  //     <AvatarPrimitive.Fallback delayMs={300}>
-  //       {alt?.slice(0, 2)}
-  //     </AvatarPrimitive.Fallback>
-  //   </AvatarPrimitive.Root>
-  // );
 });
 
 interface AuthenticatedAvatar
   extends Omit<
     AvatarProps,
-    "imageClassName" | "withVariantCva" | "headers" | "variant" | "size"
+    "imageClassName" | "withVariantCva" | "headers" | "params" | "variant" | "size"
   > {
   source?: Source;
 }
@@ -215,105 +201,36 @@ interface AuthenticatedAvatar
 export const AuthenticatedAvatar = memo<AuthenticatedAvatar>((props) => {
   const { src, source, className, ...rest } = props;
 
-  const processedUrl = useMemo(() => {
-    if (!src) return undefined;
+  // An app's image: an address, a path on its data backend (such as the backend's
+  // `/thumbnails/{name}`), or the image itself as a data URI or base64 data
+  const url = useMemo(() => {
+    const value = src?.trim();
+    if (!value) return undefined;
+    if (/^(data:|https?:\/\/)/i.test(value)) return value;
+    const base64 = base64ImageUri(value);
+    if (base64) return base64;
+    return source?.url ? createURLString(value, source.url) : value;
+  }, [src, source?.url]);
 
-    if (src.startsWith("data:")) return src;
-
-    const hasUrlPrefix =
-      src.startsWith("http://") || src.startsWith("https://") || src.startsWith("/");
-
-    if (!hasUrlPrefix) {
-      const base64Pattern = /^[A-Za-z0-9+/]+={0,2}$/;
-      const looksLikeBase64 = base64Pattern.test(src.trim());
-
-      if (looksLikeBase64) return `data:image/png;base64,${src}`;
-    }
-
-    return src;
-  }, [src]);
-
-  const { url, headers } = useMemo(() => {
-    const output = { url: processedUrl, headers: {} as Record<string, string> };
-    if (!processedUrl) return output;
-    const isSourceBackend = source?.url && processedUrl.includes(source.url);
-    if (!isSourceBackend) return output;
-
-    let headers: Record<string, string> = {};
-
-    if (isSourceBackend && source?.endpointHeaders) {
-      const { headers: sourceHeaders } = convertHeadersToRecord(source.endpointHeaders);
-      headers = { ...headers, ...sourceHeaders };
-    }
-    output.headers = headers;
-    return output;
-  }, [processedUrl, source]);
+  // The backend's credentials go with an image on its origin only: its headers, and its
+  // query rows as parameters of the request, never in the image's address. Until the
+  // backends are loaded they are not known, and the image waits for them.
+  const credentials = useSourceCredentials(source?.id, url);
+  const sourcesLoaded = useShallowBackendConnectorStore((state) => state.sourcesLoaded);
+  const waiting = !!source?.url && !sourcesLoaded;
 
   return (
     <Avatar
       {...rest}
       className="w-full h-full rounded-none!"
       imageClassName={className}
-      src={url}
-      headers={headers}
+      src={waiting ? undefined : url}
+      headers={credentials.headers}
+      params={credentials.query}
       withVariantCva={false}
       cacheKey={url?.startsWith("data:") ? `${source?.uuid}-${rest.alt}` : url}
     />
   );
 });
-
-interface AvatarState {
-  errors: Record<string, number>;
-  setError: (src: string) => void;
-  isError: (src: string) => boolean;
-}
-
-export const useAvatarStore = createWithEqualityFn<AvatarState>()(
-  subscribeWithSelector(
-    persist(
-      (set, get) => ({
-        errors: {},
-        setError: (src) =>
-          set((state) => ({
-            errors: { ...state.errors, [src]: Date.now() + 60 * 5 * 1000 },
-          })),
-        isError: (src) => {
-          const { errors } = get();
-          return !!errors[src] && errors[src] > Date.now();
-        },
-      }),
-      {
-        name: "workspace_image_load",
-        storage: createJSONStorage(() => ({
-          getItem: (name) => {
-            const item = localStorage.getItem(name);
-
-            return item ? JSON.parse(atob(item)) : null;
-          },
-          setItem: (name, value) => {
-            localStorage.setItem(name, btoa(JSON.stringify(value)));
-          },
-          removeItem: (name) => localStorage.removeItem(name),
-        })),
-        onRehydrateStorage: () => (state) => {
-          if (state) {
-            const { errors = {} } = state;
-            const now = Date.now();
-
-            const filteredErrors = Object.fromEntries(
-              Object.entries(errors).filter(([, expiry]) => expiry > now),
-            );
-
-            state.errors = filteredErrors;
-          }
-        },
-      },
-    ),
-  ),
-);
-
-export function useShallowAvatarStore<T>(selector: Selector<AvatarState, T>): T {
-  return useAvatarStore(useShallow(selector), (prev, next) => isEqual(prev, next));
-}
 
 export default Avatar;

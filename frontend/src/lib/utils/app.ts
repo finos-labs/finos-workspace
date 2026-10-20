@@ -22,6 +22,7 @@ import { formatZodErrorMessage } from "~/utils/zodErrors";
 import type { AppState, Group, InnerTab, Item, Items } from "../state/app";
 import {
   type ConnectionType,
+  getSourceCredentials,
   useBackendConnectorStore,
 } from "../state/backendConnector";
 import { useCopilotDataStore } from "../state/copilotData";
@@ -691,7 +692,7 @@ export function endpointOptionsRequest(
   return buildOptionsRequest(
     param,
     { params: widget.params ?? [], values: currentParams },
-    widget.endpoint,
+    getSourceCredentials(widget.sourceId, param.optionsEndpoint),
   );
 }
 
@@ -1525,10 +1526,9 @@ export function getWidgetData(params: {
       }
     }
     if (widget.endpoint) {
-      finalWidgetData.endpoint = createWidgetEndpoint(
-        widget.endpoint,
-        widget?.endpointHeaders || [],
-      );
+      // The source's credentials are looked up when the widget fetches, never saved with it
+      const { url, method } = createWidgetEndpoint(widget.endpoint);
+      finalWidgetData.endpoint = { url, method };
     }
 
     const uniqueParam = widget?.params?.find((param) => param.type === "ticker");

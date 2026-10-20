@@ -2,18 +2,9 @@ import { memo, useEffect, useMemo } from "react";
 import { type McpServer, useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import { type UseMcpOptionsT, useMcp } from "./hooks/mcp/useMcp";
 
-const callbackUrl = `${window.location.origin}/oauth/callback`;
-
 type McpConnectionServer = Pick<
   McpServer,
-  | "enabled"
-  | "url"
-  | "clientName"
-  | "autoReconnect"
-  | "customHeaders"
-  | "isLocal"
-  | "authType"
-  | "id"
+  "enabled" | "url" | "clientName" | "autoReconnect" | "isLocal" | "authType" | "id"
 > & { serverName: string };
 
 // Individual connection component that persists outside the modal
@@ -28,7 +19,6 @@ const McpConnection = memo(({ serverId }: { serverId: string }) => {
       url: server.url,
       clientName: server.clientName,
       autoReconnect: server.autoReconnect,
-      customHeaders: server.customHeaders,
       isLocal: server.isLocal,
       authType: server.authType,
       id: server.id,
@@ -52,10 +42,7 @@ const McpServerConnection = memo(({ server }: { server: McpConnectionServer }) =
       serverId: server.id,
       clientName: server.clientName || "Workspace",
       serverName: server.serverName,
-      callbackUrl,
-      clientUri: window.location.origin,
       autoReconnect: server.autoReconnect ?? true,
-      customHeaders: server.customHeaders || {},
       isLocal: server.isLocal ?? false,
       authType: server.authType,
       handleDisconnect: () => {

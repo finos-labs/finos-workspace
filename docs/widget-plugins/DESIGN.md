@@ -27,11 +27,11 @@ This file covers the runtime, how plugins reach a deployment, the manifest, regi
 **Goals**
 
 1. Admins can install and register plugins at the **deployment level only**. The deployer puts packages where the server can read them; the app never installs code.
-2. The admin UI separates core widgets from plugin widgets. Plugins are disabled by default and need an explicit enable, for everyone or for specific roles.
+2. The admin UI separates core widgets from plugin widgets. Plugins are disabled by default and need an explicit enable, and a role that grants them.
 3. Every widget runs as an isolated window. It cannot read or affect what other widgets render, and it cannot reach the host app's session or credentials.
 4. Security responsibility rests with the admin, and the product makes that easy to exercise: each plugin's manifest, integrity and requests are shown before anything is enabled, and every change since the version in use is shown before an update takes effect.
 5. Backends keep using `widgets.json`. A backend widget whose `type` is, say, `table` or `chart` renders through whichever enabled plugin handles that type.
-6. Everything plugs into the existing admin UIs, the `workspace-admin` CLI and the existing RBAC (entities, roles, data bundles, audit). There is no parallel permission system.
+6. Everything plugs into the existing admin UIs, the `workspace-admin` CLI and the existing RBAC (entities, roles, audit). There is no parallel permission system.
 
 **Non-goals**
 
@@ -310,7 +310,7 @@ discovered ----(invalid, digest mismatch, changed, unpinned in strict mode)---->
         v
 active   (enabled at the deployment, but available to nobody yet)
         |
-        |  entity admin: enable for the entity; choose everyone or roles
+        |  entity admin: enable for the entity; grant it to roles
         v
 in use
 
@@ -371,9 +371,8 @@ As built: `standalonePluginWidgets` (`plugins/registry.ts`) turns the standalone
 
 ### 6.1 What exists
 
-- Two admin tiers. **Superuser**: `get_current_superuser`, the `entity` router, `useIsEntityAdmin` in the SPA, the operator panel `admin_frontend`. The seeded administrator is a superuser (`scripts/init_users.py`). **Entity admin**: `get_current_admin`, a user whose permissions map is named `Admin`, used by `/admin/*` (users, roles, activity log). The seeded administrator has both.
-- Role grants are tables keyed by role: `RoleBackend`, `RoleFile`, `RolePrompt`, `RoleCopilotModel`, `RoleMcpAccess` (`api/models/entity_models.py`). The newest two, and their dialog `RoleCopilotAccessDialog`, are the template. Their rule is "a role that grants nothing of a kind leaves that kind unrestricted".
-- `DataBundle.except_widgets` and `isExcludedWidgetId` already remove widget ids per entitlement bundle.
+- Two admin tiers. **Superuser**: `get_current_superuser`, the `entity` router, `useIsEntityAdmin` in the SPA, and the admin CLI inside the API container (`scripts/workspace_admin.py`). The seeded administrator is a superuser (`scripts/init_users.py`). **Entity admin**: `get_current_admin`, a user whose permissions map is named `Admin`, used by `/admin/*` (users, roles, activity log). The seeded administrator has both.
+- Role grants are tables keyed by role: `RoleBackend`, `RoleFile`, `RolePrompt`, `RoleCopilotModel`, `RoleMcpAccess` (`api/models/entity_models.py`). The newest two, and their dialog `RoleCopilotAccessDialog`, are the template. Their rule: what a user may use is the union of what their roles grant, and a kind no role grants is not available.
 - `AuditEntityRolesPermissions` plus the listeners in `api/events/role_permission_events.py` feed the activity log (`/admin/role-permissions-audit-logs`).
 - A user's entity is `get_entity_uuid(db, user_uuid)` (`routers/app/helpers.py:381`).
 
@@ -387,7 +386,6 @@ As built: `standalonePluginWidgets` (`plugins/registry.ts`) turns the standalone
 | Set a secret value | via configuration | yes (write-only) | no | no | no |
 | Revoke, restore, forget a missing plugin | no | yes | no | no | no |
 | Enable for an entity (bulk helper for all entities) | no | yes | own entity | no | no |
-| Choose "everyone in the entity" or "roles only" | no | yes | own entity | no | no |
 | Plugin admin settings; choose viz-type handlers | no | yes | own entity | no | no |
 | Narrow permissions, CSP or server network for the entity (remove only) | no | yes | own entity | no | no |
 | Grant widget types to roles | no | no | own entity | no | no |
@@ -428,7 +426,6 @@ class EntityWidgetPlugin(Base, UUIDMixin, DateMixin):      # table entity_widget
     entity_uuid: UUID                 # FK entity, CASCADE
     plugin_uuid: UUID                 # FK widget_plugin, CASCADE
     enabled: bool                     # default false
-    access_mode: str                  # "roles" or "everyone"
     settings: dict                    # validated against the manifest's adminSettings
     narrowed_permissions: list[str]   # removed for this entity
     csp_narrow: dict | None           # directive -> the only sources this entity allows
@@ -446,7 +443,7 @@ class RoleWidgetPlugin(Base, UUIDMixin, DateMixin):        # table role_widget_p
     # unique (role_uuid, plugin_uuid, widget_id), like role_mcp_access
 
 class WidgetPluginSecret(Base, UUIDMixin, DateMixin):      # table widget_plugin_secret (SERVER-SIDE 4)
-    plugin_uuid: UUID; name: str; value: str   # EncryptedType; never returned by any endpoint
+    plugin_uuid: UUID; name: str; value: dict  # EncryptedType("widget_plugin_secret.value"); never returned by any endpoint
     set_by_uuid: UUID                          # unique (plugin_uuid, name)
 
 class WidgetPluginEvent(Base, UUIDMixin, DateMixin):       # table widget_plugin_event (platform and entity events)
@@ -468,9 +465,7 @@ available(user, plugin, widget) =
       plugin.status == "enabled"
   and plugin.active_version.state == "active"
   and entity_widget_plugin(entity(user), plugin).enabled
-  and (   entity_widget_plugin.access_mode == "everyone"
-       or exists role in roles(user): role_widget_plugin(role, plugin, widget or "*") )
-  and "plugin:<id>:<widget>" not in data_bundle(user).except_widgets
+  and exists role in roles(user): role_widget_plugin(role, plugin, widget or "*")
 
 effective_permissions = approved.permissions
                         ∩ widget.permissions
@@ -484,11 +479,10 @@ A backend widget rendered by a viz handler is gated twice and independently: by 
 
 ### 6.5 Default access
 
-Everything starts closed. A discovered plugin is disabled. An approved plugin is enabled at the deployment but enabled for no entity. A widget type is available to users only through an explicit grant: a role that grants it, or the plugin's per-entity setting "everyone in the entity". This differs on purpose from the Copilot-access convention (nothing chosen means unrestricted): plugin code is the riskiest thing an admin can switch on. The role dialog says so in its text.
+Everything starts closed. A discovered plugin is disabled. An approved plugin is enabled at the deployment but enabled for no entity. A widget type is available to users only through an explicit grant: a role that grants it. Admins are no exception: an admin uses a plugin through a role that grants it, like everyone else. This is the rule of every role grant (6.1). The role dialog says so in its text.
 
-### 6.6 Bundles and sharing
+### 6.6 Sharing
 
-- `except_widgets` may list `plugin:<id>:<widget>` to remove one widget type by bundle. Removing a plugin wholesale is done by entity enablement.
 - A shared dashboard with a plugin widget shows the placeholder to a viewer without access. Sharing a dashboard never shares a plugin.
 - Data is fetched with the viewer's own access, as for every widget.
 
@@ -515,7 +509,7 @@ New routers carry the tag `widget-plugins`, so `SUPPRESSED_API_ROUTERS` (`main.p
 | `PUT /plugins/{plugin_id}/entities/{entity_uuid}` | superuser | Enable or disable for an entity; a bulk form for all entities. |
 | `DELETE /plugins/{plugin_id}` | superuser | Forget a plugin whose files are gone: decisions, secrets and grants. |
 | `GET /admin/plugins` | entity admin | Plugins as this entity sees them. |
-| `PUT /admin/plugins/{plugin_id}` | entity admin | Enable, access mode, admin settings, narrowing (permissions, CSP, server network), viz handlers. |
+| `PUT /admin/plugins/{plugin_id}` | entity admin | Enable, admin settings, narrowing (permissions, CSP, server network), viz handlers. |
 | `GET /admin/plugins/{plugin_id}/csp-reports` | entity admin | Blocked requests of this entity. |
 | `GET` and `PUT /admin/role/{role_uuid}/plugin-access` | entity admin | Role grants, mirroring `.../copilot-access`. |
 | `GET /app/widget-plugins` | signed-in user | `{ enabled, etag, plugins }`: what this user may use, with widgets, params, settings schemas, data contracts, effective permissions, effective CSP string, digests. `enabled: false` when the feature is off. |
@@ -523,7 +517,7 @@ New routers carry the tag `widget-plugins`, so `SUPPRESSED_API_ROUTERS` (`main.p
 | `POST /app/widget-plugins/{plugin_id}/proxy/{proxy_id}` | signed-in user with availability | A declared proxy call (SERVER-SIDE 3). Body: `{ widget, args }`; answers `{ content_type, body }`. |
 | `POST /app/widget-plugins/{plugin_id}/backend/{route_id}` | signed-in user with availability | A plugin backend call (SERVER-SIDE 5). Body: `{ widget, instance, args }`; answers `{ body }`. |
 | `POST /app/widget-plugins/report` | signed-in user | Frame failures and blocked requests, rate limited, no widget data. |
-| `POST /internal/plugin-broker/data/{id}` | plugin backend, with a call-context token | Data for the calling user (SERVER-SIDE 5.7). |
+| `POST /internal/plugin-broker/data/{id}` | plugin backend, with a call-context token and an allowed `Origin` | Data for the calling user (SERVER-SIDE 5.7). |
 | `POST /plugins/{plugin_id}/backend/check` | superuser | Ask the plugin's backend for its identity now (SERVER-SIDE 5.5). |
 
 ### 7.2 Discovery pipeline
@@ -573,10 +567,10 @@ All three surfaces call the same endpoints.
 
 New route `frontend/src/routes/admin/widgets.tsx` and a `SidebarNavButton` in `LayoutAdmin/AdminSidebar.tsx`, shown when `GET /app/widget-plugins` says `enabled`. React Query hooks in `hooks/useAdminPlugins.ts`, API in `api/plugins.api.ts`. The table uses `ds/molecules/DataTable` and `RenderNoData`. The page has two tabs that never mix:
 
-- **Core widgets.** The built-ins, read-only: name, what it does, and a pointer to data bundle exclusions.
+- **Core widgets.** The built-ins, read-only: name and what it does.
 - **Plugin widgets.** Managed here. A banner states that plugins are installed by whoever deploys Workspace and that this page reviews and enables them; there is no install or upload control anywhere.
 
-The plugin list shows: name and id, active version, status (Not enabled (the default), Enabled, Update available, Blocked, Missing, Revoked), scope (Nobody, Everyone, N roles), and small markers for what it asks for (frame network, server network, secrets, data sources, server-side code).
+The plugin list shows: name and id, active version, status (Not enabled (the default), Enabled, Update available, Blocked, Missing, Revoked), the role grants, and small markers for what it asks for (frame network, server network, secrets, data sources, server-side code).
 
 ### 8.2 The trust summary
 
@@ -598,27 +592,23 @@ The first thing in a plugin's drawer, and the screen an admin must pass before a
 
 ### 8.3 Enabling
 
-A three-step flow from the trust summary: review and acknowledge, approve (this version, at the deployment), choose the scope. A superuser does the first two; the scope is chosen by an entity admin for the entity, or by a superuser for any entity or all of them. The scope is Nobody (the default), Everyone in the entity, or specific roles.
+A three-step flow from the trust summary: review and acknowledge, approve (this version, at the deployment), enable it for an entity. A superuser does the first two; an entity admin enables it for the entity, or a superuser for any entity or all of them. Then the entity admin grants its widget types to roles (8.4): nobody may use it until a role does.
 
-Further tabs of the drawer: **Network and CSP** (declared by the author, admin override, effective; reset to the author's; the egress summary; the **Blocked requests** feed with an Allow action, SECURITY 4.7), **Access** (everyone or roles, the role matrix per widget type, viz-type handlers), **Settings**, **Versions** (history, approve a version, diff), **Activity**.
+Further tabs of the drawer: **Network and CSP** (declared by the author, admin override, effective; reset to the author's; the egress summary; the **Blocked requests** feed with an Allow action, SECURITY 4.7), **Access** (the role grants per widget type, viz-type handlers), **Settings**, **Versions** (history, approve a version, diff), **Activity**.
 
 ### 8.4 Roles
 
-`RolesPage.tsx` gets a "Widget plugins" action next to "Copilot access", opening `RolePluginAccessDialog.tsx` (a sibling of `RoleCopilotAccessDialog.tsx`): the plugins enabled for the entity with a checkbox per widget type and "all widget types". The text states the default: widget types are available only to roles that grant them, unless the plugin is set to everyone. Backend: `GET` and `PUT /admin/role/{role_uuid}/plugin-access`.
+`RolesPage.tsx` gets a "Widget plugins" action next to "Copilot access", opening `RolePluginAccessDialog.tsx` (a sibling of `RoleCopilotAccessDialog.tsx`): the plugins enabled for the entity with a checkbox per widget type and "all widget types". The text states the rule: widget types are available only to roles that grant them. Backend: `GET` and `PUT /admin/role/{role_uuid}/plugin-access`.
 
 ### 8.5 Entities (superuser)
 
 The entity edit dialogs (`components/AdminEntities/`) get a read-only "Plugins" line, and the plugin page gets an "Enabled for" table with a toggle per entity and "enable for all".
 
-As built: `EntityPluginsLine` in the edit dialog's Base tab names the plugins enabled for the entity and who may use them, from the `enabled_for` list of `GET /plugins`, with a link to the Widgets page.
+As built: `EntityPluginsLine` in the edit dialog's Base tab names the plugins enabled for the entity, from the `enabled_for` list of `GET /plugins`, with a link to the Widgets page.
 
-### 8.6 Operator panel (`backend-api/admin_frontend`)
+### 8.6 CLI
 
-`src/components/managers/Plugin.tsx`, a "Plugins" tab in `routes/manageEntities.tsx`: list, rescan, review and approve, enable per entity or for all, revoke. Same endpoints. It does not use `ManageBase` (`Base.tsx`), whose "Add" button would be an install path.
-
-### 8.7 CLI
-
-`backend-api/admin_cli/workspace-admin` (single file, standard library only) gets `plugin list`, `plugin rescan`, `plugin show <id>`, `plugin approve <id> <version> [--digest <d>] --acknowledge` (without `--acknowledge` it prints the review and approves nothing; `--digest` stops when the server's files are not the ones checked), `plugin revoke` and `restore <id>`, `plugin enable` and `disable <id> (--entity <uuid> | --all) [--everyone | --roles]`, `plugin grant` and `ungrant <id> --role <uuid> [--widget w]` (roles of the caller's own entity, as the API allows), `plugin override <id> (--csp-file <json> | --clear) [--confirm ...]`, `plugin events`, `plugin reports` and `plugin forget <id>`. With T1, `plugin secret set <id> <name>` (the value is read from standard input, never from an argument). As built, also `plugin secret clear <id> <name>`, `plugin override <id> --server-network <origin>` (repeatable, replacing the hosts a plugin declares), and the server network, proxies and secret status in `plugin show`; the payload carrying a secret is not written to the CLI's debug log. Entities are named by UUID, as in the CLI's other commands. There is no `install`. Checking a package offline is `python -m scripts.plugin_check <dir>` (section 12).
+`scripts/workspace_admin.py`, the admin CLI that runs inside the API container on the database (`docker compose exec api python -m scripts.workspace_admin plugin ...`, `docker exec workspace workspace-admin plugin ...` in Lite), has `plugin list`, `plugin rescan`, `plugin show <id>`, `plugin approve <id> <version> [--digest <d>] --acknowledge` (without `--acknowledge` it prints the review and approves nothing; `--digest` stops when the server's files are not the ones checked), `plugin revoke` and `restore <id>`, `plugin enable` and `disable <id> (--entity <uuid> | --all)`, `plugin grant` and `ungrant <id> --role <uuid> [--widget w]`, `plugin override <id> (--csp-file <json> | --server-network <origin> ... | --clear) [--confirm ...]`, `plugin secret set` and `clear <id> <name>` (the value is read from a prompt that does not echo, or from standard input, never from an argument), `plugin check-backend <id>`, `plugin events`, `plugin reports` and `plugin forget <id>`. It does what the superuser's routes do, with the service functions they call, for every entity; its decisions record no user. Entities and roles are named by UUID, as in the CLI's other commands. There is no `install`. Checking a package offline is `python -m scripts.plugin_check <dir>` (section 12).
 
 ## 9. What users see
 

@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { deleteEntityRole } from "~/api/entity_roles.api";
 import type { DataTableColumn } from "~/components/ds/molecules/DataTable";
 import { DataTable } from "~/components/ds/molecules/DataTable";
-import BrandedLoadingState from "~/components/General/BrandedLoadingState";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { Button } from "../ds/atoms/Button";
 import { Input } from "../ds/atoms/Input";
@@ -206,13 +205,10 @@ export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
     ],
   );
 
+  // The roles show when they are there: no loading animation in between
   if (isLoading) {
     return (
-      <TabsPrimitive.Content value="roles" className="p-6 text-sm only-sm:h-screen">
-        <div className="flex h-full items-center justify-center py-20">
-          <BrandedLoadingState />
-        </div>
-      </TabsPrimitive.Content>
+      <TabsPrimitive.Content value="roles" className="p-6 text-sm only-sm:h-screen" />
     );
   }
 

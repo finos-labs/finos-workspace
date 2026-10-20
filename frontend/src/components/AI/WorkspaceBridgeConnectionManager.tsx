@@ -386,7 +386,7 @@ export class WebSocketBridge {
               return;
           }
         } catch {
-          // Not the payload itself: it comes from the network
+          // Not the payload itself: what the socket sent is not written to the log
           console.error("websocket error: invalid payload");
           dismissReconnectToast();
           this.updateStatus(

@@ -44,8 +44,15 @@ export type BuiltRequest =
   | { ok: true; request: BackendRequest }
   | { ok: false; problems: RequestProblem[] };
 
-/** The backend connection's credentials on a widget instance. */
-type Credentials = Pick<NonNullable<WidgetT["endpoint"]>, "headers" | "query">;
+/**
+ * A data backend's credentials, split by where a request carries them. Widgets never keep
+ * them: callers look them up in the widget's source when they build the request
+ * (`getSourceCredentials`, `useSourceCredentials`).
+ */
+export type Credentials = {
+  headers: Record<string, string>;
+  query: Record<string, string>;
+};
 
 /** A widget's endpoint, its declared params and their stored values. */
 type WidgetValues = Pick<WidgetT, "endpoint" | "params"> & {
@@ -309,6 +316,7 @@ function currentValue(
  */
 export function buildWidgetRequest(
   widget: WidgetValues,
+  credentials: Credentials | undefined,
   hostQuery: Record<string, string> = {},
 ): BuiltRequest | null {
   const endpoint = widget.endpoint;
@@ -335,9 +343,9 @@ export function buildWidgetRequest(
     problems,
   );
   const target = {
-    url: startUrl(path, endpoint, problems),
+    url: startUrl(path, credentials, problems),
     method,
-    credentials: endpoint,
+    credentials,
     paramHeaders: {},
     body: {},
   };
@@ -436,6 +444,7 @@ export function buildFormRequest(
   form: ParamDefT<"form">,
   inputValues: Record<string, unknown>,
   widget: WidgetValues,
+  credentials: Credentials | undefined,
 ): BuiltRequest {
   const scope = formScope(form, inputValues, widget);
   const byName = new Map(scope.params.map((param) => [param.paramName, param]));
@@ -449,23 +458,31 @@ export function buildFormRequest(
     problems,
   );
   const target = {
-    url: startUrl(path, widget.endpoint, problems),
+    url: startUrl(path, credentials, problems),
     method: form.method ?? "POST",
-    credentials: widget.endpoint,
+    credentials,
     paramHeaders: {},
     body: inputValues,
   };
   return finish(target, problems, true);
 }
 
-/** A GET of a URL with the connection's credential headers, for requests no param shapes. */
+/** A GET of a URL with a data backend's credentials, for requests no param shapes. */
 export function plainRequest(
   url: string,
-  credentials: Record<string, string> = {},
+  credentials: Credentials | undefined,
 ): BuiltRequest {
+  const problems: RequestProblem[] = [];
+  const target = startUrl(url, credentials, problems);
+  if (problems.length) return { ok: false, problems };
   return {
     ok: true,
-    request: { url, method: "GET", credentials: { ...credentials }, paramHeaders: {} },
+    request: {
+      url: target.toString(),
+      method: "GET",
+      credentials: { ...(credentials?.headers ?? {}) },
+      paramHeaders: {},
+    },
   };
 }
 

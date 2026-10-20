@@ -17,7 +17,6 @@ import {
   useShallowBackendConnectorStore,
   type WidgetMetadataItem,
 } from "~/lib/state/backendConnector";
-import { isExcludedWidgetId } from "~/lib/state/featureFlags";
 import { type UserGeneratedApp, useShallowUserAppsStore } from "~/lib/state/userApps";
 import {
   WIDGETS_WITHOUT_DISABLED as API_WIDGETS,
@@ -234,12 +233,7 @@ function storedFilesToWidgets(storedFiles: StoredFile[]): WidgetT[] {
 }
 
 function jsonWidgetsToWidgets(apiWidgets: WidgetJsonT[]): WidgetT[] {
-  const jsonWidgets = apiWidgets
-    .filter((widget) => {
-      // Check if the widget is not in the except_widgets list
-      return !isExcludedWidgetId(widget.widgetId);
-    })
-    .map((widget) => cloneDeep({ ...widget }));
+  const jsonWidgets = apiWidgets.map((widget) => cloneDeep({ ...widget }));
   // TODO: This assertion can be inaccurate, needs fix
   return jsonWidgets as unknown as WidgetT[];
 }

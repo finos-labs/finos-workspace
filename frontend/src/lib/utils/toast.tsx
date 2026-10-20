@@ -9,7 +9,6 @@ export enum NotificationId {
   DeleteDashboardShared = "delete-dashboard-shared",
   WidgetMoved = "widget-moved",
   AccountRemoved = "account-removed",
-  AccountResetPassword = "account-reset-password",
   AccountReset2FA = "account-reset-2fa",
   Account2FAToggled = "account-2fa-toggled",
   WidgetRemoved = "widget-removed",

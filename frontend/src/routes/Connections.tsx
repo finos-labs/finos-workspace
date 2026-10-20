@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { getApiSources, removeCustomCopilot } from "~/api/auth.api";
 import type { BackendPermissionsT } from "~/api/user_roles.api";
@@ -30,6 +30,7 @@ import { SettingsLayout } from "~/components/LayoutAuth/Skeleton/SettingsLayout"
 import { TabPageFilterGroup, TabPageSearchInput } from "~/components/shared/TabPage";
 import Tooltip from "~/components/Tooltip";
 import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import {
   type Source,
   useShallowBackendConnectorStore,
@@ -613,7 +614,18 @@ const initialState: ConnectionsState = {
   userClosed: { active: false, inactive: false },
 };
 
+/**
+ * The connections of an Admin or a Developer, who bring their own. A User brings none: the page
+ * is not theirs, and sends them to Apps once the session says who they are.
+ */
 export default function ConnectionsPage() {
+  const access = useShallowAccessStore((s) => s.access);
+  if (!access) return null;
+  if (!canAddConnections(access)) return <Navigate to="/app" replace={true} />;
+  return <Connections />;
+}
+
+function Connections() {
   const [state, dispatch] = useStateReducer(initialState);
   const inputRef = useRef<HTMLInputElement>(null);
 

@@ -6,16 +6,15 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { createEntityMap, updateEntityMap } from "~/api/entities.api";
 import { errorMessage } from "~/api/errors";
-import { FormInput } from "~/components/ds/atoms/Input";
 import { FormSelect } from "~/components/ds/atoms/Select";
 import { Form, FormField } from "~/components/ds/molecules/Form";
 import { entityAdminKeys } from "~/hooks/useEntityAdmin";
-import type { Entity, EntityMapItem } from "~/types/entity.type";
+import { type Entity, type EntityMapItem, USER_TYPES } from "~/types/entity.type";
 import { FormDialog } from "./FormDialog";
 
 export const mapFormSchema = z.object({
   entityUuid: z.uuid("Choose an entity"),
-  name: z.string().trim().min(1, "This field is required"),
+  name: z.enum(USER_TYPES, "Choose a user type"),
 });
 
 type MapFormValues = z.infer<typeof mapFormSchema>;
@@ -34,7 +33,7 @@ export function EntityMapDialog({
   const [error, setError] = useState<string | null>(null);
   const form = useForm<MapFormValues>({
     resolver: zodResolver(mapFormSchema),
-    defaultValues: { entityUuid: map?.entity.uuid ?? "", name: map?.name ?? "" },
+    defaultValues: { entityUuid: map?.entity.uuid ?? "", name: map?.name },
   });
 
   const options = useMemo(
@@ -83,7 +82,14 @@ export function EntityMapDialog({
         <FormField
           name="name"
           control={form.control}
-          render={({ field }) => <FormInput label="Name" {...field} />}
+          render={({ field }) => (
+            <FormSelect
+              label="User type"
+              placeholder="Select a user type"
+              options={USER_TYPES}
+              {...field}
+            />
+          )}
         />
       </FormDialog>
     </Form>

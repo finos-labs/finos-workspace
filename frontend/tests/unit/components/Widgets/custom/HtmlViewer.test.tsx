@@ -356,35 +356,17 @@ describe("HtmlViewer - iframe params bridge", () => {
     window.removeEventListener("updateQueryParams-html-evt", handler as EventListener);
   });
 
-  it("handles params dispatched as same-origin iframe custom events", () => {
-    const updateWidget = vi.fn();
+  it("runs the widget's scripts in an opaque origin, apart from the page", () => {
     renderWidget(<HtmlViewer />, {
-      updateWidget,
       widgetOverrides: {
-        id: "html-direct",
+        id: "html-sandbox",
         endpoint: { url: "https://api.example.com/html" },
-        storage: { params: {} },
-        params: [{ paramName: "sectors" }],
       },
     });
 
-    const iframe = document.querySelector("iframe");
-    expect(iframe?.contentWindow).toBeTruthy();
-
-    fireEvent.load(iframe as HTMLIFrameElement);
-    iframe?.contentWindow?.dispatchEvent(
-      new CustomEvent("workspace:widget-params:update", {
-        detail: {
-          type: "workspace:widget-params:update",
-          params: { sectors: "utility" },
-        },
-      }),
-    );
-
-    expect(updateWidget).toHaveBeenCalledTimes(1);
-    const [updater] = updateWidget.mock.calls.at(-1) ?? [];
-    const next = updater({ storage: { params: {} } });
-    expect(next.storage.params).toEqual({ sectors: "utility" });
+    const sandbox = document.querySelector("iframe")?.getAttribute("sandbox") ?? "";
+    expect(sandbox.split(" ")).toContain("allow-scripts");
+    expect(sandbox.split(" ")).not.toContain("allow-same-origin");
   });
 
   it("updates matching dashboard param groups from nested widget params", () => {

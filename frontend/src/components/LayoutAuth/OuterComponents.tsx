@@ -1,4 +1,5 @@
 import { useMobile } from "~/lib/providers/MobileProvider";
+import { canShare, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { AddCopilotDialog } from "../AI/AddCopilotDialog";
 import AddSkillDialog from "../AI/AddSkillDialog";
@@ -45,6 +46,7 @@ export default function OuterComponents() {
   }));
 
   const isMobile = useMobile((s) => s.isMobile);
+  const mayShare = useShallowAccessStore((state) => canShare(state.access));
 
   return (
     <>
@@ -64,8 +66,8 @@ export default function OuterComponents() {
       {renamePopup && <RenamePopup />}
       <ExportTemplatePopup />
       <CreateFolderPopup />
-      {shareDashboardPopupId && <ShareDashboardDialog />}
-      {shareUserAppsPopupId && <ShareUserAppDialog />}
+      {mayShare && shareDashboardPopupId && <ShareDashboardDialog />}
+      {mayShare && shareUserAppsPopupId && <ShareUserAppDialog />}
       {exportFolderPopup && <ExportFolderDialog />}
       <McpConnectionManager />
       <WorkspaceBridgeConnectionManager />

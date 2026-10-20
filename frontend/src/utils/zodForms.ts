@@ -4,7 +4,7 @@ import type { WidgetVizType } from "~/lib/types/app";
 import type { WidgetBaseContractT } from "~/lib/types/widgetsContract";
 
 const passwordRegex = /^(?=\S*[a-z])(?=\S*[A-Z])(?=\S*\d)(?=\S*[^\w\s])\S{8,}$/;
-const invalidPassword =
+export const invalidPassword =
   "Password: min. 8 characters, including a number, uppercase, lowercase, and special character. Spaces are forbidden.";
 
 export const zodPassword = z

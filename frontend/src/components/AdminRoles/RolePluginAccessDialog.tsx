@@ -107,11 +107,7 @@ export default function RolePluginAccessDialog({ open, onClose, role }: Props) {
                 <span className="body-xs-medium">
                   {plugin.name}{" "}
                   <span className="text-ds-text-caption">
-                    (
-                    {plugin.enabled
-                      ? `enabled, ${plugin.access_mode === "everyone" ? "everyone" : "roles only"}`
-                      : "not enabled for your organization"}
-                    )
+                    ({plugin.enabled ? "enabled" : "not enabled for your organization"})
                   </span>
                 </span>
                 <Checkbox

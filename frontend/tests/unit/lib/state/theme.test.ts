@@ -20,11 +20,7 @@ vi.mock("~/api/user.api", () => ({
 
 vi.mock("~/lib/state/auth", () => ({
   useAuthStore: {
-    getState: () => ({
-      lastVisitedPage: "/app",
-      openaiApiKey: "test-openai-key",
-      perplexityApiKey: "test-perplexity-key",
-    }),
+    getState: () => ({ lastVisitedPage: "/app" }),
   },
 }));
 
@@ -242,9 +238,14 @@ describe("useThemeStore", () => {
       expect(settings).toHaveProperty("quickAddButtonVisible");
       expect(settings).toHaveProperty("showMinimizeButton");
       expect(settings).toHaveProperty("lastVisitedPage");
-      expect(settings).toHaveProperty("openaiApiKey");
-      expect(settings).toHaveProperty("perplexityApiKey");
       expect(settings).toHaveProperty("collapsedPanelExpandOnHover");
+    });
+
+    it("never carries the user's provider keys", () => {
+      const settings = useThemeStore.getState().getDisplaySettings();
+
+      expect(settings).not.toHaveProperty("openaiApiKey");
+      expect(settings).not.toHaveProperty("perplexityApiKey");
     });
 
     it("should update display settings with theme change", () => {
@@ -275,7 +276,6 @@ describe("useThemeStore", () => {
     it("should set MCP auth popup", () => {
       const popup = {
         serverName: "test-server",
-        serverUrlHash: "hash123",
         url: "https://mcp.example.com",
         authUrl: "https://auth.example.com",
         popupFeatures: "width=500,height=600",
@@ -290,7 +290,6 @@ describe("useThemeStore", () => {
       useThemeStore.setState({
         mcpAuthPopup: {
           serverName: "test",
-          serverUrlHash: "hash",
           url: "https://mcp.example.com",
           authUrl: "url",
           popupFeatures: "features",
@@ -705,25 +704,48 @@ describe("useThemeStore", () => {
   });
 
   describe("Rehydration", () => {
-    it("should clear mcpAuthPopup after rehydrating from persisted storage", async () => {
-      const persistedPopup = {
-        serverName: "persisted-server",
-        serverUrlHash: "persisted-hash",
-        authUrl: "https://auth.example.com",
-        popupFeatures: "width=500,height=600",
-      };
+    it("never persists a pending MCP sign-in", () => {
+      useThemeStore.getState().setMcpAuthPopup({
+        serverName: "test-server",
+        url: "https://mcp.example.com",
+        authUrl: "https://auth.example.com/authorize?state=abc",
+      });
 
+      const persisted = JSON.parse(localStorage.getItem("theme-storage") ?? "{}");
+      expect(persisted.state).toBeDefined();
+      expect(persisted.state).not.toHaveProperty("mcpAuthPopup");
+      expect(localStorage.getItem("theme-storage")).not.toContain("authorize");
+    });
+
+    it("reads back and writes only its preferences, dropping keys like old provider keys", async () => {
       localStorage.setItem(
         "theme-storage",
         JSON.stringify({
-          state: { mcpAuthPopup: persistedPopup, theme: "dark" },
+          state: {
+            theme: "light",
+            fontSize: "large",
+            openaiApiKey: "sk-left-by-an-earlier-version",
+            perplexityApiKey: "pplx-left-by-an-earlier-version",
+          },
           version: 0,
         }),
       );
 
       await useThemeStore.persist.rehydrate();
+      const state = useThemeStore.getState() as unknown as Record<string, unknown>;
+      expect(state.theme).toBe("light");
+      expect(state.fontSize).toBe("large");
+      expect(state).not.toHaveProperty("openaiApiKey");
+      expect(state).not.toHaveProperty("perplexityApiKey");
 
-      expect(useThemeStore.getState().mcpAuthPopup).toBeNull();
+      // The next write keeps the preferences and nothing else
+      useThemeStore.getState().setRenamePopup(true, "Tab", "tab-1", "tab");
+      const stored = localStorage.getItem("theme-storage") ?? "";
+      expect(stored).not.toContain("left-by-an-earlier-version");
+      const persisted = JSON.parse(stored).state;
+      expect(persisted.theme).toBe("light");
+      expect(persisted.fontSize).toBe("large");
+      expect(persisted).not.toHaveProperty("renamePopup");
     });
 
     it("should not throw when rehydrating with no persisted storage", async () => {

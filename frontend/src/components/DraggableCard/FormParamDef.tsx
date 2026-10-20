@@ -3,6 +3,7 @@ import { FormProvider, useForm, useFormContext, useWatch } from "react-hook-form
 import { toast } from "sonner";
 import { ToggleSelect } from "~/components/ToggleSelect";
 import { useJsonData } from "~/lib/api";
+import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { beautifySlug, cn, currentDateModifier } from "~/lib/utils";
 import {
   buildFormRequest,
@@ -23,15 +24,16 @@ type ParamsForm = {
   [key: string]: string | number | boolean | undefined;
 };
 
-export function FormParamElement() {
+/** One of a widget's forms: a widget may have several, each its own form. */
+export function FormParamElement({
+  formParamDef,
+}: {
+  formParamDef: ParamDefT<"form">;
+}) {
   const { widget, updateWidget } = useWidgetContext();
   const [isLoading, setIsLoading] = useState(false);
 
-  const formParamDef = useMemo(() => {
-    return widget?.params?.find(
-      (param): param is ParamDefT<"form"> => param.type === "form",
-    );
-  }, [widget?.params]);
+  const credentials = useSourceCredentials(widget.sourceId, formParamDef?.endpoint);
 
   const initialFormValues = useMemo(() => {
     if (!formParamDef?.inputParams) return {};
@@ -65,7 +67,7 @@ export function FormParamElement() {
     async (data: ParamsForm) => {
       try {
         if (!formParamDef) return;
-        const built = buildFormRequest(formParamDef, data, widget);
+        const built = buildFormRequest(formParamDef, data, widget, credentials);
         if (!built.ok) {
           toast.error("Error", {
             description: built.problems.map((p) => p.message).join(". "),
@@ -75,7 +77,10 @@ export function FormParamElement() {
         }
         setIsLoading(true);
 
-        const response = await fetch(built.request.url, requestInit(built.request));
+        const response = await fetch(
+          built.request.url,
+          requestInit(built.request, { credentials: "omit" }),
+        );
 
         const json = await response.json();
 
@@ -106,7 +111,7 @@ export function FormParamElement() {
 
       setIsLoading(false);
     },
-    [formParamDef, widget, updateWidget],
+    [formParamDef, widget, credentials, updateWidget],
   );
 
   return (
@@ -158,6 +163,10 @@ function EndpointType(props: {
   const inputValues = useWatch({ control: form.control });
 
   const { widget } = useWidgetContext();
+  const credentials = useSourceCredentials(
+    widget?.sourceId,
+    inputParam.optionsEndpoint,
+  );
 
   const { paramName, label, description = [], multiSelect = false } = inputParam;
 
@@ -169,9 +178,9 @@ function EndpointType(props: {
       buildOptionsRequest(
         inputParam,
         formScope(props.form, inputValues, widget),
-        widget.endpoint,
+        credentials,
       ),
-    [inputParam, props.form, inputValues, widget],
+    [inputParam, props.form, inputValues, widget, credentials],
   );
 
   const { data, isLoading, error, dataUpdatedAt } = useJsonData(

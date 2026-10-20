@@ -9,8 +9,10 @@ import type { WidgetId } from "~/components/Widgets";
 import { getAiApiUrl } from "~/lib/constants";
 import { getIframeWidget } from "~/lib/iframeWidgetRegistry";
 import { getConfig } from "~/lib/runtimeConfig";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useAppStore } from "~/lib/state/app";
 import { useShallowAuthStore } from "~/lib/state/auth";
+import { getSourceCredentials } from "~/lib/state/backendConnector";
 import {
   type ArtifactT,
   type Citation,
@@ -237,7 +239,7 @@ export function useFunctionCall() {
   );
 
   const getAppWidget = useShallowAppWidgetsStore((s) => s.getAppWidget);
-  const userToken = useShallowAuthStore((s) => s.user?.token);
+  const signedIn = useShallowAuthStore((s) => s.user !== null);
   const aiEnhancementsEnabled = useShallowThemeStore(
     (state) => state.aiEnhancements && aiCopilotAiEnhancementsFF,
   );
@@ -405,17 +407,14 @@ export function useFunctionCall() {
 
   const fetchWidgetInfo = useCallback(
     async (widgetData: string): Promise<{ title?: string; description?: string }> => {
-      if (!(aiEnhancementsEnabled && userToken)) {
+      if (!(aiEnhancementsEnabled && signedIn)) {
         return {};
       }
 
       try {
-        const response = await fetch(`${getAiApiUrl()}/v1/generate/widget_info`, {
+        const response = await fetchAgent(`${getAiApiUrl()}/v1/generate/widget_info`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${userToken}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             widget_generation_request: {
               widget_data: widgetData,
@@ -434,7 +433,7 @@ export function useFunctionCall() {
         return {};
       }
     },
-    [aiEnhancementsEnabled, userToken],
+    [aiEnhancementsEnabled, signedIn],
   );
 
   /**
@@ -702,20 +701,20 @@ export function useFunctionCall() {
 
         // Fetch AI-generated title/description before adding to dashboard
         try {
-          const response = await fetch(`${getAiApiUrl()}/v1/generate/widget_info`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${userToken}`,
+          const response = await fetchAgent(
+            `${getAiApiUrl()}/v1/generate/widget_info`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                widget_generation_request: {
+                  name,
+                  description,
+                  widget_data: data,
+                },
+              }),
             },
-            body: JSON.stringify({
-              widget_generation_request: {
-                name,
-                description,
-                widget_data: data,
-              },
-            }),
-          });
+          );
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const aiInfo = await response.json();
           if (aiInfo?.title) {
@@ -780,7 +779,7 @@ export function useFunctionCall() {
         ];
       }
     },
-    [currentDashboardId, resolveInnerTabId, userToken],
+    [currentDashboardId, resolveInnerTabId],
   );
 
   return {
@@ -791,11 +790,6 @@ export function useFunctionCall() {
     assignTasksToAgents,
     addGenerativeWidget,
   };
-}
-
-/** A widget of a backend's registry carries its credentials as rows; an instance, as records. */
-function endpointWithCredentials(widget: WidgetT) {
-  return createWidgetEndpoint(widget.endpoint ?? "", widget.endpointHeaders ?? []);
 }
 
 function notSent(problems: RequestProblem[]): CopilotError {
@@ -819,14 +813,23 @@ function getRequest(widget: WidgetT, inputArgs: Record<string, unknown>): Reques
       CopilotErrorType.NOT_FOUND,
       `input_args names no param of this widget: ${undeclared.join(", ")}. Its params are: ${declared.join(", ") || "none"}.`,
     );
-  const built = buildWidgetRequest({
-    endpoint: endpointWithCredentials(widget),
-    params: widget.params,
-    storage: { params: inputArgs as Record<string, StoredParamValue> },
-  });
+  // A registry widget's endpoint may be its path alone; the method stays the widget's
+  const endpoint = createWidgetEndpoint(widget.endpoint ?? "");
+  const built = buildWidgetRequest(
+    {
+      endpoint,
+      params: widget.params,
+      storage: { params: inputArgs as Record<string, StoredParamValue> },
+    },
+    // The backend's credentials, for an endpoint on its origin only
+    getSourceCredentials(widget.sourceId, endpoint.url),
+  );
   if (!built) throw new Error("Missing widget endpoint url.");
   if (!built.ok) throw notSent(built.problems);
-  return new Request(built.request.url, requestInit(built.request));
+  return new Request(
+    built.request.url,
+    requestInit(built.request, { credentials: "omit" }),
+  );
 }
 
 type GetDashboardWidgetData = (widgetId: string) => DashboardWidgetData | undefined;
@@ -1012,12 +1015,13 @@ export async function getWidgetsParamOptions(
       params: widget.params ?? [],
       values: paramOptionsQuery.options_endpoint_input_args,
     },
-    endpointWithCredentials(widget),
+    // The backend's credentials, for an options endpoint on its origin only
+    getSourceCredentials(widget.sourceId, widgetParam.optionsEndpoint),
   );
   if (!built) throw new Error(`Endpoint not found for param ${paramName}`);
   if (!built.ok) throw notSent(built.problems);
   const response: unknown = await fetch(
-    new Request(built.request.url, requestInit(built.request)),
+    new Request(built.request.url, requestInit(built.request, { credentials: "omit" })),
   ).then((res) => res.json());
   if (!Array.isArray(response)) throw new Error("Failed to parse param options result");
   const optionsData = response.map((option: unknown) => {

@@ -34,9 +34,6 @@ VERSION_BLOCKED = "blocked"
 VERSION_RETIRED = "retired"
 VERSION_MISSING = "missing"
 
-ACCESS_EVERYONE = "everyone"
-ACCESS_ROLES = "roles"
-
 
 class WidgetPlugin(Base, UUIDMixin, DateMixin):
     """A plugin the deployer placed in the plugins directory."""
@@ -80,7 +77,7 @@ class WidgetPluginVersion(Base, UUIDMixin, DateMixin):
 
 
 class EntityWidgetPlugin(Base, UUIDMixin, DateMixin):
-    """Whether, and for whom, an entity uses a plugin."""
+    """Whether, and how, an entity uses a plugin; its roles grant the widgets."""
 
     __tablename__ = "entity_widget_plugin"
     __table_args__ = (UniqueConstraint("entity_uuid", "plugin_uuid", name="uix_entity_widget_plugin"),)
@@ -89,7 +86,6 @@ class EntityWidgetPlugin(Base, UUIDMixin, DateMixin):
     plugin_uuid: Mapped[UUID] = mapped_column(ForeignKey("widget_plugin.uuid", ondelete="CASCADE"), index=True)
     plugin: Mapped["WidgetPlugin"] = relationship(foreign_keys=[plugin_uuid])
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
-    access_mode: Mapped[str] = mapped_column(String(16), default=ACCESS_ROLES)
     settings: Mapped[dict | None] = mapped_column(JSONType, default=None)
     # Permissions removed for this entity
     narrowed_permissions: Mapped[list | None] = mapped_column(JSONType, default=None)
@@ -173,5 +169,5 @@ class WidgetPluginSecret(Base, UUIDMixin, DateMixin):
     plugin_uuid: Mapped[UUID] = mapped_column(ForeignKey("widget_plugin.uuid", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(64))
     # {"value": "..."}
-    value: Mapped[dict] = mapped_column(EncryptedType)
+    value: Mapped[dict] = mapped_column(EncryptedType("widget_plugin_secret.value"))
     set_by_uuid: Mapped[UUID | None] = mapped_column(UUIDType, default=None)

@@ -100,7 +100,6 @@ export function createSourceWidget(
     sourceId: source.id,
     sourceName: source.name,
     connectionType: "advanced-backend",
-    endpointHeaders: source.endpointHeaders ?? [],
   } as WidgetT;
 
   if (source.isSharedSource) {
@@ -220,21 +219,18 @@ export function updateWidgetEndpoints(
     updateWidget(dashId, widget);
   };
 
-  const endpointHeaders = source.endpointHeaders ?? [];
+  // The widgets keep the URL and method; the source's credentials are looked up when they fetch
   for (const [dashId, widgets] of Object.entries(selectedWidgets)) {
     for (const w of widgets) {
       const widgetId = (w.widgetId ?? "").replace(`${sourceName}-`, "");
       const widgetJson = source.widgets?.[widgetId];
       if (!widgetJson) {
-        // The connection's credentials replace the ones the widget had
-        const newEndpoint = createWidgetEndpoint(
-          w.endpoint && { url: w.endpoint.url, method: w.endpoint.method },
-          endpointHeaders,
-        );
+        // The widget keeps its URL and method
+        const { url, method } = createWidgetEndpoint(w.endpoint);
         const updatedWidget = {
           ...w,
           sourceName: source.name,
-          endpoint: { ...w.endpoint, ...newEndpoint },
+          endpoint: { url, method },
         };
         onUpdatedWidget(dashId, updatedWidget, w.innerTab);
 
@@ -247,13 +243,10 @@ export function updateWidgetEndpoints(
       );
       const groupById = params?.find((p) => p?.type === "endpoint")?.groupById;
 
-      const newEndpoint = createWidgetEndpoint(
-        {
-          url: createURLString(widgetJson.endpoint, source.url),
-          method: widgetJson.method ?? "GET",
-        },
-        endpointHeaders,
-      );
+      const { url, method } = createWidgetEndpoint({
+        url: createURLString(widgetJson.endpoint, source.url),
+        method: widgetJson.method ?? "GET",
+      });
 
       const subCategory = widgetJson.subCategory;
       const dataKey = widgetJson.data?.dataKey ?? w.data?.dataKey;
@@ -281,7 +274,7 @@ export function updateWidgetEndpoints(
           dataKey,
           ...typeConfig,
         },
-        endpoint: { ...w.endpoint, ...newEndpoint },
+        endpoint: { url, method },
         staleTime: widgetJson.staleTime ?? w.staleTime,
         refetchInterval: widgetJson.refetchInterval ?? w.refetchInterval,
         dataUpdateDisplay: widgetJson.dataUpdateDisplay ?? w.dataUpdateDisplay,

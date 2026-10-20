@@ -3,14 +3,24 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import MsalTokenRefresh from "~/components/MsalTokenRefresh";
 import { useAuthStore } from "~/lib/state/auth";
+import {
+  clearIdpTokens,
+  getIdpTokens,
+  rememberSignInProvider,
+  setIdpTokens,
+} from "~/lib/state/idpTokens";
+import { mockConfig } from "../../mocks/runtimeConfig";
+import { makeAuthUser } from "../factories";
 
 const mockAcquireTokenSilent = vi.fn();
 const mockGetActiveAccount = vi.fn();
 const mockSetActiveAccount = vi.fn();
+const mockSsoSilent = vi.fn();
 const mockInstance = {
   acquireTokenSilent: mockAcquireTokenSilent,
   getActiveAccount: mockGetActiveAccount,
   setActiveAccount: mockSetActiveAccount,
+  ssoSilent: mockSsoSilent,
 };
 let mockAccounts: Array<{ username: string }> = [];
 let mockInProgress = "none";
@@ -25,14 +35,7 @@ vi.mock("@azure/msal-react", () => ({
 
 const mockLogout = vi.fn();
 
-const mockUser = {
-  email: "user@example.com",
-  username: "testuser",
-  token: "valid-token",
-  entity_name: null,
-  role: null,
-  uuid: "uuid-123",
-};
+const mockUser = makeAuthUser({ email: "user@example.com" });
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
@@ -53,15 +56,72 @@ describe("MsalTokenRefresh", () => {
     mockAcquireTokenSilent.mockResolvedValue(
       tokenResult("fresh-id-token", Date.now() + ONE_HOUR_MS),
     );
-    useAuthStore.setState({
-      user: mockUser,
-      microsoftIdToken: "",
-      logout: mockLogout,
-    });
+    // No Microsoft session in the browser: a user who signed in some other way
+    mockSsoSilent.mockRejectedValue(new InteractionRequiredAuthError("login_required"));
+    useAuthStore.setState({ user: mockUser, logout: mockLogout });
+    clearIdpTokens();
+    mockConfig.authentication.sendMicrosoftIdToken = true;
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    mockConfig.authentication.sendMicrosoftIdToken = false;
+    sessionStorage.clear();
+  });
+
+  describe("after a reload, when MSAL holds no account", () => {
+    it("asks Microsoft for the ID token again without a prompt", async () => {
+      mockSsoSilent.mockResolvedValue(
+        tokenResult("restored-id-token", Date.now() + ONE_HOUR_MS),
+      );
+
+      render(<MsalTokenRefresh>app</MsalTokenRefresh>);
+
+      await waitFor(() =>
+        expect(getIdpTokens().microsoftIdToken).toBe("restored-id-token"),
+      );
+      expect(mockSsoSilent).toHaveBeenCalledWith({
+        scopes: ["User.Read"],
+        loginHint: "user@example.com",
+      });
+      expect(mockSetActiveAccount).toHaveBeenCalledWith({
+        username: "user@example.com",
+      });
+      expect(mockLogout).not.toHaveBeenCalled();
+    });
+
+    it("signs out a tab that signed in with Microsoft when it cannot get the token back", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      rememberSignInProvider("microsoft");
+
+      render(<MsalTokenRefresh>app</MsalTokenRefresh>);
+
+      await waitFor(() => expect(mockLogout).toHaveBeenCalledTimes(1));
+    });
+
+    it("keeps a tab that signed in some other way, and tries only once", async () => {
+      const { rerender } = render(<MsalTokenRefresh>app</MsalTokenRefresh>);
+      await flushEffects();
+      mockInProgress = "ssoSilent";
+      rerender(<MsalTokenRefresh>app</MsalTokenRefresh>);
+      mockInProgress = "none";
+      rerender(<MsalTokenRefresh>app</MsalTokenRefresh>);
+      await flushEffects();
+
+      expect(mockSsoSilent).toHaveBeenCalledTimes(1);
+      expect(mockLogout).not.toHaveBeenCalled();
+    });
+
+    it("asks nothing when the deployment does not forward the ID token", async () => {
+      mockConfig.authentication.sendMicrosoftIdToken = false;
+      rememberSignInProvider("microsoft");
+
+      render(<MsalTokenRefresh>app</MsalTokenRefresh>);
+      await flushEffects();
+
+      expect(mockSsoSilent).not.toHaveBeenCalled();
+      expect(mockLogout).not.toHaveBeenCalled();
+    });
   });
 
   it("renders its children", async () => {
@@ -112,9 +172,7 @@ describe("MsalTokenRefresh", () => {
         forceRefresh: true,
       }),
     );
-    await waitFor(() =>
-      expect(useAuthStore.getState().microsoftIdToken).toBe("fresh-id-token"),
-    );
+    await waitFor(() => expect(getIdpTokens().microsoftIdToken).toBe("fresh-id-token"));
     expect(mockLogout).not.toHaveBeenCalled();
     // The refreshed account becomes the active account so future refreshes
     // no longer depend on the email match
@@ -143,7 +201,7 @@ describe("MsalTokenRefresh", () => {
   });
 
   it("logs out when the user has a Microsoft token but no MSAL account matches", async () => {
-    useAuthStore.setState({ microsoftIdToken: "stale-token" });
+    setIdpTokens({ microsoftIdToken: "stale-token" });
     mockAccounts = [{ username: "someone-else@corp.com" }];
 
     render(<MsalTokenRefresh>app</MsalTokenRefresh>);
@@ -153,7 +211,7 @@ describe("MsalTokenRefresh", () => {
   });
 
   it("logs out when the user has a Microsoft token but MSAL has no accounts at all", async () => {
-    useAuthStore.setState({ microsoftIdToken: "stale-token" });
+    setIdpTokens({ microsoftIdToken: "stale-token" });
     mockAccounts = [];
 
     render(<MsalTokenRefresh>app</MsalTokenRefresh>);
@@ -163,7 +221,7 @@ describe("MsalTokenRefresh", () => {
   });
 
   it("waits for MSAL to finish initializing before checking the token", async () => {
-    useAuthStore.setState({ microsoftIdToken: "stale-token" });
+    setIdpTokens({ microsoftIdToken: "stale-token" });
     mockAccounts = [{ username: "user@example.com" }];
     mockInProgress = "startup";
 
@@ -205,6 +263,29 @@ describe("MsalTokenRefresh", () => {
     await flushEffects();
 
     expect(mockLogout).not.toHaveBeenCalled();
-    expect(useAuthStore.getState().microsoftIdToken).toBe("");
+    expect(getIdpTokens().microsoftIdToken).toBe("");
+  });
+
+  it("keeps the refreshed ID token only when the deployment forwards it", async () => {
+    mockConfig.authentication.sendMicrosoftIdToken = false;
+    mockAccounts = [{ username: "user@example.com" }];
+
+    render(<MsalTokenRefresh>app</MsalTokenRefresh>);
+
+    await waitFor(() => expect(mockAcquireTokenSilent).toHaveBeenCalledTimes(1));
+    await flushEffects();
+    expect(getIdpTokens().microsoftIdToken).toBe("");
+  });
+
+  it("keeps the ID token out of browser storage", async () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    mockAccounts = [{ username: "user@example.com" }];
+
+    render(<MsalTokenRefresh>app</MsalTokenRefresh>);
+
+    await waitFor(() => expect(getIdpTokens().microsoftIdToken).toBe("fresh-id-token"));
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.length).toBe(0);
   });
 });

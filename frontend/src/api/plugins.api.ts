@@ -207,7 +207,7 @@ export interface PlatformPlugin {
     confirmations?: string[];
   };
   enabled_entities: number;
-  enabled_for: { entity_uuid: string; access_mode: "everyone" | "roles" }[];
+  enabled_for: { entity_uuid: string }[];
   versions: PlatformVersion[];
   secrets: PluginSecretStatus[];
   backend: PluginBackendStatus;
@@ -323,7 +323,6 @@ export interface PluginEntityUse {
   entity_uuid: string;
   name: string | null;
   enabled: boolean;
-  access_mode: "everyone" | "roles" | null;
 }
 
 /** One plugin with how every entity uses it, and its latest events. */
@@ -338,7 +337,7 @@ export async function getPlatformPlugin(pluginId: string) {
 export async function putPluginEntity(
   pluginId: string,
   entityUuid: string | null,
-  changes: { enabled: boolean; access_mode?: "everyone" | "roles" },
+  changes: { enabled: boolean },
 ) {
   const path = entityUuid
     ? `/plugins/${pluginId}/entities/${entityUuid}`
@@ -367,7 +366,6 @@ export interface EntityPlugin {
   }[];
   admin_settings_schema: Record<string, unknown> | null;
   enabled: boolean;
-  access_mode: "everyone" | "roles";
   settings: Record<string, unknown>;
   narrowed_permissions: string[];
   csp_narrow: Record<string, string[]>;
@@ -390,7 +388,6 @@ export interface EntityPlugin {
 
 export interface EntityPluginChanges {
   enabled?: boolean;
-  access_mode?: "everyone" | "roles";
   narrowed_permissions?: string[];
   csp_narrow?: Record<string, string[]>;
   server_network_narrow?: string[];

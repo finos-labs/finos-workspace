@@ -18,10 +18,11 @@ import Icon from "~/components/Icon";
 import "./index.css";
 import { registerSW } from "virtual:pwa-register";
 import { ErrorBoundary } from "react-error-boundary";
-import { useMcpAuthHandler } from "./components/AI/hooks/mcp/onMcpAuth";
+import { useMcpAuthCallback } from "./components/AI/hooks/mcp/onMcpAuth";
 import AuthRedirect from "./components/LayoutAuth/AuthRedirect";
 import { TOOLTIP_OPEN_DELAY_MS, TOOLTIP_SKIP_DELAY_MS } from "./lib/constants";
 import { getEnabledIdentityProviders } from "./lib/identityProviders";
+import { removeRetiredBrowserSecrets } from "./lib/retiredBrowserSecrets";
 import { getConfig } from "./lib/runtimeConfig";
 import { useShallowThemeStore } from "./lib/state/theme";
 import {
@@ -54,6 +55,7 @@ const ConnectionsPage = lazy(() => import("./routes/Connections"));
 const HomePage = lazy(() => import("./routes/home"));
 const LoginPage = lazy(() => import("./routes/login"));
 const DataConnectors = lazy(() => import("./routes/newDataConnectors"));
+const ResetPasswordPage = lazy(() => import("./routes/resetPassword"));
 const Settings = lazy(() => import("./routes/settings"));
 const TabPage = lazy(() => import("./routes/tab"));
 
@@ -66,6 +68,7 @@ const TooltipProvider = lazy(() =>
 );
 
 const MsalTokenRefresh = lazy(() => import("./components/MsalTokenRefresh"));
+const OktaTokenRestore = lazy(() => import("./components/OktaTokenRestore"));
 
 // Conditionally load react-scan for render scanning (stays build-time: dev-only tool)
 if (
@@ -79,17 +82,21 @@ if (
 }
 
 function OAuthCallback() {
-  const handleMcpAuthorization = useMcpAuthHandler();
-
-  useEffect(() => {
-    handleMcpAuthorization();
-  }, [handleMcpAuthorization]);
+  const error = useMcpAuthCallback();
 
   return (
     <div className="flex h-screen items-center justify-center">
-      <div className="text-center text-light-900 dark:text-light-50">
-        Authenticating… this window will close.
-      </div>
+      {error ? (
+        <div className="max-w-md text-center text-light-900 dark:text-light-50">
+          <h1 className="text-lg font-bold">Authentication Error</h1>
+          <p className="mt-2.5 text-alert-error">{error}</p>
+          <p className="mt-2.5">You can close this window.</p>
+        </div>
+      ) : (
+        <div className="text-center text-light-900 dark:text-light-50">
+          Authenticating… this window will close.
+        </div>
+      )}
     </div>
   );
 }
@@ -119,16 +126,18 @@ function RouterErrorElement() {
 
 const AuthGuard = memo(({ children }: { children?: ReactNode }) => {
   return useMemo(() => {
-    const Wrapper = getEnabledIdentityProviders().includes("microsoft")
-      ? MsalTokenRefresh
-      : Fragment;
+    const providers = getEnabledIdentityProviders();
+    const Wrapper = providers.includes("microsoft") ? MsalTokenRefresh : Fragment;
+    const OktaWrapper = providers.includes("okta") ? OktaTokenRestore : Fragment;
 
     return (
       <Fragment key="auth-guard">
         <AuthRedirect key="auth-redirect" />
         <Suspense fallback={null}>
           <Wrapper key="auth-wrapper">
-            <S children={<App key="app">{children}</App>} />
+            <OktaWrapper key="okta-wrapper">
+              <S children={<App key="app">{children}</App>} />
+            </OktaWrapper>
           </Wrapper>
         </Suspense>
       </Fragment>
@@ -165,6 +174,11 @@ const router = createBrowserRouter([
             path: "login",
             element: <S children={<LoginPage />} />,
             id: "login",
+          },
+          {
+            path: "reset-password",
+            element: <S children={<ResetPasswordPage />} />,
+            id: "reset-password",
           },
         ],
       },
@@ -313,6 +327,7 @@ if ("serviceWorker" in navigator) {
 }
 
 function bootstrap() {
+  removeRetiredBrowserSecrets();
   const config = getConfig();
 
   // Apply branding from runtime config
@@ -323,7 +338,7 @@ function bootstrap() {
     applyFontFamily(config.whiteLabel.fontFamily);
   }
 
-  // Override HTML meta tags from runtime config (no SEO needed for on-prem)
+  // Override HTML meta tags from runtime config
   applyWhiteLabelMeta(config.whiteLabel);
 
   const root = createRoot(document.getElementById("root") as HTMLElement);

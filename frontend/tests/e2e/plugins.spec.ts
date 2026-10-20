@@ -1,13 +1,8 @@
 import { readFileSync } from "node:fs";
 import type { Server } from "node:http";
-import {
-  type APIRequestContext,
-  type BrowserContext,
-  expect,
-  type Page,
-  test,
-} from "@playwright/test";
-import { authFile, deleteDashboard } from "./helpers";
+import { type BrowserContext, expect, type Page, test } from "@playwright/test";
+import { authFile, deleteDashboard, userInfo } from "./helpers";
+import { type ApiResponse, grantPlugins, type PageApi, pageApi } from "./plugins/api";
 import {
   HOSTILE_ENTRY,
   hostileManifest,
@@ -37,7 +32,8 @@ test.skip(!PLUGINS_DIR, "E2E_PLUGINS_DIR names the API's plugins directory");
 
 let context: BrowserContext;
 let page: Page;
-let api: APIRequestContext;
+let api: PageApi;
+let roleUuid: string | undefined;
 let backend: Server;
 let sourceUuid: string;
 let dashboardId: string;
@@ -58,12 +54,12 @@ async function tableBoots() {
   return (await seen()).boots.filter((title) => title.startsWith("E2E rows")).length;
 }
 
-async function json(response: Awaited<ReturnType<APIRequestContext["get"]>>) {
+async function json(response: ApiResponse) {
   expect(response.ok(), `${response.url()}: ${response.status()}`).toBe(true);
   return response.json();
 }
 
-/** Approves the written version of each fixture and enables it for everyone. */
+/** Approves the written version of each fixture, enables it and grants it to the user. */
 async function approveAndEnable() {
   await json(await api.post("/plugins/rescan"));
   const listing = await json(await api.get("/plugins"));
@@ -89,10 +85,16 @@ async function approveAndEnable() {
     }
     await json(
       await api.put(`/admin/plugins/${id}`, {
-        data: { enabled: true, access_mode: "everyone" },
+        data: { enabled: true },
       }),
     );
   }
+  roleUuid ??= await grantPlugins(
+    api,
+    userInfo().email,
+    "E2E plugins",
+    Object.keys(versions),
+  );
 }
 
 async function addWidgets(names: string[]) {
@@ -108,7 +110,7 @@ async function addWidgets(names: string[]) {
   }
 }
 
-test.beforeAll(async ({ browser, playwright }, testInfo) => {
+test.beforeAll(async ({ browser }, testInfo) => {
   test.setTimeout(120000);
   started = Date.now();
   const baseURL = testInfo.project.use.baseURL ?? "http://localhost:3000";
@@ -151,14 +153,7 @@ test.beforeAll(async ({ browser, playwright }, testInfo) => {
   });
   page = await context.newPage();
   await page.goto("/app");
-  const token = await page.evaluate(
-    () => JSON.parse(localStorage.getItem("auth-storage") ?? "{}")?.state?.user?.token,
-  );
-  expect(token, "signed in").toBeTruthy();
-  api = await playwright.request.newContext({
-    baseURL: API_URL,
-    extraHTTPHeaders: { Authorization: `Bearer ${token}` },
-  });
+  api = await pageApi(context, API_URL);
 
   await approveAndEnable();
   sourceUuid = crypto.randomUUID();
@@ -181,6 +176,7 @@ test.afterAll(async () => {
   if (page && dashboardId) await deleteDashboard(page, dashboardId);
   if (api && sourceUuid)
     await api.delete(`/app/data-connectors/api-source/${sourceUuid}`);
+  if (api && roleUuid) await api.delete(`/admin/role/${roleUuid}`);
   await api?.dispose();
   await context?.close();
   backend?.close();
@@ -347,7 +343,7 @@ test("standalone-plugin-widget-is-added-from-the-menu", async () => {
 test("disabled-plugin-leaves-a-placeholder", async () => {
   await json(
     await api.put("/admin/plugins/e2e-table", {
-      data: { enabled: false, access_mode: "everyone" },
+      data: { enabled: false },
     }),
   );
   await page.reload();
@@ -360,7 +356,7 @@ test("disabled-plugin-leaves-a-placeholder", async () => {
 
   await json(
     await api.put("/admin/plugins/e2e-table", {
-      data: { enabled: true, access_mode: "everyone" },
+      data: { enabled: true },
     }),
   );
   await page.reload();

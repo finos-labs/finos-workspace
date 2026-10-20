@@ -30,6 +30,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
+from api import crypto
 from utilities.config import settings
 
 from .proxy import CallError
@@ -56,7 +57,7 @@ IDENTITY_UNREGISTERED = "unregistered"
 
 def _key(purpose: bytes) -> bytes:
     return HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b"widget-plugin " + purpose).derive(
-        settings.WORKSPACE_AES_KEY.encode()
+        crypto.decode_key_material(settings.WORKSPACE_AES_KEY)
     )
 
 

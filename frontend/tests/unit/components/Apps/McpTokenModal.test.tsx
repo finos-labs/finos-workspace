@@ -95,12 +95,25 @@ describe("McpTokenModal", () => {
     expect(onSave).toHaveBeenCalledWith("my-secret-token");
   });
 
-  it("shows edit copy and a masked placeholder when a token exists", () => {
-    render(<McpTokenModal {...baseProps} currentToken="existing" onSave={vi.fn()} />);
+  it("shows replace copy and an empty, masked field when a token is saved", () => {
+    render(<McpTokenModal {...baseProps} hasSavedToken={true} onSave={vi.fn()} />);
 
-    expect(screen.getByRole("heading", { name: "Edit token" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Update" })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("•••••••• (saved)")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Replace token" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Replace" })).toBeDisabled();
+    // The saved value never comes back to the page: the field starts empty
+    expect(screen.getByPlaceholderText("•••••••• (saved)")).toHaveValue("");
+  });
+
+  it("sends a new token to replace the saved one", () => {
+    const onSave = vi.fn();
+    render(<McpTokenModal {...baseProps} hasSavedToken={true} onSave={onSave} />);
+
+    fireEvent.change(screen.getByLabelText("Token"), {
+      target: { value: "new-token" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Replace" }));
+
+    expect(onSave).toHaveBeenCalledWith("new-token");
   });
 
   it("invokes onRemove when the token is removed", () => {
@@ -108,7 +121,7 @@ describe("McpTokenModal", () => {
     render(
       <McpTokenModal
         {...baseProps}
-        currentToken="existing"
+        hasSavedToken={true}
         onSave={vi.fn()}
         onRemove={onRemove}
       />,
@@ -122,7 +135,7 @@ describe("McpTokenModal", () => {
     render(
       <McpTokenModal
         {...baseProps}
-        currentToken="existing"
+        hasSavedToken={true}
         onSave={vi.fn()}
         error="Check that your token is valid and not expired."
       />,

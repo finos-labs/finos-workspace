@@ -2,24 +2,28 @@ import { type UseQueryOptions, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useWidgetContext } from "~/components/Widget.context";
 import {
+  isApiFileUrl,
+  isApiUrl,
+  WORKSPACE_CLIENT,
+  WORKSPACE_CLIENT_HEADER,
+} from "~/lib/utils/fetch";
+import {
   type BuiltRequest,
   RequestProblemsError,
   requestInit,
   requestKey,
 } from "~/lib/utils/widgetRequest";
 import { REFRESH_WIDGET_INTERVAL } from "./constants";
-import { getConfig } from "./runtimeConfig";
-import { useAuthStore, useShallowAuthStore } from "./state/auth";
-import { useShallowBackendConnectorStore } from "./state/backendConnector";
+import {
+  canFetchFromSource,
+  SOURCE_UNAVAILABLE_MESSAGE,
+  useShallowBackendConnectorStore,
+  useWidgetSourceState,
+} from "./state/backendConnector";
 import { useShallowPermissionsStore } from "./state/permissions";
 import { resolveCronRefetchInterval } from "./utils/cronSchedule";
-import { toError } from "./utils/utils";
 
 export { convertHeadersToRecord } from "~/lib/utils/widgetParams";
-
-function isBackendOrigin(url: string) {
-  return url?.includes(getConfig().urls.backend);
-}
 
 /** What a failed request's JSON body may carry. */
 type ApiErrorBody = {
@@ -42,10 +46,7 @@ export interface QueryOptions<TQueryFnData = unknown> {
   request: BuiltRequest | null;
   asText?: boolean; // If asText is true, the response will be returned as text instead of JSON
   responseCb?: TResponseCb<TQueryFnData>; // Custom resolve callback to handle the response before resolving the promise
-  addBearerToken?: boolean; // Adds User Bearer token to the request Authorization header
   queryKey?: unknown[];
-  onError?: (error: Error) => void;
-  ignoreRefresh?: boolean;
 }
 
 export function useJsonData<
@@ -57,16 +58,7 @@ export function useJsonData<
   queryOptions: T,
   options?: Omit<UseQueryOptions<TQueryFnData, TError, TData>, "queryKey">,
 ) {
-  const {
-    request,
-    asText = false,
-    responseCb,
-    addBearerToken = true,
-    queryKey,
-    onError,
-    ignoreRefresh = false,
-  } = queryOptions;
-  const userToken = useShallowAuthStore((authState) => authState.user?.token);
+  const { request, asText = false, responseCb, queryKey } = queryOptions;
   const {
     widget: {
       id: uuId,
@@ -77,9 +69,19 @@ export function useJsonData<
       widgetId,
       isSharedWidget,
       sourceName,
+      connectionType,
     } = {},
     activeDashboardId,
   } = useWidgetContext(true);
+
+  // A widget whose data backend is not the viewer's waits, or never fetches: it would
+  // go out without the backend's credentials
+  const sourceState = useWidgetSourceState({
+    sourceId,
+    connectionType,
+    isSharedWidget,
+  });
+  const sourceReady = canFetchFromSource(sourceState);
 
   // Check if the widget has permission before making the API call
   const hasAccess = useShallowPermissionsStore((state) =>
@@ -87,8 +89,11 @@ export function useJsonData<
       ? state.hasAccess(sourceId ?? "", (widgetId ?? "").replace(`${sourceName}-`, ""))
       : true,
   );
-  const withAuth =
-    addBearerToken && request?.ok && isBackendOrigin(request.request.url);
+  // The URL comes from a widget: saved or shared content, a data backend, the AI. Only a
+  // GET of the API's own file routes gets the Workspace session; nothing else a widget
+  // names is called with it, so a widget cannot act as the viewer on the API.
+  const sent = request?.ok ? request.request : null;
+  const withAuth = !!sent && sent.method === "GET" && isApiFileUrl(sent.url);
   const updateQueuedRefreshId = useShallowBackendConnectorStore(
     (state) => state.updateQueuedRefreshId,
   );
@@ -99,7 +104,6 @@ export function useJsonData<
         try {
           await responseCb(response, resolve, reject);
         } catch (error) {
-          onError?.(toError(error));
           reject(error);
         }
         return;
@@ -119,20 +123,21 @@ export function useJsonData<
 
         resolve(data);
       } catch (error) {
-        onError?.(toError(error));
         reject(error);
       }
     },
-    [asText, responseCb, onError, sourceId],
+    [asText, responseCb, sourceId],
   );
 
   const finalQueryKey = queryKey ?? [
     "json",
     activeDashboardId ?? "",
     ...(request ? requestKey(request) : [uuId ?? ""]),
-    ...(ignoreRefresh ? [] : [refreshQuery ?? 0]),
+    refreshQuery ?? 0,
     hasAccess,
+    sourceReady,
   ];
+  const optionEnabled = options?.enabled;
 
   return useQuery<TQueryFnData, TError, TData>({
     queryKey: finalQueryKey,
@@ -140,6 +145,9 @@ export function useJsonData<
       new Promise((resolve, reject) => {
         if (!hasAccess) {
           return reject(new Error("User does not have access to this widget"));
+        }
+        if (!sourceReady) {
+          return reject(new Error(SOURCE_UNAVAILABLE_MESSAGE));
         }
         if (!request) return reject(new Error("Nothing to request"));
         // A param needs a value, or has one that cannot be sent: nothing goes out
@@ -149,8 +157,8 @@ export function useJsonData<
           request.request.url,
           requestInit(request.request, {
             signal,
-            headers:
-              withAuth && userToken ? { Authorization: `Bearer ${userToken}` } : {},
+            credentials: withAuth ? "include" : "omit",
+            headers: withAuth ? { [WORKSPACE_CLIENT_HEADER]: WORKSPACE_CLIENT } : {},
           }),
         )
           .then(async (r) => {
@@ -181,24 +189,27 @@ export function useJsonData<
                 cause: error?.error_kind || error?.status || "unknown",
               });
 
-              onError?.(errorObj);
               return reject(errorObj);
             }
 
             resolveCallback(r, resolve, reject);
           })
-          .catch((error) => {
-            onError?.(toError(error));
-            reject(error);
-          });
+          .catch((error) => reject(error));
       }),
     staleTime: staleTime ?? 1000 * 60 * 5,
     retry: (failures, error) =>
       !(error instanceof RequestProblemsError) && failures < 1,
     retryDelay: 1000,
     ...(options ?? {}),
-    // Nothing to request, or no access: the caller cannot turn it on
-    enabled: !!request && hasAccess && options?.enabled !== false,
+    // Nothing to request, no access or no credentials yet: a caller may hold the request
+    // back, never let one through these checks
+    enabled: (query) =>
+      !!request &&
+      hasAccess &&
+      sourceReady &&
+      (typeof optionEnabled === "function"
+        ? optionEnabled(query)
+        : (optionEnabled ?? true)),
     refetchInterval: resolveCronRefetchInterval(
       refetchInterval,
       options?.refetchInterval ?? REFRESH_WIDGET_INTERVAL,
@@ -206,20 +217,25 @@ export function useJsonData<
   });
 }
 
-export function fetchWithToken(
+/**
+ * fetch to the Workspace API with the web session cookie and the client header. It
+ * refuses any URL that is not on the API's exact origin, so Workspace credentials never
+ * reach another host.
+ */
+export function fetchBackend(
   url: string | URL,
   options: RequestInit = {},
   signal?: AbortSignal,
 ) {
-  const token = useAuthStore.getState().user?.token;
-
-  if (!token) return Promise.reject(new Error("No token found"));
+  if (!isApiUrl(url)) {
+    return Promise.reject(new Error("fetchBackend only calls the Workspace API."));
+  }
+  const headers = new Headers(options.headers);
+  headers.set(WORKSPACE_CLIENT_HEADER, WORKSPACE_CLIENT);
   return fetch(url, {
-    ...(options ?? {}),
-    headers: {
-      ...(options?.headers ?? {}),
-      Authorization: `Bearer ${token}`,
-    },
-    signal,
+    ...options,
+    headers,
+    credentials: "include",
+    signal: signal ?? options.signal,
   });
 }

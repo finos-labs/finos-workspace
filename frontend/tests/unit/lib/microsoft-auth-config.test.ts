@@ -29,10 +29,11 @@ describe("getMsalConfig", () => {
     expect(config.auth?.redirectUri).toBe(window.location.origin);
   });
 
-  it("sets cache configuration correctly", () => {
+  it("keeps MSAL's tokens and sign-in state in page memory only", () => {
     const config = getMsalConfig();
 
-    expect(config.cache?.cacheLocation).toBe("localStorage");
+    expect(config.cache?.cacheLocation).toBe("memoryStorage");
+    expect(config.cache?.temporaryCacheLocation).toBe("memoryStorage");
     expect(config.cache?.storeAuthStateInCookie).toBe(false);
   });
 

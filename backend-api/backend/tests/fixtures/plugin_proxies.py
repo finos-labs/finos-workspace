@@ -9,7 +9,7 @@ unless a superuser's server network override confirms ``private-host``.
 import pytest
 
 from tests.fixtures.upstream import Answer, Upstream, make_certificates
-from tests.fixtures.widget_plugins import approve, enable, manifest, rescan, write_package
+from tests.fixtures.widget_plugins import approve, enable, grant, manifest, rescan, write_package
 from utilities import egress
 from utilities.config import settings
 
@@ -70,11 +70,12 @@ async def call(client, args: dict, *, widget: str = "chart", path: str = CALL):
 
 
 async def ready(superuser, plugins_dir, port: int, *, secret: bool = True, private: bool = True, **changes):
-    """Discover, approve and enable the plugin for everyone in the entity."""
+    """Discover, approve and enable the plugin, and grant it to the admin and the test user."""
     write_package(plugins_dir, proxy_manifest(port, **changes))
     await rescan(superuser)
     await approve(superuser)
-    await enable(superuser, access_mode="everyone")
+    await enable(superuser)
+    await grant(superuser)
     if secret:
         response = await superuser.put("/plugins/test-chart/secrets/api_key", json={"value": SECRET})
         assert response.status_code == 200, response.text

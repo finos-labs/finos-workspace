@@ -265,6 +265,20 @@ describe("Copilot markdown security", () => {
     expect(screen.getByText(/<meta http-equiv="refresh"/)).toBeInTheDocument();
   });
 
+  it("shows an html table code block as code, never parsing it into the page", () => {
+    const { container } = renderAiMessage({
+      content:
+        '```html\n<table><tr><td><img src="x" onerror="window.__pwned=1"></td></tr></table>\n```',
+    });
+
+    expect(container.querySelector("table")).not.toBeInTheDocument();
+    expect(container.querySelector("img")).not.toBeInTheDocument();
+    // Shown as the code's text
+    expect(container.querySelector("pre")?.textContent).toMatch(
+      /^<table><tr><td>.*<\/td><\/tr><\/table>$/,
+    );
+  });
+
   it("keeps raw HTML inert in text artifacts", () => {
     const artifact: ArtifactT = {
       type: "text",

@@ -26,6 +26,7 @@ import Tooltip from "~/components/Tooltip";
 import type { WidgetT } from "~/components/types";
 import type { StateDispatch } from "~/hooks/useStateReducer";
 import { useMobile } from "~/lib/providers/MobileProvider";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import { useAppStore, useShallowAppStore } from "~/lib/state/app";
 import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
 import { useShallowThemeStore } from "~/lib/state/theme";
@@ -629,6 +630,7 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
   );
 
   const isMobile = useMobile((s) => s.isMobile);
+  const mayAddConnections = useShallowAccessStore((s) => canAddConnections(s.access));
 
   const { initialSelectedSearchTab, recentlyAddedWidgets, setRecentlyAddedWidgets } =
     useShallowThemeStore((state) => ({
@@ -1412,9 +1414,9 @@ const WidgetMenu = memo((props: WidgetMenuProps) => {
                     onOpenChange={onOpenChange}
                   />
                 )}
-                {state.selectedOption === "external" && (
+                {state.selectedOption === "external" && mayAddConnections && (
                   <Button variant="outlined" size="sm" className="mt-2">
-                    <Link to="/app/widgets" onClick={() => onOpenChange(false)}>
+                    <Link to="/app/connections" onClick={() => onOpenChange(false)}>
                       Add an external source
                     </Link>
                   </Button>

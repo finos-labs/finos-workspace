@@ -13,14 +13,11 @@ export function EntityPluginsLine({ entityUuid }: { entityUuid: string }) {
     queryFn: getPlatformPlugins,
   });
   if (!data?.enabled) return null;
-  const enabled = data.plugins.flatMap((plugin) =>
-    plugin.enabled_for
-      .filter((use) => use.entity_uuid === entityUuid)
-      .map(
-        (use) =>
-          `${plugin.name} (${use.access_mode === "everyone" ? "everyone" : "roles"})`,
-      ),
-  );
+  const enabled = data.plugins
+    .filter((plugin) =>
+      plugin.enabled_for.some((use) => use.entity_uuid === entityUuid),
+    )
+    .map((plugin) => plugin.name);
   return (
     <p className="body-xs-regular" data-testid="entity-plugins">
       <span className="body-xs-medium">Widget plugins: </span>

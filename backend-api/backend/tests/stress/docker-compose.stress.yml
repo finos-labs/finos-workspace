@@ -17,6 +17,9 @@ services:
     environment:
       WORKERS: "${STRESS_WORKERS:-1}"
       PROMETHEUS: "1"
+      # The simulated users share one address: they send the stack's service token, which
+      # skips rate limiting on this development stack only
+      RATE_LIMIT_EXEMPT_ENABLED: "1"
       RUNTIME_METRICS_INTERVAL: "0.25"
     ports: !override
       - "${STRESS_HOST_PORT:-8001}:8000"

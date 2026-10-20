@@ -26,6 +26,7 @@ import GroupDropdown from "~/components/Widgets/Helpers/GroupDropdown";
 import { useParamGroupBindings } from "~/components/Widgets/Helpers/useParamGroupBindings";
 import { useIsFirstRender } from "~/hooks/useIsFirstRender";
 import { useStateReducer } from "~/hooks/useStateReducer";
+import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import {
   beautifySlug,
@@ -51,12 +52,13 @@ import {
 import CompareTermsParam from "./CompareTermsParam";
 import { TabsParam } from "./TabsParam";
 
-export function FormParamDialog() {
+/** A form of the widget, opened from a button named by the form's label. */
+export function FormParamDialog({ formParamDef }: { formParamDef: ParamDefT<"form"> }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild={true}>
         <Button size="xs" variant="outlined" className="h-[20px]">
-          Open Form
+          {formParamDef.label ?? "Open Form"}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -64,7 +66,7 @@ export function FormParamDialog() {
         side="bottom"
         align="start"
       >
-        <FormParamElement />
+        <FormParamElement formParamDef={formParamDef} />
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -94,6 +96,8 @@ function replaceFailed(
 
 export function useWidgetParamsPositions(enabled = true) {
   const { widget, updateWidget } = useWidgetContext();
+  // The option endpoints are called with the source's credentials, read when they run
+  const credentials = useSourceCredentials(widget.sourceId, widget.endpoint?.url);
   const { setWidgetCopilotDraftParams, beginWidgetCopilotExecution } =
     useShallowCopilotDataStore((s) => ({
       setWidgetCopilotDraftParams: s.setWidgetCopilotDraftParams,
@@ -127,12 +131,12 @@ export function useWidgetParamsPositions(enabled = true) {
 
   const { updateGroupedParam } = useParamGroupBindings();
 
-  const { hasForm, paramsGroupedByRow, endpointParams, hasParams, tabsParams } =
+  const { formParams, paramsGroupedByRow, endpointParams, hasParams, tabsParams } =
     useMemo(() => {
       const endpointParams = {} as Record<string, ParamDefT<"endpoint">>;
       const paramsGroupedByRow: Record<number, ParamDef[]> = {};
       const tabsParams: ParamDefT<"tabs">[] = [];
-      let hasForm = false;
+      const formParams: ParamDefT<"form">[] = [];
       let hasParams = false;
       const widgetJSON = getJsonWidget(widget);
 
@@ -152,7 +156,7 @@ export function useWidgetParamsPositions(enabled = true) {
               badgeParams.has(param.groupById)));
 
         if (param?.type === "form") {
-          hasForm = true;
+          formParams.push(param);
           continue;
         }
         // Collect tabs params separately - they render in their own row below navbar
@@ -184,7 +188,7 @@ export function useWidgetParamsPositions(enabled = true) {
       return {
         paramsGroupedByRow,
         endpointParams,
-        hasForm,
+        formParams,
         hasParams,
         tabsParams,
       };
@@ -308,7 +312,7 @@ export function useWidgetParamsPositions(enabled = true) {
           if (!built.ok) throw new RequestProblemsError(built.problems);
           const res = await fetch(
             built.request.url,
-            requestInit(built.request, { signal }),
+            requestInit(built.request, { signal, credentials: "omit" }),
           );
           if (res.ok) {
             return await res.json();
@@ -326,6 +330,8 @@ export function useWidgetParamsPositions(enabled = true) {
     endpointParams,
     widget.endpoint,
     widget.params,
+    widget.sourceId,
+    credentials,
     state.localParams,
     widget.refreshQuery,
   ]);
@@ -470,7 +476,12 @@ export function useWidgetParamsPositions(enabled = true) {
         className="flex gap-1.5 _elements-left-navbar
         min-w-fit items-center h-[22px] text-2xs"
       >
-        {hasForm && <FormParamDialog />}
+        {formParams.map((formParam) => (
+          <FormParamDialog
+            key={[formParam.paramName, formParam.label, formParam.endpoint].join("|")}
+            formParamDef={formParam}
+          />
+        ))}
         {row0}
       </div>
     );
@@ -483,7 +494,7 @@ export function useWidgetParamsPositions(enabled = true) {
     const filteredRowsBelow = rowsBelow.filter(Boolean);
     const hasRowsBelow = filteredRowsBelow.length > 0 || renderTabsRow;
 
-    if (!someTruthy(row0, hasRowsBelow, hasForm))
+    if (!someTruthy(row0, hasRowsBelow, formParams.length > 0))
       return { renderRow0Params: null, renderBelowNavbarRows: null };
 
     if (!hasRowsBelow) return { renderRow0Params, renderBelowNavbarRows: null };
@@ -496,7 +507,7 @@ export function useWidgetParamsPositions(enabled = true) {
     );
 
     return { renderRow0Params, renderBelowNavbarRows };
-  }, [rowElements, tabRowElements, hasForm]);
+  }, [rowElements, tabRowElements, formParams]);
 }
 
 const RenderTabParamsRow = memo(

@@ -10,7 +10,11 @@ import {
 } from "react";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { useTabContext } from "~/lib/contexts/TabContext";
-import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
+import {
+  SOURCE_UNAVAILABLE_MESSAGE,
+  useShallowBackendConnectorStore,
+  useWidgetSourceState,
+} from "~/lib/state/backendConnector";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowPermissionsStore } from "~/lib/state/permissions";
@@ -139,6 +143,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
     const isLoadingBackends = useShallowBackendConnectorStore(
       (state) => state.isLoadingBackends && !!widgetRef?.current?.sourceId,
     );
+    const sourceState = useWidgetSourceState(widgetRef?.current);
 
     const isSharedWidget = widgetRef?.current?.isSharedWidget;
 
@@ -210,7 +215,13 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
     useOnHoveredCitation();
 
     const name = title || widgetFromJSON?.name || widgetRef?.current?.name;
-    const isLoading = loading || isLoadingBackends;
+    const isLoading = loading || isLoadingBackends || sourceState === "pending";
+    const blockedMessage =
+      sourceState === "unavailable"
+        ? SOURCE_UNAVAILABLE_MESSAGE
+        : state.hasAccess
+          ? null
+          : state.accessError || "You don't have access to this widget";
 
     return (
       <div
@@ -269,14 +280,13 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
             disableRetrievalForCopilot={disableRetrievalForCopilot}
           />
         </div>
-        {state.hasAccess ? (
+        {!blockedMessage ? (
           <LoadingElement
             loading={isLoading}
             errorMessage={
               state.accessError || (!isLoading && error ? errorMessage : null)
             }
             failingUrl={failingUrl}
-            widgetId={widgetRef?.current?.widgetId}
             keepMounted={keepMounted}
           >
             <div
@@ -293,7 +303,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
         ) : (
           <SearchResultsNotFound
             icon={true}
-            firstMessage={state.accessError || "You don't have access to this widget"}
+            firstMessage={blockedMessage}
             secondMessage={null}
             extraClassName="z-10"
             iconClassName="z-10"

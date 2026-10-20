@@ -1,12 +1,7 @@
 import type { Server } from "node:http";
-import {
-  type APIRequestContext,
-  type BrowserContext,
-  expect,
-  type Page,
-  test,
-} from "@playwright/test";
-import { authFile, deleteDashboard } from "./helpers";
+import { type BrowserContext, expect, type Page, test } from "@playwright/test";
+import { authFile, deleteDashboard, userInfo } from "./helpers";
+import { type ApiResponse, grantPlugins, type PageApi, pageApi } from "./plugins/api";
 import {
   type BackendRequest,
   FORECAST_ENTRY,
@@ -51,7 +46,8 @@ test.skip(
 
 let context: BrowserContext;
 let page: Page;
-let api: APIRequestContext;
+let api: PageApi;
+let roleUuid: string | undefined;
 let backend: Server;
 let backendReceived: BackendRequest[];
 let data: Server;
@@ -62,12 +58,12 @@ let dashboardId: string;
 
 const frame = () => page.frameLocator('iframe[title^="E2E forecast"]');
 
-async function json(response: Awaited<ReturnType<APIRequestContext["get"]>>) {
+async function json(response: ApiResponse) {
   expect(response.ok(), `${response.url()}: ${response.status()}`).toBe(true);
   return response.json();
 }
 
-test.beforeAll(async ({ browser, playwright }, testInfo) => {
+test.beforeAll(async ({ browser }, testInfo) => {
   test.setTimeout(120000);
   const baseURL = testInfo.project.use.baseURL ?? "http://localhost:3000";
   const version = writePackage(PLUGINS_DIR ?? "", forecastManifest(PLUGIN), {
@@ -83,6 +79,7 @@ test.beforeAll(async ({ browser, playwright }, testInfo) => {
     port: BACKEND_PORT,
     listen: LISTEN,
     apiUrl: API_URL,
+    origin: new URL(baseURL).origin,
     identity: () => identity,
     secret: () => MODEL_KEY,
   }));
@@ -95,14 +92,7 @@ test.beforeAll(async ({ browser, playwright }, testInfo) => {
   context = await browser.newContext({ storageState: authFile, baseURL });
   page = await context.newPage();
   await page.goto("/app");
-  const token = await page.evaluate(
-    () => JSON.parse(localStorage.getItem("auth-storage") ?? "{}")?.state?.user?.token,
-  );
-  expect(token, "signed in").toBeTruthy();
-  api = await playwright.request.newContext({
-    baseURL: API_URL,
-    extraHTTPHeaders: { Authorization: `Bearer ${token}` },
-  });
+  api = await pageApi(context, API_URL);
 
   // A superuser approves the version and sets the route's secret
   await json(await api.post("/plugins/rescan"));
@@ -128,9 +118,10 @@ test.beforeAll(async ({ browser, playwright }, testInfo) => {
   // The organization enables it, adds its data backend and maps the data source to it
   await json(
     await api.put(`/admin/plugins/${PLUGIN}`, {
-      data: { enabled: true, access_mode: "everyone" },
+      data: { enabled: true },
     }),
   );
+  roleUuid = await grantPlugins(api, userInfo().email, "E2E forecast", [PLUGIN]);
   entityUuid = (await json(await api.get(`/plugins/${PLUGIN}`))).entities.find(
     (e: { enabled: boolean }) => e.enabled,
   ).entity_uuid;
@@ -161,6 +152,7 @@ test.afterAll(async () => {
     await deleteDashboard(page, dashboardId);
   }
   if (api) {
+    if (roleUuid) await api.delete(`/admin/role/${roleUuid}`);
     await api.put(`/admin/plugins/${PLUGIN}`, {
       data: { enabled: false, data_sources: { sales: null } },
     });

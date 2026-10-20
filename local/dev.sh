@@ -68,7 +68,7 @@ create_env() {
     fail "backend-api/backend/envs/.env does not exist yet. Name the administrator: ADMIN_EMAIL=<your-email> make up"
   command -v python3 >/dev/null || fail "python3 is needed once to write the settings (standard library only)."
   # Writes envs/.env with random secrets and scripts/cfgs/config.toml with the
-  # administrator. It refuses to replace files that exist.
+  # administrator's address. It refuses to replace files that exist.
   (cd "$BACKEND_DIR" && python3 -m scripts.create_local_env --admin-email "$ADMIN_EMAIL")
 }
 
@@ -88,7 +88,8 @@ wait_ready() {
 Ready.
   App:      $APP_URL
   Backend:  http://localhost:8000
-  Sign in:  with the administrator in backend-api/backend/scripts/cfgs/config.toml
+  Sign in:  as the administrator in backend-api/backend/scripts/cfgs/config.toml; the init
+            step printed their password once when it created the account (make logs s=init)
 READY
 }
 

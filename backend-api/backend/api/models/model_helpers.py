@@ -11,12 +11,13 @@ from sqlalchemy.dialects.mysql import (
     DATETIME as MySQL_DATETIME,
     LONGBLOB,
     MEDIUMBLOB,
+    MEDIUMTEXT,
 )
 from sqlalchemy.dialects.postgresql import BYTEA, JSONB, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy_utils import UUIDType
 
-from api import aes, base, database, schemas
+from api import base, crypto, database, schemas
 
 Base = database.Base
 
@@ -224,36 +225,66 @@ class GzipStringType(TypeDecorator):
         return dialect.type_descriptor(MEDIUMBLOB)
 
 
-class EncryptedType(TypeDecorator):
+class _BoundToColumn(TypeDecorator):
+    """A value stored AES-GCM encrypted (see api/crypto.py) for its column: `context` is
+    "<table>.<column>", the associated data that binds each ciphertext to that column."""
+
     impl = Text
     cache_ok = True
 
-    def process_bind_param(self, value: None | dict | list, dialect):  # noqa: PLR6301
+    def __init__(self, context: str):
+        super().__init__()
+        self.context = context
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.context!r})"
+
+
+class EncryptedType(_BoundToColumn):
+    """A dict or list stored as AES-GCM encrypted JSON."""
+
+    cache_ok = True
+
+    def process_bind_param(self, value: None | dict | list, _):
         if value is None:
             return None
+        if not isinstance(value, dict | list):
+            raise ValueError("Object in EncryptedType column must be dict or list")
+        return crypto.encrypt_json(value, self.context)
 
-        encrypted = value
-        if isinstance(value, dict):
-            encrypted = aes.base_cipher.encrypt_dict(value)
-        if isinstance(value, list):
-            encrypted = aes.base_cipher.encrypt_list(value)
-
-        if isinstance(encrypted, bytes):
-            return (
-                encrypted.decode("utf-8")
-                if dialect.name in {"postgresql", "sqlite"}
-                else encrypted
-            )
-
-        raise ValueError("Object in EncryptedType column must be dict or list")
-
-    def process_result_value(  # noqa: PLR6301
-        self, value: None | str | dict | list, dialect
-    ):
+    def process_result_value(self, value: None | str, _):
         if value is None:
             return None
+        return crypto.decrypt_json(value, self.context)
 
-        return aes.base_cipher.decrypt_dict(bytes(value, encoding="utf-8"))
+
+class EncryptedMediumType(EncryptedType):
+    """An EncryptedType for values beyond the 64 KB of MySQL's TEXT: MEDIUMTEXT there."""
+
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):  # noqa: PLR6301
+        if dialect.name == "mysql":
+            return dialect.type_descriptor(MEDIUMTEXT())
+        return dialect.type_descriptor(Text())
+
+
+class EncryptedStringType(_BoundToColumn):
+    """A string stored AES-GCM encrypted."""
+
+    cache_ok = True
+
+    def process_bind_param(self, value: None | str, _):
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("Object in EncryptedStringType column must be a string")
+        return crypto.encrypt_text(value, self.context)
+
+    def process_result_value(self, value: None | str, _):
+        if value is None:
+            return None
+        return crypto.decrypt_text(value, self.context)
 
 
 class PasswordType(TypeDecorator):
