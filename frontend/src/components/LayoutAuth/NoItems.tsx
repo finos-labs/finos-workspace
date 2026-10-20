@@ -8,7 +8,14 @@ export default function NoItems() {
   const { leftSidebarLogo, leftSidebarLogoDark, name } = getConfig().whiteLabel;
 
   return (
-    <div className="w-screen h-screen overflow-hidden flex items-center justify-center">
+    // The page background comes from the store, not `dark:`: the `dark` class lands on
+    // <html> only after the first render, and the body fades into it under the loader.
+    <div
+      className={cn(
+        "w-screen h-screen overflow-hidden flex items-center justify-center",
+        theme === "dark" ? "bg-dark-900" : "bg-white",
+      )}
+    >
       <div className="flex flex-col gap-1 items-center">
         {leftSidebarLogo ? (
           <img
