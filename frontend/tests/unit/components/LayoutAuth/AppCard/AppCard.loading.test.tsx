@@ -16,12 +16,6 @@ vi.mock("~/lib/state/theme", () => ({
     }),
 }));
 
-vi.mock("~/lib/state/featureFlags", () => ({
-  useShallowFeatureFlagsStore: (
-    selector: (state: Record<string, unknown>) => unknown,
-  ) => selector({ featureFlags: { tier: "full" } }),
-}));
-
 vi.mock("~/lib/state/backendConnector", () => ({
   useShallowBackendConnectorStore: (
     selector: (state: Record<string, unknown>) => unknown,
@@ -72,10 +66,6 @@ vi.mock("~/components/HoverPopover", () => ({
 
 vi.mock("~/components/General/Avatar", () => ({
   AuthenticatedAvatar: () => <div data-testid="avatar" />,
-}));
-
-vi.mock("~/components/General/FeatureLock", () => ({
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 vi.mock("~/components/ds/dialogs/ConfirmDialog", () => ({

@@ -1,13 +1,16 @@
 import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
-import { debounce } from "lodash";
+import { type DebouncedFunc, debounce } from "lodash";
 import isEqual from "lodash.isequal";
 import { toast } from "sonner";
-import type { UseMcpResult } from "use-mcp/react";
 import { subscribeWithSelector } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
 import { postMCPServers } from "~/api/auth.api";
-import { clearMcpAuthStorageForServer } from "~/components/AI/hooks/mcp/browser-provider";
+import {
+  deleteMcpOAuthGrant,
+  sameMcpServerUrl,
+} from "~/components/AI/hooks/mcp/mcpServerAuth";
+import type { UseMcpResult } from "~/components/AI/hooks/mcp/useMcp";
 import { isRecord } from "~/components/AI/utils/mcpToolSchema";
 import { isLoopbackUrl } from "~/lib/utils/mcp";
 import type { Selector } from "./app";
@@ -63,7 +66,15 @@ export interface McpServer {
   tools: McpTool[];
   connected?: boolean; // Connection status (read-only from connection manager)
   autoReconnect?: boolean;
-  customHeaders?: Record<string, string>; // Custom headers as key-value pairs
+  /**
+   * Header values for the next save, dropped from memory once it lands. The API keeps
+   * them encrypted and never returns a value; null removes a stored header.
+   */
+  customHeaders?: Record<string, string | null>;
+  /** Names of the headers the API stores for this server, as the API sends them. */
+  customHeaderNames?: string[];
+  /** Whether the API stores a token (an Authorization header) for this server. */
+  hasToken?: boolean;
   iframeWidgetId?: string; // Links this server to an iframe widget
   iframeParams?: Record<string, string>; // Current iframe widget param values
   sourceId?: string; // Backend source id the server was declared by
@@ -104,10 +115,40 @@ interface McpToolsState {
   getEnabledToolCount: () => number;
   getEnabledToolsForAgent: () => Promise<AgentToolConfig[]>;
   saveMCPServers: () => Promise<void>;
-  debouncedSaveServers: () => Promise<void> | undefined;
+  debouncedSaveServers: DebouncedFunc<() => Promise<void>>;
   updateServers: (servers: McpServer[]) => void;
   removeSourceServer: (sourceId: string) => void;
+  /** Signs the page out of MCP: disconnects every server and forgets them all. */
   clearAllStorage: () => void;
+}
+
+// Saves run one after another, so a connection can wait for the credentials it needs
+let serversSaved: Promise<void> = Promise.resolve();
+
+/**
+ * Resolves once every save of the server list started so far has landed. A connection
+ * waits for it, so the API proxies with the credentials the user just entered.
+ */
+export function mcpServersSaved() {
+  return serversSaved;
+}
+
+/**
+ * The server as it stands once the API stores `written`: the values leave the page, the
+ * names stay. A name replaces or removes a stored one in any case, as in the API.
+ */
+function withHeadersSaved(server: McpServer, written: Record<string, string | null>) {
+  let names = server.customHeaderNames ?? [];
+  for (const [name, value] of Object.entries(written)) {
+    names = names.filter((stored) => stored.toLowerCase() !== name.toLowerCase());
+    if (value !== null) names.push(name);
+  }
+  const { customHeaders: _, ...saved } = server;
+  return {
+    ...saved,
+    customHeaderNames: names.sort(),
+    hasToken: names.some((name) => name.toLowerCase() === "authorization"),
+  };
 }
 
 /**
@@ -172,15 +213,22 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
     servers: [],
     mcpConnectionRegistry: {},
     clearAllStorage: () => {
-      const { mcpConnectionRegistry } = get();
+      // The OAuth grants stay with the API: signing out of the page does not revoke them
+      const { mcpConnectionRegistry, debouncedSaveServers } = get();
+      // A save still waiting would send the emptied list
+      debouncedSaveServers.cancel();
       for (const serverId in mcpConnectionRegistry) {
-        mcpConnectionRegistry[serverId].clearStorage?.();
+        mcpConnectionRegistry[serverId].disconnect?.();
       }
+      set({ servers: [], mcpConnectionRegistry: {} });
     },
     updateServers: (servers) => {
       const mcpConnectionRegistry = { ...get().mcpConnectionRegistry };
       const iframeServers = get().servers.filter((server) => server.iframeWidgetId);
-      const nextServers = servers.filter((server) => !server.iframeWidgetId);
+      // The list the API stores: header names, never values to write
+      const nextServers = servers
+        .filter((server) => !server.iframeWidgetId)
+        .map(({ customHeaders: _, ...server }) => server);
 
       for (const iframeServer of iframeServers) {
         if (!nextServers.some((server) => shouldMergeServers(server, iframeServer))) {
@@ -197,7 +245,9 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
             error: undefined,
             disconnect: () => {},
             clearStorage: () => {
-              clearMcpAuthStorageForServer(server.url);
+              deleteMcpOAuthGrant(server.url).catch((error) =>
+                console.error("Failed to forget the MCP sign-in:", error),
+              );
             },
             retry: () => {},
           };
@@ -206,18 +256,28 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
 
       set({ servers: nextServers, mcpConnectionRegistry });
     },
-    saveMCPServers: async () => {
-      const { servers } = get();
-      try {
-        // Assuming you have a function to post servers to your backend
-        await postMCPServers(servers.filter((server) => !server.iframeWidgetId));
-      } catch (error) {
-        console.error("Failed to save MCP servers:", error);
-      }
+    saveMCPServers: () => {
+      // The list as it is now: a save that runs after a sign-out still sends it
+      const sent = get().servers.filter((server) => !server.iframeWidgetId);
+      const save = async () => {
+        const { status } = await postMCPServers(sent);
+        if (status >= 400) throw new Error(`status ${status}`);
+        // The API holds the header values now: keep only their names in the page
+        set((state) => ({
+          servers: state.servers.map((server) => {
+            const written = sent.find((s) => s.id === server.id)?.customHeaders;
+            return written && server.customHeaders === written
+              ? withHeadersSaved(server, written)
+              : server;
+          }),
+        }));
+      };
+      serversSaved = serversSaved
+        .then(save)
+        .catch((error) => console.error("Failed to save MCP servers:", error));
+      return serversSaved;
     },
-    debouncedSaveServers: debounce(async () => {
-      get().saveMCPServers();
-    }, 2000),
+    debouncedSaveServers: debounce(() => get().saveMCPServers(), 2000),
     getMCPConnection: (serverId) => get().mcpConnectionRegistry?.[serverId],
     updateMCPConnectionRegistry: (serverId, connection, remove = false) =>
       set((state) => {
@@ -246,7 +306,10 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
           toolsEnabled: server.iframeWidgetId ? true : undefined,
         }),
       }));
-      if (!server.iframeWidgetId) get().debouncedSaveServers();
+      if (server.iframeWidgetId) return;
+      // New credentials are saved at once: the connection waits for them
+      if (server.customHeaders) get().saveMCPServers();
+      else get().debouncedSaveServers();
     },
 
     removeServer: (serverId, options) => {
@@ -279,9 +342,17 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
       if (connection?.state === "failed" && updates.enabled) connection?.retry?.();
 
       set((state) => {
-        const servers = state.servers.map((s) =>
-          s.id === serverId ? { ...s, ...updates } : s,
-        );
+        const servers = state.servers.map((s) => {
+          if (s.id !== serverId) return s;
+          // The API keeps headers per server URL: a server that moves keeps none of them
+          const moved =
+            updates.url !== undefined && !sameMcpServerUrl(updates.url, s.url);
+          return {
+            ...s,
+            ...(moved && { customHeaderNames: [], hasToken: false }),
+            ...updates,
+          };
+        });
 
         if (updates.enabled !== undefined) {
           // If server is being disabled, disconnect it
@@ -308,7 +379,10 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
       });
 
       const server = get().servers.find((server) => server.id === serverId);
-      if (!server?.iframeWidgetId) get().debouncedSaveServers();
+      if (server?.iframeWidgetId) return;
+      // New credentials are saved at once: the connection waits for them
+      if (updates.customHeaders) get().saveMCPServers();
+      else get().debouncedSaveServers();
     },
 
     disableServerAfterAuthCancel: (serverId) => {

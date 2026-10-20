@@ -8,6 +8,7 @@
 import { vi } from "vitest";
 
 vi.mock("~/api/api", () => ({
+  setOnSessionRefused: vi.fn(),
   apiClient: {
     get: vi.fn(),
     post: vi.fn(),

@@ -9,7 +9,6 @@ const HEADERS = [
   "Type",
   "Roles",
   "Status",
-  "Billing Status",
   "Last Active",
   "Last Log in",
 ] as const;
@@ -29,7 +28,6 @@ export function buildUserExportRows(
     Type: entityNameMap.get(user.permissions_uuid) ?? "-",
     Roles: (userRolesMap.get(user.email) ?? []).join(", "),
     Status: user.status ?? "",
-    "Billing Status": String(user.billing_active),
     "Last Active": user.last_active ?? "",
     "Last Log in": user.last_login ?? "",
   }));

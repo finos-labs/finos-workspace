@@ -7,6 +7,7 @@ import type { ButtonProps } from "~/components/ds/atoms/Button";
 import type { InputProps } from "~/components/ds/atoms/Input";
 import type { UnifiedTemplate } from "~/hooks/useAllTemplates";
 import AppsPage from "~/routes/Apps";
+import { setAccess } from "../factories";
 
 const {
   mockUpdateApiSources,
@@ -103,14 +104,17 @@ vi.mock("~/components/LayoutAuth/Skeleton/SettingsLayout", () => ({
   SettingsLayout: ({
     children,
     title,
+    description,
     tabs,
   }: {
     children: ReactNode;
     title?: string;
+    description?: ReactNode;
     tabs?: { id: string; label: string }[];
   }) => (
     <div data-testid="settings-layout">
       {title && <h1>{title}</h1>}
+      {description && <p>{description}</p>}
       {tabs && tabs.length > 0 && (
         <div data-testid="tabs-root">
           <div data-testid="tabs-list">
@@ -753,5 +757,35 @@ describe("AppsPage - Backend Filter Dropdown", () => {
 
       expect(screen.getByText("Backends (2)")).toBeInTheDocument();
     });
+  });
+});
+
+describe("AppsPage - Connections link", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorageInitial.state = {};
+    setupDefaultMocks();
+  });
+
+  it.each([
+    "Admin",
+    "Developer",
+  ] as const)("points an %s to the Connections page", (userType) => {
+    setAccess({ user_type: userType });
+    renderApps();
+
+    expect(screen.getByRole("link", { name: "Connections page" })).toHaveAttribute(
+      "href",
+      "/app/connections",
+    );
+  });
+
+  it("does not point a User to it", () => {
+    setAccess({ user_type: "User" });
+    renderApps();
+
+    expect(
+      screen.queryByRole("link", { name: "Connections page" }),
+    ).not.toBeInTheDocument();
   });
 });

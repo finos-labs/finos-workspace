@@ -1,13 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { createEntity, registerEntityAdmin } from "~/api/entities.api";
 import { errorMessage } from "~/api/errors";
 import { Form } from "~/components/ds/molecules/Form";
 import { entityAdminKeys } from "~/hooks/useEntityAdmin";
-import type { EntityType } from "~/types/entity.type";
 import { EntityAdminFields, EntityBaseFields } from "./EntityFields";
 import {
   entityBody,
@@ -17,24 +16,13 @@ import {
 } from "./entityForms";
 import { FormDialog } from "./FormDialog";
 
-export function EntityCreateDialog({
-  entityTypes,
-  onClose,
-}: {
-  entityTypes: EntityType[];
-  onClose: () => void;
-}) {
+export function EntityCreateDialog({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const form = useForm<NewEntityFormValues>({
     resolver: zodResolver(newEntityFormSchema),
     defaultValues: newEntityFormDefaults(),
   });
-
-  const entityTypeOptions = useMemo(
-    () => entityTypes.map((type) => ({ value: type.uuid, label: type.entity_type })),
-    [entityTypes],
-  );
 
   async function submit(values: NewEntityFormValues) {
     setError(null);
@@ -79,7 +67,7 @@ export function EntityCreateDialog({
         isSubmitting={form.formState.isSubmitting}
         error={error}
       >
-        <EntityBaseFields entityTypeOptions={entityTypeOptions} />
+        <EntityBaseFields />
         <EntityAdminFields />
       </FormDialog>
     </Form>

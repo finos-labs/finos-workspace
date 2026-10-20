@@ -6,9 +6,13 @@ const queryResult = vi.hoisted(() => ({
   isLoading: false,
   isError: false,
 }));
+const queryOptions = vi.hoisted(() => ({ enabled: undefined as unknown }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => queryResult,
+  useQuery: (options: { enabled?: boolean }) => {
+    queryOptions.enabled = options.enabled;
+    return queryResult;
+  },
 }));
 
 import AdminUserPermissionsSection from "~/components/AdminUsers/AdminUserPermissionsSection";
@@ -69,6 +73,21 @@ describe("AdminUserPermissionsSection", () => {
     expect(
       screen.getByText("No roles assigned to this user account"),
     ).toBeInTheDocument();
+  });
+
+  it("does not ask for the permissions of a pending invite", () => {
+    render(<AdminUserPermissionsSection userUuid="invite-uuid" invited />);
+
+    expect(queryOptions.enabled).toBe(false);
+    expect(
+      screen.getByText("No roles assigned to this user account"),
+    ).toBeInTheDocument();
+  });
+
+  it("asks for the permissions of a user", () => {
+    render(<AdminUserPermissionsSection userUuid="u1" />);
+
+    expect(queryOptions.enabled).toBe(true);
   });
 
   it("shows the loading state", () => {

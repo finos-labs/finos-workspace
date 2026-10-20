@@ -8,6 +8,8 @@ import { HoverPopover } from "../HoverPopover";
 
 interface AdminUserPermissionsSectionProps {
   userUuid: string;
+  /** A pending invite: no user yet, so no roles to show. */
+  invited?: boolean;
 }
 
 interface RolePermissionRow {
@@ -77,11 +79,12 @@ const BORDERED_ROW =
 
 export default function AdminUserPermissionsSection({
   userUuid,
+  invited = false,
 }: AdminUserPermissionsSectionProps) {
   const userPermissionsQuery = useQuery({
     queryKey: ["admin", "userPermissions", userUuid],
     queryFn: () => getUserPermissions(userUuid),
-    enabled: true,
+    enabled: !invited,
   });
 
   const rows = useMemo<RolePermissionRow[]>(() => {

@@ -6,7 +6,6 @@ import {
   useMemo,
 } from "react";
 import type { IconId } from "~/components/Icon.types";
-import { isExcludedWidgetId } from "~/lib/state/featureFlags";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn } from "~/lib/utils";
 import { useShallowStreamingStore } from "../AI/hooks/useStreaming";
@@ -14,7 +13,6 @@ import BrandedLogo from "../General/BrandedLogo";
 import SearchResultsNotFound from "../General/SearchResultsNotFound";
 import Icon from "../Icon";
 import { useWidgetContext } from "../Widget.context";
-import type { WidgetId } from "../Widgets";
 
 type LoadingElementProps = {
   className?: string;
@@ -24,7 +22,6 @@ type LoadingElementProps = {
   errorChildren?: ReactNode;
   children?: ReactNode;
   failingUrl?: string;
-  widgetId?: WidgetId;
   icon?: boolean | IconId;
 };
 
@@ -62,7 +59,6 @@ export const LoadingElement = forwardRef<HTMLElement, LoadingElementProps>(
       errorChildren,
       loading,
       failingUrl,
-      widgetId,
       icon = true,
     } = props;
 
@@ -82,17 +78,6 @@ export const LoadingElement = forwardRef<HTMLElement, LoadingElementProps>(
         </div>
       );
     }, [props.className]);
-
-    if (isExcludedWidgetId(widgetId)) {
-      return (
-        <SearchResultsNotFound
-          icon={true}
-          iconClassName="text-ds-text-caption"
-          firstMessage="This widget is not available in your current plan."
-          secondMessage={null}
-        />
-      );
-    }
 
     if (failingUrl && !isMinimized) return <UnfetchableURL url={failingUrl} />;
 

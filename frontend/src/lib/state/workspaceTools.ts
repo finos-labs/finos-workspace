@@ -22,7 +22,7 @@ export function workspaceToolName(agentToolName: string): string {
     : agentToolName;
 }
 
-let cached: { token: string; tools: Promise<AgentToolConfig[]> } | null = null;
+let cached: { userUuid: string; tools: Promise<AgentToolConfig[]> } | null = null;
 
 /**
  * The Workspace's tools that the user's roles grant, as tools of an agent request. They are asked for
@@ -30,9 +30,9 @@ let cached: { token: string; tools: Promise<AgentToolConfig[]> } | null = null;
  * next request asks again.
  */
 export function getWorkspaceAgentTools(): Promise<AgentToolConfig[]> {
-  const token = useAuthStore.getState().user?.token;
-  if (!token) return Promise.resolve([]);
-  if (cached?.token === token) return cached.tools;
+  const userUuid = useAuthStore.getState().user?.uuid;
+  if (!userUuid) return Promise.resolve([]);
+  if (cached?.userUuid === userUuid) return cached.tools;
 
   const tools = getWorkspaceTools()
     .then(({ url, tools }) =>
@@ -47,10 +47,10 @@ export function getWorkspaceAgentTools(): Promise<AgentToolConfig[]> {
     )
     .catch((error: unknown) => {
       console.warn("[Workspace tools] Could not load the Workspace's tools", error);
-      if (cached?.token === token) cached = null;
+      if (cached?.userUuid === userUuid) cached = null;
       return [];
     });
-  cached = { token, tools };
+  cached = { userUuid, tools };
   return tools;
 }
 

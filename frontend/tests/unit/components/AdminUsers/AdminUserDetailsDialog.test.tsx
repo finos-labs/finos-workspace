@@ -10,7 +10,27 @@ import type React from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import AdminUserDetailsDialog from "~/components/AdminUsers/AdminUserDetailsDialog";
 import { useAuthStore } from "~/lib/state/auth";
+import type { EntityMapItem } from "~/types/entity.type";
 import { makeUser } from "../../factories";
+import { partial } from "../../mocks";
+
+const ADMIN_MAP = "11111111-1111-1111-1111-111111111111";
+const USER_MAP = "22222222-2222-2222-2222-222222222222";
+const DEVELOPER_MAP = "33333333-3333-3333-3333-333333333333";
+
+// The organization's maps, in the order the backend happens to list them
+const entityMap: EntityMapItem[] = [
+  partial<EntityMapItem>({ uuid: USER_MAP, name: "User" }),
+  partial<EntityMapItem>({ uuid: ADMIN_MAP, name: "Admin" }),
+  partial<EntityMapItem>({ uuid: DEVELOPER_MAP, name: "Developer" }),
+];
+
+vi.mock("~/components/AdminRoles/adminUseQueries", async () => {
+  const actual = await vi.importActual<
+    typeof import("~/components/AdminRoles/adminUseQueries")
+  >("~/components/AdminRoles/adminUseQueries");
+  return { ...actual, useEntityMap: () => ({ data: entityMap }) };
+});
 
 // Define mockNavigate at the top level
 const mockNavigate = vi.fn();
@@ -60,13 +80,6 @@ vi.mock("@tanstack/react-query", async () => {
   };
 });
 
-// What the Copilot may do on the web has its own tests (AdminUserWebAccess.test.tsx).
-vi.mock("~/components/AdminUsers/AdminUserWebAccess", () => ({
-  default: ({ userUuid }: { userUuid: string }) => (
-    <div data-testid="web-access-stub">{userUuid}</div>
-  ),
-}));
-
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -107,8 +120,7 @@ describe("AdminUserDetailsDialog", () => {
     first_name: "Test",
     last_name: "User",
     status: "active",
-    permissions_uuid: "22222222-2222-2222-2222-222222222222",
-    billing_active: true,
+    permissions_uuid: USER_MAP,
     last_login: "2023-10-01T12:00:00Z",
   });
 
@@ -159,12 +171,37 @@ describe("AdminUserDetailsDialog", () => {
     await waitFor(() => {
       expect(mockAsync).toHaveBeenCalledWith({
         permissions_uuid: mockUser.permissions_uuid,
-        billing_active: mockUser.billing_active,
       });
       // expect(toast.success).toHaveBeenCalledWith("User updated successfully!", {
       //   description: `User ${mockUser.email} has been updated`,
       // });
     });
+  });
+
+  it("offers the three user types, Admin, Developer and User, in that order", async () => {
+    renderWithQueryClient(<AdminUserDetailsDialog user={mockUser} onClose={vi.fn()} />);
+
+    const typeSelect = screen.getByRole("combobox", { name: "Select type" });
+    expect(typeSelect).toHaveTextContent("User");
+    fireEvent.click(typeSelect);
+
+    expect(
+      (await screen.findAllByRole("option")).map((option) => option.textContent),
+    ).toEqual(["Admin", "Developer", "User"]);
+  });
+
+  it("saves the user type chosen", async () => {
+    const mockAsync = vi.fn().mockResolvedValue({});
+    (useMutation as Mock).mockReturnValue({ mutateAsync: mockAsync });
+    renderWithQueryClient(<AdminUserDetailsDialog user={mockUser} onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Select type" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Developer" }));
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() =>
+      expect(mockAsync).toHaveBeenCalledWith({ permissions_uuid: DEVELOPER_MAP }),
+    );
   });
 
   it("opens and closes delete user dialog", () => {

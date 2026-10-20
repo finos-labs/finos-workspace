@@ -4,8 +4,8 @@ import { useCallback, useEffect } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { type ChatDiff, type PostUserChats, postUserChats } from "~/api/auth.api";
 import { useShallowStreamingStore } from "~/components/AI/hooks/useStreaming";
+import { useShallowAccessStore } from "~/lib/state/access";
 import { type Chat, useShallowCopilotStore } from "~/lib/state/copilot";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { uuidv4 } from "~/lib/utils/utils";
 
 export default function useSyncChats() {
@@ -16,7 +16,7 @@ export default function useSyncChats() {
   const updateRemoteChats = useShallowCopilotStore(
     (state) => state.updateChatsStoredInCloud,
   );
-  const setUsage = useShallowFeatureFlagsStore((state) => state.setUsage);
+  const setUsage = useShallowAccessStore((state) => state.setUsage);
   const isStreaming = useShallowStreamingStore((s) => s.loading);
 
   const saveChats = useCallback(

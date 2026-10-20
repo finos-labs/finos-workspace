@@ -4,7 +4,7 @@
 #
 # Bundles the FastAPI backend (Cython-compiled lite build), the workspace
 # SPA (Vite runtime build), Redis, nginx, and supervisord into a single image.
-# Defaults to SQLite at /data/workspace.db so a `docker run -d -p 3000:3000` works
+# Defaults to SQLite at /data/workspace.db so a `docker run -d -p 3000:3000 -p 8000:8000` works
 # without any -e flags. Override via standard backend env vars (DATABASE_TYPE,
 # DB_HOST, ...).
 #
@@ -26,8 +26,9 @@ COPY frontend/package.json frontend/bun.lock ./
 RUN bun install --frozen-lockfile
 
 COPY frontend/ ./
-# The nginx of this image proxies /api to the backend, on the origin and port the user maps.
-ENV VITE_BACKEND_URL=/api
+# The nginx of this image serves the API on port 8000, an origin of its own: the browser
+# names the web app's origin in every call, as the API requires
+ENV VITE_BACKEND_URL=http://localhost:8000
 RUN bun run build:runtime
 
 
@@ -165,13 +166,17 @@ RUN mkdir -p /usr/local/share/workspace \
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY supervisord.conf /etc/supervisor/supervisord.conf
 COPY entrypoint.sh /entrypoint.sh
+# The keys of the container and the file of the data volume that keeps the generated ones
+COPY secrets.sh /usr/local/lib/workspace/secrets.sh
 COPY render_frontend_config.py /usr/local/bin/render-frontend-config
-# Admin-login helper: `docker exec workspace credentials`
+# Sets the administrator's password: `docker exec -it workspace credentials`
 COPY credentials.sh /usr/local/bin/credentials
 
-# Account import helper: `docker exec workspace workspace-import /import/<file>.zip`
+# Account import helper: `docker exec -it workspace workspace-import /import/<file>.zip`
 COPY import.sh /usr/local/bin/workspace-import
-RUN chmod +x /entrypoint.sh /usr/local/bin/render-frontend-config /usr/local/bin/credentials /usr/local/bin/workspace-import
+# The admin CLI: `docker exec workspace workspace-admin <resource> <action>`
+COPY workspace-admin.sh /usr/local/bin/workspace-admin
+RUN chmod +x /entrypoint.sh /usr/local/bin/render-frontend-config /usr/local/bin/credentials /usr/local/bin/workspace-import /usr/local/bin/workspace-admin
 
 ENV PATH="$VENV_PATH/bin:$PATH" \
     LD_LIBRARY_PATH="$VENV_PATH/lib" \
@@ -183,13 +188,13 @@ ENV PATH="$VENV_PATH/bin:$PATH" \
     REDIS_PORT=6379 \
     REDIS_PASS="" \
     MODE=lite \
-    DISABLE_CORS=1 \
+    BACKEND_CORS_ORIGINS='["http://localhost:3000"]' \
     STORAGE_PROVIDER=folder \
     PROMETHEUS=0 \
     WORKERS=1 \
-    SUPPRESSED_API_ROUTERS='["sdk", "run_tasks"]' \
+    SUPPRESSED_API_ROUTERS='[]' \
     SUPPRESSED_API_ROUTES='[]' \
-    SELFURL=http://localhost:3000/api \
+    SELFURL=http://localhost:8000 \
     FRONTENDURL=http://localhost:3000 \
     APPURL=http://localhost:3000
 
@@ -202,10 +207,10 @@ ENV PATH="$VENV_PATH/bin:$PATH" \
 RUN mkdir -p /data /data/storage /data/redis \
     && chown appuser:appuser /data /data/storage /data/redis $PYSETUP_PATH/code
 
-EXPOSE 3000
+EXPOSE 3000 8000
 VOLUME ["/data"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD ["python", "-c", "import os, urllib.request; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '3000') + '/api/health', timeout=4)"]
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=4)"]
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/entrypoint.sh"]

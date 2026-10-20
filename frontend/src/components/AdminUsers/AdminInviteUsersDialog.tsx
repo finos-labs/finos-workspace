@@ -47,7 +47,7 @@ export function AdminInviteUsersDialog({ open, onClose }: ClosableDialogProps) {
         </div>
       ) : (
         <p className="text-alert-error flex pb-2">
-          This entity does not have a User entitlement, please add one.
+          This organization has no User type to add users to.
         </p>
       )}
     </BaseDialog>

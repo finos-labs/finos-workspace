@@ -71,24 +71,44 @@ function mockCopilotStore(overrides: {
   return { setSelectedModelForAgent };
 }
 
+/** The models of an agent that the user's roles grant. */
+const grant = (agentId: string, ...ids: string[]) =>
+  useCopilotAccessStore.getState().setAccess({
+    models: ids.map((model_id) => ({ agent_id: agentId, model_id })),
+    mcp: [],
+  });
+
 describe("ModelPicker", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useCopilotAccessStore.getState().setAccess(null);
+    useCopilotAccessStore.getState().setAccess({
+      models: ["test-agent", "agent-a"].flatMap((agent_id) =>
+        MODELS.map((m) => ({ agent_id, model_id: m.id })),
+      ),
+      mcp: [],
+    });
   });
 
-  describe("when the user's roles grant models", () => {
-    const grant = (...ids: string[]) =>
-      useCopilotAccessStore.getState().setAccess({
-        models: ids.map((model_id) => ({ agent_id: "test-agent", model_id })),
-        mcp: [],
-        models_restricted: true,
-        mcp_restricted: false,
-      });
+  describe("access from the user's roles", () => {
+    it("renders nothing while the access is not loaded", () => {
+      mockCopilotStore({});
+      useCopilotAccessStore.getState().setAccess(null);
+      const { container } = render(<ModelPicker />);
+
+      expect(container.innerHTML).toBe("");
+    });
+
+    it("renders nothing when no role grants a model", () => {
+      mockCopilotStore({});
+      useCopilotAccessStore.getState().setAccess({ models: [], mcp: [] });
+      const { container } = render(<ModelPicker />);
+
+      expect(container.innerHTML).toBe("");
+    });
 
     it("offers only the granted models", () => {
       mockCopilotStore({});
-      grant("openai:gpt-4o-mini");
+      grant("test-agent", "openai:gpt-4o-mini");
       render(<ModelPicker />);
 
       expect(screen.getByTestId("select-item-openai:gpt-4o-mini")).toBeInTheDocument();
@@ -99,7 +119,7 @@ describe("ModelPicker", () => {
       const { setSelectedModelForAgent } = mockCopilotStore({
         selectedModelByAgent: { "test-agent": "openai:gpt-4o" },
       });
-      grant("openai:gpt-4o-mini");
+      grant("test-agent", "openai:gpt-4o-mini");
       render(<ModelPicker />);
 
       expect(setSelectedModelForAgent).toHaveBeenCalledWith(
@@ -110,12 +130,7 @@ describe("ModelPicker", () => {
 
     it("renders nothing when none of the agent's models is granted", () => {
       mockCopilotStore({});
-      useCopilotAccessStore.getState().setAccess({
-        models: [{ agent_id: "other-agent", model_id: "x" }],
-        mcp: [],
-        models_restricted: true,
-        mcp_restricted: false,
-      });
+      grant("other-agent", "openai:gpt-4o");
       const { container } = render(<ModelPicker />);
 
       expect(container.innerHTML).toBe("");

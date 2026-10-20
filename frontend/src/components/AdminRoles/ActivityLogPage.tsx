@@ -6,7 +6,6 @@ import type { DateRange } from "react-day-picker";
 import { getEntityRoleActivityLog } from "~/api/entity_roles.api";
 import type { DataTableColumn } from "~/components/ds/molecules/DataTable";
 import { DataTable } from "~/components/ds/molecules/DataTable";
-import BrandedLoadingState from "~/components/General/BrandedLoadingState";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { Button } from "../ds/atoms/Button";
 import { Input } from "../ds/atoms/Input";
@@ -214,7 +213,15 @@ export function ActivityLogPage() {
     [],
   );
 
-  if (isLoading) return <LoadingActivityLog />;
+  // The log shows when it is there: no loading animation in between
+  if (isLoading) {
+    return (
+      <TabsPrimitive.Content
+        value="activity-log"
+        className="p-6 text-sm only-sm:h-screen"
+      />
+    );
+  }
   if (error) return <ErrorActivityLog />;
 
   return (
@@ -311,19 +318,6 @@ const getActivityTypeStyle = (type: string) => {
   }
   return "";
 };
-
-function LoadingActivityLog() {
-  return (
-    <TabsPrimitive.Content
-      value="activity-log"
-      className="p-6 text-sm only-sm:h-screen"
-    >
-      <div className="flex h-full items-center justify-center py-20">
-        <BrandedLoadingState />
-      </div>
-    </TabsPrimitive.Content>
-  );
-}
 
 function ErrorActivityLog() {
   return (

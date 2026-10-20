@@ -10,7 +10,7 @@ import type { ImperativePanelHandle } from "react-resizable-panels";
 import { Navigate, Outlet } from "react-router-dom";
 import { usePrivateRoute } from "~/hooks/usePrivateRoute";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
+import { useShallowAccessStore } from "~/lib/state/access";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../ui/Resizable";
 import AdminSidebar from "./AdminSidebar";
@@ -73,9 +73,7 @@ function usePanelEvents(leftPanelRef: RefObject<ImperativePanelHandle>) {
 }
 
 function useHasAdminAccess() {
-  const admin_access = useShallowFeatureFlagsStore(
-    (state) => state.featureFlags?.admin_access,
-  );
+  const isAdmin = useShallowAccessStore((state) => state.access?.user_type === "Admin");
   const { error, isLoading } = useQuery<unknown, AxiosError>({
     queryKey: ["admin", "validate-access"],
     queryFn: validateAdminAccess,
@@ -87,9 +85,9 @@ function useHasAdminAccess() {
 
   return useMemo(() => {
     const forbidden = error?.response?.status === 403;
-    const output = { hasAdminAccess: admin_access && !forbidden, isLoading };
+    const output = { hasAdminAccess: isAdmin && !forbidden, isLoading };
     return output;
-  }, [error, isLoading, admin_access]);
+  }, [error, isLoading, isAdmin]);
 }
 
 export default function LayoutAdmin({ children }: { children?: ReactNode }) {

@@ -3,8 +3,10 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AuthRedirect from "~/components/LayoutAuth/AuthRedirect";
 
+const restoreSession = vi.fn<() => Promise<boolean>>();
 const authState = {
   user: { uuid: "user-1" } as { uuid: string } | null,
+  restoreSession,
 };
 
 vi.mock("~/lib/state/auth", () => ({
@@ -26,6 +28,7 @@ function renderAt(initialEntry: string) {
 describe("AuthRedirect", () => {
   beforeEach(() => {
     authState.user = { uuid: "user-1" };
+    restoreSession.mockReset();
   });
 
   it("leaves a signed-in user where they are", async () => {
@@ -34,10 +37,23 @@ describe("AuthRedirect", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe("/app/dash-1"));
 
     expect(router.state.location.search).toBe("?tab=overview");
+    expect(restoreSession).not.toHaveBeenCalled();
   });
 
-  it("replaces the page with the login page for a visitor who is not signed in", async () => {
+  it("keeps the page when the session cookie still holds a session", async () => {
     authState.user = null;
+    restoreSession.mockResolvedValue(true);
+    const router = renderAt("/app/dash-1");
+
+    await waitFor(() => expect(restoreSession).toHaveBeenCalledTimes(1));
+    await Promise.resolve();
+
+    expect(router.state.location.pathname).toBe("/app/dash-1");
+  });
+
+  it("replaces the page with the login page when there is no session", async () => {
+    authState.user = null;
+    restoreSession.mockResolvedValue(false);
     const router = renderAt("/app/dash-1");
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/login"));

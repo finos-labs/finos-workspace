@@ -47,8 +47,7 @@ migration chain via subprocess, then introspects every table to verify:
 - All tables were created (40+ expected)
 - Every column can be reflected without type-mapping errors
 - A `SELECT` succeeds on every table
-- Seed data is present (2 tiers, 2 default_tiers, 3 data_bundles)
-- Alembic version is at `0002`
+- Alembic version is at the head of the migration chain
 
 ### Run all dialect tests
 
@@ -86,9 +85,8 @@ The `/app` endpoints require specific entities and permissions to exist in the d
 
 The seed function creates the following records after database migrations run:
 
-1. **EntityType** - A single entity type record for "app" entities
-2. **Entity (Developer)** - The developer-tier entity linked to `DEVELOPER_MAPPING`
-3. **PermissionsEntityMap** - The permission mapping that links the entity to its UUID
+1. **Entity (Default Organization)** - The organization that users without one are put into
+2. **PermissionsEntityMap** - Its "User" permissions map, `DEFAULT_USER_MAPPING`
 
 ### UUID References
 
@@ -96,26 +94,38 @@ The seed function uses specific UUIDs that align with the application's settings
 
 | Record | UUID | Purpose |
 |--------|------|---------|
-| DEVELOPER_MAPPING | `22222222-2222-2222-2222-222222222222` | Developer tier permission mapping |
-| Developer Entity | `33333333-3333-3333-3333-333333333333` | Developer entity record |
-| EntityType | `55555555-5555-5555-5555-555555555555` | Entity type record |
+| DEFAULT_USER_MAPPING | `22222222-2222-2222-2222-222222222222` | The default organization's User map |
+| Default Organization | `33333333-3333-3333-3333-333333333333` | The default organization |
 
-### The `app_client` fixture
+### How the clients authenticate
 
-Tests that hit `/app/*` endpoints must use the `app_client` fixture instead of the base `client` fixture. This is because the `/app` router requires a service JWT in the `X-Workspace-Authorization` header.
+The clients talk to `https://test`, so that they keep and send the API's secure session
+cookies, and send the web app's origin `http://test`, which `pytest.ini` makes the one
+entry of `BACKEND_CORS_ORIGINS`.
+
+- `app_client` is the web app before sign-in: the `X-Workspace-Client: web` header and the
+  origin. A sign-in (`POST /app/login`, source `app`) sets the `__Host-ws_session` cookie,
+  which the client then sends.
+- `auth_client`, `admin_client` and `second_user_client` are the web app signed in: each
+  has a session in the table (stored as its hash) and sends its cookie, the client header
+  and the origin.
+- `bearer_client(token)` (`fixtures/base.py`) is a client that is not a browser (the default
+  Copilot with an agent token): it sends `Authorization: Bearer <token>`.
 
 ```python
 @pytest.mark.asyncio
 async def test_app_login(app_client):
     response = await app_client.post("/app/login", json={...})
     assert response.status_code == 200
+    assert app_client.cookies["__Host-ws_session"]
 ```
 
-The `app_client` fixture:
+### The `organization` fixture
 
-- Inherits from the base `client` fixture
-- Adds `X-Workspace-Authorization: Bearer <service_jwt>` header
-- The service JWT has `sub="app"` and `iss="workspace"`
+Tests of what users may do (user types, sharing, role settings, limits) use the
+`organization` fixture from `fixtures/organization.py`: the admin's organization with
+sharing switched on and the test user in it as a "User", plus helpers that add roles with
+their settings, users, dashboards and apps. Everything it adds is removed after the test.
 
 ### Cleanup
 

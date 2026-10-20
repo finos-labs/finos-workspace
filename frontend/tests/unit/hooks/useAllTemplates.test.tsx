@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockNavigate = vi.fn();
 const mockAddTab = vi.fn();
@@ -35,13 +35,15 @@ vi.mock("~/lib/utils/createTemplates", () => ({
 
 import { useAllTemplates } from "~/hooks/useAllTemplates";
 import { type ProcessedTemplate, useSharedTemplates } from "~/hooks/useSharedTemplates";
+import type { SharingLevel } from "~/lib/state/access";
 import { useShallowAppStore } from "~/lib/state/app";
 import {
   getTemplateWidgetsMetadata,
   type Source,
   useShallowBackendConnectorStore,
 } from "~/lib/state/backendConnector";
-import { makeItem } from "../factories";
+import { type UserAppReturn, useUserAppsStore } from "~/lib/state/userApps";
+import { makeItem, setAccess } from "../factories";
 import { malformed, partial, stubStoreState } from "../mocks";
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -465,6 +467,43 @@ describe("useAllTemplates", () => {
 
       expect(result.current[0].totalWidgets).toBe(5);
       expect(result.current[0].widgets).toEqual([{ name: "W1" }, { name: "W2" }]);
+    });
+  });
+  describe("apps other users shared", () => {
+    const app = (name: string, creator: boolean) =>
+      partial<UserAppReturn>({
+        content: { name, description: "", widgets: [], prompts: [] },
+        creator,
+        createdBy: creator ? "me@example.com" : "colleague@example.com",
+        isShared: !creator,
+      });
+
+    beforeEach(() => {
+      useUserAppsStore.setState({
+        userApps: { "own-app": app("My App", true) },
+        sharedUserApps: { "shared-app": app("Their App", false) },
+      });
+    });
+
+    afterEach(() => {
+      useUserAppsStore.setState({ userApps: {}, sharedUserApps: {} });
+    });
+
+    it.each<SharingLevel>([
+      "receive",
+      "share",
+    ])("are listed for a user whose sharing is %s", (sharing) => {
+      setAccess({ sharing });
+      const { result } = renderHook(() => useAllTemplates(), { wrapper });
+
+      expect(result.current.map((t) => t.name).sort()).toEqual(["My App", "Their App"]);
+    });
+
+    it("are not listed for a user who cannot receive shared items", () => {
+      setAccess({ sharing: "none" });
+      const { result } = renderHook(() => useAllTemplates(), { wrapper });
+
+      expect(result.current.map((t) => t.name)).toEqual(["My App"]);
     });
   });
 });

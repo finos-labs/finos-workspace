@@ -14,6 +14,7 @@ import { useShallow } from "zustand/react/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
 import { useCallbackRef, useComposeRefs } from "~/hooks/useRefHooks";
 import { COPILOT_ACCEPTED_MIME_TYPES } from "~/lib/constants";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import type { Selector } from "~/lib/state/app";
 import { type CopilotFile, useShallowCopilotStore } from "~/lib/state/copilot";
 import { cn, slugifyWithExtension } from "~/lib/utils";
@@ -41,12 +42,17 @@ export function CopilotDropzone(props: CopilotDropzoneProps) {
   const copilot = useShallowCopilotStore((s) => ({
     selectedCopilot: s.selectedCopilot,
   }));
+  // The default copilot stores uploads as the user's files, which users may not add
+  const mayUpload = useShallowAccessStore((s) => canAddConnections(s.access));
 
   const { rootRef, getRootProps, getInputProps, isDragActive } = useDropzone({
     noClick: true,
     accept: COPILOT_ACCEPTED_MIME_TYPES,
     multiple: true,
-    disabled: !copilot.selectedCopilot?.features?.["file-upload"] || queriesLeft === 0,
+    disabled:
+      !copilot.selectedCopilot?.features?.["file-upload"] ||
+      (!mayUpload && copilot.selectedCopilot?.id === "default-copilot") ||
+      queriesLeft === 0,
     onDrop: (acceptedFiles) => {
       const acceptedFilesSlugified = acceptedFiles.map((file) => {
         return new File([file], slugifyWithExtension(file.name), { type: file.type });

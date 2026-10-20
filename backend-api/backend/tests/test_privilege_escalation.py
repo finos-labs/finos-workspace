@@ -222,7 +222,7 @@ class TestHorizontalPrivilegeEscalationUserData:
     ):
         """User B should not be able to read User A's profile details"""
         # Get User A's UUID from their profile
-        user_a_profile = await auth_client.get("/user")
+        user_a_profile = await auth_client.get("/app/user")
         assert user_a_profile.status_code == 200
 
         user_a_data = user_a_profile.json()
@@ -240,7 +240,7 @@ class TestHorizontalPrivilegeEscalationUserData:
     ):
         """User B should not be able to modify User A's profile"""
         # Get User A's UUID
-        user_a_profile = await auth_client.get("/user")
+        user_a_profile = await auth_client.get("/app/user")
         user_a_data = user_a_profile.json()
         user_a_uuid = user_a_data.get("uuid")
 
@@ -314,26 +314,6 @@ class TestVerticalPrivilegeEscalationAdmin:
         fake_user_uuid = str(uuid4())
         response = await auth_client.delete(f"/admin/user/{fake_user_uuid}")
         assert response.status_code in {401, 403, 404, 405}
-
-    @pytest.mark.asyncio
-    async def test_regular_user_cannot_modify_entitlements(self, auth_client):
-        """Regular user should not be able to modify entitlements"""
-        fake_user_uuid = str(uuid4())
-        response = await auth_client.put(
-            f"/entity/entitlement/{fake_user_uuid}",
-            json={"tier": "enterprise", "features": ["all"]},
-        )
-        assert response.status_code in {401, 403, 404, 405, 422}
-
-    @pytest.mark.asyncio
-    async def test_regular_user_cannot_create_entity_types(self, auth_client):
-        """Regular user should not be able to create entity types"""
-        response = await auth_client.post(
-            "/entity/entity-type",
-            json={"entity_type": "hacked_type", "code": "HCK"},
-        )
-        # Should be forbidden (401 or 403)
-        assert response.status_code in {401, 403, 422}
 
     @pytest.mark.asyncio
     async def test_regular_user_cannot_create_roles(self, auth_client):
@@ -413,7 +393,7 @@ class TestTokenManipulation:
         )
 
         client.headers["Authorization"] = f"Bearer {expired_jwt}"
-        response = await client.get("/user")
+        response = await client.get("/app/user")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
@@ -429,7 +409,7 @@ class TestTokenManipulation:
 
         for token in malformed_tokens:
             client.headers["Authorization"] = token
-            response = await client.get("/user")
+            response = await client.get("/app/user")
             assert response.status_code in {401, 403, 422}
 
     @pytest.mark.asyncio
@@ -443,7 +423,7 @@ class TestTokenManipulation:
         )
 
         client.headers["Authorization"] = f"Bearer {tampered_jwt}"
-        response = await client.get("/user")
+        response = await client.get("/app/user")
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
@@ -456,7 +436,7 @@ class TestTokenManipulation:
         )
 
         client.headers["Authorization"] = f"Bearer {none_alg_jwt}"
-        response = await client.get("/user")
+        response = await client.get("/app/user")
         assert response.status_code in {401, 403}
 
 
@@ -470,25 +450,17 @@ class TestSessionHijackingPrevention:
 
     @pytest.mark.asyncio
     async def test_cannot_reuse_logged_out_session(self, client, auth_client):
-        """After logout, the session token should be invalidated"""
-        # Get the current auth token
+        """After logout, the session token is invalid: the server deleted the session"""
+        # The session cookie, as a page that kept a copy would send it
         original_headers = dict(auth_client.headers)
 
-        # Logout (may be GET or DELETE, not POST)
-        logout_response = await auth_client.get("/logout")
-        # Logout should succeed or return method not allowed (then try DELETE)
-        if logout_response.status_code == 405:
-            logout_response = await auth_client.delete("/logout")
-        # Accept various success codes
-        assert logout_response.status_code in {200, 204, 401, 405}
+        logout_response = await auth_client.post("/app/logout")
+        assert logout_response.status_code == 200
+        assert logout_response.json()["success"] is True
 
-        # Try to use the old token after logout
-        # Note: Session may still be valid if logout doesn't invalidate server-side
         client.headers.update(original_headers)
-        response = await client.get("/user")
-        # Session may or may not be invalidated depending on implementation
-        # This tests that at least the request is handled properly
-        assert response.status_code in {200, 401, 403}
+        response = await client.get("/app/user")
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_session_not_valid_across_users(
@@ -496,21 +468,18 @@ class TestSessionHijackingPrevention:
     ):
         """User A's session should not work for User B's actions"""
         # Get User A's data
-        user_a_response = await auth_client.get("/user")
+        user_a_response = await auth_client.get("/app/user")
         assert user_a_response.status_code == 200
         user_a_data = user_a_response.json()
 
         # Get User B's data
-        user_b_response = await second_user_client.get("/user")
+        user_b_response = await second_user_client.get("/app/user")
         assert user_b_response.status_code == 200
         user_b_data = user_b_response.json()
 
-        # Verify they are different users (check email since uuid may not be in response)
         # The key test is that sessions are isolated - each user sees their own data
-        user_a_email = user_a_data.get("email") or user_a_data.get("clean_email")
-        user_b_email = user_b_data.get("email") or user_b_data.get("clean_email")
         assert (
-            user_a_email != user_b_email
+            user_a_data["uuid"] != user_b_data["uuid"]
         ), "Sessions should return different user data"
 
 
@@ -532,13 +501,12 @@ class TestParameterTampering:
                 "is_admin": True,
                 "role": "admin",
                 "permissions": ["all"],
-                "tier": "enterprise",
             },
         )
         # Request may succeed but should not grant admin
         if response.status_code == 200:
             # Verify user is not actually admin
-            user_response = await auth_client.get("/user")
+            user_response = await auth_client.get("/app/user")
             user_data = user_response.json()
             # These fields should not be modifiable by user
             assert user_data.get("is_admin") is not True
@@ -549,7 +517,7 @@ class TestParameterTampering:
     ):
         """Should not be able to act as another user by setting their UUID"""
         # Get User A's UUID
-        user_a_response = await auth_client.get("/user")
+        user_a_response = await auth_client.get("/app/user")
         user_a_uuid = user_a_response.json().get("uuid")
 
         # User B tries to create resource claiming to be User A
@@ -584,7 +552,6 @@ class TestParameterTampering:
         response = await auth_client.put(
             "/user",
             json={
-                "username": "normal_update",
                 # Hidden field injection attempts
                 "__admin__": True,
                 "_is_superuser": True,
@@ -597,7 +564,7 @@ class TestParameterTampering:
 
         # Verify no privilege escalation occurred
         if response.status_code == 200:
-            user_response = await auth_client.get("/user")
+            user_response = await auth_client.get("/app/user")
             # User should still be regular user
             assert user_response.status_code == 200
 
@@ -625,7 +592,7 @@ class TestRateLimitBypass:
             client.headers.update(headers)
             # Make requests - rate limits should still apply
             response = await client.post(
-                "/login",
+                "/app/login",
                 json={"email": "test@test.com", "password": "wrong"},
             )
             # Should get 401 (invalid login) not 200 (bypassed)

@@ -6,7 +6,6 @@ Tests cover:
 - Password validation (length, requirements)
 - UUID validation (format, injection attempts)
 - JSON payload validation (size limits, structure)
-- Username validation (length, allowed characters, bad words)
 """
 
 import os
@@ -23,6 +22,8 @@ import pytest
 from uuid import uuid4
 from sqlalchemy import text
 
+from tests.fixtures.base import WEB_HEADERS
+
 
 class TestEmailValidation:
     """Tests for email input validation across endpoints"""
@@ -31,7 +32,7 @@ class TestEmailValidation:
     async def test_email_invalid_format_no_at(self, client):
         """Email without @ should fail validation"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={"email": "invalidemail.com", "password": "ValidPassword123!"},
         )
         assert response.status_code == 422
@@ -44,7 +45,7 @@ class TestEmailValidation:
     async def test_email_invalid_format_no_domain(self, client):
         """Email without domain should fail validation"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={"email": "invalid@", "password": "ValidPassword123!"},
         )
         assert response.status_code == 422
@@ -57,7 +58,7 @@ class TestEmailValidation:
     async def test_email_invalid_format_spaces(self, client):
         """Email with spaces should fail validation"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={"email": "invalid email@test.com", "password": "ValidPassword123!"},
         )
         assert response.status_code == 422
@@ -77,7 +78,7 @@ class TestEmailValidation:
 
         for email in malicious_emails:
             response = await client.post(
-                "/login",
+                "/app/login",
                 json={"email": email, "password": "ValidPassword123!"},
             )
             # Rejected by validation or by the credential check, never a 500
@@ -99,7 +100,7 @@ class TestEmailValidation:
 
         for email in xss_emails:
             response = await client.post(
-                "/login",
+                "/app/login",
                 json={"email": email, "password": "ValidPassword123!"},
             )
             # Rejected by validation or by the credential check, never a 500
@@ -116,7 +117,7 @@ class TestEmailValidation:
 
         for email in unicode_emails:
             response = await client.post(
-                "/login",
+                "/app/login",
                 json={"email": email, "password": "ValidPassword123!"},
             )
             # May be a valid internationalized email (unknown user) or a validation error
@@ -130,7 +131,7 @@ class TestPasswordValidation:
     async def test_password_min_length_7_chars_fails(self, client):
         """Password with 7 chars should fail (min is 8)"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "Short1!",  # 7 chars
@@ -144,11 +145,12 @@ class TestPasswordValidation:
     async def test_password_min_length_8_chars_succeeds(self, client):
         """Password with exactly 8 chars should pass validation"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "Valid12!",  # 8 chars
             },
+            headers=WEB_HEADERS,
         )
         # Passes validation and reaches the credential check
         assert response.status_code == 401
@@ -157,7 +159,7 @@ class TestPasswordValidation:
     async def test_password_empty_fails(self, client):
         """Empty password should fail validation"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "",
@@ -173,7 +175,7 @@ class TestPasswordValidation:
     async def test_password_whitespace_only_fails(self, client):
         """Password with only whitespace should fail or be rejected"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "        ",  # 8 spaces
@@ -186,7 +188,7 @@ class TestPasswordValidation:
     async def test_password_unicode_characters(self, client):
         """Password with unicode characters should be handled"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": "Pässwörd123!",  # Unicode chars
@@ -200,7 +202,7 @@ class TestPasswordValidation:
         """Very long password should be handled"""
         long_password = "A" * 1000 + "1!"
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": f"pwtest_{uuid4().hex[:8]}@example.com",
                 "password": long_password,
@@ -262,7 +264,7 @@ class TestJSONPayloadValidation:
     @pytest.mark.asyncio
     async def test_missing_required_fields(self, client):
         """Missing required fields should return 422"""
-        response = await client.post("/login", json={})
+        response = await client.post("/app/login", json={})
         assert response.status_code == 422
         data = response.json()
         assert "detail" in data
@@ -273,7 +275,8 @@ class TestJSONPayloadValidation:
         response = await auth_client.put(
             "/user",
             json={
-                "first_name": "Test",
+                "old_password": "OldPassword123!",
+                "new_password": "NewPassword123!",
                 "unknown_field": "should_be_ignored",
                 "another_unknown": 12345,
             },
@@ -285,7 +288,7 @@ class TestJSONPayloadValidation:
     async def test_wrong_type_for_field(self, client):
         """Wrong type for field should return 422"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={
                 "email": 12345,  # Should be string
                 "password": ["array", "not", "string"],
@@ -297,7 +300,7 @@ class TestJSONPayloadValidation:
     async def test_null_values_for_required_fields(self, client):
         """Null values for required fields should return 422"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={"email": None, "password": None},
         )
         assert response.status_code == 422
@@ -335,65 +338,12 @@ class TestJSONPayloadValidation:
     async def test_invalid_json_syntax(self, client):
         """Invalid JSON syntax should return appropriate error"""
         response = await client.post(
-            "/login",
+            "/app/login",
             content=b'{"email": "test@test.com", "password": }',  # Invalid JSON
             headers={"Content-Type": "application/json"},
         )
         # Should return 400 (bad request) or 422 (unprocessable)
         assert response.status_code in {400, 422}
-
-
-class TestUsernameValidation:
-    """Tests for username validation (PUT /user)"""
-
-    @pytest.mark.asyncio
-    async def test_username_min_length_3_chars_fails(self, auth_client):
-        """Username with 3 chars should fail (min is 4)"""
-        response = await auth_client.put("/user", json={"username": "abc"})
-        assert response.status_code == 422
-
-    @pytest.mark.asyncio
-    async def test_username_min_length_4_chars_succeeds(self, auth_client):
-        """Username with 4 chars should pass validation"""
-        response = await auth_client.put("/user", json={"username": uuid4().hex[:4]})
-        # 409 if the username is taken
-        assert response.status_code in {200, 409}
-
-    @pytest.mark.asyncio
-    async def test_username_max_length_51_chars_fails(self, auth_client):
-        """Username with 51 chars should fail (max is 50)"""
-        response = await auth_client.put("/user", json={"username": "a" * 51})
-        assert response.status_code == 422
-
-    @pytest.mark.asyncio
-    async def test_username_special_chars_rejected(self, auth_client):
-        """Username with special characters should be rejected"""
-        invalid_usernames = [
-            "user@name",
-            "user!name",
-            "user name",  # space
-            "user#name",
-            "user$name",
-        ]
-
-        for username in invalid_usernames:
-            response = await auth_client.put("/user", json={"username": username})
-            assert response.status_code == 422, f"Failed for username: {username}"
-
-    @pytest.mark.asyncio
-    async def test_username_valid_characters_allowed(self, auth_client):
-        """Username with letters, numbers, underscores should be allowed"""
-        suffix = uuid4().hex[:6]
-        valid_usernames = [
-            f"user_name_{suffix}",
-            f"UserName123{suffix}",
-            f"user123{suffix}",
-            f"USER_NAME_123_{suffix}",
-        ]
-
-        for username in valid_usernames:
-            response = await auth_client.put("/user", json={"username": username})
-            assert response.status_code in {200, 409}, f"Failed for username: {username}"
 
 
 class TestContentTypeValidation:
@@ -403,7 +353,7 @@ class TestContentTypeValidation:
     async def test_missing_content_type_for_json_endpoint(self, client):
         """Missing Content-Type for JSON endpoint should be handled"""
         response = await client.post(
-            "/login",
+            "/app/login",
             content=b'{"email": "test@test.com", "password": "password123"}',
             # No Content-Type header
         )
@@ -414,7 +364,7 @@ class TestContentTypeValidation:
     async def test_wrong_content_type(self, client):
         """Wrong Content-Type should be handled"""
         response = await client.post(
-            "/login",
+            "/app/login",
             content=b'{"email": "test@test.com", "password": "password123"}',
             headers={"Content-Type": "text/plain"},
         )

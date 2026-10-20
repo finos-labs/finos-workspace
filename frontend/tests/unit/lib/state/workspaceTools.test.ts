@@ -30,14 +30,14 @@ const TOOLS = {
   ],
 };
 
-const signIn = (token: string | undefined) =>
-  useAuthStore.setState({ user: token ? ({ token } as never) : null } as never);
+const signIn = (uuid: string | undefined) =>
+  useAuthStore.setState({ user: uuid ? ({ uuid } as never) : null } as never);
 
 beforeEach(() => {
   vi.mocked(getWorkspaceTools).mockReset();
   vi.mocked(getWorkspaceTools).mockResolvedValue(TOOLS);
   resetWorkspaceAgentTools();
-  signIn("session-1");
+  signIn("user-1");
 });
 
 afterEach(() => {
@@ -92,7 +92,7 @@ describe("the tools of the Workspace for an agent request", () => {
 
   it("are asked for again by the next user", async () => {
     await getWorkspaceAgentTools();
-    signIn("session-2");
+    signIn("user-2");
     await getWorkspaceAgentTools();
     expect(getWorkspaceTools).toHaveBeenCalledTimes(2);
   });
@@ -114,8 +114,6 @@ describe("the tools of the agent request", () => {
   const grants = (mcp: CopilotAccess["mcp"]): CopilotAccess => ({
     models: [],
     mcp,
-    models_restricted: false,
-    mcp_restricted: true,
   });
 
   it("have the Workspace's tools after those of the servers the user connected", async () => {
@@ -132,6 +130,12 @@ describe("the tools of the agent request", () => {
       ],
       mcpConnectionRegistry: { docs: { state: "ready", retry: () => {} } as never },
     });
+    useCopilotAccessStore.getState().setAccess(
+      grants([
+        { server_url: "https://docs.example.com/mcp", tool_name: "*" },
+        { server_url: URL, tool_name: "*" },
+      ]),
+    );
 
     const tools = await useMcpToolsStore.getState().getEnabledToolsForAgent();
 
@@ -143,11 +147,17 @@ describe("the tools of the agent request", () => {
   });
 
   it("have the Workspace's tools for a user who connected no server", async () => {
+    useCopilotAccessStore.getState().setAccess(grants([{ server_url: URL, tool_name: "*" }]));
     const tools = await useMcpToolsStore.getState().getEnabledToolsForAgent();
     expect(tools.map((t) => t.name)).toEqual([
       "Workspace_get_widget_data",
       "Workspace_read_widget",
     ]);
+  });
+
+  it("have none of them for a user whose roles grant nothing", async () => {
+    useCopilotAccessStore.getState().setAccess(grants([]));
+    expect(await useMcpToolsStore.getState().getEnabledToolsForAgent()).toEqual([]);
   });
 
   it("have only the Workspace's tools that the user's roles grant", async () => {

@@ -1,16 +1,15 @@
 import { useMutation } from "@tanstack/react-query";
-import type { AxiosResponse } from "axios";
 import { toast } from "sonner";
 import { apiClient } from "~/api/api";
 import type { PostUploadFileResponse } from "~/api/auth.api";
 import { AI_SUPPORTED_FILE_TYPES } from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import { type CopilotFile, useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowThemeStore } from "~/lib/state/theme";
+import { useGetCopilotRequestHeaders } from "./useGetCopilotRequestHeaders";
 import { useShallowStreamingStore } from "./useStreaming";
-
-type ResponseT = AxiosResponse<PostUploadFileResponse>;
 
 const MEGABYTE = 1024 * 1024;
 
@@ -34,7 +33,6 @@ const aiCopilotAiEnhancementsFF =
 async function getDescriptionsMap(
   uploadedFiles: PostUploadFileResponse,
   files: File[],
-  token: string,
   aiEnhancements = false,
 ): Promise<Map<string, { name: string; description: string }>> {
   // Map stored_file_uuid to description
@@ -56,13 +54,9 @@ async function getDescriptionsMap(
           const formData = new FormData();
           formData.append("file", file);
           try {
-            const aiResponse = await fetch(
+            const aiResponse = await fetchAgent(
               `${getConfig().urls.ai}/v1/generate/widget_info/file`,
-              {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-                body: formData,
-              },
+              { method: "POST", body: formData },
             );
             if (aiResponse.ok) {
               const data = await aiResponse.json();
@@ -80,17 +74,43 @@ async function getDescriptionsMap(
   return descriptionsMap;
 }
 
+/**
+ * Uploads documents for the selected agent. The default Copilot's go to the Workspace API
+ * (session cookie); a custom agent's go straight to its own upload endpoint with only
+ * the headers configured for that agent, never a Workspace credential.
+ */
+async function uploadToAgent(
+  formData: FormData,
+  uploadUrl: string,
+  toWorkspace: boolean,
+  agentHeaders: Record<string, string>,
+): Promise<PostUploadFileResponse> {
+  if (toWorkspace) {
+    const { data } = await apiClient.post<PostUploadFileResponse>(uploadUrl, formData, {
+      headers: { "content-type": "multipart/form-data" },
+    });
+    return data;
+  }
+
+  const response = await fetch(uploadUrl, {
+    method: "POST",
+    headers: agentHeaders,
+    body: formData,
+  });
+  if (!response.ok) {
+    throw new Error(`The agent refused the upload (HTTP ${response.status}).`);
+  }
+  return await response.json();
+}
+
 export function useUploadDocuments() {
   const dispatch = useShallowStreamingStore((s) => s.dispatch);
-  const user = useShallowAuthStore((s) => s.user);
+  const signedIn = useShallowAuthStore((s) => s.user !== null);
   const selectedCopilot = useShallowCopilotStore((s) => s.selectedCopilot);
   const aiEnhancements = useShallowThemeStore((state) => state.aiEnhancements);
+  const getCopilotRequestHeaders = useGetCopilotRequestHeaders();
 
-  const { mutateAsync: uploadDocuments } = useMutation<
-    ResponseT | undefined,
-    Error,
-    File[]
-  >({
+  const { mutateAsync: uploadDocuments } = useMutation<void, Error, File[]>({
     mutationFn: async (filesToUpload: File[]) => {
       // Need to split files into chunks of 150MB or less
       const { fileChunks } = filesToUpload.reduce(
@@ -120,9 +140,13 @@ export function useUploadDocuments() {
         { fileChunks: [[] as File[]], chunkSize: 0 },
       );
 
-      if (!user || !selectedCopilot) {
+      if (!(signedIn && selectedCopilot)) {
         throw new Error("Sign in and select an agent to upload documents.");
       }
+
+      const toWorkspace = selectedCopilot.id === "default-copilot";
+      // The browser sets the multipart content type (with its boundary) itself
+      const { "Content-Type": _json, ...agentHeaders } = getCopilotRequestHeaders();
 
       for (const files of fileChunks) {
         const formData = new FormData();
@@ -130,33 +154,23 @@ export function useUploadDocuments() {
           formData.append("files", file);
         }
 
-        const uploadUrl =
-          selectedCopilot.id === "default-copilot"
-            ? "app/files"
-            : selectedCopilot.endpoints.upload_docs;
+        const uploadUrl = toWorkspace
+          ? "app/files"
+          : selectedCopilot.endpoints.upload_docs;
         if (!uploadUrl)
           throw new Error("The selected agent does not accept documents.");
 
-        const response = await apiClient.post<PostUploadFileResponse>(
-          uploadUrl,
+        const uploadedFiles = await uploadToAgent(
           formData,
-          {
-            headers: {
-              "content-type": "multipart/form-data",
-              Authorization:
-                selectedCopilot.id === "default-copilot"
-                  ? `Bearer ${user.token}`
-                  : undefined,
-            },
-          },
+          uploadUrl,
+          toWorkspace,
+          agentHeaders,
         );
 
-        if (response?.data?.length) {
-          const uploadedFiles = response.data;
+        if (uploadedFiles?.length) {
           const descriptionsMap = await getDescriptionsMap(
             uploadedFiles,
             files,
-            user.token,
             aiEnhancements,
           );
           dispatch({
@@ -182,7 +196,7 @@ export function useUploadDocuments() {
 
           continue;
         }
-        return response;
+        return;
       }
     },
 

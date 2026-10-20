@@ -3,10 +3,17 @@
  * Licensed under the MIT License.
  */
 
-import { type Configuration, LogLevel, type PopupRequest } from "@azure/msal-browser";
+import {
+  BrowserCacheLocation,
+  type Configuration,
+  LogLevel,
+  type PopupRequest,
+  PublicClientApplication,
+} from "@azure/msal-browser";
 import { getConfig } from "./runtimeConfig";
 
 let _msalConfig: Configuration | null = null;
+let _msalInstance: PublicClientApplication | null = null;
 
 export function getMsalConfig(): Configuration {
   if (!_msalConfig) {
@@ -17,8 +24,10 @@ export function getMsalConfig(): Configuration {
         authority: `https://login.microsoftonline.com/${cfg.authProviders.azureTenantId ?? ""}`,
         redirectUri: window.location.origin,
       },
+      // MSAL's tokens and its sign-in state stay in page memory, never in browser storage
       cache: {
-        cacheLocation: "localStorage",
+        cacheLocation: BrowserCacheLocation.MemoryStorage,
+        temporaryCacheLocation: BrowserCacheLocation.MemoryStorage,
         storeAuthStateInCookie: false,
       },
       system: {
@@ -52,6 +61,12 @@ export function getMsalConfig(): Configuration {
     };
   }
   return _msalConfig;
+}
+
+/** The page's one MSAL client: the provider uses it, and signing out clears its cache. */
+export function getMsalInstance(): PublicClientApplication {
+  _msalInstance ??= new PublicClientApplication(getMsalConfig());
+  return _msalInstance;
 }
 
 /**
