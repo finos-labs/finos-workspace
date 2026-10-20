@@ -319,7 +319,7 @@ export function RoleDialog(props: Props) {
         open={open}
         onClose={requestClose}
         onPointerDownOutside={(e) => e.preventDefault()}
-        className="max-w-md lg:max-w-3xl xl:max-w-5xl max-h-[760px] overflow-y-auto"
+        className="max-w-md lg:max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto"
       >
         <div className="flex items-center gap-2">
           <DialogTitle
@@ -457,9 +457,9 @@ export function RoleDialog(props: Props) {
                 />
                 <div
                   className={cn(
-                    "flex flex-col h-[260px] gap-2 bg-general-bg-secondary p-2.5 rounded",
+                    "flex flex-col gap-2 bg-general-bg-secondary p-2.5 rounded",
                     {
-                      "items-center justify-center": users.length === 0,
+                      "items-center justify-center py-4": users.length === 0,
                     },
                   )}
                 >
@@ -476,12 +476,12 @@ export function RoleDialog(props: Props) {
                       No members added yet
                     </p>
                   ) : (
-                    <div className="flex flex-col h-full">
+                    <div className="flex flex-col">
                       <p className="mb-2.5 text-2xs text-ds-text-caption uppercase tracking-wide">
                         MEMBERS ({users.length})
                       </p>
                       <hr />
-                      <div className="flex flex-col gap-2.5 mt-2.5 text-2xs max-h-[calc(260px-100px)] overflow-y-auto">
+                      <div className="flex flex-col gap-2.5 mt-2.5 text-2xs max-h-40 overflow-y-auto">
                         {filteredUsersList.length === 0 && searchQuery ? (
                           <p
                             role="status"
