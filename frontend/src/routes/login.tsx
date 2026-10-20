@@ -6,7 +6,6 @@ import { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { useLocalStorage } from "usehooks-ts";
 import { z } from "zod";
 import {
   activateTotp,
@@ -112,14 +111,7 @@ export type LoginState = {
   error: null | string;
 };
 
-export type LoginMethod = "password" | "google" | "microsoft" | "okta";
-
 export default function LoginPage() {
-  const [lastUsedMethod, setLastUsedMethod] = useLocalStorage<LoginMethod | null>(
-    "lastUsedLoginMethod",
-    null,
-  );
-
   const { user, logout, restoreSession } = useShallowAuthStore((state) => ({
     user: state.user,
     logout: state.logout,
@@ -162,7 +154,6 @@ export default function LoginPage() {
   } = useLogin({
     dispatch,
     state,
-    setLastUsedMethod,
   });
 
   return (
@@ -257,7 +248,6 @@ export default function LoginPage() {
                     >
                       Login
                     </Button>
-                    {lastUsedMethod === "password" && <LastUsedMethod />}
                   </div>
                 )}
                 {enabledProviders.length > 0 && (
@@ -273,19 +263,16 @@ export default function LoginPage() {
                             handleGoogleSuccess={handleGoogleSuccess}
                             state={state}
                           />
-                          {lastUsedMethod === "google" && <LastUsedMethod />}
                         </div>
                       )}
                       {enabledProviders.includes("microsoft") && (
                         <div className="relative w-full notranslate">
                           <MicrosoftLogin handleLogin={handleMicrosoftSuccess} />
-                          {lastUsedMethod === "microsoft" && <LastUsedMethod />}
                         </div>
                       )}
                       {enabledProviders.includes("okta") && (
                         <div className="relative w-full notranslate">
                           <OktaLogin handleLogin={handleOktaSuccess} />
-                          {lastUsedMethod === "okta" && <LastUsedMethod />}
                         </div>
                       )}
                     </div>
@@ -328,12 +315,8 @@ function handle2FAResponse(response: Login2FAResponse): Partial<LoginState> {
   return response.two_factor_required ? { showQR: true } : { enterQR: true };
 }
 
-function useLogin(props: {
-  dispatch: StateDispatch<LoginState>;
-  state: LoginState;
-  setLastUsedMethod: (method: LoginMethod) => void;
-}) {
-  const { dispatch, state, setLastUsedMethod } = props;
+function useLogin(props: { dispatch: StateDispatch<LoginState>; state: LoginState }) {
+  const { dispatch, state } = props;
   const [searchParams] = useSearchParams();
   const urlError = searchParams.get("error");
   const navigate = useNavigate();
@@ -442,7 +425,6 @@ function useLogin(props: {
         console.log(`Login took ${loginTime.toFixed(2)} milliseconds`);
 
       if (isLoggedIn(second)) {
-        setLastUsedMethod("password");
         return loginSuccess(second)
           .then(dispatch)
           .catch((error) => {
@@ -451,7 +433,6 @@ function useLogin(props: {
       }
 
       if (second.status === 202) {
-        setLastUsedMethod("password");
         return dispatch({ ...handle2FAResponse(second), passwordLoading: false });
       }
 
@@ -461,7 +442,7 @@ function useLogin(props: {
         passwordLoading: false,
       });
     },
-    [dispatch, captureError, setLastUsedMethod],
+    [dispatch, captureError],
   );
 
   const handleGoogleSuccess = useCallback(
@@ -478,7 +459,6 @@ function useLogin(props: {
           console.log(`Login took ${loginTime.toFixed(2)} milliseconds`);
 
         if (isLoggedIn(response)) {
-          setLastUsedMethod("google");
           return loginSuccess(response)
             .then(dispatch)
             .catch((error) => {
@@ -487,7 +467,6 @@ function useLogin(props: {
         }
 
         if (response.status === 202) {
-          setLastUsedMethod("google");
           return dispatch({ ...handle2FAResponse(response), oauthLoading: false });
         }
 
@@ -504,7 +483,7 @@ function useLogin(props: {
         });
       }
     },
-    [dispatch, captureError, setLastUsedMethod],
+    [dispatch, captureError],
   );
 
   const handleMicrosoftSuccess = useCallback(
@@ -525,8 +504,6 @@ function useLogin(props: {
           // token refresh relies on it instead of matching the backend email
           // (which comes from Graph `mail` and can differ from the MSAL UPN)
           instance.setActiveAccount(res.account);
-
-          setLastUsedMethod("microsoft");
           return loginSuccess(response)
             .then(dispatch)
             .catch((error) => {
@@ -535,7 +512,6 @@ function useLogin(props: {
         }
 
         if (response.status === 202) {
-          setLastUsedMethod("microsoft");
           return dispatch({ ...handle2FAResponse(response), oauthLoading: false });
         }
 
@@ -552,7 +528,7 @@ function useLogin(props: {
         });
       }
     },
-    [dispatch, captureError, setLastUsedMethod],
+    [dispatch, captureError],
   );
 
   const handleOktaSuccess = useCallback(
@@ -579,8 +555,6 @@ function useLogin(props: {
           // Kept in page memory for the backends the deployment forwards it to
           if (sendOktaIdToken) setIdpTokens({ oktaIdToken: idToken });
           rememberSignInProvider("okta");
-
-          setLastUsedMethod("okta");
           return loginSuccess(response)
             .then(dispatch)
             .catch((error) => {
@@ -589,7 +563,6 @@ function useLogin(props: {
         }
 
         if (response.status === 202) {
-          setLastUsedMethod("okta");
           return dispatch({ ...handle2FAResponse(response), oauthLoading: false });
         }
 
@@ -606,7 +579,7 @@ function useLogin(props: {
         });
       }
     },
-    [dispatch, captureError, setLastUsedMethod],
+    [dispatch, captureError],
   );
 
   return {
@@ -619,29 +592,6 @@ function useLogin(props: {
     handleMicrosoftSuccess,
     handleOktaSuccess,
   };
-}
-
-export function LastUsedMethod() {
-  return (
-    <div className="absolute -right-20 top-1/2 -translate-y-1/2 flex items-center justify-center">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="8"
-        height="16"
-        viewBox="0 0 8 16"
-        fill="none"
-        className="absolute -left-2 text-dark-500"
-      >
-        <path
-          fillRule="evenodd"
-          clipRule="evenodd"
-          d="M1.41421 9.41421C0.633164 8.63316 0.633165 7.36684 1.41421 6.58579L8 0V16L1.41421 9.41421Z"
-          fill="currentColor"
-        />
-      </svg>
-      <span className="bg-dark-500 text-white text-xs px-2 py-1">Last Used</span>
-    </div>
-  );
 }
 
 export async function loginSuccess(data: LoginResponse) {

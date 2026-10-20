@@ -47,13 +47,11 @@ describe("removeRetiredBrowserSecrets", () => {
   it("leaves what the web app still keeps", () => {
     localStorage.setItem("theme", "dark");
     localStorage.setItem("theme-storage", JSON.stringify({ state: { theme: "dark" } }));
-    localStorage.setItem("lastUsedLoginMethod", '"password"');
 
     removeRetiredBrowserSecrets();
 
     expect(localStorage.getItem("theme")).toBe("dark");
     expect(localStorage.getItem("theme-storage")).not.toBeNull();
-    expect(localStorage.getItem("lastUsedLoginMethod")).toBe('"password"');
   });
 
   it("expires the cookie that held the MSAL cache's key", () => {
