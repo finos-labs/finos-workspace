@@ -504,6 +504,37 @@ class TestLeavingTheOrganization:
         members = (await admin_client.get(f"/admin/role/{role_uuid}")).json()["users"]
         assert user.email not in members
 
+    @pytest.mark.asyncio
+    async def test_a_removed_user_is_signed_out_and_signs_in_no_more(
+        self, organization, app_client, admin_client, db_session
+    ):
+        user = await organization.add_user(password=PASSWORD)
+        response = await app_client.post("/app/login", json=_login(user.email))
+        assert response.status_code == 200, response.text
+        assert (await app_client.get("/app/user")).status_code == 200
+
+        response = await admin_client.delete(f"/admin/users/{user.uuid}/remove")
+        assert response.status_code == 200, response.text
+
+        # Every session of theirs ended at once
+        assert (await app_client.get("/app/user")).status_code == 401
+        sessions = (
+            await db_session.execute(
+                select(models.Session.uuid).where(models.Session.user_uuid == user.uuid)
+            )
+        ).scalars()
+        assert list(sessions) == []
+
+        # They are no user any more: the right password signs nobody in, and puts them nowhere
+        response = await app_client.post("/app/login", json=_login(user.email))
+        assert response.status_code == 401
+        permissions = (
+            await db_session.execute(
+                select(models.User.permissions_uuid).where(models.User.uuid == user.uuid)
+            )
+        ).scalar_one()
+        assert permissions is None
+
 
 class TestRoleAudit:
     def test_a_new_role_is_recorded_with_its_settings(self):

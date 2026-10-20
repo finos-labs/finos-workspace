@@ -759,7 +759,7 @@ class NotificationSettings(BaseModel):
 class AppSettings(BaseModel):
     INVITE_EXPIRATION: timedelta = timedelta(weeks=52)
     # The first organization's User map, which init writes to user_create.json: an invite
-    # without a user type, a user without a map and a first sign-in with a provider get it
+    # without a user type and a first sign-in with a provider get it
     DEFAULT_USER_MAPPING: UUID | None = None
     APPURL: str
 

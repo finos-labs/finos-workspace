@@ -17,7 +17,12 @@ from routers import app_helpers
 from routers.app import file_storage
 from routers.app.index import process_create_user
 from routers.routers_helpers import register_app_user
-from tests.fixtures.base import _AUTH_USER, _create_session_record, bearer_client
+from tests.fixtures.base import (
+    _AUTH_USER,
+    _DEFAULT_USER_MAP_UUID,
+    _create_session_record,
+    bearer_client,
+)
 
 USER_UUID = UUID(_AUTH_USER["user_uuid"])
 
@@ -348,6 +353,8 @@ async def test_login_payload_carries_flags_not_secrets(app_client, db_session):
         password=password,
         confirmed=True,
         openai_api_key="sk-login-secret",
+        # A User of the default organization: a user in none signs in no more
+        permissions_uuid=_DEFAULT_USER_MAP_UUID,
     )
     db_session.add(user)
     await db_session.commit()

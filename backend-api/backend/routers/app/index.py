@@ -217,11 +217,9 @@ async def login(
     ):
         raise EXCEPTION_401
 
-    # A user without an entity is put into the default one
+    # A user removed from their organization is no user any more: answered as an unknown one
     if not result._asdict().get("permissions_uuid", None):
-        await app_helpers.assign_default_mapping(db, result.uuid)
-        # Re-fetch the user from the database
-        result = (await db.execute(helpers.get_app_user_query(user.email))).first()
+        raise EXCEPTION_401
 
     db_user = schemas.AppUserSchema.model_validate(result)
     app_helpers.check_login(user, db_user)  # Will raise if a problem is encountered

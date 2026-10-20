@@ -455,6 +455,33 @@ class TestSignInWithAProvider:
         assert app_client.cookies.get(auth_helpers.SESSION_COOKIE)
 
     @pytest.mark.asyncio
+    async def test_a_user_removed_from_their_organization_does_not_sign_in(
+        self, organization, app_client, admin_client, db_session, monkeypatch
+    ):
+        user = await organization.add_user()
+        response = await admin_client.delete(f"/admin/users/{user.uuid}/remove")
+        assert response.status_code == 200, response.text
+
+        async def identity(token):
+            return SignInIdentity(email=user.email, email_verified=True)
+
+        monkeypatch.setattr(sign_in_providers, "google_identity", identity)
+        response = await app_client.post(
+            "/app/google-auth", json={"token": "google-access-token", "version": "v1"}
+        )
+        assert response.status_code == 401
+        assert auth_helpers.SESSION_COOKIE not in app_client.cookies
+        # No new account under the address, and the user is put nowhere
+        accounts = (
+            await db_session.execute(
+                select(models.User.uuid, models.User.permissions_uuid).where(
+                    models.User.email == user.email
+                )
+            )
+        ).all()
+        assert [tuple(account) for account in accounts] == [(user.uuid, None)]
+
+    @pytest.mark.asyncio
     async def test_a_provider_sign_in_needs_the_web_apps_header(self, client, monkeypatch):
         async def identity(token):
             raise AssertionError("the provider is not asked")

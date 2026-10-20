@@ -549,21 +549,6 @@ async def _create_usage(user: models.User, db: AsyncSession) -> schemas.UsageGet
     return schemas.UsageGet.model_validate(user_usage)
 
 
-async def assign_default_mapping(db: AsyncSession, user_uuid: UUID):
-    """Puts a user that has no permissions mapping into the default one: the first
-    organization's User map. Without one (no user_create.json) the user stays as they are."""
-    if settings.DEFAULT_USER_MAPPING is None:
-        return
-    update_query = (
-        update(models.User)
-        .where(models.User.uuid == user_uuid)
-        .values(permissions_uuid=settings.DEFAULT_USER_MAPPING)
-    )
-    await db.execute(update_query)
-    await db.commit()
-    await left_organization(db, user_uuid)
-
-
 async def get_widget_metadata(
     db: AsyncSession,
     user: models.User,

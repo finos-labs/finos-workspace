@@ -259,7 +259,8 @@ async def remove_from_entity(
     db: AsyncSession, user_uuid: UUID, maps: list[UUID] | None = None
 ) -> None:
     """The user leaves their entity, of the given maps only when `maps` is given: their
-    shares and the dashboards' entity go with it, and they leave its roles."""
+    shares and the dashboards' entity go with it, and they leave its roles. They are no
+    user any more: every session of theirs ends, and they cannot sign in."""
     query = update(User).where(User.uuid == user_uuid).values(permissions_uuid=None)
     if maps is not None:
         query = query.where(User.permissions_uuid.in_(maps))
@@ -269,6 +270,7 @@ async def remove_from_entity(
 
     await crud.remove_shares_both_ways(db, user_uuid)
     await crud.update_user_dashboards_new_entity(db, user_uuid)
+    await db.execute(delete(models.Session).where(models.Session.user_uuid == user_uuid))
     await db.commit()
     await app_helpers.left_organization(db, user_uuid)
 

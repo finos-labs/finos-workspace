@@ -25,6 +25,7 @@ if BACKEND_DIR not in sys.path:
 
 import pytest
 
+from tests.fixtures.base import _DEFAULT_USER_MAP_UUID
 from tests.fixtures.utils import skip
 from uuid import uuid4
 from sqlalchemy import delete
@@ -116,19 +117,20 @@ class TestAppLogin:
         """Login with valid credentials should return 200 and set the session cookie,
         with no token in the body
 
-        A user without an organization is put into the default one, as a User.
+        The user is a User of an organization: the default one.
         """
         test_password = "TestPassword123!"
         test_user_uuid = str(uuid4())
         test_email = f"login_test_{uuid4().hex[:8]}@example.com"
 
-        # Create confirmed test user (without entity association)
+        # Create confirmed test user, a User of the default organization
         test_user = User(
             uuid=test_user_uuid,
             email=test_email,
             clean_email=test_email.lower(),
             password=test_password,
             confirmed=True,
+            permissions_uuid=_DEFAULT_USER_MAP_UUID,
         )
         db_session.add(test_user)
         await db_session.commit()
@@ -147,12 +149,34 @@ class TestAppLogin:
             await cleanup_test_user(db_session, user_uuid=test_user_uuid)
 
     @pytest.mark.asyncio
-    async def test_login_unconfirmed_user(self, app_client, db_session):
-        """Login for unconfirmed user should return 403 (or 404 if no entity)
+    async def test_login_without_an_organization(self, app_client, db_session):
+        """A user in no organization (removed from theirs) is no user: the right password
+        is answered as an unknown account is, and no session starts."""
+        test_password = "TestPassword123!"
+        test_user_uuid = str(uuid4())
+        test_email = f"login_test_{uuid4().hex[:8]}@example.com"
+        db_session.add(
+            User(
+                uuid=test_user_uuid,
+                email=test_email,
+                clean_email=test_email.lower(),
+                password=test_password,
+                confirmed=True,
+            )
+        )
+        await db_session.commit()
 
-        Note: /app/login may return 404 if user lacks entity association.
-        The 403 check only applies when entity setup is complete.
-        """
+        try:
+            response = await app_client.post("/app/login", json=WorkspacePayloads.login(test_email, test_password))
+
+            assert response.status_code == 401
+            assert not app_client.cookies.get(SESSION_COOKIE)
+        finally:
+            await cleanup_test_user(db_session, user_uuid=test_user_uuid)
+
+    @pytest.mark.asyncio
+    async def test_login_unconfirmed_user(self, app_client, db_session):
+        """Login for an unconfirmed user of an organization returns 403"""
         test_password = "TestPassword123!"
         test_user_uuid = str(uuid4())
         test_email = f"unconfirmed_{uuid4().hex[:8]}@example.com"
@@ -163,14 +187,14 @@ class TestAppLogin:
             clean_email=test_email.lower(),
             password=test_password,
             confirmed=False,
+            permissions_uuid=_DEFAULT_USER_MAP_UUID,
         )
         db_session.add(test_user)
         await db_session.commit()
 
         try:
             response = await app_client.post("/app/login", json=WorkspacePayloads.login(test_email, test_password))
-            # 403 for unconfirmed user, 404 if entity association missing
-            assert response.status_code in {403, 404}
+            assert response.status_code == 403
         finally:
             await cleanup_test_user(db_session, user_uuid=test_user_uuid)
 
@@ -292,6 +316,7 @@ class TestPasswordChange:
             clean_email=test_email.lower(),
             password=test_password,
             confirmed=True,
+            permissions_uuid=_DEFAULT_USER_MAP_UUID,
         )
         db_session.add(test_user)
         await db_session.commit()
@@ -367,6 +392,7 @@ class TestTwoFactorAuth:
             clean_email=test_email.lower(),
             password=test_password,
             confirmed=True,
+            permissions_uuid=_DEFAULT_USER_MAP_UUID,
         )
         db_session.add(test_user)
         await db_session.commit()
@@ -421,6 +447,7 @@ class TestUserDeletion:
             clean_email=test_email.lower(),
             password=test_password,
             confirmed=True,
+            permissions_uuid=_DEFAULT_USER_MAP_UUID,
         )
         db_session.add(test_user)
         await db_session.commit()
