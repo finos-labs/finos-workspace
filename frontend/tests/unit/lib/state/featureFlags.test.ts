@@ -17,7 +17,6 @@ const createMockFeatureFlags = (
   bundle_name: null,
   data_add_ons_redistribution: true,
   data_bundle_info: null,
-  excel_add_in: true,
   number_copilot_calls_day: 100,
   number_copilot_tokens_day: null,
   share_widgets: "private",
@@ -42,7 +41,6 @@ const createMockDataBundle = (overrides: Partial<DataBundle> = {}): DataBundle =
   except_widgets: null,
   except_dashboard_templates: null,
   except_team_collaboration: null,
-  excel_add_in: true,
   data_export: true,
   providers: null,
   dashboards_at_launch: null,
@@ -408,7 +406,6 @@ describe("useFeatureFlagsStore", () => {
         bring_your_own_copilot: false,
         bring_your_own_data: false,
         data_add_ons_redistribution: false,
-        excel_add_in: false,
         support: false,
       });
       useFeatureFlagsStore.setState({ featureFlags: flags });
@@ -426,7 +423,6 @@ describe("useFeatureFlagsStore", () => {
         bring_your_own_copilot: true,
         bring_your_own_data: true,
         data_add_ons_redistribution: true,
-        excel_add_in: true,
         support: true,
         share_widgets: "public",
       });
@@ -457,7 +453,6 @@ describe("useFeatureFlagsStore", () => {
       const dataBundle = createMockDataBundle({
         bundle_name: "Equity Research",
         except_widgets: ["widget_a", "widget_d"],
-        excel_add_in: true,
         data_export: true,
       });
       const flags = createMockFeatureFlags({ data_bundle_info: dataBundle });

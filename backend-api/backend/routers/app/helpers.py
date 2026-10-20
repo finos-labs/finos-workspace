@@ -29,7 +29,6 @@ ON_PREM_DATA_BUNDLE = schemas.DataBundle(
     except_widgets=[],
     except_dashboard_templates=[],
     except_team_collaboration=None,
-    excel_add_in=1,
     data_export=1,
     providers=None,
     dashboards_at_launch=[],
@@ -341,7 +340,6 @@ async def insert_entitlement(db: AsyncSession, user_uuid: UUID, tier: TierType):
         bring_your_own_copilot=tier_defaults.bring_your_own_copilot,
         admin_access=tier_defaults.admin_access,
         support=tier_defaults.support,
-        excel_add_in=tier_defaults.excel_add_in,
         data_add_ons_redistribution=tier_defaults.data_add_ons_redistribution,
         search_web=tier_defaults.search_web,
         fetch_from_web=tier_defaults.fetch_from_web,
@@ -370,7 +368,6 @@ async def update_entitlement(db: AsyncSession, user_uuid: UUID, tier: TierType):
             bring_your_own_copilot=tier_defaults.bring_your_own_copilot,
             admin_access=tier_defaults.admin_access,
             support=tier_defaults.support,
-            excel_add_in=tier_defaults.excel_add_in,
             data_add_ons_redistribution=tier_defaults.data_add_ons_redistribution,
             search_web=tier_defaults.search_web,
             fetch_from_web=tier_defaults.fetch_from_web,
@@ -447,7 +444,6 @@ async def get_entitlement(db: AsyncSession, user_uuid: UUID):
             models.Entitlement.bring_your_own_copilot,
             models.Entitlement.admin_access,
             models.Entitlement.support,
-            models.Entitlement.excel_add_in,
             models.Entitlement.data_add_ons_redistribution,
             models.Entitlement.data_bundle_uuid,
             models.Entitlement.allow_custom_backends,
@@ -458,7 +454,6 @@ async def get_entitlement(db: AsyncSession, user_uuid: UUID):
             models.DataBundle.except_widgets,
             models.DataBundle.except_dashboard_templates,
             models.DataBundle.except_team_collaboration,
-            models.DataBundle.excel_add_in.label("data_bundle_excel_add_in"),
             models.DataBundle.data_export,
             models.DataBundle.providers,
             models.DataBundle.dashboards_at_launch,
@@ -494,7 +489,6 @@ async def get_entitlement(db: AsyncSession, user_uuid: UUID):
             "except_widgets",
             "except_dashboard_templates",
             "except_team_collaboration",
-            "data_bundle_excel_add_in",
             "data_export",
             "providers",
             "dashboards_at_launch",
@@ -505,9 +499,6 @@ async def get_entitlement(db: AsyncSession, user_uuid: UUID):
         ]
         if k in entitlement_dict
     }
-    data_bundle_dict["excel_add_in"] = data_bundle_dict.pop(
-        "data_bundle_excel_add_in", None
-    )
     data_bundle_dict["number_copilot_calls_day"] = data_bundle_dict.pop(
         "data_bundle_number_copilot_calls_day", None
     )
@@ -566,7 +557,6 @@ async def insert_entity_entitlement(
         bring_your_own_copilot=tier_defaults.bring_your_own_copilot,
         admin_access=tier_defaults.admin_access,
         support=tier_defaults.support,
-        excel_add_in=tier_defaults.excel_add_in,
         data_add_ons_redistribution=tier_defaults.data_add_ons_redistribution,
         search_web=tier_defaults.search_web,
         fetch_from_web=tier_defaults.fetch_from_web,
@@ -590,7 +580,6 @@ async def insert_entity_data_bundle(
             except_widgets=data_bundle.except_widgets,
             except_dashboard_templates=data_bundle.except_dashboard_templates,
             except_team_collaboration=data_bundle.except_team_collaboration,
-            excel_add_in=data_bundle.excel_add_in,
             data_export=data_bundle.data_export,
             providers=data_bundle.providers,
             dashboards_at_launch=data_bundle.dashboards_at_launch,
@@ -609,7 +598,6 @@ async def insert_entity_data_bundle(
         .values(
             number_copilot_calls_day=data_bundle.number_copilot_calls_day,
             total_file_upload_size_gb=data_bundle.total_file_upload_size_gb,
-            excel_add_in=data_bundle.excel_add_in,
             data_bundle_uuid=data_bundle_uuid,
             allow_custom_backends=data_bundle.allow_custom_backends,
         )
@@ -640,7 +628,6 @@ async def get_entity_entitlement(db: AsyncSession, entity_uuid: UUID):
             models.EntityEntitlement.bring_your_own_copilot,
             models.EntityEntitlement.admin_access,
             models.EntityEntitlement.support,
-            models.EntityEntitlement.excel_add_in,
             models.EntityEntitlement.data_add_ons_redistribution,
             models.EntityEntitlement.data_bundle_uuid,
             models.EntityEntitlement.allow_custom_backends,
@@ -651,7 +638,6 @@ async def get_entity_entitlement(db: AsyncSession, entity_uuid: UUID):
             models.DataBundle.except_widgets,
             models.DataBundle.except_dashboard_templates,
             models.DataBundle.except_team_collaboration,
-            models.DataBundle.excel_add_in.label("data_bundle_excel_add_in"),
             models.DataBundle.data_export,
             models.DataBundle.providers,
             models.DataBundle.dashboards_at_launch,
@@ -688,7 +674,6 @@ async def get_entity_entitlement(db: AsyncSession, entity_uuid: UUID):
             "except_widgets",
             "except_dashboard_templates",
             "except_team_collaboration",
-            "data_bundle_excel_add_in",
             "data_export",
             "providers",
             "dashboards_at_launch",
@@ -699,9 +684,6 @@ async def get_entity_entitlement(db: AsyncSession, entity_uuid: UUID):
         ]
         if k in entitlement_dict
     }
-    data_bundle_dict["excel_add_in"] = data_bundle_dict.pop(
-        "data_bundle_excel_add_in", None
-    )
     data_bundle_dict["number_copilot_calls_day"] = data_bundle_dict.pop(
         "data_bundle_number_copilot_calls_day", None
     )
@@ -754,7 +736,6 @@ async def update_user_entitlement_with_entity_entitlement(
         bring_your_own_copilot=entity_entitlements.bring_your_own_copilot,
         admin_access=entity_entitlements.admin_access,
         support=entity_entitlements.support,
-        excel_add_in=entity_entitlements.excel_add_in,
         data_add_ons_redistribution=entity_entitlements.data_add_ons_redistribution,
         data_bundle_uuid=entity_entitlements.data_bundle_uuid,
         allow_custom_backends=entity_entitlements.allow_custom_backends,

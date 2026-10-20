@@ -37,8 +37,6 @@ export function DashboardPopup(props: DashboardPopupProps) {
     toggleExportPopup,
     setRenamePopup,
     setShareDashboardPopupId,
-    setExcelExportPopup,
-    setExcelExportItem,
     setExportTemplatePopup,
     setGroupingVisible,
     setGenerateAppDashboardId,
@@ -47,8 +45,6 @@ export function DashboardPopup(props: DashboardPopupProps) {
     toggleExportPopup: s.toggleExportPopup,
     setRenamePopup: s.setRenamePopup,
     setShareDashboardPopupId: s.setShareDashboardPopupId,
-    setExcelExportPopup: s.setExcelExportPopup,
-    setExcelExportItem: s.setExcelExportItem,
     setExportTemplatePopup: s.setExportTemplatePopup,
     setGroupingVisible: s.setGroupingVisible,
     setGenerateAppDashboardId: s.setGenerateAppDashboardId,
@@ -136,21 +132,6 @@ export function DashboardPopup(props: DashboardPopupProps) {
         action: toggleExportPopup,
         locked: !isFullTier,
       },
-      ...(import.meta.env.VITE_EXCEL_ADD_IN_ENABLED === "true"
-        ? [
-            {
-              shortcut: "e",
-              label: "Export to Excel",
-              action: () => {
-                setExcelExportItem(item);
-                setExcelExportPopup(true);
-              },
-              locked: !isFullTier,
-              disabled: !hasAdvancedBackendWidgets,
-              disabledTooltip: "No Excel-compatible widgets found in this dashboard",
-            },
-          ]
-        : []),
       {
         shortcut: "t",
         label: "Export apps.json",
@@ -181,8 +162,6 @@ export function DashboardPopup(props: DashboardPopupProps) {
       item,
       moveTabToFolder,
       navigate,
-      setExcelExportItem,
-      setExcelExportPopup,
       setGenerateAppDashboardId,
       setGroupingVisible,
       setRenamePopup,

@@ -16,7 +16,6 @@ feature_entitlements: {
     "bring_your_own_copilot": true,
     "admin_access": true,
     "support": true,
-    "excel_add_in": true,
     "data_add_ons_redistribution": true,
     "bundle_name": null,
     "data_bundle_info": null
@@ -30,7 +29,6 @@ export type FeatureFlags = {
   bundle_name: string | null;
   data_add_ons_redistribution: boolean;
   data_bundle_info: DataBundle | null;
-  excel_add_in: boolean;
   number_copilot_calls_day: number;
   number_copilot_tokens_day: number | null; // null: no token limit
   share_widgets: "private" | "public";
@@ -52,7 +50,6 @@ export type DataBundle = {
   except_widgets: string[] | null;
   except_dashboard_templates: string[] | null;
   except_team_collaboration: ("pdf_reports" | "sharing")[] | null;
-  excel_add_in: boolean;
   data_export: boolean;
   providers: string[] | null;
   dashboards_at_launch: string[] | null;

@@ -449,7 +449,6 @@ async def get_entitlement(
             models.Entitlement.bring_your_own_copilot,
             models.Entitlement.admin_access,
             models.Entitlement.support,
-            models.Entitlement.excel_add_in,
             models.Entitlement.data_add_ons_redistribution,
             models.Entitlement.allow_custom_backends,
             models.Entitlement.search_web,

@@ -368,7 +368,6 @@ class TestSync:
                 bring_your_own_copilot=False,
                 admin_access=False,
                 support=False,
-                excel_add_in=False,
                 data_add_ons_redistribution=False,
             )
         )
@@ -484,7 +483,6 @@ async def _entitle(db_session, **flags) -> None:
             bring_your_own_copilot=False,
             admin_access=False,
             support=False,
-            excel_add_in=False,
             data_add_ons_redistribution=False,
             **flags,
         )
@@ -710,7 +708,6 @@ class TestWebToolsOfTheCopilot:
             bring_your_own_copilot=False,
             admin_access=False,
             support=False,
-            excel_add_in=False,
             data_add_ons_redistribution=False,
             search_web=False,
         )
@@ -762,7 +759,6 @@ class TestWebToolsOfAnEntity:
                 bring_your_own_copilot=False,
                 admin_access=False,
                 support=False,
-                excel_add_in=False,
                 data_add_ons_redistribution=False,
             )
         )
