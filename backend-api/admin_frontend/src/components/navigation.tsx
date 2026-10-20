@@ -39,20 +39,26 @@ export default function Navigation(): JSX.Element {
   return (
     <nav aria-label="Admin" className="sticky top-0 z-20 border-b border-surface-divider bg-surface-header/95 backdrop-blur">
       <div className="ws-page-container py-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <img src="/logo.svg" alt="" className="h-6 w-auto" />
-            <span className="text-sm font-semibold text-ds-text-heading">
-              Admin Dashboard
-            </span>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <img
+              src="/logo-horizontal.svg"
+              alt="FINOS Workspace"
+              className="h-6 w-auto shrink-0 dark:hidden"
+            />
+            <img
+              src="/logo-horizontal-white.svg"
+              alt="FINOS Workspace"
+              className="hidden h-6 w-auto shrink-0 dark:block"
+            />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <Tab name="Manage Entities" url="/manageEntities" />
             <Tab name="Docs" url="/docs" />
+            <button type="button" className="ws-btn" onClick={handleLogout}>
+              Logout
+            </button>
           </div>
-          <button type="button" className="ws-btn" onClick={handleLogout}>
-            Logout
-          </button>
         </div>
       </div>
     </nav>

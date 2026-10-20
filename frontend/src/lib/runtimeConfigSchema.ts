@@ -101,8 +101,8 @@ export const RuntimeConfigSchema = z.object({
   whiteLabel: z.object({
     name: z.string().default("Workspace"),
     shortName: z.string().default("Workspace"),
-    loginImage: z.string().default("/assets/images/logo.svg"),
-    loginImageDark: z.string().default("/assets/images/logo-white.svg"),
+    loginImage: z.string().default("/assets/images/logo-horizontal-color.svg"),
+    loginImageDark: z.string().default("/assets/images/logo-horizontal-white.svg"),
     leftSidebarLogo: z.string().default(""),
     leftSidebarLogoDark: z.string().default(""),
     favicon: z.string().default("/logo.svg"),

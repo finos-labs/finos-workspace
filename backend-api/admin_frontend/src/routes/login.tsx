@@ -38,7 +38,16 @@ export default function Login(): JSX.Element {
       <div className="ws-page-container flex justify-center pt-16">
         <div className="w-full max-w-2xl">
           <div className="mb-4">
-            <img src="/logo.svg" alt="" className="mb-4 h-10 w-auto" />
+            <img
+              src="/logo-horizontal.svg"
+              alt="FINOS Workspace"
+              className="mb-4 block h-auto w-auto max-w-[200px] dark:hidden"
+            />
+            <img
+              src="/logo-horizontal-white.svg"
+              alt="FINOS Workspace"
+              className="mb-4 hidden h-auto w-auto max-w-[200px] dark:block"
+            />
             <h1 className="ws-admin-title">Admin Sign In</h1>
             <p className="ws-admin-subtitle">
               Use your admin credentials to manage entities, users, and entitlements.
