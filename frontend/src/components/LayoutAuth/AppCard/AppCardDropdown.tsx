@@ -1,6 +1,5 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { useState } from "react";
-import FeatureLock from "~/components/General/FeatureLock";
 import Icon from "~/components/Icon";
 import type { AppCardDropdownItem } from "./types";
 
@@ -25,21 +24,19 @@ export function AppCardDropdown({ items }: { items: AppCardDropdownItem[] }) {
           onClick={(e) => e.stopPropagation()}
         >
           {items.map((item) => (
-            <FeatureLock key={item.label} isLocked={!!item.locked}>
-              <DropdownMenuPrimitive.Item
-                className="ws-dropdown-item"
-                disabled={item.disabled}
-                onSelect={() => {
-                  if (item.locked) return;
-                  item.onClick();
-                  setOpen(false);
-                }}
-              >
-                <span style={item.color ? { color: item.color } : undefined}>
-                  {item.label}
-                </span>
-              </DropdownMenuPrimitive.Item>
-            </FeatureLock>
+            <DropdownMenuPrimitive.Item
+              key={item.label}
+              className="ws-dropdown-item"
+              disabled={item.disabled}
+              onSelect={() => {
+                item.onClick();
+                setOpen(false);
+              }}
+            >
+              <span style={item.color ? { color: item.color } : undefined}>
+                {item.label}
+              </span>
+            </DropdownMenuPrimitive.Item>
           ))}
         </DropdownMenuPrimitive.Content>
       </DropdownMenuPrimitive.Portal>

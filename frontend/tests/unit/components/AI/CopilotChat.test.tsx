@@ -4,6 +4,7 @@ import { CopilotChat as CopilotChatComp } from "~/components/AI/CopilotChat";
 import { MobileProvider } from "~/lib/providers/MobileProvider";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useThemeStore } from "~/lib/state/theme";
+import { setAccess } from "../../factories";
 
 vi.mock("~/lib/state/copilot", () => ({
   useShallowCopilotStore: vi.fn(),
@@ -99,6 +100,7 @@ describe("CopilotChat", () => {
     (useThemeStore.getState as Mock).mockReturnValue({
       setShowAddAgentsDialog: mockSetShowAddAgentsDialog,
     });
+    setAccess({ user_type: "Developer" });
   });
 
   describe("when copilot is selected", () => {
@@ -196,6 +198,16 @@ describe("CopilotChat", () => {
       fireEvent.click(addButton);
 
       expect(mockSetShowAddAgentsDialog).toHaveBeenCalledWith(true);
+    });
+
+    it("does not offer Add Agent to a User, who cannot add connections", () => {
+      setAccess({ user_type: "User" });
+      render(<CopilotChat />);
+
+      expect(screen.getByText("No agent selected")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /add agent/i }),
+      ).not.toBeInTheDocument();
     });
 
     it("does not render main chat components", () => {

@@ -1,14 +1,21 @@
 import { Button } from "~/components/ds/atoms/Button";
+import { useShallowThemeStore } from "~/lib/state/theme";
 
 export default function Setup2FA() {
+  const theme = useShallowThemeStore((state) => state.theme);
+
   return (
     <div className="mt-20 flex items-center justify-center">
       <div className="w-min">
         <div className="flex justify-center">
           <img
-            src="/assets/images/logo.svg"
+            src={
+              theme === "dark"
+                ? "/assets/images/logo-horizontal-white.svg"
+                : "/assets/images/logo-horizontal-color.svg"
+            }
             alt="Workspace"
-            className="border-none shadow-none"
+            className="mx-auto h-auto w-[280px] max-w-full border-none shadow-none"
           />
         </div>
         <h2 className="mt-12 text-center capitalize subtitle-lg-bold sm:whitespace-nowrap">

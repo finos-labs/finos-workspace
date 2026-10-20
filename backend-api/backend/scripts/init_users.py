@@ -1,35 +1,57 @@
+"""Create the organizations and administrators that ``scripts/cfgs/*.toml`` name.
+
+    python -m scripts.init_users                         # what the configs name; safe to rerun
+    python -m scripts.init_users --new-password <email>  # set an administrator's password
+
+A config names an administrator by address only. A new account has no password that anyone
+knows; ``--new-password`` sets one, for a new administrator or one who lost theirs. It reads
+the password from the terminal without echoing it, or the first line of standard input when
+that is not a terminal, so no password is ever printed, logged or kept in a file. Every
+session of the account ends.
+"""
+
+import argparse
+import asyncio
+import getpass
 import json
+import sys
 import tomllib
-from collections.abc import Callable, Coroutine
 from contextlib import suppress
-from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
 from uuid import UUID
 
-from fastapi import BackgroundTasks
 from fastapi.encoders import jsonable_encoder
 from loguru import logger
-from pydantic import BaseModel, Field, SecretStr, field_validator
-from sqlalchemy import insert, select, update
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api import base, schemas
 from api.base import clean_email
-from api.helpers import create_developer_mapping
-from api.models import Entity, EntityType, PermissionsEntityMap, User
-from routers.app.helpers import insert_entity_data_bundle
+from api.database import aget_write_db
+from api.models import (
+    ADMIN_TYPE,
+    USER_TYPE,
+    Entity,
+    PermissionsEntityMap,
+    Session,
+    User,
+)
+from routers import administration, app_helpers
 from routers.app.index import process_create_user, register_app_user
-from routers.entity import add_entity, aget_write_db
-
-type MaybCoro[T] = Coroutine[Any, Any, T] | T
-
 
 CONFIG_PATH = Path(__file__).parent / "cfgs"
 
 BACKEND_DIR = Path(__file__).parent.parent
 USER_CREATE_JSON_PATH = BACKEND_DIR / "user_create.json"
 USER_CREATE_JSON_PATH.touch(exist_ok=True)
+
+
+def show(text: str) -> None:
+    """Prints a line for the person running the script: on their terminal, or once in the
+    log of the container that ran it. Never through the logger, which may ship lines on."""
+    sys.stdout.write(f"{text}\n")
+    sys.stdout.flush()
 
 
 class UserConfig(BaseModel):
@@ -39,17 +61,11 @@ class UserConfig(BaseModel):
 
 
 class AdminUser(UserConfig):
-    password: SecretStr
     uuid: UUID | None = None
 
 
 class EntityConfig(BaseModel):
     name: str
-    seats: int
-    aum: int
-    company_type: str
-    organization_size: str
-    country: str
 
 
 class Config(BaseModel):
@@ -64,52 +80,18 @@ class Config(BaseModel):
         return [user for user in v if user.get("email")]
 
 
-async def call_func[**P, T](
-    func: Callable[P, MaybCoro[T]], *args: P.args, **kwargs: P.kwargs
-) -> T:
-    """Unwraps a function to ignore decorators."""
-
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-
-    return await func(*args, **kwargs)
-
-
-DEFAULT_DATA_BUNDLE = schemas.DataBundle(
-    bundle_name="On-Premise",
-    except_widgets=[],
-    except_dashboard_templates=[],
-    except_team_collaboration=None,
-    data_export=1,
-    providers=None,
-    dashboards_at_launch=[],
-    my_dashboards=[],
-    invite_your_colleagues=0,
-    number_copilot_calls_day=10_000,
-    total_file_upload_size_gb=10,
-)
-
-
 class SetupConfig:
     db: AsyncSession
     config: Config
     admin_user: type[User] | None
-    code: str
 
     def __init__(self, config: Config, db: AsyncSession):
         self.db = db
         self.config = config
         self.admin_user: type[User] | None = None
-        self.code = config.entity.name[:3].upper()
 
-    async def add_entity(self, entity: schemas.EntityPost):
-        return await call_func(
-            add_entity,
-            request=None,
-            entity=entity,
-            background_tasks=BackgroundTasks(),
-            db=self.db,
-        )
+    async def add_entity(self, entity: schemas.EntityPost) -> schemas.AddEntityReturn:
+        return await administration.create_entity(self.db, entity)
 
     async def create_user(self, the_uuid: UUID, email: str) -> UUID | bool:
         return await process_create_user(the_uuid, email, self.db)
@@ -122,12 +104,16 @@ class SetupConfig:
         self.admin_user = admin_users[0]
 
     async def create_admin(self, admin_user: AdminUser, permissions_uuid: UUID) -> User:
+        """The administrator the config names. A new account gets a random password that
+        nobody sees, until ``--new-password`` sets theirs, and the organization's default
+        roles; an account that exists keeps its password and its roles."""
         logger.info(f"Checking for admin: {admin_user.email}")
         query = select(User).where(User.email == admin_user.email)
         result = await self.db.execute(query)
 
         if (user := result.scalars().first()) is None:
             logger.info(f"Creating admin: {admin_user.email} with is_superuser=1")
+            password = base.random_password()
             query = insert(User).values(
                 email=admin_user.email,
                 first_name=admin_user.first_name,
@@ -136,32 +122,31 @@ class SetupConfig:
                 clean_email=clean_email(admin_user.email),
                 permissions_uuid=permissions_uuid,
                 is_superuser=1,
-                password=admin_user.password.get_secret_value(),
-                billing_active=1,
+                password=password,
             )
             result = await self.db.execute(query)
+            await app_helpers.give_default_roles(
+                self.db,
+                result.inserted_primary_key[0],
+                permissions_uuid,
+                [app_helpers.AGENT_USER_ROLE, app_helpers.SHARER_ROLE],
+            )
             await self.db.commit()
+            show(
+                f"The administrator {admin_user.email} was created. Set their password with: "
+                f"python -m scripts.init_users --new-password {admin_user.email}"
+            )
 
             return await self.create_admin(admin_user, permissions_uuid)
 
-        password_ok = False
-        if user.password:
-            with suppress(Exception):
-                password_ok = base.verify_password(
-                    admin_user.password.get_secret_value(), user.password
-                )
-        if not user.is_superuser or not password_ok:
+        if not (user.is_superuser and user.confirmed):
             logger.info(
                 f"Updating admin: {admin_user.email} (is_superuser={user.is_superuser})"
             )
             stmt = (
                 update(User)
                 .where(User.uuid == user.uuid)
-                .values(
-                    is_superuser=1,
-                    confirmed=1,
-                    password=admin_user.password.get_secret_value(),
-                )
+                .values(is_superuser=1, confirmed=1)
             )
             await self.db.execute(stmt)
             await self.db.commit()
@@ -174,30 +159,9 @@ class SetupConfig:
         return user
 
     async def create_entity(self):
-        query = select(EntityType.uuid).where(EntityType.code == self.code)
-        result = await self.db.execute(query)
-
-        main_admin = self.config.admins[0]
-
-        if (entity_type_uuid := result.scalars().first()) is None:
-            query = insert(EntityType).values(
-                entity_type="On-Premise",
-                code=self.code,
-                active=True,
-                permission_hierarchy=2,
-            )
-
-            result = await self.db.execute(query)
-            await self.db.commit()
-            entity_type_uuid = result.inserted_primary_key[0]
-
         return await self.add_entity(
             schemas.EntityPost(
-                email=main_admin.email,
-                admin_email=main_admin.email,
-                entity_code=str(entity_type_uuid),
-                expiration_date=datetime.now() + timedelta(days=365 * 50),
-                **self.config.entity.model_dump(),
+                name=self.config.entity.name, admin_email=self.config.admins[0].email
             ),
         )
 
@@ -206,9 +170,7 @@ class SetupConfig:
         result = await self.db.execute(query)
 
         if (entity_uuid := result.scalars().first()) is None:
-            entity_data = await self.create_entity()
-            entity_uuid = entity_data["entity_uuid"]
-            await insert_entity_data_bundle(self.db, entity_uuid, DEFAULT_DATA_BUNDLE)
+            entity_uuid = (await self.create_entity()).entity_uuid
 
         query = select(PermissionsEntityMap).where(
             PermissionsEntityMap.entity_uuid == entity_uuid
@@ -220,19 +182,16 @@ class SetupConfig:
         for permission in result.scalars().all():
             permissions_map[permission.name] = permission.uuid
 
-        await self.init_admins(permissions_map["Admin"])
+        await self.init_admins(permissions_map[ADMIN_TYPE])
 
-        user_create = {
-            "on_prem_admin_uuid": permissions_map["Admin"],
-            "permissions_uuid": permissions_map["User"],
-        }
+        user_create = {"permissions_uuid": permissions_map[USER_TYPE]}
         with USER_CREATE_JSON_PATH.open("w", encoding="utf-8", newline="\n") as f:
             f.write(json.dumps(jsonable_encoder(user_create), indent=4))
 
         for user in self.config.users:
             user_create = schemas.UserCreateAppAdmin(
                 email=user.email,
-                permissions_uuid=permissions_map["User"],
+                permissions_uuid=permissions_map[USER_TYPE],
                 first_name=user.first_name,
                 last_name=user.last_name,
             )
@@ -256,15 +215,83 @@ async def setup_configs():
         with file.open("rb") as f:
             configs.append(Config(**tomllib.load(f)))
 
-    with suppress(Exception):
-        await create_developer_mapping()
-
     async for db in aget_write_db():
         for config in configs:
             await SetupConfig(config, db).run()
 
 
-if __name__ == "__main__":
-    import asyncio
+async def get_administrator(db: AsyncSession, email: str) -> User | None:
+    "The administrator with this address, or None."
+    user = (await db.execute(select(User).where(User.email == email))).scalars().first()
+    return user if user is not None and user.is_superuser else None
 
+
+def read_password() -> str:
+    """The new password: typed twice on the terminal without echo, or the first line of
+    standard input when that is not a terminal. Raises ValueError for one that does not
+    pass the password rules."""
+    if sys.stdin.isatty():
+        password = getpass.getpass("New password: ")
+        if getpass.getpass("Repeat the new password: ") != password:
+            raise ValueError("The two passwords differ.")
+    else:
+        password = sys.stdin.readline().rstrip("\r\n")
+    return schemas.check_password(password)
+
+
+async def set_password(db: AsyncSession, user: User, password: str) -> None:
+    "Give the administrator this password and end every session of theirs."
+    await db.execute(
+        update(User)
+        .where(User.uuid == user.uuid)
+        .values(password=password, temporary_password=False)
+    )
+    await db.execute(delete(Session).where(Session.user_uuid == user.uuid))
+    await db.commit()
+
+
+async def change_password(db: AsyncSession, email: str) -> int:
+    """Set the password of the administrator with this address; the exit status."""
+    user = await get_administrator(db, email)
+    if user is None:
+        sys.stderr.write(f"{email} is not an administrator of this Workspace.\n")
+        return 1
+    try:
+        password = read_password()
+    except ValueError as exc:
+        sys.stderr.write(f"{exc}\n")
+        return 2
+    await set_password(db, user, password)
+    show(f"The password of {email} is set. Every session of the account has ended.")
+    return 0
+
+
+async def set_new_password(email: str) -> int:
+    status = 1
+    async for db in aget_write_db():
+        status = await change_password(db, email)
+    return status
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Create the organizations and administrators that scripts/cfgs/*.toml name."
+    )
+    # The option's value is the administrator's address, kept as such: the password itself
+    # is read from the terminal or standard input
+    parser.add_argument(
+        "--new-password",
+        dest="admin_email",
+        metavar="EMAIL",
+        help="Instead, set the password of the administrator EMAIL, read from the terminal "
+        "without echo, or from standard input",
+    )
+    args = parser.parse_args(argv)
+    if args.admin_email:
+        return asyncio.run(set_new_password(args.admin_email))
     asyncio.run(setup_configs())
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

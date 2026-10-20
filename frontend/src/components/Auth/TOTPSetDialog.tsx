@@ -6,10 +6,8 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
-import { generateQRCode } from "~/api/auth.api";
+import { activateTotp, generateQRCode } from "~/api/auth.api";
 import TOTPEnterForm from "~/components/Auth/TOTPEnterForm";
-import { getConfig } from "~/lib/runtimeConfig";
-import { getHeaders } from "~/lib/utils/fetch";
 import { Button } from "../ds/atoms/Button";
 import { BaseDialog } from "../ds/dialogs/BaseDialog";
 import { DialogTitle } from "../ds/dialogs/Dialog";
@@ -19,14 +17,18 @@ export default function TOTPSetDialog({
   setOpen,
   onCancel,
   fromSettings = false,
-  handleSubmit,
+  activate = activateTotp,
 }: {
-  // Access token if this dialog should be shown, undefined to not show the dialog
-  open: null | undefined | string;
-  setOpen: (open: undefined | string) => void;
+  // The calls ride the session cookie, or at sign-in the API's enrollment cookie
+  open: boolean;
+  setOpen: (open: boolean) => void;
   onCancel: () => void;
   fromSettings?: boolean;
-  handleSubmit?: (totp_token: number) => Promise<number>;
+  /**
+   * Turns the authenticator on with a code and answers the HTTP status. The login page
+   * passes its own: there the API starts the session with it, and the code is used up.
+   */
+  activate?: (totp_token: number) => Promise<number>;
 }) {
   const [token, setToken] = useState<{ uri: string; secret: string }>({
     uri: "",
@@ -49,26 +51,12 @@ export default function TOTPSetDialog({
     [setToken, setLoading],
   );
 
-  const activateQRCode = useCallback(
-    async (totp_token: number): Promise<number> => {
-      const response = await fetch(`${getConfig().urls.backend}/totp/activate`, {
-        method: "POST",
-        body: JSON.stringify({ totp_token }),
-        headers: getHeaders(open ?? ""),
-      });
-      if (response.status === 200 && handleSubmit) await handleSubmit?.(totp_token);
-
-      return response.status;
-    },
-    [open, handleSubmit],
-  );
-
   useEffect(() => {
     if (!token.uri && open && fromSettings) onSubmitBegin();
   }, [fromSettings, open]);
 
   return (
-    <BaseDialog open={Boolean(open)} className="[&>.DialogXButton]:hidden">
+    <BaseDialog open={open} className="[&>.DialogXButton]:hidden">
       <DialogTitle>Enter 2FA Code</DialogTitle>
       {token.uri ? (
         <>
@@ -88,8 +76,8 @@ export default function TOTPSetDialog({
           </div>
           <TOTPEnterForm
             onCancel={onCancel}
-            handleClose={() => setOpen(undefined)}
-            handleSubmit={activateQRCode}
+            handleClose={() => setOpen(false)}
+            handleSubmit={activate}
             isActive={false}
           />
         </>

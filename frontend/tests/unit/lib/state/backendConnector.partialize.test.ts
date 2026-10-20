@@ -120,4 +120,37 @@ describe("backendConnector partialize", () => {
     expect(persisted?.apiSources.map((s) => s.id)).toEqual(["ok", "ok2"]);
     expect(persisted?.apiSources.every((s) => s.status === "rehydrated")).toBe(true);
   });
+
+  it("never persists a source's credentials or their copies on its widgets", async () => {
+    const endpointHeaders: Source["endpointHeaders"] = [
+      {
+        key: "Authorization",
+        value: "Bearer data-backend-secret",
+        location: "headers",
+      },
+      { key: "apikey", value: "query-secret", location: "query" },
+    ];
+    useBackendConnectorStore.setState({
+      apiSources: [
+        makeSource({
+          id: "ok",
+          status: "success",
+          endpointHeaders,
+          widgets: partial<WidgetsType>({
+            foo: { name: "Foo Widget", endpointHeaders },
+          }),
+        }),
+      ],
+    });
+
+    const raw = await getStorage(STORAGE_KEY);
+    expect(raw).not.toContain("data-backend-secret");
+    expect(raw).not.toContain("query-secret");
+    const persisted = await readPersisted();
+    expect(persisted?.apiSources[0].widgets).toEqual({ foo: { name: "Foo Widget" } });
+    // The page still has them in memory for the widgets' requests
+    expect(useBackendConnectorStore.getState().apiSources[0].endpointHeaders).toEqual(
+      endpointHeaders,
+    );
+  });
 });

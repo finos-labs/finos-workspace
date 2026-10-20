@@ -158,8 +158,6 @@ frontend/app/styles/app.css
 /public/build
 .env
 package-lock.json
-# The admin panel's image installs from its lockfile (npm ci).
-!/admin_frontend/package-lock.json
 backend/env.dev
 final.csv
 /test-results/

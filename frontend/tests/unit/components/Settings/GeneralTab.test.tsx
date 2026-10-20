@@ -4,16 +4,12 @@ import type React from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { Tabs } from "~/components/ds/molecules/Tabs";
 import GeneralTab from "~/components/Settings/GeneralTab";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
+
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { mockConfig } from "../../../mocks/runtimeConfig";
 
 vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: vi.fn(),
-}));
-
-vi.mock("~/lib/state/featureFlags", () => ({
-  useShallowFeatureFlagsStore: vi.fn(),
 }));
 
 const mockUpdateDisplaySettings = vi.fn();
@@ -23,10 +19,6 @@ const mockUpdateDisplaySettings = vi.fn();
   aiEnhancements: false,
   fontSize: "medium",
   updateDisplaySettings: mockUpdateDisplaySettings,
-});
-
-(useShallowFeatureFlagsStore as Mock).mockReturnValue({
-  featureFlags: { tier: "full" },
 });
 
 describe("GeneralTab Component", () => {

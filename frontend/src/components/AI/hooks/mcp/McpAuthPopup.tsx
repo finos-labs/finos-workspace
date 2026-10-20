@@ -1,90 +1,142 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "~/components/ds/atoms/Button";
 import { BaseDialog } from "~/components/ds/dialogs/BaseDialog";
 import { DialogTitle } from "~/components/ds/dialogs/Dialog";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
 import { useShallowThemeStore, useThemeStore } from "~/lib/state/theme";
 
-// How often to check whether the user closed the auth popup, and how long to
-// wait afterwards before treating it as a cancel (lets a success callback land).
+// How often to check whether the user closed the sign-in window, and how long to wait
+// afterwards before treating it as a cancel (lets a success callback land).
 const POPUP_POLL_MS = 500;
 const CANCEL_GRACE_MS = 1000;
 
-export default function McpAuthPopup() {
-  const { mcpAuthPopup, setMcpAuthPopup } = useShallowThemeStore((s) => ({
-    mcpAuthPopup: s.mcpAuthPopup,
-    setMcpAuthPopup: s.setMcpAuthPopup,
-  }));
+type Step = "confirm" | "waiting" | "blocked";
 
-  const [isOpen, setIsOpen] = useState(false);
+/** The host the sign-in page is on, which the user checks before going there. */
+function hostOf(url: string) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
+/** Disables the server so it stops asking for a sign-in on every reload. */
+function cancelSignIn(url: string) {
+  const server = useMcpToolsStore.getState().servers.find((s) => s.url === url);
+  if (server) useMcpToolsStore.getState().disableServerAfterAuthCancel(server.id);
+  useThemeStore.getState().setMcpAuthPopup(null);
+}
+
+/**
+ * The sign-in to an MCP server. The sign-in page is the MCP server's choice, so the page
+ * never opens it by itself: the dialog shows where it goes, and the window opens only
+ * from the user's click, without a handle on this tab (no `window.opener`). The
+ * /oauth/callback page reports the result on a BroadcastChannel, which clears the
+ * sign-in and closes the dialog.
+ */
+export default function McpAuthPopup() {
+  const mcpAuthPopup = useShallowThemeStore((s) => s.mcpAuthPopup);
+  const [step, setStep] = useState<Step>("confirm");
   const popupRef = useRef<Window | null>(null);
 
-  // Open the popup when a new auth request arrives, then watch for the user
-  // discarding it. If they close it without finishing auth, disable the server
-  // so it stops re-triggering the popup on every reload.
+  // Every new sign-in starts at its prompt
   useEffect(() => {
-    if (!mcpAuthPopup) return;
-    const { authUrl, popupFeatures, serverUrlHash, url } = mcpAuthPopup;
-    const popup = window.open(authUrl, `mcp_auth_${serverUrlHash}`, popupFeatures);
+    setStep("confirm");
+    popupRef.current = null;
+  }, [mcpAuthPopup?.authUrl]);
 
-    if (!popup || popup.closed || typeof popup.closed === "undefined") {
-      // Popup was blocked — fall back to the manual link dialog. No handle to poll.
-      setIsOpen(true);
+  const openSignIn = useCallback(() => {
+    if (!mcpAuthPopup) return;
+    const { authUrl, popupFeatures, url } = mcpAuthPopup;
+    // One window per server: a second sign-in to the same server reuses it
+    const popup = window.open(
+      "about:blank",
+      `mcp_auth_${encodeURIComponent(url)}`,
+      popupFeatures,
+    );
+    if (!popup) {
+      setStep("blocked");
       return;
     }
-
+    try {
+      // Cut the window off from this tab before it loads the sign-in page. A window
+      // reused for the same server was cut off when it first opened.
+      popup.opener = null;
+    } catch {}
+    popup.location.href = authUrl;
     popup.focus();
     popupRef.current = popup;
+    setStep("waiting");
+  }, [mcpAuthPopup]);
 
+  // A window closed before the sign-in finished is a cancel
+  useEffect(() => {
+    if (step !== "waiting" || !mcpAuthPopup) return;
+    const { url } = mcpAuthPopup;
+    let graceTimer: number | undefined;
     const interval = window.setInterval(() => {
       if (!popupRef.current?.closed) return;
       window.clearInterval(interval);
       popupRef.current = null;
-
-      // Give a pending success callback time to clear the popup before we treat
-      // the closed window as a cancel.
-      window.setTimeout(() => {
-        const current = useThemeStore.getState().mcpAuthPopup;
-        // Cleared or replaced (e.g. auth succeeded) — nothing to cancel.
-        if (!current || current.url !== url) return;
-
-        const server = useMcpToolsStore.getState().servers.find((s) => s.url === url);
-        if (server) {
-          useMcpToolsStore.getState().disableServerAfterAuthCancel(server.id);
-        }
-        setMcpAuthPopup(null);
+      graceTimer = window.setTimeout(() => {
+        // Cleared or replaced (the sign-in succeeded): nothing to cancel
+        if (useThemeStore.getState().mcpAuthPopup?.url === url) cancelSignIn(url);
       }, CANCEL_GRACE_MS);
     }, POPUP_POLL_MS);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(graceTimer);
+    };
+  }, [step, mcpAuthPopup]);
 
-    return () => window.clearInterval(interval);
-  }, [mcpAuthPopup, setMcpAuthPopup]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    // Close the dialog if mcpAuthPopup is cleared
-    if (!mcpAuthPopup) setIsOpen(false);
-  }, [mcpAuthPopup, isOpen]);
+  const serverName = mcpAuthPopup?.serverName || "the MCP server";
+  const onCancel = () => mcpAuthPopup && cancelSignIn(mcpAuthPopup.url);
 
   return (
-    <BaseDialog open={isOpen} onClose={() => setMcpAuthPopup(null)}>
-      <DialogTitle>
-        {mcpAuthPopup?.serverName || "MCP"} Authorization Popup Blocked
-      </DialogTitle>
-      <div className="p-4">
-        <p className="mb-4">
-          The authorization popup was blocked by your browser. Please click the link
-          below to authorize the {mcpAuthPopup?.serverName || "MCP"} connection:
-        </p>
-        {mcpAuthPopup && (
-          <a
-            href={mcpAuthPopup.authUrl}
-            className="text-brand-main hover:text-brand-darker underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Authorize MCP Connection
-          </a>
-        )}
-      </div>
+    <BaseDialog open={!!mcpAuthPopup} onClose={onCancel}>
+      <DialogTitle>Sign in to {serverName}</DialogTitle>
+      {mcpAuthPopup && (
+        <div className="flex flex-col gap-4 p-4">
+          {step === "confirm" && (
+            <p>
+              {serverName} asks you to sign in at{" "}
+              <strong className="break-all">{hostOf(mcpAuthPopup.authUrl)}</strong>.
+              Continue only if you trust this address.
+            </p>
+          )}
+          {step === "waiting" && (
+            <p>
+              Finish signing in in the window that opened. This closes when you are
+              done.
+            </p>
+          )}
+          {step === "blocked" && (
+            <p>
+              Your browser blocked the sign-in window. Open the sign-in page at{" "}
+              <a
+                href={mcpAuthPopup.authUrl}
+                className="text-brand-main hover:text-brand-darker underline break-all"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {hostOf(mcpAuthPopup.authUrl)}
+              </a>
+              .
+            </p>
+          )}
+          <div className="flex justify-end gap-3">
+            <Button variant="outlined" size="sm" type="button" onClick={onCancel}>
+              Cancel
+            </Button>
+            {step !== "blocked" && (
+              <Button variant="primary" size="sm" type="button" onClick={openSignIn}>
+                {step === "waiting" ? "Open again" : "Sign in"}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </BaseDialog>
   );
 }

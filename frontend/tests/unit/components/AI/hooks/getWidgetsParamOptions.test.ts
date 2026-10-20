@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getWidgetsParamOptions } from "~/components/AI/hooks/useFunctionCall";
 import type { WidgetT } from "~/components/types";
-import { malformed } from "../../../mocks";
+import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnector";
+import { malformed, partial } from "../../../mocks";
 
 const createMockWidget = (overrides: Partial<WidgetT> = {}): WidgetT =>
   ({
@@ -9,7 +10,6 @@ const createMockWidget = (overrides: Partial<WidgetT> = {}): WidgetT =>
     name: "Test Widget",
     description: "Test description",
     endpoint: "https://api.example.com/data",
-    endpointHeaders: [],
     params: [],
     ...overrides,
   }) as WidgetT;
@@ -399,37 +399,65 @@ describe("getWidgetsParamOptions", () => {
     });
   });
 
-  describe("endpoint headers", () => {
-    it("should include widget endpoint headers in fetch request", async () => {
-      const widget = createMockWidget({
-        endpointHeaders: [
-          { key: "Authorization", value: "Bearer token123" },
-          { key: "X-Custom-Header", value: "custom-value" },
-        ],
-        params: [
-          {
-            paramName: "region",
-            type: "endpoint",
-            optionsEndpoint: "https://api.example.com/regions",
-            optionsParams: {},
-          },
+  describe("the data backend's credentials", () => {
+    beforeEach(() => {
+      useBackendConnectorStore.setState({
+        apiSources: [
+          partial<Source>({
+            id: "src-1",
+            url: "https://api.example.com",
+            endpointHeaders: [
+              { key: "Authorization", value: "Bearer token123" },
+              { key: "X-Custom-Header", value: "custom-value", location: "headers" },
+              { key: "apikey", value: "query-value", location: "query" },
+            ],
+          }),
         ],
       });
-      const getWidgetFromBackend = vi.fn().mockReturnValue(widget);
+    });
 
-      await getWidgetsParamOptions(
+    afterEach(() => {
+      useBackendConnectorStore.setState({ apiSources: [] });
+    });
+
+    const askForOptions = (optionsEndpoint: string) =>
+      getWidgetsParamOptions(
         {
           origin: "TestOrigin",
           id: "test-widget",
           param: "region",
           options_endpoint_input_args: {},
         },
-        getWidgetFromBackend,
+        vi.fn().mockReturnValue(
+          createMockWidget({
+            sourceId: "src-1",
+            params: [
+              {
+                paramName: "region",
+                type: "endpoint",
+                optionsEndpoint,
+                optionsParams: {},
+              },
+            ],
+          }),
+        ),
       );
 
-      const fetchCall = vi.mocked(fetch).mock.calls[0][0] as Request;
-      expect(fetchCall.headers.get("Authorization")).toBe("Bearer token123");
-      expect(fetchCall.headers.get("X-Custom-Header")).toBe("custom-value");
+    it("go with an options request to the backend's origin: headers and query", async () => {
+      await askForOptions("https://api.example.com/regions");
+
+      const request = vi.mocked(fetch).mock.calls[0][0] as Request;
+      expect(request.headers.get("Authorization")).toBe("Bearer token123");
+      expect(request.headers.get("X-Custom-Header")).toBe("custom-value");
+      expect(new URL(request.url).searchParams.get("apikey")).toBe("query-value");
+    });
+
+    it("never go to an options endpoint on another origin", async () => {
+      await askForOptions("https://elsewhere.test/regions");
+
+      const request = vi.mocked(fetch).mock.calls[0][0] as Request;
+      expect(request.headers.get("Authorization")).toBeNull();
+      expect(new URL(request.url).searchParams.get("apikey")).toBeNull();
     });
   });
 });

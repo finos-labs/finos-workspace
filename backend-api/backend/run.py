@@ -8,6 +8,7 @@ from gunicorn.app.base import BaseApplication
 from gunicorn.glogging import Logger
 from loguru import logger
 
+from api.rate_limit import TRUSTED_PROXIES
 from main import app, start_prometheus
 from utilities.config import settings
 
@@ -150,7 +151,8 @@ if __name__ == "__main__":
         "max_requests": 2048,
         "max_requests_jitter": 512,
         "keepalive": 75,
-        "forwarded_allow_ips": "*",
+        # X-Forwarded-For and the secure-scheme headers count only from these peers
+        "forwarded_allow_ips": TRUSTED_PROXIES,
         "secure_scheme_headers": {
             "X-FORWARDED-PROTOCOL": "ssl",
             "X-FORWARDED-PROTO": "https",

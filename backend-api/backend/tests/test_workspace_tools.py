@@ -3,7 +3,8 @@ Tests for the Workspace's tools as the agent in the web app is given them.
 
 The tools are those of the Workspace MCP server that external hosts use, with the same
 descriptions and schemas. The user is signed in, so the endpoints are asked with the session token,
-and a call is turned into the command that the user's tab runs.
+and a call is turned into the command that the user's tab runs. As with any MCP tool, a user has
+only the tools their roles grant.
 """
 
 import asyncio
@@ -14,10 +15,12 @@ from unittest.mock import patch
 import pytest
 
 from api import schemas
+from tests.fixtures.base import TEST_BASE_URL
 
 SURFACE = Path(__file__).parent / "fixtures" / "workspace_mcp_sidecar_surface.json"
 PATH = "/app/workspace-tools"
 PREPARE = f"{PATH}/prepare"
+URL = f"{TEST_BASE_URL}{PATH}"
 ACCESS = "routers.app.workspace_tools.app_helpers.get_user_copilot_access"
 
 
@@ -32,10 +35,15 @@ def restricted_to(url: str, *names: str) -> schemas.CopilotAccess:
     return schemas.CopilotAccess(
         models=[],
         mcp=[schemas.McpGrant(server_url=url, tool_name=name) for name in names],
-        models_restricted=False,
-        mcp_restricted=True,
         disabled_capabilities=[],
     )
+
+
+@pytest.fixture
+def every_tool_granted():
+    """A user whose roles grant every tool of the Workspace's server."""
+    with patch(ACCESS, return_value=restricted_to(URL, schemas.ALL_MCP_TOOLS)):
+        yield
 
 
 class TestWorkspaceTools:
@@ -46,7 +54,7 @@ class TestWorkspaceTools:
         assert response.status_code in {401, 403}
 
     @pytest.mark.asyncio
-    async def test_the_tools_are_those_that_external_hosts_have(self, auth_client):
+    async def test_the_tools_are_those_that_external_hosts_have(self, auth_client, every_tool_granted):
         response = await auth_client.get(PATH)
         assert response.status_code == 200, response.text
         listed = {tool["name"]: tool for tool in response.json()["tools"]}
@@ -59,23 +67,30 @@ class TestWorkspaceTools:
     @pytest.mark.asyncio
     async def test_the_tools_say_where_their_server_is(self, auth_client):
         url = (await auth_client.get(PATH)).json()["url"]
-        assert url == f"http://test{PATH}"
+        assert url == URL
 
     @pytest.mark.asyncio
     async def test_the_server_is_where_the_proxy_prefix_says(self, auth_client):
         response = await auth_client.get(PATH, headers={"X-Forwarded-Prefix": "/api/"})
-        assert response.json()["url"] == f"http://test/api{PATH}"
+        assert response.json()["url"] == f"{TEST_BASE_URL}/api{PATH}"
 
     @pytest.mark.asyncio
     async def test_only_the_tools_the_roles_grant_are_listed(self, auth_client):
-        url = f"http://test{PATH}"
-        access = restricted_to(url, "get_widget_data", "read_widget")
+        access = restricted_to(URL, "get_widget_data", "read_widget")
         with patch(ACCESS, return_value=access):
             response = await auth_client.get(PATH)
         assert sorted(tool["name"] for tool in response.json()["tools"]) == [
             "get_widget_data",
             "read_widget",
         ]
+
+    @pytest.mark.asyncio
+    async def test_a_user_whose_roles_grant_nothing_has_none_of_them(self, auth_client):
+        assert (await auth_client.get(PATH)).json()["tools"] == []
+        response = await auth_client.post(
+            PREPARE, json={"name": "read_widget", "arguments": {"widget_uuid": "w-1"}}
+        )
+        assert response.status_code == 403
 
     @pytest.mark.asyncio
     async def test_a_role_that_grants_another_server_grants_none_of_these(self, auth_client):
@@ -85,6 +100,7 @@ class TestWorkspaceTools:
         assert response.json()["tools"] == []
 
 
+@pytest.mark.usefixtures("every_tool_granted")
 class TestPrepare:
     @pytest.mark.asyncio
     async def test_a_call_comes_to_the_command_the_tab_runs(self, auth_client):
@@ -160,7 +176,7 @@ class TestPrepare:
 
     @pytest.mark.asyncio
     async def test_a_tool_the_roles_do_not_grant_is_refused(self, auth_client):
-        access = restricted_to(f"http://test{PATH}", "read_widget")
+        access = restricted_to(URL, "read_widget")
         with patch(ACCESS, return_value=access):
             refused = await auth_client.post(
                 PREPARE,

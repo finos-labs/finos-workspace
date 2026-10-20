@@ -37,7 +37,7 @@ Don't reinvent these — Workspace handles them natively, no backend code needed
 - **Auto-refresh** — dashboards refresh data automatically; per-widget `refetchInterval` overrides cadence.
 - **Parameter linking** — widgets in the same parameter Group share a value (one ticker drives all of them). Defined in `apps.json`. See `workspace://specs/apps-json` and `workspace://specs/layout-grid`.
 - **Native content embeds** — users can drop PDFs, images, and spreadsheets onto a Dashboard. You don't need a widget for static content.
-- **Sharing & roles** — RBAC, share with team, on-prem / private cloud deployment.
+- **Sharing & roles** — RBAC, share with team, self-hosted deployment.
 - **AI Agent over the dashboard** — the built-in agent already reads widgets via their metadata. You don't ship an agent to make widgets queryable.
 - **Export to apps.json** — users can save a Dashboard as an `apps.json` template. Useful debugging shortcut: build a layout manually in Workspace, export, and compare against your hand-authored `apps.json`.
 

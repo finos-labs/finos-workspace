@@ -132,8 +132,12 @@ export function applyWhiteLabelMeta(whiteLabel: {
     document
       .querySelector('link[rel="icon"]')
       ?.setAttribute("href", whiteLabel.favicon);
-    document
-      .querySelector('link[rel="apple-touch-icon"]')
-      ?.setAttribute("href", whiteLabel.favicon);
+    // iOS ignores SVG touch icons, so keep the shipped PNG unless a deployment
+    // provides its own raster favicon.
+    if (!whiteLabel.favicon.endsWith(".svg")) {
+      document
+        .querySelector('link[rel="apple-touch-icon"]')
+        ?.setAttribute("href", whiteLabel.favicon);
+    }
   }
 }

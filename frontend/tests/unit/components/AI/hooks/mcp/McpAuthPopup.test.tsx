@@ -1,11 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import McpAuthPopup from "~/components/AI/hooks/mcp/McpAuthPopup";
 
 type McpAuthPopupState = {
   serverName: string;
-  serverUrlHash: string;
   url: string;
   authUrl: string;
   popupFeatures: string;
@@ -54,9 +53,16 @@ vi.mock("~/components/ds/dialogs/Dialog", () => ({
   DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
 }));
 
+vi.mock("~/components/ds/atoms/Button", () => ({
+  Button: ({ children, onClick }: { children: ReactNode; onClick?: () => void }) => (
+    <button type="button" onClick={onClick}>
+      {children}
+    </button>
+  ),
+}));
+
 const POPUP_VALUE: McpAuthPopupState = {
   serverName: "Test Server",
-  serverUrlHash: "hash123",
   url: "https://mcp.example.com",
   authUrl: "https://auth.example.com/authorize",
   popupFeatures: "width=500,height=600",
@@ -66,6 +72,11 @@ describe("McpAuthPopup", () => {
   beforeEach(() => {
     mockStoreState.mcpAuthPopup = null;
     mockStoreState.setMcpAuthPopup.mockReset();
+    mockStoreState.setMcpAuthPopup.mockImplementation(
+      (value: McpAuthPopupState | null) => {
+        mockStoreState.mcpAuthPopup = value;
+      },
+    );
     mockMcpToolsState.servers = [];
     mockMcpToolsState.disableServerAfterAuthCancel.mockReset();
   });
@@ -75,38 +86,60 @@ describe("McpAuthPopup", () => {
     vi.useRealTimers();
   });
 
-  it("keeps the store value after the auth window opens successfully so it can be watched", () => {
-    const focus = vi.fn();
-    const openSpy = vi
-      .spyOn(window, "open")
-      .mockReturnValue({ closed: false, focus } as unknown as Window);
+  /** A window as window.open returns it, whose opener and location the page sets. */
+  function fakeWindow() {
+    return {
+      closed: false,
+      focus: vi.fn(),
+      opener: {} as unknown,
+      location: { href: "about:blank" },
+    };
+  }
+
+  it("asks first, showing where the sign-in goes, and opens nothing by itself", () => {
+    const openSpy = vi.spyOn(window, "open");
     mockStoreState.mcpAuthPopup = POPUP_VALUE;
 
     render(<McpAuthPopup />);
 
-    expect(openSpy).toHaveBeenCalledWith(
-      POPUP_VALUE.authUrl,
-      `mcp_auth_${POPUP_VALUE.serverUrlHash}`,
-      POPUP_VALUE.popupFeatures,
-    );
-    expect(focus).toHaveBeenCalled();
-    // No longer cleared immediately — needed to detect a discard.
-    expect(mockStoreState.setMcpAuthPopup).not.toHaveBeenCalled();
-    expect(screen.queryByTestId("base-dialog")).not.toBeInTheDocument();
-
-    openSpy.mockRestore();
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(screen.getByText("Sign in to Test Server")).toBeInTheDocument();
+    expect(screen.getByText("auth.example.com")).toBeInTheDocument();
   });
 
-  it("disables the server when the user discards (closes) the popup", () => {
+  it("opens the sign-in from the user's click, cut off from this tab", () => {
+    const popup = fakeWindow();
+    const openSpy = vi
+      .spyOn(window, "open")
+      .mockReturnValue(popup as unknown as Window);
+    mockStoreState.mcpAuthPopup = POPUP_VALUE;
+
+    render(<McpAuthPopup />);
+    fireEvent.click(screen.getByText("Sign in"));
+
+    // The window opens blank, loses its opener, then loads the sign-in page
+    expect(openSpy).toHaveBeenCalledWith(
+      "about:blank",
+      `mcp_auth_${encodeURIComponent(POPUP_VALUE.url)}`,
+      POPUP_VALUE.popupFeatures,
+    );
+    expect(popup.opener).toBeNull();
+    expect(popup.location.href).toBe(POPUP_VALUE.authUrl);
+    expect(popup.focus).toHaveBeenCalled();
+    expect(mockStoreState.setMcpAuthPopup).not.toHaveBeenCalled();
+    expect(screen.getByText(/Finish signing in/)).toBeInTheDocument();
+  });
+
+  it("disables the server when the user closes the sign-in window", () => {
     vi.useFakeTimers();
-    const popup = { closed: false, focus: vi.fn() };
+    const popup = fakeWindow();
     vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
     mockMcpToolsState.servers = [{ id: "server-1", url: POPUP_VALUE.url }];
     mockStoreState.mcpAuthPopup = POPUP_VALUE;
 
     render(<McpAuthPopup />);
+    fireEvent.click(screen.getByText("Sign in"));
 
-    // User closes the popup window.
     popup.closed = true;
     vi.advanceTimersByTime(500); // poll detects the close
     vi.advanceTimersByTime(1000); // grace period elapses
@@ -117,39 +150,51 @@ describe("McpAuthPopup", () => {
     expect(mockStoreState.setMcpAuthPopup).toHaveBeenCalledWith(null);
   });
 
-  it("does not disable the server if auth succeeded before the grace period", () => {
+  it("does not disable the server if the sign-in succeeded before the grace period", () => {
     vi.useFakeTimers();
-    const popup = { closed: false, focus: vi.fn() };
+    const popup = fakeWindow();
     vi.spyOn(window, "open").mockReturnValue(popup as unknown as Window);
     mockMcpToolsState.servers = [{ id: "server-1", url: POPUP_VALUE.url }];
     mockStoreState.mcpAuthPopup = POPUP_VALUE;
 
     render(<McpAuthPopup />);
+    fireEvent.click(screen.getByText("Sign in"));
 
     popup.closed = true;
     vi.advanceTimersByTime(500); // poll detects the close
-    // Auth success clears the store slot before the grace period ends.
+    // The sign-in's success clears the store slot before the grace period ends
     mockStoreState.mcpAuthPopup = null;
     vi.advanceTimersByTime(1000);
 
     expect(mockMcpToolsState.disableServerAfterAuthCancel).not.toHaveBeenCalled();
   });
 
-  it("opens the fallback dialog and keeps the store value when the popup is blocked", () => {
+  it("disables the server when the user cancels", () => {
+    mockMcpToolsState.servers = [{ id: "server-1", url: POPUP_VALUE.url }];
+    mockStoreState.mcpAuthPopup = POPUP_VALUE;
+
+    render(<McpAuthPopup />);
+    fireEvent.click(screen.getByText("Cancel"));
+
+    expect(mockMcpToolsState.disableServerAfterAuthCancel).toHaveBeenCalledWith(
+      "server-1",
+    );
+    expect(mockStoreState.setMcpAuthPopup).toHaveBeenCalledWith(null);
+  });
+
+  it("offers a link that opens without an opener when the browser blocks the window", () => {
     vi.spyOn(window, "open").mockReturnValue(null);
     mockStoreState.mcpAuthPopup = POPUP_VALUE;
 
     render(<McpAuthPopup />);
+    fireEvent.click(screen.getByText("Sign in"));
 
-    expect(mockStoreState.setMcpAuthPopup).not.toHaveBeenCalled();
-    expect(screen.getByTestId("base-dialog")).toBeInTheDocument();
-    expect(screen.getByText(/Authorization Popup Blocked/)).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /Authorize MCP Connection/ }),
-    ).toHaveAttribute("href", POPUP_VALUE.authUrl);
+    const link = screen.getByRole("link", { name: "auth.example.com" });
+    expect(link).toHaveAttribute("href", POPUP_VALUE.authUrl);
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
-  it("does nothing when there is no pending auth popup", () => {
+  it("does nothing when there is no pending sign-in", () => {
     const openSpy = vi.spyOn(window, "open");
     mockStoreState.mcpAuthPopup = null;
 

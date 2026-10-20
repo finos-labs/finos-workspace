@@ -4,19 +4,21 @@ import { describe, expect, it, vi } from "vitest";
 import EllipsisDropdownMenu from "~/components/EllipsisDropdown";
 import type { EllipsisDropdownMenuProps } from "~/components/MoveToDropDown/types";
 
-vi.mock("~/components/Widget.context", () => ({
-  useWidgetContext: vi.fn(() => ({
-    widgetRef: {
-      current: {
-        id: "test-widget",
-        widgetId: "test-widget",
-        name: "Test Widget",
-        type: "table",
-      },
+const widgetContext = vi.hoisted(() => ({
+  widgetRef: {
+    current: {
+      id: "test-widget",
+      widgetId: "test-widget",
+      name: "Test Widget",
+      type: "table",
     },
-    activeDashboardId: "dashboard-1",
-    isShared: false,
-  })),
+  },
+  activeDashboardId: "dashboard-1",
+  isShared: false,
+}));
+
+vi.mock("~/components/Widget.context", () => ({
+  useWidgetContext: vi.fn(() => widgetContext),
 }));
 
 vi.mock("~/lib/state/app", () => ({
@@ -32,16 +34,8 @@ vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: vi.fn(() => vi.fn()),
 }));
 
-vi.mock("~/lib/state/featureFlags", () => ({
-  useShallowFeatureFlagsStore: vi.fn(() => true),
-}));
-
 vi.mock("~/components/MoveToDropDown", () => ({
   MoveToTabsDropdownMenu: () => <div data-testid="move-to-tabs">Move</div>,
-}));
-
-vi.mock("~/components/General/FeatureLock", () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 describe("EllipsisDropdownMenu", () => {
@@ -153,6 +147,19 @@ describe("EllipsisDropdownMenu", () => {
       await user.click(trigger);
 
       expect(screen.queryByText("Minimize")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Export", () => {
+    const openMenu = async (settings: EllipsisDropdownMenuProps["settings"]) => {
+      render(<EllipsisDropdownMenu {...defaultProps} settings={settings} />);
+      await userEvent.setup().click(screen.getByRole("button"));
+    };
+
+    it("offers Export to every user", async () => {
+      await openMenu({ showExport: true });
+
+      expect(screen.getByText("Export")).toBeInTheDocument();
     });
   });
 });

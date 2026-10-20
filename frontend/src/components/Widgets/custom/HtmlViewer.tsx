@@ -8,6 +8,7 @@ import { useParamGroupBindings } from "~/components/Widgets/Helpers/useParamGrou
 import { type QueryOptions, useJsonData } from "~/lib/api";
 import { IFRAME_SRCDOC_SANDBOX_ATTRIBUTES } from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
+import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn, triggerCustomEvent, useEventListener } from "~/lib/utils";
 import {
@@ -64,7 +65,6 @@ export default function HtmlViewer() {
   const { widget, widgetFromJSON, updateWidget } = useWidgetContext();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const iframeBridgeTokenRef = useRef(`html-${crypto.randomUUID()}`);
-  const iframeEventCleanupRef = useRef<(() => void) | null>(null);
   const latestIframeParamsRef = useRef<Record<string, WorkspaceWidgetParamValue>>({});
   const theme = useShallowThemeStore((s) => s.theme);
 
@@ -88,11 +88,12 @@ export default function HtmlViewer() {
     [updateWidget],
   );
   const [rawData, setRawData] = useState<unknown>(null);
+  const credentials = useSourceCredentials(widget.sourceId, widget.endpoint?.url);
 
   const options = useMemo<QueryOptions<string>>(() => {
     const newParams = Object.fromEntries(
       Object.entries({
-        ...(widget?.endpoint?.query ?? {}),
+        ...credentials.query,
         ...(widget?.storage?.params ?? {}),
       }).filter(([_key, value]) => value !== "" && value !== undefined),
     );
@@ -101,7 +102,7 @@ export default function HtmlViewer() {
 
     return {
       url: widget.endpoint?.url ?? "",
-      endpointHeaders: widget.endpoint?.headers ?? {},
+      endpointHeaders: credentials.headers,
       method: widget.endpoint?.method ?? "GET",
       params: newParams,
       asText: true,
@@ -112,7 +113,7 @@ export default function HtmlViewer() {
             widget.endpoint?.url,
             widget.endpoint?.method ?? "GET",
             JSON.stringify(newParams),
-            JSON.stringify(widget.endpoint?.headers ?? {}),
+            JSON.stringify(Object.keys(credentials.headers)),
             widget.refreshQuery ?? 0,
           ]
         : undefined,
@@ -124,6 +125,7 @@ export default function HtmlViewer() {
     widget?.endpoint,
     widget?.storage?.params,
     theme,
+    credentials,
   ]);
 
   const allowedFilterParams = useMemo(() => {
@@ -201,47 +203,8 @@ export default function HtmlViewer() {
       widget.storage?.params,
     ],
   );
-  const handleIframeParamsDataRef = useRef(handleIframeParamsData);
-
-  useEffect(() => {
-    handleIframeParamsDataRef.current = handleIframeParamsData;
-  }, [handleIframeParamsData]);
-
-  const attachIframeEventListeners = useCallback(() => {
-    if (!allowJsExecution) return;
-
-    iframeEventCleanupRef.current?.();
-    iframeEventCleanupRef.current = null;
-
-    const iframeWindow = iframeRef.current?.contentWindow;
-    if (!iframeWindow) return;
-
-    const handleIframeEvent = (event: Event) => {
-      handleIframeParamsDataRef.current((event as CustomEvent).detail);
-    };
-
-    try {
-      for (const eventType of WIDGET_PARAM_MESSAGE_TYPES) {
-        iframeWindow.addEventListener(eventType, handleIframeEvent);
-      }
-
-      iframeEventCleanupRef.current = () => {
-        for (const eventType of WIDGET_PARAM_MESSAGE_TYPES) {
-          iframeWindow.removeEventListener(eventType, handleIframeEvent);
-        }
-      };
-    } catch {
-      iframeEventCleanupRef.current = null;
-    }
-  }, [allowJsExecution, iframeRef, handleIframeParamsDataRef, iframeEventCleanupRef]);
-
-  useEffect(() => {
-    return () => {
-      iframeEventCleanupRef.current?.();
-      iframeEventCleanupRef.current = null;
-    };
-  }, []);
-
+  // The iframe runs in an opaque origin (its sandbox has no allow-same-origin), so the
+  // injected bridge script is how its events reach the page: by postMessage
   useEffect(() => {
     if (!allowJsExecution) return;
 
@@ -369,7 +332,6 @@ export default function HtmlViewer() {
           className="w-full h-full border-0"
           sandbox={allowJsExecution ? IFRAME_SRCDOC_SANDBOX_ATTRIBUTES : ""}
           title={widget.name}
-          onLoad={attachIframeEventListeners}
         />
       )}
     </DraggableCard>

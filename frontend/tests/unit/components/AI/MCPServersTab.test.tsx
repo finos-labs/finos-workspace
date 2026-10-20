@@ -7,6 +7,7 @@ import { MCPServersTab } from "~/components/AI/MCPServersTab";
 import type { ButtonProps } from "~/components/ds/atoms/Button";
 import type { InputProps } from "~/components/ds/atoms/Input";
 import type { McpConnection } from "~/lib/state/mcpTools";
+import { setAccess } from "../../factories";
 import { required } from "../../mocks";
 
 // Mock framer-motion so AnimatePresence exit animations complete synchronously in jsdom
@@ -271,6 +272,7 @@ describe("MCPServersTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupStore();
+    setAccess({ user_type: "Developer" });
   });
 
   describe("Empty state", () => {
@@ -403,6 +405,22 @@ describe("MCPServersTab", () => {
 
       expect(screen.getByTestId("manage-mcp-server-modal")).toBeInTheDocument();
       expect(screen.getByTestId("modal-existing-server-id")).toHaveTextContent("none");
+    });
+
+    it("offers 'Add Server' to an Admin", async () => {
+      setAccess({ user_type: "Admin" });
+      await renderMCPServersTab();
+
+      expect(screen.getByRole("button", { name: "Add Server" })).toBeInTheDocument();
+    });
+
+    it("does not offer 'Add Server' to a User, who cannot add connections", async () => {
+      setAccess({ user_type: "User" });
+      await renderMCPServersTab();
+
+      expect(
+        screen.queryByRole("button", { name: "Add Server" }),
+      ).not.toBeInTheDocument();
     });
   });
 

@@ -13,12 +13,7 @@ const server = (id: string, url: string, tools: string[]): McpServer => ({
 
 const ready = { state: "ready", retry: () => {} } as never;
 
-const grants = (mcp: CopilotAccess["mcp"]): CopilotAccess => ({
-  models: [],
-  mcp,
-  models_restricted: false,
-  mcp_restricted: mcp.length > 0,
-});
+const grants = (mcp: CopilotAccess["mcp"]): CopilotAccess => ({ models: [], mcp });
 
 describe("MCP tools and what the user's roles grant", () => {
   beforeEach(() => {
@@ -35,11 +30,20 @@ describe("MCP tools and what the user's roles grant", () => {
     useCopilotAccessStore.getState().setAccess(null);
   });
 
-  it("sends every tool while nothing is granted", async () => {
+  it("sends no tool while the access is not loaded", async () => {
     const tools = await useMcpToolsStore.getState().getEnabledToolsForAgent();
 
-    expect(tools.map((t) => t.tool_name)).toEqual(["search", "delete", "query"]);
-    expect(useMcpToolsStore.getState().getEnabledToolCount()).toBe(3);
+    expect(tools).toEqual([]);
+    expect(useMcpToolsStore.getState().getEnabledToolCount()).toBe(0);
+  });
+
+  it("sends no tool when no role grants one", async () => {
+    useCopilotAccessStore.getState().setAccess(grants([]));
+
+    const tools = await useMcpToolsStore.getState().getEnabledToolsForAgent();
+
+    expect(tools).toEqual([]);
+    expect(useMcpToolsStore.getState().getEnabledToolCount()).toBe(0);
   });
 
   it("sends only the granted tools of the granted servers", async () => {

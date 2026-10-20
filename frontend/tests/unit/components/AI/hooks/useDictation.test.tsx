@@ -11,9 +11,17 @@ vi.mock("sonner", () => ({
 vi.mock("~/components/AI/hooks/useGetCopilotRequestHeaders", () => ({
   useGetCopilotRequestHeaders: () => () => ({
     "Content-Type": "application/json",
-    Authorization: "Bearer user-token",
     "X-Trace-Id": "chat-1",
   }),
+}));
+
+// The default Copilot's bearer is the agent token, which fetchAgent adds
+vi.mock("~/lib/state/agentToken", () => ({
+  fetchAgent: (input: string, init: RequestInit) => {
+    const headers = new Headers(init.headers);
+    headers.set("Authorization", "Bearer agent-token");
+    return fetch(input, { ...init, headers });
+  },
 }));
 
 const agent = {
@@ -119,9 +127,10 @@ describe("useDictation", () => {
 
     expect(sent).toHaveLength(1);
     expect(sent[0].url).toBe("http://ines:7777/v1/transcribe");
-    const headers = sent[0].init.headers as Record<string, string>;
-    expect(headers.Authorization).toBe("Bearer user-token");
-    expect(headers).not.toHaveProperty("Content-Type");
+    const headers = new Headers(sent[0].init.headers);
+    expect(headers.get("Authorization")).toBe("Bearer agent-token");
+    expect(headers.get("X-Trace-Id")).toBe("chat-1");
+    expect(headers.has("Content-Type")).toBe(false);
     const audio = (sent[0].init.body as FormData).get("audio") as File;
     expect(audio.type).toBe("audio/wav");
     const bytes = new Uint8Array(await audio.arrayBuffer());

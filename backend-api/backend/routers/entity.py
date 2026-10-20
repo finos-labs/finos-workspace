@@ -1,6 +1,5 @@
 """Entity routes"""
 
-from copy import deepcopy
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
@@ -15,14 +14,11 @@ from api import auth_helpers, crud, models, schemas
 from api.database import aget_read_db, aget_write_db
 from api.models import (
     Entity,
-    EntityType,
     PermissionsEntityMap,
     User,
 )
-from api.notifications import notify_admins
-from api.rate_limit import LIMIT_DEFAULT, exempt_user_agent, limiter
-from routers import app_helpers, routers_helpers
-from utilities.config import settings
+from api.rate_limit import LIMIT_DEFAULT, exempt_service_token, limiter
+from routers import administration, app_helpers, routers_helpers
 
 router = APIRouter(prefix="/entity", tags=["entity"])
 
@@ -37,75 +33,8 @@ async def validate_entity_admin(
     return schemas.SuccessReturn.success_instance()
 
 
-@router.post("/entity-type", response_model=schemas.SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
-async def add_entity_type(
-    request: Request,
-    entity_type: schemas.EntityTypeCreate,
-    db: AsyncSession = Depends(aget_write_db),
-    _=Depends(auth_helpers.get_current_superuser),
-):
-    try:
-        query = insert(EntityType).values(
-            entity_type=entity_type.entity_type,
-            code=entity_type.code,
-            active=entity_type.active,
-            permission_hierarchy=entity_type.permission_hierarchy,
-        )
-        await db.execute(query)
-        await db.commit()
-        return {"success": True}
-    except IntegrityError as exc:
-        raise HTTPException(409, detail="Entity type already exists") from exc
-    except DataError as exc:
-        raise HTTPException(400, detail="Bad data submitted") from exc
-
-
-@router.put("/entity-type/{type_uuid}", response_model=schemas.SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
-async def put_entity_type(
-    type_uuid: UUID,
-    request: Request,
-    entity_type: schemas.EntityTypeCreate,
-    db: AsyncSession = Depends(aget_write_db),
-    _=Depends(auth_helpers.get_current_superuser),
-):
-    try:
-        query = (
-            update(EntityType)
-            .where(EntityType.uuid == type_uuid)
-            .values(**entity_type.model_dump())
-        )
-        response = await db.execute(query)
-        await db.commit()
-        if response.rowcount == 0:  # type: ignore
-            raise HTTPException(404, detail="Entity type not found")
-    except IntegrityError as exc:
-        raise HTTPException(409, detail="Entity type already exists") from exc
-    except DataError as exc:
-        raise HTTPException(400, detail="Bad data submitted") from exc
-    return {"success": True}
-
-
-@router.get("/entity-type", response_model=CustomPage[schemas.EntityTypeReturn])
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
-async def get_entity_types(
-    request: Request,
-    db: AsyncSession = Depends(aget_read_db),
-    _=Depends(auth_helpers.get_current_superuser),
-):
-    query = select(
-        EntityType.entity_type,
-        EntityType.code,
-        EntityType.active,
-        EntityType.permission_hierarchy,
-        EntityType.uuid,
-    )
-    return await paginate(db, query)
-
-
 @router.post("/entity", response_model=schemas.AddEntityReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def add_entity(
     request: Request,
     entity: schemas.EntityPost,
@@ -113,59 +42,13 @@ async def add_entity(
     db: AsyncSession = Depends(aget_write_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
-    try:
-        query = insert(Entity).values(
-            name=entity.name,
-            entity_type_uuid=entity.entity_code,
-            email=entity.email,
-            company_type=entity.company_type,
-            organization_size=entity.organization_size,
-            aum=entity.aum,
-            country=entity.country,
-            seats=entity.seats,
-            expiration_date=entity.expiration_date,
-        )
-        response = await db.execute(query)
-        entity_uuid = response.inserted_primary_key[0]
-        # Add entity entitlement
-        await app_helpers.insert_entity_entitlement(db, entity_uuid, "full")
-    except IntegrityError as exc:
-        detail = (
-            exc.orig.args[1]
-            if exc.orig.args and len(exc.orig.args) > 1
-            else "Invalid code"
-        )
-        raise HTTPException(409, detail=detail) from exc
-
-    # Create an admin user for the entity
-    i_query = insert(PermissionsEntityMap).values(
-        name="Admin",
-        entity_uuid=entity_uuid,
-    )
-    # Create a base user for the entity
-    i2_query = insert(PermissionsEntityMap).values(
-        name="User",
-        entity_uuid=entity_uuid,
-    )
-    result = await db.execute(i_query)
-    await db.execute(i2_query)
-
-    await db.commit()
-    background_tasks.add_task(
-        notify_admins,
-        "entity.created",
-        f"New entity: {entity.name}",
-        f"The entity {entity.name} was created with {entity.admin_email} as its admin.",
-        {"entity_name": entity.name, "admin_email": entity.admin_email},
-    )
-    return {
-        "entity_uuid": entity_uuid,
-        "permission_map_uuid": result.inserted_primary_key[0],
-    }
+    answer = await administration.create_entity(db, entity)
+    background_tasks.add_task(administration.notify_entity_created, entity)
+    return answer
 
 
 @router.put("/entity/{entity_uuid}", response_model=schemas.SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def put_entity(
     entity_uuid: UUID,
     request: Request,
@@ -173,82 +56,25 @@ async def put_entity(
     db: AsyncSession = Depends(aget_write_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
-    query = (
-        update(Entity)
-        .where(Entity.uuid == entity_uuid)
-        .values(
-            name=entity.name,
-            entity_type_uuid=entity.entity_code,
-            email=entity.email,
-            company_type=entity.company_type,
-            organization_size=entity.organization_size,
-            aum=entity.aum,
-            country=entity.country,
-            seats=entity.seats,
-            expiration_date=entity.expiration_date,
-        )
-    )
-    try:
-        response = await db.execute(query)
-        await db.commit()
-        if response.rowcount == 0:  # type: ignore
-            raise HTTPException(404, detail="Entity not found")
-    except IntegrityError as exc:
-        detail = (
-            exc.orig.args[1]
-            if exc.orig.args and len(exc.orig.args) > 1
-            else "Invalid code"
-        )
-        raise HTTPException(409, detail=detail) from exc
+    await administration.update_entity(db, entity_uuid, entity)
     return {"success": True}
 
 
 @router.get("/entity", response_model=CustomPage[schemas.EntityReturn])
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def get_entities(
     request: Request,
     db: AsyncSession = Depends(aget_read_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
     def transformer(items: list[Entity]):
-        cleaned = []
-        for item in items:
-            temp = schemas.EntityReturn(
-                uuid=item.uuid,
-                name=item.name,
-                entity_type=item[2].__dict__,
-                email=item.email,
-                company_type=item.company_type,
-                organization_size=item.organization_size,
-                aum=item.aum,
-                country=item.country,
-                seats=item.seats,
-                expiration_date=item.expiration_date,
-            )
-            cleaned.append(temp)
-        return cleaned
+        return [administration.entity_return(item) for item in items]
 
-    query = (
-        select(
-            Entity.uuid,
-            Entity.name,
-            EntityType,
-            Entity.email,
-            Entity.company_type,
-            Entity.organization_size,
-            Entity.aum,
-            Entity.country,
-            Entity.seats,
-            Entity.expiration_date,
-        )
-        .select_from(Entity)
-        .join(EntityType, Entity.entity_type_uuid == EntityType.uuid)
-    )
-    return await paginate(db, query, transformer=transformer)
+    return await paginate(db, administration.entities_query(), transformer=transformer)
 
 
 @router.post("/entity-relationship", response_model=schemas.EntityRelationshipReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def add_entity_relationship(
     request: Request,
     entity: schemas.EntityRelationshipGet,
@@ -263,7 +89,7 @@ async def add_entity_relationship(
 
 
 @router.put("/entity-relationship/{er_uuid}", response_model=schemas.SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def put_entity_relationship(
     er_uuid: UUID,
     request: Request,
@@ -291,7 +117,7 @@ async def put_entity_relationship(
 @router.get(
     "/entity-relationship", response_model=CustomPage[schemas.EntityRelationshipReturn]
 )
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def get_entity_relationships(
     request: Request,
     db: AsyncSession = Depends(aget_read_db),
@@ -301,14 +127,31 @@ async def get_entity_relationships(
     return await paginate(db, query)
 
 
+async def check_entity_map_free(
+    db: AsyncSession, entity_map: schemas.EntityMapCreate, map_uuid: UUID | None = None
+) -> None:
+    "An organization has one map of each user type."
+    query = select(PermissionsEntityMap.uuid).where(
+        PermissionsEntityMap.entity_uuid == entity_map.entity_uuid,
+        PermissionsEntityMap.name == entity_map.name,
+    )
+    if map_uuid:
+        query = query.where(PermissionsEntityMap.uuid != map_uuid)
+    if (await db.execute(query.limit(1))).first():
+        raise HTTPException(
+            409, detail=f"The organization already has a {entity_map.name} map"
+        )
+
+
 @router.post("/entity-map", response_model=schemas.UUIDReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def add_entity_map(
     request: Request,
     entity_map: schemas.EntityMapCreate,
     db: AsyncSession = Depends(aget_write_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
+    await check_entity_map_free(db, entity_map)
     query = insert(PermissionsEntityMap).values(
         entity_uuid=entity_map.entity_uuid,
         name=entity_map.name,
@@ -321,7 +164,7 @@ async def add_entity_map(
 
 
 @router.put("/entity-map/{map_uuid}", response_model=schemas.SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def put_entity_map(
     map_uuid: UUID,
     request: Request,
@@ -329,6 +172,7 @@ async def put_entity_map(
     db: AsyncSession = Depends(aget_write_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
+    await check_entity_map_free(db, entity_map, map_uuid)
     query = (
         update(PermissionsEntityMap)
         .where(PermissionsEntityMap.uuid == map_uuid)
@@ -350,7 +194,7 @@ async def put_entity_map(
 
 
 @router.get("/entity-map", response_model=CustomPage[schemas.EntityMapReturn])
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def get_entity_maps(
     request: Request,
     db: AsyncSession = Depends(aget_read_db),
@@ -361,7 +205,7 @@ async def get_entity_maps(
 
 
 @router.post("/register-admin", response_model=schemas.SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def register_admin(
     request: Request,
     user: schemas.UserCreateAdmin,
@@ -375,7 +219,7 @@ async def register_admin(
 
 
 @router.put("/user/{user_uuid}", response_model=schemas.SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def put_user(
     user_uuid: UUID,
     request: Request,
@@ -383,202 +227,26 @@ async def put_user(
     db: AsyncSession = Depends(aget_write_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
-    # Old entity
-    old_entity_query = (
-        select(PermissionsEntityMap.entity_uuid)
-        .join(User, User.permissions_uuid == PermissionsEntityMap.uuid)
-        .where(User.uuid == user_uuid)
-    )
-    old_entity_uuid = (await db.execute(old_entity_query)).scalar_one_or_none()
-    new_entity_query = select(PermissionsEntityMap.entity_uuid).where(
-        PermissionsEntityMap.uuid == user.permissions_uuid
-    )
-    new_entity_uuid = (await db.execute(new_entity_query)).scalar_one_or_none()
-    query = (
-        update(User)
-        .where(User.uuid == user_uuid)
-        .values(permissions_uuid=user.permissions_uuid)
-    )
-    response = await db.execute(query)
-    await db.commit()
-    if response.rowcount == 0:  # type: ignore
-        raise HTTPException(404, detail="User not found")
-
-    # Handle shared dashboards
-    if old_entity_uuid != new_entity_uuid:
-        await crud.remove_shares_both_ways(db, user_uuid)
-        await crud.update_user_dashboards_new_entity(db, user_uuid, new_entity_uuid)
-
-    # Update user entitlements for the new entity's
-    await app_helpers.update_user_entitlement_with_entity_entitlement(db, user_uuid)
-
-    # Destroy all other app sessions for the user
-    await auth_helpers.delete_user_app_sessions(db, user_uuid, ["app", "oauth-app"])
+    await administration.move_user(db, user_uuid, user.permissions_uuid)
     return {"success": True}
 
 
 @router.get("/user", response_model=CustomPage[schemas.EntityUserReturn])
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def get_users(
     request: Request,
     email: str = "",
     db: AsyncSession = Depends(aget_read_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
-    query = select(User.uuid, User.email, User.permissions_uuid)
-    if email:
-        query = query.where(User.email.contains(email))
-
     async def transformer(items: list[User]):
-        cleaned = []
-        for item in items:
-            permissions_query = (
-                select(PermissionsEntityMap)
-                .where(PermissionsEntityMap.uuid == item.permissions_uuid)
-                .limit(1)
-            )
-            permissions = (await db.execute(permissions_query)).scalar_one_or_none()
-            cleaned.append(
-                schemas.EntityUserReturn(
-                    uuid=item.uuid,
-                    email=item.email,
-                    permissions=permissions,
-                )
-            )
-        return cleaned
+        return [await administration.user_return(db, item) for item in items]
 
-    return await paginate(db, query, transformer=transformer)
-
-
-@router.get("/entitlement/{entity_uuid}", response_model=schemas.EntitlementGet)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
-async def get_entitlement(
-    request: Request,
-    entity_uuid: UUID,
-    db: AsyncSession = Depends(aget_read_db),
-    _=Depends(auth_helpers.get_current_superuser),
-):
-    result = await app_helpers.get_entity_entitlement(db, entity_uuid)
-    if not result:
-        raise HTTPException(status_code=404, detail="Entitlement not found")
-    return result
-
-
-@router.patch("/entitlement/{entity_uuid}", response_model=schemas.SuccessReturn)
-async def patch_entitlement(
-    entity_uuid: UUID,
-    entitlement: schemas.EntitlementPatch,
-    update_all: bool = False,
-    db: AsyncSession = Depends(aget_write_db),
-    _=Depends(auth_helpers.get_current_superuser),
-):
-    """
-    Endpoint to update the entitlement for an entity.
-
-    Args:
-        entitlement (schemas.EntitlementPatch): The entitlement to be updated.
-        update_all (bool): If True, apply changes to all users regardless of their current values.
-
-    Returns:
-        SuccessReturn: An instance indicating the operation was successful.
-    """
-    tiers_match = {
-        "full": models.FULL_TIER_ID,
-        "basic": models.BASIC_TIER_ID,
-    }
-    has_entitlement = await app_helpers.has_entity_entitlement(db, entity_uuid)
-    if not has_entitlement:
-        raise HTTPException(status_code=404, detail="Entitlement not found")
-
-    entitlement_dict = entitlement.model_dump(exclude_unset=True)
-    if tier := entitlement_dict.pop("tier", None):
-        entitlement_dict["tier_id"] = tiers_match.get(tier)
-
-    bundle_name = entitlement_dict.pop("bundle_name", None)
-    if bundle_name and settings.is_onprem():
-        bundle_uuid = await app_helpers.get_data_bundle_uuid(db, bundle_name)
-        if bundle_uuid is None:
-            raise HTTPException(
-                status_code=404, detail=f"Data bundle '{bundle_name}' not found"
-            )
-        entitlement_dict["data_bundle_uuid"] = bundle_uuid
-
-    # Fetch the current entitlement from the database
-    current_entitlement = (
-        await db.execute(
-            select(models.EntityEntitlement).where(
-                models.EntityEntitlement.entity_uuid == entity_uuid
-            )
-        )
-    ).scalar_one_or_none()
-
-    if not current_entitlement:
-        raise HTTPException(status_code=404, detail="Entitlement not found")
-
-    # Make a copy of the entitlements so we can use to compare with the user's
-    current_entitlement_detached = deepcopy(current_entitlement)
-
-    # Compare the current values with the new values and create a dictionary of changed values
-    changed_values = {
-        key: value
-        for key, value in entitlement_dict.items()
-        if getattr(current_entitlement, key) != value
-    }
-
-    if changed_values:
-        # Update the database with the changed values
-        query = (
-            update(models.EntityEntitlement)
-            .where(models.EntityEntitlement.entity_uuid == entity_uuid)
-            .values(**changed_values)
-        )
-        await db.execute(query)
-
-    # Apply the changes on its users
-    users_in_entity = await app_helpers.get_entity_users(db, entity_uuid)
-    for user_uuid in users_in_entity:
-        if update_all:
-            # If update_all is True, apply all changes to all users
-            query = (
-                update(models.Entitlement)
-                .where(models.Entitlement.user_uuid == user_uuid)
-                .values(**changed_values)
-            )
-            await db.execute(query)
-        else:
-            # Fetch the user's current entitlement
-            user_entitlement = await db.execute(
-                select(models.Entitlement).where(
-                    models.Entitlement.user_uuid == user_uuid
-                )
-            )
-            user_entitlement = user_entitlement.scalar_one_or_none()
-
-            if user_entitlement:
-                # Only update fields that match the entity's current values
-                user_changes = {
-                    key: value
-                    for key, value in changed_values.items()
-                    if getattr(user_entitlement, key)
-                    == getattr(current_entitlement_detached, key)
-                }
-
-                if user_changes:
-                    query = (
-                        update(models.Entitlement)
-                        .where(models.Entitlement.user_uuid == user_uuid)
-                        .values(**user_changes)
-                    )
-                    await db.execute(query)
-
-    await db.commit()
-    for user_uuid in users_in_entity:
-        app_helpers.invalidate_usage_cache(user_uuid)
-    return schemas.SuccessReturn.success_instance()
+    return await paginate(db, administration.users_query(email), transformer=transformer)
 
 
 @router.delete("/entity/{entity_uuid}", response_model=schemas.SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def delete_entity(
     entity_uuid: UUID,
     request: Request,
@@ -586,16 +254,7 @@ async def delete_entity(
     _=Depends(auth_helpers.get_current_superuser),
 ):
     """Delete an entity by uuid if it has no users"""
-    users_in_entity = await app_helpers.get_entity_users(db, entity_uuid)
-    if users_in_entity:
-        raise HTTPException(
-            status_code=400, detail="Cannot delete entity with existing users"
-        )
-    delete_query = delete(models.Entity).where(models.Entity.uuid == entity_uuid)
-    result = await db.execute(delete_query)
-    if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="Entity not found")
-    await db.commit()
+    await administration.delete_entity(db, entity_uuid)
     return schemas.SuccessReturn.success_instance()
 
 
@@ -610,10 +269,7 @@ async def post_role(
     """
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     insert_query = insert(models.Role).values(
-        uuid=role.uuid,
-        name=role.name,
-        description=role.description,
-        entity_uuid=entity_uuid,
+        **role.model_dump(exclude={"users"}), entity_uuid=entity_uuid
     )
     role_uuid = (await db.execute(insert_query)).inserted_primary_key[0]
 
@@ -621,6 +277,9 @@ async def post_role(
         await app_helpers.add_users_to_role(db, role_uuid, role.users)
 
     await db.commit()
+    await app_helpers.roles_changed(
+        db, await app_helpers.get_role_user_uuids(db, role_uuid)
+    )
 
     return schemas.SuccessReturn.success_instance()
 
@@ -640,15 +299,7 @@ async def get_roles(
     result = []
     for role in roles.scalars():
         role_users = await app_helpers.get_role_users(db, role.uuid)
-        result.append(
-            schemas.GetRoleWithUsers(
-                uuid=role.uuid,
-                name=role.name,
-                description=role.description,
-                updated_date=role.updated_date,
-                users=role_users,
-            )
-        )
+        result.append(schemas.GetRoleWithUsers.from_role(role, role_users))
     return result
 
 
@@ -671,13 +322,7 @@ async def get_role(
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
     role_users = await app_helpers.get_role_users(db, role_uuid)
-    return schemas.GetRoleWithUsers(
-        uuid=role.uuid,
-        name=role.name,
-        description=role.description,
-        updated_date=role.updated_date,
-        users=role_users,
-    )
+    return schemas.GetRoleWithUsers.from_role(role, role_users)
 
 
 @router.patch("/role/{role_uuid}", response_model=schemas.SuccessReturn)
@@ -691,11 +336,10 @@ async def patch_role(
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
+    affected_users = set(await app_helpers.get_role_user_uuids(db, role_uuid))
 
-    # Update role details if name or description provided
-    adjusted_role = role.model_dump(
-        exclude={"users"}, exclude_unset=True, exclude_none=True
-    )
+    # Update the role details and settings that were sent
+    adjusted_role = role.changes()
 
     if adjusted_role:
         query = (
@@ -712,6 +356,8 @@ async def patch_role(
     if role.users is not None:  # Check if None since empty list is valid
         await app_helpers.update_role_users(db, role_uuid, role.users)
 
+    affected_users.update(await app_helpers.get_role_user_uuids(db, role_uuid))
+    await app_helpers.roles_changed(db, list(affected_users))
     return schemas.SuccessReturn.success_instance()
 
 
@@ -725,6 +371,7 @@ async def delete_role(
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
+    role_users = await app_helpers.get_role_user_uuids(db, role_uuid)
 
     # Delete the group - UserGroup entries will be cascade deleted due to foreign key constraint
     result = await db.execute(delete(models.Role).where(models.Role.uuid == role_uuid))
@@ -733,6 +380,7 @@ async def delete_role(
         raise HTTPException(status_code=404, detail="Role not found")
 
     await db.commit()
+    await app_helpers.roles_changed(db, role_users)
     return schemas.SuccessReturn.success_instance()
 
 
@@ -828,13 +476,7 @@ async def add_data_backend(
     _: User = Depends(auth_helpers.get_current_superuser),
 ):
     """Add a data backend to the entity"""
-
-    insert_query = insert(models.ApiSource).values(
-        **data_backend.model_dump(), entity_uuid=entity_uuid
-    )
-
-    await db.execute(insert_query)
-    await db.commit()
+    await administration.add_data_backend(db, entity_uuid, data_backend)
     return schemas.SuccessReturn.success_instance()
 
 
@@ -846,15 +488,7 @@ async def delete_data_backend(
     _: User = Depends(auth_helpers.get_current_superuser),
 ):
     """Delete a data backend from the entity"""
-    delete_query = delete(models.ApiSource).where(
-        models.ApiSource.entity_uuid == entity_uuid,
-        models.ApiSource.name == backend_name,
-    )
-    result = await db.execute(delete_query)
-    if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="Data backend not found")
-
-    await db.commit()
+    await administration.delete_data_backend(db, entity_uuid, backend_name)
     return schemas.SuccessReturn.success_instance()
 
 
@@ -867,7 +501,4 @@ async def get_data_backends(
     _: User = Depends(auth_helpers.get_current_superuser),
 ):
     """Get the data backends for the entity"""
-    query = select(models.ApiSource).where(models.ApiSource.entity_uuid == entity_uuid)
-    data_backends = await db.execute(query)
-
-    return data_backends.scalars().all()
+    return await administration.data_backends(db, entity_uuid)

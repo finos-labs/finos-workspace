@@ -1,15 +1,15 @@
+import { useMutation } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { apiClient } from "~/api/api";
 import { useShallowAppStore } from "~/lib/state/app";
-import { useShallowAuthStore } from "~/lib/state/auth";
-import { useShallowFeatureFlagsStore } from "~/lib/state/featureFlags";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import Settings from "~/routes/settings";
 import type { DisplaySettings } from "~/types/auth.type";
-import { makeAuthUser, makeItem } from "../factories";
+import { makeItem } from "../factories";
 import { partial, stubStoreState } from "../mocks";
 
 const mockSetSearchParams = vi.fn();
@@ -23,9 +23,7 @@ vi.mock("react-router-dom", async () => {
 });
 
 vi.mock("@tanstack/react-query", () => ({
-  useMutation: vi.fn(() => ({
-    mutateAsync: vi.fn().mockResolvedValue({ ok: true }),
-  })),
+  useMutation: vi.fn(() => ({ mutate: vi.fn() })),
 }));
 
 vi.mock("sonner", () => ({
@@ -41,27 +39,12 @@ vi.mock("usehooks-ts", () => ({
   },
 }));
 
-vi.mock("~/lib/state/auth", () => ({
-  useShallowAuthStore: vi.fn(),
-}));
-
 vi.mock("~/lib/state/app", () => ({
   useShallowAppStore: vi.fn(),
 }));
 
 vi.mock("~/lib/state/theme", () => ({
   useShallowThemeStore: vi.fn(),
-}));
-
-vi.mock("~/lib/state/featureFlags", () => ({
-  useShallowFeatureFlagsStore: vi.fn(),
-}));
-
-vi.mock("~/lib/utils/fetch", () => ({
-  getHeaders: vi.fn(() => ({
-    "Content-Type": "application/json",
-    Authorization: "Bearer mock-token",
-  })),
 }));
 
 vi.mock("~/components/Settings/GeneralTab", () => ({
@@ -160,24 +143,9 @@ vi.mock("@radix-ui/react-tabs", () => ({
   ),
 }));
 
-const setupMocks = (
-  options: { tier?: "full" | "basic"; hasAdminAccess?: boolean } = {},
-) => {
-  const { tier = "full", hasAdminAccess = false } = options;
-
-  stubStoreState(useShallowFeatureFlagsStore, {
-    featureFlags: {
-      tier,
-      admin_access: hasAdminAccess,
-    },
-  });
-
+const setupMocks = () => {
   stubStoreState(useShallowThemeStore, {
     getDisplaySettings: vi.fn(() => partial<DisplaySettings>({ theme: "dark" })),
-  });
-
-  stubStoreState(useShallowAuthStore, {
-    user: makeAuthUser({ token: "mock-token" }),
   });
 
   stubStoreState(useShallowAppStore, {
@@ -213,30 +181,14 @@ describe("Settings", () => {
       expect(screen.getByTestId("general-tab")).toBeInTheDocument();
     });
 
-    it("renders all core tabs for full tier", () => {
+    it("renders all tabs, Security included, for every user", () => {
       renderSettings();
 
       expect(screen.getByRole("tab", { name: /general/i })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /layout/i })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /widget/i })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: /advanced/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /security/i })).toBeInTheDocument();
-    });
-
-    it("disables Security tab for non-full tier users", () => {
-      setupMocks({ tier: "basic" });
-      renderSettings();
-
-      const securityTab = screen.getByRole("tab", { name: /security/i });
-      expect(securityTab).toBeDisabled();
-    });
-
-    it("enables Security tab for full tier users", () => {
-      setupMocks({ tier: "full" });
-      renderSettings();
-
-      const securityTab = screen.getByRole("tab", { name: /security/i });
-      expect(securityTab).not.toBeDisabled();
+      expect(screen.getByRole("tab", { name: /security/i })).not.toBeDisabled();
     });
   });
 
@@ -274,8 +226,7 @@ describe("Settings", () => {
       expect(advancedTab).toBeInTheDocument();
     });
 
-    it("switches to Security tab when clicked (full tier)", async () => {
-      setupMocks({ tier: "full" });
+    it("switches to Security tab when clicked", async () => {
       const user = userEvent.setup();
       renderSettings();
 
@@ -285,17 +236,6 @@ describe("Settings", () => {
       // Tab should be clickable and not disabled
       expect(securityTab).not.toBeDisabled();
     });
-
-    it("does not navigate to Security tab when disabled", async () => {
-      setupMocks({ tier: "basic" });
-      const user = userEvent.setup();
-      renderSettings();
-
-      const securityTab = screen.getByRole("tab", { name: /security/i });
-      await user.click(securityTab);
-
-      expect(mockSetSearchParams).not.toHaveBeenCalledWith({ tab: "security" });
-    });
   });
 
   describe("Tab Content Rendering", () => {
@@ -303,30 +243,6 @@ describe("Settings", () => {
       renderSettings();
 
       expect(screen.getByTestId("general-tab")).toBeInTheDocument();
-    });
-  });
-
-  describe("Feature Flag Combinations", () => {
-    it("renders correct tabs for full tier without admin access", () => {
-      setupMocks({ tier: "full", hasAdminAccess: false });
-      renderSettings();
-
-      expect(screen.getByRole("tab", { name: /general/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /layout/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /widget/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /advanced/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /security/i })).not.toBeDisabled();
-    });
-
-    it("renders correct tabs for basic tier with admin access", () => {
-      setupMocks({ tier: "basic", hasAdminAccess: true });
-      renderSettings();
-
-      expect(screen.getByRole("tab", { name: /general/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /layout/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /widget/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /advanced/i })).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /security/i })).toBeDisabled();
     });
   });
 });
@@ -340,8 +256,19 @@ describe("useSaveSettings", () => {
   it("is called when Settings component mounts", () => {
     renderSettings();
     expect(useShallowThemeStore).toHaveBeenCalled();
-    expect(useShallowAuthStore).toHaveBeenCalled();
     expect(useShallowAppStore).toHaveBeenCalled();
+  });
+
+  it("saves the display settings through the API client (session cookie)", async () => {
+    renderSettings();
+    const options = vi.mocked(useMutation).mock.calls.at(-1)?.[0] as {
+      mutationFn: (settings: DisplaySettings) => Promise<unknown>;
+    };
+    const settings = partial<DisplaySettings>({ theme: "dark" });
+
+    await options.mutationFn(settings);
+
+    expect(apiClient.post).toHaveBeenCalledWith("/app/display-settings", settings);
   });
 });
 

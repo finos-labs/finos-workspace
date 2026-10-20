@@ -1,4 +1,5 @@
 from contextvars import ContextVar
 from uuid import UUID
 
-session_token_ctx: ContextVar[UUID | None] = ContextVar("session_token", default=None)
+# The row id (Session.uuid) of the session the current request rides, for the audit log
+session_uuid_ctx: ContextVar[UUID | None] = ContextVar("session_uuid", default=None)

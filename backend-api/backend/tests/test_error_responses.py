@@ -20,9 +20,19 @@ if BACKEND_DIR not in sys.path:
 import pytest
 from uuid import uuid4
 
+from tests.fixtures.base import WEB_HEADERS
+
 
 class TestErrorResponseFormat401:
     """Tests for 401 Unauthorized error response format"""
+
+    @pytest.mark.asyncio
+    async def test_401_keeps_the_headers_of_its_exception(self, client):
+        """The exception handler sends an exception's headers: a refused credential names
+        the scheme it expects (WWW-Authenticate)"""
+        response = await client.get("/app/user", headers=WEB_HEADERS)
+        assert response.status_code == 401
+        assert response.headers["www-authenticate"] == "Bearer"
 
     @pytest.mark.asyncio
     async def test_401_contains_detail_field(self, client):
@@ -82,7 +92,7 @@ class TestErrorResponseFormat422:
     @pytest.mark.asyncio
     async def test_422_contains_detail_field(self, client):
         """422 responses should contain 'detail' field with error message"""
-        response = await client.post("/login", json={})
+        response = await client.post("/app/login", json={})
         assert response.status_code == 422
 
         data = response.json()
@@ -93,7 +103,7 @@ class TestErrorResponseFormat422:
     @pytest.mark.asyncio
     async def test_422_contains_status_field(self, client):
         """422 responses should contain 'status' field"""
-        response = await client.post("/login", json={})
+        response = await client.post("/app/login", json={})
         assert response.status_code == 422
 
         data = response.json()
@@ -104,7 +114,7 @@ class TestErrorResponseFormat422:
     async def test_422_for_invalid_email_format(self, client):
         """Invalid email should return 422 with helpful message"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={"email": "not-an-email", "password": "ValidPassword123!"},
         )
         assert response.status_code == 422
@@ -118,7 +128,7 @@ class TestErrorResponseFormat422:
     async def test_422_for_invalid_password(self, client):
         """Invalid password should return 422 with helpful message"""
         response = await client.post(
-            "/login",
+            "/app/login",
             json={"email": "valid@test.com", "password": "short"},
         )
         assert response.status_code == 422
@@ -132,8 +142,8 @@ class TestErrorResponseSecurity:
         """Error responses should not expose Python stack traces"""
         # Try various bad inputs
         endpoints = [
-            ("/login", {"email": "test", "password": "x" * 10000}),
-            ("/login", {"email": "x" * 100, "password": "x"}),
+            ("/app/login", {"email": "test", "password": "x" * 10000}),
+            ("/app/login", {"email": "x" * 100, "password": "x"}),
         ]
 
         for endpoint, payload in endpoints:
@@ -150,7 +160,7 @@ class TestErrorResponseSecurity:
         """Error responses should not expose database error details"""
         # Try SQL-like input
         response = await client.post(
-            "/login",
+            "/app/login",
             json={"email": "'; DROP TABLE users; --", "password": "password"},
         )
 
@@ -193,11 +203,12 @@ class TestRateLimitingBehavior:
         responses = []
         for i in range(10):
             response = await client.post(
-                "/login",
+                "/app/login",
                 json={
                     "email": f"ratelimit_{i}@test.com",
                     "password": "ValidPassword123!",
                 },
+                headers=WEB_HEADERS,
             )
             responses.append(response.status_code)
 
@@ -207,13 +218,32 @@ class TestRateLimitingBehavior:
             assert code in valid_codes
 
     @pytest.mark.asyncio
+    async def test_no_header_a_client_chooses_lifts_the_limit(self, client):
+        """Sign-in (5/minute) is limited for every caller, whatever user agent it claims."""
+        codes = []
+        for i in range(7):
+            response = await client.post(
+                "/app/login",
+                json={"email": f"limited_{i}@test.com", "password": "ValidPassword123!"},
+                headers={
+                    **WEB_HEADERS,
+                    "User-Agent": "app",
+                    "X-Workspace-User-Agent": "app",
+                },
+            )
+            codes.append(response.status_code)
+
+        assert 429 in codes
+
+    @pytest.mark.asyncio
     async def test_rate_limit_returns_429(self, client):
         """Rate limiting should return 429 status code"""
         # This is a behavioral test - we can't easily trigger rate limit
         # but we verify the endpoint accepts the request format
         response = await client.post(
-            "/login",
+            "/app/login",
             json={"email": "test@test.com", "password": "ValidPassword123!"},
+            headers=WEB_HEADERS,
         )
         # Should return 401 (wrong creds) or 429 (rate limited)
         assert response.status_code in {401, 429}
@@ -226,7 +256,7 @@ class TestContentTypeErrors:
     async def test_wrong_content_type_handled(self, client):
         """Wrong Content-Type should return appropriate error"""
         response = await client.post(
-            "/login",
+            "/app/login",
             content=b"email=test@test.com&password=password",
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
@@ -237,7 +267,7 @@ class TestContentTypeErrors:
     async def test_empty_body_handled(self, client):
         """Empty request body should return 422"""
         response = await client.post(
-            "/login",
+            "/app/login",
             content=b"",
             headers={"Content-Type": "application/json"},
         )
@@ -247,7 +277,7 @@ class TestContentTypeErrors:
     async def test_malformed_json_handled(self, client):
         """Malformed JSON should return appropriate error"""
         response = await client.post(
-            "/login",
+            "/app/login",
             content=b"{invalid json}",
             headers={"Content-Type": "application/json"},
         )
@@ -299,13 +329,13 @@ class TestMethodNotAllowed:
     async def test_wrong_method_returns_405(self, client):
         """Using wrong HTTP method should return 405"""
         # Try DELETE on login endpoint
-        response = await client.delete("/login")
+        response = await client.delete("/app/login")
         assert response.status_code in {404, 405}
 
     @pytest.mark.asyncio
     async def test_405_includes_allowed_methods(self, client):
         """405 response should indicate allowed methods"""
-        response = await client.delete("/login")
+        response = await client.delete("/app/login")
 
         if response.status_code == 405:
             # Check for Allow header

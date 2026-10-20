@@ -8,9 +8,9 @@ from uuid import UUID
 
 from loguru import logger
 
-from api.schemas import EntitlementUsageGet
+from api.schemas import UsageGet
 from api.storage import FileStorage
-from routers.app.helpers import get_entitlement
+from routers.app.helpers import get_user_limits
 from utilities import workers_queue
 from utilities.decorators import next_schedule_dt, repeat_every
 
@@ -22,26 +22,20 @@ from api import base, crud
 from api.database import AsyncReadSessionLocal, AsyncWriteSessionLocal
 from api.models import (
     DashboardSave,
-    EntitlementUsage,
-    Entity,
-    EntityEntitlement,
     Login,
     StoredFile,
+    UserUsage,
 )
-from routers import app_helpers
 from utilities.config import settings
 
 
 async def login_information(
     user_uuid: UUID,
-    ip_address: None | str,
     source: None | Literal["app", "oauth-app"],
 ) -> None:
     """Records a login"""
     async with AsyncWriteSessionLocal.session() as db:
-        query = insert(Login).values(
-            ip_address=ip_address, source=source or "app", user_uuid=user_uuid
-        )
+        query = insert(Login).values(source=source or "app", user_uuid=user_uuid)
         await db.execute(query)
         await db.commit()
 
@@ -144,7 +138,7 @@ async def get_usage_tasks(uuid: UUID, usage_type: Literal["file", "copilot", "li
     """Get usage tasks for a user"""
     async with AsyncReadSessionLocal.session() as db:
         if usage_type == "limits":
-            return await get_entitlement(db, uuid)
+            return await get_user_limits(db, uuid)
 
         if usage_type == "file":
             file_sum_query = select(func.sum(StoredFile.size)).where(
@@ -156,10 +150,10 @@ async def get_usage_tasks(uuid: UUID, usage_type: Literal["file", "copilot", "li
         if usage_type == "copilot":
             usage_query = await db.execute(
                 select(
-                    EntitlementUsage.number_copilot_calls_day_count,
-                    EntitlementUsage.number_copilot_tokens_day_count,
+                    UserUsage.number_copilot_calls_day_count,
+                    UserUsage.number_copilot_tokens_day_count,
                 )
-                .where(EntitlementUsage.user_uuid == uuid)
+                .where(UserUsage.user_uuid == uuid)
                 .limit(1)
             )
             counts = usage_query.first()
@@ -179,18 +173,15 @@ async def update_user_usage_cache(user_uuid: UUID, reset_copilot_calls: bool = F
         await asyncio.gather(*tasks)
     )
 
-    if not limits:
-        return None
-
     total_file_upload_size_gb_count = (
         (total_file_bytes / (1024**3)) if total_file_bytes else 0
     )
 
     try:
         cache_data = {
-            "copilot_calls_limit": limits.number_copilot_calls_day,
-            "copilot_tokens_limit": limits.number_copilot_tokens_day,
-            "file_upload_size_limit": limits.total_file_upload_size_gb,
+            "copilot_calls_limit": limits.copilot_calls_day,
+            "copilot_tokens_limit": limits.copilot_tokens_day,
+            "file_upload_size_limit": limits.upload_size_gb,
             "number_copilot_calls_day_count": (
                 0 if reset_copilot_calls else (copilot_calls_day_count or 0)
             ),
@@ -201,21 +192,21 @@ async def update_user_usage_cache(user_uuid: UUID, reset_copilot_calls: bool = F
         }
 
         settings.redis_cache(f"usage:{user_uuid}", cache_data, update=True)
-        return EntitlementUsageGet(**cache_data)
+        return UsageGet(**cache_data)
     except Exception as e:
         logger.exception(e)
 
     return None
 
 
-async def entitlement_usage(reset_copilot_calls: bool = False):
-    """Entitlement usage"""
-    logger.info("Starting entitlement_usage task")
+async def user_usage(reset_copilot_calls: bool = False):
+    """Sync the usage of the users who used the Copilot today"""
+    logger.info("Starting user_usage task")
     async with AsyncWriteSessionLocal.session() as db:
-        query = select(EntitlementUsage.user_uuid).where(
+        query = select(UserUsage.user_uuid).where(
             or_(
-                EntitlementUsage.number_copilot_calls_day_count != 0,
-                EntitlementUsage.number_copilot_tokens_day_count != 0,
+                UserUsage.number_copilot_calls_day_count != 0,
+                UserUsage.number_copilot_tokens_day_count != 0,
             )
         )
         results = (await db.execute(query)).scalars().all()
@@ -223,7 +214,7 @@ async def entitlement_usage(reset_copilot_calls: bool = False):
         for user_uuid in results:
 
             if cache_data := settings.redis_cache(f"usage:{user_uuid}"):
-                cache_data = EntitlementUsageGet.model_validate(cache_data)
+                cache_data = UsageGet.model_validate(cache_data)
 
             if (
                 updated_data := await update_user_usage_cache(
@@ -243,8 +234,8 @@ async def entitlement_usage(reset_copilot_calls: bool = False):
                 continue
 
             update_query = (
-                update(EntitlementUsage)
-                .where(EntitlementUsage.user_uuid == user_uuid)
+                update(UserUsage)
+                .where(UserUsage.user_uuid == user_uuid)
                 .values(
                     number_copilot_calls_day_count=updated_data.number_copilot_calls_day_count
                     or 0,
@@ -263,51 +254,18 @@ async def entitlement_usage(reset_copilot_calls: bool = False):
 
         await db.commit()
 
-    logger.info("Finished entitlement_usage task")
+    logger.info("Finished user_usage task")
     return True
 
 
 @repeat_every(seconds=timedelta(minutes=5), wait_first=False)
-async def entitlement_usage_task():
-    """Entitlement usage"""
+async def user_usage_task():
+    """Sync the usage of the users who used the Copilot today"""
     return await workers_queue.worker_queue(
-        entitlement_usage,
-        "entitlement_usage",
+        user_usage,
+        "user_usage",
         result_ttl=base.get_result_ttl(timedelta(minutes=4)),
         job_timeout=1800,
-    )
-
-
-async def add_entity_entitlements():
-    """Add entity entitlements for entities without an entitlement"""
-
-    async with AsyncWriteSessionLocal.session() as db:
-        try:
-            query = (
-                select(Entity.uuid)
-                .select_from(Entity)
-                .outerjoin(
-                    EntityEntitlement, Entity.uuid == EntityEntitlement.entity_uuid
-                )
-                .where(EntityEntitlement.uuid.is_(None))
-            )
-            entities_wo_entitlement = (await db.execute(query)).scalars().all()
-            for entity_uuid in entities_wo_entitlement:
-                await app_helpers.insert_entity_entitlement(db, entity_uuid, "full")
-        except Exception as e:
-            logger.exception(e)
-            await db.rollback()
-
-    return True
-
-
-# Not repeated: entities created by `scripts/init_users.py` get their entitlement here
-@repeat_every(seconds=10, wait_first=True, max_repetitions=1)
-async def add_entity_entitlements_task():
-    """Task to add entity entitlements"""
-    # setting result_ttl to -1 to keep the return value in redis indefinitely (prevents the task from being re-run)
-    return await workers_queue.worker_queue(
-        add_entity_entitlements, "add_entity_entitlements", sleep=10, result_ttl=-1
     )
 
 
@@ -317,7 +275,7 @@ async def user_usage_cache_task(user_uuid: UUID):
 
 
 async def reset_copilot_calls():
-    return await entitlement_usage(reset_copilot_calls=True)
+    return await user_usage(reset_copilot_calls=True)
 
 
 @repeat_every(seconds=timedelta(hours=2), wait_first=False)
@@ -334,10 +292,9 @@ async def start_background_tasks():
     """Start all background tasks"""
 
     await reset_copilot_calls_task()
-    await entitlement_usage_task()
+    await user_usage_task()
     await delete_old_saves_task()
     await delete_unconfirmed_files_task()
-    await add_entity_entitlements_task()
 
     clear_datetime = datetime.strptime(
         settings.CLEAR_UNCONFIRMED_FILES_DATE, "%Y-%m-%d"

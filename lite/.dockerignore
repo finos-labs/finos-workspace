@@ -33,5 +33,6 @@
 .github
 build-local.sh
 publish.sh
+tests
 README.md
 README-ENDUSER.md
