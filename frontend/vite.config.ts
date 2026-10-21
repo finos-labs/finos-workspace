@@ -7,7 +7,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import { defineConfig } from "vitest/config";
 import { dark } from "./src/components/ds/colors.ts";
-import { configFromEnv, ENV_NAMES } from "./src/lib/runtimeConfigSchema.ts";
+import { configFromEnv } from "./src/lib/runtimeConfigSchema.ts";
 
 // plugin so it always forces reload because hmr breaks the dev app
 const fullReloadAlways: PluginOption = {
@@ -41,8 +41,7 @@ export default defineConfig(({ mode }) => {
 
   // Writes config.js from the .env variables, for runtime builds. Operators edit dist/config.js
   // at deploy time to customise without rebuilding. It uses the app's own schema, so defaults
-  // and coercion ("true" → true) are always in sync. config.env.json names the variable of each
-  // setting, for whatever renders config.js again at deploy time (see lite/).
+  // and coercion ("true" → true) are always in sync.
   const generateRuntimeConfigPlugin: PluginOption = {
     name: "generate-runtime-config",
     writeBundle(options) {
@@ -52,10 +51,6 @@ export default defineConfig(({ mode }) => {
       writeFileSync(
         path.join(outDir, "config.js"),
         `window.__APP_CONFIG__ = ${JSON.stringify(configFromEnv(env), null, 2)};\n`,
-      );
-      writeFileSync(
-        path.join(outDir, "config.env.json"),
-        `${JSON.stringify(ENV_NAMES, null, 2)}\n`,
       );
     },
   };

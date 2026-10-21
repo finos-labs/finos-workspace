@@ -9,7 +9,6 @@ Source code for Workspace and the components that build and run it.
 | `frontend/` | The Workspace frontend (React 18 + TypeScript + Vite) |
 | `backend-api/` | Backend API (FastAPI + SQLAlchemy), admin CLI, and admin dashboard |
 | `agent/` | Ines, the Copilot's agent, and `agent/mcp-server/`, the tools she uses (Bun + TypeScript); see [agent/README.md](agent/README.md) |
-| `lite/` | Single-image Docker packaging of the backend and frontend |
 | `local/` | Development stack with hot reload for the frontend and the API (`make up`); see [local/LOCAL_SETUP.md](local/LOCAL_SETUP.md) |
 
 Each component keeps its own README with setup and development instructions.
@@ -90,7 +89,7 @@ the code, so the API does not start without them.
 
 | Variable | Written by `create_local_env` | What it is |
 |---|---|---|
-| `MODE` | `production` | One of `production`, `local`, `test` or `lite`. |
+| `MODE` | `production` | One of `production`, `local` or `test`. |
 | `FRONTENDURL` | `http://localhost:3000` | Address of the web app. |
 | `APPURL` | `http://localhost:3000` | Address of the web app that the API uses for links back to it, such as login redirects. |
 | `SELFURL` | `http://localhost:8000` | The API's own address, used to build links to files. |
