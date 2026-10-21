@@ -1,30 +1,31 @@
-// Checks render-frontend-config.sh against RuntimeConfigSchema, so the two cannot
-// drift apart. The image build runs it from frontend/:
+// Checks app-config.js, which renders config.js in the nginx image, against
+// RuntimeConfigSchema and nginx.conf, so they cannot drift apart. The image build
+// runs it from frontend/:
 //   bun scripts/check-runtime-config.ts
-// It fails when a schema field is missing from the script's FIELDS table (or the
-// table names a field the schema does not have), when the config.js the script
-// writes is rejected by the schema, or when the script accepts an invalid value.
-import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+// It fails when a schema field is missing from the module's FIELDS table (or the
+// table names a field the schema does not have), when nginx.conf does not pass
+// exactly the table's variables to nginx's workers, when the config.js the module
+// renders is rejected by the schema, or when the module accepts an invalid value.
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { runInNewContext } from "node:vm";
 import { ENV_NAMES, RuntimeConfigSchema } from "../src/lib/runtimeConfigSchema";
 
 type Config = Record<string, Record<string, unknown>>;
+type AppConfig = {
+  FIELDS: [string, string, string, string][];
+  render(env: Record<string, string>): string;
+};
 
-const script = resolve(process.cwd(), "render-frontend-config.sh");
-const out = join(mkdtempSync(join(tmpdir(), "app-config-")), "config.js");
-
-const table = readFileSync(script, "utf8").match(/^FIELDS='\n([^']*)'$/m);
-if (!table) throw new Error(`No FIELDS table in ${script}`);
-const rows = table[1]
-  .trim()
-  .split("\n")
-  .map((line) => {
-    const [group, field, variable, type] = line.trim().split(/\s+/);
-    return { path: `${group}.${field}`, group, field, variable, type };
-  });
+// A plain JavaScript module for nginx's njs, so it is imported without types.
+const appConfig: AppConfig = (await import(resolve(process.cwd(), "app-config.js"))).default;
+const rows = appConfig.FIELDS.map(([group, field, variable, type]) => ({
+  path: `${group}.${field}`,
+  group,
+  field,
+  variable,
+  type,
+}));
 
 // For each type: a value to set in the environment and the value config.js must then hold.
 const samples: Record<string, [string, unknown]> = {
@@ -35,12 +36,8 @@ const samples: Record<string, [string, unknown]> = {
 };
 
 function render(env: Record<string, string>): Config {
-  execFileSync("sh", [script], {
-    env: { PATH: process.env.PATH, APP_CONFIG_PATH: out, ...env },
-    stdio: "pipe",
-  });
   const sandbox: { window: { __APP_CONFIG__?: unknown } } = { window: {} };
-  runInNewContext(readFileSync(out, "utf8"), sandbox);
+  runInNewContext(appConfig.render(env), sandbox);
   return JSON.parse(JSON.stringify(sandbox.window.__APP_CONFIG__));
 }
 
@@ -73,8 +70,20 @@ for (const row of rows) {
   }
 }
 
+// nginx passes its workers only the variables its env directives name.
+const nginxConf = readFileSync(resolve(process.cwd(), "nginx.conf"), "utf8");
+const passed = [...nginxConf.matchAll(/^env ([A-Z0-9_]+);$/gm)].map((match) => match[1]);
+for (const row of rows) {
+  if (!passed.includes(row.variable)) errors.push(`nginx.conf has no env ${row.variable};`);
+}
+for (const name of passed) {
+  if (!rows.some((row) => row.variable === name)) {
+    errors.push(`nginx.conf passes ${name}, which no field reads`);
+  }
+}
+
 if (!RuntimeConfigSchema.safeParse(render({})).success) {
-  errors.push("config.js written with no variables set fails the schema");
+  errors.push("config.js rendered with no variables set fails the schema");
 }
 
 const written = render(
@@ -83,7 +92,7 @@ const written = render(
 const parsed = RuntimeConfigSchema.safeParse(written);
 if (!parsed.success) {
   errors.push(
-    `config.js written with every variable set fails the schema: ${parsed.error.message}`,
+    `config.js rendered with every variable set fails the schema: ${parsed.error.message}`,
   );
 } else {
   const data = parsed.data as Config;
@@ -97,14 +106,14 @@ if (!parsed.success) {
   }
 }
 
-// Invalid values stop the script, so the container does not start.
+// Invalid values make the module throw, so config.js and the health checks answer 500.
 for (const [variable, value, what] of [
   ["AUTHENTICATION_ALLOW_EMAIL_LOGIN", "yes", "boolean"],
   ["UI_DEFAULT_THEME", "blue", "theme"],
 ]) {
   try {
     render({ [variable]: value });
-    errors.push(`the script accepted an invalid ${what}`);
+    errors.push(`app-config.js accepted an invalid ${what}`);
   } catch {
     // Expected.
   }
@@ -114,6 +123,4 @@ if (errors.length > 0) {
   console.error(errors.join("\n"));
   process.exit(1);
 }
-console.log(
-  `render-frontend-config.sh covers all ${schemaPaths.length} RuntimeConfigSchema fields`,
-);
+console.log(`app-config.js covers all ${schemaPaths.length} RuntimeConfigSchema fields`);

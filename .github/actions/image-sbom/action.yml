@@ -2,8 +2,8 @@ name: Image SBOM
 description: >
   Attests a CycloneDX SBOM of an image pushed to ECR and pushes the attestation
   to ECR with the image, unless the image has an SBOM attestation already. Syft
-  reads the image: its OS packages, the packages installed in it and its
-  runtimes. Needs the image's ECR credentials and the job permissions
+  reads the image: its OS packages, the packages installed in it, its runtimes
+  and the SBOM files it carries. Needs the image's ECR credentials and the job permissions
   id-token: write and attestations: write. The attestation can be read with
   `gh attestation verify oci://<image> --owner <owner>
   --predicate-type https://cyclonedx.org/bom`.
@@ -59,7 +59,8 @@ runs:
         mkdir -p "$(dirname "$SBOM")"
         docker image inspect "$IMAGE" > /dev/null 2>&1 || docker pull --quiet "$IMAGE"
         # Keep syft's serialNumber: actions/attest takes a CycloneDX file as an SBOM only with one.
-        syft scan "docker:$IMAGE" --quiet --output "cyclonedx-json=$SBOM"
+        # The SBOM files an image carries go in too: the frontend's names what its static nginx is built from.
+        syft scan "docker:$IMAGE" --quiet --select-catalogers +sbom-cataloger --output "cyclonedx-json=$SBOM"
         if [ -n "$PROJECT" ]; then
           SYFT_ENRICH=javascript,python SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES=true \
             syft scan "dir:$PROJECT" --quiet --select-catalogers javascript,python --output "cyclonedx-json=$SBOM.project"

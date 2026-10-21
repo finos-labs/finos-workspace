@@ -139,12 +139,12 @@ services:
       init:
         condition: service_completed_successfully
 
-  # One image for every environment: the container writes config.js from these variables at start.
+  # One image for every environment: nginx renders config.js from these variables.
   web:
     build:
       context: ./frontend
-      args:
-        PLATFORM: ${PLATFORM:-linux/amd64}
+    # The image is built from scratch, so it is built for, and runs on, this platform.
+    platform: ${PLATFORM:-linux/amd64}
     image: workspace-web:local
     restart: unless-stopped
     environment:
