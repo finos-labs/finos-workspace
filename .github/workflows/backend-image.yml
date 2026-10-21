@@ -3,7 +3,8 @@ name: Backend Docker Images (ECR)
 # Builds the API and worker images when backend-api changes. Pull requests build
 # them to check the Dockerfiles; a tag like backend-v1.1.0 pushes them to ECR as
 # 1.1.0. Deploying a pushed image is a change to the environment's values file in
-# the infrastructure repository.
+# the infrastructure repository. A pushed image gets an SBOM attestation, pushed
+# to ECR with it (.github/actions/image-sbom).
 on:
   pull_request:
     branches:
@@ -19,6 +20,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  attestations: write
 
 jobs:
   image:
@@ -100,3 +102,9 @@ jobs:
         run: |
           docker tag "$ECR_REPOSITORY:$IMAGE_TAG" "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: SBOM of the image
+        if: github.ref_type == 'tag'
+        uses: ./.github/actions/image-sbom
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}

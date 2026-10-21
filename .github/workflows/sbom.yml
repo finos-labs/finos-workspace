@@ -41,8 +41,6 @@ permissions:
   contents: read
 
 env:
-  SYFT_VERSION: 1.54.1
-  SYFT_SHA256: c069905b391cc4c20a5ba65ad5c10be2a7ba074f8ea6ad203e24d14e303dad47
   BRANCH: feature/sbom-update
 
 jobs:
@@ -64,14 +62,7 @@ jobs:
         with:
           token: ${{ steps.token.outputs.token }}
 
-      - name: Install Syft
-        run: |
-          curl -fsSL -o "$RUNNER_TEMP/syft.tar.gz" \
-            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
-          echo "$SYFT_SHA256  $RUNNER_TEMP/syft.tar.gz" | sha256sum --check
-          mkdir "$RUNNER_TEMP/syft"
-          tar -xzf "$RUNNER_TEMP/syft.tar.gz" -C "$RUNNER_TEMP/syft" syft
-          echo "$RUNNER_TEMP/syft" >> "$GITHUB_PATH"
+      - uses: ./.github/actions/install-syft
 
       - name: Generate the SBOMs
         shell: bash
@@ -110,8 +101,8 @@ jobs:
             exit 0
           fi
           # The commit is the App's bot user's, with GitHub's noreply address for it.
-          git config user.name "$APP_SLUG[bot]"
-          git config user.email "$(gh api "/users/$APP_SLUG%5Bbot%5D" --jq .id)+$APP_SLUG[bot]@users.noreply.github.com"
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)+${APP_SLUG}[bot]@users.noreply.github.com"
           git commit -m "Update the SBOMs"
           git push --force origin "HEAD:refs/heads/$BRANCH"
           if [ -z "$pr" ]; then

@@ -17,6 +17,9 @@ name: Deploy to dev
 # The infrastructure repository is read with a GitHub App installed on it:
 # INFRA_APP_ID (variable) and INFRA_APP_PRIVATE_KEY (secret). The deploy assumes
 # the environment's deployer role, which trusts this repository's develop branch.
+#
+# Every image gets an SBOM attestation, pushed to ECR with it
+# (.github/actions/image-sbom), before anything is deployed.
 on:
   push:
     branches:
@@ -37,6 +40,7 @@ concurrency:
 permissions:
   contents: read
   id-token: write
+  attestations: write
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
@@ -76,6 +80,16 @@ jobs:
             fi
           done
 
+      - name: SBOM of the API image
+        uses: ./.github/actions/image-sbom
+        with:
+          image: ${{ env.ECR_REGISTRY }}/finos/backend:${{ env.IMAGE_TAG }}
+
+      - name: SBOM of the worker image
+        uses: ./.github/actions/image-sbom
+        with:
+          image: ${{ env.ECR_REGISTRY }}/finos/backend-worker:${{ env.IMAGE_TAG }}
+
   frontend:
     runs-on: ubuntu-latest
     env:
@@ -103,6 +117,14 @@ jobs:
             echo "$output" >&2
             exit 1
           fi
+
+      # The image holds the bundle, which names no packages: they come from
+      # frontend/'s lockfile.
+      - name: SBOM of the frontend image
+        uses: ./.github/actions/image-sbom
+        with:
+          image: ${{ env.ECR_REGISTRY }}/finos/frontend:${{ env.IMAGE_TAG }}
+          project: frontend
 
   # Ines and the MCP server with her tools: the two targets of agent/Dockerfile.
   agent:
@@ -135,6 +157,16 @@ jobs:
               exit 1
             fi
           done
+
+      - name: SBOM of the agent image
+        uses: ./.github/actions/image-sbom
+        with:
+          image: ${{ env.ECR_REGISTRY }}/finos/agent:${{ env.IMAGE_TAG }}
+
+      - name: SBOM of the agent MCP server image
+        uses: ./.github/actions/image-sbom
+        with:
+          image: ${{ env.ECR_REGISTRY }}/finos/agent-mcp:${{ env.IMAGE_TAG }}
 
   deploy:
     needs: [backend, frontend, agent]

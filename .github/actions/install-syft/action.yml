@@ -1,0 +1,21 @@
+name: Install Syft
+description: >
+  Installs the Syft release pinned here, checked against its SHA-256, and puts
+  it on the PATH. A second use in the same job finds it installed.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        SYFT_VERSION: 1.54.1
+        SYFT_SHA256: c069905b391cc4c20a5ba65ad5c10be2a7ba074f8ea6ad203e24d14e303dad47
+      run: |
+        if [ -x "$RUNNER_TEMP/syft/syft" ]; then
+          exit 0
+        fi
+        curl -fsSL -o "$RUNNER_TEMP/syft.tar.gz" \
+          "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+        echo "$SYFT_SHA256  $RUNNER_TEMP/syft.tar.gz" | sha256sum --check
+        mkdir -p "$RUNNER_TEMP/syft"
+        tar -xzf "$RUNNER_TEMP/syft.tar.gz" -C "$RUNNER_TEMP/syft" syft
+        echo "$RUNNER_TEMP/syft" >> "$GITHUB_PATH"
