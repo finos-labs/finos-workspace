@@ -1,5 +1,8 @@
 # syntax=docker/dockerfile:1
 
+# The dependencies are installed in the slim image, which has the tools for it. The images
+# are distroless: Bun, the C library and certificates, the dependencies and the code, with no
+# shell, no package manager and no build tools. They run as uid 1000, the slim image's bun.
 FROM oven/bun:1.4.2-slim AS deps
 
 WORKDIR /app
@@ -9,7 +12,7 @@ RUN bun install --frozen-lockfile --production
 
 # The companion MCP server: the tools the agent uses (web search, page fetch, document search, ...).
 # Only the Workspace talks to it, so it is not meant to be reachable from outside the deployment.
-FROM oven/bun:1.4.2-slim AS ines-mcp
+FROM oven/bun:1.4.2-distroless AS ines-mcp
 
 ENV NODE_ENV=production
 ENV MCP_PORT=8787
@@ -27,11 +30,13 @@ EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD ["bun", "-e", "const port = process.env.MCP_PORT || '8787'; const res = await fetch(`http://127.0.0.1:${port}/`); if (!res.ok) process.exit(1);"]
 
-USER bun
+USER 1000:1000
 
+# The command is whole: the base image's bun entrypoint would come first.
+ENTRYPOINT []
 CMD ["bun", "mcp-server/src/server.ts"]
 
-FROM oven/bun:1.4.2-slim AS ines
+FROM oven/bun:1.4.2-distroless AS ines
 
 ENV NODE_ENV=production
 ENV PORT=7777
@@ -57,6 +62,8 @@ EXPOSE 7777
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD ["bun", "-e", "const port = process.env.PORT || '7777'; const res = await fetch(`http://127.0.0.1:${port}/status`); if (!res.ok) process.exit(1);"]
 
-USER bun
+USER 1000:1000
 
+# The command is whole: the base image's bun entrypoint would come first.
+ENTRYPOINT []
 CMD ["bun", "src/server.ts"]

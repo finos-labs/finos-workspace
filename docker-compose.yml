@@ -82,10 +82,15 @@ services:
     # repository out (uid 1001 on a GitHub runner), and the image's own user, uid 1000, cannot
     # write it.
     user: root
+    # The image has no shell: Python starts user_create.json empty, then runs the migrations and init_users.
     command:
-      - sh
+      - python
       - -c
-      - echo '{}' > user_create.json && alembic upgrade head && python -m scripts.init_users
+      - |
+        import pathlib, subprocess, sys
+        pathlib.Path("user_create.json").write_text("{}")
+        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+        subprocess.run([sys.executable, "-m", "scripts.init_users"], check=True)
     restart: "no"
     volumes:
       - ./backend-api/backend/user_create.json:/opt/code/user_create.json

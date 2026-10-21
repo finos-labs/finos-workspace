@@ -1,90 +1,84 @@
 ###############################################
-# Base Image  Backend
+# Backend: the API
 ###############################################
+# The builder has Debian's Python 3.13 with the compiler, headers, git and
+# Poetry that installing the dependencies needs. The image is distroless:
+# Debian's Python 3.13 and the libraries it runs on, the virtual environment
+# and the code. It has no shell, no package manager, no pip or setuptools and
+# no compiler.
 
 ARG PLATFORM=linux/amd64
-FROM --platform=$PLATFORM python:3.13-slim AS python-base
-
-# prepend poetry and venv to path
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONIOENCODING=utf-8 \
-    PIP_NO_CACHE_DIR=off \
-    PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_DEFAULT_TIMEOUT=100 \
-    POETRY_VERSION=2.3.2 \
-    POETRY_HOME="/opt/poetry" \
-    POETRY_VIRTUALENVS_IN_PROJECT=true \
-    POETRY_NO_INTERACTION=1 \
-    PYSETUP_PATH="/opt" \
-    VENV_PATH="/opt/.venv" \
-    TZ="America/New_York"
-
-# prepend poetry and venv to path
-ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
-
-RUN apt-get update -y && apt-get upgrade -y
-
-RUN mkdir -p /var/log/supervisor
-
-RUN apt-get clean
-# supervisor via pip, not apt: the apt package drags in Debian's system Python
-# stack (/usr/lib/python3/dist-packages), incl. vulnerable jaraco.context (CVE-2026-23949)
-RUN python -m pip install --upgrade pip setuptools supervisor
 
 ###############################################
 # Builder Image
 ###############################################
-FROM python-base AS builder-base
+# Debian 13's Python is the one the distroless image runs, so the virtual
+# environment's /usr/bin/python3.13 is there too.
+FROM --platform=$PLATFORM debian:13.7-slim AS builder-base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100 \
+    POETRY_VERSION=2.3.2 \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    POETRY_VIRTUALENVS_OPTIONS_NO_PIP=true \
+    POETRY_NO_INTERACTION=1 \
+    PYSETUP_PATH="/opt" \
+    VENV_PATH="/opt/.venv"
 
 RUN apt-get update -y && apt-get upgrade -y \
     && apt-get install --no-install-recommends -y \
-    curl build-essential git unzip
+      python3.13 python3.13-venv python3.13-dev build-essential git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# copy project requirement files here to ensure they will be cached.
+# Poetry runs from an environment of its own, which stays in this stage.
+RUN python3.13 -m venv /opt/poetry && /opt/poetry/bin/pip install "poetry==$POETRY_VERSION"
+
 WORKDIR $PYSETUP_PATH
-
-# install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
-RUN pip install --upgrade setuptools poetry
-
 COPY ./pyproject.toml ./poetry.lock ./
 
-RUN poetry install --only main
+# The runtime dependencies, supervisor among them, into $VENV_PATH, without pip.
+RUN /opt/poetry/bin/poetry install --only main
 
 # remove slowapi poetry.lock/requirements.txt
-RUN rm -rf $VENV_PATH/src/slowapi/poetry.lock
-RUN rm -rf $VENV_PATH/src/slowapi/docs/requirements.txt
+RUN rm -rf $VENV_PATH/src/slowapi/poetry.lock $VENV_PATH/src/slowapi/docs/requirements.txt
+
+# The image's users, and what its user, appuser, writes: supervisord's log and
+# pid file, the code directory and the uploaded files.
+RUN mkdir -p /rootfs/etc /writable/home/appuser /writable/var/log/supervisor /writable/var/run \
+      /writable/opt/code/local_storage \
+    && printf '%s\n' \
+      'root:x:0:0:root:/root:/sbin/nologin' \
+      'nobody:x:65534:65534:nobody:/nonexistent:/sbin/nologin' \
+      'nonroot:x:65532:65532:nonroot:/home/nonroot:/sbin/nologin' \
+      'appuser:x:1000:1000:appuser:/home/appuser:/sbin/nologin' > /rootfs/etc/passwd \
+    && printf '%s\n' 'root:x:0:' 'nobody:x:65534:' 'nonroot:x:65532:' 'appuser:x:1000:' > /rootfs/etc/group \
+    && touch /writable/var/log/supervisor/supervisord.log /writable/var/run/supervisord.pid
 
 ###############################################
 # Production Image
 ###############################################
-FROM python-base AS production-stage
+FROM --platform=$PLATFORM gcr.io/distroless/python3-debian13 AS production-stage
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONIOENCODING=utf-8 \
+    VENV_PATH="/opt/.venv" \
+    TZ="America/New_York" \
+    PATH="/opt/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+    LD_LIBRARY_PATH="/opt/.venv/lib"
+
+COPY --from=builder-base /rootfs/ /
+COPY --from=builder-base --chown=1000:1000 /writable/ /
 COPY --from=builder-base $VENV_PATH $VENV_PATH
 
-RUN useradd -m -s /bin/bash appuser -p $(openssl passwd -1 appuser)
+WORKDIR /opt/code
+# Uploaded files live in local_storage (a volume in docker-compose.yml)
+COPY --chown=1000:1000 ./ ./
 
-WORKDIR $PYSETUP_PATH/code
-COPY ./ ./
-# Uploaded files live here (a volume in docker-compose.yml)
-RUN mkdir -p $PYSETUP_PATH/code/local_storage
-RUN chown -R appuser:appuser $PYSETUP_PATH/code
+USER 1000:1000
 
-ENV PATH="$VENV_PATH/bin:$PATH"
-ENV LD_LIBRARY_PATH="$VENV_PATH/lib"
-
-
-# Setup supervisor directories and permissions
-RUN mkdir -p /var/log/supervisor /var/run /tmp
-RUN touch /var/log/supervisor/supervisord.log /var/run/supervisord.pid
-RUN chown -R appuser:appuser /var/log/supervisor /var/run/supervisord.pid
-RUN chmod 755 /var/run
-RUN chmod 1777 /tmp
-
-# Image hardening
-RUN apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /var/lib/dpkg/info/* /usr/share/doc/* && \
-    rm -rf /usr/share/man /usr/share/info
-
-USER appuser
-
-CMD ["/bin/bash", "api_entrypoint.sh"]
+# The commands are whole: the base image's python3 entrypoint would come first.
+ENTRYPOINT []
+CMD ["python", "api_entrypoint.py"]

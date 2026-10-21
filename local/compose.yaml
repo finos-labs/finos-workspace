@@ -62,10 +62,15 @@ services:
   # it keeps what exists.
   init:
     <<: *backend
+    # The image has no shell: Python starts user_create.json empty, then runs the migrations and init_users.
     command:
-      - sh
+      - python
       - -c
-      - echo '{}' > user_create.json && python -m alembic upgrade head && python -m scripts.init_users
+      - |
+        import pathlib, subprocess, sys
+        pathlib.Path("user_create.json").write_text("{}")
+        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+        subprocess.run([sys.executable, "-m", "scripts.init_users"], check=True)
     depends_on:
       mysql:
         condition: service_healthy
