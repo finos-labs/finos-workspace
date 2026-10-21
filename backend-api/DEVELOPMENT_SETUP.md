@@ -33,16 +33,15 @@ addresses.
 The web app keeps its session in an HttpOnly cookie (`__Host-ws_session`), which browsers
 send to the API only when it is on the same site as the page. In a deployment, serve the API under the web app's
 registrable domain (for example `api.<your-domain>` beside `app.<your-domain>`), or under
-`/api` of the web app's own origin as Lite does, and use HTTPS. On `http://localhost`,
+`/api` of the web app's own origin, and use HTTPS. On `http://localhost`,
 Chromium and Firefox accept this secure cookie.
 
 `docker-compose-local-dev.yml` overrides `DB_HOST` and `REDIS_HOST` inside the
 API and RQ worker containers to use Docker networking (`mysql`, `valkey`), so the
 same `.env` file works for both host tooling and containers.
 
-The SQLite compose files (`docker-compose-local-dev-sqlite.yml`,
-`docker-compose-lite.yml`) read `backend/envs/.env.sqlite`, which is not
-tracked. Create it once from the template, which also writes the first administrator's seed
+The SQLite compose file (`docker-compose-local-dev-sqlite.yml`) reads
+`backend/envs/.env.sqlite`, which is not tracked. Create it once from the template, which also writes the first administrator's seed
 config (see step 2 below):
 
 ```sh

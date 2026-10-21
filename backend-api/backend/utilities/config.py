@@ -20,8 +20,7 @@ from botocore.client import BaseClient, Config
 from botocore.session import Session
 from fastapi.encoders import jsonable_encoder
 from pydantic import (
-    BaseModel as PydanticBaseModel,
-    ConfigDict,
+    BaseModel,
     EmailStr,
     Field,
     field_validator,
@@ -70,26 +69,6 @@ def check_strong_secret(name: str, value: str) -> str:
             'python -c "import secrets; print(secrets.token_urlsafe(32))"'
         )
     return value
-
-
-class BaseModel(PydanticBaseModel):
-    """BaseModel subclass that ignores Cython-compiled methods.
-
-    When this module is compiled by Cython 3, plain `def method(self): ...`
-    bodies become `cyfunction` objects on the class. Pydantic's metaclass
-    scans the class namespace for unannotated attributes and treats anything
-    that isn't a recognised callable type (FunctionType, property, etc.) as
-    a malformed field. `cyfunction` is not in its default ignore list.
-
-    `type(lambda: None)` evaluates to FunctionType in plain Python and to
-    the cyfunction type when this file is compiled — adding whichever it
-    happens to be is a no-op in dev and the real fix in the lite build.
-
-    Project Pydantic models should inherit from this class instead of
-    pydantic.BaseModel directly.
-    """
-
-    model_config = ConfigDict(ignored_types=(type(lambda: None),))
 
 
 def create_path(*path: str) -> str:
@@ -789,7 +768,7 @@ class GeneralSettings(BaseModel):
 
     FRONTENDURL: str
     SELFURL: str
-    MODE: Literal["production", "local", "test", "lite"]
+    MODE: Literal["production", "local", "test"]
     # Requests carrying a valid X-Workspace-Authorization token skip rate limiting (development only)
     RATE_LIMIT_EXEMPT_ENABLED: bool = False
     # Sign-in providers (/app/{provider}-auth): the public ids of this deployment's OAuth
@@ -866,12 +845,6 @@ class GeneralSettings(BaseModel):
 
     def is_test(self) -> bool:
         return self.MODE == "test"
-
-    def is_prod(self) -> bool:
-        return self.MODE in {"production", "lite"}
-
-    def is_lite(self) -> bool:
-        return self.MODE == "lite"
 
     def set_is_worker(self, is_worker: bool) -> None:
         self.IS_WORKER_CONTAINER = is_worker

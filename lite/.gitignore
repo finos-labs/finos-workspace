@@ -1,8 +1,0 @@
-# Source trees assembled at build time (CI uses actions/checkout; build-local.sh and
-# publish.sh copy them here). They must never be committed into this repo.
-/backend/
-/frontend/
-
-# Local build / run artifacts.
-*.log
-.DS_Store

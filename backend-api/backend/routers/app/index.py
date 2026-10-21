@@ -18,7 +18,7 @@ from fastapi.responses import (
     StreamingResponse,
 )
 from loguru import logger
-from pydantic import Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import RowMapping, and_, delete, insert, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,7 +37,7 @@ from api.schemas import SuccessReturn
 from routers import app_helpers
 from routers.app import mcp_oauth
 from routers.routers_helpers import register_app_user
-from utilities.config import BaseModel, settings
+from utilities.config import settings
 
 router = APIRouter(
     prefix="/app", tags=["app"]

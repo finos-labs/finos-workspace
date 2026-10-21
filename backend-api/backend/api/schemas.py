@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 from fastapi.responses import JSONResponse
 from pydantic import (
     AliasGenerator,
+    BaseModel,
     ConfigDict,
     EmailStr,
     Field,
@@ -21,7 +22,7 @@ from pydantic.functional_validators import AfterValidator, BeforeValidator
 
 from api import base
 from api.events.types import RoleAuditAction, RoleResourceType
-from utilities.config import BaseModel, settings
+from utilities.config import settings
 
 if TYPE_CHECKING:
     from api.models.workspace_models import CopilotChat, StoredFile

@@ -85,7 +85,7 @@ describe("useCopilotStore - Actions", () => {
       copilots: [{ id: "rita", name: "Agent Rita" }],
     } as unknown as ExternalCopilotHolder;
 
-    it("auto-selects the first available agent when none is selected (lite)", () => {
+    it("auto-selects the first available agent when none is selected", () => {
       useCopilotStore.setState({ selectedCopilot: null, externalCopilotHolders: [] });
 
       useCopilotStore.getState().setExternalCopilotHolders([ritaHolder]);

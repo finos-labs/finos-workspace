@@ -217,7 +217,7 @@ def set_session_cookie(
     Strict, for the session's lifetime.
 
     Host-only means the API's host, whatever the port: browsers scope cookies by host and
-    count http://localhost as secure. So on localhost (Lite, the compose stack) the cookie
+    count http://localhost as secure. So on localhost (the compose stack) the cookie
     also reaches every other server on a local port that the browser navigates to or loads
     a frame or an image from, and such a server could set one of its own. A deployment
     serves the API on a host of its own, which no other server shares."""

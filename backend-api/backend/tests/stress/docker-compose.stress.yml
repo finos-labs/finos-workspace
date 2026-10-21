@@ -1,6 +1,5 @@
 # Parameterized stress overlay — replaces the old per-scenario override files.
-# Layered on top of a base stack (docker-compose-local-dev.yml for MySQL, or
-# docker-compose-lite.yml for SQLite). Driven by env vars set by run_stress.sh:
+# Layered on top of docker-compose-local-dev.yml. Driven by env vars set by run_stress.sh:
 #
 #   STRESS_WORKERS    number of uvicorn worker processes (default 1)
 #   STRESS_HOST_PORT  host port to publish on (default 8001)
