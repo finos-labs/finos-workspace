@@ -69,10 +69,10 @@ one yourself: `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
 `BACKEND_CORS_ORIGINS` is required too: the origins of the web app, exactly as browsers
 send them (scheme, host and port; never `*`). The
 session cookie reaches the API only when it is on the same site as the web app: serve it
-under the web app's registrable domain, or under `/api` of the web app's origin as Lite
-does, over HTTPS. The cookies are scoped to the API's host, whatever the port, so a
+under the web app's registrable domain, or under `/api` of the web app's origin, over
+HTTPS. The cookies are scoped to the API's host, whatever the port, so a
 deployment serves the API on a host of its own that no other server shares. On localhost
-(Lite, the compose stack) that cannot hold: browsers treat `http://localhost` as secure,
+(the compose stack) that cannot hold: browsers treat `http://localhost` as secure,
 and the session cookie also reaches every other server on a local port that the browser
 navigates to or loads a frame or an image from, such as a local data backend or an app
 in an iframe widget. Run only servers you trust on localhost next to a signed-in Workspace.

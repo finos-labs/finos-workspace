@@ -15,12 +15,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-# Cython/setuptools compile artifacts — must not leak into the image, or
-# stale local .so files override what setup_compile.py decides to build
-# (in particular bypassing EXCLUDE_FILES).
-*.so
-*.c
-build/
 
 # Virtual Environments
 venv
