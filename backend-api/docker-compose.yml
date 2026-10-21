@@ -27,19 +27,19 @@ services:
     volumes:
       - db:/var/lib/mysql
 
-  redis:
-    image: redis:alpine
+  valkey:
+    image: valkey/valkey:9.1.2-alpine
     restart: always
-    container_name: redis
+    container_name: valkey
     ports:
       - 6379:6379
     networks:
       - local-net
     env_file:
       - ./backend/envs/.env
-    command: redis-server --save 20 1 --loglevel warning
+    command: valkey-server --save 20 1 --loglevel warning
     volumes:
-      - data:/redis
+      - valkey:/data
 
   rq_worker:
     build:
@@ -51,7 +51,7 @@ services:
     networks:
       - local-net
     depends_on:
-      - redis
+      - valkey
       - mysql
 
   fastapi:
@@ -82,7 +82,7 @@ networks:
     driver: bridge
 
 volumes:
-  data:
+  valkey:
     driver: local
   logs:
     external: true

@@ -16,7 +16,7 @@ Each component keeps its own README with setup and development instructions.
 
 ## Running the whole stack
 
-`docker-compose.yml` builds and starts everything: MySQL, Redis, the API, the background
+`docker-compose.yml` builds and starts everything: MySQL, Valkey, the API, the background
 worker, the web app, Ines, the Copilot's agent, and the MCP server with the tools she uses.
 
 ```bash
@@ -99,7 +99,7 @@ the code, so the API does not start without them.
 | `WORKSPACE_AUTH_TOKEN` | a JWT signed with `JWT_SECRET` | The deployment's service token: requests that carry it are exempt from rate limits. |
 | `LOCAL_STORAGE_SECRET_KEY` | random | Signs the links to uploaded files. The code's own default is a fixed string, so always set it. |
 | `STORAGE_PROVIDER` | `folder` | Where uploaded files go: `folder` (the `storage` volume), `aws`, `azure` or `gcp`. |
-| `DB_HOST`, `DB_NAME`, `REDIS_HOST` | `mysql`, `workspace`, `redis` | The compose services. The `api`, `init` and `worker` services also set `DB_HOST` and `REDIS_HOST` themselves, and compose's value wins. |
+| `DB_HOST`, `DB_NAME`, `REDIS_HOST` | `mysql`, `workspace`, `valkey` | The compose services. The `api`, `init` and `worker` services also set `DB_HOST` and `REDIS_HOST` themselves, and compose's value wins. |
 
 The rest of `envs/.env.example` stays as it is: `DATABASE_TYPE=mysql`, `DB_PORT=3306`, the `root`/`root` database login (the
 `mysql` service in `docker-compose.yml` is created with the same password; change both or neither), the `REDIS_*` settings,

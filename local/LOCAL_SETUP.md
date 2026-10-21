@@ -1,6 +1,6 @@
 # Running the Workspace locally for development
 
-Everything for working on the app on your own machine lives in this folder. One command starts the frontend, the backend API and its worker, MySQL and Redis, and code edits show up without restarting anything.
+Everything for working on the app on your own machine lives in this folder. One command starts the frontend, the backend API and its worker, MySQL and Valkey, and code edits show up without restarting anything.
 
 To run the built images instead (web app and API, as a user would), use `docker-compose.yml` at the repository root; its [README section](../README.md#running-the-whole-stack) explains it. The two stacks use port 8000, so run one at a time.
 
@@ -54,7 +54,7 @@ Without `make`, use Docker Compose directly from this folder: `docker compose up
 | `backend-worker` | | Background jobs (RQ), same code as the backend |
 | `init` | | Runs once per start: database migrations, then the administrator and the organization |
 | `mysql` | 3306 | Database, user `root`, password `root`, database `workspace` |
-| `redis` | 6379 | Cache and job queue |
+| `valkey` | 6379 | Cache and job queue |
 
 ## Making changes
 
@@ -73,7 +73,7 @@ The backend reads `backend-api/backend/envs/.env`, the same file the root `docke
 |---|---|---|
 | `MODE` | `production` | The mode the backend's own development guide uses |
 | `SELFURL` | `http://localhost:8000` | Links the backend builds point at the API |
-| `DB_HOST`, `REDIS_HOST` | `mysql`, `redis` | The container names |
+| `DB_HOST`, `REDIS_HOST` | `mysql`, `valkey` | The container names |
 | `DB_NAME` | `workspace` | The database the MySQL container creates |
 | `STORAGE_PROVIDER` | `folder` | Uploaded files go to `backend-api/backend/local_storage/` instead of cloud storage |
 | `JWT_SECRET`, `WORKSPACE_AES_KEY`, `WORKSPACE_AUTH_TOKEN`, `LOCAL_STORAGE_SECRET_KEY` | generated | `WORKSPACE_AUTH_TOKEN` is a JWT signed with `JWT_SECRET`; the example leaves them blank, and the API refuses to start without strong values |
@@ -97,7 +97,7 @@ A new backend setting needs adding in more places than this folder: `envs/.env.e
 - Plain `http://localhost` with one port per service, instead of HTTPS hostnames behind a load balancer.
 - The frontend runs the Vite dev server instead of the nginx image, which writes its settings into `config.js` at start.
 - One copy of each service.
-- MySQL with the password `root` and Redis without a password, both without TLS.
+- MySQL with the password `root` and Valkey without a password, both without TLS.
 - The backend images are built for `linux/amd64`, like the ones deployed; on Apple silicon set `PLATFORM=linux/arm64` (for example `PLATFORM=linux/arm64 make up`) to build for the host.
 
 ## Troubleshooting

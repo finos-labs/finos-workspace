@@ -16,7 +16,7 @@ x-backend: &backend
   # the Vite dev server in links the backend builds.
   environment:
     DB_HOST: mysql
-    REDIS_HOST: redis
+    REDIS_HOST: valkey
     FOLDER_STORAGE_PATH: /opt/code/local_storage
     FRONTENDURL: http://localhost:1420
     APPURL: http://localhost:1420
@@ -45,12 +45,12 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
 
-  redis:
-    image: redis:alpine
+  valkey:
+    image: valkey/valkey:9.1.2-alpine
     ports:
       - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -69,7 +69,7 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
 
   backend:

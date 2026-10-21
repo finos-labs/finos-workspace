@@ -4,7 +4,7 @@
 
 ### Prerequisites
 
-- Docker must be running (testcontainers uses Docker to spin up MySQL and Redis)
+- Docker must be running (testcontainers uses Docker to spin up MySQL and Valkey)
 - Python 3.13 with the dev dependencies installed
 - poetry install --with dev
 
@@ -18,7 +18,7 @@ pytest tests -v
 
 That's it! **No manual docker-compose required.** Testcontainers automatically:
 
-1. Starts fresh MySQL and Redis containers with random ports
+1. Starts fresh MySQL and Valkey containers with random ports
 2. Configures the test environment to use those containers
 3. Stops and cleans up containers when tests finish
 
@@ -73,7 +73,7 @@ python -m pytest tests/test_migration_dialects.py::TestPostgreSQLMigrations -v
 The test setup uses [testcontainers-python](https://testcontainers-python.readthedocs.io/) to automatically manage:
 
 - **MySQL 8.0** container (random port, auto-configured)
-- **Redis Alpine** container (random port, auto-configured)
+- **Valkey Alpine** container (random port, auto-configured)
 
 Environment variables are set dynamically by `conftest.py` based on the container ports.
 

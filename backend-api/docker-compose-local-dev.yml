@@ -35,24 +35,24 @@ services:
     volumes:
       - db:/var/lib/mysql
 
-  redis:
-    image: redis:alpine
+  valkey:
+    image: valkey/valkey:9.1.2-alpine
     restart: always
-    container_name: redis
+    container_name: valkey
     ports:
       - 6379:6379
     networks:
       - local-net
     env_file:
       - ./backend/envs/.env
-    command: redis-server --save 20 1 --loglevel warning
+    command: valkey-server --save 20 1 --loglevel warning
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 20
     volumes:
-      - data:/redis
+      - valkey:/data
 
   fastapi:
     build:
@@ -63,7 +63,7 @@ services:
       - ./backend/envs/.env
     environment:
       DB_HOST: mysql
-      REDIS_HOST: redis
+      REDIS_HOST: valkey
     command:
       [
         "sh",
@@ -81,7 +81,7 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
 
   rq_worker:
@@ -94,7 +94,7 @@ services:
     environment:
       # Override .env values: inside Docker network, use container names not localhost
       DB_HOST: mysql
-      REDIS_HOST: redis
+      REDIS_HOST: valkey
     networks:
       - local-net
     volumes:
@@ -113,7 +113,7 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
 
 networks:
@@ -121,7 +121,7 @@ networks:
     driver: bridge
 
 volumes:
-  data:
+  valkey:
     driver: local
   db:
     driver: local

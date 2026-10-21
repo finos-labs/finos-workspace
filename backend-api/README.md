@@ -14,8 +14,8 @@ To run the whole stack, follow the root [README](../README.md). See [DEVELOPMENT
 
 ## Infrastructure
 
-- `docker-compose.yml`: full-stack deployment (API, workers, database, Redis)
-- `docker-compose-local-dev.yml`: infrastructure only (MySQL, Redis, worker) for local backend development
+- `docker-compose.yml`: full-stack deployment (API, workers, database, Valkey)
+- `docker-compose-local-dev.yml`: infrastructure only (MySQL, Valkey, worker) for local backend development
 - `docker-compose-local-dev-postgres.yml`, `docker-compose-local-dev-sqlite.yml`: the same on PostgreSQL and on SQLite
 - `docker-compose-lite.yml`: the API on SQLite and Redis, built from `fastapi.lite.Dockerfile`
 
