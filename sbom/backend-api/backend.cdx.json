@@ -12871,6 +12871,87 @@
       ]
     },
     {
+      "bom-ref": "pkg:pypi/supervisor@4.3.0?package-id=c175181b9f94a5ff",
+      "type": "library",
+      "name": "supervisor",
+      "version": "4.3.0",
+      "licenses": [
+        {
+          "license": {
+            "name": "BSD-derived (http://www.repoze.org/LICENSE.txt)"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:python-supervisor:python-supervisor:4.3.0:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/supervisor@4.3.0",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "python-package-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "python"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "python"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "python-poetry-lock-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-supervisor:python_supervisor:4.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_supervisor:python-supervisor:4.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_supervisor:python_supervisor:4.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python-supervisor:supervisor:4.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python_supervisor:supervisor:4.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:supervisor:python-supervisor:4.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:supervisor:python_supervisor:4.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:python-supervisor:4.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:python_supervisor:4.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:supervisor:supervisor:4.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:python:supervisor:4.3.0:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/poetry.lock"
+        }
+      ]
+    },
+    {
       "bom-ref": "pkg:pypi/testcontainers@4.15.0?package-id=31ef2c0e5338dc35",
       "type": "library",
       "name": "testcontainers",
@@ -14676,87 +14757,6 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/wheel@0.46.3?package-id=1e67f4b5ef7fefd1",
-      "type": "library",
-      "name": "wheel",
-      "version": "0.46.3",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:python-wheel:python-wheel:0.46.3:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/wheel@0.46.3",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "python-package-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "python"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "python-poetry-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-wheel:python_wheel:0.46.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_wheel:python-wheel:0.46.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_wheel:python_wheel:0.46.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-wheel:0.46.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_wheel:0.46.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-wheel:wheel:0.46.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_wheel:wheel:0.46.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:wheel:python-wheel:0.46.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:wheel:python_wheel:0.46.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:wheel:0.46.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:wheel:wheel:0.46.3:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/poetry.lock"
-        }
-      ]
-    },
-    {
       "bom-ref": "pkg:pypi/win32-setctime@1.2.0?package-id=3ceb6301b8f5006a",
       "type": "library",
       "name": "win32-setctime",
@@ -15269,8 +15269,7 @@
         "pkg:pypi/httpcore@1.0.9?package-id=75d62d76d69fed62",
         "pkg:pypi/httpx@0.28.1?package-id=4e695980dd2d0101",
         "pkg:pypi/idna@3.19?package-id=3c748eb485248644",
-        "pkg:pypi/pytest@9.1.1?package-id=3fbd12f2babf2334",
-        "pkg:pypi/wheel@0.46.3?package-id=1e67f4b5ef7fefd1"
+        "pkg:pypi/pytest@9.1.1?package-id=3fbd12f2babf2334"
       ]
     },
     {
@@ -15374,8 +15373,7 @@
     {
       "ref": "pkg:pypi/griffelib@2.2.0?package-id=db8c77371fa655c9",
       "dependsOn": [
-        "pkg:pypi/platformdirs@4.11.4?package-id=111e76855668d47a",
-        "pkg:pypi/wheel@0.46.3?package-id=1e67f4b5ef7fefd1"
+        "pkg:pypi/platformdirs@4.11.4?package-id=111e76855668d47a"
       ]
     },
     {
@@ -15690,8 +15688,7 @@
     {
       "ref": "pkg:pypi/pyotp@2.10.0?package-id=4de1f1030795adfc",
       "dependsOn": [
-        "pkg:pypi/ruff@0.15.22?package-id=c4a97c9f5ad5212e",
-        "pkg:pypi/wheel@0.46.3?package-id=1e67f4b5ef7fefd1"
+        "pkg:pypi/ruff@0.15.22?package-id=c4a97c9f5ad5212e"
       ]
     },
     {
@@ -15867,6 +15864,12 @@
       ]
     },
     {
+      "ref": "pkg:pypi/supervisor@4.3.0?package-id=c175181b9f94a5ff",
+      "dependsOn": [
+        "pkg:pypi/pytest@9.1.1?package-id=3fbd12f2babf2334"
+      ]
+    },
+    {
       "ref": "pkg:pypi/testcontainers@4.15.0?package-id=31ef2c0e5338dc35",
       "dependsOn": [
         "pkg:pypi/azure-storage-blob@12.30.0?package-id=509a17a82900a2c3",
@@ -15930,13 +15933,6 @@
       "ref": "pkg:pypi/watchfiles@1.2.0?package-id=cb767df85236f7e5",
       "dependsOn": [
         "pkg:pypi/anyio@4.14.2?package-id=4af6206f8b852a37"
-      ]
-    },
-    {
-      "ref": "pkg:pypi/wheel@0.46.3?package-id=1e67f4b5ef7fefd1",
-      "dependsOn": [
-        "pkg:pypi/packaging@26.3?package-id=6873a4d64a3db838",
-        "pkg:pypi/pytest@9.1.1?package-id=3fbd12f2babf2334"
       ]
     },
     {
