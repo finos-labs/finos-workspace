@@ -19,7 +19,7 @@ export default function NoItems() {
       <div className="flex flex-col gap-1 items-center">
         {leftSidebarLogo ? (
           <img
-            className="w-[200px] object-contain opacity-50"
+            className="w-[200px] object-contain"
             src={
               theme === "dark" && leftSidebarLogoDark
                 ? leftSidebarLogoDark
@@ -28,12 +28,9 @@ export default function NoItems() {
             alt={name || "Workspace"}
           />
         ) : (
-          <BrandedLogo
-            className={cn(
-              "h-auto w-[200px]",
-              theme === "dark" ? "text-white/50" : "text-[#071820]/50",
-            )}
-          />
+          // Full brand blue, matching the in-widget loader. Dimming the mark
+          // renders it grey against either theme background.
+          <BrandedLogo className="h-auto w-[200px]" />
         )}
         <p className="subtitle-sm-bold mt-2 text-light-300 dark:text-dark-700">
           Loading
