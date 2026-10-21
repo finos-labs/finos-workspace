@@ -427,17 +427,17 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/aiohttp@3.14.3?package-id=a7793405d49a0b41",
+      "bom-ref": "pkg:pypi/aiohttp@3.14.5?package-id=317b9330e7ef14ba",
       "type": "library",
       "name": "aiohttp",
-      "version": "3.14.3",
+      "version": "3.14.5",
       "licenses": [
         {
           "expression": "Apache-2.0 AND MIT"
         }
       ],
-      "cpe": "cpe:2.3:a:python-aiohttp:python-aiohttp:3.14.3:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/aiohttp@3.14.3",
+      "cpe": "cpe:2.3:a:python-aiohttp:python-aiohttp:3.14.5:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/aiohttp@3.14.5",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -457,47 +457,47 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-aiohttp:python_aiohttp:3.14.3:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-aiohttp:python_aiohttp:3.14.5:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_aiohttp:python-aiohttp:3.14.3:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_aiohttp:python-aiohttp:3.14.5:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_aiohttp:python_aiohttp:3.14.3:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_aiohttp:python_aiohttp:3.14.5:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:aiohttp:python-aiohttp:3.14.3:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:aiohttp:python-aiohttp:3.14.5:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:aiohttp:python_aiohttp:3.14.3:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:aiohttp:python_aiohttp:3.14.5:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-aiohttp:aiohttp:3.14.3:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-aiohttp:aiohttp:3.14.5:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_aiohttp:aiohttp:3.14.3:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_aiohttp:aiohttp:3.14.5:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-aiohttp:3.14.3:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python-aiohttp:3.14.5:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_aiohttp:3.14.3:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python_aiohttp:3.14.5:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:aiohttp:aiohttp:3.14.3:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:aiohttp:aiohttp:3.14.5:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:aiohttp:3.14.3:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:aiohttp:3.14.5:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -2526,10 +2526,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/certifi@2026.7.22?package-id=2ea3286ddf0b125e",
+      "bom-ref": "pkg:pypi/certifi@2026.10.19?package-id=3a0d3ed83b77b094",
       "type": "library",
       "name": "certifi",
-      "version": "2026.7.22",
+      "version": "2026.10.19",
       "licenses": [
         {
           "license": {
@@ -2537,8 +2537,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:certifi:certifi:2026.7.22:*:*:*:*:python:*:*",
-      "purl": "pkg:pypi/certifi@2026.7.22",
+      "cpe": "cpe:2.3:a:certifi:certifi:2026.10.19:*:*:*:*:python:*:*",
+      "purl": "pkg:pypi/certifi@2026.10.19",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -6641,10 +6641,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/mako@1.4.1?package-id=b9382c53bb76b7fc",
+      "bom-ref": "pkg:pypi/mako@1.4.3?package-id=ba59289670959dc0",
       "type": "library",
       "name": "mako",
-      "version": "1.4.1",
+      "version": "1.4.3",
       "licenses": [
         {
           "license": {
@@ -6652,8 +6652,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:python-mako:python-mako:1.4.1:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/mako@1.4.1",
+      "cpe": "cpe:2.3:a:python-mako:python-mako:1.4.3:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/mako@1.4.3",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -6673,47 +6673,47 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-mako:python_mako:1.4.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-mako:python_mako:1.4.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_mako:python-mako:1.4.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_mako:python-mako:1.4.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_mako:python_mako:1.4.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_mako:python_mako:1.4.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-mako:1.4.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python-mako:1.4.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_mako:1.4.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python_mako:1.4.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:mako:python-mako:1.4.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:mako:python-mako:1.4.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:mako:python_mako:1.4.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:mako:python_mako:1.4.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-mako:mako:1.4.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-mako:mako:1.4.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_mako:mako:1.4.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_mako:mako:1.4.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:mako:1.4.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:mako:1.4.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:mako:mako:1.4.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:mako:mako:1.4.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -7740,10 +7740,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/multidict@6.7.1?package-id=8eb039fe4ef29784",
+      "bom-ref": "pkg:pypi/multidict@6.9.1?package-id=eb8e02bc3480fd93",
       "type": "library",
       "name": "multidict",
-      "version": "6.7.1",
+      "version": "6.9.1",
       "licenses": [
         {
           "license": {
@@ -7751,8 +7751,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:python-multidict:python-multidict:6.7.1:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/multidict@6.7.1",
+      "cpe": "cpe:2.3:a:python-multidict:python-multidict:6.9.1:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/multidict@6.9.1",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -7772,47 +7772,47 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-multidict:python_multidict:6.7.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-multidict:python_multidict:6.9.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_multidict:python-multidict:6.7.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_multidict:python-multidict:6.9.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_multidict:python_multidict:6.7.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_multidict:python_multidict:6.9.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:multidict:python-multidict:6.7.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:multidict:python-multidict:6.9.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:multidict:python_multidict:6.7.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:multidict:python_multidict:6.9.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-multidict:multidict:6.7.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-multidict:multidict:6.9.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_multidict:multidict:6.7.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_multidict:multidict:6.9.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-multidict:6.7.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python-multidict:6.9.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_multidict:6.7.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python_multidict:6.9.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:multidict:multidict:6.7.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:multidict:multidict:6.9.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:multidict:6.7.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:multidict:6.9.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -9741,10 +9741,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/pyjwt@2.13.0?package-id=4463a2cbcc3e0870",
+      "bom-ref": "pkg:pypi/pyjwt@2.15.1?package-id=061c55863e0041ea",
       "type": "library",
       "name": "pyjwt",
-      "version": "2.13.0",
+      "version": "2.15.1",
       "licenses": [
         {
           "license": {
@@ -9752,8 +9752,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:python-pyjwt:python-pyjwt:2.13.0:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/pyjwt@2.13.0",
+      "cpe": "cpe:2.3:a:python-pyjwt:python-pyjwt:2.15.1:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/pyjwt@2.15.1",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -9773,47 +9773,47 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-pyjwt:python_pyjwt:2.13.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-pyjwt:python_pyjwt:2.15.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_pyjwt:python-pyjwt:2.13.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_pyjwt:python-pyjwt:2.15.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_pyjwt:python_pyjwt:2.13.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_pyjwt:python_pyjwt:2.15.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-pyjwt:2.13.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python-pyjwt:2.15.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_pyjwt:2.13.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python_pyjwt:2.15.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pyjwt:python-pyjwt:2.13.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:pyjwt:python-pyjwt:2.15.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pyjwt:python_pyjwt:2.13.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:pyjwt:python_pyjwt:2.15.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-pyjwt:pyjwt:2.13.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-pyjwt:pyjwt:2.15.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_pyjwt:pyjwt:2.13.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_pyjwt:pyjwt:2.15.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:pyjwt:2.13.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:pyjwt:2.15.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:pyjwt:pyjwt:2.13.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:pyjwt:pyjwt:2.15.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -12952,10 +12952,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/tornado@6.5.8?package-id=69f9cb16703081e2",
+      "bom-ref": "pkg:pypi/tornado@6.5.10?package-id=4e0567830f3c5aef",
       "type": "library",
       "name": "tornado",
-      "version": "6.5.8",
+      "version": "6.5.10",
       "licenses": [
         {
           "license": {
@@ -12963,8 +12963,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:python-tornado:python-tornado:6.5.8:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/tornado@6.5.8",
+      "cpe": "cpe:2.3:a:python-tornado:python-tornado:6.5.10:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/tornado@6.5.10",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -12984,47 +12984,47 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-tornado:python_tornado:6.5.8:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-tornado:python_tornado:6.5.10:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_tornado:python-tornado:6.5.8:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_tornado:python-tornado:6.5.10:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_tornado:python_tornado:6.5.8:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_tornado:python_tornado:6.5.10:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-tornado:tornado:6.5.8:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-tornado:tornado:6.5.10:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_tornado:tornado:6.5.8:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_tornado:tornado:6.5.10:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:tornado:python-tornado:6.5.8:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:tornado:python-tornado:6.5.10:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:tornado:python_tornado:6.5.8:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:tornado:python_tornado:6.5.10:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-tornado:6.5.8:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python-tornado:6.5.10:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_tornado:6.5.8:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python_tornado:6.5.10:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:tornado:tornado:6.5.8:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:tornado:tornado:6.5.10:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:tornado:6.5.8:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:tornado:6.5.10:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -14154,10 +14154,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/urllib3@2.7.0?package-id=4548b7ebbd7c849e",
+      "bom-ref": "pkg:pypi/urllib3@2.8.0?package-id=8d295feb6d124a27",
       "type": "library",
       "name": "urllib3",
-      "version": "2.7.0",
+      "version": "2.8.0",
       "licenses": [
         {
           "license": {
@@ -14165,8 +14165,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:python:urllib3:2.7.0:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/urllib3@2.7.0",
+      "cpe": "cpe:2.3:a:python:urllib3:2.8.0:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/urllib3@2.8.0",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -14999,10 +14999,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:pypi/yarl@1.24.5?package-id=810b91f0820088b3",
+      "bom-ref": "pkg:pypi/yarl@1.25.1?package-id=bdcfc32d8cc3b88d",
       "type": "library",
       "name": "yarl",
-      "version": "1.24.5",
+      "version": "1.25.1",
       "licenses": [
         {
           "license": {
@@ -15010,8 +15010,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:python-yarl:python-yarl:1.24.5:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/yarl@1.24.5",
+      "cpe": "cpe:2.3:a:python-yarl:python-yarl:1.25.1:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/yarl@1.25.1",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -15031,47 +15031,47 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-yarl:python_yarl:1.24.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-yarl:python_yarl:1.25.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_yarl:python-yarl:1.24.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_yarl:python-yarl:1.25.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_yarl:python_yarl:1.24.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_yarl:python_yarl:1.25.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-yarl:1.24.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python-yarl:1.25.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_yarl:1.24.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python_yarl:1.25.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-yarl:yarl:1.24.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-yarl:yarl:1.25.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_yarl:yarl:1.24.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_yarl:yarl:1.25.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:yarl:python-yarl:1.24.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:yarl:python-yarl:1.25.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:yarl:python_yarl:1.24.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:yarl:python_yarl:1.25.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:yarl:1.24.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:yarl:1.25.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:yarl:yarl:1.24.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:yarl:yarl:1.25.1:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -15092,13 +15092,13 @@
     {
       "ref": "pkg:pypi/aiobotocore@2.25.1?package-id=1a72b4029cfd77d3",
       "dependsOn": [
-        "pkg:pypi/aiohttp@3.14.3?package-id=a7793405d49a0b41",
+        "pkg:pypi/aiohttp@3.14.5?package-id=317b9330e7ef14ba",
         "pkg:pypi/aioitertools@0.13.0?package-id=dca77f266bf1d0e0",
         "pkg:pypi/boto3@1.40.61?package-id=168cc2222a829d0e",
         "pkg:pypi/botocore@1.40.61?package-id=ae8258bcd6679457",
         "pkg:pypi/httpx@0.28.1?package-id=4e695980dd2d0101",
         "pkg:pypi/jmespath@1.1.0?package-id=2ca21ddcaf44c9ca",
-        "pkg:pypi/multidict@6.7.1?package-id=8eb039fe4ef29784",
+        "pkg:pypi/multidict@6.9.1?package-id=eb8e02bc3480fd93",
         "pkg:pypi/python-dateutil@2.9.0.post0?package-id=997d12dbb2405315",
         "pkg:pypi/wrapt@1.17.3?package-id=0f66e5e13e5cfa36"
       ]
@@ -15110,15 +15110,15 @@
       ]
     },
     {
-      "ref": "pkg:pypi/aiohttp@3.14.3?package-id=a7793405d49a0b41",
+      "ref": "pkg:pypi/aiohttp@3.14.5?package-id=317b9330e7ef14ba",
       "dependsOn": [
         "pkg:pypi/aiohappyeyeballs@2.7.1?package-id=1ee17c82f7a66d24",
         "pkg:pypi/aiosignal@1.4.0?package-id=2c757e774b527d35",
         "pkg:pypi/attrs@26.1.0?package-id=681cf66558e6b060",
         "pkg:pypi/frozenlist@1.8.0?package-id=ef6a5ca257adb7fe",
-        "pkg:pypi/multidict@6.7.1?package-id=8eb039fe4ef29784",
+        "pkg:pypi/multidict@6.9.1?package-id=eb8e02bc3480fd93",
         "pkg:pypi/propcache@0.5.2?package-id=30995de847b77d59",
-        "pkg:pypi/yarl@1.24.5?package-id=810b91f0820088b3"
+        "pkg:pypi/yarl@1.25.1?package-id=bdcfc32d8cc3b88d"
       ]
     },
     {
@@ -15137,7 +15137,7 @@
     {
       "ref": "pkg:pypi/alembic@1.19.1?package-id=99c8cb818fd39bfc",
       "dependsOn": [
-        "pkg:pypi/mako@1.4.1?package-id=b9382c53bb76b7fc",
+        "pkg:pypi/mako@1.4.3?package-id=ba59289670959dc0",
         "pkg:pypi/sqlalchemy@2.0.52?package-id=f3cc341381cae89f",
         "pkg:pypi/typing-extensions@4.16.0?package-id=670214c5182a6ca9"
       ]
@@ -15158,7 +15158,7 @@
     {
       "ref": "pkg:pypi/azure-core@1.41.0?package-id=04a10048be247699",
       "dependsOn": [
-        "pkg:pypi/aiohttp@3.14.3?package-id=a7793405d49a0b41",
+        "pkg:pypi/aiohttp@3.14.5?package-id=317b9330e7ef14ba",
         "pkg:pypi/opentelemetry-api@1.44.0?package-id=af360318c38f3bad",
         "pkg:pypi/requests@2.34.2?package-id=6901bbd7cfdaabad",
         "pkg:pypi/typing-extensions@4.16.0?package-id=670214c5182a6ca9"
@@ -15214,7 +15214,7 @@
       "dependsOn": [
         "pkg:pypi/jmespath@1.1.0?package-id=2ca21ddcaf44c9ca",
         "pkg:pypi/python-dateutil@2.9.0.post0?package-id=997d12dbb2405315",
-        "pkg:pypi/urllib3@2.7.0?package-id=4548b7ebbd7c849e"
+        "pkg:pypi/urllib3@2.8.0?package-id=8d295feb6d124a27"
       ]
     },
     {
@@ -15280,7 +15280,7 @@
         "pkg:pypi/pywin32@312?package-id=bed8f8d458852570",
         "pkg:pypi/requests@2.34.2?package-id=6901bbd7cfdaabad",
         "pkg:pypi/ruff@0.15.22?package-id=c4a97c9f5ad5212e",
-        "pkg:pypi/urllib3@2.7.0?package-id=4548b7ebbd7c849e"
+        "pkg:pypi/urllib3@2.8.0?package-id=8d295feb6d124a27"
       ]
     },
     {
@@ -15351,7 +15351,7 @@
         "pkg:pypi/py-key-value-aio@0.4.5?package-id=9c83dd42f8d67615",
         "pkg:pypi/pydantic-settings@2.15.0?package-id=616bad20d414409c",
         "pkg:pypi/pydantic@2.13.4?package-id=65170ef7330343fa",
-        "pkg:pypi/pyjwt@2.13.0?package-id=4463a2cbcc3e0870",
+        "pkg:pypi/pyjwt@2.15.1?package-id=061c55863e0041ea",
         "pkg:pypi/pyperclip@1.11.0?package-id=7a0b64ab3c3252ec",
         "pkg:pypi/python-dotenv@1.2.3?package-id=84697be11cd1112e",
         "pkg:pypi/python-multipart@0.0.32?package-id=f52ce36f2988114f",
@@ -15385,7 +15385,7 @@
         "pkg:pypi/packaging@26.3?package-id=6873a4d64a3db838",
         "pkg:pypi/pytest-asyncio@1.4.0?package-id=5df916587c9408e1",
         "pkg:pypi/pytest@9.1.1?package-id=3fbd12f2babf2334",
-        "pkg:pypi/tornado@6.5.8?package-id=69f9cb16703081e2"
+        "pkg:pypi/tornado@6.5.10?package-id=4e0567830f3c5aef"
       ]
     },
     {
@@ -15400,7 +15400,7 @@
       "ref": "pkg:pypi/httpcore@1.0.9?package-id=75d62d76d69fed62",
       "dependsOn": [
         "pkg:pypi/anyio@4.14.2?package-id=4af6206f8b852a37",
-        "pkg:pypi/certifi@2026.7.22?package-id=2ea3286ddf0b125e",
+        "pkg:pypi/certifi@2026.10.19?package-id=3a0d3ed83b77b094",
         "pkg:pypi/h11@0.16.0?package-id=1107d418f65fbc46"
       ]
     },
@@ -15421,7 +15421,7 @@
       "ref": "pkg:pypi/httpx@0.28.1?package-id=4e695980dd2d0101",
       "dependsOn": [
         "pkg:pypi/anyio@4.14.2?package-id=4af6206f8b852a37",
-        "pkg:pypi/certifi@2026.7.22?package-id=2ea3286ddf0b125e",
+        "pkg:pypi/certifi@2026.10.19?package-id=3a0d3ed83b77b094",
         "pkg:pypi/click@8.4.2?package-id=9bec3798fe928c7e",
         "pkg:pypi/httpcore@1.0.9?package-id=75d62d76d69fed62",
         "pkg:pypi/idna@3.19?package-id=3c748eb485248644",
@@ -15528,7 +15528,7 @@
       ]
     },
     {
-      "ref": "pkg:pypi/mako@1.4.1?package-id=b9382c53bb76b7fc",
+      "ref": "pkg:pypi/mako@1.4.3?package-id=ba59289670959dc0",
       "dependsOn": [
         "pkg:pypi/markupsafe@3.0.3?package-id=d54bbea26474e7d8",
         "pkg:pypi/pytest@9.1.1?package-id=3fbd12f2babf2334"
@@ -15559,7 +15559,7 @@
         "pkg:pypi/mcp-types@2.3.0?package-id=50487f00c73ff3de",
         "pkg:pypi/opentelemetry-api@1.44.0?package-id=af360318c38f3bad",
         "pkg:pypi/pydantic@2.13.4?package-id=65170ef7330343fa",
-        "pkg:pypi/pyjwt@2.13.0?package-id=4463a2cbcc3e0870",
+        "pkg:pypi/pyjwt@2.15.1?package-id=061c55863e0041ea",
         "pkg:pypi/python-dotenv@1.2.3?package-id=84697be11cd1112e",
         "pkg:pypi/python-multipart@0.0.32?package-id=f52ce36f2988114f",
         "pkg:pypi/pywin32@312?package-id=bed8f8d458852570",
@@ -15581,7 +15581,7 @@
       "ref": "pkg:pypi/msal@1.38.0?package-id=bf75471d06b48325",
       "dependsOn": [
         "pkg:pypi/cryptography@50.0.0?package-id=959c190fb071fd33",
-        "pkg:pypi/pyjwt@2.13.0?package-id=4463a2cbcc3e0870",
+        "pkg:pypi/pyjwt@2.15.1?package-id=061c55863e0041ea",
         "pkg:pypi/requests@2.34.2?package-id=6901bbd7cfdaabad"
       ]
     },
@@ -15613,7 +15613,7 @@
     {
       "ref": "pkg:pypi/prometheus-client@0.26.0?package-id=b10e6db92e49f133",
       "dependsOn": [
-        "pkg:pypi/aiohttp@3.14.3?package-id=a7793405d49a0b41"
+        "pkg:pypi/aiohttp@3.14.5?package-id=317b9330e7ef14ba"
       ]
     },
     {
@@ -15628,7 +15628,7 @@
       "dependsOn": [
         "pkg:pypi/aioboto3@15.5.0?package-id=8299b6e2bab4fa2a",
         "pkg:pypi/aiofile@3.12.3?package-id=c0dbd90a5aeb7fdd",
-        "pkg:pypi/aiohttp@3.14.3?package-id=a7793405d49a0b41",
+        "pkg:pypi/aiohttp@3.14.5?package-id=317b9330e7ef14ba",
         "pkg:pypi/anyio@4.14.2?package-id=4af6206f8b852a37",
         "pkg:pypi/asyncpg@0.31.0?package-id=e98583dd8a0ea111",
         "pkg:pypi/azure-core@1.41.0?package-id=04a10048be247699",
@@ -15676,7 +15676,7 @@
       ]
     },
     {
-      "ref": "pkg:pypi/pyjwt@2.13.0?package-id=4463a2cbcc3e0870",
+      "ref": "pkg:pypi/pyjwt@2.15.1?package-id=061c55863e0041ea",
       "dependsOn": [
         "pkg:pypi/cryptography@50.0.0?package-id=959c190fb071fd33"
       ]
@@ -15750,7 +15750,7 @@
       "dependsOn": [
         "pkg:pypi/cryptography@50.0.0?package-id=959c190fb071fd33",
         "pkg:pypi/opentelemetry-api@1.44.0?package-id=af360318c38f3bad",
-        "pkg:pypi/pyjwt@2.13.0?package-id=4463a2cbcc3e0870",
+        "pkg:pypi/pyjwt@2.15.1?package-id=061c55863e0041ea",
         "pkg:pypi/requests@2.34.2?package-id=6901bbd7cfdaabad"
       ]
     },
@@ -15764,10 +15764,10 @@
     {
       "ref": "pkg:pypi/requests@2.34.2?package-id=6901bbd7cfdaabad",
       "dependsOn": [
-        "pkg:pypi/certifi@2026.7.22?package-id=2ea3286ddf0b125e",
+        "pkg:pypi/certifi@2026.10.19?package-id=3a0d3ed83b77b094",
         "pkg:pypi/charset-normalizer@3.5.1?package-id=1822a8bef7c619ea",
         "pkg:pypi/idna@3.19?package-id=3c748eb485248644",
-        "pkg:pypi/urllib3@2.7.0?package-id=4548b7ebbd7c849e"
+        "pkg:pypi/urllib3@2.8.0?package-id=8d295feb6d124a27"
       ]
     },
     {
@@ -15881,7 +15881,7 @@
         "pkg:pypi/redis@7.4.1?package-id=1d2e2f879a14cf9f",
         "pkg:pypi/sqlalchemy@2.0.52?package-id=f3cc341381cae89f",
         "pkg:pypi/typing-extensions@4.16.0?package-id=670214c5182a6ca9",
-        "pkg:pypi/urllib3@2.7.0?package-id=4548b7ebbd7c849e",
+        "pkg:pypi/urllib3@2.8.0?package-id=8d295feb6d124a27",
         "pkg:pypi/wrapt@1.17.3?package-id=0f66e5e13e5cfa36"
       ]
     },
@@ -15912,7 +15912,7 @@
     {
       "ref": "pkg:pypi/vcrpy@8.3.0?package-id=8e1cedd0feb3a839",
       "dependsOn": [
-        "pkg:pypi/aiohttp@3.14.3?package-id=a7793405d49a0b41",
+        "pkg:pypi/aiohttp@3.14.5?package-id=317b9330e7ef14ba",
         "pkg:pypi/boto3@1.40.61?package-id=168cc2222a829d0e",
         "pkg:pypi/cryptography@50.0.0?package-id=959c190fb071fd33",
         "pkg:pypi/httpx2@2.13.1?package-id=fab9a09c7681f1b4",
@@ -15921,8 +15921,8 @@
         "pkg:pypi/pytest@9.1.1?package-id=3fbd12f2babf2334",
         "pkg:pypi/pyyaml@6.0.3?package-id=a0ed8b7e9bbeedc1",
         "pkg:pypi/requests@2.34.2?package-id=6901bbd7cfdaabad",
-        "pkg:pypi/tornado@6.5.8?package-id=69f9cb16703081e2",
-        "pkg:pypi/urllib3@2.7.0?package-id=4548b7ebbd7c849e",
+        "pkg:pypi/tornado@6.5.10?package-id=4e0567830f3c5aef",
+        "pkg:pypi/urllib3@2.8.0?package-id=8d295feb6d124a27",
         "pkg:pypi/wrapt@1.17.3?package-id=0f66e5e13e5cfa36"
       ]
     },
@@ -15946,10 +15946,10 @@
       ]
     },
     {
-      "ref": "pkg:pypi/yarl@1.24.5?package-id=810b91f0820088b3",
+      "ref": "pkg:pypi/yarl@1.25.1?package-id=bdcfc32d8cc3b88d",
       "dependsOn": [
         "pkg:pypi/idna@3.19?package-id=3c748eb485248644",
-        "pkg:pypi/multidict@6.7.1?package-id=8eb039fe4ef29784",
+        "pkg:pypi/multidict@6.9.1?package-id=eb8e02bc3480fd93",
         "pkg:pypi/propcache@0.5.2?package-id=30995de847b77d59"
       ]
     }
