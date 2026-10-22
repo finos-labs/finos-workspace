@@ -552,8 +552,13 @@ describe("limits", () => {
     const abandoned = await ask(app);
     expect((await ask(app)).status).toBe(429);
     await abandoned.body!.cancel();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect((await ask(app)).status).toBe(200);
+    // The place is freed once the cancel has reached the query, which takes a moment on a busy machine.
+    let status = 429;
+    for (let tries = 0; status === 429 && tries < 100; tries++) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      status = (await ask(app)).status;
+    }
+    expect(status).toBe(200);
   });
 
   it("runs only so many queries in all, and says that the agent is busy rather than using all its memory", async () => {
