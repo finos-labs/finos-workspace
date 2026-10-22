@@ -48,7 +48,7 @@ describe("isApiFileUrl", () => {
     expect(isApiFileUrl(url)).toBe(false);
   });
 
-  it("follows an API served under a path, as in Lite", () => {
+  it("follows an API served under a path", () => {
     mockConfig.urls.backend = "http://localhost:3000/api";
 
     expect(isApiFileUrl("http://localhost:3000/api/app/files/report.pdf")).toBe(true);
