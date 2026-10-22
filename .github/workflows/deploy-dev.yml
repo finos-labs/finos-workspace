@@ -64,6 +64,11 @@ jobs:
 
       - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
 
+      # The stages are kept in the Actions cache: the images compile their dependencies from source,
+      # and only a change to a stage builds it again.
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
+
       # Tags are immutable, so a rerun keeps the images the first attempt pushed.
       - name: Build and push the API and worker images
         run: |
@@ -72,7 +77,8 @@ jobs:
             if output=$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="$IMAGE_TAG" 2>&1); then
               echo "$repository:$IMAGE_TAG is already in ECR."
             elif grep -q ImageNotFoundException <<< "$output"; then
-              docker build -f "backend-api/backend/$dockerfile" -t "$ECR_REGISTRY/$repository:$IMAGE_TAG" backend-api/backend
+              docker build -f "backend-api/backend/$dockerfile" --cache-from "type=gha,scope=$dockerfile" \
+                --cache-to "type=gha,mode=max,scope=$dockerfile" --load -t "$ECR_REGISTRY/$repository:$IMAGE_TAG" backend-api/backend
               docker push "$ECR_REGISTRY/$repository:$IMAGE_TAG"
             else
               echo "$output" >&2

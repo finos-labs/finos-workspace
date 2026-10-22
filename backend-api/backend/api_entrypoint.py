@@ -1,6 +1,6 @@
 """The API image's command (fastapi.Dockerfile): applies the database migrations, then hands
-the process to supervisord, which runs the API (supervisord_api.conf). The image has no
-shell, so this is Python."""
+the process to the API (run.py), whose gunicorn runs and replaces its workers. The image has
+no shell, so this is Python."""
 
 import os
 import subprocess  # noqa: S404
@@ -13,6 +13,6 @@ if migrations.returncode != 0:
     sys.exit(1)
 print("✅ Database migrations completed successfully", flush=True)  # noqa: T201
 
-print("\nStep 2: Starting supervisor...", flush=True)  # noqa: T201
+print("\nStep 2: Starting the API...", flush=True)  # noqa: T201
 print("✅ All initialization steps completed. Starting application services...", flush=True)  # noqa: T201
-os.execvp("supervisord", ["supervisord", "-c", "supervisord_api.conf"])  # noqa: S606, S607 (supervisord from the image's virtual environment)
+os.execv(sys.executable, [sys.executable, "run.py"])  # noqa: S606 (fixed arguments)

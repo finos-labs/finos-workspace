@@ -16,6 +16,8 @@ name: workspace
 x-backend: &backend
   env_file:
     - ./backend-api/backend/envs/.env
+  # The images are built from scratch, so they are built for, and run on, this platform.
+  platform: ${PLATFORM:-linux/amd64}
   environment:
     DB_HOST: mysql
     REDIS_HOST: valkey
@@ -75,8 +77,6 @@ services:
     build:
       context: ./backend-api/backend
       dockerfile: fastapi.Dockerfile
-      args:
-        PLATFORM: ${PLATFORM:-linux/amd64}
     image: workspace-api:local
     # Runs as root because user_create.json, mounted below, belongs to whoever checked the
     # repository out (uid 1001 on a GitHub runner), and the image's own user, uid 1000, cannot
@@ -133,8 +133,6 @@ services:
     build:
       context: ./backend-api/backend
       dockerfile: rqworker.Dockerfile
-      args:
-        PLATFORM: ${PLATFORM:-linux/amd64}
     image: workspace-worker:local
     restart: unless-stopped
     volumes:

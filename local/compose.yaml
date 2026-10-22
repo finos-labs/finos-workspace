@@ -9,8 +9,8 @@ x-backend: &backend
   build:
     context: ../backend-api/backend
     dockerfile: fastapi.Dockerfile
-    args:
-      PLATFORM: ${PLATFORM:-linux/amd64}
+  # The images are built from scratch, so they are built for, and run on, this platform.
+  platform: ${PLATFORM:-linux/amd64}
   env_file: ../backend-api/backend/envs/.env
   # These take priority over envs/.env: the containers' hosts, and the address of
   # the Vite dev server in links the backend builds.
@@ -99,8 +99,6 @@ services:
     build:
       context: ../backend-api/backend
       dockerfile: rqworker.Dockerfile
-      args:
-        PLATFORM: ${PLATFORM:-linux/amd64}
     depends_on:
       init:
         condition: service_completed_successfully

@@ -1,20 +1,27 @@
+# syntax=docker/dockerfile:1
+
 ###############################################
 # Backend: the background worker
 ###############################################
-# The builder has Debian's Python 3.13 with the compiler, headers, git and
-# Poetry that installing the dependencies needs. The image is distroless:
-# Debian's Python 3.13 and the libraries it runs on, the virtual environment
-# and the code. It has no shell, no package manager, no pip or setuptools and
-# no compiler.
-
-ARG PLATFORM=linux/amd64
+# Built from scratch, without GCC's runtime libraries (libgcc_s, libstdc++),
+# which are GPL: CPython for musl from python-build-standalone, the
+# dependencies, those with native code built from source with clang, and the
+# libraries they link, from Chimera Linux, which builds everything with LLVM:
+# musl, LLVM's libunwind and libc++, OpenSSL and libffi. Then the virtual
+# environment, the code and the time zones. No glibc, shell, package manager,
+# pip, setuptools or compiler. The image is for the platform it is
+# built for (docker build --platform, or the service's platform in compose).
 
 ###############################################
 # Builder Image
 ###############################################
-# Debian 13's Python is the one the distroless image runs, so the virtual
-# environment's /usr/bin/python3.13 is there too.
-FROM --platform=$PLATFORM debian:13.7-slim AS builder-base
+FROM chimeralinux/chimera@sha256:29102d7e12a1f464707d7aba19ce53e652d277861838ed4129178d0655444b1a AS builder-base
+
+# CPython for musl. Bump the release, the version and both SHA-256s together.
+ARG PYTHON_RELEASE=20261021
+ARG PYTHON_VERSION=3.13.17
+ARG PYTHON_SHA256_X86_64=089e64ce3a7969382e4782e2051c12d6de143e9f7d102c89a8c8d54e7c554b90
+ARG PYTHON_SHA256_AARCH64=5af630e7e458af4675ea9a39b220b80baed17bc7a3e22b0fc97115a54fa0e96e
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=off \
@@ -25,49 +32,193 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     POETRY_VIRTUALENVS_OPTIONS_NO_PIP=true \
     POETRY_NO_INTERACTION=1 \
     PYSETUP_PATH="/opt" \
-    VENV_PATH="/opt/.venv"
+    VENV_PATH="/opt/.venv" \
+    CC=clang \
+    CXX=clang++ \
+    LDSHARED="clang -shared"
 
-RUN apt-get update -y && apt-get upgrade -y \
-    && apt-get install --no-install-recommends -y \
-      python3.13 python3.13-venv python3.13-dev build-essential git ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+# Chimera is a rolling release: the image is where the build starts, and the
+# packages are the current ones.
+RUN apk upgrade --no-cache --available \
+    && apk add --no-cache clang musl-devel linux-headers pkgconf rust cargo git curl bsdtar llvm-binutils \
+      openssl3-devel libffi8-devel libcxx-devel tzdb
+
+RUN arch="$(uname -m)" \
+    && case "$arch" in \
+      x86_64) sha="$PYTHON_SHA256_X86_64" ;; \
+      aarch64) sha="$PYTHON_SHA256_AARCH64" ;; \
+      *) echo "No CPython build for $arch" >&2; exit 1 ;; \
+    esac \
+    && tarball="cpython-${PYTHON_VERSION}+${PYTHON_RELEASE}-${arch}-unknown-linux-musl-install_only_stripped.tar.gz" \
+    && curl -fsSLO "https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_RELEASE}/${tarball}" \
+    && echo "$sha  $tarball" | sha256sum -c - \
+    && mkdir -p /opt && bsdtar -xzf "$tarball" -C /opt \
+    && rm "$tarball"
 
 # Poetry runs from an environment of its own, which stays in this stage.
-RUN python3.13 -m venv /opt/poetry && /opt/poetry/bin/pip install "poetry==$POETRY_VERSION"
+RUN /opt/python/bin/python3 -m venv /opt/poetry && /opt/poetry/bin/pip install "poetry==$POETRY_VERSION"
 
 WORKDIR $PYSETUP_PATH
 COPY ./pyproject.toml ./poetry.lock ./
 
-# The runtime dependencies, supervisor among them, into $VENV_PATH, without pip.
-RUN /opt/poetry/bin/poetry install --only main
+# Every locked package that publishes compiled wheels is built from its sdist
+# instead, with clang: some wheels bring copies of GCC's runtime (libgcc_s,
+# libstdc++), and Chimera's Rust and C++ link LLVM's libunwind and libc++.
+RUN /opt/python/bin/python3 - <<'EOF'
+import subprocess, tomllib
+lock = tomllib.load(open("poetry.lock", "rb"))
+compiled = [p["name"] for p in lock["package"]
+            if any(f["file"].endswith(".whl") and not f["file"].endswith("-none-any.whl") for f in p.get("files", []))]
+subprocess.run(["/opt/poetry/bin/poetry", "config", "installer.no-binary", ",".join(compiled)], check=True)
+EOF
+
+# The runtime dependencies into $VENV_PATH, without pip.
+RUN /opt/poetry/bin/poetry env use /opt/python/bin/python3 && /opt/poetry/bin/poetry install --only main
 
 # remove slowapi poetry.lock/requirements.txt
 RUN rm -rf $VENV_PATH/src/slowapi/poetry.lock $VENV_PATH/src/slowapi/docs/requirements.txt
 
-# The image's users, and what its user, appuser, writes: supervisord's log and
-# pid file, the code directory and the uploaded files.
-RUN mkdir -p /rootfs/etc /writable/home/appuser /writable/var/log/supervisor /writable/var/run \
-      /writable/opt/code/local_storage \
-    && printf '%s\n' \
+# The image's filesystem but for the virtual environment and the code: CPython
+# without pip, Tk, IDLE, its tests and _dbm (Berkeley DB, Sleepycat); the CA
+# certificates, which are certifi's (Mozilla's, MPL-2.0); the time zones; the
+# users; and what appuser writes: the code directory and the uploaded files.
+RUN set -e; \
+    arch="$(uname -m)"; \
+    mkdir -p /rootfs/usr/lib /rootfs/opt /rootfs/etc/ssl/certs /rootfs/usr/share /rootfs/tmp \
+      /writable/home/appuser /writable/opt/code/local_storage; \
+    ln -s usr/lib /rootfs/lib; \
+    ln -s libc.so "/rootfs/usr/lib/ld-musl-$arch.so.1"; \
+    bsdtar -cf - -C /opt python | bsdtar -xpf - -C /rootfs/opt; \
+    cd /rootfs/opt/python; \
+    rm -rf bin/pip* bin/idle* bin/pydoc* bin/2to3* bin/*-config include share lib/pkgconfig \
+      lib/libtcl* lib/libtk* lib/tcl* lib/tk* lib/itcl* lib/thread* \
+      lib/python3.13/ensurepip lib/python3.13/idlelib lib/python3.13/tkinter lib/python3.13/turtle.py \
+      lib/python3.13/turtledemo lib/python3.13/test lib/python3.13/site-packages/pip* \
+      lib/python3.13/lib-dynload/_dbm.* lib/python3.13/lib-dynload/_tkinter.*; \
+    ln -s "$("$VENV_PATH/bin/python" -c 'import certifi; print(certifi.where())')" /rootfs/etc/ssl/certs/ca-certificates.crt; \
+    ln -s certs/ca-certificates.crt /rootfs/etc/ssl/cert.pem; \
+    bsdtar -cf - -C /usr/share zoneinfo | bsdtar -xpf - -C /rootfs/usr/share; \
+    chmod 1777 /rootfs/tmp; \
+    printf '%s\n' \
       'root:x:0:0:root:/root:/sbin/nologin' \
       'nobody:x:65534:65534:nobody:/nonexistent:/sbin/nologin' \
-      'nonroot:x:65532:65532:nonroot:/home/nonroot:/sbin/nologin' \
-      'appuser:x:1000:1000:appuser:/home/appuser:/sbin/nologin' > /rootfs/etc/passwd \
-    && printf '%s\n' 'root:x:0:' 'nobody:x:65534:' 'nonroot:x:65532:' 'appuser:x:1000:' > /rootfs/etc/group \
-    && touch /writable/var/log/supervisor/supervisord.log /writable/var/run/supervisord.pid
+      'appuser:x:1000:1000:appuser:/home/appuser:/sbin/nologin' > /rootfs/etc/passwd; \
+    printf '%s\n' 'root:x:0:' 'nobody:x:65534:' 'appuser:x:1000:' > /rootfs/etc/group
+
+# The shared libraries CPython and the dependencies link, from Chimera, and
+# what the image holds that SBOM scanners cannot find without a package
+# database: those libraries' packages, CPython and the libraries compiled into
+# it, and the time zones (.github/actions/image-sbom reads this file). The
+# build fails if the image would hold one of GCC's runtime libraries or a file
+# linked to one, or if CPython's line editing is GNU readline (GPL) rather
+# than libedit.
+RUN mkdir -p /rootfs/usr/share/sbom && /opt/python/bin/python3 - <<'EOF'
+import curses, decimal, json, os, pathlib, platform, pyexpat, re, readline, shutil, sqlite3, ssl, subprocess, sys, zlib
+
+root = pathlib.Path("/rootfs")
+lib = root / "usr/lib"
+
+def run(*args, check=True):
+    return subprocess.run(args, capture_output=True, text=True, check=check).stdout
+
+def is_elf(path):
+    with path.open("rb") as f:
+        return f.read(4) == b"\x7fELF"
+
+def needed(path):
+    return re.findall(r"\(NEEDED\)\s+Shared library: \[(.+?)\]", run("llvm-readelf", "-d", str(path)))
+
+elfs = [p for tree in (root / "opt/python", pathlib.Path(os.environ["VENV_PATH"]))
+        for p in sorted(tree.rglob("*")) if p.is_file() and not p.is_symlink() and is_elf(p)]
+own = {p.name for p in elfs}
+copied = {}
+
+def link(queue):
+    while queue:
+        name = queue.pop()
+        if name in own or name in copied:
+            continue
+        real = (pathlib.Path("/usr/lib") / name).resolve(strict=True)
+        shutil.copy2(real, lib / real.name)
+        if real.name != name:
+            (lib / name).symlink_to(real.name)
+        copied[name] = real
+        queue += needed(real)
+
+link([name for p in elfs for name in needed(p)])
+# OpenSSL loads its providers (cryptography asks for the legacy one) when it runs, so nothing names them.
+modules = []
+if "libcrypto.so.3" in copied:
+    (lib / "ossl-modules").mkdir()
+    for module in sorted(pathlib.Path("/usr/lib/ossl-modules").glob("*.so")):
+        shutil.copy2(module, lib / "ossl-modules" / module.name)
+        modules.append(module)
+        link(needed(module))
+
+shipped = elfs + [lib / real.name for real in copied.values()] + [lib / "ossl-modules" / m.name for m in modules]
+gcc_runtime = re.compile(r"lib(gcc_s|stdc\+\+|atomic|gomp|quadmath|ssp|itm|gfortran|[altu]san)\.so")
+gcc = [f"{p}: {name}" for p in shipped for name in [p.name, *needed(p)] if gcc_runtime.match(name)]
+if gcc:
+    sys.exit("GCC's runtime libraries, or files linked to them:\n" + "\n".join(gcc))
+if readline.backend != "editline":
+    sys.exit(f"CPython's readline module uses {readline.backend}")
+
+def component(name, version, licence, purl=None, cpe=None, **properties):
+    c = {"type": "library", "name": name, "licenses": [{"expression": licence}]}
+    if version:
+        c["version"] = version
+        c["purl"] = purl or f"pkg:generic/{name}@{version}"
+        if cpe:
+            c["cpe"] = f"cpe:2.3:a:{cpe}:{version.split('-r')[0]}:*:*:*:*:*:*:*"
+    if properties:
+        c["properties"] = [{"name": k.replace("_", "-"), "value": v} for k, v in properties.items()]
+    return c
+
+def chimera(path):
+    pkgver = re.search(r"is owned by (\S+)", run("apk", "info", "--who-owns", str(path))).group(1)
+    name, version = re.fullmatch(r"(.+)-([^-]+-r\d+)", pkgver).groups()
+    licence = re.search(rf"^{re.escape(pkgver)} \S+ \{{\S+\}} \((.*)\) \[installed\]$", run("apk", "list", "-I", name), re.M).group(1)
+    return name, version, licence
+
+cpes = {"musl": "musl-libc:musl", "openssl3-libs": "openssl:openssl"}
+packages = sorted({chimera(path) for path in [pathlib.Path("/usr/lib") / name for name in copied] + modules})
+components = [component(name, version, licence, f"pkg:apk/chimera/{name}@{version}?arch={platform.machine()}", cpes.get(name))
+              for name, version, licence in packages]
+musl = next(f"musl {version}" for name, version, _ in packages if name == "musl")
+python = ".".join(map(str, sys.version_info[:3]))
+in_python = {"compiled-into": f"cpython {python}"}
+components += [
+    component("mimalloc", None, "MIT", compiled_into=musl),
+    component("cpython", python, "Python-2.0", cpe="python:python"),
+    component("openssl", ssl.OPENSSL_VERSION.split()[1], "Apache-2.0", cpe="openssl:openssl", **in_python),
+    component("sqlite", sqlite3.sqlite_version, "blessing", cpe="sqlite:sqlite", **in_python),
+    component("zlib", zlib.ZLIB_RUNTIME_VERSION, "Zlib", cpe="zlib:zlib", **in_python),
+    component("expat", pyexpat.EXPAT_VERSION.removeprefix("expat_"), "MIT", cpe="libexpat_project:libexpat", **in_python),
+    component("mpdecimal", decimal.__libmpdec_version__, "BSD-2-Clause", cpe="bytereef:mpdecimal", **in_python),
+    component("ncurses", ".".join(map(str, curses.ncurses_version[:2])), "X11", cpe="gnu:ncurses", **in_python),
+    component("libedit", None, "BSD-3-Clause", **in_python),
+    component("libffi", None, "MIT", **in_python),
+    component("bzip2", None, "bzip2-1.0.6", **in_python),
+    component("xz", None, "0BSD", **in_python),
+    component("libuuid", None, "BSD-3-Clause", **in_python),
+]
+tzdb = chimera(pathlib.Path("/usr/share/zoneinfo/UTC"))
+components.append(component(tzdb[0], tzdb[1], "LicenseRef-Public-Domain", f"pkg:apk/chimera/{tzdb[0]}@{tzdb[1]}", "iana:tzdata"))
+sbom = {"bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1, "components": components}
+(root / "usr/share/sbom/runtime.cdx.json").write_text(json.dumps(sbom, indent=2) + "\n")
+EOF
 
 ###############################################
 # Production Image
 ###############################################
-FROM --platform=$PLATFORM gcr.io/distroless/python3-debian13 AS production-stage
+FROM scratch AS production-stage
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONIOENCODING=utf-8 \
     VENV_PATH="/opt/.venv" \
     TZ="America/New_York" \
-    PATH="/opt/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
-    LD_LIBRARY_PATH="/opt/.venv/lib"
+    PATH="/opt/.venv/bin:/opt/python/bin:/usr/local/bin:/usr/bin:/bin"
 
 COPY --from=builder-base /rootfs/ /
 COPY --from=builder-base --chown=1000:1000 /writable/ /
@@ -79,6 +230,4 @@ COPY --chown=1000:1000 ./ ./
 
 USER 1000:1000
 
-# The commands are whole: the base image's python3 entrypoint would come first.
-ENTRYPOINT []
-CMD ["supervisord", "-c", "supervisord_workers.conf"]
+CMD ["python", "base_workers.py"]

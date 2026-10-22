@@ -20,6 +20,8 @@ services:
     build:
       context: backend
       dockerfile: fastapi.Dockerfile
+    # The images are built from scratch, so they are built for, and run on, this platform.
+    platform: ${PLATFORM:-linux/amd64}
     container_name: fastapi
     env_file:
       - ./backend/envs/.env.sqlite
@@ -47,6 +49,8 @@ services:
     build:
       context: backend
       dockerfile: rqworker.Dockerfile
+    # The images are built from scratch, so they are built for, and run on, this platform.
+    platform: ${PLATFORM:-linux/amd64}
     container_name: rq_worker
     env_file:
       - ./backend/envs/.env.sqlite
