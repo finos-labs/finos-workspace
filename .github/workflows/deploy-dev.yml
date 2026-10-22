@@ -19,7 +19,8 @@ name: Deploy to dev
 # the environment's deployer role, which trusts this repository's develop branch.
 #
 # Every image gets an SBOM attestation, pushed to ECR with it
-# (.github/actions/image-sbom), before anything is deployed.
+# (.github/actions/image-sbom). A failed SBOM step is a warning and does not
+# stop the deploy: the next run attests the images that have none.
 on:
   push:
     branches:
@@ -87,11 +88,13 @@ jobs:
           done
 
       - name: SBOM of the API image
+        continue-on-error: true
         uses: ./.github/actions/image-sbom
         with:
           image: ${{ env.ECR_REGISTRY }}/finos/backend:${{ env.IMAGE_TAG }}
 
       - name: SBOM of the worker image
+        continue-on-error: true
         uses: ./.github/actions/image-sbom
         with:
           image: ${{ env.ECR_REGISTRY }}/finos/backend-worker:${{ env.IMAGE_TAG }}
@@ -127,6 +130,7 @@ jobs:
       # The image holds the bundle, which names no packages: they come from
       # frontend/'s lockfile.
       - name: SBOM of the frontend image
+        continue-on-error: true
         uses: ./.github/actions/image-sbom
         with:
           image: ${{ env.ECR_REGISTRY }}/finos/frontend:${{ env.IMAGE_TAG }}
@@ -177,11 +181,13 @@ jobs:
           done
 
       - name: SBOM of the agent image
+        continue-on-error: true
         uses: ./.github/actions/image-sbom
         with:
           image: ${{ env.ECR_REGISTRY }}/finos/agent:${{ env.IMAGE_TAG }}
 
       - name: SBOM of the agent MCP server image
+        continue-on-error: true
         uses: ./.github/actions/image-sbom
         with:
           image: ${{ env.ECR_REGISTRY }}/finos/agent-mcp:${{ env.IMAGE_TAG }}
