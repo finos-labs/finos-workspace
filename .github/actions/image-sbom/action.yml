@@ -13,9 +13,10 @@ inputs:
     required: true
   project:
     description: >
-      A directory whose package SBOM goes into the image's, the way sbom.yml
-      generates it from the lockfile. For an image whose packages a scan cannot
-      see: the frontend's are bundled into static files that name none.
+      A directory whose package SBOM goes into the image's, generated from the
+      lockfile as sbom.yml does it but without the dev dependencies, which no
+      image ships. For an image whose packages a scan cannot see: the
+      frontend's are bundled into static files that name none.
     required: false
     default: ""
 runs:
@@ -62,7 +63,7 @@ runs:
         # The SBOM files an image carries go in too: the frontend's names what its static nginx is built from.
         syft scan "docker:$IMAGE" --quiet --select-catalogers +sbom-cataloger --output "cyclonedx-json=$SBOM"
         if [ -n "$PROJECT" ]; then
-          SYFT_ENRICH=javascript,python SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES=true \
+          SYFT_ENRICH=javascript,python SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES=false \
             syft scan "dir:$PROJECT" --quiet --select-catalogers javascript,python --output "cyclonedx-json=$SBOM.project"
           jq -s -f "$GITHUB_ACTION_PATH/merge.jq" "$SBOM" "$SBOM.project" > "$SBOM.merged"
           mv "$SBOM.merged" "$SBOM"
