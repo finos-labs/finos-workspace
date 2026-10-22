@@ -167,13 +167,16 @@ describe("Iframe Widget", () => {
       expect(document.querySelector("iframe")).toBeNull();
     });
 
-    it("shows an enabled plugin page with scripts allowed", () => {
-      pluginFrameMock.status = { state: "available" };
+    it("shows the approved version of an enabled plugin, with scripts allowed", () => {
+      pluginFrameMock.status = {
+        state: "available",
+        src: `${pluginUrl}/1.0.0/?theme=dark`,
+      };
       renderWidget(<Iframe />, { widgetOverrides: { storage: { html: pluginUrl } } });
 
-      expect(document.querySelector("iframe")?.getAttribute("sandbox")).toContain(
-        "allow-scripts",
-      );
+      const iframe = document.querySelector("iframe");
+      expect(iframe?.getAttribute("src")).toBe(`${pluginUrl}/1.0.0/?theme=dark`);
+      expect(iframe?.getAttribute("sandbox")).toContain("allow-scripts");
     });
 
     it("waits for the plugin check before loading the page", () => {

@@ -607,7 +607,8 @@ export default function Iframe() {
             <iframe
               key={widget?.refreshQuery}
               ref={iframeRef}
-              src={iframeSrc}
+              // A plugin loads its approved version; other pages load as entered.
+              src={pluginFrame.state === "available" ? pluginFrame.src : iframeSrc}
               width="100%"
               height="100%"
               sandbox={

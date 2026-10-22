@@ -51,6 +51,49 @@ describe("parseRegistry", () => {
     expect(plugins[0]).not.toHaveProperty("script");
   });
 
+  describe("requests", () => {
+    it("keeps what a plugin asks for and fills in what it leaves out", () => {
+      const { plugins, errors } = parseRegistry([
+        {
+          ...plugin,
+          requests: { network: ["https://api.example.com"], downloads: true },
+        },
+      ]);
+      expect(errors).toEqual([]);
+      expect(plugins[0].requests).toEqual({
+        network: ["https://api.example.com"],
+        storage: false,
+        downloads: true,
+        popups: false,
+      });
+    });
+
+    it("leaves requests undefined when the plugin does not declare them", () => {
+      expect(parseRegistry([plugin]).plugins[0].requests).toBeUndefined();
+    });
+
+    it("accepts http only on this machine", () => {
+      const { plugins } = parseRegistry([
+        { ...plugin, requests: { network: ["http://localhost:8080"] } },
+      ]);
+      expect(plugins[0].requests?.network).toEqual(["http://localhost:8080"]);
+    });
+
+    it.each([
+      ["a full URL instead of an origin", { network: ["https://api.example.com/v1"] }],
+      ["a trailing slash", { network: ["https://api.example.com/"] }],
+      ["http on another machine", { network: ["http://api.example.com"] }],
+      ["another scheme", { network: ["ftp://files.example.com"] }],
+      ["not a URL", { network: ["api.example.com"] }],
+      ["duplicate origins", { network: ["https://a.example", "https://a.example"] }],
+      ["a non-boolean flag", { storage: "yes" }],
+    ])("skips an entry with %s", (_, requests) => {
+      const { plugins, errors } = parseRegistry([{ ...plugin, requests }]);
+      expect(plugins).toEqual([]);
+      expect(errors).toHaveLength(1);
+    });
+  });
+
   describe("settings", () => {
     const dataSource = {
       key: "dataSource",

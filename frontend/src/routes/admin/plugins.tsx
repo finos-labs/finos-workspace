@@ -1,7 +1,8 @@
 /**
  * Route /admin/plugins (Admin Portal). Lists the plugins from the plugin host's registry
  * as cards, with loading, empty, error/retry and "not configured" states, and lets an
- * administrator enable or disable each plugin for all users and dashboards.
+ * administrator enable (approve a released version of) or disable each plugin for all
+ * users and dashboards, and review a newer or changed release before approving it.
  */
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import type { ReactNode } from "react";
@@ -11,24 +12,28 @@ import { Notice } from "~/components/ds/molecules/Notice";
 import SearchResultsNotFound from "~/components/General/SearchResultsNotFound";
 import { SettingsLayout } from "~/components/LayoutAuth/Skeleton/SettingsLayout";
 import { PluginCard } from "~/components/Plugins/PluginCard";
-import { usePluginEnablement, usePlugins } from "~/hooks/usePluginManager";
+import { usePluginApprovals, usePlugins } from "~/hooks/usePluginManager";
 import type { PluginMetadata } from "~/lib/plugins";
 
 const TABS = [{ label: "All Plugins", id: "all-plugins" }];
 
 export default function PluginsPage() {
   const { manager, data, error, isLoading, isFetching, refetch } = usePlugins();
-  const enablement = usePluginEnablement(manager);
+  const approvals = usePluginApprovals(manager);
 
   const retry = () => {
     manager.refresh();
     refetch();
   };
 
-  const setEnabled = async (plugin: PluginMetadata, enabled: boolean) => {
+  const run = async (
+    action: () => Promise<unknown>,
+    done: string,
+    plugin: PluginMetadata,
+  ) => {
     try {
-      await enablement.setPluginEnabled({ pluginId: plugin.id, enabled });
-      toast.success(`${plugin.name} ${enabled ? "enabled" : "disabled"} for all users`);
+      await action();
+      toast.success(done);
     } catch (setError) {
       toast.error(
         setError instanceof Error
@@ -38,6 +43,19 @@ export default function PluginsPage() {
     }
   };
 
+  const approve = (plugin: PluginMetadata, version: string) =>
+    run(
+      () => approvals.approveRelease({ pluginId: plugin.id, version }),
+      `${plugin.name} ${version} approved for all users`,
+      plugin,
+    );
+  const disable = (plugin: PluginMetadata) =>
+    run(
+      () => approvals.disablePlugin({ pluginId: plugin.id }),
+      `${plugin.name} disabled for all users`,
+      plugin,
+    );
+
   let content: ReactNode;
   if (manager.host.ok === false) {
     content = (
@@ -45,7 +63,7 @@ export default function PluginsPage() {
         {manager.host.message}
       </Notice>
     );
-  } else if (isLoading || enablement.isLoading) {
+  } else if (isLoading || approvals.isLoading) {
     content = (
       <div
         role="status"
@@ -60,11 +78,11 @@ export default function PluginsPage() {
         ))}
       </div>
     );
-  } else if (error || enablement.error) {
+  } else if (error || approvals.error) {
     content = (
       <Notice variant="error" title="Could not load plugins">
         <span className="flex flex-col items-start gap-2">
-          {(error ?? enablement.error)?.message}
+          {(error ?? approvals.error)?.message}
           <Button variant="outlined" size="xs" onClick={retry} loading={isFetching}>
             Retry
           </Button>
@@ -93,10 +111,11 @@ export default function PluginsPage() {
             <PluginCard
               key={plugin.id}
               plugin={plugin}
-              enabled={enablement.enabledIds.has(plugin.id)}
-              updating={enablement.pendingPluginId === plugin.id}
+              state={approvals.stateFor(plugin.id)}
+              updating={approvals.pendingPluginId === plugin.id}
               onOpen={(selected) => manager.openPlugin(selected.id)}
-              onToggleEnabled={setEnabled}
+              onApprove={approve}
+              onDisable={disable}
             />
           ))}
         </div>

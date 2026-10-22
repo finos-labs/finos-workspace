@@ -64,6 +64,51 @@ export const PluginSettingSchema = z
     }
   });
 
+const MAX_NETWORK_ORIGINS = 20;
+const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/** An origin only ("https://api.example.com"): https, or http on this machine. */
+function isRequestableOrigin(value: string) {
+  try {
+    const url = new URL(value);
+    return (
+      url.origin === value &&
+      (url.protocol === "https:" ||
+        (url.protocol === "http:" && LOCAL_HOSTNAMES.has(url.hostname)))
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * What a plugin asks to be allowed to do, shown to the administrator before they
+ * enable it. A declaration, not a guarantee: Workspace does not judge or enforce it yet.
+ */
+export const PluginRequestsSchema = z.object({
+  /** Origins the plugin calls from its frame (e.g. its data API). */
+  network: z
+    .array(
+      z
+        .string()
+        .refine(
+          isRequestableOrigin,
+          "network entries must be origins (https, or http on localhost)",
+        ),
+    )
+    .max(MAX_NETWORK_ORIGINS)
+    .refine((origins) => new Set(origins).size === origins.length, {
+      message: "network origins must be unique",
+    })
+    .default([]),
+  /** Browser storage (localStorage, cookies) on the plugin's own origin. */
+  storage: z.boolean().default(false),
+  /** Saving files, e.g. a CSV export. */
+  downloads: z.boolean().default(false),
+  /** Opening new windows or tabs. */
+  popups: z.boolean().default(false),
+});
+
 export const PluginMetadataSchema = z.object({
   id: z.string().regex(slug, "id must be lowercase kebab-case"),
   name: z.string().trim().min(1).max(500),
@@ -86,10 +131,13 @@ export const PluginMetadataSchema = z.object({
       "setting keys must be unique",
     )
     .optional(),
+  /** What the plugin asks for. Absent means the plugin has not declared it. */
+  requests: PluginRequestsSchema.optional(),
 });
 
 export type PluginMetadata = z.infer<typeof PluginMetadataSchema>;
 export type PluginSetting = z.infer<typeof PluginSettingSchema>;
+export type PluginRequests = z.infer<typeof PluginRequestsSchema>;
 export type PluginStatus = PluginMetadata["status"];
 
 export type PluginRegistryErrorKind = "network" | "http" | "format";
