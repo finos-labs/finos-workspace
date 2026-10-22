@@ -44,11 +44,11 @@ tests/
 
 ## Getting started
 
-You need [Bun](https://bun.sh/) and [Node.js](https://nodejs.org/). If you contribute code, add the [Biome](https://marketplace.visualstudio.com/items?itemName=biomejs.biome) extension to your editor.
+You need [Node.js](https://nodejs.org/), with the npm it ships. If you contribute code, add the [Biome](https://marketplace.visualstudio.com/items?itemName=biomejs.biome) extension to your editor.
 
 ```bash
-bun install
-bun run dev
+npm install
+npm run dev
 ```
 
 The app starts on `http://localhost:1420` and talks to the backend named by `VITE_BACKEND_URL` in `.env` (`http://localhost:8000` unless you change it). The root `docker-compose.yml` starts the whole stack, including this app on `http://localhost:3000`.
@@ -58,9 +58,9 @@ The app starts on `http://localhost:1420` and talks to the backend named by `VIT
 Every setting, and its default, is defined in `src/lib/runtimeConfigSchema.ts`; `.env` lists them as `VITE_*` variables with a comment each. Settings that name a deployment's own services (the AI service, the documentation site, a support address, the identity providers' client IDs) are empty by default, and the parts of the interface that depend on one are hidden until it is set.
 
 ```bash
-bun run build            # builds with the settings from .env baked in
-bun run build:runtime    # also writes dist/config.js
-bun run preview          # serves the build on http://localhost:4173
+npm run build            # builds with the settings from .env baked in
+npm run build:runtime    # also writes dist/config.js
+npm run preview          # serves the build on http://localhost:4173
 ```
 
 A runtime build loads `dist/config.js` before the app. Edit that file, or mount your own over it, to change a deployment's settings without rebuilding.
@@ -74,16 +74,16 @@ docker build -t workspace-frontend .
 docker run --rm -p 3000:8080 -e BACKEND_URL=http://localhost:8000 workspace-frontend
 ```
 
-`app-config.js` has one row per setting in `src/lib/runtimeConfigSchema.ts`, with the variable that sets it and its type (`string`, `bool`, `list` or `theme`), and `nginx.conf` passes each variable to nginx with an `env` line. Adding or removing a setting in the schema means changing both: `bun scripts/check-runtime-config.ts`, which the image build runs, fails when they disagree.
+`app-config.js` has one row per setting in `src/lib/runtimeConfigSchema.ts`, with the variable that sets it and its type (`string`, `bool`, `list` or `theme`), and `nginx.conf` passes each variable to nginx with an `env` line. Adding or removing a setting in the schema means changing both: `node scripts/check-runtime-config.ts`, which the image build runs, fails when they disagree.
 
 ## Testing
 
 ```bash
-bun run test:unit                    # all unit tests
-bun run test:unit -- --coverage      # with a coverage report
-bun run typecheck                    # tsc --noEmit
-bun run test:e2e                     # Playwright, against a running stack
-bunx playwright test tests/e2e --ui  # Playwright with its interactive UI
+npm run test:unit                    # all unit tests
+npm run test:unit -- --coverage      # with a coverage report
+npm run typecheck                    # tsc --noEmit
+npm run test:e2e                     # Playwright, against a running stack
+npx playwright test tests/e2e --ui  # Playwright with its interactive UI
 ```
 
 The end-to-end tests sign in to a running stack with an account that exists there; `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` name it, and `E2E_BASE_URL` (default `http://localhost:3000`) says where the stack is. [TESTING.md](./TESTING.md) has the details, along with the testing guide: patterns, mocking, and coverage.
@@ -94,7 +94,7 @@ All icons live in one sprite, `public/assets/icons/sprite.svg`.
 
 1. Get the SVG, for example from Figma or [icones.js.org](https://icones.js.org/).
 2. Convert it to a `<symbol>` with an `id` that no other symbol uses (see the sprite for the existing ones), and paste it inside the `<svg>` of the sprite.
-3. Run `bun run update-icons` to update the `Icon` type.
+3. Run `npm run update-icons` to update the `Icon` type.
 4. Use it with `<Icon id="your-id" className="w-4 h-4" />`.
 
 ## Conventions

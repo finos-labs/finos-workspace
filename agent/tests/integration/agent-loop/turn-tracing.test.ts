@@ -43,9 +43,7 @@ beforeAll(() => {
 
 afterAll(async () => {
   await provider?.shutdown();
-  // Restore the no-op global. bun runs test files in one process, and leaving
-  // a recording provider registered would put a `traceparent` into extra_state
-  // for every later test file — including the ones that pin its verbatim shape.
+  // Restore the no-op global.
   trace.disable();
 });
 

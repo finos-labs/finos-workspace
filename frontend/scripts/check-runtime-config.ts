@@ -1,7 +1,7 @@
 // Checks app-config.js, which renders config.js in the nginx image, against
 // RuntimeConfigSchema and nginx.conf, so they cannot drift apart. The image build
 // runs it from frontend/:
-//   bun scripts/check-runtime-config.ts
+//   node scripts/check-runtime-config.ts
 // It fails when a schema field is missing from the module's FIELDS table (or the
 // table names a field the schema does not have), when nginx.conf does not pass
 // exactly the table's variables to nginx's workers, when the config.js the module
@@ -9,7 +9,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { runInNewContext } from "node:vm";
-import { ENV_NAMES, RuntimeConfigSchema } from "../src/lib/runtimeConfigSchema";
+import { ENV_NAMES, RuntimeConfigSchema } from "../src/lib/runtimeConfigSchema.ts";
 
 type Config = Record<string, Record<string, unknown>>;
 type AppConfig = {

@@ -6,10 +6,10 @@
  * applies graders, and writes per-trial traces + a summary report.
  *
  * Usage:
- *   bun run evals                           # run all cases
- *   bun run evals -- --filter=widget        # filter case ids
- *   bun run evals -- --group=widget-selection
- *   EVAL_MODEL=<provider>:<model> bun run evals
+ *   npm run evals                           # run all cases
+ *   npm run evals -- --filter=widget        # filter case ids
+ *   npm run evals -- --group=widget-selection
+ *   EVAL_MODEL=<provider>:<model> npm run evals
  *
  * Env:
  *   EVAL_MODEL        — model id passed to resolveModel (default: DEFAULT_MODEL)

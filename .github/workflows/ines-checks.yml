@@ -25,29 +25,35 @@ jobs:
         working-directory: agent
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          bun-version: 1.4.2
-      - run: bun install --frozen-lockfile
-      - run: bun run typecheck
+          node-version: 26.12.1
+      - run: npm ci
+      - run: npm run typecheck
 
-  # The tests run on Node, the agent's runtime (the version agent/Dockerfile builds); Bun installs the packages.
+  # The tests run on the Node the images run on: the stage that agent-node.yml builds, in a container of
+  # its own, with the packages npm installed here.
   tests:
     name: Tests
+    needs: node
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: agent
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26.12.1
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - run: npm ci
+        working-directory: agent
+      - uses: actions/cache/restore@v6
         with:
-          bun-version: 1.4.2
-      - run: bun install --frozen-lockfile
-      - run: bun run test
+          path: agent-node
+          key: ${{ needs.node.outputs.key }}
+          fail-on-cache-miss: true
+      - name: Run the tests on the images' Node
+        run: |
+          tar -C agent-node -c . | docker import - agent-node:tests
+          docker run --rm -v "$PWD/agent:/app" -w /app agent-node:tests /usr/local/bin/node --test \
+            --experimental-test-module-mocks --import ./tests/setup.ts 'tests/**/*.test.ts' 'mcp-server/test/**/*.test.ts'
 
   # A critical advisory in what the agent ships fails the check. Lower ones are reviewed by hand: most are in
   # code that is not reached (sprintf-js under mammoth's command-line parser, for one).
@@ -59,10 +65,10 @@ jobs:
         working-directory: agent
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          bun-version: 1.4.2
-      - run: bun audit --prod --audit-level=critical
+          node-version: 26.12.1
+      - run: npm audit --omit=dev --audit-level=critical
 
   # Node for the images, built once and kept in the Actions cache (agent-node.yml).
   node:

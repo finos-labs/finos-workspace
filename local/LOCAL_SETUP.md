@@ -11,7 +11,7 @@ To run the built images instead (web app and API, as a user would), use `docker-
 - `make`, which comes with macOS (Xcode command line tools) and Linux. On Windows, use WSL.
 - `python3`, only the first time and only its standard library: it writes the settings.
 
-Nothing else: the backend, Node and Bun run inside the containers.
+Nothing else: the backend and Node run inside the containers.
 
 ## Start
 
@@ -63,7 +63,7 @@ Without `make`, use Docker Compose directly from this folder: `docker compose up
 - Worker code: the worker does not reload; run `make restart s=backend-worker`.
 - Database migrations: `init` applies new ones on every `make up`.
 - Python dependencies (`pyproject.toml`): `make up` rebuilds the backend images.
-- Frontend dependencies (`package.json`): `make restart s=frontend` runs `bun install` again.
+- Frontend dependencies (`package.json`): `make restart s=frontend` runs `npm install` again.
 
 ## Settings
 

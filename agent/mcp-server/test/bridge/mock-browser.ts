@@ -58,7 +58,7 @@ export async function startMockBrowser(opts: {
   };
 
   // Ignore the server's returned websocket_url — it may carry a stale port
-  // when the manager was constructed before the Bun server picked an
+  // when the manager was constructed before the server picked an
   // ephemeral port. Compute the canonical WS URL from `opts.baseUrl`.
   const wsUrl =
     opts.baseUrl.replace(/^http/, "ws") +

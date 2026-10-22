@@ -5,13 +5,13 @@ For architecture, tool inventory, file layout, env vars, request flow, the MCP a
 ## Commands
 
 ```bash
-bun run dev:agent     # agent on :7777
-bun run dev:mcp       # MCP server on :8787
-bun run typecheck     # bunx tsc --noEmit — must be zero errors
-bun run test          # node --test over tests/ and mcp-server/test — must be all green before merge
+npm run dev:agent     # agent on :7777
+npm run dev:mcp       # MCP server on :8787
+npm run typecheck     # tsc --noEmit — must be zero errors
+npm test              # node --test over tests/ and mcp-server/test — must be all green before merge
 ```
 
-Bun is the package manager (`bun install`, `bun run`); Node is the runtime.
+Node is the runtime and npm the package manager.
 
 ## Hard rules — thin harness
 

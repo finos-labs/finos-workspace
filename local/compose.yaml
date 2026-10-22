@@ -104,16 +104,15 @@ services:
         condition: service_completed_successfully
 
   frontend:
-    # Same Node and Bun versions as frontend/Dockerfile. node-gyp is installed
-    # up front because some packages (bufferutil) have no prebuilt binary for
-    # Linux on ARM and compile during `bun install` on Apple Silicon.
+    # Same Node as frontend/Dockerfile. The packages' own install scripts are
+    # not run, as in the image: the app needs none of them.
     image: node:22
     working_dir: /app
     command:
       [
         "sh",
         "-c",
-        "npm install --global --silent bun@1.4.2 node-gyp && bun install --frozen-lockfile && exec bun run dev",
+        "npm install --ignore-scripts --no-audit --no-fund && exec npm run dev",
       ]
     # These take priority over the values in frontend/.env. The browser calls
     # the URLs, so they are host addresses.

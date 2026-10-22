@@ -88,17 +88,19 @@ jobs:
           printf '%s\n' "$PASSWORD" | docker compose run --rm -T init python -m scripts.init_users --new-password "$E2E_USER_EMAIL"
           echo "E2E_USER_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
 
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
 
       - name: Install dependencies
         working-directory: frontend
         run: |
-          bun install --frozen-lockfile
-          bunx playwright install --with-deps chromium
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
 
       - name: Playwright tests
         working-directory: frontend
-        run: bunx playwright test --project=chromium
+        run: npx playwright test --project=chromium
 
       - name: Upload the report
         if: always()

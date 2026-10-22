@@ -17,18 +17,16 @@
 # own platform.
 FROM --platform=$BUILDPLATFORM node:22 AS builder
 
-ARG BUN_VERSION=1.4.2
 ENV NODE_OPTIONS="--max-old-space-size=4608"
 
-RUN npm install -g bun@${BUN_VERSION}
-
 WORKDIR /app
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+COPY package.json package-lock.json ./
+# The packages' own install scripts are not run: the build needs none of them.
+RUN npm ci --ignore-scripts --no-audit --no-fund
 COPY . .
-RUN bun scripts/check-runtime-config.ts
+RUN node scripts/check-runtime-config.ts
 # nginx renders config.js, so the one the build writes is left out.
-RUN bun run build:runtime && rm dist/config.js
+RUN npm run build:runtime && rm dist/config.js
 
 ###############################################
 # nginx

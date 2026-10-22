@@ -5,8 +5,8 @@
 # LLVM, so this Node is compiled with clang against musl and LLVM's libc++, and links Chimera's
 # OpenSSL and ICU (the rest of what it uses is its own). The images are built from scratch: Node,
 # the libraries it links, the time zones, the dependencies and the code. No shell, package
-# manager or build tools. They run as uid 1000. The dependencies are installed with Bun, which is
-# this project's package manager and stays in its stage.
+# manager or build tools. They run as uid 1000. The dependencies are installed by npm, run on this
+# Node, in a stage of its own.
 #
 # Node and what it runs on are the stage `node`, which both images copy. CI builds that stage once
 # and hands it to every image build from the Actions cache (--build-context node=<directory>; see
@@ -154,13 +154,20 @@ FROM scratch AS node
 
 COPY --from=node-build /rootfs/ /
 
-# The dependencies, installed with Bun.
-FROM oven/bun:1.4.2-slim AS deps
+# The dependencies, installed from package-lock.json by npm on this Node. npm stays in this stage.
+# Bump the npm version (the one Node ships with) and its SHA-256 together.
+FROM scratch AS deps
+
+COPY --from=node / /
+ADD --unpack=true --checksum=sha256:d1a92f40e6c407b84c3a00c3cf978a10b24fd42f153c527e2016cef7bb34a483 \
+  https://registry.npmjs.org/npm/-/npm-11.20.0.tgz /opt/npm/
+
+ENV PATH=/usr/local/bin:/usr/bin:/bin
 
 WORKDIR /app
 
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
+COPY package.json package-lock.json ./
+RUN ["node", "/opt/npm/package/bin/npm-cli.js", "ci", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund"]
 
 # The companion MCP server: the tools the agent uses (web search, page fetch, document search, ...).
 # Only the Workspace talks to it, so it is not meant to be reachable from outside the deployment.
@@ -175,7 +182,7 @@ ENV MCP_PORT=8787
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json bun.lock ./
+COPY package.json ./
 COPY mcp-server ./mcp-server
 # The few modules the tools share with the agent (logging, metrics, chat scopes, guarded fetching).
 COPY src/lib/logging.ts src/lib/redact.ts src/lib/metrics.ts src/lib/scope.ts src/lib/safe-fetch.ts src/lib/isolate.ts src/lib/isolate-protocol.ts src/lib/isolate-child.ts src/lib/zip-guard.ts src/lib/bounded-cache.ts src/lib/html-page.ts src/lib/html-child.ts src/lib/page-text.ts src/lib/page-view.ts ./src/lib/
@@ -200,7 +207,7 @@ ENV PORT=7777
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json bun.lock ./
+COPY package.json ./
 COPY src ./src
 
 # Build identity. CI passes the commit sha; local builds fall back to "dev".
