@@ -10,7 +10,7 @@
  */
 
 import type { Logger } from "@logtape/logtape";
-import { metrics } from "./metrics";
+import { metrics } from "./metrics.ts";
 
 interface ProcessLike {
   on(event: string, listener: (...args: any[]) => void): unknown;

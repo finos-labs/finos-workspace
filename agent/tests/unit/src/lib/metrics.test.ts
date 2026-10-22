@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { createRegistry, renderMetrics, metrics } from "../../../../src/lib/metrics";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { createRegistry, renderMetrics, metrics } from "../../../../src/lib/metrics.ts";
 
 describe("counter", () => {
   it("is written with its labels and counts up", () => {

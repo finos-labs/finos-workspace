@@ -7,8 +7,9 @@
  * Redis (that two replicas see one another's writes) is what Redis itself guarantees.
  */
 
-import { describe, it, expect } from "bun:test";
-import { createLocalStore, createStore, LEASE_TTL_MS } from "../../../../src/lib/store";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { createLocalStore, createStore, LEASE_TTL_MS } from "../../../../src/lib/store.ts";
 
 describe("values", () => {
   it("gives back what was put in, until the time it was given runs out", async () => {
@@ -206,7 +207,7 @@ describe("which store a deployment gets", () => {
 });
 
 describe("when the shared store cannot answer", () => {
-  it("falls back to this process rather than failing the request", async () => {
+  it("falls back to this process rather than failing the request", { timeout: 20_000 }, async () => {
     // A Redis that is not there: every operation has to answer anyway.
     const store = createStore({ REDIS_URL: "redis://127.0.0.1:6399" } as NodeJS.ProcessEnv);
     try {
@@ -225,7 +226,7 @@ describe("when the shared store cannot answer", () => {
     } finally {
       await store.close();
     }
-  }, 20_000);
+  });
 });
 
 describe("the store in Redis alone", () => {
@@ -234,7 +235,7 @@ describe("the store in Redis alone", () => {
     expect(createStore({} as NodeJS.ProcessEnv).sharedOnly()).toBeNull();
   });
 
-  it("fails when Redis cannot answer, and keeps nothing in this process", async () => {
+  it("fails when Redis cannot answer, and keeps nothing in this process", { timeout: 20_000 }, async () => {
     const store = createStore({ REDIS_URL: "redis://127.0.0.1:6399" } as NodeJS.ProcessEnv);
     try {
       const onlyRedis = store.sharedOnly();
@@ -252,5 +253,5 @@ describe("the store in Redis alone", () => {
     } finally {
       await store.close();
     }
-  }, 20_000);
+  });
 });

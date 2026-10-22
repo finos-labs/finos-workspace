@@ -17,14 +17,15 @@
  * not the model's reasoning order (which the test discipline rightly forbids pinning).
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { AgentTool, Citation, QueryRequest, SSEEvent, ToolMessage, Widget } from "../../../src/protocol/types";
-import { llmCallsTool, llmCallsToolWithText, llmEmitsText, makeSequencedMockLlm } from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
-import { tableRows } from "../../helpers/html-table";
-import { rememberRows } from "../../../src/agent/row-cache";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { AgentTool, Citation, QueryRequest, SSEEvent, ToolMessage, Widget } from "../../../src/protocol/types.ts";
+import { llmCallsTool, llmCallsToolWithText, llmEmitsText, makeSequencedMockLlm } from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
+import { tableRows } from "../../helpers/html-table.ts";
+import { rememberRows } from "../../../src/agent/row-cache.ts";
 
 beforeEach(() => clearAllModuleState());
 

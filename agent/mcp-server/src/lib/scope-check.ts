@@ -12,9 +12,9 @@
  */
 
 import { z } from "zod";
-import { verifyScope } from "../../../src/lib/scope";
-import { getLogger } from "./logger";
-import { errorItem, type ContentItem } from "./typed";
+import { verifyScope } from "../../../src/lib/scope.ts";
+import { getLogger } from "./logger.ts";
+import { errorItem, type ContentItem } from "./typed.ts";
 
 const logger = getLogger(["mcp", "scope"]);
 

@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { runCreateApp } from "../../../../../src/agent/tools/app-artifact";
-import type { AppArtifact, SSEEvent, Widget } from "../../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { runCreateApp } from "../../../../../src/agent/tools/app-artifact.ts";
+import type { AppArtifact, SSEEvent, Widget } from "../../../../../src/protocol/types.ts";
 
 function w(overrides: Partial<Widget> = {}): Widget {
   return {

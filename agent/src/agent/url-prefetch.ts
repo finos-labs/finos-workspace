@@ -14,9 +14,9 @@
  * added latency bounded by the slowest URL (not the sum).
  */
 
-import { getLogger } from "../lib/logger";
-import { describePage, fetchPage } from "../lib/html-page";
-import { renderOverview } from "../lib/page-text";
+import { getLogger } from "../lib/logger.ts";
+import { describePage, fetchPage } from "../lib/html-page.ts";
+import { renderOverview } from "../lib/page-text.ts";
 
 const logger = getLogger(["app", "agent", "url-prefetch"]);
 

@@ -9,7 +9,7 @@
  * a restart drops them, and a page that is gone is fetched again.
  */
 
-import { createBoundedCache, sweepEvery } from "../../../src/lib/bounded-cache";
+import { createBoundedCache, sweepEvery } from "../../../src/lib/bounded-cache.ts";
 
 export const PAGE_TTL_MS = 30 * 60 * 1000;
 export const MAX_PAGES_PER_CHAT = 6;

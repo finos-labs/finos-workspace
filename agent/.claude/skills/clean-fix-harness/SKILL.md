@@ -258,7 +258,7 @@ Ask these before finalizing:
 - Did I keep schema validation as validation, not normalization?
 - Did I leave unrelated user changes alone?
 - Did I update tests/evals to guard the actual contract?
-- Did I run `bun run typecheck` and the relevant Bun tests?
+- Did I run `bun run typecheck` and the relevant tests?
 
 ## When To Stop And Re-Plan
 

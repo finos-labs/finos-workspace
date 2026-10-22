@@ -1,5 +1,5 @@
-import type { Trace } from "../trace";
-import type { GraderSpec } from "./index";
+import type { Trace } from "../trace.ts";
+import type { GraderSpec } from "./index.ts";
 
 // Index of the first tool-call signal in the ordered event stream. Round-trip
 // tools emit `copilotFunctionCall`; in-process tools (search_widgets,

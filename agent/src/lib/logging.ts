@@ -16,7 +16,7 @@ import {
   type LogLevel,
   type Sink,
 } from "@logtape/logtape";
-import { redactRecord } from "./redact";
+import { redactRecord } from "./redact.ts";
 
 const LEVELS: readonly LogLevel[] = ["trace", "debug", "info", "warning", "error", "fatal"];
 

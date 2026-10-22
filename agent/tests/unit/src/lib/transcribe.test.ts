@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it } from "bun:test";
-import { readWav, transcribe, transcribeModel, transcribeModelProblem } from "../../../../src/lib/transcribe";
-import { wav } from "../../../helpers/wav";
+import { afterEach, describe, it } from "node:test";
+import { expect } from "expect";
+import { readWav, transcribe, transcribeModel, transcribeModelProblem } from "../../../../src/lib/transcribe.ts";
+import { wav } from "../../../helpers/wav.ts";
 
 describe("INES_TRANSCRIBE_MODEL", () => {
   it("is optional: unset, there is no dictation and nothing is wrong", () => {

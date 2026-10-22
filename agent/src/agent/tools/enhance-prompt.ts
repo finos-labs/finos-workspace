@@ -10,8 +10,8 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { singleShotLlm } from "../../lib/llm";
-import { getLogger } from "../../lib/logger";
+import { singleShotLlm } from "../../lib/llm.ts";
+import { getLogger } from "../../lib/logger.ts";
 
 const logger = getLogger(["app", "tools", "enhance_prompt"]);
 

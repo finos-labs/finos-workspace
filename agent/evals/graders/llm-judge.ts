@@ -8,9 +8,9 @@
  */
 
 import { generateText } from "ai";
-import { resolveModel } from "../../src/lib/providers";
-import type { Trace } from "../trace";
-import type { GraderSpec } from "./index";
+import { resolveModel } from "../../src/lib/providers.ts";
+import type { Trace } from "../trace.ts";
+import type { GraderSpec } from "./index.ts";
 
 const JUDGE_MODEL =
   process.env.EVAL_JUDGE_MODEL || process.env.EVAL_MODEL || process.env.DEFAULT_MODEL;

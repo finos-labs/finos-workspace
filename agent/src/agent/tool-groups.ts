@@ -21,8 +21,8 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import type { McpToolEntry } from "../mcp/factory";
-import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server";
+import type { McpToolEntry } from "../mcp/factory.ts";
+import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server.ts";
 
 /** Always given: what a question about the user's data, files or conversation starts with. */
 export const CORE_TOOLS: ReadonlySet<string> = new Set([

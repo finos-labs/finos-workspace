@@ -1,4 +1,5 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   buildAllCitations,
   citationUuid,
@@ -9,9 +10,9 @@ import {
   pagesNamedIn,
   preferCitationsWithPages,
   selectCitedPages,
-} from "../../../../src/protocol/citations";
-import type { Citation, Widget } from "../../../../src/protocol/types";
-import type { McpCitation } from "../../../../src/mcp/results";
+} from "../../../../src/protocol/citations.ts";
+import type { Citation, Widget } from "../../../../src/protocol/types.ts";
+import type { McpCitation } from "../../../../src/mcp/results.ts";
 
 function widget(overrides: Partial<Widget> = {}): Widget {
   return {

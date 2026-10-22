@@ -9,9 +9,9 @@
  * Cases here grade that it's reflected in the answer.
  */
 
-import type { EvalCase } from "../runner";
-import { macroWorkspace, techWorkspace } from "../fixtures/workspaces";
-import { llmJudge, noBadState, toolCalled } from "../graders";
+import type { EvalCase } from "../runner.ts";
+import { macroWorkspace, techWorkspace } from "../fixtures/workspaces.ts";
+import { llmJudge, noBadState, toolCalled } from "../graders/index.ts";
 
 // timezone is threaded explicitly via EvalCase.timezone → QueryRequest.timezone
 // (runner.ts → trace.ts), mirroring how the workspace frontend sends it.

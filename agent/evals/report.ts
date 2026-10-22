@@ -3,7 +3,7 @@
  * pass/fail indicator; failed grader breakdown for diagnosis.
  */
 
-import type { GradeResult } from "./graders";
+import type { GradeResult } from "./graders/index.ts";
 
 export interface TrialReport {
   trial: number;

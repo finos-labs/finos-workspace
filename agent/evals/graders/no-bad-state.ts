@@ -1,5 +1,5 @@
-import type { Trace } from "../trace";
-import type { GraderSpec } from "./index";
+import type { Trace } from "../trace.ts";
+import type { GraderSpec } from "./index.ts";
 
 /**
  * Invariant grader. These properties must NEVER hold; any violation fails

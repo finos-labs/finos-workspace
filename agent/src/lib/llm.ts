@@ -1,6 +1,6 @@
 import { generateText } from "ai";
-import { PROVIDER_OPTIONS, resolveModel } from "./providers";
-import { aiTelemetry } from "./telemetry";
+import { PROVIDER_OPTIONS, resolveModel } from "./providers.ts";
+import { aiTelemetry } from "./telemetry.ts";
 
 // Backstop so a stalled provider can't hang a /generate route forever. Single
 // turn, ≤1024 tokens — 60s is generous. The loop's streaming call uses its own

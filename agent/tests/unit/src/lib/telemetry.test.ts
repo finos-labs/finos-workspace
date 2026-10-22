@@ -1,11 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import { expect } from "expect";
 import {
   resolveTracesUrl,
   parseTraceparent,
   formatTraceparent,
   traceIdForLogs,
   aiTelemetry,
-} from "../../../../src/lib/telemetry";
+} from "../../../../src/lib/telemetry.ts";
 
 const VALID = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
 
@@ -31,7 +32,7 @@ describe("parseTraceparent", () => {
 
   // extra_state round-trips through the browser, so every one of these is a
   // value an attacker (or a buggy frontend) can actually put on the wire.
-  it.each([
+  for (const [label, input] of [
     ["undefined", undefined],
     ["null", null],
     ["a non-string", 12345],
@@ -49,9 +50,11 @@ describe("parseTraceparent", () => {
     ["whitespace padding", ` ${VALID} `],
     ["a header-injection attempt", `${VALID}\r\nX-Evil: 1`],
     ["an absurdly long string", "00-" + "a".repeat(10_000)],
-  ])("rejects %s", (_label, input) => {
-    expect(parseTraceparent(input)).toBeNull();
-  });
+  ]) {
+    it(`rejects ${label}`, () => {
+      expect(parseTraceparent(input)).toBeNull();
+    });
+  }
 });
 
 describe("formatTraceparent", () => {

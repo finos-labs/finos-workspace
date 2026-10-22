@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { errorItem, sqliteTableItem, textItem, type ContentItem } from "../../lib/typed";
-import { viewPage, type FetchedPage } from "../../../../src/lib/html-page";
-import { findInText, readText } from "../../../../src/lib/page-text";
-import { getLogger } from "../../lib/logger";
-import { getPage, type HeldPage } from "../../lib/page-store";
-import { scopeSigSchema } from "../../lib/scope-check";
+import { errorItem, sqliteTableItem, textItem, type ContentItem } from "../../lib/typed.ts";
+import { viewPage, type FetchedPage } from "../../../../src/lib/html-page.ts";
+import { findInText, readText } from "../../../../src/lib/page-text.ts";
+import { getLogger } from "../../lib/logger.ts";
+import { getPage, type HeldPage } from "../../lib/page-store.ts";
+import { scopeSigSchema } from "../../lib/scope-check.ts";
 
 const logger = getLogger(["mcp", "inspect-webpage"]);
 

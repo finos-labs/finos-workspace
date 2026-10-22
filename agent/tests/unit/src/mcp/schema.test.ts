@@ -1,9 +1,10 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import { z } from "zod";
 import {
   sanitizeMcpToolName,
   buildToolInputSchema,
-} from "../../../../src/mcp/schema";
+} from "../../../../src/mcp/schema.ts";
 
 describe("sanitizeMcpToolName", () => {
   it("passes through valid identifier characters", () => {

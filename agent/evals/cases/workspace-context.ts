@@ -7,13 +7,13 @@
  * sends when the user is viewing a dashboard.
  */
 
-import type { EvalCase } from "../runner";
+import type { EvalCase } from "../runner.ts";
 import {
   techWorkspace,
   aaplDashboardState,
   macroDashboardState,
   macroWorkspace,
-} from "../fixtures/workspaces";
+} from "../fixtures/workspaces.ts";
 import {
   argContains,
   llmJudge,
@@ -21,7 +21,7 @@ import {
   toolCalled,
   widgetIdInTopN,
   type GraderSpec,
-} from "../graders";
+} from "../graders/index.ts";
 
 const sectorDashboardWorkspace = {
   primary: [],

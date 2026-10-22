@@ -1,10 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
-import { fetchWebpageHandler } from "../../../../../mcp-server/src/tools/backend/fetch-webpage";
-import { inspectWebpageHandler } from "../../../../../mcp-server/src/tools/backend/inspect-webpage";
-import { _resetPageStore } from "../../../../../mcp-server/src/lib/page-store";
-import { requireScope } from "../../../../../mcp-server/src/lib/scope-check";
-import { signScope, signUrl } from "../../../../../src/lib/scope";
-import { logicalUrl } from "../../../../helpers/logical-url";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import { expect } from "expect";
+import { fn } from "jest-mock";
+import { fetchWebpageHandler } from "../../../../../mcp-server/src/tools/backend/fetch-webpage.ts";
+import { inspectWebpageHandler } from "../../../../../mcp-server/src/tools/backend/inspect-webpage.ts";
+import { _resetPageStore } from "../../../../../mcp-server/src/lib/page-store.ts";
+import { requireScope } from "../../../../../mcp-server/src/lib/scope-check.ts";
+import { signScope, signUrl } from "../../../../../src/lib/scope.ts";
+import { logicalUrl } from "../../../../helpers/logical-url.ts";
 
 const realFetch = globalThis.fetch;
 const CHAT = "u1:chat1";
@@ -25,7 +27,7 @@ const call = (url: string, chat: string = CHAT) => ({
 });
 
 function mockFetch(impl: (url: string) => Response | Promise<Response>) {
-  globalThis.fetch = mock((input: string | URL | Request, init?: RequestInit) => Promise.resolve(impl(logicalUrl(input, init)))) as unknown as typeof fetch;
+  globalThis.fetch = fn((input: string | URL | Request, init?: RequestInit) => Promise.resolve(impl(logicalUrl(input, init)))) as unknown as typeof fetch;
 }
 
 beforeEach(() => {
@@ -223,7 +225,7 @@ describe("inspect_webpage — what a page can make it say", () => {
 });
 
 describe("inspect_webpage — a page that is built to cause trouble", () => {
-  it("is answered, and the next call is, when a view of it cannot be made", async () => {
+  it("is answered, and the next call is, when a view of it cannot be made", { timeout: 60_000 }, async () => {
     const deep = `<html><body>${"<div>".repeat(100_000)}text${"</div>".repeat(100_000)}</body></html>`;
     mockFetch(() => new Response(deep, { headers: { "content-type": "text/html" } }));
     const res = await fetchWebpageHandler(call("https://example.com/deep"));
@@ -235,9 +237,9 @@ describe("inspect_webpage — a page that is built to cause trouble", () => {
     }
     const ok = await fetched();
     expect(textOf(await inspect(ok, { view: "find", query: "needle" }))).toContain("Matches 1–1 of 1");
-  }, 60_000);
+  });
 
-  it("is read in time when it is five megabytes of markup", async () => {
+  it("is read in time when it is five megabytes of markup", { timeout: 60_000 }, async () => {
     const big = `<html><body>${"<p>some words <b>bold</b> <a href='/x'>link</a></p>".repeat(90_000)}</body></html>`;
     expect(big.length).toBeGreaterThan(4_000_000);
     expect(big.length).toBeLessThan(5 * 1024 * 1024);
@@ -246,5 +248,5 @@ describe("inspect_webpage — a page that is built to cause trouble", () => {
     const res = await fetchWebpageHandler(call("https://example.com/huge"));
     expect(Date.now() - started).toBeLessThan(15_000);
     expect(res.content[0].text.length).toBeLessThan(5000);
-  }, 60_000);
+  });
 });

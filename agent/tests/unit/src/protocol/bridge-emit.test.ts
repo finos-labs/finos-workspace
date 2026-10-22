@@ -7,12 +7,13 @@
  *     that the frontend's copilotFunctionCall schema expects
  */
 
-import { describe, it, expect } from "bun:test";
-import { WORKSPACE_BRIDGE_COMMAND_NAMES } from "../../../../src/protocol/bridge-commands";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { WORKSPACE_BRIDGE_COMMAND_NAMES } from "../../../../src/protocol/bridge-commands.ts";
 import {
   SSE_BRIDGE_COMMANDS,
   normalizeBridgeArgs,
-} from "../../../../src/protocol/bridge-emit";
+} from "../../../../src/protocol/bridge-emit.ts";
 
 describe("SSE_BRIDGE_COMMANDS", () => {
   it("are all registered bridge commands (rename guard)", () => {

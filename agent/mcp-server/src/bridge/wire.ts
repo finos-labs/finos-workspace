@@ -11,7 +11,7 @@
  */
 
 import { z } from "zod";
-import { BridgeErrorSchema } from "./types";
+import { BridgeErrorSchema } from "./types.ts";
 
 export const WorkspaceWidgetConfigSchema = z.object({
   data_args: z.record(z.string(), z.unknown()).nullable().optional(),

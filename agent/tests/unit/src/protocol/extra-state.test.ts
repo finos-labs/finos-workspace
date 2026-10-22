@@ -1,9 +1,10 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   readExtraState,
   makeExtraState,
-} from "../../../../src/protocol/extra-state";
-import type { ToolMessage } from "../../../../src/protocol/types";
+} from "../../../../src/protocol/extra-state.ts";
+import type { ToolMessage } from "../../../../src/protocol/types.ts";
 
 function tm(extra?: Record<string, unknown>): ToolMessage {
   return {

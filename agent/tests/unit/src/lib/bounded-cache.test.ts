@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { createBoundedCache } from "../../../../src/lib/bounded-cache";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { createBoundedCache } from "../../../../src/lib/bounded-cache.ts";
 
 function clock(start = 1_000) {
   let t = start;

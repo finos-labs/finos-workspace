@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { runLlmThink } from "../../../../../src/agent/tools/think";
-import type { SSEEvent } from "../../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { runLlmThink } from "../../../../../src/agent/tools/think.ts";
+import type { SSEEvent } from "../../../../../src/protocol/types.ts";
 
 describe("runLlmThink", () => {
   it("returns the plan text verbatim", () => {

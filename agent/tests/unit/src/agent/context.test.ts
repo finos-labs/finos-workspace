@@ -1,8 +1,9 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   splitContext,
   CONTEXT_TEXT_BLOCK_MAX_CHARS,
-} from "../../../../src/agent/context";
+} from "../../../../src/agent/context.ts";
 
 describe("splitContext", () => {
   it("returns empty result for missing / non-array input", () => {

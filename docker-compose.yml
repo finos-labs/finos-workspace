@@ -11,6 +11,8 @@
 #   docker compose run --rm init python -m scripts.init_users --new-password <email>
 #
 # On Apple silicon build for the host's architecture: PLATFORM=linux/arm64 docker compose up --build
+# The first build compiles Node for Ines and the MCP server (agent/Dockerfile): about 20 minutes
+# on a fast machine, and hours under emulation. Later builds take it from Docker's cache.
 name: workspace
 
 x-backend: &backend

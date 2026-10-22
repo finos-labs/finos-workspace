@@ -10,7 +10,7 @@
  */
 
 import { z } from "zod";
-import { fetchClientUrl } from "../../../../../src/lib/safe-fetch";
+import { fetchClientUrl } from "../../../../../src/lib/safe-fetch.ts";
 
 export const MAX_DOC_BYTES = 25 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 60_000;

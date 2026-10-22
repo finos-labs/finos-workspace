@@ -14,9 +14,9 @@
  * carries raw bytes + metadata as a transit buffer.
  */
 
-import type { UploadedDocument } from "../protocol/types";
-import { getLogger } from "../lib/logger";
-import { fetchClientUrl } from "../lib/safe-fetch";
+import type { UploadedDocument } from "../protocol/types.ts";
+import { getLogger } from "../lib/logger.ts";
+import { fetchClientUrl } from "../lib/safe-fetch.ts";
 
 const logger = getLogger(["app", "agent", "documents"]);
 

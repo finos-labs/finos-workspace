@@ -1,10 +1,11 @@
-import { describe, it, expect, afterEach } from "bun:test";
+import { describe, it, afterEach } from "node:test";
+import { expect } from "expect";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { IsolationError, runInChild, setIsolationConcurrency } from "../../../../src/lib/isolate";
+import { IsolationError, runInChild, setIsolationConcurrency } from "../../../../src/lib/isolate.ts";
 
-const script = (name: string) => join(import.meta.dir, "../../../fixtures/isolate", `${name}.ts`);
+const script = (name: string) => join(import.meta.dirname, "../../../fixtures/isolate", `${name}.ts`);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const run = <O = any>(name: string, input: unknown, timeoutMs = 10_000, extra: { maxOutputBytes?: number } = {}) =>
   runInChild<unknown, O>(script(name), input, { timeoutMs, label: `test ${name}`, ...extra });

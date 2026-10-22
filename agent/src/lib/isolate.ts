@@ -10,21 +10,23 @@
  * The child reads one JSON input from stdin and writes one JSON result (see isolate-child.ts).
  */
 
+import { spawn } from "node:child_process";
+import type { Readable } from "node:stream";
 import { getLogger, type Logger } from "@logtape/logtape";
-import { RESULT_MARKER } from "./isolate-protocol";
-import { metrics } from "./metrics";
+import { RESULT_MARKER } from "./isolate-protocol.ts";
+import { metrics } from "./metrics.ts";
 
 const defaultLogger = getLogger(["app", "isolate"]);
 
 export type IsolationFailure = "timeout" | "crash" | "busy" | "output" | "protocol";
 
 export class IsolationError extends Error {
-  constructor(
-    readonly kind: IsolationFailure,
-    message: string,
-  ) {
+  readonly kind: IsolationFailure;
+
+  constructor(kind: IsolationFailure, message: string) {
     super(message);
     this.name = "IsolationError";
+    this.kind = kind;
   }
 }
 
@@ -70,19 +72,16 @@ export interface RunInChildOptions {
   logger?: Logger;
 }
 
-async function readCapped(stream: ReadableStream<Uint8Array>, max: number, onTooMuch: () => void): Promise<string> {
-  const chunks: Uint8Array[] = [];
+async function readCapped(stream: Readable, max: number, onTooMuch: () => void): Promise<string> {
+  const chunks: Buffer[] = [];
   let size = 0;
-  const reader = stream.getReader();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
+  for await (const chunk of stream as AsyncIterable<Buffer>) {
+    size += chunk.byteLength;
     if (size > max) {
       onTooMuch();
       break;
     }
-    chunks.push(value);
+    chunks.push(chunk);
   }
   return Buffer.concat(chunks).toString("utf8");
 }
@@ -96,12 +95,15 @@ export async function runInChild<I, O>(script: string, input: I, options: RunInC
   const release = await takeSlot();
   const started = Date.now();
   let outcome: IsolationFailure | "ok" | "failed" = "failed";
-  const proc = Bun.spawn([process.execPath, script], {
-    stdin: "pipe",
-    stdout: "pipe",
-    stderr: "pipe",
+  const proc = spawn(process.execPath, [script], {
+    stdio: "pipe",
     // Nothing of the agent's environment: not its keys, not its tokens.
     env: { PATH: process.env.PATH ?? "", NODE_ENV: "production", LOG_LEVEL: "error", LOG_FORMAT: "json" },
+  });
+  // The exit code, or -1 when a signal ended the child (or it never started).
+  const exited = new Promise<number>((resolve) => {
+    proc.once("error", () => resolve(-1));
+    proc.once("close", (code) => resolve(code ?? -1));
   });
   let killedFor: "timeout" | "output" | null = null;
   const kill = (why: "timeout" | "output") => {
@@ -111,17 +113,14 @@ export async function runInChild<I, O>(script: string, input: I, options: RunInC
   const timer = setTimeout(() => kill("timeout"), options.timeoutMs);
 
   try {
-    try {
-      proc.stdin.write(JSON.stringify(input));
-      await proc.stdin.end();
-    } catch {
-      // The child ended before reading its input: its exit says why.
-    }
+    // The child may end before it reads its input: its exit says why.
+    proc.stdin.on("error", () => {});
+    proc.stdin.end(JSON.stringify(input));
     const [stdout, stderr] = await Promise.all([
       readCapped(proc.stdout, options.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES, () => kill("output")),
       readCapped(proc.stderr, 64 * 1024, () => {}),
     ]);
-    const code = await proc.exited;
+    const code = await exited;
 
     if (killedFor === "timeout") {
       outcome = "timeout";

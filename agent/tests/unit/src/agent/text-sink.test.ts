@@ -8,10 +8,11 @@
  * the streaming strip and the bulk strip are provably the same.
  */
 
-import { describe, it, expect } from "bun:test";
-import { makeTextSink, mergeMessageChunks, type TextSinkContext } from "../../../../src/agent/text-sink";
-import { stripPlaceholderTags } from "../../../../src/protocol/events";
-import type { SSEEvent } from "../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { makeTextSink, mergeMessageChunks, type TextSinkContext } from "../../../../src/agent/text-sink.ts";
+import { stripPlaceholderTags } from "../../../../src/protocol/events.ts";
+import type { SSEEvent } from "../../../../src/protocol/types.ts";
 
 function inertContext(deferred: SSEEvent[] = []): TextSinkContext {
   return { deferredAnswerArtifactEvents: deferred, onArtifactEmitted: () => {} };

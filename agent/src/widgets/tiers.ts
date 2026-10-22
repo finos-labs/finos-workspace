@@ -1,4 +1,4 @@
-import type { QueryRequest, Widget } from "../protocol/types";
+import type { QueryRequest, Widget } from "../protocol/types.ts";
 
 export type WidgetTier = "primary" | "secondary" | "extra";
 

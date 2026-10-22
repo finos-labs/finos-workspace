@@ -13,13 +13,13 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { singleShotLlm, parseJsonResponse } from "../../lib/llm";
-import { messageArtifact } from "../../protocol/events";
-import { analyzeTable, type TableInfo } from "../../sql/loader";
-import { rememberRows } from "../row-cache";
-import { htmlTableArtifact } from "../../protocol/html-table";
-import type { SSEEvent } from "../../protocol/types";
-import { getLogger } from "../../lib/logger";
+import { singleShotLlm, parseJsonResponse } from "../../lib/llm.ts";
+import { messageArtifact } from "../../protocol/events.ts";
+import { analyzeTable, type TableInfo } from "../../sql/loader.ts";
+import { rememberRows } from "../row-cache.ts";
+import { htmlTableArtifact } from "../../protocol/html-table.ts";
+import type { SSEEvent } from "../../protocol/types.ts";
+import { getLogger } from "../../lib/logger.ts";
 
 const logger = getLogger(["app", "tools", "table_from_text"]);
 

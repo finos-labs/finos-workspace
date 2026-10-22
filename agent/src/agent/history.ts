@@ -9,8 +9,8 @@
  * daily tokens) and ends, in a long enough chat, in a request the model refuses.
  */
 
-import type { Message } from "../protocol/types";
-import { stripPlaceholderTags } from "../protocol/events";
+import type { Message } from "../protocol/types.ts";
+import { stripPlaceholderTags } from "../protocol/events.ts";
 
 /** A message of the conversation as a person would read it: what the user wrote, what the agent answered. */
 export interface TranscriptEntry {

@@ -1,8 +1,9 @@
-import { describe, it, expect } from "bun:test";
-import { assertSafeZip, UnsafeZipError } from "../../../../src/lib/zip-guard";
-import { makeXlsx } from "../../../helpers/make-xlsx";
-import { makeZip } from "../../../helpers/make-zip";
-import { below, seeded } from "../../../helpers/rng";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { assertSafeZip, UnsafeZipError } from "../../../../src/lib/zip-guard.ts";
+import { makeXlsx } from "../../../helpers/make-xlsx.ts";
+import { makeZip } from "../../../helpers/make-zip.ts";
+import { below, seeded } from "../../../helpers/rng.ts";
 
 const refuses = (bytes: Uint8Array) => {
   try {

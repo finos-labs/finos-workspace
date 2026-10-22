@@ -10,10 +10,10 @@
  * Uses the real eval model; no mock LLM.
  */
 
-import type { EvalCase } from "../runner";
-import type { GraderSpec } from "../graders";
-import { noBadState, toolCalled } from "../graders";
-import { techWorkspace } from "../fixtures/workspaces";
+import type { EvalCase } from "../runner.ts";
+import type { GraderSpec } from "../graders/index.ts";
+import { noBadState, toolCalled } from "../graders/index.ts";
+import { techWorkspace } from "../fixtures/workspaces.ts";
 
 const VALID_WIDGET_IDS = new Set(techWorkspace.primary.map((w) => w.widget_id));
 

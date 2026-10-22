@@ -8,15 +8,15 @@
  *  - Vague: ambiguous query → search_widgets first
  */
 
-import type { EvalCase } from "../runner";
-import { techWorkspace } from "../fixtures/workspaces";
+import type { EvalCase } from "../runner.ts";
+import { techWorkspace } from "../fixtures/workspaces.ts";
 import {
   toolCalled,
   toolNeverCalled,
   argContains,
   noBadState,
   llmJudge,
-} from "../graders";
+} from "../graders/index.ts";
 
 void toolCalled;
 

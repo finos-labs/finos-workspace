@@ -14,10 +14,10 @@
 import { extractText, getDocumentProxy } from "unpdf";
 import mammoth from "mammoth";
 import * as cheerio from "cheerio";
-import type { UploadedDocumentFormat } from "../../../../../src/protocol/types";
-import { assertSafeZip } from "../../../../../src/lib/zip-guard";
-import { getLogger } from "../../../lib/logger";
-import { MAX_EXTRACTED_CHARS, MAX_PDF_PAGES } from "./limits";
+import type { UploadedDocumentFormat } from "../../../../../src/protocol/types.ts";
+import { assertSafeZip } from "../../../../../src/lib/zip-guard.ts";
+import { getLogger } from "../../../lib/logger.ts";
+import { MAX_EXTRACTED_CHARS, MAX_PDF_PAGES } from "./limits.ts";
 
 const logger = getLogger(["mcp", "documents", "extract"]);
 

@@ -8,7 +8,7 @@ Source code for Workspace and the components that build and run it.
 |---|---|
 | `frontend/` | The Workspace frontend (React 18 + TypeScript + Vite) |
 | `backend-api/` | Backend API (FastAPI + SQLAlchemy), admin CLI, and admin dashboard |
-| `agent/` | Ines, the Copilot's agent, and `agent/mcp-server/`, the tools she uses (Bun + TypeScript); see [agent/README.md](agent/README.md) |
+| `agent/` | Ines, the Copilot's agent, and `agent/mcp-server/`, the tools she uses (Node + TypeScript); see [agent/README.md](agent/README.md) |
 | `local/` | Development stack with hot reload for the frontend and the API (`make up`); see [local/LOCAL_SETUP.md](local/LOCAL_SETUP.md) |
 
 Each component keeps its own README with setup and development instructions.

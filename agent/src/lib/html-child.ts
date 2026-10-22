@@ -3,8 +3,8 @@
  * cannot stop the agent or the tool server. Run through `describePage` and `viewPage` (html-page.ts).
  */
 
-import { serveOnce } from "./isolate-child";
-import { overviewOf, viewOf, type ChildInput } from "./page-view";
+import { serveOnce } from "./isolate-child.ts";
+import { overviewOf, viewOf, type ChildInput } from "./page-view.ts";
 
 if (import.meta.main) {
   await serveOnce((input: ChildInput) =>

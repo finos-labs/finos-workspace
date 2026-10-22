@@ -6,13 +6,13 @@
  */
 
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
-import { invalidRequestItem } from "../../bridge/validators";
-import { parseJsonList, JsonArgumentError } from "../../bridge/json-args";
-import { BackendEndpointHeaderSchema } from "../../bridge/wire";
-import { describeTool } from "../../bridge/instructions";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
+import { invalidRequestItem } from "../../bridge/validators.ts";
+import { parseJsonList, JsonArgumentError } from "../../bridge/json-args.ts";
+import { BackendEndpointHeaderSchema } from "../../bridge/wire.ts";
+import { describeTool } from "../../bridge/instructions.ts";
 
 export const manageBackendsSchema = {
   operation: z

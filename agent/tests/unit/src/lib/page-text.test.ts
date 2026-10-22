@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { excerpt, findInText, MAX_COUNTED_MATCHES, OVERVIEW_EXCERPT_CHARS, readText, renderOverview, sliceChars } from "../../../../src/lib/page-text";
-import type { PageOverview } from "../../../../src/lib/page-view";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { excerpt, findInText, MAX_COUNTED_MATCHES, OVERVIEW_EXCERPT_CHARS, readText, renderOverview, sliceChars } from "../../../../src/lib/page-text.ts";
+import type { PageOverview } from "../../../../src/lib/page-view.ts";
 
 describe("sliceChars", () => {
   it("is the characters from an offset, and where they are", () => {

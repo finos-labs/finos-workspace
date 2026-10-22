@@ -1,4 +1,5 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   textItem,
   artifactItem,
@@ -7,7 +8,7 @@ import {
   sqliteTableItem,
   errorItem,
   modelContextItem,
-} from "../../../../mcp-server/src/lib/typed";
+} from "../../../../mcp-server/src/lib/typed.ts";
 
 describe("typed.ts — helpers", () => {
   it("textItem wraps content in a plain text item (no $ines_kind)", () => {

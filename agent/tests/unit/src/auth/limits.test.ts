@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { createLimits, type LimitsOptions } from "../../../../src/auth/limits";
-import { createLocalStore } from "../../../../src/lib/store";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { createLimits, type LimitsOptions } from "../../../../src/auth/limits.ts";
+import { createLocalStore } from "../../../../src/lib/store.ts";
 
 /** Limits over a store that keeps its counts in this process, with time the test moves. */
 function limitsWith(options: Omit<LimitsOptions, "store">, now?: () => number) {

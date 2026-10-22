@@ -1,14 +1,15 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import type { ModelMessage } from "ai";
-import { injectFromReboot, injectWidgetData, type RoundTripContext } from "../../../../src/agent/round-trip";
+import { injectFromReboot, injectWidgetData, type RoundTripContext } from "../../../../src/agent/round-trip.ts";
 import type {
   Citation,
   SSEEvent,
   ToolMessage,
   Widget,
-} from "../../../../src/protocol/types";
-import type { McpCitation } from "../../../../src/mcp/results";
-import type { WidgetItem } from "../../../../src/widgets/parse";
+} from "../../../../src/protocol/types.ts";
+import type { McpCitation } from "../../../../src/mcp/results.ts";
+import type { WidgetItem } from "../../../../src/widgets/parse.ts";
 
 function emptyCtx(): RoundTripContext {
   return {
@@ -29,7 +30,7 @@ async function drain<T>(gen: AsyncGenerator<T>): Promise<T[]> {
   for await (const v of gen) out.push(v);
   return out;
 }
-import { asCells, tableRows } from "../../../helpers/html-table";
+import { asCells, tableRows } from "../../../helpers/html-table.ts";
 
 describe("injectWidgetData — same widget, different params", () => {
   function priceItem(symbol: string, close: number): WidgetItem {

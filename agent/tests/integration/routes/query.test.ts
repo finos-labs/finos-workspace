@@ -10,23 +10,24 @@
  * Here we only verify the route layer wires correctly.
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+import { describe, it, beforeEach, afterEach, mock } from "node:test";
+import { expect } from "expect";
 
 // Mock providers BEFORE importing the route so the route's resolveModel call
 // returns our deterministic mock.
-import { makeMockLlm, llmEmitsText } from "../../helpers/mock-llm";
+import { makeMockLlm, llmEmitsText } from "../../helpers/mock-llm.ts";
 
 // Only resolveModel is replaced; the module's other exports are used by the loop and must stay.
-const realProviders = await import("../../../src/lib/providers");
-mock.module("../../../src/lib/providers", () => ({
+const realProviders = await import("../../../src/lib/providers.ts");
+mock.module("../../../src/lib/providers.ts", { exports: {
   ...realProviders,
   resolveModel: () => makeMockLlm(llmEmitsText("ok from mock")),
-}));
+} });
 
 const { Hono } = await import("hono");
-const { queryRouter } = await import("../../../src/routes/query");
-const { readSse } = await import("../../helpers/sse-reader");
-const { clearAllModuleState } = await import("../../helpers/clear-state");
+const { queryRouter } = await import("../../../src/routes/query.ts");
+const { readSse } = await import("../../helpers/sse-reader.ts");
+const { clearAllModuleState } = await import("../../helpers/clear-state.ts");
 
 function app() {
   const a = new Hono();

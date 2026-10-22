@@ -12,7 +12,7 @@
  * useful first-action graders only need this single shot.
  */
 
-import { runAgentLoop } from "../src/agent/loop";
+import { runAgentLoop } from "../src/agent/loop.ts";
 import type {
   AgentTool,
   QueryRequest,
@@ -22,7 +22,7 @@ import type {
   UploadedDocument,
   Widget,
   WorkspaceState,
-} from "../src/protocol/types";
+} from "../src/protocol/types.ts";
 import type { LanguageModel } from "ai";
 
 export interface CapturedToolCall {

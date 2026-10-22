@@ -10,9 +10,9 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { messageArtifact } from "../../protocol/events";
-import type { HtmlArtifact, SSEEvent } from "../../protocol/types";
-import { getLogger } from "../../lib/logger";
+import { messageArtifact } from "../../protocol/events.ts";
+import type { HtmlArtifact, SSEEvent } from "../../protocol/types.ts";
+import { getLogger } from "../../lib/logger.ts";
 
 const logger = getLogger(["app", "tools", "html_artifact"]);
 

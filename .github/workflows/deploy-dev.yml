@@ -132,8 +132,13 @@ jobs:
           image: ${{ env.ECR_REGISTRY }}/finos/frontend:${{ env.IMAGE_TAG }}
           project: frontend
 
-  # Ines and the MCP server with her tools: the two targets of agent/Dockerfile.
+  # Node for the agent's images, built once and kept in the Actions cache (agent-node.yml).
+  node:
+    uses: ./.github/workflows/agent-node.yml
+
+  # Ines and the MCP server with her tools: the two targets of agent/Dockerfile, with Node from the node job.
   agent:
+    needs: node
     runs-on: ubuntu-latest
     env:
       IMAGE_TAG: dev-${{ github.sha }}
@@ -148,6 +153,12 @@ jobs:
 
       - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
 
+      - uses: actions/cache/restore@v6
+        with:
+          path: agent-node
+          key: ${{ needs.node.outputs.key }}
+          fail-on-cache-miss: true
+
       # Tags are immutable, so a rerun keeps the images the first attempt pushed.
       - name: Build and push the agent and agent MCP server images
         run: |
@@ -156,7 +167,8 @@ jobs:
             if output=$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="$IMAGE_TAG" 2>&1); then
               echo "$repository:$IMAGE_TAG is already in ECR."
             elif grep -q ImageNotFoundException <<< "$output"; then
-              docker build --target "$target" --build-arg GIT_SHA="$GITHUB_SHA" -t "$ECR_REGISTRY/$repository:$IMAGE_TAG" agent
+              docker build --build-context node=agent-node --target "$target" --build-arg GIT_SHA="$GITHUB_SHA" \
+                -t "$ECR_REGISTRY/$repository:$IMAGE_TAG" agent
               docker push "$ECR_REGISTRY/$repository:$IMAGE_TAG"
             else
               echo "$output" >&2

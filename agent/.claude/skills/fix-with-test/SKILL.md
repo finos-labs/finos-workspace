@@ -38,7 +38,7 @@ Inner loop runs ONLY the target file/case. Full `bun run test` and full `bun run
 
 | Bug lives in… | Tier | Where | How RED/GREEN |
 |---|---|---|---|
-| pure logic / parser / schema / Zod | 1 unit | `tests/unit/...` | `bun test tests/unit/path.test.ts` |
+| pure logic / parser / schema / Zod | 1 unit | `tests/unit/...` | `node --test --experimental-test-module-mocks --import ./tests/setup.ts tests/unit/path.test.ts` |
 | MCP tool handler (extract/chunk/embed/format) | 1 unit | `tests/unit/mcp-server/...` | call the `*Handler` directly |
 | agent loop / round-trip / dispatch / decoration | 2 integration (mock LLM) | `tests/integration/agent-loop/...` | `MockLanguageModelV2` script + drain SSE |
 | **system prompt / tool description / model tool-routing** | **3 eval (real LLM)** | `evals/cases/...` | `bun run evals -- --filter=<id>` |
@@ -86,8 +86,8 @@ test/grader to pass. Every changed line traces to this bug.
 
 ```bash
 # Tier 1/2 inner loop
-bun test tests/unit/path/to/file.test.ts
-bun test tests/integration/agent-loop/file.test.ts -t "the specific case"
+node --test --experimental-test-module-mocks --import ./tests/setup.ts tests/unit/path/to/file.test.ts
+node --test --experimental-test-module-mocks --import ./tests/setup.ts --test-name-pattern="the specific case" tests/integration/agent-loop/file.test.ts
 
 # Tier 3 inner loop — pin model, bump trials to de-flake the signal
 EVAL_MODEL=openai:gpt-4o EVAL_TRIALS=5 bun run evals -- --filter=<case-id>

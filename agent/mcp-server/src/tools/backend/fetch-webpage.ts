@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { textItem, webCitationItem, type ContentItem } from "../../lib/typed";
-import { describePage, fetchPage, MAX_PAGE_BYTES } from "../../../../src/lib/html-page";
-import { renderOverview } from "../../../../src/lib/page-text";
-import { getLogger } from "../../lib/logger";
-import { holdPage, pageIdFor } from "../../lib/page-store";
-import { scopeProblem, scopeSigSchema } from "../../lib/scope-check";
-import { urlProblem, urlSigSchema } from "../../lib/url-check";
+import { textItem, webCitationItem, type ContentItem } from "../../lib/typed.ts";
+import { describePage, fetchPage, MAX_PAGE_BYTES } from "../../../../src/lib/html-page.ts";
+import { renderOverview } from "../../../../src/lib/page-text.ts";
+import { getLogger } from "../../lib/logger.ts";
+import { holdPage, pageIdFor } from "../../lib/page-store.ts";
+import { scopeProblem, scopeSigSchema } from "../../lib/scope-check.ts";
+import { urlProblem, urlSigSchema } from "../../lib/url-check.ts";
 
 const logger = getLogger(["mcp", "fetch-webpage"]);
 

@@ -10,15 +10,15 @@
  */
 
 import { z } from "zod";
-import { textItem, type ContentItem } from "../../../lib/typed";
-import { ensureHydrated, listDocuments } from "./store";
-import { extractDocument } from "./extract";
-import { chunkDocument } from "./chunk";
-import { embedChunks } from "./retrieve";
-import { upsertDocument, hasDocument } from "./store";
-import { getLogger } from "../../../lib/logger";
-import { scopeSigSchema } from "../../../lib/scope-check";
-import { documentBytes, shippedDocumentSchema, type ShippedDocument } from "./payload";
+import { textItem, type ContentItem } from "../../../lib/typed.ts";
+import { ensureHydrated, listDocuments } from "./store.ts";
+import { extractDocument } from "./extract.ts";
+import { chunkDocument } from "./chunk.ts";
+import { embedChunks } from "./retrieve.ts";
+import { upsertDocument, hasDocument } from "./store.ts";
+import { getLogger } from "../../../lib/logger.ts";
+import { scopeSigSchema } from "../../../lib/scope-check.ts";
+import { documentBytes, shippedDocumentSchema, type ShippedDocument } from "./payload.ts";
 
 const logger = getLogger(["mcp", "documents", "list"]);
 

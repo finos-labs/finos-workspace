@@ -3,12 +3,13 @@
  * come from the Workspace with a `get_skill_content` round trip.
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { QueryRequest, SSEEvent } from "../../../src/protocol/types";
-import { llmCallsTool, llmEmitsText, makeSequencedSpyMockLlm } from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { QueryRequest, SSEEvent } from "../../../src/protocol/types.ts";
+import { llmCallsTool, llmEmitsText, makeSequencedSpyMockLlm } from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => clearAllModuleState());
 

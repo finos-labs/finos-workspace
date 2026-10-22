@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { sseResponse } from "../../../../src/protocol/stream";
-import type { SSEEvent } from "../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { sseResponse } from "../../../../src/protocol/stream.ts";
+import type { SSEEvent } from "../../../../src/protocol/types.ts";
 
 async function* yieldEvents(events: SSEEvent[]): AsyncGenerator<SSEEvent> {
   for (const e of events) yield e;

@@ -5,7 +5,7 @@
  * (page-view.ts, which runs in a child process).
  */
 
-import type { PageOverview } from "./page-view";
+import type { PageOverview } from "./page-view.ts";
 
 export function collapseSpace(text: string): string {
   return text.replace(/\s+/g, " ").trim();

@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { urlProblem } from "../../../../mcp-server/src/lib/url-check";
-import { signUrl } from "../../../../src/lib/scope";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { urlProblem } from "../../../../mcp-server/src/lib/url-check.ts";
+import { signUrl } from "../../../../src/lib/scope.ts";
 
 const SECRET = "0123456789abcdef0123";
 const URL_A = "https://example.com/report";
@@ -23,7 +24,7 @@ describe("urlProblem", () => {
 
   it("refuses a signature made with another secret, and one made for a chat scope", async () => {
     expect(urlProblem(URL_A, signUrl("another-secret-another", URL_A), SECRET, false)).not.toBeNull();
-    const { signScope } = await import("../../../../src/lib/scope");
+    const { signScope } = await import("../../../../src/lib/scope.ts");
     expect(urlProblem(URL_A, signScope(SECRET, URL_A), SECRET, false)).not.toBeNull();
   });
 

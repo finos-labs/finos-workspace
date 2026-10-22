@@ -7,12 +7,13 @@
  * runs one call per round trip, so the calls the model makes together are made one by one.
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { AgentTool, QueryRequest, SSEEvent, ToolMessage } from "../../../src/protocol/types";
-import { llmEmitsText, makeMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { AgentTool, QueryRequest, SSEEvent, ToolMessage } from "../../../src/protocol/types.ts";
+import { llmEmitsText, makeMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => clearAllModuleState());
 

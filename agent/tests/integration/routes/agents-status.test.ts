@@ -3,11 +3,12 @@
  * No LLM, no DB, no MCP. Just shape + headers.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import { expect } from "expect";
 import { Hono } from "hono";
-import { agentsRouter } from "../../../src/routes/agents";
-import { createStatusRouter } from "../../../src/routes/status";
-import { createLocalStore, type Store } from "../../../src/lib/store";
+import { agentsRouter } from "../../../src/routes/agents.ts";
+import { createStatusRouter } from "../../../src/routes/status.ts";
+import { createLocalStore, type Store } from "../../../src/lib/store.ts";
 
 function app(store: Store = createLocalStore()) {
   const a = new Hono();

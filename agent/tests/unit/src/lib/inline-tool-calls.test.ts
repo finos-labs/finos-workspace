@@ -1,8 +1,9 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import { simulateReadableStream, streamText, tool, generateText } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
 import { z } from "zod";
-import { extractInlineToolCalls, withInlineToolCalls } from "../../../../src/lib/inline-tool-calls";
+import { extractInlineToolCalls, withInlineToolCalls } from "../../../../src/lib/inline-tool-calls.ts";
 
 const TOOLS = new Set(["execute_sql", "Ines_Tools_web_search", "get_widget_data"]);
 const calls = (text: string) => extractInlineToolCalls(text, TOOLS);

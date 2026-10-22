@@ -6,13 +6,14 @@
  * anything). The address a fetch is given is signed only if it was in what the model was given.
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import { signScope } from "../../../src/lib/scope";
-import type { AgentTool, QueryRequest, SSEEvent } from "../../../src/protocol/types";
-import { llmCallsTool, makeMockLlm } from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import { signScope } from "../../../src/lib/scope.ts";
+import type { AgentTool, QueryRequest, SSEEvent } from "../../../src/protocol/types.ts";
+import { llmCallsTool, makeMockLlm } from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => {
   clearAllModuleState();

@@ -1,13 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { makePdf } from "../../../../../helpers/make-pdf";
-import { logicalUrl } from "../../../../../helpers/logical-url";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import { expect } from "expect";
+import { makePdf } from "../../../../../helpers/make-pdf.ts";
+import { logicalUrl } from "../../../../../helpers/logical-url.ts";
 import { MockEmbeddingModelV3 } from "ai/test";
-import { queryDocumentsHandler } from "../../../../../../mcp-server/src/tools/backend/documents/query-documents";
+import { queryDocumentsHandler } from "../../../../../../mcp-server/src/tools/backend/documents/query-documents.ts";
 import {
   _resetEmbeddingModel,
   _setEmbeddingModelForTest,
-} from "../../../../../../mcp-server/src/tools/backend/documents/retrieve";
-import { _resetDocStoreState } from "../../../../../../mcp-server/src/tools/backend/documents/store";
+} from "../../../../../../mcp-server/src/tools/backend/documents/retrieve.ts";
+import { _resetDocStoreState } from "../../../../../../mcp-server/src/tools/backend/documents/store.ts";
 
 const VEC_FOO = [1, 0, 0, 0];
 const VEC_BAR = [0, 1, 0, 0];

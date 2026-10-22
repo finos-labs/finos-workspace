@@ -9,12 +9,12 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { buildDb } from "./db";
-import { availableTablesHint } from "./error-hints";
-import { rejectUnsafeSql } from "./safety";
-import { getLogger } from "../../../lib/logger";
-import { displaySummarySchema } from "../progress";
-import { runSqlIsolated } from "./isolated";
+import { buildDb } from "./db.ts";
+import { availableTablesHint } from "./error-hints.ts";
+import { rejectUnsafeSql } from "./safety.ts";
+import { getLogger } from "../../../lib/logger.ts";
+import { displaySummarySchema } from "../progress.ts";
+import { runSqlIsolated } from "./isolated.ts";
 
 const logger = getLogger(["app", "tools", "sql", "execute_sql"]);
 
@@ -67,7 +67,7 @@ export function runExecuteSql(
 
   const { db, loaded } = buildDb(ctx.pendingTables);
   try {
-    const rows = db.query(args.sql).all() as Record<string, unknown>[];
+    const rows = db.prepare(args.sql).all() as Record<string, unknown>[];
     const summary = sqlSummary(args.sql, rows);
     logger.info(
       `execute_sql exit rows=${rows.length}${rows.length > MAX_ROWS ? " (truncated)" : ""} ms=${Date.now() - startedAt}`,

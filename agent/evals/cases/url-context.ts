@@ -9,8 +9,8 @@
  *   Here we only validate that an empty `urls: []` doesn't blow up.
  */
 
-import type { EvalCase } from "../runner";
-import { noBadState, toolCalled } from "../graders";
+import type { EvalCase } from "../runner.ts";
+import { noBadState, toolCalled } from "../graders/index.ts";
 
 const CONTEXT_TABLE_ROWS = [
   { quarter: "Q1", revenue: 100 },

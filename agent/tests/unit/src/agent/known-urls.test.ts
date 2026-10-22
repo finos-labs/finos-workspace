@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { addressesGiven, addressesIn, isGivenAddress, urlKey } from "../../../../src/agent/known-urls";
-import type { Message, ToolMessage } from "../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { addressesGiven, addressesIn, isGivenAddress, urlKey } from "../../../../src/agent/known-urls.ts";
+import type { Message, ToolMessage } from "../../../../src/protocol/types.ts";
 
 const human = (content: string): Message => ({ role: "human", content }) as Message;
 const ai = (content: string): Message => ({ role: "ai", content }) as Message;

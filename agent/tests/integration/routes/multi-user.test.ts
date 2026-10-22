@@ -6,27 +6,28 @@
  * Workspace API, which is what the agent asks about users, roles and usage.
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
-import { llmCallsTool, llmEmitsText, makeMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm";
+import { describe, it, beforeEach, afterEach, mock } from "node:test";
+import { expect } from "expect";
+import { llmCallsTool, llmEmitsText, makeMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm.ts";
 
 let currentModel = makeMockLlm(llmEmitsText("ok"));
 // Only resolveModel is replaced; the module's other exports are used by the loop and must stay.
-const realProviders = await import("../../../src/lib/providers");
-mock.module("../../../src/lib/providers", () => ({
+const realProviders = await import("../../../src/lib/providers.ts");
+mock.module("../../../src/lib/providers.ts", { exports: {
   ...realProviders,
   resolveModel: () => currentModel,
-}));
+} });
 
-const { createApp } = await import("../../../src/app");
-const { loadConfig } = await import("../../../src/lib/config");
-const { createLimits } = await import("../../../src/auth/limits");
-const { createLocalStore } = await import("../../../src/lib/store");
-const { verifyScope, signScope, signUrl, verifyUrl } = await import("../../../src/lib/scope");
-const { readSse } = await import("../../helpers/sse-reader");
-const { clearAllModuleState } = await import("../../helpers/clear-state");
-import type { Authorization, Result, WorkspaceClient } from "../../../src/auth/workspace-client";
-import { modelKnowsTool } from "../../helpers/offered-tools";
-import { logicalUrl } from "../../helpers/logical-url";
+const { createApp } = await import("../../../src/app.ts");
+const { loadConfig } = await import("../../../src/lib/config.ts");
+const { createLimits } = await import("../../../src/auth/limits.ts");
+const { createLocalStore } = await import("../../../src/lib/store.ts");
+const { verifyScope, signScope, signUrl, verifyUrl } = await import("../../../src/lib/scope.ts");
+const { readSse } = await import("../../helpers/sse-reader.ts");
+const { clearAllModuleState } = await import("../../helpers/clear-state.ts");
+import type { Authorization, Result, WorkspaceClient } from "../../../src/auth/workspace-client.ts";
+import { modelKnowsTool } from "../../helpers/offered-tools.ts";
+import { logicalUrl } from "../../helpers/logical-url.ts";
 
 const SECRET = "0123456789abcdef0123";
 const ENV = {

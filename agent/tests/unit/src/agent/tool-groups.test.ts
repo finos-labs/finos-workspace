@@ -1,4 +1,5 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   activeToolNames,
   buildToolCatalog,
@@ -7,8 +8,8 @@ import {
   makeLoadToolsTool,
   renderToolCatalog,
   renderToolNotes,
-} from "../../../../src/agent/tool-groups";
-import type { McpToolEntry } from "../../../../src/mcp/factory";
+} from "../../../../src/agent/tool-groups.ts";
+import type { McpToolEntry } from "../../../../src/mcp/factory.ts";
 
 const entry = (sanitizedName: string, description = "Does a thing. More detail follows."): McpToolEntry => ({
   serverId: "s",

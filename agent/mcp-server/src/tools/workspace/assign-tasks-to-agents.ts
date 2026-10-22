@@ -5,11 +5,11 @@
  */
 
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
-import { parseJsonList, JsonArgumentError } from "../../bridge/json-args";
-import { describeTool } from "../../bridge/instructions";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
+import { parseJsonList, JsonArgumentError } from "../../bridge/json-args.ts";
+import { describeTool } from "../../bridge/instructions.ts";
 
 export const assignTasksToAgentsSchema = {
   task_requests_json: z.string().describe(

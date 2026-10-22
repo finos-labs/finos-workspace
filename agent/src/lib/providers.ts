@@ -5,8 +5,8 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import type { JSONValue, LanguageModel } from "ai";
 import { createOllama } from "ollama-ai-provider-v2";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
-import { withInlineToolCalls } from "./inline-tool-calls";
-import { getLogger } from "./logger";
+import { withInlineToolCalls } from "./inline-tool-calls.ts";
+import { getLogger } from "./logger.ts";
 
 interface ProviderEntry {
   prefix: string;

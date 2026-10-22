@@ -6,7 +6,8 @@
  * counted against the user, and a body that is not JSON or is far too long is refused or cut, not paid for.
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+import { describe, it, beforeEach, afterEach, mock } from "node:test";
+import { expect } from "expect";
 
 // What each model call was given. lib/llm is replaced rather than the providers it uses: a module mock lasts
 // for the whole run, so the file that loads first decides what the others see.
@@ -16,7 +17,7 @@ interface Call {
   maxTokens?: number;
 }
 const calls: Call[] = [];
-mock.module("../../../src/lib/llm", () => ({
+mock.module("../../../src/lib/llm.ts", { exports: {
   singleShotLlm: async (
     prompt: string,
     opts?: { model?: string; maxTokens?: number; onUsage?: (u: { inputTokens: number; outputTokens: number; totalTokens: number }) => void },
@@ -36,13 +37,13 @@ mock.module("../../../src/lib/llm", () => ({
     }
   },
   truncate: (s: string, max: number) => (s.length > max ? s.slice(0, max) + "..." : s),
-}));
+} });
 
-const { createApp } = await import("../../../src/app");
-const { loadConfig } = await import("../../../src/lib/config");
-const { createLimits } = await import("../../../src/auth/limits");
-const { createLocalStore } = await import("../../../src/lib/store");
-import type { Authorization, Result, WorkspaceClient } from "../../../src/auth/workspace-client";
+const { createApp } = await import("../../../src/app.ts");
+const { loadConfig } = await import("../../../src/lib/config.ts");
+const { createLimits } = await import("../../../src/auth/limits.ts");
+const { createLocalStore } = await import("../../../src/lib/store.ts");
+import type { Authorization, Result, WorkspaceClient } from "../../../src/auth/workspace-client.ts";
 
 const ENV = {
   WORKSPACE_API_URL: "http://api:8000",

@@ -8,16 +8,19 @@
  * structured `invalid_request` ContentItem without further branching.
  */
 
-import { errorItem, type ContentItem } from "../lib/typed";
+import { errorItem, type ContentItem } from "../lib/typed.ts";
 
 export class JsonArgumentError extends Error {
-  constructor(
-    public readonly command: string,
-    public readonly field: string,
-    public readonly reason: string,
-  ) {
+  readonly command: string;
+  readonly field: string;
+  readonly reason: string;
+
+  constructor(command: string, field: string, reason: string) {
     super(`${command} requires ${field} to ${reason}.`);
     this.name = "JsonArgumentError";
+    this.command = command;
+    this.field = field;
+    this.reason = reason;
   }
 
   toContentItem(): ContentItem {
