@@ -1142,9 +1142,25 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 }
 
+/* Loader: white-label marks fade gently; a deeper dip reads grey, not brand. */
+.logo-fade {
+  animation: logo-fade 1.6s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+
+@keyframes logo-fade {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .logo-wing-left,
-  .logo-wing-right {
+  .logo-wing-right,
+  .logo-fade {
     animation: none;
   }
 }

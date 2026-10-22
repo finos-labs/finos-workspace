@@ -170,11 +170,11 @@ The host builds the shell as a string and sets it as the frame's `srcdoc`. The p
 
 The iframe is `sandbox="allow-scripts" referrerpolicy="no-referrer"` with a `title` and no `allow`.
 
-Why a `srcdoc` and a meta policy: the policy differs per plugin and per entity, and only a response header can otherwise carry a policy. A header would need a dynamic endpoint, and an iframe navigation cannot carry the `X-Workspace-Client` header the API requires with the session cookie, so that endpoint would be unauthenticated. The shell would also have to live in the API image although it is frontend code. With `srcdoc` there is no infrastructure change: no nginx change, no Lite change, the same behavior in dev, compose and Lite. The `sandbox` directive is not allowed in a meta policy, so the iframe attribute provides it, and a `srcdoc` has no URL anyone could open on its own, so the "a header sandboxes the document even when opened directly" benefit does not apply.
+Why a `srcdoc` and a meta policy: the policy differs per plugin and per entity, and only a response header can otherwise carry a policy. A header would need a dynamic endpoint, and an iframe navigation cannot carry the `X-Workspace-Client` header the API requires with the session cookie, so that endpoint would be unauthenticated. The shell would also have to live in the API image although it is frontend code. With `srcdoc` there is no infrastructure change: no nginx change, the same behavior in dev and compose. The `sandbox` directive is not allowed in a meta policy, so the iframe attribute provides it, and a `srcdoc` has no URL anyone could open on its own, so the "a header sandboxes the document even when opened directly" benefit does not apply.
 
 Caveats:
 
-1. A `srcdoc` document inherits the embedding page's CSP. The SPA sets none today (checked: `frontend/nginx.conf`, `lite/nginx.conf.template` and `index.html` carry no CSP or framing header). If an operator adds one, plugin policies are intersected with it, and it must allow `blob:` and `data:` for frames. This goes in the operator docs.
+1. A `srcdoc` document inherits the embedding page's CSP. The SPA sets none today (checked: `frontend/nginx.conf` and `index.html` carry no CSP or framing header). If an operator adds one, plugin policies are intersected with it, and it must allow `blob:` and `data:` for frames. This goes in the operator docs.
 2. A meta policy cannot carry `report-uri` or `frame-ancestors`. Reporting uses the violation event (4.7).
 3. The policy applies from the point the meta element is parsed, which is why it comes first.
 4. Whether removing the meta element at runtime lifts the policy is checked in the spike (the spec says no).
@@ -310,7 +310,6 @@ For the server side (the Phase 6 spike):
 
 10. The container settings of SERVER-SIDE 5.3 satisfy R1 to R5 and R10 in the compose stack: a probe backend attempts each forbidden action and the results are recorded.
 11. Compose internal networks leave a plugin backend no route to MySQL, Redis or the outside, and an egress proxy lets only the approved hosts through.
-12. Whether Landlock and seccomp can be applied in the Lite image's container with its default privileges (recipe B).
 
 ## 11. The install path
 

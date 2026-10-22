@@ -2,7 +2,6 @@
 container, where it works on the database itself. It sends no request to the API.
 
     docker compose exec api python -m scripts.workspace_admin <resource> <action>
-    docker exec workspace workspace-admin <resource> <action>          # Lite
 
 It does what the superuser's routes do (``routers/administration.py``, and
 ``api/widget_plugins`` for plugins) and prints the outcome; ``--json`` prints it as JSON. A
@@ -33,7 +32,6 @@ from api.database import aget_write_db
 from api.widget_plugins import calls, service
 from routers import administration
 from routers.widget_plugins import OverridesBody
-from scripts import export_user_data
 from utilities.log_helpers import obfuscate_secrets, stdoutSink
 
 # Every entity has one permission map per user type; --role names the type
@@ -358,86 +356,6 @@ def user_reset_password(args: argparse.Namespace) -> None:
         args.json,
         f"Password reset; {args.email} is signed out everywhere.",
     )
-
-
-def print_import_instructions(archive: Path, email: str, with_files: bool) -> None:
-    """The steps for the person receiving the archive. The archive's README.md has them
-    too, but whoever passes the file on should not have to unzip it to find them."""
-    name = archive.name
-    say("-" * 72)
-    say(f"  SEND THIS TO {email}")
-    say("-" * 72)
-    say(f"""
-  Your Workspace data is in {name}.
-
-  To load it into Lite:
-
-    1. Start Lite with the folder holding this file mounted:
-
-       docker run -d --name workspace -p 3000:3000 -p 8000:8000 \\
-           -v workspace-data:/data \\
-           -v /path/to/the/folder:/import \\
-           lite
-
-    2. Import it. It asks for the export key, which reaches you separately:
-
-       docker exec -it workspace workspace-import /import/{name}
-
-    3. Set the administrator's password and sign in at http://localhost:3000
-
-       docker exec -it workspace credentials
-
-    4. As the administrator, open Users, then {email}, then Reset password, and set the
-       account's password with the link. Your old Workspace password does not carry
-       over -- it was never exported.
-
-  Notes:""")
-    if with_files:
-        say(
-            "    - Your uploaded files are in the archive's files/ folder. They are\n"
-            "      NOT loaded into Lite, so unzip and keep them somewhere safe."
-        )
-    else:
-        say(
-            "    - This archive does not include your uploaded files, only the\n"
-            "      record of them. Ask for an export with files if you need them."
-        )
-    say(
-        "    - The credentials in the archive are encrypted with the export key.\n"
-        "      The rest is not: keep it private and delete it once imported."
-    )
-    say()
-    say("-" * 72)
-
-
-def user_export(args: argparse.Namespace) -> None:
-    try:
-        result = asyncio.run(
-            export_user_data.export_user(
-                args.email,
-                Path(args.out),
-                include_history=args.include_history,
-                with_files=args.with_files,
-            )
-        )
-    except export_user_data.ExportError as exc:
-        say(f"✗ Error: {exc}", error=True)
-        sys.exit(1)
-
-    size = result.archive.stat().st_size
-    if args.json:
-        print_json(
-            {"path": str(result.archive), "bytes": size, "export_key": result.export_key}
-        )
-        return
-    say(f"✓ Exported {args.email} to {result.archive} ({size / 1024:.0f} KB)")
-    say()
-    # Printed for whoever runs the CLI, never logged: the import needs it, and it is shown once
-    say(f"  Export key (shown once, stored nowhere): {result.export_key}")
-    say("  The archive's credentials are sealed with it. Send it to the person")
-    say("  importing the archive separately from the file.")
-    say()
-    print_import_instructions(result.archive, args.email, with_files=args.with_files)
 
 
 async def move_user(db: AsyncSession, email: str, entity_uuid: UUID, role: str) -> None:
@@ -1023,25 +941,6 @@ def _user_commands(resources) -> None:
     sub = _action(user_actions, "list", user_list, "List users (globally or filtered)")
     _paged(sub)
     sub.add_argument("--email", help="Only users whose email contains this")
-    sub = _action(
-        user_actions, "export", user_export, "Write a user's data to a portable archive"
-    )
-    sub.add_argument("email", help="Email address of the account to export")
-    sub.add_argument(
-        "--out",
-        default="./exports",
-        help="Directory to write the archive into (default: ./exports)",
-    )
-    sub.add_argument(
-        "--include-history",
-        action="store_true",
-        help="Include dashboard version history (much larger archive)",
-    )
-    sub.add_argument(
-        "--with-files",
-        action="store_true",
-        help="Put the account's uploaded files into the archive (slow)",
-    )
     sub = _action(user_actions, "delete", user_delete, "Remove a user from their entity")
     sub.add_argument("email", help="Email address of the user to remove")
     sub = _action(
@@ -1222,7 +1121,7 @@ def _plugin_commands(resources) -> None:  # noqa: PLR0915 - one parser per actio
 
 def parser() -> argparse.ArgumentParser:
     main_parser = argparse.ArgumentParser(
-        prog="workspace-admin",
+        prog="python -m scripts.workspace_admin",
         description="Manage entities, users, data backends and widget plugins, from inside "
         "the API container.",
         fromfile_prefix_chars="@",

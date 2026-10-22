@@ -1,14 +1,12 @@
 """Entity routes"""
 
-import io
 from contextlib import suppress
 from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
-from loguru import logger
+from pydantic import BaseModel
 from sqlalchemy import Row, delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -24,8 +22,6 @@ from api.models import (
 from api.rate_limit import LIMIT_DEFAULT, exempt_service_token, limiter
 from api.schemas import SuccessReturn
 from routers import administration, app_helpers, routers_helpers
-from scripts import export_user_data
-from utilities.config import BaseModel
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -446,72 +442,6 @@ async def post_reset_password(
             )
     await ensure_not_superuser_target(db, admin, user_uuid)
     return await administration.reset_password(db, user_uuid)
-
-
-@router.post("/users/{user_uuid}/export")
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
-async def post_export_user_data(
-    request: Request,
-    db: Annotated[AsyncSession, Depends(aget_read_db)],
-    user_uuid: UUID,
-    superuser: Annotated[User, Depends(auth_helpers.get_current_superuser)],
-    include_history: Annotated[
-        bool, Query(description="Include dashboard version history")
-    ] = False,
-    with_files: Annotated[
-        bool,
-        Query(
-            description="Download the account's uploaded files into the archive. "
-            "Slow -- on a large account this can exceed the proxy's idle timeout."
-        ),
-    ] = False,
-):
-    """Export a user's account as a portable zip archive.
-
-    **Superuser only.** Org admins cannot call this. The archive is a complete
-    copy of somebody's account including their credentials, so the bar is
-    deliberately higher than for the rest of /admin -- an org admin resetting a
-    password is recoverable, exfiltrating an account is not.
-
-    The archive carries the user's dashboards, widgets, custom backends and
-    chats, and can be imported into Lite. Uploaded files travel in the
-    archive's files/ folder for the user to keep, but are not reinstated on
-    import. Exactly what travels is defined by ``scripts.user_data_scope``.
-
-    The archive's credentials are sealed under an export key made for it alone,
-    returned once in the ``X-Workspace-Export-Key`` header and stored nowhere; the
-    import needs it.
-    """
-    target_query = select(User).where(User.uuid == user_uuid)
-    target = (await db.execute(target_query)).scalar_one_or_none()
-    if target is None:
-        raise HTTPException(404, detail="User not found")
-
-    logger.info(
-        f"Superuser {superuser.email} is exporting the account {target.email}"
-    )
-
-    try:
-        payload, result = await export_user_data.build_archive(
-            db,
-            str(target.email),
-            include_history=include_history,
-            with_files=with_files,
-        )
-    except export_user_data.ExportError as exc:
-        raise HTTPException(400, detail=str(exc)) from exc
-
-    return StreamingResponse(
-        io.BytesIO(payload),
-        media_type="application/zip",
-        headers={
-            "Content-Disposition": f'attachment; filename="{result.archive.name}"',
-            "X-Workspace-Export-Rows": str(result.total_rows),
-            "X-Workspace-Export-Files": str(result.files_written),
-            "X-Workspace-Export-Key": result.export_key,
-            "Cache-Control": "no-store",
-        },
-    )
 
 
 @router.post("/reset-2fa/{user_uuid}", response_model=SuccessReturn)

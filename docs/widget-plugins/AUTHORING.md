@@ -352,14 +352,6 @@ The backend answers three requests, over HTTP on its internal address:
 - **In the frame,** a refused call rejects with `out_of_scope` for a route the widget does not list, `invalid_args`, `not_granted`, `rate_limited`, `timeout`, `too_large`, and otherwise `unavailable` (not registered, another version, paused, a secret not set, your error).
 - **The admin reviews** that code runs on the server, each route and the secrets it sends, each data source and the pseudonymous id.
 
-**In a single-image deployment** (Lite, SERVER-SIDE 5.4) the image's plugin runner starts your backend in a sandbox, with a command the deployer configures. Write it so that it runs there:
-
-- Listen on the unix socket the runner names, in `WORKSPACE_BACKEND_SOCKET` (the deployer can also pass it as an argument), not on a TCP port. With uvicorn: `--uds <path>`.
-- Your package is at `/plugin`, read-only, and the command starts in `/plugin/backend`. Your dependencies come from a runtime the deployer installs and mounts read-only; data the deployer gives you is mounted read-only at the path they choose.
-- Write only to `/tmp`, which is small, private and cannot run programs. There is no `HOME` but `/tmp`.
-- There is no DNS and no route out. Each host of your `server.network` resolves, through the sandbox's own `/etc/hosts`, to a relay that reaches that host and port only, so connect by the name and port as you would anywhere; nothing else connects. With the broker allowed, it is at `http://workspace-broker`.
-- Your process cannot create namespaces, mount, trace, or start anything with more rights, and has the limits the deployer set (memory, processes, files).
-
 ## 9. Schemas
 
 **`definition`** (the `data.<type>` object a backend writes for your type) is a closed, bounded JSON Schema of at most 64 KiB and 8 levels: objects have `additionalProperties: false` (or a value schema, for a map), arrays have `maxItems` and `items`, strings have `maxLength`, `enum`, `const` or `pattern`. Keywords: `type`, `properties`, `required`, `additionalProperties`, `items`, `enum`, `const`, `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `minLength`, `maxLength`, `pattern`, `minItems`, `maxItems`, `uniqueItems`, `oneOf` and `anyOf` over closed objects, local `$defs` and `$ref`, and the annotations `title`, `description`, `default`, `examples`. Patterns are at most 256 characters, without backreferences. Backends' widgets are checked against it, and the AI agent reads it when it builds widgets of your type.

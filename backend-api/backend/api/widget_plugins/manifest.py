@@ -84,9 +84,8 @@ def _package_path(value: str) -> str:
 
 PackagePath = Annotated[str, AfterValidator(_package_path)]
 
-# Like utilities.config.BaseModel (ignored_types keeps the compiled Lite build working),
-# without importing the app's settings, so scripts.plugin_check runs anywhere.
-closed = ConfigDict(extra="forbid", frozen=True, ignored_types=(type(lambda: None),))
+# Without importing the app's settings, so scripts.plugin_check runs anywhere
+closed = ConfigDict(extra="forbid", frozen=True)
 
 
 class BaseModel(PydanticBaseModel):

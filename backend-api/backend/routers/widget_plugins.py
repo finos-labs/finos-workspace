@@ -20,7 +20,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse
-from pydantic import ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from sqlalchemy import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,7 +32,6 @@ from api.widget_plugins.manifest import PLUGIN_ID_PATTERN, VERSION_PATTERN, WIDG
 from api.widget_plugins.proxy import NAME_PATTERN, PROXY_ID_PATTERN, CallError
 from api.widget_plugins.secrets import MAX_SECRET_LENGTH
 from routers import app_helpers
-from utilities.config import BaseModel
 
 TAGS: list[str | Any] = ["widget-plugins"]
 PluginId = Annotated[str, StringConstraints(pattern=PLUGIN_ID_PATTERN)]

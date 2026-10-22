@@ -17,7 +17,6 @@ To run the whole stack, follow the root [README](../README.md). See [DEVELOPMENT
 - `docker-compose.yml`: full-stack deployment (API, workers, database, Redis)
 - `docker-compose-local-dev.yml`: infrastructure only (MySQL, Redis, worker) for local backend development
 - `docker-compose-local-dev-postgres.yml`, `docker-compose-local-dev-sqlite.yml`: the same on PostgreSQL and on SQLite
-- `docker-compose-lite.yml`: the API on SQLite and Redis, built from `fastapi.lite.Dockerfile`
 
 ## Admin CLI
 
@@ -27,7 +26,6 @@ so it needs no sign-in.
 
 ```bash
 docker compose exec api python -m scripts.workspace_admin --help    # the root docker-compose.yml
-docker exec workspace workspace-admin --help                         # Lite
 ```
 
 | Command | Does |
@@ -36,7 +34,6 @@ docker exec workspace workspace-admin --help                         # Lite
 | `user create <entity-uuid> --email <email> --first-name <name> --last-name <name> [--role admin\|developer\|user]` | Prints the link with which the user sets their password (once, within 24 hours) |
 | `user reset-password <email>` | The password stops working, every session ends; prints the link that sets a new one |
 | `user list [--email <part>]`, `user move --entity-uuid <uuid> --email <email> [--role ...]`, `user delete <email>` | `delete` removes the user from their entity |
-| `user export <email> [--out <dir>] [--with-files] [--include-history]` | Writes the account's archive in the container and prints its export key once; `docker compose cp api:/opt/code/exports .` copies it out |
 | `data-backend add <entity-uuid> --name <name> --url <url> [--header key:value[:location]]`, `data-backend list <entity-uuid>`, `data-backend delete <entity-uuid> --name <name>` | Data backends of an entity |
 | `provision check --config <file>`, `provision apply --config <file>` | An entity with its admins and users in one go; `provision sample` prints a config |
 | `plugin list`, `plugin rescan`, `plugin show <id>`, `plugin approve <id> <version> [--digest <d>] --acknowledge` | Widget plugins: discovery, the review (without `--acknowledge` it prints the review and approves nothing) and approval |

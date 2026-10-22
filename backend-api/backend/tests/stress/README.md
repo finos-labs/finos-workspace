@@ -11,7 +11,7 @@ brings up the topology you want to test.
 
 | file | purpose |
 |---|---|
-| `run_stress.sh` | launcher — brings up a topology (DB type × worker count) and runs the simulator |
+| `run_stress.sh` | launcher — brings up the MySQL dev stack with a chosen worker count and runs the simulator |
 | `load_simulator.py` | the load generator (realistic multi-user Workspace MCP traffic) |
 | `docker-compose.stress.yml` | one parameterized overlay (workers + Prometheus), layered on a base stack |
 
@@ -27,26 +27,22 @@ brings up the topology you want to test.
 ```bash
 cd backend/tests/stress
 
-# MySQL (server build), 3 workers, 80 users — the production-representative run
-./run_stress.sh --db mysql --workers 3 --users 80
-
-# Lite build (SQLite), single worker, realistic small load — seed the DB on first run
-./run_stress.sh --db sqlite --workers 1 --users 20 --seed
+# 3 workers, 80 users — the production-representative run
+./run_stress.sh --workers 3 --users 80
 
 # MCP-impact A/B: hold API load fixed, add a pool of MCP-only hammerers
-./run_stress.sh --db mysql --workers 3 --users 80 --mcp-users 0  --api-mcp 0   # baseline
-./run_stress.sh --db mysql --workers 3 --users 80 --mcp-users 40 --api-mcp 0   # + MCP load
+./run_stress.sh --workers 3 --users 80 --mcp-users 0  --api-mcp 0   # baseline
+./run_stress.sh --workers 3 --users 80 --mcp-users 40 --api-mcp 0   # + MCP load
 
-# Just bring a stack up (no load), or tear it down
-./run_stress.sh --db sqlite --workers 1 --no-run
-./run_stress.sh --db mysql --down
+# Just bring the stack up (no load), or tear it down
+./run_stress.sh --workers 1 --no-run
+./run_stress.sh --down
 ```
 
 ## Flags
 
 | flag | default | meaning |
 |---|---|---|
-| `--db` | `mysql` | `mysql` (server build) or `sqlite` (lite Cython build) |
 | `--workers` | `1` | uvicorn worker processes |
 | `--users` | `40` | simulated API users |
 | `--duration` | `20` | seconds |
@@ -85,12 +81,3 @@ Then it reports the live runtime gauges scraped from `/metrics`:
 - `threadpool_tokens` — worker thread-pool occupancy.
 - `event_loop_lag_seconds` — event-loop scheduling delay (the main "something is blocking the loop"
   signal).
-
-## Notes / gotchas
-
-- **MySQL and SQLite stacks share container names** (`fastapi`, `redis`), so the launcher tears down
-  any existing stack before starting. Only one runs at a time.
-- **SQLite is single-writer.** `--db sqlite --workers >1` will produce `database is locked` errors
-  under write load — that's expected; the lite build is meant to run `--workers 1`.
-- The lite (`sqlite`) image is **Cython-compiled**, so the launcher rebuilds it each run to pick up
-  code changes; the MySQL dev image is bind-mounted and doesn't need a rebuild.
