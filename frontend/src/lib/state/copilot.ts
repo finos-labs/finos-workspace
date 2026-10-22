@@ -53,6 +53,8 @@ export const copilotSchema = z
       .optional(),
     headers: z.record(z.string(), z.string()).optional(),
     models: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
+    /** The skills that come with the agent, as its /agents.json lists them. The agent has their instructions. */
+    skills: z.array(z.object({ slug: z.string(), description: z.string() })).optional(),
   })
   .refine((data) => {
     if (data.hasStreaming !== undefined) {
@@ -74,6 +76,27 @@ export const copilotSchema = z
 
 export type Copilot = z.infer<typeof copilotSchema>;
 export type CopilotModel = { id: string; name: string };
+
+/** The select setting through which an agent without `models`, such as Ines, offers its models. */
+export const MODEL_SETTING = "model";
+
+/** The models an agent without `models` offers as the options of its model setting. */
+export function modelSettingModels(
+  copilot: Copilot | null | undefined,
+): CopilotModel[] {
+  if (!copilot || copilot.models?.length) return [];
+  const setting = copilot.features?.[MODEL_SETTING];
+  if (typeof setting !== "object" || setting.type !== "select") return [];
+  return (setting.options ?? []).map((option) => ({
+    id: option.value,
+    name: option.label,
+  }));
+}
+
+/** The models an agent offers: its `models`, else the options of its model setting. */
+export function copilotModels(copilot: Copilot | null | undefined): CopilotModel[] {
+  return copilot?.models?.length ? copilot.models : modelSettingModels(copilot);
+}
 
 export interface WidgetSignature {
   origin: string;
@@ -273,6 +296,8 @@ export interface CopilotWidget {
   uuid?: string;
   name: string;
   description: string;
+  /** What the widget is (`iframe` for a page of a backend that the widget embeds). */
+  widget_type?: string;
   source?: string;
   category?: string;
   sub_category?: string;
@@ -660,6 +685,11 @@ function getChatLastOpened(chats: Chat[], currentChat?: number | null) {
     chats.find((c) => c.createdAt === currentChat || c.lastOpened === maxLastOpened) ||
     chats[chats.length - 1]
   );
+}
+
+/** A custom agent without headers: they stay in page memory and are never persisted. */
+function withoutHeaders<T extends { headers?: unknown }>({ headers: _, ...rest }: T) {
+  return rest;
 }
 
 function normalizeExternalCopilotHolder(
@@ -1440,8 +1470,12 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
           }
 
           return {
-            externalCopilotHolders: state.externalCopilotHolders,
-            selectedCopilot: state.selectedCopilot,
+            externalCopilotHolders: state.externalCopilotHolders.map((holder) => ({
+              ...withoutHeaders(holder),
+              copilots: holder.copilots?.map(withoutHeaders),
+            })),
+            selectedCopilot:
+              state.selectedCopilot && withoutHeaders(state.selectedCopilot),
             lastPanelState: state.lastPanelState,
             isFullscreen: state.isFullscreen,
             isIntentionallyCollapsed: state.isIntentionallyCollapsed,
@@ -1494,4 +1528,14 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
 
 export function useShallowCopilotStore<T>(selector: Selector<CopilotState, T>): T {
   return useCopilotStore(useShallow(selector), (prev, next) => isEqual(prev, next));
+}
+
+/**
+ * Loads the custom agents again with their headers, which the store keeps in page memory
+ * only. The page calls it once a reload has restored the signed-in user.
+ */
+export async function refreshExternalCopilotHolders() {
+  await getExternalCopilotHolders(undefined, (holders) =>
+    useCopilotStore.getState().setExternalCopilotHolders(holders),
+  );
 }

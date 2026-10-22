@@ -35,20 +35,6 @@ vi.mock("~/lib/widgets.json", () => ({
   default: mockWidgets,
 }));
 
-vi.mock("~/lib/state/featureFlags", () => ({
-  useFeatureFlagsStore: {
-    getState: () => ({
-      featureFlags: {
-        tier: "full",
-        data_bundle_info: {
-          providers: ["test_source", "single_source"],
-        },
-      },
-    }),
-  },
-  isExcludedWidgetId: () => false,
-}));
-
 vi.mock("~/hooks/useAllTemplates", () => ({
   useAllTemplates: () => [],
 }));

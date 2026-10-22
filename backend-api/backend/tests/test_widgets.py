@@ -135,54 +135,6 @@ class TestWidgetMetadata:
                 for item in widgets
             )
 
-    @pytest.mark.parametrize(
-        ("widget_type", "storage"),
-        [
-            ("chart", {"figure": {"data": [], "layout": {}}}),
-            ("html", {"html": "<div>test</div>"}),
-        ],
-    )
-    @pytest.mark.asyncio
-    async def test_patch_widget_metadata_with_widget_type_selector(
-        self, auth_client, widget_type, storage
-    ):
-        """Should patch metadata by widget_type and name selector"""
-        widget_id = str(uuid4())
-        name = f"patch-{widget_type}-{widget_id}"
-        create_payload = {
-            "widgetId": widget_id,
-            "name": name,
-            "description": "before update",
-            "source": "testing",
-            "category": "testing",
-            "subCategory": "testing",
-            "widgetType": widget_type,
-            "storage": storage,
-        }
-        create_response = await auth_client.post(
-            "/app/widget-metadata",
-            json=create_payload,
-        )
-        assert create_response.status_code in {200, 201}
-
-        patch_payload = {"description": "after update"}
-        patch_response = await auth_client.patch(
-            f"/app/widget-metadata?widget_type={widget_type}&name={name}",
-            json=patch_payload,
-        )
-        assert patch_response.status_code == 200
-        assert patch_response.json().get("success") is True
-
-        verify_response = await auth_client.get(
-            f"/app/widget-metadata?widget_id={widget_id}"
-        )
-        assert verify_response.status_code == 200
-        widgets = verify_response.json()
-        widget = next((item for item in widgets if item["widgetId"] == widget_id), None)
-        assert widget is not None
-        assert widget["widgetType"] == widget_type
-        assert widget["description"] == "after update"
-
     @pytest.mark.asyncio
     async def test_patch_widget_metadata_authenticated(self, auth_client):
         """Should update widget metadata"""

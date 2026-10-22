@@ -1,8 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { apiClient } from "~/api/api";
 import { useCreateSkillFromConversation } from "~/components/AI/hooks/useCreateSkillFromConversation";
-import { isDefaultSkill } from "~/components/AI/skills";
 import {
   type Chat,
   type CopilotCommandResultT,
@@ -28,31 +28,9 @@ vi.mock("~/api/auth.api", () => ({
   createUserSkill: (...args: unknown[]) => mockCreateUserSkill(...args),
 }));
 
-// Mock auth store
-vi.mock("~/lib/state/auth", () => ({
-  useShallowAuthStore: (selector: (state: { user: { token: string } }) => unknown) =>
-    selector({ user: { token: "test-token" } }),
-}));
-
-// Stub the theme store so the skills store does not pull in real persisted state.
-vi.mock("~/lib/state/theme", () => ({
-  useThemeStore: {
-    getState: () => ({
-      removedSkillSlugs: ["html-report"],
-      removeDefaultSkill: vi.fn(),
-    }),
-  },
-}));
-
-/**
- * Saving a skill runs it through `updateSkills`, which always appends the built-in
- * default skills. Filter them out so slug assertions stay exact as defaults change.
- */
+/** The slugs of the skills saved in the library. */
 const savedSkillSlugs = () =>
-  useSkillsLibraryStore
-    .getState()
-    .skills.filter((skill) => !isDefaultSkill(skill.id))
-    .map((skill) => skill.slug);
+  useSkillsLibraryStore.getState().skills.map((skill) => skill.slug);
 
 // Mock fetch for the skill generation endpoint
 global.fetch = vi.fn();
@@ -140,6 +118,10 @@ async function runHook(
 describe("useCreateSkillFromConversation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The API mints the agent token the default Copilot is called with
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { token: "agent-token", expires_in: 1800 },
+    });
     toastLoadingMock.mockReturnValue("toast-id");
     fetchMock.mockResolvedValue({
       ok: true,
@@ -168,9 +150,7 @@ describe("useCreateSkillFromConversation", () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
       const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
       expect(url).toBe("http://localhost:3000/ai/v1/generate/skill_info");
-      expect((init.headers as Record<string, string>).Authorization).toBe(
-        "Bearer test-token",
-      );
+      expect(new Headers(init.headers).get("Authorization")).toBe("Bearer agent-token");
       const body = JSON.parse(init.body as string);
       expect(body.skill_generation_request).toEqual({
         conversation: [
@@ -285,7 +265,7 @@ describe("useCreateSkillFromConversation", () => {
 
       expect(mockCreateUserSkill).toHaveBeenCalledWith({
         slug: "saved-skill",
-        description: "Workflow saved from a copilot conversation.",
+        description: "Workflow saved from an agent conversation.",
         content: "c",
       });
     });
@@ -298,12 +278,13 @@ describe("useCreateSkillFromConversation", () => {
         capturedCancel = options?.cancel?.onClick;
         return "toast-id";
       });
+      // Like fetch: a request already aborted when it is made is refused at once
       fetchMock.mockImplementation(
         (_url: string, init: RequestInit) =>
           new Promise((_, reject) => {
-            init.signal?.addEventListener("abort", () =>
-              reject(new DOMException("Aborted", "AbortError")),
-            );
+            const abort = () => reject(new DOMException("Aborted", "AbortError"));
+            if (init.signal?.aborted) abort();
+            init.signal?.addEventListener("abort", abort);
           }),
       );
 

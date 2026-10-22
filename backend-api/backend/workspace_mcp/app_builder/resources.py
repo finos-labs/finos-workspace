@@ -73,7 +73,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         uri="workspace://contract/backend",
         title="Backend Contract",
         description=(
-            "What an Workspace backend must expose over HTTP, "
+            "What a Workspace backend must expose over HTTP, "
             "language-agnostic."
         ),
         relative_path="backend-contract.md",
@@ -162,7 +162,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         uri="workspace://examples/generic-http/minimal",
         title="Minimal Backend (Generic HTTP)",
         description=(
-            "Framework-neutral picture of an Workspace backend — "
+            "Framework-neutral picture of a Workspace backend — "
             "routes, response shapes, CORS, auth."
         ),
         relative_path="examples/generic-http-minimal.md",
@@ -171,7 +171,7 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
         uri="workspace://examples/python-fastapi/minimal",
         title="Minimal Backend (Python + FastAPI)",
         description=(
-            "Recommended Python starter shape for an Workspace backend "
+            "Recommended Python starter shape for a Workspace backend "
             "using FastAPI."
         ),
         relative_path="examples/python-fastapi-minimal.md",

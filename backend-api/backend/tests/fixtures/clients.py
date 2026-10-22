@@ -1,7 +1,6 @@
 """HTTP client fixtures for backend tests."""
 
 from contextlib import ExitStack
-from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -12,7 +11,9 @@ from .base import (
     _ADMIN_USER,
     _AUTH_USER,
     _SECOND_USER,
-    _build_service_jwt,
+    TEST_BASE_URL,
+    TEST_ORIGIN,
+    WEB_HEADERS,
     _cleanup_user_fixture_records,
     _create_session_record,
     _create_user_fixture,
@@ -20,7 +21,6 @@ from .base import (
     _get_test_db_url_sync,
     _make_auth_client,
     app,
-    settings,
 )
 from .db import TestAsyncSessionLocal
 
@@ -63,9 +63,19 @@ async def client(db_session, apply_migrations):
         stack.enter_context(
             patch("api.auth_helpers.database.AsyncReadSessionLocal", test_async_read)
         )
+        # The usage cache is refreshed in sessions of its own, during requests too
+        stack.enter_context(
+            patch("api.worker_tasks.AsyncReadSessionLocal", test_async_read)
+        )
+        stack.enter_context(
+            patch("api.worker_tasks.AsyncWriteSessionLocal", test_async_write)
+        )
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # Every request names an allowed origin, as the API requires
+        async with AsyncClient(
+            transport=transport, base_url=TEST_BASE_URL, headers={"Origin": TEST_ORIGIN}
+        ) as ac:
             yield ac
 
     app.dependency_overrides.clear()
@@ -75,75 +85,42 @@ async def client(db_session, apply_migrations):
 
 @pytest.fixture(scope="function")
 async def app_client(client):
-    """Client with service JWT header for /app endpoints only."""
-    import jwt
-
-    payload = {
-        "sub": "app",
-        "iss": "workspace",
-        "exp": datetime.now(UTC) + timedelta(hours=1),
-    }
-
-    service_jwt = jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
-
-    client.headers.update(
-        {
-            "X-Workspace-Authorization": f"Bearer {service_jwt}",
-            "Origin": "http://test",
-        }
-    )
-
+    """The web app before sign-in: its client header and origin. A sign-in sets the
+    session cookie, which the client keeps and sends."""
+    client.headers.update(WEB_HEADERS)
     yield client
+
+
+async def _signed_in_client(db_session, user_config):
+    await _cleanup_user_fixture_records(db_session, user_config)
+    await _create_user_fixture(db_session, user_config)
+    return await _create_session_record(
+        db_session,
+        user_config["user_uuid"],
+        user_config["session_uuid"],
+        user_config["session_source"],
+    )
 
 
 @pytest.fixture(scope="function")
 async def auth_client(client, db_session):
-    """Authenticated client with a standard test user and session."""
-    await _cleanup_user_fixture_records(db_session, _AUTH_USER)
-    await _create_user_fixture(db_session, _AUTH_USER)
-    await _create_session_record(
-        db_session,
-        _AUTH_USER["user_uuid"],
-        _AUTH_USER["session_uuid"],
-        _AUTH_USER["session_source"],
-    )
-
-    service_jwt = _build_service_jwt()
-    async with _make_auth_client(service_jwt, _AUTH_USER["session_uuid"]) as auth_ac:
+    """The web app signed in as the standard test user."""
+    token = await _signed_in_client(db_session, _AUTH_USER)
+    async with _make_auth_client(token) as auth_ac:
         yield auth_ac
 
 
 @pytest.fixture(scope="function")
 async def admin_client(client, db_session):
-    """Authenticated admin client for admin endpoints."""
-    await _cleanup_user_fixture_records(db_session, _ADMIN_USER)
-    await _create_user_fixture(db_session, _ADMIN_USER)
-    await _create_session_record(
-        db_session,
-        _ADMIN_USER["user_uuid"],
-        _ADMIN_USER["session_uuid"],
-        _ADMIN_USER["session_source"],
-    )
-
-    service_jwt = _build_service_jwt()
-    async with _make_auth_client(service_jwt, _ADMIN_USER["session_uuid"]) as admin_ac:
+    """The web app signed in as the admin of the admin's organization."""
+    token = await _signed_in_client(db_session, _ADMIN_USER)
+    async with _make_auth_client(token) as admin_ac:
         yield admin_ac
 
 
 @pytest.fixture(scope="function")
 async def second_user_client(client, db_session):
-    """Second authenticated user client for cross-user tests."""
-    await _cleanup_user_fixture_records(db_session, _SECOND_USER)
-    await _create_user_fixture(db_session, _SECOND_USER)
-    await _create_session_record(
-        db_session,
-        _SECOND_USER["user_uuid"],
-        _SECOND_USER["session_uuid"],
-        _SECOND_USER["session_source"],
-    )
-
-    service_jwt = _build_service_jwt()
-    async with _make_auth_client(
-        service_jwt, _SECOND_USER["session_uuid"]
-    ) as second_ac:
+    """The web app signed in as a second user, for cross-user tests."""
+    token = await _signed_in_client(db_session, _SECOND_USER)
+    async with _make_auth_client(token) as second_ac:
         yield second_ac

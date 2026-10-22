@@ -139,7 +139,6 @@ export type ManageBackendsCommand = CommandBase<"manage_backends"> & {
   url?: string | null;
   endpoint_headers?: BackendEndpointHeader[] | null;
   validate_widgets?: boolean | null;
-  is_platform?: boolean | null;
 };
 
 export type ManageAppsCommand = CommandBase<"manage_apps"> & {
@@ -190,9 +189,9 @@ export interface WorkspaceBridgeCommandResult {
   };
 }
 
+/** The page's bridge session. The websocket authenticates with the session cookie. */
 export interface BrowserSession {
   session_id: string;
-  token: string;
   client_name: string;
   current_dashboard_id?: string | null;
   current_tab_id?: string | null;

@@ -7,6 +7,7 @@ import { useDataConnectorContext } from "~/components/DataConnectors/Providers/D
 import EmptyDashboardCTA from "~/components/General/EmptyDashboardCTA";
 import { TabProvider } from "~/lib/contexts/TabContext";
 import { useShallowThemeStore } from "~/lib/state/theme";
+import { setAccess } from "../../factories";
 
 // Mock dependencies
 vi.mock("~/components/DataConnectors/Providers/DataConnectorContext", () => ({
@@ -32,6 +33,7 @@ describe("EmptyDashboardCTA Component", () => {
       changeSearch: mockChangeSearch,
       setInitialSelectedSearchTab: mockSetInitialSelectedSearchTab,
     });
+    setAccess({ user_type: "Developer" });
   });
 
   const renderWithQueryClient = (ui: React.ReactElement) =>
@@ -53,6 +55,16 @@ describe("EmptyDashboardCTA Component", () => {
     expect(widgetTitle[0]).toBeInTheDocument();
     expect(templateTitle[0]).toBeInTheDocument();
     expect(filesTitle[0]).toBeInTheDocument();
+  });
+
+  it("offers no file upload to users who cannot add connections", () => {
+    setAccess({ user_type: "User" });
+    renderWithQueryClient(<EmptyDashboardCTA />);
+    expect(screen.queryAllByText("Add Widgets")[0]).toBeInTheDocument();
+    expect(screen.queryByText("Add your files")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Browse files" }),
+    ).not.toBeInTheDocument();
   });
 
   it("opens widget search on button click", () => {

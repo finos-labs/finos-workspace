@@ -1,6 +1,6 @@
 # Workspace
 
-The web application of Workspace: dashboards of widgets that read from the data backends a deployment connects, with a Copilot beside them. It is a React and TypeScript single-page app that talks to the Workspace backend (`backend-api/backend` in this repository).
+The web application of Workspace: dashboards of widgets that read from the data backends a deployment connects, with an agent beside them. It is a React and TypeScript single-page app that talks to the Workspace backend (`backend-api/backend` in this repository).
 
 ## Tech stack
 
@@ -19,8 +19,8 @@ The web application of Workspace: dashboards of widgets that read from the data 
 src/
 ├── api/                    # Calls to the backend
 ├── components/             # React components by domain
-│   ├── AI/                 # The Copilot
-│   ├── Admin*/             # Administration: users, roles, entities, marketplace
+│   ├── AI/                 # The agent
+│   ├── Admin*/             # Administration: users, roles, entities
 │   ├── DataConnectors/     # Connections to data backends
 │   ├── ds/                 # Design system (atoms, molecules, dialogs)
 │   ├── General/            # Shared UI
@@ -55,7 +55,7 @@ The app starts on `http://localhost:1420` and talks to the backend named by `VIT
 
 ## Configuration
 
-Every setting, and its default, is defined in `src/lib/runtimeConfigSchema.ts`; `.env` lists them as `VITE_*` variables with a comment each. Settings that name a deployment's own services (the AI service, a remote marketplace, the documentation site, a support address, the identity providers' client IDs) are empty by default, and the parts of the interface that depend on one are hidden until it is set.
+Every setting, and its default, is defined in `src/lib/runtimeConfigSchema.ts`; `.env` lists them as `VITE_*` variables with a comment each. Settings that name a deployment's own services (the AI service, the documentation site, a support address, the identity providers' client IDs) are empty by default, and the parts of the interface that depend on one are hidden until it is set.
 
 ```bash
 bun run build            # builds with the settings from .env baked in
@@ -86,7 +86,7 @@ bun run test:e2e                     # Playwright, against a running stack
 bunx playwright test tests/e2e --ui  # Playwright with its interactive UI
 ```
 
-The end-to-end tests sign in to a running stack with an account that exists there; `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` name it, and `E2E_BASE_URL` (default `http://localhost:3000`) and `E2E_ADMIN_URL` (default `http://localhost:3001`) say where the stack is. [TESTING.md](./TESTING.md) has the details, along with the testing guide: patterns, mocking, and coverage.
+The end-to-end tests sign in to a running stack with an account that exists there; `E2E_USER_EMAIL` and `E2E_USER_PASSWORD` name it, and `E2E_BASE_URL` (default `http://localhost:3000`) says where the stack is. [TESTING.md](./TESTING.md) has the details, along with the testing guide: patterns, mocking, and coverage.
 
 ## Adding icons
 

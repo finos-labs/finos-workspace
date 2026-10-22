@@ -14,24 +14,18 @@
 
 ---
 
-- #### Your own backends and the marketplace
+- #### Your own backends
 
-  Connect any backend that serves `widgets.json` and `apps.json`, and offer or find backends in the marketplace, where an administrator approves each listing.
+  Connect any backend that serves `widgets.json` and `apps.json`.
 
 ---
 
-- #### Copilot and MCP
+- #### Agent and MCP
 
-  Chat with the copilot, add custom agents and MCP servers, and keep prompts and skills. Administrators set the daily queries and tokens of each user, and choose the models, MCP servers and tools that a role may use.
+  Chat with the agent, add custom agents and MCP servers, and keep prompts and skills. Administrators set the daily queries and tokens of each user, and choose the models, MCP servers and tools that a role may use.
 
 ---
 
 - #### Users, roles and entities
 
   Sign in with a password and an authenticator app, or with Google, Microsoft Entra ID or Okta. Administrators manage the users and roles of their organization, and a superuser manages entities with their seats, expiry and entitlements in the Admin area.
-
----
-
-- #### Excel add-in
-
-  The Excel add-in works with the accounts of your Workspace.

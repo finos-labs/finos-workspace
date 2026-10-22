@@ -1,48 +1,39 @@
 import { useCallback } from "react";
 import { convertHeadersToRecord } from "~/lib/api";
-import { useShallowAuthStore } from "~/lib/state/auth";
 import { type Copilot, useShallowCopilotStore } from "~/lib/state/copilot";
 
+/**
+ * The headers of a request to an agent: the trace id, a custom agent's own configured
+ * headers (looked up in page memory by its holder), and the identity headers the
+ * deployment forwards. No Workspace credential is ever added here: a request to the
+ * default Copilot gets its agent token from fetchAgent.
+ */
 export function useGetCopilotRequestHeaders() {
-  const user = useShallowAuthStore((s) => s.user);
-  const { selectedCopilot, getCurrentChat } = useShallowCopilotStore((s) => ({
-    selectedCopilot: s.selectedCopilot,
-    getCurrentChat: s.getCurrentChat,
-  }));
+  const { selectedCopilot, getCurrentChat, externalCopilotHolders } =
+    useShallowCopilotStore((s) => ({
+      selectedCopilot: s.selectedCopilot,
+      getCurrentChat: s.getCurrentChat,
+      externalCopilotHolders: s.externalCopilotHolders,
+    }));
 
   const getCopilotRequestHeaders = useCallback(
     (xTraceId?: string, targetAgent?: Copilot) => {
-      // default-copilot is the only copilot without a holderUuid
       // If targetAgent is provided, use it; otherwise fall back to selectedCopilot
       const copilotToUse = targetAgent || selectedCopilot;
-      const isDefaultCopilot = !copilotToUse?.holderUuid;
       const { uuid: chatId } = getCurrentChat();
 
-      const headers: Record<string, string> = {
+      // default-copilot is the only copilot without a holderUuid
+      const holder = copilotToUse?.holderUuid
+        ? externalCopilotHolders.find((h) => h.uuid === copilotToUse.holderUuid)
+        : undefined;
+
+      return {
+        ...convertHeadersToRecord(holder?.headers).headers,
         "Content-Type": "application/json",
         "X-Trace-Id": xTraceId || chatId,
       };
-      if (isDefaultCopilot) {
-        headers.Authorization = `Bearer ${user?.token}`;
-        if (user?.uuid) headers["X-User-Id"] = user.uuid;
-      }
-
-      const copilotHeaders = copilotToUse?.headers;
-
-      const convertedHeaders = convertHeadersToRecord(copilotHeaders).headers;
-      for (const [key, value] of Object.entries(convertedHeaders)) {
-        if (value !== undefined) headers[key] = value;
-      }
-
-      return headers;
     },
-    [
-      selectedCopilot?.holderUuid,
-      selectedCopilot?.headers,
-      user?.token,
-      user?.uuid,
-      getCurrentChat,
-    ],
+    [selectedCopilot, externalCopilotHolders, getCurrentChat],
   );
   return getCopilotRequestHeaders;
 }

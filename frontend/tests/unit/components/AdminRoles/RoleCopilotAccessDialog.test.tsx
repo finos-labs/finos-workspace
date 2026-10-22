@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { fetchDefaultAgent } from "~/api/auth.api";
 import { getRoleCopilotAccess, putRoleCopilotAccess } from "~/api/entity_roles.api";
 import RoleCopilotAccessDialog from "~/components/AdminRoles/RoleCopilotAccessDialog";
 import type { RoleT } from "~/components/AdminRoles/types";
@@ -8,6 +9,8 @@ import { useCopilotStore } from "~/lib/state/copilot";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+vi.mock("~/api/auth.api", () => ({ fetchDefaultAgent: vi.fn() }));
 
 vi.mock("~/api/entity_roles.api", () => ({
   getRoleCopilotAccess: vi.fn(),
@@ -30,6 +33,12 @@ const role: RoleT = {
   description: "",
   users: [],
   createdAt: 0,
+  sharing: "none",
+  copilot_calls_day: 0,
+  copilot_tokens_day: 0,
+  upload_size_gb: 0,
+  search_web: true,
+  fetch_from_web: true,
 };
 
 function renderDialog() {
@@ -49,6 +58,7 @@ describe("RoleCopilotAccessDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (putRoleCopilotAccess as Mock).mockResolvedValue({ success: true });
+    (fetchDefaultAgent as Mock).mockResolvedValue(undefined);
     useCopilotStore.setState({
       selectedCopilot: {
         id: "default-copilot",
@@ -78,7 +88,7 @@ describe("RoleCopilotAccessDialog", () => {
 
   it("shows what the role grants and the choices the admin has", async () => {
     (getRoleCopilotAccess as Mock).mockResolvedValue({
-      models: [{ agent_id: "default-copilot", model_id: "fast" }],
+      models: [{ agent_id: "default_agent", model_id: "fast" }],
       mcp: [{ server_url: "https://docs.example.com/mcp", tool_name: "search" }],
     });
     renderDialog();
@@ -101,11 +111,40 @@ describe("RoleCopilotAccessDialog", () => {
 
     await waitFor(() =>
       expect(putRoleCopilotAccess).toHaveBeenCalledWith("role-1", {
-        models: [{ agent_id: "default-copilot", model_id: "smart" }],
+        models: [{ agent_id: "default_agent", model_id: "smart" }],
         mcp: [{ server_url: "https://docs.example.com/mcp", tool_name: "search" }],
       }),
     );
     await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it("grants every model of an agent with one box", async () => {
+    (getRoleCopilotAccess as Mock).mockResolvedValue({ models: [], mcp: [] });
+    renderDialog();
+
+    fireEvent.click(await screen.findByLabelText("All models"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(putRoleCopilotAccess).toHaveBeenCalledWith("role-1", {
+        models: [{ agent_id: "default_agent", model_id: "*" }],
+        mcp: [],
+      }),
+    );
+  });
+
+  it("shows a role that grants every model as such, not as a model named *", async () => {
+    (getRoleCopilotAccess as Mock).mockResolvedValue({
+      models: [{ agent_id: "default_agent", model_id: "*" }],
+      mcp: [],
+    });
+    renderDialog();
+
+    const all = await screen.findByLabelText("All models");
+    await waitFor(() => expect(all).toBeChecked());
+    expect(screen.getByLabelText("Fast")).toBeChecked();
+    expect(screen.getByLabelText("Fast")).toBeDisabled();
+    expect(screen.queryByLabelText("*")).not.toBeInTheDocument();
   });
 
   it("grants every tool of a server with one box", async () => {
@@ -119,6 +158,45 @@ describe("RoleCopilotAccessDialog", () => {
       expect(putRoleCopilotAccess).toHaveBeenCalledWith("role-1", {
         models: [],
         mcp: [{ server_url: "https://docs.example.com/mcp", tool_name: "*" }],
+      }),
+    );
+  });
+
+  it("offers the models the default agent lists in its model setting", async () => {
+    // The admin page has the default agent as the store keeps it, without its descriptor
+    useCopilotStore.setState({
+      selectedCopilot: {
+        id: "default-copilot",
+        name: "Copilot",
+        features: {},
+      } as never,
+    });
+    (fetchDefaultAgent as Mock).mockResolvedValue({
+      id: "default_agent",
+      name: "Ines",
+      features: {
+        model: {
+          label: "Model",
+          type: "select",
+          default: "large",
+          options: [
+            { label: "Large", value: "large" },
+            { label: "Small", value: "small" },
+          ],
+        },
+      },
+    });
+    (getRoleCopilotAccess as Mock).mockResolvedValue({ models: [], mcp: [] });
+    renderDialog();
+
+    fireEvent.click(await screen.findByLabelText("Small"));
+    expect(screen.getByLabelText("Large")).not.toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(putRoleCopilotAccess).toHaveBeenCalledWith("role-1", {
+        models: [{ agent_id: "default_agent", model_id: "small" }],
+        mcp: [],
       }),
     );
   });

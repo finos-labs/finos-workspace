@@ -6,12 +6,17 @@ on:
     paths:
       - "frontend/**"
       - "backend-api/backend/**"
+      - "agent/**"
       - "docker-compose.yml"
+      - "docker-compose.e2e.yml"
       - ".github/workflows/e2e.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   playwright:
@@ -28,17 +33,19 @@ jobs:
         run: |
           EMAIL="e2e-admin@example.com"
           python3 -m scripts.create_local_env --admin-email "$EMAIL" --entity-name "End-to-end"
-          PASSWORD="$(python3 -c "import tomllib; print(tomllib.load(open('scripts/cfgs/config.toml', 'rb'))['admins'][0]['password'])")"
-          echo "::add-mask::$PASSWORD"
           echo "E2E_USER_EMAIL=$EMAIL" >> "$GITHUB_ENV"
-          echo "E2E_USER_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
 
+      # docker-compose.e2e.yml adds the stubbed model and points Ines at it, so the tests can ask
+      # the Copilot a question without a provider key (a pull request from a fork gets no secrets).
       - name: Build and start the stack
-        run: docker compose up -d --build
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build
 
+      # Ines is in this stack and no test here asks her a question, so without this a run where she
+      # never started would still be green. /status is hers; the MCP server publishes no port, so the
+      # closest check on it is that her container is up, which compose's health check already is.
       - name: Wait for the stack
         run: |
-          for url in http://localhost:8000/health http://localhost:3000/ http://localhost:3001/; do
+          for url in http://localhost:8000/health http://localhost:3000/ http://localhost:7777/status; do
             for _ in $(seq 1 60); do
               curl -fsS -o /dev/null "$url" && break
               sleep 5
@@ -46,7 +53,16 @@ jobs:
             curl -fsS -o /dev/null "$url"
           done
 
-      - uses: oven-sh/setup-bun@v2
+      # The administrator has no password until one is set, as an operator sets it: read
+      # from standard input, never printed
+      - name: Set the administrator's password
+        run: |
+          PASSWORD="$(python3 -c 'import secrets; print("E2e-" + secrets.token_urlsafe(24) + "!1a")')"
+          echo "::add-mask::$PASSWORD"
+          printf '%s\n' "$PASSWORD" | docker compose run --rm -T init python -m scripts.init_users --new-password "$E2E_USER_EMAIL"
+          echo "E2E_USER_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
 
       - name: Install dependencies
         working-directory: frontend
@@ -67,8 +83,8 @@ jobs:
 
       - name: Show the stack's logs
         if: failure()
-        run: docker compose logs --no-color --tail=200
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml logs --no-color --tail=200
 
       - name: Stop the stack
         if: always()
-        run: docker compose down -v
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml down -v

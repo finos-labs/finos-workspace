@@ -90,7 +90,6 @@ export const RuntimeConfigSchema = z.object({
     showCopilotSwitcher: boolField(true),
     showRemoveFromOrg: boolField(true),
     defaultTheme: z.enum(["light", "dark"]).default("dark"),
-    showMarketplace: boolField(true),
   }),
   data: z.object({
     allowHtmlJsExecution: boolField(false),
@@ -106,15 +105,23 @@ export const RuntimeConfigSchema = z.object({
   whiteLabel: z.object({
     name: z.string().default("Workspace"),
     shortName: z.string().default("Workspace"),
-    loginImage: z.string().default("/assets/images/brand_lettering.svg"),
-    loginImageDark: z.string().default("/assets/images/brand_lettering_light.svg"),
+    loginImage: z.string().default("/assets/images/logo-horizontal-color.svg"),
+    loginImageDark: z.string().default("/assets/images/logo-horizontal-white.svg"),
     leftSidebarLogo: z.string().default(""),
     leftSidebarLogoDark: z.string().default(""),
-    favicon: z.string().default("/favicon/favicon.ico"),
-    description: z.string().default(""),
-    keywords: z.string().default(""),
-    mainColor: z.string().default("#0088CC"),
-    fontFamily: z.string().default("Inter"),
+    favicon: z.string().default("/logo.svg"),
+    description: z
+      .string()
+      .default(
+        "An open, self-hosted analytics workspace for financial institutions to connect data, tools, and AI agents.",
+      ),
+    keywords: z
+      .string()
+      .default(
+        "FINOS Workspace, open source financial analytics, self-hosted analytics, financial data workspace, AI agents",
+      ),
+    mainColor: z.string().default("#0086BF"),
+    fontFamily: z.string().default("Montserrat"),
     showFloatingThemePreview: boolField(false),
   }),
 });
@@ -169,7 +176,6 @@ export const ENV_NAMES = {
     showCopilotSwitcher: "VITE_UI_SHOW_COPILOT_SWITCHER",
     showRemoveFromOrg: "VITE_UI_SHOW_REMOVE_FROM_ORG",
     defaultTheme: "VITE_UI_DEFAULT_THEME",
-    showMarketplace: "VITE_UI_SHOW_MARKETPLACE",
   },
   data: {
     allowHtmlJsExecution: "VITE_ALLOW_HTML_JS_EXECUTION",

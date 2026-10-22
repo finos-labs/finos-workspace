@@ -1,22 +1,24 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CopilotContext } from "~/components/AI/CopilotContext";
+import { useCopilotStore } from "~/lib/state/copilot";
+import { useCopilotAccessStore } from "~/lib/state/copilotAccess";
 
 const {
-  mockFetchAgentsData,
+  mockFetchDefaultAgent,
   mockShowNotification,
   mockUseShallowCopilotStore,
   mockUseShallowCopilotDataStore,
 } = vi.hoisted(() => ({
-  mockFetchAgentsData: vi.fn(),
+  mockFetchDefaultAgent: vi.fn(),
   mockShowNotification: vi.fn(),
   mockUseShallowCopilotStore: vi.fn(),
   mockUseShallowCopilotDataStore: vi.fn(),
 }));
 
 vi.mock("~/api/auth.api", () => ({
-  fetchAgentsData: (...args: unknown[]) => mockFetchAgentsData(...args),
+  fetchDefaultAgent: (...args: unknown[]) => mockFetchDefaultAgent(...args),
 }));
 
 vi.mock("~/components/Tooltip", () => ({
@@ -56,7 +58,9 @@ vi.mock("~/components/ds/atoms/Popover", () => ({
 }));
 
 vi.mock("~/components/ds/atoms/Select", () => ({
-  SelectRoot: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SelectRoot: ({ children, value }: { children: ReactNode; value?: string }) => (
+    <div data-value={value}>{children}</div>
+  ),
   SelectTrigger: ({ children }: { children: ReactNode }) => <button>{children}</button>,
   SelectValue: () => null,
   SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -102,10 +106,6 @@ type CopilotDataStoreState = {
       name?: string;
     }>;
   };
-  extraWidgetsEnabled: boolean;
-  toggleExtraWidgetsEnabled: ReturnType<typeof vi.fn>;
-  generativeUiEnabled: boolean;
-  toggleGenerativeUiEnabled: ReturnType<typeof vi.fn>;
   toggleSelectedWidget: ReturnType<typeof vi.fn>;
   isMentionTrackedWidget: ReturnType<typeof vi.fn>;
   getCopilotWidgets: ReturnType<typeof vi.fn>;
@@ -121,7 +121,7 @@ let copilotDataStoreState: CopilotDataStoreState;
 
 describe("CopilotContext", () => {
   beforeEach(() => {
-    mockFetchAgentsData.mockResolvedValue([]);
+    mockFetchDefaultAgent.mockResolvedValue(undefined);
     mockShowNotification.mockReset();
 
     copilotStoreState = {
@@ -140,10 +140,6 @@ describe("CopilotContext", () => {
       copilotWidgets: {
         selectedWidgets: [],
       },
-      extraWidgetsEnabled: false,
-      toggleExtraWidgetsEnabled: vi.fn(),
-      generativeUiEnabled: false,
-      toggleGenerativeUiEnabled: vi.fn(),
       toggleSelectedWidget: vi.fn(),
       isMentionTrackedWidget: vi.fn().mockReturnValue(false),
       getCopilotWidgets: vi.fn().mockReturnValue({ selectedWidgets: [] }),
@@ -166,7 +162,66 @@ describe("CopilotContext", () => {
     render(<CopilotContext />);
 
     expect(
-      screen.getByRole("button", { name: "Copilot settings" }),
+      screen.getByRole("button", { name: "Agent settings" }),
     ).toBeInTheDocument();
+  });
+
+  describe("an agent that offers its models through its model setting", () => {
+    const grant = (...modelIds: string[]) =>
+      useCopilotAccessStore.setState({
+        access: {
+          models: modelIds.map((model_id) => ({ agent_id: "default_agent", model_id })),
+          mcp: [],
+        },
+      });
+
+    const openSettings = () => {
+      render(<CopilotContext />);
+      fireEvent.click(screen.getByRole("button", { name: "Agent settings" }));
+    };
+
+    beforeEach(() => {
+      // The web app knows the default agent as default-copilot
+      useCopilotStore.setState({
+        selectedCopilot: {
+          id: "default-copilot",
+          name: "Ines",
+          description: "",
+          endpoints: {},
+          features: {
+            model: {
+              label: "Model",
+              type: "select",
+              default: "large",
+              options: [
+                { label: "Large", value: "large" },
+                { label: "Small", value: "small" },
+              ],
+            },
+          },
+        },
+        customFeatureStates: { model: "large" },
+      });
+    });
+
+    it("offers only the models the user's roles grant", () => {
+      grant("small");
+      openSettings();
+
+      expect(screen.queryByText("Large")).not.toBeInTheDocument();
+      expect(screen.getByText("Small").closest("[data-value]")).toHaveAttribute(
+        "data-value",
+        "small",
+      );
+    });
+
+    it("shows no model setting when the user's roles grant no model", () => {
+      grant();
+      openSettings();
+
+      expect(screen.queryByText("Model")).not.toBeInTheDocument();
+      expect(screen.queryByText("Large")).not.toBeInTheDocument();
+      expect(screen.queryByText("Small")).not.toBeInTheDocument();
+    });
   });
 });

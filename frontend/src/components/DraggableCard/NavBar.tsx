@@ -43,7 +43,6 @@ import {
 } from "~/lib/utils/toast";
 import { linkifyText } from "~/utils/linkifyText";
 import EllipsisDropdownMenu from "../EllipsisDropdown";
-import FunctionsDialog from "../FunctionsDialogDraggableCard";
 import Icon from "../Icon";
 import type { IconId } from "../Icon.types";
 import { MetadataDialog } from "../MetadataDialogDraggableCard";
@@ -58,7 +57,6 @@ import GroupDropdown from "../Widgets/Helpers/GroupDropdown";
 export type DraggableState = {
   isFullscreen: boolean;
   settingsModal: boolean;
-  functionsModal: boolean;
   metadataModal: boolean;
   parametersModal: boolean;
   isMinimized: boolean;
@@ -67,7 +65,6 @@ export type DraggableState = {
 const initialState: DraggableState = {
   isFullscreen: false,
   settingsModal: false,
-  functionsModal: false,
   metadataModal: false,
   parametersModal: false,
   isMinimized: false,
@@ -119,7 +116,6 @@ export interface NavBarProps {
   settings?: {
     showMetadata?: boolean;
     showSettings?: boolean;
-    showFunctions?: boolean;
     showParameters?: boolean;
     showShare?: boolean;
     showDuplicate?: boolean;
@@ -131,7 +127,6 @@ export interface NavBarProps {
   };
   exportFns?: {
     csvFunction?: (title: string) => void;
-    excelFunction?: (title: string) => void;
     pngFunction?: (title: string) => void;
     pdfFunction?: (title: string) => void;
     txtFunction?: (title: string) => void;
@@ -289,12 +284,12 @@ export function CopilotButton({ aiEnabled }: { aiEnabled?: boolean }) {
   const contextEnabled = widgetDashboardSelectFF && !disabled;
 
   const tooltipMessage = useMemo(() => {
-    if (isPreview) return "Copilot is not available in preview mode.";
-    if (disabled) return "Copilot is not allowed to retrieve data from this widget.";
+    if (isPreview) return "Agent is not available in preview mode.";
+    if (disabled) return "Agent is not allowed to retrieve data from this widget.";
 
     return widgetDashboardSelectFF
-      ? "Add widget as context to the Copilot for customized answers using its data."
-      : "Dashboard widget selection is not enabled for this copilot.";
+      ? "Add widget as context to the agent for customized answers using its data."
+      : "Dashboard widget selection is not enabled for this agent.";
   }, [widgetDashboardSelectFF, disabled, isPreview]);
 
   const { isSelected, toggleSelectedWidget, getDashboardWidgetData } =
@@ -363,7 +358,6 @@ const widgetDescriptionRegex = /file-.*/;
 const DefaultSettings = {
   showMetadata: true,
   showSettings: true,
-  showFunctions: true,
   showParameters: true,
   showShare: true,
   showDuplicate: true,
@@ -725,18 +719,11 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
     );
 
     const ellipsisSettings = useMemo(() => {
-      const hasFunctions =
-        !widgetRef?.current?.external &&
-        (widgetFromJSON?.excelDataFunction?.length ?? 0) > 0;
       const output = {
         ...settings,
         // we enable metadata if its one of our widgets
         showMetadata: ValidWidgetIds.includes(cleanWidgetId),
         showSettings: settingsChildren === null ? false : settings.showSettings,
-        showFunctions:
-          settings?.showFunctions !== undefined && hasFunctions
-            ? settings?.showFunctions
-            : hasFunctions || widgetRef?.current?.external,
         showMinimize: shouldShowMinimizeButton,
       };
 
@@ -744,8 +731,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
     }, [
       Object.values(settings || {}),
       settingsChildren === null,
-      widgetRef,
-      widgetFromJSON,
       cleanWidgetId,
       shouldShowMinimizeButton,
     ]);
@@ -950,7 +935,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                             <Tooltip message={backend} position="top">
                               <div className="bg-[rgba(188,188,188,0.3)] dark:bg-[rgba(90,89,97,0.3)] rounded-xl min-w-0 max-w-[140px]">
                                 <div className="px-1.5 py-0">
-                                  <span className="block truncate whitespace-nowrap text-2xs leading-[1.5] text-[#717177] dark:text-[#b8b9bc]">
+                                  <span className="block truncate whitespace-nowrap text-2xs leading-[1.5] text-light-600 dark:text-dark-50">
                                     {backend}
                                   </span>
                                 </div>
@@ -958,34 +943,34 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                             </Tooltip>
                             {source && (
                               <Tooltip message={source} position="top">
-                                <span className="block truncate whitespace-nowrap min-w-0 max-w-[140px] text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90]">
+                                <span className="block truncate whitespace-nowrap min-w-0 max-w-[140px] text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8]">
                                   {source}
                                 </span>
                               </Tooltip>
                             )}
                           </div>
 
-                          <div className="font-bold text-[12px] leading-[18px] text-[#070707] dark:text-white mb-2">
+                          <div className="font-bold text-[12px] leading-[18px] text-light-900 dark:text-white mb-2">
                             {title}
                           </div>
 
-                          <hr className="border-[#EBEBED] dark:border-[#454550] mb-2" />
+                          <hr className="border-light-200 dark:border-dark-400 mb-2" />
 
                           {category && (
-                            <div className="text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90] mb-1">
+                            <div className="text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8] mb-1">
                               {[category, subCategory].filter(Boolean).join(" • ") ||
                                 ""}
                             </div>
                           )}
 
                           {description && (
-                            <div className="text-[12px] leading-[18px] text-[#151518] dark:text-white  max-h-[200px] overflow-y-auto">
+                            <div className="text-[12px] leading-[18px] text-dark-900 dark:text-white  max-h-[200px] overflow-y-auto">
                               {linkifyText(description)}
                             </div>
                           )}
 
                           {createdAt && (
-                            <div className="mt-2 text-2xs leading-[1.5] text-[#6d6e74] dark:text-[#8a8a90]">
+                            <div className="mt-2 text-2xs leading-[1.5] text-[#547280] dark:text-[#7699a8]">
                               <div>
                                 Created:{" "}
                                 {dayjs(createdAt).format("MMM D, YYYY, h:mm A")}
@@ -1102,12 +1087,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                   extraActions={extraActions}
                   onSubmit={onSaveSettings}
                   className={settingsDialogClassName}
-                />
-              )}
-              {state.functionsModal && (
-                <FunctionsDialog
-                  open={state.functionsModal}
-                  setOpen={(value: boolean) => dispatch({ functionsModal: value })}
                 />
               )}
               {!isMobile && (

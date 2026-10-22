@@ -45,7 +45,6 @@ ui showChangelog UI_SHOW_CHANGELOG bool
 ui showCopilotSwitcher UI_SHOW_COPILOT_SWITCHER bool
 ui showRemoveFromOrg UI_SHOW_REMOVE_FROM_ORG bool
 ui defaultTheme UI_DEFAULT_THEME theme
-ui showMarketplace UI_SHOW_MARKETPLACE bool
 data allowHtmlJsExecution ALLOW_HTML_JS_EXECUTION bool
 links docsUrl DOCS_URL string
 contact supportEmail SUPPORT_EMAIL string

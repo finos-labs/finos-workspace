@@ -26,6 +26,7 @@ function normalizeBackendTemplate(template: unknown) {
   return obj;
 }
 
+import { isOnSourceOrigin } from "~/lib/utils/fetch";
 import { type InvalidItem, toInspectableJson } from "~/lib/utils/invalidItems";
 import {
   cleanSearchParams,
@@ -55,7 +56,7 @@ export async function validateBackendEndpoints(
   widgets: WidgetsType,
   backendUrl: URL,
   headers: Record<string, string>,
-  isVendorApp = false,
+  query: Record<string, unknown>,
   signal?: AbortSignal,
 ) {
   const failedEndpoints: string[] = [];
@@ -64,8 +65,18 @@ export async function validateBackendEndpoints(
     const initialParams = createWidgetInitParams(widget as unknown as WidgetT);
 
     const url = createURLString(widget.endpoint, backendUrl);
-    const endpoint = cleanSearchParams(url, initialParams);
-    const requestOptions: RequestInit = { method: "GET", headers, signal };
+    // The backend's credentials go to its own origin only, as when the widget fetches: an
+    // endpoint widgets.json points elsewhere is checked without them
+    const onBackend = isOnSourceOrigin(url, backendUrl.href);
+    const endpoint = cleanSearchParams(
+      url,
+      onBackend ? { ...query, ...initialParams } : initialParams,
+    );
+    const requestOptions: RequestInit = {
+      method: "GET",
+      headers: onBackend ? headers : {},
+      signal,
+    };
 
     const endpointRes = await fetch(endpoint, requestOptions).catch(
       (err: Error) =>
@@ -86,8 +97,6 @@ export async function validateBackendEndpoints(
 
       failedEndpoints.push(`Widget: ${widgetId} - ${errorString}`);
     }
-
-    if (isVendorApp) break; // for vendor apps, only validate the first widget to avoid excessive requests
   }
 
   return failedEndpoints;
@@ -107,21 +116,24 @@ export function partitionSupportedWidgets(widgets: WidgetsType): {
     return { supported: widgets, unsupported: [] };
   }
 
-  const supported = {} as WidgetsType;
+  // The ids are the backend's: the map is built from entries, which only defines
+  // properties of its own, so no id reaches a setter or a prototype
+  const supported: [string, WidgetsType[string]][] = [];
   const unsupported: string[] = [];
   for (const [widgetId, widget] of Object.entries(widgets)) {
     // Not a widget at all: it is invalid, which is reported, not a type left out
     if (!widget || typeof widget !== "object" || Array.isArray(widget)) {
-      supported[widgetId] = widget;
+      supported.push([widgetId, widget]);
       continue;
     }
 
     const type = widget?.type ?? widget?.defaultViz;
-    if (typeof type === "string" && isWidgetVizType(type)) supported[widgetId] = widget;
+    if (typeof type === "string" && isWidgetVizType(type))
+      supported.push([widgetId, widget]);
     else unsupported.push(widgetId);
   }
 
-  return { supported, unsupported };
+  return { supported: Object.fromEntries(supported) as WidgetsType, unsupported };
 }
 
 const isValidWidget = (widget: unknown): widget is WidgetType => {
@@ -156,10 +168,12 @@ export function validateWidgetItems(object: object): {
   valid: WidgetsType;
   invalid: InvalidItem[];
 } {
-  const valid = {} as WidgetsType;
+  // The ids are the backend's: maps of widgets are built from entries, which only define
+  // properties of their own, so no id reaches a setter or a prototype
+  const valid: [string, WidgetsType[string]][] = [];
   const invalid: InvalidItem[] = [];
   if (Array.isArray(object) || isValidWidget(object)) {
-    return { fileError: getInvalidError(object), valid, invalid };
+    return { fileError: getInvalidError(object), valid: {} as WidgetsType, invalid };
   }
 
   // Mutate params in place. `cloneDeep` removed: downstream (`processWorkerResults`)
@@ -183,7 +197,9 @@ export function validateWidgetItems(object: object): {
     const sentParams = widget.params;
     widget.params = createParamDefs(widget);
 
-    const parsedWidget = specificationSchema.safeParse({ [widgetId]: widget });
+    const parsedWidget = specificationSchema.safeParse(
+      Object.fromEntries([[widgetId, widget]]),
+    );
     const errors = formatZodIssues(
       parsedWidget.error?.issues ?? [],
       [],
@@ -192,7 +208,7 @@ export function validateWidgetItems(object: object): {
     );
 
     if (errors.length === 0) {
-      valid[widgetId] = widget as WidgetsType[string];
+      valid.push([widgetId, widget as WidgetsType[string]]);
       continue;
     }
 
@@ -208,7 +224,7 @@ export function validateWidgetItems(object: object): {
 
   if (import.meta.env.DEV) console.log("Valid widgets.json");
 
-  return { fileError: null, valid, invalid };
+  return { fileError: null, valid: Object.fromEntries(valid) as WidgetsType, invalid };
 }
 
 /** The widgets.json problems as one message: the file's, or each invalid widget's. */
@@ -349,12 +365,10 @@ export const errorResponse = {
   templateErrorMessage: null,
   templateWarningMessage: null,
   unrecognizedKeysMessage: null,
-  isPlatform: null,
 } satisfies ValidateBackend;
 
 const DEFAULT_OPTIONS = {
   validateAllWidgets: false,
-  vendorAppCache: false,
   agents: true,
   apps: true,
   extraHeaders: {} as Record<string, string>,
@@ -417,45 +431,6 @@ export async function validateBackend(
   options?: GetApiSourceWidgetsOptions | boolean,
 ) {
   options = parseOptions(options);
-  const isVendorApp = !!(source.vendorAppUuid || source.vendorApp);
-
-  if (isVendorApp && !options.validateAllWidgets && options.vendorAppCache) {
-    const { widgetsJsonCache = {}, appsJsonCache = [] } = source.vendorApp || {};
-    const { supported: vendorWidgets, unsupported: unsupportedWidgets } =
-      partitionSupportedWidgets(widgetsJsonCache);
-    const widgetItems = validateWidgetItems(vendorWidgets);
-    const widgetValidationError = widgetErrorMessage(widgetItems);
-    const unrecognizedReports = [] as UnrecognizedKeysReport[];
-    for (const t of appsJsonCache) normalizeBackendTemplate(t);
-
-    if (!widgetItems.fileError) {
-      const report = detectUnrecognizedKeys(
-        "[widgets.json]",
-        Object.values(widgetItems.valid),
-        KNOWN_WIDGET_KEYS,
-      );
-      if (report) unrecognizedReports.push(report);
-    }
-
-    const templateItems = partitionTemplates(appsJsonCache);
-    const jsonErrors = validateWidgetsAppsJson({
-      invalidTemplates: templateItems.invalid,
-      widgetValidationError,
-      unrecognizedReports,
-    });
-
-    return {
-      widgets: widgetValidationError ? {} : vendorWidgets, // return empty widgets if validation failed
-      validWidgets: widgetItems.valid,
-      unsupportedWidgets,
-      ...jsonErrors,
-      templates: jsonErrors.templateErrors.length > 0 ? [] : appsJsonCache, // return empty templates if validation failed
-      validTemplates: templateItems.valid,
-      invalidItems: [...widgetItems.invalid, ...templateItems.invalid],
-      fatalErrorMessage: widgetItems.fileError,
-      agents: [], // vendor apps don't have agents
-    } as ValidateBackend;
-  }
 
   // 60s timeout when you connect - in the future we can do something else here -
   // let user set it or turn off for on prem?
@@ -508,7 +483,6 @@ export async function validateBackend(
   const rawWidgets = (await widgetsRes.json()) as WidgetsType;
   const { supported: widgets, unsupported: unsupportedWidgets } =
     partitionSupportedWidgets(rawWidgets);
-  const isPlatform = widgetsRes.headers.get("X-Backend-Type") === "Platform";
   const widgetItems = validateWidgetItems(widgets);
   const widgetValidationError = widgetErrorMessage(widgetItems);
 
@@ -528,7 +502,7 @@ export async function validateBackend(
       widgets,
       backendUrl,
       headers,
-      isVendorApp,
+      newParams,
       reqInit.signal,
     );
   }
@@ -552,7 +526,7 @@ export async function validateBackend(
   }, options.apps);
 
   const agentsPromise = getPromise(async () => {
-    const agentsUrl = createURL("agents.json", backendUrl);
+    const agentsUrl = createURL("agents.json", backendUrl, newParams);
     return fetch(agentsUrl, reqInit);
   }, options.agents);
 
@@ -624,7 +598,6 @@ export async function validateBackend(
     fatalErrorMessage:
       [widgetItems.fileError, ...failedEndpoints].filter(Boolean).join("\n\n") || null,
     agents,
-    isPlatform,
   } as ValidateBackend;
 }
 
@@ -660,28 +633,28 @@ export async function validateSource(
       .map((item) => item.id),
   );
 
-  const tabWidgets = {} as { [appName: string]: { [tabId: string]: string[] } };
-  const vendorApp = source.vendorApp;
-  const isSingleTemplate = loadedTemplates.length === 1;
+  // The widget ids of each app's tabs, by app name and tab id: names from the backend's
+  // apps, which a map keeps apart from any object's own properties
+  const tabWidgets = new Map<string, Map<string, string[]>>();
 
   for (const t of loadedTemplates) {
-    if (vendorApp && isSingleTemplate) t.name = vendorApp.name;
-
     for (const tab of Object.values(t.tabs || {})) {
       for (const layout of tab.layout || []) {
         const widgetId = layout.i;
         if (getJsonWidget(widgetId)?.name) continue; // skip if it's a built-in widget
 
-        if (!tabWidgets[t.name]) tabWidgets[t.name] = {};
-        if (!tabWidgets[t.name][tab.id]) tabWidgets[t.name][tab.id] = [];
-        tabWidgets[t.name][tab.id].push(widgetId);
+        const appTabs = tabWidgets.get(t.name) ?? new Map<string, string[]>();
+        const ids = appTabs.get(tab.id) ?? [];
+        ids.push(widgetId);
+        appTabs.set(tab.id, ids);
+        tabWidgets.set(t.name, appTabs);
       }
     }
   }
 
   // check for widgets used in apps that are missing from the backend widgets
-  for (const [appName, item] of Object.entries(tabWidgets)) {
-    for (const [tabId, widgetIds] of Object.entries(item)) {
+  for (const [appName, item] of tabWidgets) {
+    for (const [tabId, widgetIds] of item) {
       const missingWidgetIds = widgetIds.filter(
         (id) =>
           !(
@@ -744,15 +717,7 @@ export async function getApiSourceWidgets(
   return validated;
 }
 
-function handleVendorAppSource(source: Source) {
-  const vendorApp = source.vendorApp;
-  source.vendorAppUuid = vendorApp?.uuid;
-
-  if (vendorApp && source.status === "error") {
-    source.widgets = vendorApp?.widgetsJsonCache || {};
-    source.templates = vendorApp?.appsJsonCache || [];
-  }
-
+function withApiKeyFlag(source: Source) {
   source.hasApiKey = source.endpointHeaders?.some(
     (h) => h.key.toLowerCase() === "authorization" && h.value.startsWith("Bearer "),
   );
@@ -775,7 +740,7 @@ export function processWorkerResults(
           : result.errorMessage;
         if (fatalErrorMessage) {
           apiSource.status = "error";
-          acc.apiSources.push(handleVendorAppSource({ ...apiSource }));
+          acc.apiSources.push(withApiKeyFlag({ ...apiSource }));
           return acc;
         }
 
@@ -802,9 +767,7 @@ export function processWorkerResults(
           });
         }
 
-        const isPublishedMarketplaceApp =
-          apiSource.vendorApp && !apiSource.vendorApp?.isDevelopment;
-        if (!partial && unrecognizedKeysMessage && !isPublishedMarketplaceApp) {
+        if (!partial && unrecognizedKeysMessage) {
           acc.unrecognizedKeysMessages.push({
             source: { name: apiSource.name, id: apiSource.id },
             reports: unrecognizedKeysMessage,
@@ -836,7 +799,7 @@ export function processWorkerResults(
         return acc;
       } catch (err) {
         console.error(err instanceof Error ? err.message : err);
-        acc.apiSources.push(handleVendorAppSource({ ...apiSource }));
+        acc.apiSources.push(withApiKeyFlag({ ...apiSource }));
         return acc;
       }
     },

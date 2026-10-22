@@ -19,7 +19,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const InteractiveColorPicker = ({
-  initialColor = "#0088CC",
+  initialColor = "#0086BF",
 }: {
   initialColor?: string;
 }) => {

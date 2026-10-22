@@ -1,9 +1,10 @@
-import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DraggableCard from "~/components/DraggableCard/DraggableCard";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { useTabContext } from "~/lib/contexts/TabContext";
+import { useBackendConnectorStore } from "~/lib/state/backendConnector";
 import { partial } from "../../mocks";
 
 // Mock the necessary hooks and components
@@ -34,9 +35,12 @@ vi.mock("~/lib/state/copilotData", () => ({
 }));
 
 vi.mock("~/lib/state/permissions", () => ({
-  useShallowPermissionsStore: vi.fn(() => ({
-    hasAccess: vi.fn(() => true),
-  })),
+  useShallowPermissionsStore: vi.fn((selector: (state: unknown) => unknown) =>
+    selector({
+      hasAccess: () => true,
+      permissions: { backends: [], files: [], prompts: [] },
+    }),
+  ),
 }));
 
 vi.mock("~/components/LayoutAuth/Search/hooks/useFetchSharedResources", () => ({
@@ -337,5 +341,64 @@ describe("DraggableCard", () => {
 
     // We should see the navbar
     expect(screen.getByTestId("navbar")).toBeInTheDocument();
+  });
+
+  describe("a widget whose data backend is not the viewer's", () => {
+    const widgetFromSomeoneElse = () =>
+      mockUseWidgetContext.mockReturnValue(
+        partial({
+          widgetRef: {
+            current: {
+              id: "widget-shared",
+              widgetId: "prices",
+              name: "Prices",
+              sourceId: "owners-backend",
+              connectionType: "advanced-backend",
+            },
+          },
+          widgetFromJSON: null,
+          widget: { sourceId: "owners-backend", widgetId: "prices" },
+        }),
+      );
+
+    afterEach(() => {
+      cleanup();
+      useBackendConnectorStore.setState({ apiSources: [], sourcesLoaded: false });
+    });
+
+    it("says the data connection is not available instead of rendering the widget", () => {
+      useBackendConnectorStore.setState({ apiSources: [], sourcesLoaded: true });
+      widgetFromSomeoneElse();
+
+      render(
+        <DraggableCard title="Prices">
+          <div data-testid="widget-content">Widget Content</div>
+        </DraggableCard>,
+      );
+
+      expect(
+        screen.getByText("This data connection is not available to you"),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("widget-content")).not.toBeInTheDocument();
+    });
+
+    it("renders the widget once the backend is among the viewer's own", () => {
+      useBackendConnectorStore.setState({
+        apiSources: [partial({ id: "owners-backend", name: "Mine", url: "https://x" })],
+        sourcesLoaded: true,
+      });
+      widgetFromSomeoneElse();
+
+      render(
+        <DraggableCard title="Prices">
+          <div data-testid="widget-content">Widget Content</div>
+        </DraggableCard>,
+      );
+
+      expect(screen.getByTestId("widget-content")).toBeInTheDocument();
+      expect(
+        screen.queryByText("This data connection is not available to you"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

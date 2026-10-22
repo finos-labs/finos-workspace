@@ -53,7 +53,7 @@ export const McpCompanionModal = memo(() => {
     const isDropped = status === "disabled" && lastError !== null;
 
     // Map the bridge status to the shared connection-dot vocabulary. coloredLabel
-    // tints the dot + label one color so it reads like the marketplace app cards.
+    // tints the dot + label one color.
     let dotStatus: ConnectionStatus = "disconnected";
     let statusLabel = "Not connected";
     if (isConnected) {

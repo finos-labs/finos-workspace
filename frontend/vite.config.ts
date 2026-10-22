@@ -6,7 +6,8 @@ import { Mode, plugin as mdPlugin } from "vite-plugin-markdown";
 import { VitePWA } from "vite-plugin-pwa";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import { defineConfig } from "vitest/config";
-import { configFromEnv, ENV_NAMES } from "./src/lib/runtimeConfigSchema.ts";
+import { dark } from "./src/components/ds/colors.ts";
+import { configFromEnv } from "./src/lib/runtimeConfigSchema.ts";
 
 // plugin so it always forces reload because hmr breaks the dev app
 const fullReloadAlways: PluginOption = {
@@ -21,7 +22,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), ""); // we need to do this so we can use the env variables in the config
 
   const APP_NAME = env.VITE_WL_NAME;
-  const APP_DESCRIPTION = env.VITE_WL_DESCRIPTION;
+  const APP_DESCRIPTION =
+    env.VITE_WL_DESCRIPTION || configFromEnv({}).whiteLabel.description;
   const APP_SHORT_NAME = env.VITE_WL_SHORT_NAME;
 
   // Runtime builds load config.js before the bundle, so that window.__APP_CONFIG__ is set when
@@ -39,8 +41,7 @@ export default defineConfig(({ mode }) => {
 
   // Writes config.js from the .env variables, for runtime builds. Operators edit dist/config.js
   // at deploy time to customise without rebuilding. It uses the app's own schema, so defaults
-  // and coercion ("true" → true) are always in sync. config.env.json names the variable of each
-  // setting, for whatever renders config.js again at deploy time (see lite/).
+  // and coercion ("true" → true) are always in sync.
   const generateRuntimeConfigPlugin: PluginOption = {
     name: "generate-runtime-config",
     writeBundle(options) {
@@ -50,10 +51,6 @@ export default defineConfig(({ mode }) => {
       writeFileSync(
         path.join(outDir, "config.js"),
         `window.__APP_CONFIG__ = ${JSON.stringify(configFromEnv(env), null, 2)};\n`,
-      );
-      writeFileSync(
-        path.join(outDir, "config.env.json"),
-        `${JSON.stringify(ENV_NAMES, null, 2)}\n`,
       );
     },
   };
@@ -144,8 +141,8 @@ export default defineConfig(({ mode }) => {
           name: APP_NAME,
           short_name: APP_SHORT_NAME,
           description: APP_DESCRIPTION,
-          theme_color: "#161618",
-          background_color: "#161618",
+          theme_color: dark[900],
+          background_color: dark[900],
           display: "fullscreen",
           orientation: "portrait",
           start_url: "/",
@@ -154,16 +151,25 @@ export default defineConfig(({ mode }) => {
               src: "/logo.svg",
               type: "image/svg+xml",
               sizes: "any",
+              purpose: "any",
             },
             {
               src: "/icons/android/android-launchericon-192-192.png",
               type: "image/png",
               sizes: "192x192",
+              purpose: "any",
             },
             {
               src: "/icons/android/android-launchericon-512-512.png",
               type: "image/png",
               sizes: "512x512",
+              purpose: "any",
+            },
+            {
+              src: "/icons/android/android-launchericon-maskable-512.png",
+              type: "image/png",
+              sizes: "512x512",
+              purpose: "maskable",
             },
           ],
         },

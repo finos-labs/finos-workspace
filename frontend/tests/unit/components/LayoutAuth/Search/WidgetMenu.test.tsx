@@ -9,6 +9,7 @@ import WidgetMenu, {
   type WidgetItem,
 } from "~/components/LayoutAuth/Search/WidgetMenu";
 import { useShallowThemeStore } from "~/lib/state/theme";
+import { setAccess } from "../../../factories";
 
 const mockAddWidgets = vi.fn();
 const mockGetTabById = vi.fn();
@@ -210,7 +211,8 @@ describe("WidgetMenu", () => {
       expect(screen.getByTestId("results-not-found")).toBeInTheDocument();
     });
 
-    it("shows link to add external source when filtering by external", () => {
+    it("links to the Connections page to add an external source", () => {
+      setAccess({ user_type: "Developer" });
       renderWidgetMenu({
         widgets: [],
         state: { ...defaultState, selectedOption: "external" },
@@ -218,7 +220,19 @@ describe("WidgetMenu", () => {
 
       expect(
         screen.getByRole("link", { name: "Add an external source" }),
-      ).toBeInTheDocument();
+      ).toHaveAttribute("href", "/app/connections");
+    });
+
+    it("offers no external source to users who cannot add connections", () => {
+      setAccess({ user_type: "User" });
+      renderWidgetMenu({
+        widgets: [],
+        state: { ...defaultState, selectedOption: "external" },
+      });
+
+      expect(
+        screen.queryByRole("link", { name: "Add an external source" }),
+      ).not.toBeInTheDocument();
     });
   });
 

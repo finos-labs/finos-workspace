@@ -7,7 +7,7 @@ import {
   MAX_SKILL_DESCRIPTION_LENGTH,
 } from "~/lib/constants";
 import { getConfig } from "~/lib/runtimeConfig";
-import { useShallowAuthStore } from "~/lib/state/auth";
+import { fetchAgent } from "~/lib/state/agentToken";
 import {
   type AIMessage,
   type CopilotCommandResultT,
@@ -58,7 +58,6 @@ function buildConversationPayload() {
  * Mirrors the "create widget from artifact" flow.
  */
 export function useCreateSkillFromConversation() {
-  const userToken = useShallowAuthStore((s) => s.user?.token);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchSkillInfo = useCallback(
@@ -67,22 +66,22 @@ export function useCreateSkillFromConversation() {
       existingSlugs: string[],
       signal: AbortSignal,
     ): Promise<GeneratedSkill> => {
-      const response = await fetch(`${getConfig().urls.ai}/v1/generate/skill_info`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${userToken}`,
-        } as HeadersInit,
-        body: JSON.stringify({
-          skill_generation_request: {
-            conversation: buildConversationPayload(),
-            name_hint: args.name || undefined,
-            instructions: args.instructions || undefined,
-            existing_slugs: existingSlugs,
-          },
-        }),
-        signal,
-      });
+      const response = await fetchAgent(
+        `${getConfig().urls.ai}/v1/generate/skill_info`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            skill_generation_request: {
+              conversation: buildConversationPayload(),
+              name_hint: args.name || undefined,
+              instructions: args.instructions || undefined,
+              existing_slugs: existingSlugs,
+            },
+          }),
+          signal,
+        },
+      );
 
       if (!response.ok) {
         throw new Error(`Skill generation failed with status ${response.status}`);
@@ -98,7 +97,7 @@ export function useCreateSkillFromConversation() {
         content: typeof data.content === "string" ? data.content : "",
       };
     },
-    [userToken],
+    [],
   );
 
   const createSkillFromConversation = useCallback(
@@ -162,7 +161,7 @@ export function useCreateSkillFromConversation() {
         const payload: SkillCreate = {
           slug,
           description: (
-            generated.description || "Workflow saved from a copilot conversation."
+            generated.description || "Workflow saved from an agent conversation."
           ).slice(0, MAX_SKILL_DESCRIPTION_LENGTH),
           content: generated.content,
         };

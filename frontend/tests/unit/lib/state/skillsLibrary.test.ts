@@ -9,7 +9,6 @@
 
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { isDefaultSkill } from "~/components/AI/skills";
 import { isValidSlug, toSlug, useSkillsLibraryStore } from "~/lib/state/skillsLibrary";
 
 // Test data factory
@@ -30,24 +29,6 @@ const createMockSkill = (
   createdDate: overrides.createdDate ?? new Date().toISOString(),
   updatedDate: overrides.updatedDate ?? new Date().toISOString(),
 });
-
-vi.mock("~/lib/state/theme", () => ({
-  useThemeStore: {
-    getState: () => ({
-      removedSkillSlugs: ["html-report"],
-    }),
-    // Mock function to track calls to removeDefaultSkill
-    removeDefaultSkill: vi.fn(),
-  },
-}));
-
-/**
- * `updateSkills` always appends the built-in default skills, so assertions about
- * user-supplied skills must ignore them. Filtering by `isDefaultSkill` keeps these
- * tests correct as defaults are added or removed, rather than hard-coding a count.
- */
-const userSkillsInStore = () =>
-  useSkillsLibraryStore.getState().skills.filter((skill) => !isDefaultSkill(skill.id));
 
 describe("skillsLibrary utilities", () => {
   describe("isValidSlug", () => {
@@ -231,7 +212,7 @@ describe("useSkillsLibraryStore", () => {
         useSkillsLibraryStore.getState().updateSkills(mockSkills);
       });
 
-      const userSkills = userSkillsInStore();
+      const userSkills = useSkillsLibraryStore.getState().skills;
       expect(userSkills).toHaveLength(2);
       expect(userSkills[0].slug).toBe("first");
       expect(userSkills[1].slug).toBe("second");
@@ -249,7 +230,7 @@ describe("useSkillsLibraryStore", () => {
         useSkillsLibraryStore.getState().updateSkills(newSkills);
       });
 
-      const userSkills = userSkillsInStore();
+      const userSkills = useSkillsLibraryStore.getState().skills;
       expect(userSkills).toHaveLength(1);
       expect(userSkills[0].slug).toBe("new");
     });
@@ -371,16 +352,7 @@ describe("useSkillsLibraryStore", () => {
         useSkillsLibraryStore.getState().updateSkills(mockSkills);
       });
 
-      const defaultSlugs = new Set(
-        useSkillsLibraryStore
-          .getState()
-          .skills.filter((skill) => isDefaultSkill(skill.id))
-          .map((skill) => skill.slug),
-      );
-      const catalog = useSkillsLibraryStore
-        .getState()
-        .getSkillsCatalog()
-        .filter((entry) => !defaultSlugs.has(entry.slug));
+      const catalog = useSkillsLibraryStore.getState().getSkillsCatalog();
 
       expect(catalog).toHaveLength(2);
       expect(catalog[0]).toHaveProperty("slug");

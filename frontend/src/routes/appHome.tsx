@@ -66,7 +66,7 @@ export function Card({
   return (
     <div
       className={twMerge(
-        "flex h-[180px] flex-col gap-2.5 rounded bg-white p-2.5 body-xs-regular shadow-xs dark:bg-[#151518]",
+        "flex h-[180px] flex-col gap-2.5 rounded bg-white p-2.5 body-xs-regular shadow-xs dark:bg-dark-900",
         extraClassname,
       )}
     >

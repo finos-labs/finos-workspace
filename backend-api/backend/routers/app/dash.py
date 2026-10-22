@@ -4,11 +4,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
-from sqlalchemy import insert, not_, or_, select, update
+from sqlalchemy import not_, or_, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api import auth_helpers, crud, schemas
+from api import auth_helpers, crud, models, schemas
 from api.database import aget_read_db, aget_write_db
 from api.models import (
     DashboardItem,
@@ -17,15 +17,12 @@ from api.models import (
     PermissionsEntityMap,
     User,
 )
-from api.rate_limit import LIMIT_DEFAULT, exempt_user_agent, limiter
+from api.rate_limit import LIMIT_DEFAULT, exempt_service_token, limiter
 from routers import app_helpers
-from routers.app.index import validate_user
-from utilities.config import settings
 
 router = APIRouter(
     prefix="/app/dash",
     tags=["app-dash"],
-    dependencies=[Depends(auth_helpers.check_origin)],
 )
 
 
@@ -54,20 +51,15 @@ async def get_shared_items(
         auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)
     ),
 ):
-    if user.permissions_uuid != settings.DEVELOPER_MAPPING or settings.is_onprem():
-        tasks: list[asyncio.Task[crud.UserDashboards]] = [
-            asyncio.create_task(app_helpers.dashboard_task("shared", user.uuid)),
-            asyncio.create_task(
-                app_helpers.dashboard_task(
-                    "entity_shared", user.uuid, user.permissions_uuid
-                )
-            ),
-        ]
-        shared, entity_shared = await asyncio.gather(*tasks)
-        entity_shared = {k: v for k, v in entity_shared.items() if k not in shared}
-        return schemas.DashboardShared(shared=shared, entity_shared=entity_shared)
-
-    return schemas.DashboardShared(shared={}, entity_shared={})
+    tasks: list[asyncio.Task[crud.UserDashboards]] = [
+        asyncio.create_task(app_helpers.dashboard_task("shared", user.uuid)),
+        asyncio.create_task(
+            app_helpers.dashboard_task("entity_shared", user.uuid, user.permissions_uuid)
+        ),
+    ]
+    shared, entity_shared = await asyncio.gather(*tasks)
+    entity_shared = {k: v for k, v in entity_shared.items() if k not in shared}
+    return schemas.DashboardShared(shared=shared, entity_shared=entity_shared)
 
 
 @router.get("/sync", response_model=schemas.DashboardComplete)
@@ -80,7 +72,7 @@ async def get_items(
 
 
 @router.get("/validate-and-sync", response_model=schemas.DashboardCompleteWithContext)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_user_agent)
+@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def dash_validate_and_get_items(  # noqa: PLR0914, PLR0915
     request: Request,
     db: AsyncSession = Depends(aget_write_db),
@@ -91,7 +83,6 @@ async def dash_validate_and_get_items(  # noqa: PLR0914, PLR0915
                 "permissions_uuid",
                 "display_settings",
                 "is_superuser",
-                "can_submit_marketplace",
             ],
             ["FileWidget"],
             app_session=True,
@@ -99,7 +90,8 @@ async def dash_validate_and_get_items(  # noqa: PLR0914, PLR0915
     ),
 ):
     """
-    Validate the user token and retrieve the complete dashboard data.
+    Retrieve the complete dashboard data of the signed-in user; the session was
+    validated by the user dependency, which refuses a missing or expired one with 401.
 
     Args:
         db (Session): Database session dependency.
@@ -107,14 +99,8 @@ async def dash_validate_and_get_items(  # noqa: PLR0914, PLR0915
 
     Returns:
         schemas.DashboardComplete: Complete dashboard data (owned, shared and entity shared dashboards).
-
-    Raises:
-        HTTPException: If the token is invalid.
     """
     start_time = time()
-    res = await validate_user(db=db, token=user.token)
-    if not res.success:
-        raise HTTPException(status_code=401, detail="invalid token")
     dashboards_complete = await app_helpers.get_dashboards_complete(user=user)
     user_apps_complete = await app_helpers.get_user_apps_complete(user=user)
 
@@ -129,13 +115,14 @@ async def dash_validate_and_get_items(  # noqa: PLR0914, PLR0915
     user_skills = await app_helpers.get_user_skill_state(db, user.uuid)
 
     # Get usage
-    usage = await schemas.EntitlementUsageGet.check_cache(db, user)
+    usage = await schemas.UsageGet.check_cache(db, user)
 
     # Get the Copilot models and MCP tools the user's roles grant
     copilot_access = await app_helpers.get_user_copilot_access(db, user.uuid)
 
-    # Get entitlements
-    entitlements = await app_helpers.get_entitlement(db, user.uuid)
+    # Get what the user may do
+    access = await app_helpers.get_user_access(db, user.uuid)
+    own_connections = access.user_type in models.CONNECTION_TYPES
 
     entity_uuid = await app_helpers.get_entity_uuid(db, user.uuid)
     # Get Theme Settings
@@ -149,13 +136,12 @@ async def dash_validate_and_get_items(  # noqa: PLR0914, PLR0915
         entity_shared=dashboards_complete.entity_shared,
         owned=dashboards_complete.owned,
         usage=usage,
-        feature_entitlements=entitlements,
-        can_submit_marketplace=bool(user.is_superuser or user.can_submit_marketplace),
+        access=access,
         copilot_chats=chats,
         questions_history=questions_history,
         mcp_servers=mcp_servers.get_servers_json(),
         display_settings=user.display_settings,
-        file_widgets=[x.__dict__ for x in user.FileWidget],
+        file_widgets=[x.__dict__ for x in user.FileWidget] if own_connections else [],
         user_apps=user_apps_complete,
         entity_theme_settings=entity_theme_settings.model_dump(),
         widget_metadata=widget_metadata,
@@ -221,7 +207,12 @@ async def dashboard_versions(
     ).limit(1)
     if (await db.execute(shared_query)).first():
         return await get_versions()
-    # Finally we check if the dashboard has been shared with everyone in the user's entity
+    # Finally we check if the dashboard has been shared with everyone in the user's
+    # entity, which only users who may receive shared items see
+    if (await crud.get_users_sharing(db, [user.uuid]))[user.uuid] == models.SHARING_NONE:
+        raise HTTPException(
+            status_code=403, detail="You do not have permission to view this dashboard"
+        )
     user_entity_query = (
         select(PermissionsEntityMap.entity_uuid)
         .where(PermissionsEntityMap.uuid == user.permissions_uuid)
@@ -238,6 +229,7 @@ async def dashboard_versions(
         .join(User, User.uuid == DashboardItem.owner_uuid)
         .join(PermissionsEntityMap, User.permissions_uuid == PermissionsEntityMap.uuid)
         .where(
+            DashboardItem.uuid == dashboard_uuid,
             DashboardItem.entity_share.is_(True),
             PermissionsEntityMap.entity_uuid == user_entity,
         )
@@ -252,7 +244,7 @@ async def dashboard_versions(
 
 
 @router.post(
-    "/{dashboard_uuid}/toggle-entity-sharing", response_model=schemas.SuccessReturn
+    "/{dashboard_uuid}/toggle-entity-sharing", response_model=schemas.ShareReturn
 )
 async def toggle_entity_sharing(
     dashboard_uuid: UUID,
@@ -262,6 +254,14 @@ async def toggle_entity_sharing(
     ),
 ):
     await validate_dashboard_ownership(db, dashboard_uuid, user.uuid)
+    entity_share_query = select(DashboardItem.entity_share).where(
+        DashboardItem.uuid == dashboard_uuid
+    )
+    if not (await db.execute(entity_share_query)).scalar_one_or_none():
+        await crud.check_may_share(db, user.uuid)
+        if await app_helpers.shares_need_approval(db, user.uuid):
+            await crud.request_entity_share(db, user.uuid, dashboard_uuid)
+            return schemas.ShareReturn(success=True, pending_approval=True)
     toggle_query = (
         update(DashboardItem)
         .where(DashboardItem.uuid == dashboard_uuid)
@@ -307,10 +307,20 @@ async def get_shares(
             permissions=shared.permissions,
             created_date=shared.created_date,
         )
+    for waiting in await crud.get_waiting_shares(
+        db, user.uuid, dashboard_uuid=dashboard_uuid
+    ):
+        final_result[waiting.email] = schemas.DashboardShareReturn(
+            first_name=waiting.first_name,
+            last_name=waiting.last_name,
+            permissions=waiting.permissions,
+            created_date=waiting.created_date,
+            pending=True,
+        )
     return final_result
 
 
-@router.post("/{dashboard_uuid}/share", response_model=schemas.SuccessReturn)
+@router.post("/{dashboard_uuid}/share", response_model=schemas.ShareReturn)
 async def add_share(
     dashboard_uuid: UUID,
     share: schemas.ShareDashboard,
@@ -324,41 +334,35 @@ async def add_share(
             status_code=400, detail="The user does not have permissions"
         )
     await validate_dashboard_ownership(db, dashboard_uuid, user.uuid)
+    await crud.check_may_share(db, user.uuid)
     clean_shares = await crud.get_shares_without_existing(
         db, share, dashboard_uuid, user.email
     )
     if not clean_shares:
-        return schemas.SuccessReturn.success_instance()
+        return schemas.ShareReturn.success_instance()
 
     user_permissions, user_uuids = (
         await crud.get_new_sharing_permissions(
             db, clean_shares, user.permissions_uuid, dashboard_uuid
         )
     )
+    await crud.check_share_recipients(db, user_uuids)
 
-    found_user = bool(user_permissions)
-    if user_permissions:
-        await db.execute(insert(DashboardShare), user_permissions)
-        await db.execute(
-            update(DashboardItem)
-            .where(
-                DashboardItem.uuid == dashboard_uuid,
-                DashboardItem.owner_uuid == user.uuid,
-            )
-            .values(is_shared=True)
-        )
-        await db.commit()
-        await crud.share_files(db, user.uuid, user_uuids, dashboard_uuid=dashboard_uuid)
-
-    if not found_user:
+    if not user_permissions:
         raise HTTPException(
             status_code=402, detail="User not found in your organization"
         )
+    if await app_helpers.shares_need_approval(db, user.uuid):
+        await crud.request_shares(
+            db, user.uuid, user_permissions, dashboard_uuid=dashboard_uuid
+        )
+        return schemas.ShareReturn(success=True, pending_approval=True)
 
-    return schemas.SuccessReturn.success_instance()
+    await crud.apply_shares(db, user.uuid, user_permissions, dashboard_uuid=dashboard_uuid)
+    return schemas.ShareReturn.success_instance()
 
 
-@router.patch("/{dashboard_uuid}/share", response_model=schemas.SuccessReturn)
+@router.patch("/{dashboard_uuid}/share", response_model=schemas.ShareReturn)
 async def update_share(
     dashboard_uuid: UUID,
     share: schemas.ShareDashboard,
@@ -366,8 +370,14 @@ async def update_share(
     user: User = Depends(auth_helpers.GetCurrentUser(["uuid", "email"], app_session=True)),
 ):
     await validate_dashboard_ownership(db, dashboard_uuid, user.uuid)
+    await crud.check_may_share(db, user.uuid)
     current_shares_query = (
-        select(User.email, DashboardShare.permissions, DashboardShare.uuid)
+        select(
+            User.email,
+            DashboardShare.permissions,
+            DashboardShare.uuid,
+            DashboardShare.shared_user_uuid,
+        )
         .join(DashboardShare, User.uuid == DashboardShare.shared_user_uuid)
         .where(
             DashboardShare.dashboard_item_uuid == dashboard_uuid,
@@ -378,19 +388,38 @@ async def update_share(
     current_shares_response = (await db.execute(current_shares_query)).mappings().all()
     if not current_shares_response:
         await crud.handle_dashboard_is_shared(db, dashboard_uuid)
-        return schemas.SuccessReturn.success_instance()
+        return schemas.ShareReturn.success_instance()
+    await crud.check_share_recipients(
+        db, [x.shared_user_uuid for x in current_shares_response]
+    )
     current_shares = {x.email: (x.permissions, x.uuid) for x in current_shares_response}
     updates = []
     for key, value in current_shares.items():
         if value[0] != share.shares[key]:
             data = {"uuid": value[1], "permissions": share.shares[key]}
             updates.append(data)
+    if updates and await app_helpers.shares_need_approval(db, user.uuid):
+        recipients = {x.uuid: x.shared_user_uuid for x in current_shares_response}
+        await crud.request_shares(
+            db,
+            user.uuid,
+            [
+                {
+                    "dashboard_item_uuid": dashboard_uuid,
+                    "shared_user_uuid": recipients[change["uuid"]],
+                    "permissions": change["permissions"],
+                }
+                for change in updates
+            ],
+            dashboard_uuid=dashboard_uuid,
+        )
+        return schemas.ShareReturn(success=True, pending_approval=True)
     if updates:
         await db.execute(update(DashboardShare), updates)
         await db.commit()
 
     await crud.handle_dashboard_is_shared(db, dashboard_uuid)
-    return schemas.SuccessReturn.success_instance()
+    return schemas.ShareReturn.success_instance()
 
 
 @router.delete("/{dashboard_uuid}/share", response_model=schemas.SuccessReturn)
@@ -437,6 +466,9 @@ async def delete_share(
             db, user.uuid, user_uuids, dashboard_uuid=dashboard_uuid
         )
 
+    await crud.cancel_share_requests(
+        db, user.uuid, share.shares, dashboard_uuid=dashboard_uuid
+    )
     await crud.handle_dashboard_is_shared(db, dashboard_uuid)
 
     return {"success": True}
@@ -463,6 +495,7 @@ async def see_available_users(
         raise HTTPException(status_code=400, detail="Unable to find the user's entity")
     all_users_query = (
         select(
+            User.uuid,
             User.email,
             User.first_name,
             User.last_name,
@@ -475,6 +508,9 @@ async def see_available_users(
         )
     )
     all_users = (await db.execute(all_users_query)).mappings().all()
+    # Only users who may receive shared items can be shared with
+    recipients = set(await crud.get_share_recipients(db, [x.uuid for x in all_users]))
+    all_users = [x for x in all_users if x.uuid in recipients]
 
     shared_users_query = (
         select(

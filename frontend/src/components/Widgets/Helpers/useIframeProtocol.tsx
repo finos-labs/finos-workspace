@@ -2,7 +2,7 @@ import isEqual from "lodash.isequal";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { getConfig } from "~/lib/runtimeConfig";
+import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { convertHeadersToRecord } from "~/lib/utils/widgetParams";
 import {
   isWidgetParamMessageType,
@@ -35,6 +35,35 @@ const getIframeOrigin = (iframeRef: React.RefObject<HTMLIFrameElement | null>) =
   }
 };
 
+/** How many frames deep a page may nest its content (and still be taken for the widget's iframe). */
+const MAX_FRAME_DEPTH = 8;
+
+/**
+ * Whether `source` is `frame` or a frame inside it. A page that nests its content in sub-iframes (Streamlit
+ * does) sends from one of those, so the widget's own window is somewhere up its parent chain. Two iframes of
+ * the same origin are not each other's: judging by origin made every widget take the messages (and the
+ * handshake) of its siblings for its own.
+ */
+function isWindowWithin(
+  source: MessageEventSource | null,
+  frame: Window | null | undefined,
+): boolean {
+  if (!(source && frame)) return false;
+  let current = source as Window;
+  for (let depth = 0; depth < MAX_FRAME_DEPTH; depth++) {
+    if (current === frame) return true;
+    let parent: Window | null | undefined;
+    try {
+      parent = current.parent;
+    } catch {
+      return false;
+    }
+    if (!parent || parent === current) return false;
+    current = parent;
+  }
+  return false;
+}
+
 type PendingRequest = {
   resolve: (msg: WorkspaceDataMessage) => void;
   reject: (err: Error) => void;
@@ -46,7 +75,16 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
     manifest: null as WorkspaceWidgetManifest[] | null,
     paramDefs: null as WorkspaceParamDef[] | null,
   });
-  const authHeaders = useWidgetContext()?.widget?.endpoint?.headers;
+  // The source's headers, from page memory: the iframe gets them at its handshake, and
+  // again whenever they change after it (after a reload they arrive from the API later)
+  // The iframe page is the widget's endpoint: it gets them only on its source's origin
+  const widget = useWidgetContext()?.widget;
+  const authHeaders = useSourceCredentials(
+    widget?.sourceId,
+    widget?.endpoint?.url,
+  ).headers;
+  const authHeadersRef = useRef(authHeaders);
+  authHeadersRef.current = authHeaders;
 
   const pendingRequestsRef = useRef<Map<string, PendingRequest>>(new Map());
 
@@ -57,16 +95,30 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
   // Store the origin from the handshake to scope outgoing postMessage calls.
   const bridgeOriginRef = useRef<string>("*");
 
+  /** Posts the source's headers to the iframe's page that made the handshake, when there are any. */
+  const postAuth = useCallback(
+    (
+      target: MessageEventSource | null,
+      origin: string,
+      sourceHeaders: Record<string, string>,
+    ) => {
+      const { headers } = convertHeadersToRecord(sourceHeaders);
+      if (!target || Object.keys(headers).length === 0) return;
+      if (origin !== getIframeOrigin(iframeRef)) return;
+      const message: WorkspaceAuthMessage = { type: "workspace-auth", headers };
+      (target as Window).postMessage(message, origin);
+      console.debug("[iframe-protocol] sent workspace-auth to", origin);
+    },
+    [iframeRef],
+  );
+
   const isFromIframe = useCallback(
     (event: MessageEvent) => {
       if (event.source === iframeRef.current?.contentWindow) return true;
       if (bridgeSourceRef.current && event.source === bridgeSourceRef.current)
         return true;
 
-      const iframeOrigin = getIframeOrigin(iframeRef);
-      if (iframeOrigin && event.origin === iframeOrigin) return true;
-
-      return false;
+      return isWindowWithin(event.source, iframeRef.current?.contentWindow);
     },
     [iframeRef, bridgeSourceRef],
   );
@@ -122,13 +174,7 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
           return prev;
         });
 
-        const { headers } = convertHeadersToRecord(authHeaders);
-        const iframeOrigin = getIframeOrigin(iframeRef);
-        if (Object.keys(headers).length > 0 && event.origin === iframeOrigin) {
-          const message: WorkspaceAuthMessage = { type: "workspace-auth", headers };
-          (event.source as Window).postMessage(message, event.origin);
-          console.debug("[iframe-protocol] sent workspace-auth to", event.origin);
-        }
+        postAuth(event.source, event.origin, authHeadersRef.current);
         return;
       }
 
@@ -200,16 +246,16 @@ export function useIframeProtocol(params: UseIframeProtocolOptions) {
       bridgeSourceRef,
       bridgeOriginRef,
       pendingRequestsRef,
-      authHeaders,
+      postAuth,
     ],
   );
 
+  // Headers that arrive or change after the handshake go to the same page
   useEffect(() => {
-    if (!getConfig().data.allowHtmlJsExecution) {
-      console.debug("[iframe-protocol] disabled, skipping listener setup");
-      return;
-    }
+    postAuth(bridgeSourceRef.current, bridgeOriginRef.current, authHeaders);
+  }, [authHeaders, postAuth]);
 
+  useEffect(() => {
     const ctrl = new AbortController();
     console.debug("[iframe-protocol] listener active, waiting for messages");
     window.addEventListener("message", handleMessage, { signal: ctrl.signal });

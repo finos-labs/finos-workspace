@@ -323,40 +323,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
 
       await expect(validateBackend(mockSource)).rejects.toThrow("Request timed out");
     });
-
-    it("should detect Platform from headers", async () => {
-      const validWidgets = {
-        test_widget: {
-          name: "Test Widget",
-          endpoint: "/test",
-          params: {},
-        },
-      };
-
-      // Mock widgets.json response with Platform header
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(validWidgets),
-          headers: new Headers({ "X-Backend-Type": "Platform" }),
-        })
-        // Mock apps.json response
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([]),
-          headers: new Headers(),
-        })
-        // Mock agents.json response
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([]),
-          headers: new Headers(),
-        });
-
-      const result = await validateBackend(mockSource, false);
-
-      expect(result.isPlatform).toBe(true);
-    });
   });
 
   describe("validateObject function", () => {
@@ -452,6 +418,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         widgets,
         mockBackendUrl,
         mockHeaders,
+        {},
       );
 
       expect(failedEndpoints).toEqual([]);
@@ -483,6 +450,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         widgets,
         mockBackendUrl,
         mockHeaders,
+        {},
       );
 
       expect(failedEndpoints).toHaveLength(1);
@@ -511,6 +479,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         widgets,
         mockBackendUrl,
         mockHeaders,
+        {},
       );
 
       expect(failedEndpoints).toHaveLength(1);
@@ -539,13 +508,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
       });
 
       const signal = new AbortController().signal;
-      await validateBackendEndpoints(
-        widgets,
-        mockBackendUrl,
-        mockHeaders,
-        false,
-        signal,
-      );
+      await validateBackendEndpoints(widgets, mockBackendUrl, mockHeaders, {}, signal);
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -587,6 +550,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         widgets,
         mockBackendUrl,
         mockHeaders,
+        {},
       );
 
       // Should skip 422 errors as they're expected for widgets with required params

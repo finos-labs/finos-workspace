@@ -8,14 +8,14 @@ import { updateUserDisplaySettings } from "~/api/user.api";
 import type { SearchTabId } from "~/components/LayoutAuth/Search/SearchDialog";
 import type { WidgetItem } from "~/components/LayoutAuth/Search/WidgetMenu";
 import { getConfig } from "~/lib/runtimeConfig";
-import type { DefaultSkillSlugs, DisplaySettings } from "~/types/auth.type";
-import type { Selector, SideBarItem } from "./app";
+import type { DisplaySettings } from "~/types/auth.type";
+import type { Selector } from "./app";
 import { useAuthStore } from "./auth";
 import type { Source } from "./backendConnector";
 
+/** A sign-in to an MCP server waiting for its popup: the server and where to sign in. */
 type McpAuthPopup = {
   serverName?: string;
-  serverUrlHash: string;
   url: string;
   authUrl: string;
   popupFeatures?: string;
@@ -24,9 +24,6 @@ type McpAuthPopup = {
 type ExportFormatFn = (title: string) => void;
 
 interface ThemeState {
-  // Track removed default skills by slug to prevent re-adding them
-  removedSkillSlugs: DefaultSkillSlugs[];
-  removeDefaultSkill: (slug: DefaultSkillSlugs) => void;
   mcpAuthPopup: McpAuthPopup | null;
   setMcpAuthPopup: (popup: ThemeState["mcpAuthPopup"]) => void;
   promptsSuggestionsMenuOpen: boolean;
@@ -147,10 +144,6 @@ interface ThemeState {
   getDisplaySettings: () => DisplaySettings;
   updateDisplaySettings: (settings: Partial<DisplaySettings>) => void;
   debouncedUpdateSettings: () => Promise<void> | undefined;
-  excelExportPopup: boolean;
-  setExcelExportPopup: (popup: boolean) => void;
-  excelExportItem: SideBarItem | null;
-  setExcelExportItem: (item: SideBarItem | null) => void;
   setEditAppDialog: (dialogState: Partial<ThemeState["editAppDialog"]>) => void;
   exportFolderPopup: boolean;
   setExportFolderPopup: (popup: boolean) => void;
@@ -172,6 +165,45 @@ interface ThemeState {
   };
 }
 
+/**
+ * The preferences theme-storage keeps across reloads. Only these keys are written to
+ * localStorage and only these are read back from it, so dialog state, a pending MCP
+ * sign-in, and anything else that sits in theme-storage never reach the store or go
+ * back to browser storage.
+ */
+const PERSISTED_PREFERENCES = [
+  "theme",
+  "fontSize",
+  "gridCorners",
+  "gridSnapping",
+  "showWidgetControlsEllipsis",
+  "aiEnhancements",
+  "quickAddButtonVisible",
+  "showMinimizeButton",
+  "collapsedPanelExpandOnHover",
+  "autoHideWidgetNavbar",
+  "groupingVisible",
+  "recentlyAddedWidgets",
+  "userAcknowledgedMobile",
+  "userAcknowledgedNonChromium",
+  "pulseAnimationButtonsAlreadyClicked",
+] as const satisfies readonly (keyof ThemeState)[];
+
+type PersistedPreferences = Partial<
+  Pick<ThemeState, (typeof PERSISTED_PREFERENCES)[number]>
+>;
+
+function pickPreferences(state: unknown): PersistedPreferences {
+  if (typeof state !== "object" || state === null) return {};
+  const source = state as Record<string, unknown>;
+  return Object.fromEntries(
+    PERSISTED_PREFERENCES.filter((key) => key in source).map((key) => [
+      key,
+      source[key],
+    ]),
+  ) as PersistedPreferences;
+}
+
 export const useThemeStore = createWithEqualityFn<ThemeState>()(
   subscribeWithSelector(
     persist(
@@ -180,13 +212,6 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
         const resolvedTheme = uiCfg.defaultTheme || "dark";
 
         return {
-          removedSkillSlugs: [],
-          removeDefaultSkill: (slug) => {
-            const { removedSkillSlugs } = get();
-            const updatedRemovedSkillSlugs = new Set([...removedSkillSlugs, slug]);
-            set({ removedSkillSlugs: Array.from(updatedRemovedSkillSlugs) });
-            get().debouncedUpdateSettings();
-          },
           mcpAuthPopup: null,
           setMcpAuthPopup: (popup) => set({ mcpAuthPopup: popup }),
           generateAppDashboardId: null,
@@ -385,14 +410,9 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
               showMinimizeButton,
               collapsedPanelExpandOnHover,
               autoHideWidgetNavbar,
-              removedSkillSlugs,
             } = get();
 
-            const {
-              lastVisitedPage = "/app",
-              openaiApiKey,
-              perplexityApiKey,
-            } = useAuthStore.getState();
+            const { lastVisitedPage = "/app" } = useAuthStore.getState();
 
             return {
               theme,
@@ -404,11 +424,8 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
               quickAddButtonVisible,
               showMinimizeButton,
               lastVisitedPage,
-              openaiApiKey,
-              perplexityApiKey,
               collapsedPanelExpandOnHover,
               autoHideWidgetNavbar,
-              removedSkillSlugs,
             } as DisplaySettings;
           },
           updateDisplaySettings: (settings) => {
@@ -424,10 +441,6 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
             const settings = get().getDisplaySettings();
             updateUserDisplaySettings(settings);
           }, 5000),
-          excelExportPopup: false,
-          setExcelExportPopup: (popup) => set({ excelExportPopup: popup }),
-          excelExportItem: null,
-          setExcelExportItem: (item) => set({ excelExportItem: item }),
           exportFolderPopup: false,
           setExportFolderPopup: (popup) => set({ exportFolderPopup: popup }),
           exportFolderItem: null,
@@ -436,9 +449,8 @@ export const useThemeStore = createWithEqualityFn<ThemeState>()(
       },
       {
         name: "theme-storage",
-        onRehydrateStorage: () => (state) => {
-          if (state) state.mcpAuthPopup = null;
-        },
+        partialize: pickPreferences,
+        merge: (persisted, current) => ({ ...current, ...pickPreferences(persisted) }),
       },
     ),
   ),

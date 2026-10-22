@@ -172,8 +172,6 @@ describe("getConfig", () => {
     expect(cfg.authentication.allowEmailLogin).toBe(true);
     expect(cfg.copilot.enabled).toBe(false);
     expect(cfg.ui.defaultTheme).toBe("dark");
-    expect(cfg.ui.showMarketplace).toBe(true);
-    expect(cfg.urls.marketplace).toBe("");
     expect(cfg.links.docsUrl).toBe("");
     expect(cfg.contact.supportEmail).toBe("");
     expect(cfg.whiteLabel.name).toBe("Workspace");
@@ -188,14 +186,6 @@ describe("getConfig", () => {
     const cfg = getConfig();
     expect(cfg.authentication.allowEmailLogin).toBe(false);
     expect(cfg.copilot.enabled).toBe(true);
-  });
-
-  it("defaults ui.showMarketplace to true and reads VITE_UI_SHOW_MARKETPLACE", () => {
-    vi.stubEnv("VITE_BACKEND_URL", "https://x.test");
-    vi.stubEnv("VITE_UI_SHOW_MARKETPLACE", "false");
-
-    const cfg = getConfig();
-    expect(cfg.ui.showMarketplace).toBe(false);
   });
 
   it("reads string array env vars via parseStringArray", () => {

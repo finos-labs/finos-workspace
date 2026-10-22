@@ -16,9 +16,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   HttpResponse,
   http,
+  mockAccess,
+  mockCopilotKeys,
   mockDashboardData,
+  mockSession,
   mockUsage,
   mockUser,
+  mockValidateResponse,
   server,
   setupMSW,
 } from "../../mocks/msw-utils";
@@ -29,6 +33,9 @@ const BASE_URL = "https://backend.test";
 const testClient = axios.create({
   baseURL: BASE_URL,
 });
+
+// What apiClient sends to the API with the session cookie
+const WEB_CLIENT = { headers: { "X-Workspace-Client": "web" } };
 
 /** The error a request fails with when the server refuses it. */
 async function refusal(request: Promise<unknown>): Promise<AxiosError> {
@@ -59,7 +66,9 @@ describe("MSW Integration - Auth API", () => {
       expect(status).toBe(200);
       expect(data).toHaveProperty("uuid", mockUser.uuid);
       expect(data).toHaveProperty("email", mockUser.email);
-      expect(data).toHaveProperty("token", mockUser.token);
+      // The session is a cookie: no token comes back in the body
+      expect(data).not.toHaveProperty("token");
+      expect(data).not.toHaveProperty("access_token");
     });
 
     it("should return 401 for invalid credentials", async () => {
@@ -73,35 +82,93 @@ describe("MSW Integration - Auth API", () => {
       expect(error.response?.data).toMatchObject({ detail: "Invalid credentials" });
     });
 
-    it("should return 2FA required for 2fa@example.com", async () => {
+    it("answers 202 with a flag when the organization requires an authenticator", async () => {
       const { data, status } = await testClient.post("/app/login", {
         email: "2fa@example.com",
         password: "password123",
       });
 
-      expect(status).toBe(200);
-      expect(data).toHaveProperty("requires_2fa", true);
+      expect(status).toBe(202);
+      expect(data).toEqual({
+        two_factor_required: true,
+        message: "Two-factor authentication is required",
+      });
     });
   });
 
   describe("GET /app/validate", () => {
     it("should validate authenticated user", async () => {
-      const { data, status } = await testClient.get("/app/validate", {
-        headers: { Authorization: "Bearer valid-token" },
-      });
+      const { data, status } = await testClient.get("/app/validate", WEB_CLIENT);
 
       expect(status).toBe(200);
       expect(data).toHaveProperty("uuid");
       expect(data).toHaveProperty("valid", true);
     });
 
-    it("should reject invalid token", async () => {
+    it("refuses a request that does not name the web client", async () => {
       const error = await refusal(
         testClient.get("/app/validate", {
-          headers: { Authorization: "Bearer invalid-token" },
+          headers: { Authorization: "Bearer some-token" },
         }),
       );
       expect(error.response?.status).toBe(401);
+    });
+  });
+
+  describe("GET /app/session", () => {
+    it("returns the signed-in user for the web client", async () => {
+      const { data, status } = await testClient.get("/app/session", WEB_CLIENT);
+
+      expect(status).toBe(200);
+      expect(data).toEqual(mockSession);
+    });
+
+    it("answers 401 otherwise", async () => {
+      const error = await refusal(testClient.get("/app/session"));
+      expect(error.response?.status).toBe(401);
+    });
+  });
+
+  describe("POST /app/copilot/token", () => {
+    it("mints a short-lived agent token for the web client", async () => {
+      const { data } = await testClient.post("/app/copilot/token", null, WEB_CLIENT);
+
+      expect(data).toEqual({ token: "mock-agent-token", expires_in: 1800 });
+    });
+  });
+
+  describe("/app/copilot-keys", () => {
+    it("says which keys are saved, never the keys", async () => {
+      const { data } = await testClient.get("/app/copilot-keys", WEB_CLIENT);
+
+      expect(data).toEqual(mockCopilotKeys);
+    });
+
+    it("saves a key, removes one with null and leaves an omitted one", async () => {
+      const { data } = await testClient.put(
+        "/app/copilot-keys",
+        { openai_api_key: "sk-test", perplexity_api_key: null },
+        WEB_CLIENT,
+      );
+
+      expect(data).toEqual({ has_openai_key: true, has_perplexity_key: false });
+    });
+  });
+
+  describe("identity provider sign-in", () => {
+    it("refuses Microsoft sign-in without the ID token", async () => {
+      const error = await refusal(
+        testClient.post("/app/microsoft-auth", { token: "graph-token" }),
+      );
+      expect(error.response?.status).toBe(401);
+    });
+
+    it("signs in with Okta when the ID token is sent", async () => {
+      const { status } = await testClient.post("/app/okta-auth", {
+        token: "okta-access-token",
+        id_token: "okta-id-token",
+      });
+      expect(status).toBe(200);
     });
   });
 
@@ -114,25 +181,6 @@ describe("MSW Integration - Auth API", () => {
     });
   });
 
-  describe("GET /app/user", () => {
-    it("should return user data when authenticated", async () => {
-      const { data, status } = await testClient.get("/app/user", {
-        headers: { Authorization: "Bearer valid-token" },
-      });
-
-      expect(status).toBe(200);
-      expect(data).toHaveProperty("uuid", mockUser.uuid);
-      expect(data).toHaveProperty("email", mockUser.email);
-      expect(data).toHaveProperty("first_name", mockUser.first_name);
-      expect(data).toHaveProperty("last_name", mockUser.last_name);
-    });
-
-    it("should reject unauthenticated requests", async () => {
-      const error = await refusal(testClient.get("/app/user"));
-      expect(error.response?.status).toBe(401);
-    });
-  });
-
   describe("GET /app/usage", () => {
     it("should return usage data", async () => {
       const { data, status } = await testClient.get("/app/usage");
@@ -142,11 +190,20 @@ describe("MSW Integration - Auth API", () => {
     });
   });
 
+  describe("GET /app/access", () => {
+    it("should return what the user's roles let them do", async () => {
+      const { data, status } = await testClient.get("/app/access");
+
+      expect(status).toBe(200);
+      expect(data).toEqual(mockAccess);
+    });
+  });
+
   describe("Custom Handler Overrides", () => {
     it("should allow overriding handlers per test", async () => {
-      // Override the user endpoint for this specific test
+      // Override the validate endpoint for this specific test
       server.use(
-        http.get(`${BASE_URL}/app/user`, () => {
+        http.get(`${BASE_URL}/app/validate`, () => {
           return HttpResponse.json({
             uuid: "custom-uuid",
             email: "custom@test.com",
@@ -155,9 +212,7 @@ describe("MSW Integration - Auth API", () => {
         }),
       );
 
-      const { data, status } = await testClient.get("/app/user", {
-        headers: { Authorization: "Bearer valid-token" },
-      });
+      const { data, status } = await testClient.get("/app/validate", WEB_CLIENT);
 
       expect(status).toBe(200);
       expect(data.uuid).toBe("custom-uuid");
@@ -166,18 +221,16 @@ describe("MSW Integration - Auth API", () => {
 
     it("should reset to default handlers after previous test", async () => {
       // server.resetHandlers() is called in afterEach, so this uses default
-      const { data } = await testClient.get("/app/user", {
-        headers: { Authorization: "Bearer valid-token" },
-      });
+      const { data } = await testClient.get("/app/validate", WEB_CLIENT);
 
-      // Should be back to default mock user
-      expect(data.uuid).toBe(mockUser.uuid);
+      // Should be back to the default validate response
+      expect(data.uuid).toBe(mockValidateResponse.uuid);
       expect(data).not.toHaveProperty("custom_field");
     });
 
     it("should allow simulating server errors", async () => {
       server.use(
-        http.get(`${BASE_URL}/app/user`, () => {
+        http.get(`${BASE_URL}/app/validate`, () => {
           return HttpResponse.json(
             { detail: "Internal server error" },
             { status: 500 },
@@ -185,27 +238,21 @@ describe("MSW Integration - Auth API", () => {
         }),
       );
 
-      const error = await refusal(
-        testClient.get("/app/user", {
-          headers: { Authorization: "Bearer valid-token" },
-        }),
-      );
+      const error = await refusal(testClient.get("/app/validate", WEB_CLIENT));
       expect(error.response?.status).toBe(500);
     });
 
     it("should allow simulating network delays", async () => {
       server.use(
-        http.get(`${BASE_URL}/app/user`, async () => {
+        http.get(`${BASE_URL}/app/validate`, async () => {
           // Simulate 100ms delay
           await new Promise((resolve) => setTimeout(resolve, 100));
-          return HttpResponse.json(mockUser);
+          return HttpResponse.json(mockValidateResponse);
         }),
       );
 
       const start = Date.now();
-      await testClient.get("/app/user", {
-        headers: { Authorization: "Bearer valid-token" },
-      });
+      await testClient.get("/app/validate", WEB_CLIENT);
       const elapsed = Date.now() - start;
 
       expect(elapsed).toBeGreaterThanOrEqual(100);

@@ -1,5 +1,6 @@
 import type { CustomCopilot } from "~/api/auth.api";
 import type { WidgetT } from "~/components/types";
+import type { Usage, UserAccess } from "~/lib/state/access";
 import type {
   Source,
   StoredFile,
@@ -8,12 +9,9 @@ import type {
 import type { Chat } from "~/lib/state/copilot";
 import type { CopilotAccess } from "~/lib/state/copilotAccess";
 import type { EntityThemeSettings } from "~/lib/state/entityTheme";
-import type { FeatureFlags, Usage } from "~/lib/state/featureFlags";
 import type { McpServer } from "~/lib/state/mcpTools";
 import type { SharedItem } from "~/lib/state/sharedApp";
 import type { UserAppsSync } from "~/lib/state/userApps";
-
-export type DefaultSkillSlugs = "html-report" | "html-table" | "html-chart";
 
 export interface DisplaySettings {
   theme: "light" | "dark";
@@ -25,11 +23,8 @@ export interface DisplaySettings {
   quickAddButtonVisible: boolean;
   showMinimizeButton: boolean;
   lastVisitedPage?: string;
-  perplexityApiKey?: string;
-  openaiApiKey?: string;
   collapsedPanelExpandOnHover?: boolean;
   autoHideWidgetNavbar?: boolean;
-  removedSkillSlugs?: DefaultSkillSlugs[]; // Track removed skills by slug to prevent re-adding default skills
 }
 
 export type SyncType = "owned" | "shared" | "entity_shared";
@@ -40,8 +35,7 @@ export interface DashSyncT {
   shared?: Record<string, SharedItem>;
   entity_shared?: Record<string, SharedItem>;
   entity_theme_settings: EntityThemeSettings;
-  feature_entitlements?: Omit<FeatureFlags, "can_submit_marketplace">;
-  can_submit_marketplace?: boolean;
+  access?: UserAccess;
   usage?: Usage;
   copilot_chats?: Chat[];
   questions_history?: string[];
@@ -67,15 +61,10 @@ export type Detail = { status: number; detail: string };
 export interface LoginResponse {
   is_first_login: boolean;
   custom_copilots: CustomCopilot[];
-  feature_entitlements: Omit<FeatureFlags, "can_submit_marketplace">;
-  can_submit_marketplace: boolean;
+  access: UserAccess;
   usage: Usage;
   uuid: string;
   email: string;
-  access_token: string;
-  microsoftIdToken?: string;
-  oktaIdToken?: string;
-  username: string;
   expiration_date: string;
   temporary_password: boolean;
   force_2fa: boolean;
@@ -94,7 +83,22 @@ export interface LoginResponse {
   mcp_servers: McpServer[];
 }
 
-export type Login2FAResponse = Detail & { access_token?: string };
+/**
+ * A sign-in the API answered with HTTP 202: the code from the user's authenticator is
+ * missing or wrong, or (`two_factor_required`) their organization requires an
+ * authenticator they have not set up yet. In that case the API also set the short-lived
+ * enrollment cookie that POST /totp and POST /totp/activate accept.
+ */
+export type Login2FAResponse = Detail & { two_factor_required?: boolean };
+
+/** GET /app/session: who is signed in, restored from the session cookie after a reload. */
+export type SessionResponse = Pick<
+  LoginResponse,
+  "uuid" | "email" | "entity_name" | "role" | "access"
+> &
+  Partial<Pick<LoginResponse, "usage" | "temporary_password">> & {
+    user: Pick<UserResponse, "first_name" | "last_name" | "display_settings">;
+  };
 
 export interface SuccessReturn {
   success: boolean;
@@ -176,6 +180,7 @@ export interface SkillCatalogEntry {
 export interface SkillPayload {
   slug: string;
   description: string;
-  contentMarkdown: string;
+  /** The skill's instructions; absent for one of the agent's own skills, whose instructions the agent has. */
+  contentMarkdown?: string;
   source: "forced_slash" | "model_selected";
 }

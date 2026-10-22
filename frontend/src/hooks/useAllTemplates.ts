@@ -3,18 +3,16 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { deleteUserAppShare, syncUserApps } from "~/api/auth.api";
 import type { WidgetJsonT } from "~/components/types";
+import { canReceiveShares, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import { duplicateTabItem } from "~/lib/utils";
 import {
   createCustomTemplateTab,
   getUntouchedAppTabInfo,
 } from "~/lib/utils/createTemplates";
-import { showNotification } from "~/lib/utils/toast";
-import { areTruthy } from "~/lib/utils/values";
-import type { ListedAppMcpServer } from "~/types/listedApps";
+import type { AppMcpServer } from "~/types/appMcpServer";
 import { useShallowAppStore } from "../lib/state/app";
 import {
-  type BackendTemplate,
   getTemplateWidgetsMetadata,
   type Source,
   useShallowBackendConnectorStore,
@@ -22,7 +20,7 @@ import {
 import { type SharedUser, useShallowUserAppsStore } from "../lib/state/userApps";
 import { useSharedTemplates } from "./useSharedTemplates";
 
-export type TemplateType = "user" | "shared" | "listed" | "generated";
+export type TemplateType = "user" | "shared" | "generated";
 
 export interface UnifiedTemplate {
   id: string;
@@ -35,7 +33,7 @@ export interface UnifiedTemplate {
     | { name: string; description?: string; count?: number }[];
   totalWidgets?: number;
   prompts: string[];
-  mcpServers?: ListedAppMcpServer[];
+  mcpServers?: AppMcpServer[];
   img?: string;
   img_dark?: string;
   img_light?: string;
@@ -43,17 +41,16 @@ export interface UnifiedTemplate {
   onOpen?: () => void;
   onDelete?: () => Promise<void>;
   onAfterDelete?: () => void;
-  onRate?: () => void;
   source?: Source;
   isShared?: boolean;
   createdBy?: string;
   creator?: boolean;
   sharedWith?: SharedUser[];
-  vendorName?: string;
 }
 
 export function useAllTemplates(isLoadingApiSources = false) {
   const userEmail = useShallowAuthStore((state) => state.user?.email || "");
+  const mayReceive = useShallowAccessStore((state) => canReceiveShares(state.access));
   const { data: sharedTemplatesData = [] } = useSharedTemplates({
     enabled: !isLoadingApiSources,
   });
@@ -80,73 +77,28 @@ export function useAllTemplates(isLoadingApiSources = false) {
     );
 
     const userTemplates = apiSources
-      .filter(
-        (source) =>
-          (source.templates && source.templates.length > 0) || source.vendorApp,
-      )
-      .flatMap((source) => {
-        const vendorApp = source.vendorApp;
-        const appUuid = vendorApp?.uuid;
-        const isListedApp = Boolean(appUuid);
-
-        const templates = [...(source.templates || [])];
-        const listedAppDisconnected =
-          isListedApp && !areTruthy(source.templates, source.widgets);
-        if (listedAppDisconnected) {
-          // If this is a Listed App without templates, create a template from the vendorApp data
-          const listedAppTemplate: BackendTemplate = {
-            name: vendorApp?.name || source.name,
-            description: vendorApp?.shortDescription || "",
-            prompts: vendorApp?.prompts || [],
-            mcpServers: vendorApp?.mcpServers,
-            img: vendorApp?.thumbnail,
-            img_dark: vendorApp?.thumbnailDark,
-            img_light: vendorApp?.thumbnailLight,
-            tabs: {},
-          };
-          templates.push(listedAppTemplate);
-        }
-
-        return templates.map((template) => {
+      .filter((source) => source.templates && source.templates.length > 0)
+      .flatMap((source) =>
+        (source.templates || []).map((template) => {
           const { widgets, totalWidgets } = getTemplateWidgetsMetadata(
             template,
             source,
           );
 
           return {
-            id: isListedApp ? `listed-${appUuid}` : template.id,
-            name: isListedApp ? vendorApp?.name || source.name : template.name,
+            id: template.id,
+            name: template.name,
             description: template.description,
-            type: isListedApp ? "listed" : "user",
-            vendorName: isListedApp ? vendorApp?.vendorName : undefined,
+            type: "user",
             totalWidgets,
             widgets,
             prompts: template.prompts || [],
-            mcpServers: template.mcpServers || vendorApp?.mcpServers,
+            mcpServers: template.mcpServers,
             selected_agent: template.selected_agent,
-            img: vendorApp?.thumbnail || template.img,
-            img_dark: vendorApp?.thumbnailDark || template.img_dark,
-            img_light: vendorApp?.thumbnailLight || template.img_light,
+            img: template.img,
+            img_dark: template.img_dark,
+            img_light: template.img_light,
             onClick: () => {
-              if (listedAppDisconnected) {
-                console.warn("[ListedApp] App not connected debug:", {
-                  appName: vendorApp?.name,
-                  appBackendUrl: source.url,
-                  existingSource: source,
-                  allApiSources: apiSources.map((s) => ({
-                    name: s.name,
-                    url: s.url,
-                    templatesLength: s.templates?.length,
-                  })),
-                });
-                return showNotification({
-                  message: "App not connected",
-                  description:
-                    "Re-enter your API key in the Apps Marketplace to connect this app.",
-                  toastType: "warning",
-                });
-              }
-
               createCustomTemplateTab({
                 addTab,
                 navigate,
@@ -159,8 +111,8 @@ export function useAllTemplates(isLoadingApiSources = false) {
             source,
             isShared: sharedTemplateIds.has(template.id),
           } as UnifiedTemplate;
-        });
-      });
+        }),
+      );
 
     const userTemplateIds = new Set(userTemplates.map((template) => template.id));
 
@@ -200,111 +152,113 @@ export function useAllTemplates(isLoadingApiSources = false) {
       });
 
     // Map user-generated apps to template format
-    const generatedAppTemplates = [...userGeneratedApps, ...userSharedApps].map(
-      (app) => {
-        const widgets = app.widgets
-          .filter((w) => w.widgetId && w.name)
-          .map((w) => ({
-            name: w.name || w.widgetId,
-            count: 1,
-          }));
+    // Apps other users shared appear only for those who may receive shared items
+    const generatedAppTemplates = [
+      ...userGeneratedApps,
+      ...(mayReceive ? userSharedApps : []),
+    ].map((app) => {
+      const widgets = app.widgets
+        .filter((w) => w.widgetId && w.name)
+        .map((w) => ({
+          name: w.name || w.widgetId,
+          count: 1,
+        }));
 
-        const uniqueWidgets = widgets.reduce(
-          (acc, widget) => {
-            const existing = acc.find((w) => w.name === widget.name);
-            if (existing) {
-              existing.count += 1;
-            } else {
-              acc.push({ ...widget });
-            }
-            return acc;
-          },
-          [] as typeof widgets,
-        );
+      const uniqueWidgets = widgets.reduce(
+        (acc, widget) => {
+          const existing = acc.find((w) => w.name === widget.name);
+          if (existing) {
+            existing.count += 1;
+          } else {
+            acc.push({ ...widget });
+          }
+          return acc;
+        },
+        [] as typeof widgets,
+      );
 
-        return {
-          id: app.uuid,
+      return {
+        id: app.uuid,
+        name: app.name,
+        description: app.description,
+        type: "generated",
+        totalWidgets: app.widgets.length,
+        widgets: uniqueWidgets,
+        prompts: app.prompts || [],
+        selected_agent: app.selected_agent,
+        img: app.img,
+        img_dark: app.img_dark,
+        img_light: app.img_light,
+        isShared: app.isShared,
+        createdBy: app.createdBy,
+        creator: app.creator,
+        sharedWith: app.sharedWith,
+        onClick: () => {
+          const templateId = `custom-${app.uuid}` as const;
+          const { tabName, navigateTo } = getUntouchedAppTabInfo(
+            templateId,
+            app.name,
+            items,
+          );
+          if (navigateTo) {
+            if (navigate) navigate(navigateTo);
+            return;
+          }
+
+          const tabData = {
+            name: tabName,
+            type: "custom",
+            templateId,
+            widgets: app.widgets,
+            groups: app.groups || [],
+            gridLayout: app.gridLayout || {},
+          } as const;
+
+          // Directly create a new tab with the user-generated app data
+          const newTab = duplicateTabItem(
+            {
+              index: "",
+              children: [],
+              data: { ...tabData, name: tabName ?? app.name },
+            },
+            undefined,
+            false,
+          );
+          const index = newTab.index;
+
+          addTab(newTab, true);
+
+          if (navigate) {
+            // Navigate to the new dashboard after a brief delay to ensure it's created
+            setTimeout(() => {
+              const tab = getTabById(index);
+              if (!tab) return;
+              navigate(`/app/${index}`);
+            }, 100);
+          }
+        },
+        onDelete: async () => {
+          if (!app.uuid) throw new Error("The app has no uuid");
+          if (app.creator) return await removeUserApp(app.uuid);
+          if (userEmail) {
+            const data = await deleteUserAppShare(app.uuid, [userEmail]);
+            if (!data?.success)
+              throw new Error(data?.detail || "Failed to delete app share");
+
+            await syncUserApps();
+            toast.success("App share deleted successfully", {
+              id: "delete-app-share",
+              description: "You have successfully removed your access to this app.",
+            });
+          }
+        },
+        source: {
+          id: `generated-${app.uuid}`,
           name: app.name,
-          description: app.description,
-          type: "generated",
-          totalWidgets: app.widgets.length,
-          widgets: uniqueWidgets,
-          prompts: app.prompts || [],
-          selected_agent: app.selected_agent,
-          img: app.img,
-          img_dark: app.img_dark,
-          img_light: app.img_light,
-          isShared: app.isShared,
-          createdBy: app.createdBy,
-          creator: app.creator,
-          sharedWith: app.sharedWith,
-          onClick: () => {
-            const templateId = `custom-${app.uuid}` as const;
-            const { tabName, navigateTo } = getUntouchedAppTabInfo(
-              templateId,
-              app.name,
-              items,
-            );
-            if (navigateTo) {
-              if (navigate) navigate(navigateTo);
-              return;
-            }
-
-            const tabData = {
-              name: tabName,
-              type: "custom",
-              templateId,
-              widgets: app.widgets,
-              groups: app.groups || [],
-              gridLayout: app.gridLayout || {},
-            } as const;
-
-            // Directly create a new tab with the user-generated app data
-            const newTab = duplicateTabItem(
-              {
-                index: "",
-                children: [],
-                data: { ...tabData, name: tabName ?? app.name },
-              },
-              undefined,
-              false,
-            );
-            const index = newTab.index;
-
-            addTab(newTab, true);
-
-            if (navigate) {
-              // Navigate to the new dashboard after a brief delay to ensure it's created
-              setTimeout(() => {
-                const tab = getTabById(index);
-                if (!tab) return;
-                navigate(`/app/${index}`);
-              }, 100);
-            }
-          },
-          onDelete: async () => {
-            if (!app.uuid) throw new Error("The app has no uuid");
-            if (app.creator) return await removeUserApp(app.uuid);
-            if (userEmail) {
-              const data = await deleteUserAppShare(app.uuid, [userEmail]);
-              if (!data?.success)
-                throw new Error(data?.detail || "Failed to delete app share");
-
-              await syncUserApps();
-              toast.success("App share deleted successfully", {
-                id: "delete-app-share",
-                description: "You have successfully removed your access to this app.",
-              });
-            }
-          },
-          source: {
-            id: `generated-${app.uuid}`,
-            name: app.name,
-            createdDate: app.createdDate,
-          } as Partial<Source>,
-        } as UnifiedTemplate;
-      },
-    );
+          createdDate: app.createdDate,
+        } as Partial<Source>,
+      } as UnifiedTemplate;
+    });
 
     // Type assertion needed here because the inferred type might be too wide
     return [
@@ -317,6 +271,7 @@ export function useAllTemplates(isLoadingApiSources = false) {
     sharedTemplatesData,
     userGeneratedApps,
     userSharedApps,
+    mayReceive,
     addTab,
     navigate,
     items,

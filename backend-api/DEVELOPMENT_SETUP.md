@@ -19,17 +19,29 @@ The `.env` file at `backend/envs/.env` is the single source of configuration.
 For local Docker development the important host-facing values are:
 
 ```ini
-MODE=onprem
-DISABLE_CORS=1
+MODE=production
+BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:1420"]
 ```
+
+`BACKEND_CORS_ORIGINS` names the origins of the web app exactly as the browser sends them
+(here: the compose stack's web app and its dev server); it is required. Only these origins
+pass CORS, and the session cookie is accepted only from them. An MCP server on a
+private network (a compose service, a host on your LAN) must be listed by host name in
+`ALLOWED_MCP_HOSTNAMES`, because the API reaches users' MCP servers only at public
+addresses.
+
+The web app keeps its session in an HttpOnly cookie (`__Host-ws_session`), which browsers
+send to the API only when it is on the same site as the page. In a deployment, serve the API under the web app's
+registrable domain (for example `api.<your-domain>` beside `app.<your-domain>`), or under
+`/api` of the web app's own origin, and use HTTPS. On `http://localhost`,
+Chromium and Firefox accept this secure cookie.
 
 `docker-compose-local-dev.yml` overrides `DB_HOST` and `REDIS_HOST` inside the
 API and RQ worker containers to use Docker networking (`mysql`, `redis`), so the
 same `.env` file works for both host tooling and containers.
 
-The SQLite compose files (`docker-compose-local-dev-sqlite.yml`,
-`docker-compose-lite.yml`) read `backend/envs/.env.sqlite`, which is not
-tracked. Create it once from the template, which also writes the first administrator's seed
+The SQLite compose file (`docker-compose-local-dev-sqlite.yml`) reads
+`backend/envs/.env.sqlite`, which is not tracked. Create it once from the template, which also writes the first administrator's seed
 config (see step 2 below):
 
 ```sh
@@ -59,11 +71,12 @@ code changes.
 
 ### 2. Initialize admin users and entities
 
-Name the organization and its first administrator once. The administrator's password is
-random unless you pass `--admin-password`; it is kept in the generated
-`backend/scripts/cfgs/config.toml`, which git ignores. (`create_local_env` also writes
-`backend/envs/.env` for the full compose stack; `--config-only` writes just the seed config, which
-is what this local-development setup needs.)
+Name the organization and its first administrator once, in the generated
+`backend/scripts/cfgs/config.toml`, which git ignores. It holds no password: `init_users`
+creates the account without one, and `init_users --new-password` sets it (below).
+(`create_local_env` also writes `backend/envs/.env` for the full compose stack;
+`--config-only` writes just the seed config, which is what this local-development setup
+needs.)
 
 ```bash
 cd backend
@@ -84,26 +97,29 @@ cd backend
 
 This reads entity/admin configuration from `backend/scripts/cfgs/config.toml` and:
 
-- Creates the entity named there, with Admin and User permission maps
-- Creates the administrator named there as a superuser
+- Creates the entity named there, with Admin, Developer and User permission maps
+- Creates the administrator named there as a superuser, without a password (an administrator
+  who exists keeps theirs)
 - Writes `user_create.json` with UUIDs needed by the running app
 
-### 3. Verify authentication
+Set the administrator's password (typed twice, not shown; the same command sets a new one):
+`../.venv/bin/python -m scripts.init_users --new-password <your-email>`.
+
+### 3. Verify the API
+
+The API answers only a request that names an allowed origin (one of `BACKEND_CORS_ORIGINS`)
+in its `Origin` header; a browser sends its page's origin by itself:
 
 ```bash
-curl -s http://localhost:8000/app/login \
-  -X POST \
-  -H "Content-Type: application/json" \
-  -d '{"email":"<your-email>","password":"<the password in config.toml>","remember":false}'
+curl -s -H "Origin: http://localhost:3000" http://localhost:8000/health
 ```
 
-A successful response returns JSON with `access_token`, `uuid`, etc.
-
-You can also use the admin CLI:
+Sign in through the web app with the password set in step 2. The admin CLI works on the
+database itself and makes no request to the API (`--help` lists its commands):
 
 ```bash
-cd admin_cli
-./workspace-admin auth login --api-url http://localhost:8000
+cd backend
+../.venv/bin/python -m scripts.workspace_admin user list
 ```
 
 ## UI Testing Workflow
@@ -116,7 +132,8 @@ docker compose -f docker-compose-local-dev.yml up --build --watch
 
 2. Keep that command running in its own shell window.
 
-3. Start the frontend separately and point it at `http://localhost:8000`.
+3. Start the frontend separately and point it at `http://localhost:8000`. Its dev
+   server's origin (`http://localhost:1420`) must be one of `BACKEND_CORS_ORIGINS`.
 
 4. Edit files under `backend/` normally. The FastAPI container reloads
 automatically, and Compose restarts the RQ worker container when backend files
@@ -182,10 +199,15 @@ cd backend
   that automatically bcrypt-hashes values on write. Code that inserts or updates
   passwords must pass the **plaintext** password — never pre-hash it.
 
-- The `WORKSPACE_AUTH_TOKEN` in `.env` is the service-to-service auth token. When
-  `DISABLE_CORS=1`, the `/app/*` endpoints auto-authenticate using this token,
-  so no `X-Workspace-Authorization` header is needed from localhost clients.
+- The `WORKSPACE_AUTH_TOKEN` in `.env` is the service-to-service auth token. The
+  `/app/*` endpoints validate it for requests from `BACKEND_CORS_ORIGINS` (and from the
+  page itself, without an Origin), so browsers send no `X-Workspace-Authorization`
+  header; a service from anywhere else sends it.
+
+- Sessions are random tokens whose SHA-256 hash the `session` table stores. The web app
+  (`X-Workspace-Client: web`) rides its HttpOnly cookie; no session is a bearer token. A session expires when its time is
+  up, with no grace period.
 
 - `user_create.json` is both an output of `init_users.py` and an input to
-  `AppSettings.__init__` (which sets `DEVELOPER_MAPPING` and `ON_PREM_ADMIN_MAPPING`).
+  `AppSettings.__init__` (which sets `DEFAULT_USER_MAPPING`: the first organization's User map).
   Always delete it before a clean init to avoid circular contamination.

@@ -4,9 +4,11 @@ import type { ComponentProps, ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { UnifiedTemplate } from "~/hooks/useAllTemplates";
+import type { SharingLevel } from "~/lib/state/access";
 import type { Source } from "~/lib/state/backendConnector";
 
 const mockNavigate = vi.fn();
+const mockSetShareUserAppsPopupId = vi.fn();
 
 vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-router-dom")>();
@@ -20,14 +22,8 @@ vi.mock("~/lib/state/theme", () => ({
     selector({
       theme: "light",
       setEditAppDialog: vi.fn(),
-      setShareUserAppsPopupId: vi.fn(),
+      setShareUserAppsPopupId: mockSetShareUserAppsPopupId,
     }),
-}));
-
-vi.mock("~/lib/state/featureFlags", () => ({
-  useShallowFeatureFlagsStore: (
-    selector: (state: Record<string, unknown>) => unknown,
-  ) => selector({ featureFlags: { tier: "full" } }),
 }));
 
 vi.mock("~/lib/state/backendConnector", () => ({
@@ -52,14 +48,6 @@ vi.mock("~/lib/constants", async (importOriginal) => {
   };
 });
 
-const { mockCanSubmitApp } = vi.hoisted(() => ({
-  mockCanSubmitApp: vi.fn(() => false),
-}));
-
-vi.mock("~/lib/appSubmissionFlag", () => ({
-  useCanSubmitApp: () => mockCanSubmitApp(),
-}));
-
 vi.mock("~/components/ds/utils", () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
@@ -78,10 +66,6 @@ vi.mock("~/components/HoverPopover", () => ({
 
 vi.mock("~/components/General/Avatar", () => ({
   AuthenticatedAvatar: () => <div data-testid="avatar" />,
-}));
-
-vi.mock("~/components/General/FeatureLock", () => ({
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 vi.mock("~/components/ds/dialogs/ConfirmDialog", () => ({
@@ -130,6 +114,7 @@ vi.mock("~/components/LayoutAuth/AppCard/SharedWithPopover", () => ({
 vi.mock("~/components/LayoutAuth/AppCard/Tag", () => ({ Tag: () => null }));
 
 import AppCard from "~/components/LayoutAuth/AppCard/AppCard";
+import { setAccess } from "../../../factories";
 import { partial } from "../../../mocks";
 
 function makeTemplate(
@@ -169,6 +154,7 @@ describe("AppCard - Go to connection menu item", () => {
   beforeEach(() => {
     mockSource = null;
     mockNavigate.mockClear();
+    setAccess({ user_type: "Developer" });
   });
 
   it("shows 'Go to connection' for a user backend card", () => {
@@ -189,15 +175,16 @@ describe("AppCard - Go to connection menu item", () => {
     );
   });
 
-  it("does NOT show 'Go to connection' for shared cards", () => {
-    renderCard(makeTemplate("shared"));
+  it("does NOT show 'Go to connection' to a User, whose page Connections is not", () => {
+    setAccess({ user_type: "User" });
+    renderCard(makeTemplate("user"));
     expect(
       screen.queryByRole("button", { name: "Go to connection" }),
     ).not.toBeInTheDocument();
   });
 
-  it("does NOT show 'Go to connection' for listed (marketplace) cards", () => {
-    renderCard(makeTemplate("listed"));
+  it("does NOT show 'Go to connection' for shared cards", () => {
+    renderCard(makeTemplate("shared"));
     expect(
       screen.queryByRole("button", { name: "Go to connection" }),
     ).not.toBeInTheDocument();
@@ -210,35 +197,31 @@ describe("AppCard - Go to connection menu item", () => {
     ).not.toBeInTheDocument();
   });
 });
+describe("AppCard - Share app button", () => {
+  const shareButton = () => screen.queryByTestId("icon-share-07")?.closest("button");
 
-describe("AppCard - List app to marketplace menu item", () => {
   beforeEach(() => {
     mockSource = null;
-    mockNavigate.mockClear();
-    mockCanSubmitApp.mockReturnValue(false);
+    mockSetShareUserAppsPopupId.mockClear();
   });
 
-  it("shows the item on a user backend card when submission is allowed", () => {
-    mockCanSubmitApp.mockReturnValue(true);
-    renderCard(makeTemplate("user"));
-    expect(
-      screen.getByRole("button", { name: "List app to marketplace" }),
-    ).toBeInTheDocument();
-  });
-
-  it("hides the item when submission is not allowed", () => {
-    mockCanSubmitApp.mockReturnValue(false);
-    renderCard(makeTemplate("user"));
-    expect(
-      screen.queryByRole("button", { name: "List app to marketplace" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("hides the item on non-backend cards even when submission is allowed", () => {
-    mockCanSubmitApp.mockReturnValue(true);
+  it("lets a user whose roles allow sharing share their saved app", async () => {
+    setAccess({ sharing: "share" });
     renderCard(makeTemplate("generated"));
-    expect(
-      screen.queryByRole("button", { name: "List app to marketplace" }),
-    ).not.toBeInTheDocument();
+
+    const button = shareButton();
+    expect(button).toBeInTheDocument();
+    await userEvent.setup().click(button as HTMLButtonElement);
+    expect(mockSetShareUserAppsPopupId).toHaveBeenCalledWith("tpl");
+  });
+
+  it.each<SharingLevel>([
+    "none",
+    "receive",
+  ])("does not offer sharing to a user whose sharing is %s", (sharing) => {
+    setAccess({ sharing });
+    renderCard(makeTemplate("generated"));
+
+    expect(shareButton()).toBeUndefined();
   });
 });

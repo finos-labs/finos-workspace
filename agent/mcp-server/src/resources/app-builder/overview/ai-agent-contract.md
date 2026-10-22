@@ -1,0 +1,75 @@
+---
+title: AI Agent Contract
+uri: workspace://overview/ai-agent-contract
+use_when: You are writing widget descriptions, parameter metadata, response shapes, or apps.json prompts and want them to be usable by Workspace's AI Agent.
+language_specific: false
+related:
+  - workspace://overview/what-is-workspace
+  - workspace://specs/widgets-json
+  - workspace://specs/widget-parameters
+  - workspace://specs/apps-json
+---
+
+# AI Agent Contract
+
+Workspace ships a built-in AI Agent that reads the widgets on a Dashboard and answers questions across them — running calculations, identifying patterns, and dropping artifacts (text and HTML reports) back into the Dashboard. It does this by reading the same `widgets.json` metadata you author and the same data endpoints the renderer hits.
+
+This means metadata you might treat as "tooltip text" is **agent discoverability text**. A widget with a vague `description` will not be picked up reliably when a user asks a question that should be answered by it.
+
+## What the agent reads to discover widgets
+
+The agent uses these `widgets.json` fields to know what each widget is and when to use it:
+
+| Field | Use to the agent |
+|-------|------------------|
+| `name` | User-visible title. Weak signal on its own. |
+| `description` | **Primary discovery signal.** Should describe the *data* (what it is, what entity, what time range), not the *widget shape*. |
+| `category` / `subCategory` | Grouping signals — agents auto-tag widgets by these when answering Prompts. |
+| `source` | Provenance, used in attribution. |
+| `params[].paramName` / `label` / `description` | Tells the agent which inputs the endpoint takes and what they mean. |
+
+If the agent is consistently failing to pick the right widget for an obvious question, the `description` is almost always the cause.
+
+## Description-writing rules
+
+Write descriptions for the agent first, the human second. The human gets a tooltip; the agent gets the *only* signal.
+
+- **Lead with entity and metric.** "Headcount by team, last 12 months." Not "A view of headcount."
+- **State time range and granularity.** "Hourly", "Daily", "Last 90 days", "Year-to-date", "Trailing twelve months".
+- **Name the source if it's distinguishing.** "From the HR system", "From the user's connected spreadsheet".
+- **Don't describe the widget shape.** "A formatted report that shows..." wastes tokens; the agent already knows the type.
+- **Same rules apply to params.** A `description` of `"limit"` is useless; `"Maximum number of rows to return; default 10, max 1000"` is usable.
+
+## How the agent reads data
+
+For `markdown` widgets, the agent reads the same text the user sees.
+
+For `html` widgets, the agent **does not parse the HTML** when it can avoid it: if the widget sets `raw`, the agent calls the endpoint with `raw=true` and reads the underlying rows (a JSON array of row objects). Set `raw` on every `html` widget that is generated from data, and make the endpoint return those rows. The same toggle powers the user-facing "view the data" affordance.
+
+For `newsfeed` widgets, the agent reads the articles the way the renderer does: it calls the endpoint and reads the array.
+
+For `pdf` widgets, the agent reads the document's text.
+
+## Make responses agent-readable
+
+- **Numbers must be numbers.** In the rows a `raw=true` call returns, `"4.21%"` as a string defeats reasoning and calculation. Return `0.0421` and format it in the HTML.
+- **Timestamps must be ISO-8601 strings or epoch numbers.** Locale-formatted strings like `"Apr 21, 2026"` force the agent to parse them.
+- **Field names should be self-describing.** `change_pct` and `headcount_total` beat `c` and `ht`. The agent reads field names and uses them in its responses.
+- **Keep the row shape stable per call.** Don't return rows whose keys vary by parameter; the agent assumes one schema per response.
+- **Cap response sizes sensibly.** A widget returning 50,000 rows wastes the agent's context. Add a `limit` param with a sensible default.
+
+## `prompts` in `apps.json`
+
+The `prompts` array on an App is a curated list of starter queries surfaced when a user opens that App. They reference data the App's widgets actually expose — equal parts user onboarding and agent demo.
+
+- Write prompts as questions a user would actually ask, not feature descriptions. "Which teams grew fastest this quarter?" beats "Show team growth."
+- Reference entities present in the default parameter set ("What changed for `$team` this week?" where `team` is in the default Group).
+- Skip prompts that need widgets the App doesn't include.
+- Keep them short — they render as buttons.
+
+Empty `"prompts": []` is valid; ship at least 3–5 if you want the App to feel alive on first open.
+
+## Out of scope here
+
+- **Building your own AI Agent backend.** That's a separate backend surface (`/agents.json` + `/query` SSE). The Agent described here is the one Workspace ships and runs against your widgets.
+- **External agent-skill packaging.** The generated `app-builder` skill is only a compatibility package for clients that cannot read MCP resources directly; the canonical app-builder content remains this resource catalog.

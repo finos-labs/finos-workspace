@@ -15,6 +15,7 @@ import { buildIframeWidget } from "~/components/Widgets/custom/buildIframeWidget
 import { MarkdownContent } from "~/components/Widgets/custom/Markdown";
 import { useJsonData } from "~/lib/api";
 import { useShallowAppStore } from "~/lib/state/app";
+import { useSourceCredentials } from "~/lib/state/backendConnector";
 import { cn, formatDate } from "~/lib/utils";
 
 type NewsData = {
@@ -37,6 +38,7 @@ export default function News() {
   const { widget } = useWidgetContext();
 
   const validEndpoint = !!widget?.endpoint?.url;
+  const credentials = useSourceCredentials(widget.sourceId, widget.endpoint?.url);
 
   const [popupArticle, setPopupArticle] = useState<NewsData | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,19 +47,18 @@ export default function News() {
     const endpoint = widget.endpoint;
     const params = Object.fromEntries(
       Object.entries({
-        ...(endpoint?.query ?? {}),
+        ...credentials.query,
         ...(widget?.storage?.params ?? {}),
       }).filter(([_key, value]) => value !== "" && value !== undefined),
     );
 
     return {
       url: endpoint?.url ?? "",
-      endpointHeaders: endpoint?.headers ?? {},
+      endpointHeaders: credentials.headers,
       method: endpoint?.method ?? "GET",
       params,
-      addBearerToken: true,
     };
-  }, [widget?.endpoint, widget?.storage?.params]);
+  }, [widget?.endpoint, widget?.storage?.params, credentials]);
 
   const { data, isLoading, error, dataUpdatedAt } = useJsonData(
     {
@@ -121,7 +122,7 @@ export default function News() {
         >
           <div
             className={cn(
-              "overflow-x-auto p-0.5 rounded text-xs flex flex-col gap-2 text-left hover:bg-light-100 dark:hover:bg-[#212126]",
+              "overflow-x-auto p-0.5 rounded text-xs flex flex-col gap-2 text-left hover:bg-light-100 dark:hover:bg-dark-800",
             )}
           >
             {article.excerpt?.length > 10 ? (
@@ -135,7 +136,7 @@ export default function News() {
                 {article.title}
               </p>
             )}
-            <div className="flex items-center gap-2 text-light-500 dark:text-[#A2A2A2]">
+            <div className="flex items-center gap-2 text-light-500 dark:text-dark-50">
               <span>{formatArticleDate(article.date)}</span>
               <span>•</span>
               <span>{article.author}</span>

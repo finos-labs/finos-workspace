@@ -23,6 +23,7 @@ import type {
 import type { WidgetT } from "~/components/types";
 import type { WidgetId } from "~/components/Widgets";
 import { type ProcessedTemplate, useSharedTemplates } from "~/hooks/useSharedTemplates";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useAppStore } from "~/lib/state/app";
 import {
   type BackendTemplate,
@@ -1372,7 +1373,6 @@ function summarizeBackend(source: Source) {
     name: source.name,
     url: source.url,
     status: source.status ?? "pending",
-    is_platform: source.isPlatform ?? false,
     has_api_key: source.hasApiKey ?? false,
     widget_count: Object.keys(source.widgets ?? {}).length,
     app_count: source.templates?.length ?? 0,
@@ -1453,19 +1453,14 @@ async function handleManageBackendsCommand(
         name: command.name,
         url: cleanUrl,
         endpointHeaders: headers ?? null,
-        isPlatform: command.is_platform ?? false,
       } as Source);
-    const finalSource: Source =
-      typeof command.is_platform === "boolean"
-        ? { ...created, isPlatform: command.is_platform }
-        : created;
 
     const validateWidgets = command.validate_widgets ?? true;
     const { errorMessage, templateErrorMessage } = await store.updateApiSource(
-      finalSource,
+      created,
       true,
     );
-    const refreshed = store.getApiSourceById(appId) ?? finalSource;
+    const refreshed = store.getApiSourceById(appId) ?? created;
     const validationError = errorMessage || templateErrorMessage || null;
 
     if (validateWidgets && validationError) {
@@ -1496,7 +1491,6 @@ async function handleManageBackendsCommand(
     const removed = await store.deleteApiSource({
       id: existing.id,
       sourceId: existing.id,
-      vendorAppUuid: existing.vendorAppUuid ?? existing.vendorApp?.uuid,
     });
     if (!removed) {
       return errorResult(
@@ -1523,15 +1517,10 @@ async function handleManageBackendsCommand(
     });
   }
 
-  if (
-    !command.name &&
-    !command.url &&
-    headers === null &&
-    (command.is_platform === null || command.is_platform === undefined)
-  ) {
+  if (!command.name && !command.url && headers === null) {
     return errorResult(
       "invalid_request",
-      "manage_backends operation='update' requires at least one of name, url, endpoint_headers, or is_platform.",
+      "manage_backends operation='update' requires at least one of name, url, or endpoint_headers.",
     );
   }
 
@@ -1540,7 +1529,6 @@ async function handleManageBackendsCommand(
     name: command.name ?? existing.name,
     url: command.url ? command.url.trim().replace(/\/+$/, "") : existing.url,
     endpointHeaders: headers ?? existing.endpointHeaders,
-    isPlatform: command.is_platform ?? existing.isPlatform ?? false,
   };
 
   const { status } = await postApiSource(existing.id ?? command.backend_id, {
@@ -1843,7 +1831,7 @@ export function useWorkspaceBridgeCommandHandler() {
         throw new Error(`Agent '${targetAgent.name}' is missing a query endpoint.`);
       }
 
-      const response = await fetch(queryUrl, init);
+      const response = await fetchAgent(queryUrl, init);
       if (!response.ok) {
         throw new Error(response.statusText || "Assigned agent request failed.");
       }

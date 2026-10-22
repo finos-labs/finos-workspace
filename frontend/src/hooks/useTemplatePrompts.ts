@@ -8,7 +8,7 @@ const CUSTOM_PREFIX = "custom-";
  * Returns the prompts associated with a dashboard's templateId.
  *
  * Merges two sources because they live in different stores:
- * - Listed-app prompts on `apiSources[].templates[].prompts`
+ * - Backend-app prompts on `apiSources[].templates[].prompts`
  *   (templateId: `custom-${sourceId}-${slug}`)
  * - User-app prompts on `userApps[uuid].content.prompts` (owned + shared)
  *   (templateId: `custom-${userAppUuid}`)

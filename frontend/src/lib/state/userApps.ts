@@ -5,6 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
 import { deleteUserApp, postUserApp } from "~/api/auth.api";
+import { withoutEndpointCredentials } from "~/lib/utils/endpointCredentials";
 import { createIndexedDBStorage } from "~/lib/utils/indexDB";
 import { duplicateTabItem } from "../utils";
 import type { Item, TabData, Widget } from "./app";
@@ -47,6 +48,24 @@ export type UserAppsSync = {
   owned?: Record<string, UserAppReturn>;
   shared?: Record<string, UserAppReturn>;
 };
+
+/** Apps as they are persisted: no widget carries a data backend's credentials. */
+function withoutAppCredentials(apps: Record<string, UserAppReturn>) {
+  return Object.fromEntries(
+    Object.entries(apps).map(([id, app]) => [
+      id,
+      app.content?.widgets
+        ? {
+            ...app,
+            content: {
+              ...app.content,
+              widgets: app.content.widgets.map(withoutEndpointCredentials),
+            },
+          }
+        : app,
+    ]),
+  );
+}
 
 export interface UserAppsState {
   skipSyncUserApps: boolean;
@@ -174,8 +193,8 @@ export const useUserAppsStore = createWithEqualityFn<UserAppsState>()(
         name: "user-apps-storage",
         storage: createIndexedDBStorage(),
         partialize: (state) => ({
-          userApps: state.userApps,
-          sharedUserApps: state.sharedUserApps,
+          userApps: withoutAppCredentials(state.userApps),
+          sharedUserApps: withoutAppCredentials(state.sharedUserApps),
         }),
       },
     ),

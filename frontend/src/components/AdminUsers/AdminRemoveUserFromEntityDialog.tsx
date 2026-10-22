@@ -24,9 +24,6 @@ export default function AdminRemoveUserFromEntityDialog(props: Props) {
       queryClient.invalidateQueries({
         queryKey: ["admin", "users"],
       });
-      queryClient.invalidateQueries({
-        queryKey: ["admin", "entityInfo"],
-      });
       onConfirm();
       onClose();
       showNotification({

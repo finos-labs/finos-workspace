@@ -161,4 +161,29 @@ describe("useGetFinalMessagesAndWidgets", () => {
 
     expect(finalMessages).toEqual([{ role: "human", content: "summarize this" }]);
   });
+
+  it("keeps an answer that is JSON itself, and removes only a call of a function it does not know", async () => {
+    const answers = ["18", "true", "null", '"yes"', "[1, 2]", '{"total": 3}'];
+    mockGetCurrentChat.mockReturnValue({
+      messages: [
+        { role: "human", content: "what is 9 plus 9?", copilotId: "ines", timestamp: 1 },
+        ...answers.map((content, i) => ({ role: "ai", content, copilotId: "ines", timestamp: 10 + i })),
+        {
+          role: "ai",
+          content: JSON.stringify({ function: "no_such_function", input_arguments: {} }),
+          copilotId: "ines",
+          timestamp: 99,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useGetFinalMessagesAndWidgets());
+    const { finalMessages } = await result.current();
+
+    expect(finalMessages).toEqual([
+      { role: "human", content: "what is 9 plus 9?" },
+      ...answers.map((content) => ({ role: "ai", content, agent_id: "ines" })),
+    ]);
+    expect(mockRemoveMessages).toHaveBeenCalledWith([99]);
+  });
 });

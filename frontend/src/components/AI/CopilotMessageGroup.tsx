@@ -9,7 +9,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useDebounceValue, useLocalStorage } from "usehooks-ts";
+import { useDebounceValue } from "usehooks-ts";
 import {
   type Message,
   type MessageGroup,
@@ -37,26 +37,16 @@ const LoadingEllipsis = memo((props: { lastGroup?: MessageGroup }) => {
     s.streamingStatus,
     s.loading,
   ]);
-  const orchestrationModeEnabled = useShallowCopilotStore(
-    (s) => s.orchestrationModeEnabled,
-  );
   const shouldShowStandalone = useMemo(() => {
-    const isLoading =
-      loading &&
-      (streamingStatus === "streaming-ready" ||
-        (orchestrationModeEnabled && streamingStatus === "streaming-started"));
+    const isLoading = loading && streamingStatus === "streaming-ready";
 
     // Check if the last group is a step-by-step reasoning group
     const hasStepByStepInProgress =
-      lastGroup &&
-      lastGroup.role === "system" &&
-      loading &&
-      (streamingStatus === "streaming-ready" ||
-        (orchestrationModeEnabled && streamingStatus === "streaming-started"));
+      lastGroup && lastGroup.role === "system" && isLoading;
 
     // Only show standalone loading ellipsis if not showing within step-by-step reasoning
     return isLoading && !hasStepByStepInProgress;
-  }, [loading, streamingStatus, orchestrationModeEnabled, lastGroup]);
+  }, [loading, streamingStatus, lastGroup]);
 
   return useMemo(
     () => (
@@ -85,9 +75,6 @@ export default function CopilotMessageGroupRoot() {
 
   const isLoading = loading && streamingStatus === "streaming-ready";
 
-  const [streamingData, _] = useLocalStorage("streamedData", "");
-  const hasStreamingData = streamingData !== "";
-
   const { messages, setShowWelcome } = useShallowCopilotStore((s) => ({
     messages: s.getCurrentChat().messages,
     setShowWelcome: s.setShowWelcome,
@@ -100,9 +87,9 @@ export default function CopilotMessageGroupRoot() {
 
   useEffect(() => {
     queueMicrotask(() => {
-      setShowWelcome(groupedMessages?.length === 0 && !hasStreamingData);
+      setShowWelcome(groupedMessages?.length === 0);
     });
-  }, [groupedMessages?.length === 0, !hasStreamingData]);
+  }, [groupedMessages?.length === 0]);
 
   const groupedMessagesMemo = useMemo(
     () =>
@@ -154,11 +141,6 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
     s.loading,
   ]);
 
-  // Get orchestration mode for gradient animation
-  const orchestrationModeEnabled = useShallowCopilotStore(
-    (s) => s.orchestrationModeEnabled,
-  );
-
   // Check if this is a step-by-step reasoning group
   const isStepByStepGroup =
     group.role === "system" &&
@@ -190,7 +172,6 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
                 key={`${messageIndex}-${message.timestamp}`}
                 {...{
                   message,
-                  isLastGroup: isLastGroup,
                   previousGroupRole: previousGroupRole,
                   showIcon: !hasMultipleMessages,
                   currentGroupId: groupId,
@@ -235,8 +216,7 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
     group.role === "system" &&
     isLastGroup &&
     loading &&
-    (streamingStatus === "streaming-ready" ||
-      (orchestrationModeEnabled && streamingStatus === "streaming-started"));
+    streamingStatus === "streaming-ready";
 
   const isSystemOrSingleAiMessage =
     group.role === "system" || (group.role === "ai" && previousGroupRole !== "system");
@@ -342,7 +322,7 @@ export const AgentName = memo(
     );
 
     const agentName = useMemo(() => {
-      if (props.senderId === "default-copilot") return "Copilot";
+      if (props.senderId === "default-copilot") return "Agent";
       const senderName = externalCopilotHolders
         .flatMap((holder) => holder.copilots || [])
         .find((copilot) => copilot.id === props.senderId)?.name;

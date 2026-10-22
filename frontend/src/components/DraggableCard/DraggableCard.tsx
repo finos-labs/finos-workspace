@@ -10,7 +10,11 @@ import {
 } from "react";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { useTabContext } from "~/lib/contexts/TabContext";
-import { useShallowBackendConnectorStore } from "~/lib/state/backendConnector";
+import {
+  SOURCE_UNAVAILABLE_MESSAGE,
+  useShallowBackendConnectorStore,
+  useWidgetSourceState,
+} from "~/lib/state/backendConnector";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowPermissionsStore } from "~/lib/state/permissions";
@@ -136,6 +140,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
     const isLoadingBackends = useShallowBackendConnectorStore(
       (state) => state.isLoadingBackends && !!widgetRef?.current?.sourceId,
     );
+    const sourceState = useWidgetSourceState(widgetRef?.current);
 
     const isSharedWidget = widgetRef?.current?.isSharedWidget;
 
@@ -207,7 +212,13 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
     useOnHoveredCitation();
 
     const name = title || widgetFromJSON?.name || widgetRef?.current?.name;
-    const isLoading = loading || isLoadingBackends;
+    const isLoading = loading || isLoadingBackends || sourceState === "pending";
+    const blockedMessage =
+      sourceState === "unavailable"
+        ? SOURCE_UNAVAILABLE_MESSAGE
+        : state.hasAccess
+          ? null
+          : state.accessError || "You don't have access to this widget";
 
     return (
       <div
@@ -219,7 +230,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
           e.stopPropagation();
         }}
         className={cn(
-          "group/widget relative z-0 flex flex-col h-full w-full rounded bg-white text-xs only-sm:text-sm shadow-xs dark:bg-[#151518]",
+          "group/widget relative z-0 flex flex-col h-full w-full rounded bg-white text-xs only-sm:text-sm shadow-xs dark:bg-dark-900",
           {
             "draggable-card": !name,
             "select-none!": !state.hasAccess,
@@ -249,7 +260,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
           className={cn(
             "transition-all duration-200 ease-out",
             effectiveAutoHide &&
-              "absolute top-0 left-0 right-0 z-10 bg-white dark:bg-[#151518] rounded-t",
+              "absolute top-0 left-0 right-0 z-10 bg-white dark:bg-dark-900 rounded-t",
             effectiveAutoHide &&
               !navbarHovered &&
               "-translate-y-full opacity-0 pointer-events-none",
@@ -266,14 +277,13 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
             disableRetrievalForCopilot={disableRetrievalForCopilot}
           />
         </div>
-        {state.hasAccess ? (
+        {!blockedMessage ? (
           <LoadingElement
             loading={isLoading}
             errorMessage={
               state.accessError || (!isLoading && error ? errorMessage : null)
             }
             failingUrl={failingUrl}
-            widgetId={widgetRef?.current?.widgetId}
           >
             <div
               id={`widget-content-${widgetRef?.current?.id}`}
@@ -289,7 +299,7 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
         ) : (
           <SearchResultsNotFound
             icon={true}
-            firstMessage={state.accessError || "You don't have access to this widget"}
+            firstMessage={blockedMessage}
             secondMessage={null}
             extraClassName="z-10"
             iconClassName="z-10"

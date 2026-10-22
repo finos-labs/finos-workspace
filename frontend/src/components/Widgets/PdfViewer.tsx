@@ -46,7 +46,6 @@ export default function PdfViewer() {
       url: widget.endpoint?.url ?? "",
       method: widget.endpoint?.method ?? "GET",
       params: widget.storage?.params,
-      addBearerToken: widget.connectionType === "file",
       responseCb: (response, resolve) =>
         handleFileResponse(response, {
           filename: widget.name,

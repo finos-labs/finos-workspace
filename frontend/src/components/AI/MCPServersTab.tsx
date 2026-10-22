@@ -23,13 +23,13 @@ import {
 } from "~/components/shared/TabPage";
 import Tooltip from "~/components/Tooltip";
 import { useStateReducer } from "~/hooks/useStateReducer";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import {
   type McpServer,
   PENDING_CONNECTION_STATES,
   useShallowMcpToolsStore,
 } from "~/lib/state/mcpTools";
 import { cn } from "~/lib/utils";
-import { McpServerSourceTag } from "./McpServerSourceTag";
 import { ToolDescriptionMarkdown } from "./McpToolsDropdown";
 
 function isPendingConnectionState(state: string): boolean {
@@ -57,6 +57,7 @@ export function MCPServersTab() {
     s.servers.filter((server) => !server.iframeWidgetId),
   );
   const removeServer = useShallowMcpToolsStore((s) => s.removeServer);
+  const mayAdd = useShallowAccessStore((s) => canAddConnections(s.access));
 
   const handleModalClose = useCallback(() => {
     dispatch({ addServerOpen: false, editServerId: null });
@@ -113,15 +114,17 @@ export function MCPServersTab() {
               className="w-full min-w-[120px] max-w-[420px]"
             />
           </div>
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => dispatch({ addServerOpen: true })}
-            >
-              Add Server
-            </Button>
-          </div>
+          {mayAdd && (
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => dispatch({ addServerOpen: true })}
+              >
+                Add Server
+              </Button>
+            </div>
+          )}
         </TabPageToolbar>
 
         {servers.length === 0 ? (
@@ -129,14 +132,16 @@ export function MCPServersTab() {
             title="No MCP Server added"
             description="You haven't added any MCP Server yet."
             action={
-              <Button
-                size="sm"
-                variant="primary"
-                className="mt-2"
-                onClick={() => dispatch({ addServerOpen: true })}
-              >
-                Add your first MCP Server
-              </Button>
+              mayAdd && (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  className="mt-2"
+                  onClick={() => dispatch({ addServerOpen: true })}
+                >
+                  Add your first MCP Server
+                </Button>
+              )
             }
           />
         ) : filteredServers.length === 0 && debouncedSearch ? (
@@ -301,7 +306,6 @@ const MCPServerCard = memo((props: McpServerCardProps) => {
       <LibrarySection
         title={server.name}
         count={toolCount}
-        description={<McpServerSourceTag server={server} />}
         open={isExpanded && !userClosed}
         onOpenChange={() =>
           canExpand &&

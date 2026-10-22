@@ -35,7 +35,7 @@ export function Sidebar(props: Props) {
       >
         <Link
           to="/app"
-          className="@max-[100px]:flex-col flex items-center justify-center gap-2"
+          className="@max-[100px]:flex-col flex min-w-0 items-center justify-center gap-2"
         >
           {leftSidebarLogo ? (
             <img
@@ -48,7 +48,21 @@ export function Sidebar(props: Props) {
               className="size-9 object-contain"
             />
           ) : (
-            <Icon id="brand-mark" className="h-4 w-8 text-light-800 dark:text-white" />
+            <>
+              <img
+                src={
+                  theme === "dark"
+                    ? "/assets/images/logo-horizontal-white.svg"
+                    : "/assets/images/logo-horizontal-color.svg"
+                }
+                alt={wlName || "FINOS Workspace"}
+                className="h-6 w-auto max-w-full object-contain object-left @max-[100px]:hidden"
+              />
+              <Icon
+                id="brand-mark"
+                className="hidden h-4 w-8 text-main-50 @max-[100px]:block"
+              />
+            </>
           )}
         </Link>
         {header && (

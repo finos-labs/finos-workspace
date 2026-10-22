@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import ssl
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
@@ -19,8 +20,7 @@ from botocore.client import BaseClient, Config
 from botocore.session import Session
 from fastapi.encoders import jsonable_encoder
 from pydantic import (
-    BaseModel as PydanticBaseModel,
-    ConfigDict,
+    BaseModel,
     EmailStr,
     Field,
     field_validator,
@@ -40,27 +40,35 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from api.crypto import decode_key_material
+
 _RedisCacheT = TypeVar("_RedisCacheT")
 
+# HMAC keys shorter than the SHA-256 output weaken it (RFC 7518 section 3.2)
+MIN_SECRET_BYTES = 32
+# An origin as a browser sends it in the Origin header: scheme, host and optional port
+CORS_ORIGIN = re.compile(r"https?://[A-Za-z0-9.-]+(:\d{1,5})?|https?://\[[0-9A-Fa-f:.]+\](:\d{1,5})?")
 
-class BaseModel(PydanticBaseModel):
-    """BaseModel subclass that ignores Cython-compiled methods.
 
-    When this module is compiled by Cython 3, plain `def method(self): ...`
-    bodies become `cyfunction` objects on the class. Pydantic's metaclass
-    scans the class namespace for unannotated attributes and treats anything
-    that isn't a recognised callable type (FunctionType, property, etc.) as
-    a malformed field. `cyfunction` is not in its default ignore list.
+def check_origins(name: str, origins: list[str]) -> list[str]:
+    """Refuse anything in a list of origins that is not an origin as browsers send it."""
+    for origin in origins:
+        if not CORS_ORIGIN.fullmatch(origin):
+            raise ValueError(
+                f"{name}: {origin!r} is not an origin; give the scheme, host and port "
+                "only, as http(s)://host[:port], with no path and no *"
+            )
+    return origins
 
-    `type(lambda: None)` evaluates to FunctionType in plain Python and to
-    the cyfunction type when this file is compiled — adding whichever it
-    happens to be is a no-op in dev and the real fix in the lite build.
 
-    Project Pydantic models should inherit from this class instead of
-    pydantic.BaseModel directly.
-    """
-
-    model_config = ConfigDict(ignored_types=(type(lambda: None),))
+def check_strong_secret(name: str, value: str) -> str:
+    """Refuse an empty or short secret: the app does not start with one."""
+    if len(value.encode("utf-8")) < MIN_SECRET_BYTES:
+        raise ValueError(
+            f"{name} must be at least {MIN_SECRET_BYTES} bytes; generate one with "
+            'python -c "import secrets; print(secrets.token_urlsafe(32))"'
+        )
+    return value
 
 
 def create_path(*path: str) -> str:
@@ -340,7 +348,6 @@ class RedisSettings(BaseModel):
     REDIS_SSL_PORT: int = 6380
     REDIS_DB_BOT: int = 0
     REDIS_DB_APP: int = 1
-    REDIS_DB_SDK: int = 12
     REDIS_SSL_CA: str | None = None
     REDIS_SSL_CERT: str | None = None
     REDIS_SSL_KEY: str | None = None
@@ -404,12 +411,11 @@ class RedisSettings(BaseModel):
         return uri
 
     def get_redis_session(
-        self, database: Literal["app", "sdk"]
+        self, database: Literal["bot", "app"]
     ) -> Redis | RedisCluster:
         db_options = {
             "bot": self.REDIS_DB_BOT,
             "app": self.REDIS_DB_APP,
-            "sdk": self.REDIS_DB_SDK,
         }
 
         kwargs = {
@@ -431,7 +437,7 @@ class RedisSettings(BaseModel):
         return Redis(**kwargs)
 
     def get_async_redis_session(
-        self, database: Literal["app", "sdk"]
+        self, database: Literal["app"]
     ) -> AsyncRedis | AsyncRedisCluster:
         """Async counterpart of get_redis_session for non-blocking pub/sub and keyspace ops.
 
@@ -439,9 +445,7 @@ class RedisSettings(BaseModel):
         synchronous Redis calls to the thread pool.
         """
         db_options = {
-            "bot": self.REDIS_DB_BOT,
             "app": self.REDIS_DB_APP,
-            "sdk": self.REDIS_DB_SDK,
         }
 
         kwargs = {
@@ -618,9 +622,15 @@ class AWSSettings(BaseModel):
 
 class LocalStorageSettings(BaseModel):
     FOLDER_STORAGE_PATH: str = os.environ.get("FOLDER_STORAGE_PATH", "local_storage")
-    LOCAL_STORAGE_SECRET_KEY: str = os.environ.get(
-        "LOCAL_STORAGE_SECRET_KEY", "default_secret_key"
-    )
+    # Signs the presigned URLs of folder storage; required when STORAGE_PROVIDER=folder
+    LOCAL_STORAGE_SECRET_KEY: str | None = None
+
+    @field_validator("LOCAL_STORAGE_SECRET_KEY")
+    @classmethod
+    def check_storage_secret(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return check_strong_secret("LOCAL_STORAGE_SECRET_KEY", value)
 
     def get_local_file_path(self, s3_file: str) -> Path:
         path = Path(self.FOLDER_STORAGE_PATH) / s3_file
@@ -702,7 +712,14 @@ class AzureSettings(BaseModel):
 
 
 class AccessSettings(BaseModel):
+    # Key material of the encryption at rest (api/crypto.py): base64url, 32 bytes or more
     WORKSPACE_AES_KEY: str
+
+    @field_validator("WORKSPACE_AES_KEY")
+    @classmethod
+    def check_aes_key(cls, value: str) -> str:
+        decode_key_material(value)
+        return value
 
 
 class PrometheusSettings(BaseModel):
@@ -720,8 +737,9 @@ class NotificationSettings(BaseModel):
 
 class AppSettings(BaseModel):
     INVITE_EXPIRATION: timedelta = timedelta(weeks=52)
-    DEVELOPER_MAPPING: UUID = UUID("22222222-2222-2222-2222-222222222222")
-    ON_PREM_ADMIN_MAPPING: UUID | None = None
+    # The first organization's User map, which init writes to user_create.json: an invite
+    # without a user type and a first sign-in with a provider get it
+    DEFAULT_USER_MAPPING: UUID | None = None
     APPURL: str
 
     def __init__(self, **data: Any):
@@ -732,23 +750,39 @@ class AppSettings(BaseModel):
 
         with suppress(Exception):
             json_data = json.loads(create_user.read_text())
-            self.DEVELOPER_MAPPING = UUID(json_data["permissions_uuid"])
-            self.ON_PREM_ADMIN_MAPPING = UUID(json_data["on_prem_admin_uuid"])
+            self.DEFAULT_USER_MAPPING = UUID(json_data["permissions_uuid"])
+
+
+class DefaultMCPServer(BaseModel):
+    """An MCP server that every user has without adding it."""
+
+    id: str
+    name: str
+    url: str
 
 
 class GeneralSettings(BaseModel):
-    JWT_SECRET: str = os.environ.get("JOSESECRET", None)
+    JWT_SECRET: str
     IS_WORKER_CONTAINER: bool = False
     DISABLE_REGISTRATION: bool = False
 
     FRONTENDURL: str
     SELFURL: str
-    MODE: Literal["production", "local", "test", "onprem", "lite"]
-    # Requests whose user agent contains this value skip rate limiting; unset disables the exemption
-    WORKSPACE_FRONTEND_USER_AGENT: str | None = None
+    MODE: Literal["production", "local", "test"]
     # Requests carrying a valid X-Workspace-Authorization token skip rate limiting (development only)
     RATE_LIMIT_EXEMPT_ENABLED: bool = False
-    MARKETPLACE_MAX_DEVELOPER_APPS: int = 5
+    # Sign-in providers (/app/{provider}-auth): the public ids of this deployment's OAuth
+    # clients, to which every token the API accepts must have been issued. A provider whose
+    # client id is not set refuses every sign-in.
+    GOOGLE_OAUTH_CLIENT_ID: str | None = None
+    AZURE_CLIENT_ID: str | None = None
+    # The Microsoft Entra tenant whose users may sign in: its tenant id or domain, or
+    # "organizations" (every work or school tenant) or "common" (those and personal
+    # Microsoft accounts), the same value as the web app's MSAL authority
+    AZURE_TENANT_ID: str | None = None
+    OKTA_CLIENT_ID: str | None = None
+    # The Okta org (https://<your-org>.okta.com) whose authorization server issues the ID
+    # tokens
     OKTA_DOMAIN: str | None = None
     # These are characters that cannot be in our url
     UNUSABLE_JSON_CHARACTERS: set[str] = {"?"}
@@ -762,10 +796,16 @@ class GeneralSettings(BaseModel):
     JSON_LOGS: bool = False
     LOG_LEVEL: str = "INFO"
     RQ_TIMEOUT: int = 10
-    DISABLE_CORS: bool = False
     CLEAR_UNCONFIRMED_FILES_DATE: str = "2024-10-07"
     WORKSPACE_AUTH_TOKEN: str | None = None
-    BACKEND_CORS_ORIGINS: list[str] | str = Field(default_factory=list)
+    # The origins of the web app, exactly as the browser sends them (scheme, host and
+    # port). Its session cookie is accepted only from them. Required: there is no default
+    # and no wildcard.
+    BACKEND_CORS_ORIGINS: list[str] | str
+    # Origins matching this regular expression are allowed as well, for hosts that
+    # can't be listed ahead of time, such as a preview per pull request. The whole
+    # origin must match. Unset by default.
+    BACKEND_CORS_ORIGIN_REGEX: str | None = None
     # Addresses exempt from the duplicate-email checks in crud.check_new_user
     SPECIAL_EMAILS: set[EmailStr] = Field(default_factory=set)
     SUPPRESSED_API_ROUTERS: list[str] | None = Field(default_factory=list)
@@ -773,28 +813,38 @@ class GeneralSettings(BaseModel):
     STORAGE_PROVIDER: Literal["aws", "azure", "gcp", "folder"] = "folder"
     GCP_STORAGE_BUCKET: str | None = None
     ALLOWED_MCP_HOSTNAMES: list[str] = Field(default_factory=list)
+    # MCP servers that every user has, enabled, in addition to the ones they add: a JSON list
+    # of {"id", "name", "url"}. A server the user has stored under the same URL wins, so a user
+    # can still switch a default off.
+    DEFAULT_MCP_SERVERS: list[DefaultMCPServer] = Field(default_factory=list)
+
+    @field_validator("JWT_SECRET")
+    @classmethod
+    def check_jwt_secret(cls, value: str) -> str:
+        return check_strong_secret("JWT_SECRET", value)
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
         if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
+            return [i.strip() for i in v.split(",") if i.strip()]
 
         if isinstance(v, str):
             return json.loads(v)
         return v
 
+    @field_validator("BACKEND_CORS_ORIGINS")
+    @classmethod
+    def check_cors_origins(cls, origins: list[str]) -> list[str]:
+        if not origins:
+            raise ValueError(
+                "BACKEND_CORS_ORIGINS must name the origins of the web app, "
+                'e.g. ["http://localhost:3000"]'
+            )
+        return check_origins("BACKEND_CORS_ORIGINS", origins)
+
     def is_test(self) -> bool:
         return self.MODE == "test"
-
-    def is_prod(self) -> bool:
-        return self.MODE in {"production", "onprem", "lite"}
-
-    def is_onprem(self) -> bool:
-        return self.MODE == "onprem"
-
-    def is_lite(self) -> bool:
-        return self.MODE == "lite"
 
     def set_is_worker(self, is_worker: bool) -> None:
         self.IS_WORKER_CONTAINER = is_worker
@@ -818,6 +868,12 @@ class Settings(
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @model_validator(mode="after")
+    def check_folder_storage_secret(self) -> "Settings":
+        if self.STORAGE_PROVIDER == "folder" and self.LOCAL_STORAGE_SECRET_KEY is None:
+            raise ValueError("LOCAL_STORAGE_SECRET_KEY is required when STORAGE_PROVIDER=folder")
+        return self
 
     def get_file_bucket(self) -> str | None:
         if self.STORAGE_PROVIDER == "aws":

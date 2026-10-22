@@ -1,5 +1,7 @@
 import { useMobile } from "~/lib/providers/MobileProvider";
+import { canShare, useShallowAccessStore } from "~/lib/state/access";
 import { useShallowThemeStore } from "~/lib/state/theme";
+import { AddCopilotDialog } from "../AI/AddCopilotDialog";
 import AddSkillDialog from "../AI/AddSkillDialog";
 import { CreateWidgetMetadataDialog } from "../AI/CreateWidgetMetadataDialog";
 import McpAuthPopup from "../AI/hooks/mcp/McpAuthPopup";
@@ -18,7 +20,6 @@ import RenamePopup from "../General/RenamePopup";
 import { SaveAppDialog } from "../General/SaveAppDialog";
 import { ShareUserAppDialog } from "../General/SharedAppsDialog";
 import { ShareDashboardDialog } from "../General/SharedDashboardDialog";
-import ExcelExportDialog from "../LayoutAuth/DropdownSubs/ExcelExportDialog";
 import AddPromptDialog from "./PromptLibrary/AddPromptDialog";
 import SearchDialog from "./Search/SearchDialog";
 import ShortcutDialog from "./ShortcutDialog";
@@ -32,7 +33,6 @@ export default function OuterComponents() {
     search,
     shareDashboardPopupId,
     shareUserAppsPopupId,
-    excelExportPopup,
     exportFolderPopup,
   } = useShallowThemeStore((state) => ({
     exportWidgetData: state.exportWidgetData,
@@ -42,14 +42,15 @@ export default function OuterComponents() {
     search: state.search,
     shareDashboardPopupId: state.shareDashboardPopupId,
     shareUserAppsPopupId: state.shareUserAppsPopupId,
-    excelExportPopup: state.excelExportPopup,
     exportFolderPopup: state.exportFolderPopup,
   }));
 
   const isMobile = useMobile((s) => s.isMobile);
+  const mayShare = useShallowAccessStore((state) => canShare(state.access));
 
   return (
     <>
+      <AddCopilotDialog />
       <AddConnectionModal />
       <InvalidItemsDialog />
       <AddPromptDialog />
@@ -65,9 +66,8 @@ export default function OuterComponents() {
       {renamePopup && <RenamePopup />}
       <ExportTemplatePopup />
       <CreateFolderPopup />
-      {shareDashboardPopupId && <ShareDashboardDialog />}
-      {shareUserAppsPopupId && <ShareUserAppDialog />}
-      {excelExportPopup && <ExcelExportDialog />}
+      {mayShare && shareDashboardPopupId && <ShareDashboardDialog />}
+      {mayShare && shareUserAppsPopupId && <ShareUserAppDialog />}
       {exportFolderPopup && <ExportFolderDialog />}
       <McpConnectionManager />
       <WorkspaceBridgeConnectionManager />

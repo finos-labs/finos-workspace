@@ -3,7 +3,7 @@
 import hashlib
 import hmac
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -12,8 +12,7 @@ import pytest
 
 from api import notifications
 from api.notifications import WebhookNotifier, notify_admins
-from tests.fixtures.base import _TEST_ENTITY_TYPE_UUID
-from tests.fixtures.marketplace import create_app, superuser_override
+from tests.fixtures.base import superuser_override
 from utilities.config import settings
 
 
@@ -131,64 +130,16 @@ class TestNotifyAdmins:
             notifications.get_notifier.cache_clear()
 
 
-class TestMarketplaceSubmissionEvent:
-    @pytest.mark.asyncio
-    async def test_submission_notifies_the_reviewers(self, auth_client):
-        app_id = await create_app(auth_client)
-        recorder = _RecordingNotifier()
-        with patch.object(notifications, "get_notifier", lambda: recorder):
-            response = await auth_client.post(
-                f"/marketplace/developer/apps/{app_id}/submit-for-review",
-                json={"message": "please review"},
-            )
-        assert response.status_code == 200, response.text
-        (event, subject, text, payload) = recorder.calls[0]
-        assert event == "marketplace.listing.submitted"
-        assert subject.startswith("[Marketplace review]")
-        assert "please review" in text
-        assert payload["app_uuid"] == app_id
-        assert payload["message"] == "please review"
-        await auth_client.delete(f"/marketplace/developer/apps/{app_id}")
-
-    @pytest.mark.asyncio
-    async def test_submission_succeeds_without_a_notifier(self, auth_client):
-        app_id = await create_app(auth_client)
-        with patch.object(notifications, "get_notifier", lambda: WebhookNotifier(url="")):
-            response = await auth_client.post(
-                f"/marketplace/developer/apps/{app_id}/submit-for-review", json={}
-            )
-        assert response.status_code == 200, response.text
-        await auth_client.delete(f"/marketplace/developer/apps/{app_id}")
-
-    @pytest.mark.asyncio
-    async def test_failed_notifier_returns_502(self, auth_client):
-        app_id = await create_app(auth_client)
-        with patch.object(notifications, "get_notifier", lambda: _RecordingNotifier(False)):
-            response = await auth_client.post(
-                f"/marketplace/developer/apps/{app_id}/submit-for-review", json={}
-            )
-        assert response.status_code == 502
-        await auth_client.delete(f"/marketplace/developer/apps/{app_id}")
-
-
 class TestEntityCreatedEvent:
     @pytest.mark.asyncio
     async def test_entity_creation_notifies_the_admins(self, auth_client):
         name = f"Notify Entity {uuid4().hex[:8]}"
         mock = AsyncMock(return_value=None)
-        with superuser_override(), patch("routers.entity.notify_admins", mock):
+        with superuser_override(), patch("routers.administration.notify_admins", mock):
             response = await auth_client.post(
                 "/entity/entity",
                 json={
                     "name": name,
-                    "entity_code": _TEST_ENTITY_TYPE_UUID,
-                    "email": "entity@example.com",
-                    "company_type": "other",
-                    "organization_size": "1-10",
-                    "aum": 0,
-                    "country": "US",
-                    "seats": 5,
-                    "expiration_date": (datetime.now(UTC) + timedelta(days=30)).isoformat(),
                     "admin_email": "entity-admin@example.com",
                 },
             )

@@ -10,7 +10,7 @@ import {
 } from "~/api/auth.api";
 import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
 import { getDefaultCopilot } from "~/lib/constants";
-import { useShallowAuthStore } from "~/lib/state/auth";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import {
   type ExternalCopilotHolder,
   useShallowCopilotStore,
@@ -31,6 +31,7 @@ import {
 import { ConnectionTestResult } from "../ds/molecules/ConnectionTestResult";
 import Avatar from "../General/Avatar";
 import Icon from "../Icon";
+import { useCopilotKeys, useSaveCopilotKeys } from "./hooks/useCopilotKeys";
 import { resolveAgentEndpoints } from "./hooks/utils";
 
 async function validateApiKey(
@@ -153,60 +154,52 @@ function CopilotApiKeyInput({
   );
 }
 
+/**
+ * The user's own OpenAI key for the default Copilot. The API stores it encrypted and only
+ * says whether one is saved; the typed key stays in this dialog until it is sent.
+ */
 function CopilotApiKeyDialog() {
-  const { apiKeyDialogOpen, onClose, debouncedUpdateSettings } = useShallowThemeStore(
-    (state) => ({
-      apiKeyDialogOpen: state.apiKeyDialogOpen,
-      onClose: () => state.setApiKeyDialogOpen(false),
-      debouncedUpdateSettings: state.debouncedUpdateSettings,
-    }),
-  );
-
-  const { openaiApiKey, setCopilotApiKeys } = useShallowAuthStore((state) => ({
-    openaiApiKey: state.openaiApiKey,
-    setCopilotApiKeys: state.setCopilotApiKeys,
+  const { apiKeyDialogOpen, onClose } = useShallowThemeStore((state) => ({
+    apiKeyDialogOpen: state.apiKeyDialogOpen,
+    onClose: () => state.setApiKeyDialogOpen(false),
   }));
 
-  const [state, dispatch] = useStateReducer({ openaiApiKey });
-
-  const handleValidateApiKey = useCallback(
-    async (type: "openai") => {
-      const apiKey = state[`${type}ApiKey`];
-      let result: TestResult = { status: 0, message: "" };
-
-      if (type === "openai") {
-        result = await validateApiKey(apiKey, "https://api.openai.com/v1/models");
-      }
-
-      return result;
-    },
-    [state.openaiApiKey],
-  );
-
-  const handleOnClick = useCallback(
-    (type: "saved" | "cleared") => {
-      const isCleared = type === "cleared";
-
-      setCopilotApiKeys(isCleared ? {} : state);
-
-      toast.success(`API key ${type}`, {
-        id: `copilot_api_key_${type}`,
-        description:
-          isCleared || !state.openaiApiKey
-            ? "Copilot will now use the default API key."
-            : "Copilot will now use this API key.",
-      });
-      onClose();
-      debouncedUpdateSettings();
-    },
-    [state, debouncedUpdateSettings],
-  );
+  const { has_openai_key: hasOpenaiKey } = useCopilotKeys();
+  const { mutateAsync: saveKeys, isPending } = useSaveCopilotKeys();
+  const [openaiApiKey, setOpenaiApiKey] = useState("");
 
   useEffect(() => {
-    if (apiKeyDialogOpen) {
-      dispatch({ openaiApiKey });
-    }
+    if (!apiKeyDialogOpen) setOpenaiApiKey("");
   }, [apiKeyDialogOpen]);
+
+  const handleValidateApiKey = useCallback(
+    () => validateApiKey(openaiApiKey, "https://api.openai.com/v1/models"),
+    [openaiApiKey],
+  );
+
+  // A key saves it; null removes the saved one
+  const handleSave = useCallback(
+    async (key: string | null) => {
+      try {
+        await saveKeys({ openai_api_key: key });
+      } catch (error) {
+        console.error("Failed to save the API key:", error);
+        toast.error("API key not saved", { description: "Please try again." });
+        return;
+      }
+      const removed = key === null;
+      toast.success(removed ? "API key removed" : "API key saved", {
+        id: removed ? "copilot_api_key_cleared" : "copilot_api_key_saved",
+        description: removed
+          ? "Agent will now use the default API key."
+          : "Agent will now use this API key.",
+      });
+      onClose();
+    },
+    [saveKeys, onClose],
+  );
+
+  const typedKey = openaiApiKey.trim();
 
   return (
     <BaseDialog open={apiKeyDialogOpen} onClose={onClose}>
@@ -215,16 +208,29 @@ function CopilotApiKeyDialog() {
       <div className="dark:bg-dark-800 bg-light-50 p-3 rounded space-y-8">
         <CopilotApiKeyInput
           label="OpenAI API key"
-          description=""
+          description={
+            hasOpenaiKey ? "A key is saved. Enter a new key to replace it." : ""
+          }
           placeholder="sk-1234567890abcdefg"
-          value={state.openaiApiKey}
-          onChange={(openaiApiKey) => dispatch({ openaiApiKey })}
-          onValidate={() => handleValidateApiKey("openai")}
+          value={openaiApiKey}
+          onChange={setOpenaiApiKey}
+          onValidate={handleValidateApiKey}
         />
       </div>
       <div className="text-light-600 dark:text-light-400" />
       <DialogFooter className="flex justify-between">
-        <div />
+        <div>
+          {hasOpenaiKey && (
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => handleSave(null)}
+              disabled={isPending}
+            >
+              Remove key
+            </Button>
+          )}
+        </div>
         <div className="flex gap-2">
           <DialogClose asChild={true}>
             <Button size="sm" variant="outlined">
@@ -233,8 +239,8 @@ function CopilotApiKeyDialog() {
           </DialogClose>
           <Button
             size="sm"
-            onClick={() => handleOnClick("saved")}
-            disabled={state.openaiApiKey === openaiApiKey}
+            onClick={() => handleSave(typedKey)}
+            disabled={!typedKey || isPending}
           >
             Save
           </Button>
@@ -263,6 +269,7 @@ export function AgentConfigDialog() {
       setAgentConfigDialogOpen: state.setAgentConfigDialogOpen,
       setShowAddAgentsDialog: state.setShowAddAgentsDialog,
     }));
+  const mayAdd = useShallowAccessStore((s) => canAddConnections(s.access));
 
   const onClose = useCallback(() => setAgentConfigDialogOpen(false), []);
 
@@ -569,20 +576,24 @@ export function AgentConfigDialog() {
                   <p className="text-xs font-bold text-light-600 dark:text-light-400 leading-[18px]">
                     No agents have been added yet
                   </p>
-                  <p className="text-xs font-normal text-light-500 dark:text-light-400 leading-[18px]">
-                    Add your first AI Agent
-                  </p>
+                  {mayAdd && (
+                    <p className="text-xs font-normal text-light-500 dark:text-light-400 leading-[18px]">
+                      Add your first AI Agent
+                    </p>
+                  )}
                 </div>
               </div>
-              <Button
-                onClick={() => setShowAddAgentsDialog(true)}
-                size="xs"
-                className="!bg-brand-main hover:!bg-brand-darker h-6 px-2 !text-2xs font-medium"
-              >
-                <span className="text-white leading-[1.5]">
-                  Add your first AI Agent
-                </span>
-              </Button>
+              {mayAdd && (
+                <Button
+                  onClick={() => setShowAddAgentsDialog(true)}
+                  size="xs"
+                  className="!bg-brand-main hover:!bg-brand-darker h-6 px-2 !text-2xs font-medium"
+                >
+                  <span className="text-white leading-[1.5]">
+                    Add your first AI Agent
+                  </span>
+                </Button>
+              )}
             </div>
           ) : (
             <>
@@ -602,13 +613,15 @@ export function AgentConfigDialog() {
                     onChange={(searchTerm: string) => dispatch({ searchTerm })}
                   />
                 </div>
-                <Button
-                  onClick={() => setShowAddAgentsDialog(true)}
-                  size="sm"
-                  className="!bg-brand-main hover:!bg-brand-darker h-6.5"
-                >
-                  <span className="text-white">Add new Agent</span>
-                </Button>
+                {mayAdd && (
+                  <Button
+                    onClick={() => setShowAddAgentsDialog(true)}
+                    size="sm"
+                    className="!bg-brand-main hover:!bg-brand-darker h-6.5"
+                  >
+                    <span className="text-white">Add new Agent</span>
+                  </Button>
+                )}
               </div>
               <div className="flex-1 min-h-0 overflow-auto">
                 <div className="space-y-4 h-full overflow-y-auto">

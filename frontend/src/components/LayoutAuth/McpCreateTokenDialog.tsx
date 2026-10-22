@@ -104,7 +104,11 @@ export function McpCreateTokenDialog({
               value={created.token}
               inputClassName="font-mono"
             />
-            <McpConnectSnippets endpoint={endpoint} token={created.token} />
+            <McpConnectSnippets
+              endpoint={endpoint}
+              token={created.token}
+              origin={window.location.origin}
+            />
             <Notice
               variant="warning"
               title="Save the API key. This API key won't be accessible afterwards."

@@ -21,7 +21,7 @@ describe("getDefaultCopilot", () => {
   it("returns a copilot with the correct id and name", () => {
     const copilot = getDefaultCopilot();
     expect(copilot.id).toBe("default-copilot");
-    expect(copilot.name).toBe("Copilot");
+    expect(copilot.name).toBe("Agent");
   });
 
   it("builds the query endpoint from runtime AI URL", () => {
@@ -41,7 +41,6 @@ describe("getDefaultCopilot", () => {
     expect(copilot.features?.["file-upload"]).toBe(true);
     expect(copilot.features?.["widget-dashboard-select"]).toBe(true);
     expect(copilot.features?.["widget-global-search"]).toBe(true);
-    expect(copilot.features?.["generative-ui"]).toBe(true);
     expect(copilot.features?.["mcp-tools"]).toBe(true);
     expect(copilot.features?.["agent-orchestration"]).toBe(true);
   });

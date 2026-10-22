@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { getConfig } from "~/lib/runtimeConfig";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { useAppStore, useShallowAppStore } from "~/lib/state/app";
-import { useShallowAuthStore } from "~/lib/state/auth";
 import { useShallowThemeStore, useThemeStore } from "~/lib/state/theme";
 import { NotificationId, showNotificationWithRememberMe } from "~/lib/utils/toast";
 import { validateFolderName } from "~/utils/validators";
@@ -16,7 +16,6 @@ export default function RenamePopup() {
   const { renamePopup, setRenamePopup, defaultRename, tabEditingId, editingType } =
     useThemeStore();
   const { updateItemName, getAllFoldersFlat } = useAppStore();
-  const user = useShallowAuthStore((s) => s.user);
 
   const folders = getAllFoldersFlat();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -89,14 +88,11 @@ export default function RenamePopup() {
           })),
       };
 
-      const response = await fetch(
+      const response = await fetchAgent(
         `${getConfig().urls.ai}/v1/generate/dashboard/title`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${user?.token}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         },
       );

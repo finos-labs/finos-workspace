@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { getApiSources, removeCustomCopilot } from "~/api/auth.api";
 import type { BackendPermissionsT } from "~/api/user_roles.api";
@@ -29,8 +29,8 @@ import Icon from "~/components/Icon";
 import { SettingsLayout } from "~/components/LayoutAuth/Skeleton/SettingsLayout";
 import { TabPageFilterGroup, TabPageSearchInput } from "~/components/shared/TabPage";
 import Tooltip from "~/components/Tooltip";
-import { useUserSubscriptions } from "~/hooks/useListedApps";
 import { type StateDispatch, useStateReducer } from "~/hooks/useStateReducer";
+import { canAddConnections, useShallowAccessStore } from "~/lib/state/access";
 import {
   type Source,
   useShallowBackendConnectorStore,
@@ -341,7 +341,6 @@ const ConnectionRowActions = memo<ConnectionRowActionsProps>((props) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const canRefresh = !!connection.backend;
-  const disableEdit = !!connection.backend?.vendorAppUuid;
 
   const handleRefresh = useCallback(async () => {
     if (!connection.backend?.id) return;
@@ -385,20 +384,14 @@ const ConnectionRowActions = memo<ConnectionRowActionsProps>((props) => {
       )}
 
       {connection.canEdit && (
-        <Tooltip
-          message={
-            disableEdit ? "Marketplace backends can't be edited" : "Edit backend"
-          }
-          position="top"
-        >
+        <Tooltip message="Edit backend" position="top">
           <button
             className={cn(
               "opacity-0 group-hover:opacity-100 transition-opacity",
               "duration-300 ws-small-navbar-btn",
               "rounded flex items-center justify-center",
-              disableEdit && "group-hover:opacity-40 cursor-not-allowed",
             )}
-            onClick={disableEdit ? undefined : handleEdit}
+            onClick={handleEdit}
           >
             <Icon id="edit" className="size-3.5" />
           </button>
@@ -621,7 +614,18 @@ const initialState: ConnectionsState = {
   userClosed: { active: false, inactive: false },
 };
 
+/**
+ * The connections of an Admin or a Developer, who bring their own. A User brings none: the page
+ * is not theirs, and sends them to Apps once the session says who they are.
+ */
 export default function ConnectionsPage() {
+  const access = useShallowAccessStore((s) => s.access);
+  if (!access) return null;
+  if (!canAddConnections(access)) return <Navigate to="/app" replace={true} />;
+  return <Connections />;
+}
+
+function Connections() {
   const [state, dispatch] = useStateReducer(initialState);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -640,8 +644,6 @@ export default function ConnectionsPage() {
       { replace: true },
     );
   }, [setSearchParams]);
-
-  useUserSubscriptions();
 
   const { apiSources, updateApiSources, deleteApiSource } =
     useShallowBackendConnectorStore((s) => ({
@@ -955,8 +957,8 @@ export default function ConnectionsPage() {
   }, [connectionRows, state.search, state.filterBy, state.sortBy, agentOnlyStatuses]);
 
   // In addition to highlighting the row, open the edit modal for the
-  // deep-linked connection when its backend is editable (skips marketplace /
-  // entity backends, which can't be edited).
+  // deep-linked connection when its backend is editable (skips entity backends,
+  // which can't be edited).
   const openedEditFor = useRef<string | null>(null);
   useEffect(() => {
     if (!connectionId) {
@@ -965,7 +967,7 @@ export default function ConnectionsPage() {
     }
     if (openedEditFor.current === connectionId) return;
     const target = connectionRows.find((c) => c.id === connectionId);
-    if (target?.backend && target.canEdit && !target.backend.vendorAppUuid) {
+    if (target?.backend && target.canEdit) {
       openedEditFor.current = connectionId;
       setManageAppDialog({ isOpen: true, mode: "edit", data: target.backend });
     }

@@ -2,7 +2,7 @@
 
 Everything for working on the app on your own machine lives in this folder. One command starts the frontend, the backend API and its worker, MySQL and Redis, and code edits show up without restarting anything.
 
-To run the built images instead (web app, admin panel and API, as a user would), use `docker-compose.yml` at the repository root; its [README section](../README.md#running-the-whole-stack) explains it. The two stacks use port 8000, so run one at a time.
+To run the built images instead (web app and API, as a user would), use `docker-compose.yml` at the repository root; its [README section](../README.md#running-the-whole-stack) explains it. The two stacks use port 8000, so run one at a time.
 
 ## Before you start
 
@@ -20,13 +20,13 @@ cd local
 ADMIN_EMAIL=<your-email> make up
 ```
 
-`ADMIN_EMAIL` names the first administrator. It is needed only while `backend-api/backend/envs/.env` does not exist; the first `make up` creates that file with random secrets, and `backend-api/backend/scripts/cfgs/config.toml` with the organization and the administrator, whose password is random. Both files are yours: neither is for git. Later runs only need `make up`.
+`ADMIN_EMAIL` names the first administrator. It is needed only while `backend-api/backend/envs/.env` does not exist; the first `make up` creates that file with random secrets, and `backend-api/backend/scripts/cfgs/config.toml` with the organization and the administrator's address. Both files are yours: neither is for git. Later runs only need `make up`.
 
 The first run builds the backend images and installs the frontend packages, so it takes several minutes. Later runs reuse the images and start much faster. `make up` waits until the app answers and then prints where to go:
 
 - App: <http://localhost:1420>
 - Backend: <http://localhost:8000>
-- Sign in as the administrator in `backend-api/backend/scripts/cfgs/config.toml` (email and password).
+- Sign in as the administrator in `backend-api/backend/scripts/cfgs/config.toml`. The `init` step creates the account without a password; set it, typed twice and not shown, with `docker compose run --rm init python -m scripts.init_users --new-password <your-email>` in this folder. The same command sets a new one.
 
 ## Commands
 
@@ -56,8 +56,6 @@ Without `make`, use Docker Compose directly from this folder: `docker compose up
 | `mysql` | 3306 | Database, user `root`, password `root`, database `workspace` |
 | `redis` | 6379 | Cache and job queue |
 
-The admin panel (`backend-api/admin_frontend`) is not part of this stack; it runs in the root `docker-compose.yml`.
-
 ## Making changes
 
 - Frontend code: the browser reloads on save.
@@ -73,14 +71,15 @@ The backend reads `backend-api/backend/envs/.env`, the same file the root `docke
 
 | Setting | Value | Why |
 |---|---|---|
-| `MODE` | `onprem` | The mode the backend's own development guide uses |
+| `MODE` | `production` | The mode the backend's own development guide uses |
 | `SELFURL` | `http://localhost:8000` | Links the backend builds point at the API |
 | `DB_HOST`, `REDIS_HOST` | `mysql`, `redis` | The container names |
 | `DB_NAME` | `workspace` | The database the MySQL container creates |
 | `STORAGE_PROVIDER` | `folder` | Uploaded files go to `backend-api/backend/local_storage/` instead of cloud storage |
-| `JWT_SECRET`, `WORKSPACE_AES_KEY`, `WORKSPACE_AUTH_TOKEN`, `LOCAL_STORAGE_SECRET_KEY` | generated | `WORKSPACE_AUTH_TOKEN` is a JWT signed with `JWT_SECRET`; the example's values are placeholders |
+| `JWT_SECRET`, `WORKSPACE_AES_KEY`, `WORKSPACE_AUTH_TOKEN`, `LOCAL_STORAGE_SECRET_KEY` | generated | `WORKSPACE_AUTH_TOKEN` is a JWT signed with `JWT_SECRET`; the example leaves them blank, and the API refuses to start without strong values |
+| `BACKEND_CORS_ORIGINS` | `http://localhost:3000`, `:1420` | The origins of the web app: the root `docker-compose.yml`'s and this stack's dev server |
 
-`compose.yaml` overrides `FRONTENDURL` and `APPURL` with `http://localhost:1420`, the address of the dev server, so links and redirects point at it. The example file turns CORS off (`DISABLE_CORS=1`), which the dev server on another port relies on.
+`compose.yaml` overrides `FRONTENDURL` and `APPURL` with `http://localhost:1420`, the address of the dev server, so links and redirects point at it. The dev server on another port reaches the API because `http://localhost:1420` is one of `BACKEND_CORS_ORIGINS`. An MCP server on your machine or network that the API should reach goes in `ALLOWED_MCP_HOSTNAMES` (see `envs/.env.example`).
 
 Edit `envs/.env` freely, then `make restart s=backend`. To get a fresh one, delete it, and `config.toml` next to it, and run `ADMIN_EMAIL=<your-email> make up`; if the database already holds the old administrator, run `make reset` instead.
 
@@ -90,7 +89,7 @@ A new backend setting needs adding in more places than this folder: `envs/.env.e
 
 ## What does not work locally
 
-- AI features. They need an AI service, which this setup does not run; `AI_API_URL` stays empty.
+- AI features. They need an AI service, which this setup does not run; `AI_API_URL` stays empty and `AI_COPILOT_ENABLED` stays `false`. The root `docker-compose.yml` runs Ines, the Workspace's agent.
 - Google sign-in, unless `http://localhost:1420` is an allowed origin of the Google OAuth client. Use the email sign-in.
 
 ## Differences from a deployed environment

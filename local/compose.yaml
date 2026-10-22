@@ -34,8 +34,10 @@ services:
       MYSQL_DATABASE: workspace
     ports:
       - "3306:3306"
+    # Pinged over TCP: on a first start the entrypoint runs a temporary server on the socket only,
+    # while it creates the database, and a socket ping would call that healthy too early.
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot --silent"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -P 3306 -u root -proot --silent"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -54,7 +56,8 @@ services:
       retries: 20
 
   # Runs to completion before the backend starts: applies the migrations, then
-  # creates the organization and administrator from scripts/cfgs/config.toml and
+  # creates the organization and administrator from scripts/cfgs/config.toml
+  # (printing the administrator's password once, in this service's log) and
   # writes user_create.json, which the backend reads at start. Safe to re-run;
   # it keeps what exists.
   init:

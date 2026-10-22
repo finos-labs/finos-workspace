@@ -8,12 +8,6 @@ interface BaseResponse {
   message?: string;
 }
 
-interface EntityInfo {
-  expiration_date: null | string;
-  used_seats: number;
-  seats: number;
-}
-
 interface App {
   uuid: string;
   name: string;
@@ -74,11 +68,19 @@ export async function deleteUser(
   }
 }
 
+/** The link an admin gives a user to set their password with: it works once, until
+ * expires_at. */
+export type PasswordLinkAnswer = {
+  success: boolean;
+  link: string;
+  expires_at: string;
+};
+
+/** Resets a user's password: the answer is the link with which they set a new one. */
 export async function resetUserPassword(id: string) {
-  const { data } = await apiClient.post<{
-    success: boolean;
-    temporary_password: string;
-  }>(`/admin/reset-password/${id}`);
+  const { data } = await apiClient.post<PasswordLinkAnswer>(
+    `/admin/reset-password/${id}`,
+  );
   return data;
 }
 
@@ -87,11 +89,45 @@ export async function resetUser2FA(id: string) {
   return data;
 }
 
+/** Adds a user: the answer is the link with which they set their password. */
 export async function createUser(user: CreateUserDTO) {
-  const { data } = await apiClient.post<{
-    success: boolean;
-    temporary_password: string;
-  }>("/admin/create-user", user);
+  const { data } = await apiClient.post<PasswordLinkAnswer>("/admin/create-user", user);
+  return data;
+}
+
+/* Share requests */
+
+export type ShareRequestUser = {
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+};
+
+/** A share a developer asked for; an admin of their organization approves or declines it. */
+export type ShareRequest = {
+  uuid: string;
+  created_date: string | null;
+  requester: ShareRequestUser;
+  item_type: "dashboard" | "app";
+  item_uuid: string;
+  item_name: string;
+  /** Null: the whole organization */
+  recipient: ShareRequestUser | null;
+  permissions: string | null;
+};
+
+export async function getShareRequests() {
+  const { data } = await apiClient.get<ShareRequest[]>("/admin/share-requests");
+  return data;
+}
+
+export async function decideShareRequest(
+  uuid: string,
+  decision: "approve" | "decline",
+) {
+  const { data } = await apiClient.post<BaseResponse>(
+    `/admin/share-requests/${uuid}/${decision}`,
+  );
   return data;
 }
 
@@ -99,11 +135,6 @@ export async function createUser(user: CreateUserDTO) {
 
 export async function getEntity() {
   const { data } = await apiClient.get<EntitySettings>("/admin/entity");
-  return data;
-}
-
-export async function getEntityInfo() {
-  const { data } = await apiClient.get<EntityInfo>("/admin/entity-info");
   return data;
 }
 

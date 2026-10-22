@@ -12,7 +12,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        'wl': ['var(--font-family)', 'Inter', 'system-ui', 'sans-serif'],
+        'wl': ['var(--font-family)', 'Montserrat', 'system-ui', 'sans-serif'],
       },
       colors: {
         ...colors,

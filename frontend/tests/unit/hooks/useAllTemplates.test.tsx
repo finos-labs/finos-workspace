@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockNavigate = vi.fn();
 const mockAddTab = vi.fn();
@@ -35,14 +35,15 @@ vi.mock("~/lib/utils/createTemplates", () => ({
 
 import { useAllTemplates } from "~/hooks/useAllTemplates";
 import { type ProcessedTemplate, useSharedTemplates } from "~/hooks/useSharedTemplates";
+import type { SharingLevel } from "~/lib/state/access";
 import { useShallowAppStore } from "~/lib/state/app";
 import {
-  type BackendTemplate,
   getTemplateWidgetsMetadata,
   type Source,
   useShallowBackendConnectorStore,
 } from "~/lib/state/backendConnector";
-import { makeItem } from "../factories";
+import { type UserAppReturn, useUserAppsStore } from "~/lib/state/userApps";
+import { makeItem, setAccess } from "../factories";
 import { malformed, partial, stubStoreState } from "../mocks";
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -468,51 +469,41 @@ describe("useAllTemplates", () => {
       expect(result.current[0].widgets).toEqual([{ name: "W1" }, { name: "W2" }]);
     });
   });
-
-  describe("rehydrated listed apps", () => {
-    it("renders rehydrated listed app from full cached templates (no fake disconnected template)", () => {
-      const cachedTemplate = partial<BackendTemplate>({
-        id: "custom-cached-template",
-        name: "Cached Listed Template",
-        description: "Hydrated from localStorage",
-        prompts: ["cached prompt"],
-        tabs: {},
+  describe("apps other users shared", () => {
+    const app = (name: string, creator: boolean) =>
+      partial<UserAppReturn>({
+        content: { name, description: "", widgets: [], prompts: [] },
+        creator,
+        createdBy: creator ? "me@example.com" : "colleague@example.com",
+        isShared: !creator,
       });
 
-      const mockSource = partial<Source>({
-        id: "source-listed",
-        uuid: "source-listed",
-        name: "Listed Backend",
-        url: "https://listed.example.com",
-        status: "rehydrated",
-        templates: [cachedTemplate],
-        widgets: { foo: { name: "Foo" } },
-        vendorApp: {
-          uuid: "vendor-uuid",
-          name: "Vendor App",
-          shortDescription: "Vendor desc",
-          prompts: [],
-        },
+    beforeEach(() => {
+      useUserAppsStore.setState({
+        userApps: { "own-app": app("My App", true) },
+        sharedUserApps: { "shared-app": app("Their App", false) },
       });
+    });
 
-      stubStoreState(useShallowBackendConnectorStore, { apiSources: [mockSource] });
+    afterEach(() => {
+      useUserAppsStore.setState({ userApps: {}, sharedUserApps: {} });
+    });
 
-      vi.mocked(getTemplateWidgetsMetadata).mockReturnValue(
-        partial({
-          widgets: [{ name: "Foo" }],
-          totalWidgets: 1,
-        }),
-      );
-
+    it.each<SharingLevel>([
+      "receive",
+      "share",
+    ])("are listed for a user whose sharing is %s", (sharing) => {
+      setAccess({ sharing });
       const { result } = renderHook(() => useAllTemplates(), { wrapper });
 
-      expect(result.current).toHaveLength(1);
-      const tpl = result.current[0];
-      expect(tpl.type).toBe("listed");
-      expect(tpl.id).toBe("listed-vendor-uuid");
-      expect(tpl.name).toBe("Vendor App");
-      expect(tpl.description).toBe(cachedTemplate.description);
-      expect(tpl.prompts).toEqual(["cached prompt"]);
+      expect(result.current.map((t) => t.name).sort()).toEqual(["My App", "Their App"]);
+    });
+
+    it("are not listed for a user who cannot receive shared items", () => {
+      setAccess({ sharing: "none" });
+      const { result } = renderHook(() => useAllTemplates(), { wrapper });
+
+      expect(result.current.map((t) => t.name)).toEqual(["My App"]);
     });
   });
 });

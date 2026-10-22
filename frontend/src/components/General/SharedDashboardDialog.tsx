@@ -33,6 +33,8 @@ type ShareData = {
     last_name?: string;
     created_date?: string;
     permissions?: "view" | "edit";
+    /** A developer's share that waits for an admin's approval */
+    pending?: boolean;
   };
 };
 
@@ -178,6 +180,8 @@ export function ShareDashboard({
         await deleteDashboardShare(shareDashboardPopupId, deletedEmails);
       }
 
+      // A developer's shares wait for an admin's approval
+      let pendingApproval = false;
       if (sharedEmails.length > 0) {
         const data = await shareDashboard(
           shareDashboardPopupId,
@@ -188,8 +192,14 @@ export function ShareDashboard({
           toast.error("Dashboard Share Failed", { description: data?.detail });
           return;
         }
+        pendingApproval = data.pending_approval === true;
       }
-      if (sharedEmails.length > 0 && tabHasBYODWidgets) {
+      if (pendingApproval) {
+        toast.success("Sent to an admin for approval", {
+          description:
+            "The people you chose get access once an admin approves the share.",
+        });
+      } else if (sharedEmails.length > 0 && tabHasBYODWidgets) {
         toast.success("Dashboard shared permissions updated", {
           description:
             "Please note that shared users will not be able to view Data connectors widgets.",
@@ -288,6 +298,9 @@ export function ShareDashboard({
                       </span>
                     </span>
                     <div className="flex gap-2 items-center">
+                      {shareDataInfo?.[email]?.pending && (
+                        <span className="ws-tag w-fit">Waiting for approval</span>
+                      )}
                       {/*shareDataInfo?.[email]?.created_date && (
                     <Tooltip
                       position="top"
@@ -311,11 +324,13 @@ export function ShareDashboard({
                         position="top"
                         open={state.tooltipEmail === email}
                         message={
-                          shareDataInfo?.[email]?.created_date
-                            ? `Shared on ${new Date(
-                                shareDataInfo[email].created_date,
-                              ).toLocaleDateString()}`
-                            : "No access to the dashboard"
+                          shareDataInfo?.[email]?.pending
+                            ? "Waiting for an admin to approve the share"
+                            : shareDataInfo?.[email]?.created_date
+                              ? `Shared on ${new Date(
+                                  shareDataInfo[email].created_date,
+                                ).toLocaleDateString()}`
+                              : "No access to the dashboard"
                         }
                       >
                         <span
@@ -420,18 +435,13 @@ function getWarningMessages(widgets: Widget[]) {
   const warningMessages = { type: false, api: false };
   const connectionTypes = ["file", "single", "advanced-backend"];
   const urlRegex = /(?:(secret|api|key|token|auth)(?<=\1(?:[^&\s]*)))/;
-  const headersRegex = /.*key.*|.*token.*|.*auth.*|.*secret.*|.*bearer.*|.*basic.*/;
 
   for (const widget of widgets) {
     if (!(widget?.connectionType && connectionTypes.includes(widget.connectionType)))
       continue;
 
     warningMessages.type = true;
-    const headersMessages = Object.keys(widget?.endpoint?.headers || {}).some(
-      (header) => headersRegex.test(header),
-    );
-
-    if (urlRegex.test(widget?.endpoint?.url ?? "") || headersMessages) {
+    if (urlRegex.test(widget?.endpoint?.url ?? "")) {
       warningMessages.api = true;
     }
   }

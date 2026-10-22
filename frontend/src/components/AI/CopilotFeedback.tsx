@@ -2,6 +2,7 @@ import { useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { useGetCopilotRequestHeaders } from "~/components/AI/hooks/useGetCopilotRequestHeaders";
 import { useStateReducer } from "~/hooks/useStateReducer";
+import { fetchAgent } from "~/lib/state/agentToken";
 import { type AIMessage, useShallowCopilotStore } from "~/lib/state/copilot";
 import { Button } from "../ds/atoms/Button";
 import { Checkbox } from "../ds/atoms/Checkbox";
@@ -24,7 +25,7 @@ const FEEDBACK_OPTIONS = [
   "Not factually correct / Hallucinations / Inaccurate",
   "Didn't use the correct data (although it's available)",
   "Didn't fully follow instructions / Lazy / Incomplete",
-  "Workspace didn't have the right data for copilot to answer correctly",
+  "Workspace didn't have the right data for the agent to answer correctly",
   "Other",
 ] as const;
 
@@ -100,7 +101,7 @@ export function CopilotFeedback({ message }: { message: AIMessage }) {
             feedbackPayload,
           );
 
-          const response = await fetch(feedbackEndpoint, {
+          const response = await fetchAgent(feedbackEndpoint, {
             method: "POST",
             headers: getCopilotRequestHeaders(message.traceId),
             body: JSON.stringify(feedbackPayload),
@@ -199,7 +200,7 @@ export function CopilotFeedback({ message }: { message: AIMessage }) {
           open={state.showFeedbackModal}
           onClose={resetFeedback}
         >
-          <DialogTitle>Unsatisfactory copilot response</DialogTitle>
+          <DialogTitle>Unsatisfactory agent response</DialogTitle>
           <div className="space-y-4">
             {FEEDBACK_OPTIONS.map((option, index) => (
               <Checkbox
