@@ -1,11 +1,9 @@
 import BrandedLogo from "~/components/General/BrandedLogo";
-import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn } from "~/lib/utils";
 
 export default function NoItems() {
   const theme = useShallowThemeStore((state) => state.theme);
-  const { leftSidebarLogo, leftSidebarLogoDark, name } = getConfig().whiteLabel;
 
   return (
     // The page background comes from the store, not `dark:`: the `dark` class lands on
@@ -17,24 +15,9 @@ export default function NoItems() {
       )}
     >
       <div className="flex flex-col gap-1 items-center">
-        {leftSidebarLogo ? (
-          <img
-            className="w-[200px] object-contain opacity-50"
-            src={
-              theme === "dark" && leftSidebarLogoDark
-                ? leftSidebarLogoDark
-                : leftSidebarLogo
-            }
-            alt={name || "Workspace"}
-          />
-        ) : (
-          <BrandedLogo
-            className={cn(
-              "h-auto w-[200px]",
-              theme === "dark" ? "text-white/50" : "text-[#071820]/50",
-            )}
-          />
-        )}
+        {/* `BrandedLogo` picks the white-label image or the brand mark and fades
+            either one, so this loader matches the in-widget one. */}
+        <BrandedLogo className="h-auto w-[200px]" />
         <p className="subtitle-sm-bold mt-2 text-light-300 dark:text-dark-700">
           Loading
           <span className="inline-flex gap-0.5 ml-0.5 items-end pb-0.5">

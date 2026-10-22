@@ -21,8 +21,8 @@ export default function BrandedLogo({ className, animate = true }: BrandedLogoPr
     return (
       <img
         className={cn(
-          "max-w-[200px] w-full max-h-full object-contain opacity-50",
-          animate && "animate-pulse",
+          "max-w-[200px] w-full max-h-full object-contain",
+          animate && "logo-fade",
           className,
         )}
         src={
