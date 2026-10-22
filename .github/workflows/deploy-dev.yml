@@ -77,7 +77,7 @@ jobs:
             if output=$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="$IMAGE_TAG" 2>&1); then
               echo "$repository:$IMAGE_TAG is already in ECR."
             elif grep -q ImageNotFoundException <<< "$output"; then
-              docker build -f "backend-api/backend/$dockerfile" --cache-from "type=gha,scope=$dockerfile" \
+              docker buildx build -f "backend-api/backend/$dockerfile" --cache-from "type=gha,scope=$dockerfile" \
                 --cache-to "type=gha,mode=max,scope=$dockerfile" --load -t "$ECR_REGISTRY/$repository:$IMAGE_TAG" backend-api/backend
               docker push "$ECR_REGISTRY/$repository:$IMAGE_TAG"
             else

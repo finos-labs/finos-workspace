@@ -101,7 +101,7 @@ jobs:
       - name: Build image
         if: steps.existing.outputs.exists != 'true'
         run: >-
-          docker build -f "backend-api/backend/${{ matrix.dockerfile }}"
+          docker buildx build -f "backend-api/backend/${{ matrix.dockerfile }}"
           --cache-from "type=gha,scope=${{ matrix.dockerfile }}" --cache-to "type=gha,mode=max,scope=${{ matrix.dockerfile }}"
           --load -t "$ECR_REPOSITORY:$IMAGE_TAG" backend-api/backend
 
