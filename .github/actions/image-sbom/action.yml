@@ -1,12 +1,13 @@
-name: Image SBOM
+name: Image SBOM and provenance
 description: >
-  Attests a CycloneDX SBOM of an image pushed to ECR and pushes the attestation
-  to ECR with the image, unless the image has an SBOM attestation already. Syft
-  reads the image: its OS packages, the packages installed in it, its runtimes
-  and the SBOM files it carries. Needs the image's ECR credentials and the job permissions
-  id-token: write and attestations: write. The attestation can be read with
-  `gh attestation verify oci://<image> --owner <owner>
-  --predicate-type https://cyclonedx.org/bom`.
+  Attests a CycloneDX SBOM of an image pushed to ECR, and its build provenance
+  (SLSA), and pushes the attestations to ECR with the image, unless the image
+  has them already. Syft reads the image: its OS packages, the packages
+  installed in it, its runtimes and the SBOM files it carries. Needs the image's
+  ECR credentials and the job permissions id-token: write and attestations:
+  write. The attestations can be read with `gh attestation verify
+  oci://<image> --owner <owner>`, with `--predicate-type
+  https://cyclonedx.org/bom` for the SBOM.
 inputs:
   image:
     description: The pushed image, as <registry>/<repository>:<tag>.
@@ -23,8 +24,8 @@ runs:
   using: composite
   steps:
     # A rerun finds the image pushed by an earlier run, which may have stopped
-    # before it attested the SBOM.
-    - name: Find the image's digest and its SBOM attestation
+    # before it attested it.
+    - name: Find the image's digest and its attestations
       id: image
       shell: bash
       env:
@@ -37,10 +38,12 @@ runs:
           --query 'imageDetails[0].imageDigest' --output text)
         # GitHub answers 404 for a digest with no attestations.
         sboms=$(gh api "repos/$GITHUB_REPOSITORY/attestations/$digest?predicate_type=sbom" --jq '.attestations | length' 2>/dev/null) || sboms=0
+        provenances=$(gh api "repos/$GITHUB_REPOSITORY/attestations/$digest?predicate_type=provenance" --jq '.attestations | length' 2>/dev/null) || provenances=0
         {
           echo "name=$name"
           echo "digest=$digest"
           echo "attested=$([ "$sboms" -gt 0 ] && echo true || echo false)"
+          echo "provenance=$([ "$provenances" -gt 0 ] && echo true || echo false)"
           echo "sbom=$RUNNER_TEMP/image-sbom/${repository//\//-}.cdx.json"
         } >> "$GITHUB_OUTPUT"
 
@@ -76,4 +79,12 @@ runs:
         subject-name: ${{ steps.image.outputs.name }}
         subject-digest: ${{ steps.image.outputs.digest }}
         sbom-path: ${{ steps.image.outputs.sbom }}
+        push-to-registry: true
+
+    - name: Attest the build provenance and push it to ECR
+      if: steps.image.outputs.provenance != 'true'
+      uses: actions/attest-build-provenance@v4
+      with:
+        subject-name: ${{ steps.image.outputs.name }}
+        subject-digest: ${{ steps.image.outputs.digest }}
         push-to-registry: true
