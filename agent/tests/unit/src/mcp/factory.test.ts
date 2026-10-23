@@ -68,7 +68,6 @@ describe("linkedToolName — a widget's link to a tool of its own backend", () =
   it("names nothing for a tool this request did not register, or no link", () => {
     expect(linkedToolName({ server_id: "team-data", tool_name: "missing" }, entries)).toBeUndefined();
     expect(linkedToolName({ server_id: "gone", tool_name: "get_team_report" }, entries)).toBeUndefined();
-    // A tool without its own name cannot be matched to a link
     expect(linkedToolName({ server_id: "team-data", tool_name: "Team_data_unnamed" }, entries)).toBeUndefined();
     expect(linkedToolName(undefined, entries)).toBeUndefined();
   });
@@ -167,10 +166,6 @@ describe("makeMcpTools — agent-owned tool names filtered", () => {
     expect(out.entries.map((e) => e.toolName)).toEqual(["inesmcp_fetch_webpage"]);
   });
 
-  // The bridge mount names `update_widget_layout` differently from its wire
-  // command (`update_dashboard_layout`), and get_widget_data/get_skill_content
-  // are bridge commands with bespoke agent paths outside WORKSPACE_BRIDGE_COMMANDS.
-  // All three must still be deduped or they double-register against native tools.
   it("drops bridge-mount aliases and bespoke round-trip wrappers", () => {
     const out = makeMcpTools([
       tool({ name: "inesmcp_update_widget_layout", server_id: "ines" }),

@@ -1,22 +1,4 @@
 #!/usr/bin/env node
-/**
- * Manual smoke test for the document-RAG MCP handler.
- *
- * Hits `queryDocumentsHandler` directly (no agent loop, no HTTP).
- * Validates: format detection → text extraction → chunking → embedding →
- * retrieval → formatted result.
- *
- * Prereqs:
- *   - INES_EMBED_MODEL set as <provider>:<model>, with that provider's key (for example NVIDIA_API_KEY)
- *
- * Usage:
- *   node --env-file=.env scripts/smoke-doc-rag.ts <doc-path> "<question>" [doc-path-2] ...
- *
- * Examples:
- *   node --env-file=.env scripts/smoke-doc-rag.ts ./README.md "what is ines-tools?"
- *   node --env-file=.env scripts/smoke-doc-rag.ts ./report.pdf "what was the Q3 revenue?"
- *   node --env-file=.env scripts/smoke-doc-rag.ts ./notes.txt ./spec.md "summarize both"
- */
 
 import { readFileSync } from "node:fs";
 import { basename, extname } from "node:path";

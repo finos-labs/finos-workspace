@@ -1,12 +1,3 @@
-/**
- * What the chat is shown while an answer arrives: nothing until it is whole.
- *
- * Text is never rendered token by token, whatever the agent sends. A message chunk (and an artifact or
- * citation marker) is only held; the answer is put in the chat as one message when the text is complete:
- * at the next status update or function call, or when the stream is done. Status updates (the reasoning)
- * are shown as they arrive. Stopping keeps what was held, as a cancelled message.
- */
-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -107,7 +98,6 @@ const encoder = new TextEncoder();
 const sse = (event: string, data: unknown) =>
   encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 
-/** A response that the test feeds one event at a time. */
 function openStream() {
   let controller!: ReadableStreamDefaultController<Uint8Array>;
   const body = new ReadableStream<Uint8Array>({
@@ -129,7 +119,6 @@ function openStream() {
   return {
     send: async (event: string, data: unknown = {}) => {
       controller.enqueue(sse(event, data));
-      // Let the reader take it and the handler finish with it.
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
       });
@@ -168,7 +157,6 @@ async function startAsking() {
     finished = context.handleSubmitRef.current?.({ question: "summarize prices" });
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
-  // Swallow the promise of the whole run: it ends when the stream is closed.
   void finished?.catch(() => {});
   return stream;
 }
@@ -204,12 +192,11 @@ beforeEach(() => {
 describe("the answer", () => {
   it("is not in the chat while its chunks arrive, and is one message when the stream is done", async () => {
     const stream = await startAsking();
-    await waitFor(() => expect(chatMessages()).toHaveLength(1)); // the question
+    await waitFor(() => expect(chatMessages()).toHaveLength(1));
 
     await stream.send("copilotMessageChunk", { delta: "Top close " });
     await stream.send("copilotMessageChunk", { delta: "is 200." });
 
-    // Held: nothing of it is in the chat, and the chat is still working on it.
     expect(aiMessages()).toHaveLength(0);
     expect(useStreamingStore.getState().loading).toBe(true);
     expect(useStreamingStore.getState().streamingStatus).toBe("streaming-ready");
@@ -322,7 +309,6 @@ describe("the reasoning", () => {
     });
     expect(chatMessages().map((m) => m.role)).toEqual(["human", "ai", "system"]);
     expect(aiMessages()[0].content).toBe("First part.");
-    // What was held is not held twice.
     expect(held()).toBe(JSON.stringify(""));
 
     await stream.send("copilotMessageChunk", { delta: "Second part." });
@@ -364,7 +350,6 @@ describe("stopping", () => {
       context.stopSubmitRef.current?.();
     });
 
-    // The status is the last message, so the cancelled answer is a new, empty one.
     expect(aiMessages().map((m) => m.content)).toEqual(["First part.", ""]);
     expect(aiMessages()[1].isCancelled).toBe(true);
     await stream.end().catch(() => {});
@@ -374,8 +359,7 @@ describe("stopping", () => {
 describe("a call of a tool", () => {
   async function callTool(serverId: string) {
     const stream = await startAsking();
-    await waitFor(() => expect(chatMessages()).toHaveLength(1)); // the question
-    // What the call is answered with is sent to the agent, which has nothing more to say.
+    await waitFor(() => expect(chatMessages()).toHaveLength(1));
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       headers: new Headers(),
@@ -421,14 +405,6 @@ describe("a call of a tool", () => {
   });
 });
 
-/**
- * When the answer is in the chat the cursor goes back to the question box, after a short wait for the
- * chat to render it. That wait is a timer, and a timer nobody owns outlives the component: it fires
- * into a page that is no longer there and throws `document is not defined`, which fails the whole
- * test file from outside any test ("This error originated in ..."). It is how this file failed on CI
- * and not on a faster machine — the timer has to land in the gap between the file ending and the
- * environment being torn down.
- */
 describe("the cursor going back to the question box", () => {
   it("is not attempted once the chat is gone", async () => {
     const { unmount } = renderHook(() => useHandleStreaming(), { wrapper });
@@ -441,14 +417,12 @@ describe("the cursor going back to the question box", () => {
     void finished?.catch(() => {});
 
     await stream.send("copilotMessageChunk", { delta: "an answer" });
-    // `done` is what puts the answer in the chat and asks for the cursor back.
     await stream.send("done", {});
     await stream.end();
 
     const lookup = vi.spyOn(document, "getElementById");
     unmount();
 
-    // Past the wait: nothing may go looking for the question box any more.
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 250));
     });

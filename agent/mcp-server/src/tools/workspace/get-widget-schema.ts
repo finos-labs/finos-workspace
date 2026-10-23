@@ -1,10 +1,3 @@
-/**
- * get_widget_schema — fetch one widget's params + UI schema.
- *
- * Pre-validates that origin and widget_id are present (mirrors
- * workspace_mcp/server.py:581-585 invalid_request guard).
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";

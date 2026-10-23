@@ -1,7 +1,3 @@
-"""The rules widget plugin packages are checked against: the CSP validator, the
-manifest, the schema lint and the discovery pipeline (docs/widget-plugins/DESIGN.md 4.3
-and 4.4, SECURITY.md 4). None of this needs a database."""
-
 import json
 import os
 from pathlib import Path
@@ -154,7 +150,6 @@ class TestManifest:
             {"handles": []},
             {"permissions": ["core:everything"]},
             {"permissions": ["core:proxy:call"]},
-            # What a widget exports is decided by its code when the user asks, not listed here
             {"permissions": ["core:export:provide"], "exports": ["csv"]},
             {"model": {"traits": {"rows": {"bind": "data", "access": "readwrite"}}}},
             {"model": {"traits": {"rows": {"bind": "window"}}}},

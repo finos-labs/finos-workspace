@@ -1,5 +1,3 @@
-"""The lists in the app-builder spec pages are generated from the widgets.json schema kit."""
-
 import pytest
 
 import scripts.generate_app_builder_specs as specs
@@ -20,7 +18,6 @@ KIT = {
 
 
 def test_the_spec_pages_are_current(capsys):
-    """To rewrite them, from backend-api/backend: python -m scripts.generate_app_builder_specs"""
     assert main(["--check"]) == 0, capsys.readouterr().err
 
 
@@ -31,7 +28,6 @@ def test_a_block_is_rewritten_between_its_markers_and_the_prose_is_kept():
     assert "| `markdown` | Prose | Markdown | GET or POST | query, header, body, or the path |" in rendered
     assert rendered.endswith("\n<!-- /generated:types -->\nAfter\n")
     assert "old rows" not in rendered
-    # An empty block is filled too
     empty = "<!-- generated:types -->\n<!-- /generated:types -->\n"
     assert render("specs/widget-types.md", empty, KIT) == rendered.removeprefix("Before\n").removesuffix("After\n")
 
@@ -44,7 +40,6 @@ def test_a_block_belongs_to_its_page():
 
 
 def test_ines_serves_the_same_pages(tmp_path, monkeypatch, capsys):
-    """Ines's MCP server keeps a copy of the pages: it is written from them and checked."""
     copy = tmp_path / "app-builder"
     monkeypatch.setattr(specs, "INES_COPY", copy)
     assert main(["--check"]) == 1
@@ -57,7 +52,6 @@ def test_ines_serves_the_same_pages(tmp_path, monkeypatch, capsys):
         assert (copy / page).read_bytes() == (RESOURCES / page).read_bytes()
     assert main(["--check"]) == 0
 
-    # A page of its own, or a page edited there, is stale; writing removes or replaces it
     (copy / "extra.md").write_text("mine", encoding="utf-8")
     (copy / "specs" / "widgets-json.md").write_text("edited", encoding="utf-8")
     capsys.readouterr()

@@ -235,7 +235,6 @@ function formatDashboardDataForTemplate(
         state.params = (widget?.params || [])?.reduce<Record<string, StoredParamValue>>(
           (paramsAcc, param) => {
             const paramValue = widget.storage?.params?.[param.paramName];
-            // to not include default values in the template
             if (paramValue && paramValue !== param.value) {
               paramsAcc[param.paramName] = paramValue;
             }

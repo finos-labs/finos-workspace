@@ -31,7 +31,6 @@ const goodWidget = {
   params: [],
 };
 
-// A widget needs a name
 const badWidget = { name: "", endpoint: "/bad", type: "html", params: [] };
 
 const goodApp = {
@@ -40,7 +39,6 @@ const goodApp = {
   tabs: { main: { id: "main", name: "Main", layout: [] } },
 };
 
-// An app needs its tabs
 const badApp = { name: "Broken App" };
 
 function respond(widgets: unknown, apps: unknown = []) {
@@ -168,7 +166,6 @@ describe("validateBackend with invalid items", () => {
       "widgets.json:bad",
       "apps.json:Broken App",
     ]);
-    // Nothing that is invalid leaves the backend unusable
     expect(result.fatalErrorMessage).toBeNull();
   });
 
@@ -250,18 +247,15 @@ describe("the warning about widget types that are not rendered", () => {
     const result = await validateSource(source, false);
 
     const message = result.templateWarningMessage ?? "";
-    // No plugin enabled for the organization handles `table`
     expect(message).toContain(
       "no widget plugin enabled for your organization renders their type: `prices`",
     );
-    // One is, but this user may not use it
     expect(message).toContain(
       "no widget plugin available to you renders their type: `chart`",
     );
     expect(message).toContain(
       "Widget types you can use: `html`, `iframe`, `markdown`, `newsfeed`, `pdf`",
     );
-    // A widget with no type breaks the contract: it is reported, not left out quietly
     expect(result.invalidItems?.map((item) => item.id)).toEqual(["untyped"]);
   });
 

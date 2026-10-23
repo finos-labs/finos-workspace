@@ -1,11 +1,3 @@
-"""An administrator resets a user's password with a link. The reset stops the password
-from working and ends every session of the user; the answer is the link, which the
-administrator gives the user. The user opens it in the web app and sets a new password,
-which the API checks for strength. A link works once, within a day, and only the newest
-link of a user works. Redis keeps only the hash of its token. A user an administrator
-adds gets such a link too, and no password anyone knows until they set theirs.
-"""
-
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from urllib.parse import urlsplit
@@ -26,7 +18,6 @@ EXPIRED = "This link has expired or was used already. Ask your admin for a new o
 
 @asynccontextmanager
 async def _browser(headers: dict[str, str] | None = WEB_HEADERS):
-    """A client of its own, with exactly these headers and an empty cookie jar."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url=TEST_BASE_URL, headers=headers or {}
     ) as browser:
@@ -47,7 +38,6 @@ async def _sign_in(email: str, password: str) -> int:
 
 
 def _token(answer: dict) -> str:
-    """The token of the link in an answer, which is all a link carries."""
     assert set(answer) == {"success", "link", "expires_at"}
     link = urlsplit(answer["link"])
     assert (link.scheme, link.netloc, link.path) == (
@@ -60,7 +50,6 @@ def _token(answer: dict) -> str:
 
 
 async def _reset(admin_client, user: models.User) -> str:
-    """The token of the link the administrator gets."""
     response = await admin_client.post(f"/admin/reset-password/{user.uuid}")
     assert response.status_code == 200, response.text
     return _token(response.json())
@@ -339,7 +328,6 @@ class TestTheLink:
 
     @pytest.mark.asyncio
     async def test_every_session_ends(self, organization, admin_client, db_session):
-        # A session that began after the reset, as with single sign-on
         user = await organization.add_user(password=PASSWORD)
         token = await _reset(admin_client, user)
         await auth_helpers.create_login_token(

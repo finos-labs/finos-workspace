@@ -1,5 +1,3 @@
-"""Models of the Workspace: dashboards, backends (API sources), chats, files, apps, copilots and MCP servers"""
-
 from datetime import datetime
 from uuid import UUID
 
@@ -39,8 +37,6 @@ from utilities.config import settings
 
 
 class DashboardItem(Base, UUIDMixin, DateMixin):
-    "Stores dashboard folders or item"
-
     __tablename__ = "dashboard_item"
 
     creator_uuid: Mapped[UUID] = mapped_column(
@@ -58,12 +54,6 @@ class DashboardItem(Base, UUIDMixin, DateMixin):
 
 
 class DashboardSave(Base, UUIDMixin):
-    """Stores one version of a dashboard
-
-    Important note: this table does not use the DateMixin because that keeps track of dates in seconds
-    and here we need fractional seconds to ensure that users always retrieve the latest version of the dashboard
-    """
-
     __tablename__ = "dashboard_save"
 
     dashboard_item_uuid: Mapped[UUID] = mapped_column(
@@ -79,8 +69,6 @@ class DashboardSave(Base, UUIDMixin):
 
 
 class DashboardShare(Base, UUIDMixin, DateMixin):
-    "Gives one user specific access to one dashboard item"
-
     __tablename__ = "dashboard_share"
 
     dashboard_item_uuid: Mapped[UUID] = mapped_column(
@@ -142,8 +130,6 @@ class FileWidget(Base, UUIDMixin, DateMixin):
 
 
 class CopilotChat(Base, UUIDMixin, DateMixin):
-    """Copilot Chat"""
-
     __tablename__ = "copilot_chat"
     user_uuid: Mapped[UUID] = mapped_column(
         UUIDType, ForeignKey("user.uuid"), nullable=False, index=True
@@ -172,7 +158,6 @@ class CopilotChat(Base, UUIDMixin, DateMixin):
             nullable=True,
         )
 
-        # GIN Index is critical for full-text search performance
         __table_args__ = (
             Index("ix_copilot_chat_search", search_vector, postgresql_using="gin"),
         )
@@ -184,8 +169,6 @@ class CopilotChat(Base, UUIDMixin, DateMixin):
 
 
 class ChatMessages(Base, UUIDMixin):
-    """Copilot Chat Messages"""
-
     __tablename__ = "copilot_messages"
     user_uuid: Mapped[UUID] = mapped_column(
         UUIDType, ForeignKey("user.uuid"), nullable=False
@@ -223,7 +206,6 @@ class ChatMessages(Base, UUIDMixin):
         ),
     )
     if settings.DATABASE_TYPE == "postgresql":
-        # Automatically managed TSVECTOR  full-text search
         search_vector: Mapped[TSVECTOR | None] = mapped_column(
             TSVECTOR,
             Computed("to_tsvector('simple', searchable_content)", persisted=True),
@@ -329,7 +311,7 @@ class WidgetMetadata(Base, UUIDMixin, DateMixin):
     widget_config: Mapped[dict | None] = mapped_column(GzipJsonType)
     widget_id: Mapped[UUID] = mapped_column(
         UUIDType, unique=True
-    )  # this is FE ID (uuid)
+    )
 
     __table_args__ = (
         Index("ix_user_name_type", "user_uuid", "name", "widget_type", unique=False),
@@ -363,10 +345,6 @@ class UserAppShare(Base, UUIDMixin, DateMixin):
 
 
 class ShareRequest(Base, UUIDMixin, DateMixin):
-    """A developer's share of a dashboard or an app, waiting for an admin of their
-    organization to approve it. Without a recipient it shares a dashboard with the whole
-    organization."""
-
     __tablename__ = "share_request"
     __table_args__ = (
         CheckConstraint(
@@ -387,7 +365,6 @@ class ShareRequest(Base, UUIDMixin, DateMixin):
     recipient_uuid: Mapped[UUID | None] = mapped_column(
         UUIDType, ForeignKey("user.uuid", ondelete="CASCADE"), index=True
     )
-    # The permission the recipient gets (schemas.permissions_type); none for the organization
     permissions: Mapped[str | None] = mapped_column(String(10))
 
 
@@ -416,27 +393,15 @@ class MCPServers(Base, UUIDMixin, DateMixin):
     user_uuid: Mapped[UUID] = mapped_column(
         UUIDType, ForeignKey("user.uuid"), nullable=False, index=True
     )
-    # The server list, without the headers. Encrypted too: a server's URL may carry a
-    # credential (in its path or query)
     servers: Mapped[list[dict] | None] = mapped_column(
         EncryptedMediumType("mcp_servers.servers")
     )
-    # The servers' custom headers: {normalized server URL: {header name: value}}
     headers: Mapped[dict[str, dict[str, str]] | None] = mapped_column(
         EncryptedType("mcp_servers.headers")
     )
 
 
 class MCPOAuthGrant(Base, UUIDMixin, DateMixin):
-    """What a user got by signing in to a remote MCP server (routers/app/mcp_oauth.py),
-    per user and server: the tokens, and the client the API registered with the
-    authorization server. Encrypted; the MCP proxy attaches the access token, and the
-    browser never receives any of it.
-
-    A server's URL may carry a credential, so the row names the server by the SHA-256 of
-    its normalized URL. The URL itself, and the user, are inside the encrypted credentials,
-    which are refused when they name another user or server than the row."""
-
     __tablename__ = "mcp_oauth_grant"
     __table_args__ = (
         UniqueConstraint("user_uuid", "server_hash", name="uix_mcp_oauth_grant_server"),

@@ -1,8 +1,6 @@
 import { HttpResponse, http, type JsonBodyType, passthrough } from "msw";
 import type { Usage, UserAccess } from "~/lib/state/access";
 
-// Default mock data
-// The API never sends a web session token: the session is an HttpOnly cookie
 export const mockUser = {
   uuid: "test-user-uuid",
   email: "test@example.com",
@@ -46,7 +44,6 @@ export const mockAccess: UserAccess = {
   sharing: "none",
 };
 
-/** GET /app/session: the signed-in user restored from the session cookie. */
 export const mockSession = {
   uuid: mockUser.uuid,
   email: mockUser.email,
@@ -60,23 +57,17 @@ export const mockSession = {
   },
 };
 
-/** GET/PUT /app/copilot-keys: whether keys are saved; the values never come back. */
 export const mockCopilotKeys = { has_openai_key: false, has_perplexity_key: false };
 
-/** A cookie request is only accepted when it names the web client. */
 const isWebClient = (request: Request) =>
   request.headers.get("X-Workspace-Client") === "web";
 
 const unauthorized = () =>
   HttpResponse.json({ detail: "Not authenticated" }, { status: 401 });
 
-// Base URL for API - matches VITE_BACKEND_URL in tests
 const BASE_URL = "https://backend.test";
 
 export const handlers = [
-  // ============ Auth Endpoints ============
-
-  // Login
   http.post(`${BASE_URL}/app/login`, async ({ request }) => {
     const body = (await request.json()) as { email: string; password: string };
 
@@ -84,7 +75,6 @@ export const handlers = [
       return HttpResponse.json({ detail: "Invalid credentials" }, { status: 401 });
     }
 
-    // The organization requires an authenticator: the API sets the enrollment cookie
     if (body.email === "2fa@example.com") {
       return HttpResponse.json(
         { two_factor_required: true, message: "Two-factor authentication is required" },
@@ -98,24 +88,20 @@ export const handlers = [
     });
   }),
 
-  // Validate user
   http.get(`${BASE_URL}/app/validate`, ({ request }) =>
     isWebClient(request) ? HttpResponse.json(mockValidateResponse) : unauthorized(),
   ),
 
-  // The signed-in user, restored from the session cookie after a reload
   http.get(`${BASE_URL}/app/session`, ({ request }) =>
     isWebClient(request) ? HttpResponse.json(mockSession) : unauthorized(),
   ),
 
-  // The short-lived agent token for the default Copilot
   http.post(`${BASE_URL}/app/copilot/token`, ({ request }) =>
     isWebClient(request)
       ? HttpResponse.json({ token: "mock-agent-token", expires_in: 1800 })
       : unauthorized(),
   ),
 
-  // The user's own provider keys: flags only
   http.get(`${BASE_URL}/app/copilot-keys`, ({ request }) =>
     isWebClient(request) ? HttpResponse.json(mockCopilotKeys) : unauthorized(),
   ),
@@ -138,12 +124,10 @@ export const handlers = [
     });
   }),
 
-  // Logout
   http.post(`${BASE_URL}/app/logout`, () => {
     return HttpResponse.json({ success: true });
   }),
 
-  // Google auth
   http.post(`${BASE_URL}/app/google-auth`, async ({ request }) => {
     const body = (await request.json()) as { token: string };
 
@@ -154,7 +138,6 @@ export const handlers = [
     return HttpResponse.json({ ...mockUser, status: 200 });
   }),
 
-  // Microsoft and Okta auth: the API verifies the ID token the provider issued
   http.post(`${BASE_URL}/app/microsoft-auth`, async ({ request }) => {
     const body = (await request.json()) as { token: string; id_token?: string };
 
@@ -175,12 +158,10 @@ export const handlers = [
     return HttpResponse.json({ ...mockUser, status: 200 });
   }),
 
-  // Accept terms
   http.post(`${BASE_URL}/app/accepted-tos`, () => {
     return HttpResponse.json({ success: true });
   }),
 
-  // 2FA endpoints
   http.post(`${BASE_URL}/totp`, () => {
     return HttpResponse.json({
       uri: "otpauth://totp/Workspace:test@example.com?secret=TESTSECRET",
@@ -209,19 +190,14 @@ export const handlers = [
     return HttpResponse.json({ success: true });
   }),
 
-  // ============ Dashboard Endpoints ============
-
-  // Get dashboards
   http.get(`${BASE_URL}/app/dash/sync`, () => {
     return HttpResponse.json(mockDashboardData);
   }),
 
-  // Get owned dashboards
   http.get(`${BASE_URL}/app/dash/sync/owned`, () => {
     return HttpResponse.json({ owned: mockDashboardData.owned });
   }),
 
-  // Get shared dashboards
   http.get(`${BASE_URL}/app/dash/sync/shared`, () => {
     return HttpResponse.json({
       shared: mockDashboardData.shared,
@@ -229,13 +205,11 @@ export const handlers = [
     });
   }),
 
-  // Post dashboards (sync)
   http.post(`${BASE_URL}/app/dash/sync`, async ({ request }) => {
     const body = await request.json();
     return HttpResponse.json({ success: true, items: body });
   }),
 
-  // Share dashboard
   http.post(`${BASE_URL}/app/dash/:dashboardUuid/share`, async ({ params }) => {
     const { dashboardUuid } = params;
 
@@ -246,7 +220,6 @@ export const handlers = [
     return HttpResponse.json({ success: true });
   }),
 
-  // Get dashboard shares
   http.get(`${BASE_URL}/app/dash/:dashboardUuid/shares`, ({ params }) => {
     const { dashboardUuid } = params;
 
@@ -257,24 +230,17 @@ export const handlers = [
     return HttpResponse.json({ shares: {} });
   }),
 
-  // Delete dashboard share
   http.delete(`${BASE_URL}/app/dash/:dashboardUuid/share`, () => {
     return HttpResponse.json({ success: true });
   }),
 
-  // ============ Usage & Access Endpoints ============
-
-  // Get usage
   http.get(`${BASE_URL}/app/usage`, () => {
     return HttpResponse.json(mockUsage);
   }),
 
-  // What the user's roles let them do
   http.get(`${BASE_URL}/app/access`, () => {
     return HttpResponse.json(mockAccess);
   }),
-
-  // ============ Widget Metadata Endpoints ============
 
   http.get(`${BASE_URL}/app/widget-metadata`, () => {
     return HttpResponse.json([]);
@@ -292,9 +258,6 @@ export const handlers = [
     return HttpResponse.json([]);
   }),
 
-  // ============ Data Connector Endpoints ============
-
-  // API Sources
   http.get(`${BASE_URL}/app/data-connectors/api-source`, () => {
     return HttpResponse.json([]);
   }),
@@ -307,7 +270,6 @@ export const handlers = [
     return HttpResponse.json({ status: 200 });
   }),
 
-  // File widgets
   http.get(`${BASE_URL}/app/data-connectors/file`, () => {
     return HttpResponse.json([]);
   }),
@@ -319,8 +281,6 @@ export const handlers = [
   http.delete(`${BASE_URL}/app/data-connectors/file/:sourceUuid`, () => {
     return HttpResponse.json({ status: 200 });
   }),
-
-  // ============ Files Endpoints ============
 
   http.get(`${BASE_URL}/app/files/:fileUuid/presigned-url`, ({ params }) => {
     const { fileUuid } = params;
@@ -339,8 +299,6 @@ export const handlers = [
     return HttpResponse.json({ status: 200 });
   }),
 
-  // ============ Copilot Endpoints ============
-
   http.post(`${BASE_URL}/app/copilot-chats`, () => {
     return HttpResponse.json(mockUsage);
   }),
@@ -357,8 +315,6 @@ export const handlers = [
     return HttpResponse.json({ success: true });
   }),
 
-  // ============ Prompts Endpoints ============
-
   http.get(`${BASE_URL}/app/prompts`, () => {
     return HttpResponse.json([]);
   }),
@@ -367,32 +323,24 @@ export const handlers = [
     return HttpResponse.json({ success: true });
   }),
 
-  // ============ Other Endpoints ============
-
-  // Theme settings
   http.get(`${BASE_URL}/app/theme-settings`, () => {
     return HttpResponse.json({ light: null, dark: null });
   }),
 
-  // MCP servers
   http.post(`${BASE_URL}/app/mcp-servers`, () => {
     return HttpResponse.json({ status: 200 });
   }),
 
-  // User update
   http.put(`${BASE_URL}/user`, () => {
     return HttpResponse.json({ status: 200 });
   }),
 
-  // ============ Passthrough Handlers ============
-  // Allow test URLs used by unit tests with vi.fn() mocks to pass through
   http.all("https://test-backend.com/*", () => passthrough()),
   http.all("http://test-backend.com/*", () => passthrough()),
   http.all("https://localhost/*", () => passthrough()),
   http.all("http://localhost/*", () => passthrough()),
 ];
 
-// Helper to create custom handlers for specific test scenarios
 export function createMockHandler(
   method: "get" | "post" | "put" | "delete" | "patch",
   path: string,
@@ -405,7 +353,6 @@ export function createMockHandler(
   });
 }
 
-// Helper to create error handler
 export function createErrorHandler(
   method: "get" | "post" | "put" | "delete" | "patch",
   path: string,

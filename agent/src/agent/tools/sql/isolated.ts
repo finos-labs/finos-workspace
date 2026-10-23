@@ -1,13 +1,3 @@
-/**
- * The SQL tools, run where they cannot hurt the rest of the agent.
- *
- * What the model writes as SQL can take for ever (a recursive query that never stops, a join of a table
- * with itself nine times) or ask for more memory than there is, and SQLite cannot be interrupted from
- * JavaScript while it runs. So the tools run in a child process (see lib/isolate.ts) that is killed when
- * its time is up; this process stays free for everybody else. The model is told what happened and can
- * write a cheaper query.
- */
-
 import type { SSEEvent } from "../../../protocol/types.ts";
 import { IsolationError, runInChild } from "../../../lib/isolate.ts";
 import { getLogger } from "../../../lib/logger.ts";
@@ -17,7 +7,6 @@ const logger = getLogger(["app", "tools", "sql", "isolated"]);
 
 const CHILD = new URL("./child.ts", import.meta.url).pathname;
 
-/** How long one SQL tool call may run: INES_SQL_TIMEOUT_MS (default 10 s). */
 export function sqlTimeoutMs(): number {
   const configured = Number(process.env.INES_SQL_TIMEOUT_MS);
   return Number.isFinite(configured) && configured >= 100 ? configured : 10_000;

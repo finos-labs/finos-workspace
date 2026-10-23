@@ -8,7 +8,6 @@ type WidgetState = {
     text?: string;
     html?: string;
     rawDataView?: boolean;
-    /** A plugin widget's configuration, which its plugin's settings define */
     plugin?: { config?: Record<string, unknown> };
   };
 };
@@ -20,6 +19,5 @@ export type TabLayout<Extra = {}> = {
   w: number;
   h: number;
   state?: WidgetState;
-  /** Whether the widget starts minimized. */
   minimized?: boolean;
 } & Extra;

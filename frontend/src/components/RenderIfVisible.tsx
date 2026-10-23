@@ -6,17 +6,9 @@ import BrandedLogo from "./General/BrandedLogo";
 import { useWidgetContext } from "./Widget.context";
 
 type Props = {
-  /**
-   * Whether the element should be visible initially or not.
-   * Useful e.g. for always setting the first N items to visible.
-   * Default: false
-   */
   initialVisible?: boolean;
-  /** How far outside the viewport in pixels should elements be considered visible?  */
   visibleOffset?: number;
-  /** Should the element stay rendered after it becomes visible? */
   stayRendered?: boolean;
-  /** Class to apply to the root element */
   rootElementClass?: string;
   children: ReactNode;
 };

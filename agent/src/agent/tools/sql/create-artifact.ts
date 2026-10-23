@@ -1,14 +1,3 @@
-/**
- * create_artifact — render rows as a table in the workspace conversation. The
- * Workspace has no table artifact, so the table is an HTML artifact.
- * Stateless. Accepts either a SQL query against the loaded
- * `pendingTables`, or raw rows.
- *
- * Local execute: pushes the rendered artifact directly onto the agent's
- * `artifactQueue` SSE side-channel. The loop drains that queue after
- * `generateText` returns, preserving artifact ordering relative to text.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
 import { buildDb, tableNotFoundMessage } from "./db.ts";
@@ -132,8 +121,6 @@ export function runCreateArtifact(
     try {
       const tInfo = loaded.find((t) => t.tableName === fromTableId);
       if (!tInfo) {
-        // Keep this tool's `Error:` prefix — `artifactFailed` in tool-status
-        // classifies create_artifact failures by it.
         return `Error: ${tableNotFoundMessage(fromTableId, loaded)}`;
       }
       rows = db.prepare(`SELECT * FROM "${fromTableId}"`).all() as Record<
@@ -193,7 +180,6 @@ export function makeCreateArtifactTool(ctx: CreateArtifactContext) {
     inputSchema: createArtifactSchema,
     execute: async (args) => {
       const a = args as CreateArtifactArgs;
-      // Rows given as they are need no database: nothing here can run long.
       if (!a.sql?.trim() && !a.from_table_id?.trim()) return runCreateArtifact(a, ctx);
       const refused = a.sql?.trim() ? rejectUnsafeSql(a.sql) : null;
       return refused ?? runSqlIsolated("create_artifact", a, ctx);

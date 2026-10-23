@@ -5,8 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SkillsTab } from "~/components/AI/SkillsTab";
 import { required } from "../../mocks";
 
-// --- vi.hoisted mocks ---
-
 const {
   mockSetSkillDialogOpen,
   mockUpdateSkills,
@@ -23,7 +21,6 @@ const {
   mockDeleteUserSkills: vi.fn(),
 }));
 
-// --- External dependency mocks ---
 
 vi.mock("sonner", () => ({
   toast: { success: mockToastSuccess, error: mockToastError },
@@ -37,7 +34,6 @@ vi.mock("~/lib/state/skillsLibrary", () => ({
   useShallowSkillsLibraryStore: mockUseShallowSkillsLibraryStore,
 }));
 
-/** The selected agent, with the skills its /agents.json lists. */
 const agentState = vi.hoisted(() => ({
   agent: null as null | { name: string; skills: { slug: string; description: string }[] },
 }));
@@ -70,7 +66,6 @@ vi.mock("framer-motion", () => ({
   },
 }));
 
-// --- Component mocks ---
 
 vi.mock("~/components/General/SearchResultsNotFound", () => ({
   default: () => <div data-testid="results-not-found">No results found</div>,
@@ -203,7 +198,6 @@ vi.mock("markdown-to-jsx", () => ({
   ),
 }));
 
-// --- Test data ---
 
 const createMockSkill = (
   overrides: Partial<{
@@ -244,7 +238,6 @@ const mockSkills = [
   }),
 ];
 
-// --- Test setup ---
 
 function setupMocks(skillsOverride: typeof mockSkills = mockSkills) {
   mockDeleteUserSkills.mockResolvedValue(skillsOverride);
@@ -266,7 +259,6 @@ function getSkillHeader(slug: string) {
   return screen.getByRole("button", { name: new RegExp(slug, "i") });
 }
 
-// --- Tests ---
 
 describe("SkillsTab", () => {
   beforeEach(() => {
@@ -766,7 +758,6 @@ describe("SkillsTab", () => {
       expect(screen.getByText("html-report")).toBeInTheDocument();
       expect(screen.getByText("HTML reports")).toBeInTheDocument();
       expect(screen.getAllByText("Ines")).toHaveLength(2);
-      // Only the user's three skills can be edited or deleted.
       expect(screen.getAllByTestId("icon-edit")).toHaveLength(mockSkills.length);
       expect(screen.getAllByTestId("icon-trash-02")).toHaveLength(mockSkills.length);
     });

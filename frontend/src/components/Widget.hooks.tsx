@@ -25,19 +25,12 @@ import type { NewWidgetT, StoredParamValue, WidgetProps, WidgetT } from "./types
 
 type SubType = [Group[], string | null | undefined];
 
-/** The subscription both app stores, of a user's dashboards and of a shared one, give to watch a widget. */
 type SubscribeToWidgetState = <U>(
   selector: (state: SharedAppState | AppState) => U,
   listener: (current: U, previous: U) => void,
   options: { fireImmediately: boolean },
 ) => () => void;
 
-/**
- * Decides whether an in-memory widget update must also be persisted to the
- * app store. Param-group, group, and ticker changes are the historical
- * triggers; everything else stays in provider state until an explicit save.
- * Extracted from updateWidgetCallback so the gate is testable in isolation.
- */
 export function shouldPersistWidgetUpdate(
   currentWidget: WidgetT,
   newWidget: WidgetT,
@@ -49,9 +42,6 @@ export function shouldPersistWidgetUpdate(
   const newMainTicker = newWidget.data?.mainTicker?.symbol;
   const newParams = newWidget.storage?.params;
 
-  // Identity fields set by update_widget (MCP/copilot) arrive without any
-  // param/group change — they must persist or the rename is a silent no-op.
-  // The `in` guard keeps partial update objects from forcing store churn.
   if (
     ("name" in newWidget && currentWidget.name !== newWidget.name) ||
     ("description" in newWidget &&
@@ -121,10 +111,8 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
 
   const needsUpdateRef = useRef(false);
 
-  // Use a ref to keep track of the current providerWidget
   const providerWidgetRef = useCreateRef(providerWidget);
 
-  // Use a ref to keep track of the saveToStore callback
   const saveToStoreCb = useCallbackRef(() => {
     if (needsUpdateRef.current && !props.contextOverride) {
       if (props.activeDashboardId)
@@ -220,7 +208,6 @@ export function useWidgetSync(props: Omit<WidgetProps, "children">) {
       );
     }
 
-    // Add event listeners for beforeunload and save shortcut
     window.addEventListener("beforeunload", onBeforeUnload, { signal: ctrl.signal });
 
     return () => {

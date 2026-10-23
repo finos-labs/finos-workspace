@@ -76,7 +76,6 @@ const BackendPromptsSection = memo(function BackendPromptsSection({
 }) {
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Scroll to the specific backend section when defaultExpandedBackendId is provided
   useEffect(() => {
     if (defaultExpandedBackendId && sectionRefs.current[defaultExpandedBackendId]) {
       setTimeout(() => {

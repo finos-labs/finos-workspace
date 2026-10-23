@@ -1,4 +1,3 @@
-// import { toast } from "sonner";
 import {
   QueryClient,
   QueryClientProvider,
@@ -18,7 +17,6 @@ const ADMIN_MAP = "11111111-1111-1111-1111-111111111111";
 const USER_MAP = "22222222-2222-2222-2222-222222222222";
 const DEVELOPER_MAP = "33333333-3333-3333-3333-333333333333";
 
-// The organization's maps, in the order the backend happens to list them
 const entityMap: EntityMapItem[] = [
   partial<EntityMapItem>({ uuid: USER_MAP, name: "User" }),
   partial<EntityMapItem>({ uuid: ADMIN_MAP, name: "Admin" }),
@@ -32,10 +30,8 @@ vi.mock("~/components/AdminRoles/adminUseQueries", async () => {
   return { ...actual, useEntityMap: () => ({ data: entityMap }) };
 });
 
-// Define mockNavigate at the top level
 const mockNavigate = vi.fn();
 
-// Mock react-router-dom
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
   return {
@@ -160,7 +156,6 @@ describe("AdminUserDetailsDialog", () => {
     expect(screen.getByTestId("last-login")).toHaveTextContent("Oct 1, 2023 12:00 PM");
   });
 
-  // TODO: Fix toast mock for it to be testable
   it("updates user details successfully", async () => {
     const mockAsync = vi.fn().mockResolvedValue({});
     (useMutation as Mock).mockReturnValue({ mutateAsync: mockAsync });
@@ -172,9 +167,6 @@ describe("AdminUserDetailsDialog", () => {
       expect(mockAsync).toHaveBeenCalledWith({
         permissions_uuid: mockUser.permissions_uuid,
       });
-      // expect(toast.success).toHaveBeenCalledWith("User updated successfully!", {
-      //   description: `User ${mockUser.email} has been updated`,
-      // });
     });
   });
 

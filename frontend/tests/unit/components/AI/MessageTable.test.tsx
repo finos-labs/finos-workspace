@@ -7,7 +7,6 @@ vi.mock("usehooks-ts", () => ({
   useLocalStorage: vi.fn().mockReturnValue(["", vi.fn()]),
 }));
 
-// Avoid toasts during tests
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -15,7 +14,6 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// The copy action writes the extracted rows to the clipboard as TSV
 async function copyTable(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button"));
   return (await navigator.clipboard.readText()).split("\n");
@@ -260,7 +258,6 @@ describe("MessageTable extraction", () => {
 
     const lines = await copyTable(user);
 
-    // Header line plus 31 rows: Aug 31 + Sep (30 days)
     expect(lines).toHaveLength(32);
     expect(lines[0]).toBe("Date\tOpen\tHigh\tLow\tClose");
     expect(lines[1]).toBe("2025-08-31\t202.86\t206.51\t200.66\t200.86");
@@ -359,7 +356,6 @@ describe("MessageTable extraction", () => {
 
     const lines = await copyTable(user);
 
-    // Header line plus 12 rows; the empty header falls back to a positional name
     expect(lines).toHaveLength(13);
     expect(lines[0]).toBe("Column 1\t3Q 25\t2Q 25\t3Q 24");
     expect(lines[1]).toBe(

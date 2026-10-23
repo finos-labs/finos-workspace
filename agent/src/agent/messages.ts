@@ -12,7 +12,6 @@ import {
   sanitizeAssistantContent,
 } from "./history.ts";
 
-// No single message is worth more than this to the model; the rest of a longer one is cut off and said to be.
 const MAX_MESSAGE_CHARS = 60_000;
 
 function capped(text: string): string {
@@ -25,12 +24,6 @@ export interface BuildMessagesOptions extends PromptOptions {
   workspaceState?: WorkspaceState | null;
 }
 
-// A workspace bridge result re-POST carries `data: [{ status, message, ... }]`.
-// Render just the outcome line so an EARLIER bridge call in the turn (e.g. one
-// of many queued update_widget drains) stays in the model's memory — otherwise
-// the final turn sees only the last result and under-reports / re-issues
-// finished mutations. The LAST bridge result is injected separately, in full,
-// by injectFromReboot.
 function renderBridgeResultForHistory(toolMsg: ToolMessage): string | null {
   const first = toolMsg.data?.[0] as Record<string, unknown> | undefined;
   if (!first || typeof first !== "object") return null;
@@ -48,7 +41,6 @@ export function buildMessages(
     { role: "system", content: buildSystemPrompt(request, options) },
   ];
 
-  // A skill the user picked comes with its instructions, except one of Ines's own, whose instructions she has.
   const selectedSkills = (request.selected_skills ?? []).flatMap((s) => {
     const content = s.contentMarkdown || (isInesSkill(request, s.slug) ? inesSkillContent(s.slug) : "");
     return content ? [{ slug: s.slug, content }] : [];
@@ -63,8 +55,6 @@ export function buildMessages(
     });
   }
 
-  // The model is served the current turn: the user's last message and what has happened since. What came
-  // before is only mentioned (see history.ts) and is read with the recall_conversation tool.
   const history = request.messages;
   const note = conversationNote(earlierEntries(history));
   if (note) messages.push({ role: "user", content: note });
@@ -79,15 +69,8 @@ export function buildMessages(
       msg.role === "tool" &&
       msg.function === "execute_agent_tool" &&
       i < history.length - 1
-      // The LAST tool message is the live round-trip result — the loop injects
-      // it with full fidelity (state effects included) via injectFromReboot.
-      // Everything earlier is rendered here, text-only, so the model keeps
-      // memory of what each prior call in the turn did (artifacts delivered,
-      // errors hit) instead of re-running finished work.
     ) {
       const toolMsg = msg as ToolMessage;
-      // Widget data is in the tables the conversation has loaded (as the agent's own widget round trip leaves
-      // it), not in a message: the model queries it.
       if (isWidgetDataMcpResult(toolMsg)) continue;
       const rendered = renderToolResultForHistory(toolMsg);
       if (rendered) {
@@ -102,10 +85,6 @@ export function buildMessages(
       msg.role === "tool" &&
       WORKSPACE_BRIDGE_COMMAND_NAMES.has(msg.function) &&
       i < history.length - 1
-      // Same rule as execute_agent_tool above: earlier bridge results stay in
-      // history so the model remembers each mutation it already made (the rest
-      // of a queued update_widget drain), instead of re-issuing finished work.
-      // The last bridge result is injected live by injectFromReboot.
     ) {
       const toolMsg = msg as ToolMessage;
       const rendered = renderBridgeResultForHistory(toolMsg);

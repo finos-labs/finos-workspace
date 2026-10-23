@@ -1,13 +1,5 @@
 import Ajv, { type ErrorObject, type ValidateFunction } from "ajv";
 
-/**
- * Validation of a backend's `widgets.json` against the schema in force for the user's
- * entity (docs/widget-plugins/WIDGETS-JSON.md 3.6), which the API composes from the
- * built-in types and the enabled plugins' types. Two steps, for readable errors: the
- * `type` against the schema's `x-types`, then the widget against that type's branch,
- * each problem with its JSON pointer.
- */
-
 export interface ComposedWidgetsSchema {
   $id: string;
   "x-types": string[];
@@ -18,7 +10,6 @@ export interface ComposedWidgetsSchema {
 type SchemaNode = Record<string, unknown>;
 
 export interface SchemaProblem {
-  /** JSON pointer into the widget definition; "" is the widget itself */
   pointer: string;
   message: string;
 }
@@ -29,7 +20,6 @@ const compiled = new Map<
 >();
 const MAX_COMPILED = 8;
 
-/** The compiled validator of one definition of the schema, such as `Widget_markdown`. */
 function validatorFor(
   schema: ComposedWidgetsSchema,
   definition: string,
@@ -37,8 +27,6 @@ function validatorFor(
   let entry = compiled.get(schema.$id);
   if (!entry) {
     if (compiled.size >= MAX_COMPILED) compiled.clear();
-    // Rule nodes constrain values the shapes already type, so they carry no type of their
-    // own; `discriminator` picks a param's branch by its type
     const ajv = new Ajv({ allErrors: true, strictTypes: false, discriminator: true });
     ajv.addKeyword("x-types");
     ajv.addSchema(schema);
@@ -56,7 +44,6 @@ function validatorFor(
   return branch;
 }
 
-/** The node a `#/...` path names in the composed schema. */
 function schemaAt(schema: ComposedWidgetsSchema, path: string): SchemaNode | undefined {
   let node: unknown = schema;
   for (const segment of path.replace(/^#\/?/, "").split("/").filter(Boolean)) {
@@ -68,17 +55,12 @@ function schemaAt(schema: ComposedWidgetsSchema, path: string): SchemaNode | und
   return node && typeof node === "object" ? (node as SchemaNode) : undefined;
 }
 
-/**
- * Ajv reports paths from the definition it compiled, so for `Widget_<type>` `#/allOf/0` is
- * `#/definitions/Widget_<type>/allOf/0`; paths into referenced definitions are absolute.
- */
 function absolutePath(definition: string, schemaPath: string): string {
   return schemaPath.startsWith("#/definitions/")
     ? schemaPath
     : `#/definitions/${definition}${schemaPath.slice(1)}`;
 }
 
-/** The rule an error belongs to: the nearest `allOf` member on its path with a description. */
 function ruleOf(schema: ComposedWidgetsSchema, path: string): string | undefined {
   const segments = path.replace(/^#\//, "").split("/");
   for (let end = segments.length; end >= 2; end--) {
@@ -89,7 +71,6 @@ function ruleOf(schema: ComposedWidgetsSchema, path: string): string | undefined
   return undefined;
 }
 
-/** "a string", "a number", ... for the members of a value union. */
 function kinds(node: SchemaNode): string[] {
   if (Array.isArray(node.anyOf)) return (node.anyOf as SchemaNode[]).flatMap(kinds);
   if ("const" in node) return [`\`${String(node.const)}\``];
@@ -131,7 +112,6 @@ function describe(
     case "const":
       return `must be \`${String(params.allowedValue)}\``;
     case "pattern": {
-      // A pattern the contract describes says what it means
       const node = schemaAt(schema, path.replace(/\/pattern$/, ""));
       return typeof node?.description === "string"
         ? `must be ${node.description}`
@@ -154,7 +134,6 @@ function describe(
   }
 }
 
-/** The problems of one widget definition under its type's branch. */
 export function validateWidgetDefinition(
   schema: ComposedWidgetsSchema,
   widget: Record<string, unknown>,
@@ -174,18 +153,15 @@ export function validateWidgetDefinition(
   if (validate(widget)) return [];
 
   const errors = validate.errors ?? [];
-  // The members of a failed value union say less than the union does
   const unions = errors
     .filter((e) => e.keyword === "anyOf")
     .map((e) => absolutePath(definition, e.schemaPath).replace(/\/anyOf$/, ""));
   const problems = new Map<string, SchemaProblem>();
   for (const error of errors) {
-    // `if` reports that its `then` or `else` failed; their own errors say what is wrong
     if (error.keyword === "if") continue;
     const path = absolutePath(definition, error.schemaPath);
     if (unions.some((u) => path.startsWith(`${u}/anyOf/`))) continue;
     const rule = ruleOf(schema, path);
-    // A rule is about the widget, or for the header rule the param, not one value of it
     const pointer = rule
       ? path.startsWith("#/definitions/ParamDef/")
         ? error.instancePath.replace(/\/(paramName|value|in)$/, "")
@@ -197,10 +173,6 @@ export function validateWidgetDefinition(
   return [...problems.values()];
 }
 
-/**
- * The problems of the `plugin.config` a template sets for a widget of a plugin type: the
- * plugin's settings, closed (WIDGETS-JSON 3.10). A type no plugin renders here takes none.
- */
 export function pluginConfigProblems(
   schema: ComposedWidgetsSchema,
   type: string,

@@ -39,11 +39,9 @@ export interface DraggableCardProps extends NavBarProps {
   widgetIdFallback?: string;
   showTitle?: boolean;
   disableRetrievalForCopilot?: boolean;
-  // If the url fails to fetch, we have it so we can display
   failingUrl?: undefined | string;
   isBlocked?: boolean;
   forceAutoHideNavbar?: boolean;
-  /** Hide the content under the loading and error states instead of unmounting it */
   keepMounted?: boolean;
 }
 
@@ -83,7 +81,6 @@ function PermissionsMask({
   }, [sourceId, cleanedWidgetId, hasAccess, onAccessError, onAccessCheck]);
 
   useEffect(() => {
-    // Check if widget is blocked first, regardless of shared status
     if (isBlocked) {
       onAccessCheck(false);
       onAccessError?.("This widget is deprecated and cannot be used.");
@@ -180,7 +177,6 @@ const DraggableCard = forwardRef<HTMLDivElement, DraggableCardProps>(
       [hasOpenPopover, scheduleHide],
     );
 
-    // Watch for Radix data-state changes within navbar to detect popover/dropdown close
     useEffect(() => {
       if (!effectiveAutoHide || !navbarWrapperRef.current) return;
       const observer = new MutationObserver(() => {

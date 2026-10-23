@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CreateWidgetMetadataDialog } from "~/components/AI/CreateWidgetMetadataDialog";
 import { useCopilotStore } from "~/lib/state/copilot";
 
-// Mock sonner toast
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -16,21 +15,18 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Mock react-router-dom
 vi.mock("react-router-dom", () => ({
   useParams: () => ({ id: "dashboard-123" }),
   useNavigate: () => vi.fn(),
   useSearchParams: () => [new URLSearchParams()],
 }));
 
-// Mock the API
 const mockPatchWidgetMetadata = vi.fn();
 vi.mock("~/api/auth.api", () => ({
   patchWidgetMetadata: (...args: unknown[]) => mockPatchWidgetMetadata(...args),
   createMetaDataWidget: vi.fn().mockResolvedValue("widget-id-123"),
 }));
 
-// Mock processWidgetId
 vi.mock("~/lib/utils", async (importOriginal) => {
   const actual = await importOriginal<typeof import("~/lib/utils")>();
   return {
@@ -43,7 +39,6 @@ vi.mock("~/lib/utils", async (importOriginal) => {
   };
 });
 
-// Mock useCreateWidgetFromArtifact hook
 const mockCreateWidgetWithMetadata = vi.fn();
 vi.mock("~/components/AI/hooks/useCreateWidgetFromArtifact", () => ({
   useCreateWidgetFromArtifact: () => ({
@@ -52,7 +47,6 @@ vi.mock("~/components/AI/hooks/useCreateWidgetFromArtifact", () => ({
   }),
 }));
 
-// Mock createPortal for dialog rendering
 vi.spyOn(ReactDOM, "createPortal").mockImplementation((element) => {
   return element as React.ReactPortal;
 });
@@ -60,7 +54,6 @@ vi.spyOn(ReactDOM, "createPortal").mockImplementation((element) => {
 describe("CreateWidgetMetadataDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset copilot store dialog state
     useCopilotStore.setState({ createWidgetMetadataDialog: null });
   });
 
@@ -350,7 +343,7 @@ describe("CreateWidgetMetadataDialog", () => {
       render(<CreateWidgetMetadataDialog />);
 
       const optionalLabels = screen.getAllByText("(optional)");
-      expect(optionalLabels).toHaveLength(4); // description, category, subCategory, source
+      expect(optionalLabels).toHaveLength(4);
     });
   });
 });

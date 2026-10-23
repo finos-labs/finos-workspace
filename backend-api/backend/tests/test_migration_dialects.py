@@ -1,10 +1,3 @@
-"""Test alembic migrations against all supported database dialects.
-
-Spins up testcontainers for MySQL and PostgreSQL (plus Redis for each),
-uses a temp file for SQLite, runs ``alembic upgrade head`` via subprocess,
-and then introspects every table to verify there are no type-mapping errors.
-"""
-
 from __future__ import annotations
 
 import os
@@ -17,10 +10,6 @@ import pymysql
 import pytest
 import sqlalchemy as sa
 
-# ---------------------------------------------------------------------------
-# Markers / skips
-# ---------------------------------------------------------------------------
-
 _DOCKER_AVAILABLE = True
 try:
     import docker
@@ -32,18 +21,12 @@ except Exception:
 needs_docker = pytest.mark.skipif(not _DOCKER_AVAILABLE, reason="Docker not available")
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 _BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Minimum expected tables (model-created tables, and alembic_version)
 _MIN_TABLES = 38
 
 
 def _base_env() -> dict[str, str]:
-    """Return minimal env vars shared across all dialects."""
     return {
         "MODE": "test",
         "JWT_SECRET": "testsecretfortesting12345678901234",
@@ -68,7 +51,6 @@ def _base_env() -> dict[str, str]:
 
 
 def _run_alembic_upgrade(env_vars: dict[str, str]):
-    """Run alembic upgrade head as a subprocess for full isolation."""
     env = {**os.environ, **env_vars}
     result = subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
@@ -89,7 +71,6 @@ def _run_alembic_upgrade(env_vars: dict[str, str]):
 
 
 def _alembic_head() -> str:
-    """Return the head revision of the migration chain."""
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
@@ -98,11 +79,9 @@ def _alembic_head() -> str:
 
 
 def _inspect_and_verify(engine: sa.engine.Engine, dialect_name: str):
-    """Introspect all tables and run a SELECT on each to verify types work."""
     inspector = sa.inspect(engine)
     tables = inspector.get_table_names()
 
-    # Verify minimum table count
     assert (
         len(tables) >= _MIN_TABLES
     ), f"{dialect_name}: Expected at least {_MIN_TABLES} tables, got {len(tables)}: {sorted(tables)}"
@@ -114,7 +93,6 @@ def _inspect_and_verify(engine: sa.engine.Engine, dialect_name: str):
             if table_name == "alembic_version":
                 continue
 
-            # Verify columns can be reflected (catches type-mapping issues)
             try:
                 columns = inspector.get_columns(table_name)
                 assert (
@@ -126,7 +104,6 @@ def _inspect_and_verify(engine: sa.engine.Engine, dialect_name: str):
                 )
                 continue
 
-            # Run a SELECT to verify the types are actually usable at runtime
             try:
                 result = conn.execute(
                     sa.text(f"SELECT * FROM {_quote(table_name, dialect_name)} LIMIT 1")
@@ -135,7 +112,6 @@ def _inspect_and_verify(engine: sa.engine.Engine, dialect_name: str):
             except Exception as exc:
                 errors.append(f"{dialect_name}: SELECT failed on {table_name}: {exc}")
 
-        # Verify alembic version is at head
         expected_head = _alembic_head()
         version = conn.execute(
             sa.text("SELECT version_num FROM alembic_version")
@@ -148,14 +124,12 @@ def _inspect_and_verify(engine: sa.engine.Engine, dialect_name: str):
 
 
 def _quote(table_name: str, dialect_name: str) -> str:
-    """Quote a table name appropriately for the dialect."""
     if dialect_name == "mysql":
         return f"`{table_name}`"
     return f'"{table_name}"'
 
 
 def _wait_for_mysql(host: str, port: int, timeout: int = 60):
-    """Wait for MySQL to accept connections."""
     for attempt in range(timeout):
         try:
             conn = pymysql.connect(
@@ -175,7 +149,6 @@ def _wait_for_mysql(host: str, port: int, timeout: int = 60):
 
 
 def _wait_for_postgres(host: str, port: int, timeout: int = 60):
-    """Wait for PostgreSQL to accept connections."""
     import pg8000.dbapi
 
     for attempt in range(timeout):
@@ -199,15 +172,8 @@ def _wait_for_postgres(host: str, port: int, timeout: int = 60):
                 )
 
 
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
-
-
 @needs_docker
 class TestMySQLMigrations:
-    """Test alembic upgrade head on a fresh MySQL database."""
-
     def test_mysql_upgrade_head(self):
         from testcontainers.community.mysql import MySqlContainer
         from testcontainers.community.redis import RedisContainer
@@ -267,8 +233,6 @@ class TestMySQLMigrations:
 
 @needs_docker
 class TestPostgreSQLMigrations:
-    """Test alembic upgrade head on a fresh PostgreSQL database."""
-
     def test_postgres_upgrade_head(self):
         from testcontainers.community.postgres import PostgresContainer
         from testcontainers.community.redis import RedisContainer
@@ -325,14 +289,10 @@ class TestPostgreSQLMigrations:
 
 
 class TestSQLiteMigrations:
-    """Test alembic upgrade head on a fresh SQLite database."""
-
     def test_sqlite_upgrade_head(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = os.path.join(tmpdir, "test.db")
 
-            # SQLite needs Redis env vars set for Settings validation,
-            # even though it won't use the Redis lock in alembic.
             env_vars = {
                 **_base_env(),
                 "DATABASE_TYPE": "sqlite",

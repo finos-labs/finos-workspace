@@ -44,7 +44,6 @@ const MessageTable = memo((props: MessageTableProps) => {
           {} as Record<string, string | number | null>,
         );
 
-        // Ensures first row has all keys
         if (acc.length > 0) {
           for (const key of Object.keys(rowData)) {
             if (!Object.keys(acc[0]).includes(key)) {

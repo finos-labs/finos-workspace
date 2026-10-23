@@ -30,10 +30,6 @@ describe("runPeekTable — guards", () => {
     expect(text).toContain('"prices"');
   });
 
-  // Regression: the not-found message used to end at "Available: ...", which
-  // reads as terminal state. The model treated a missing table as "the data
-  // is not available" and asked the user for permission to load it, even
-  // though the widget was listed in the prompt with its uuid.
   it("tells the model to fetch the widget instead of stopping at the missing table", () => {
     const text = runPeekTable({ table_name: "missing" }, ctx({ prices }));
     expect(text).toContain("call get_widget_data");
@@ -72,10 +68,6 @@ describe("runPeekTable — security + correctness regressions", () => {
   });
 
   it("regression: type-infers columns populated only past row 50 (sparse columns)", () => {
-    // Old behavior sampled the first 50 rows for type inference. A column
-    // that is null until row 51 ended up labeled TEXT even when its
-    // populated values were numeric. Bug existed in both
-    // src/sql/loader.ts:analyzeTable and src/agent/tools/sql/db.ts:loadOne.
     const rows: Record<string, unknown>[] = [];
     for (let i = 0; i < 100; i++) rows.push({ id: i, sparse: i < 60 ? null : i });
     const text = runPeekTable({}, ctx({ data: rows }));
@@ -83,12 +75,8 @@ describe("runPeekTable — security + correctness regressions", () => {
   });
 
   it("regression: dedupes columns that sanitize to the same name in the SQLite load path", () => {
-    // Mirror of loader.ts dedup, but for the `loadOne` path that actually
-    // runs CREATE TABLE inside node:sqlite. Without the dedup, duplicate
-    // column defs would either raise or silently collapse one column.
     const rows = [{ a: 1, A: 2, "foo bar": 3, "foo-bar": 4 }];
     const text = runPeekTable({}, ctx({ data: rows }));
-    // Column listing should show a, a_2, foo_bar, foo_bar_2
     expect(text).toContain('"a"');
     expect(text).toContain('"a_2"');
     expect(text).toContain('"foo_bar"');

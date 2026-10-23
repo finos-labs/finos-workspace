@@ -1,7 +1,3 @@
-"""The Prometheus metrics of widget plugins (docs/widget-plugins/DESIGN.md 11), through the
-API: what a rescan found and blocked, approvals, file fetches, blocked-request reports,
-frame failures and proxy calls. Labels are only counted for plugins of the deployment."""
-
 import pytest
 from prometheus_client import REGISTRY
 
@@ -24,8 +20,6 @@ def value(name: str, **labels: str) -> float:
 
 
 class Counted:
-    """The change of a sample over a block of the test."""
-
     def __init__(self, name: str, **labels: str) -> None:
         self.name, self.labels = name, labels
         self.before = value(name, **labels)
@@ -134,7 +128,6 @@ class TestProxyCalls:
         assert (await call(member, {"symbol": "IBM"})).status_code == 502
         assert (ok.change, failed.change, refused.change, timed.change) == (1, 1, 1, 3)
 
-        # A plugin that is not available is not a label
         unknown = await call(member, {"symbol": "IBM"}, path=CALL.replace("test-chart", "not-a-plugin"))
         assert unknown.status_code == 404
         assert value("widget_plugin_proxy_call_seconds_count", plugin="not-a-plugin") == 0

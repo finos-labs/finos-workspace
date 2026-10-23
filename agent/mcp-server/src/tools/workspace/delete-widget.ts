@@ -1,10 +1,3 @@
-/**
- * delete_widget — remove one widget from a dashboard.
- *
- * Pure pass-through to the connected browser bridge. Mirrors
- * workspace_mcp/server.py:857.
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";

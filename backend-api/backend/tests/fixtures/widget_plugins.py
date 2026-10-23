@@ -1,10 +1,3 @@
-"""Widget plugin packages, built in a temporary plugins directory, and the clients and
-helpers the API tests use with them.
-
-Tests generate their packages; no plugin is committed to the repository
-(docs/widget-plugins/PLAN.md 0).
-"""
-
 import json
 from pathlib import Path
 from typing import Any
@@ -28,7 +21,6 @@ ENTRY = b"export default { render({ el }) { el.textContent = 'hello'; } };\n"
 
 
 def manifest(plugin_id: str = "test-chart", version: str = "1.0.0", **overrides: Any) -> dict:
-    """A valid manifest; ``checksum`` is filled in by :func:`write_package`."""
     base: dict[str, Any] = {
         "manifestVersion": 1,
         "id": plugin_id,
@@ -71,8 +63,6 @@ def write_package(
     files: dict[str, bytes] | None = None,
     checksum: str | None = None,
 ) -> Path:
-    """Write ``<root>/<id>/<version>/`` with the files and a manifest whose checksum
-    matches them (unless ``checksum`` is given). Returns the version directory."""
     data = dict(data or manifest())
     directory = root / data["id"] / data["version"]
     directory.mkdir(parents=True, exist_ok=True)
@@ -128,9 +118,6 @@ async def _delete_roles(db_session, roles: list[UUID]) -> None:
 
 @pytest.fixture
 async def superuser(admin_client, db_session):
-    """The admin of the admin entity, also a superuser, like the seeded administrator. The
-    admin holds a role of the entity that grants nothing until a test calls :func:`grant`:
-    a plugin reaches a user only through a role."""
     await db_session.execute(update(models.User).where(models.User.uuid == ADMIN).values(is_superuser=True))
     await db_session.commit()
     admin_client.plugin_role = await _role(db_session, ADMIN_ENTITY, "Plugin users", [ADMIN])  # type: ignore[attr-defined]
@@ -142,7 +129,6 @@ async def superuser(admin_client, db_session):
 
 @pytest.fixture
 async def second_user_grant(db_session):
-    """Grants a plugin to the second user, through a role of their own entity."""
     roles: list[UUID] = []
 
     async def grant_second_user(plugin_id: str = "test-chart") -> None:
@@ -157,12 +143,10 @@ async def second_user_grant(db_session):
 
 @pytest.fixture
 async def member(auth_client, superuser, db_session):
-    """The test user as a regular member of the admin's entity, plus a role helper."""
     perm = models.PermissionsEntityMap(uuid=uuid4(), entity_uuid=ADMIN_ENTITY, name="User")
     db_session.add(perm)
     await db_session.commit()
     await db_session.execute(update(models.User).where(models.User.uuid == MEMBER).values(permissions_uuid=perm.uuid))
-    # The test user holds the admin's plugin role as well
     db_session.add(models.UserRole(user_uuid=MEMBER, role_uuid=superuser.plugin_role))
     await db_session.commit()
     roles: list[UUID] = []
@@ -226,8 +210,6 @@ async def enable(client, plugin_id="test-chart", **changes):
 
 
 async def grant(superuser, plugin_id="test-chart", widget_id="*"):
-    """Grant the plugin's widget (``*``: all of them) to the role the admin and the test
-    user hold."""
     path = f"/admin/role/{superuser.plugin_role}/plugin-access"
     response = await superuser.get(path)
     assert response.status_code == 200, response.text

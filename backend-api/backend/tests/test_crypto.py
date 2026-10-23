@@ -1,6 +1,3 @@
-"""Encryption at rest (api/crypto.py), the checks on the keys the API starts with, and the
-randomness of generated secrets."""
-
 import base64
 import re
 
@@ -18,8 +15,6 @@ CONTEXT = "api_source.endpointHeaders"
 
 
 def _flip_last_byte(token: str) -> str:
-    """Changes the tag's last byte. The token's last base64url character also carries padding
-    bits that decoding ignores, so changing that character can leave the bytes as they were."""
     raw = base64.urlsafe_b64decode(token[3:] + "=" * (-len(token[3:]) % 4))
     tampered = raw[:-1] + bytes([raw[-1] ^ 1])
     return token[:3] + base64.urlsafe_b64encode(tampered).decode().rstrip("=")
@@ -39,12 +34,10 @@ class TestCipher:
             assert token.startswith("v2.")
             assert re.fullmatch(r"[A-Za-z0-9_-]+", token[3:])
             raw = base64.urlsafe_b64decode(token[3:] + "=" * (-len(token[3:]) % 4))
-            # 12-byte nonce, the 4 encrypted bytes and the 16-byte tag
             assert len(raw) == 12 + 4 + 16
             assert b"same" not in raw
 
     def test_the_data_key_is_derived_not_the_key_material(self):
-        """AES-GCM under the raw key material does not open the ciphertext."""
         from cryptography.exceptions import InvalidTag
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -56,14 +49,14 @@ class TestCipher:
     @pytest.mark.parametrize(
         "tamper",
         [
-            _flip_last_byte,  # tag
-            lambda t: t[:3] + ("A" if t[3] != "A" else "B") + t[4:],  # nonce
-            lambda t: t[:20] + ("A" if t[20] != "A" else "B") + t[21:],  # ciphertext
-            lambda t: t[:-8],  # truncated
-            lambda t: "v1." + t[3:],  # another version
-            lambda t: t[3:],  # no version
-            lambda t: t + "!",  # not base64url
-            lambda t: "v2.",  # empty
+            _flip_last_byte,
+            lambda t: t[:3] + ("A" if t[3] != "A" else "B") + t[4:],
+            lambda t: t[:20] + ("A" if t[20] != "A" else "B") + t[21:],
+            lambda t: t[:-8],
+            lambda t: "v1." + t[3:],
+            lambda t: t[3:],
+            lambda t: t + "!",
+            lambda t: "v2.",
         ],
     )
     def test_tampered_ciphertext_is_refused(self, tamper):
@@ -81,8 +74,6 @@ class TestCipher:
         "elsewhere", ["custom_copilot.headers", "api_source.endpointheaders", "", "x"]
     )
     def test_a_ciphertext_decrypts_only_where_it_is_kept(self, elsewhere):
-        """The context is the associated data: a value copied to another column (or Redis
-        key) does not decrypt there."""
         cipher = crypto.AtRestCipher(KEY)
         token = cipher.encrypt(b"secret", CONTEXT)
         with pytest.raises((crypto.DecryptionError, ValueError)):
@@ -131,8 +122,6 @@ class TestColumnTypes:
             EncryptedStringType("user.totp_secret").process_result_value(stored[:-2] + "AA", None)
 
     def test_a_value_moved_to_another_column_raises(self):
-        """A provider key copied into another user column, or MCP headers copied into a
-        data backend's headers, do not decrypt there."""
         key = EncryptedStringType("user.openai_api_key").process_bind_param("sk-victim", None)
         with pytest.raises(crypto.DecryptionError):
             EncryptedStringType("user.perplexity_api_key").process_result_value(key, None)
@@ -141,8 +130,6 @@ class TestColumnTypes:
             EncryptedType("api_source.endpointHeaders").process_result_value(headers, None)
 
     def test_every_encrypted_column_is_bound_to_itself(self):
-        """Each EncryptedType and EncryptedStringType column of the schema encrypts for its
-        own "<table>.<column>"."""
         columns = [
             column
             for table in Base.metadata.tables.values()
@@ -170,9 +157,9 @@ class TestKeyValidation:
         "value",
         [
             "",
-            "sixteenbytekey!!",  # not base64url
-            "pat-aes-key",  # decodes to 8 bytes
-            base64.urlsafe_b64encode(b"k" * 31).decode().rstrip("="),  # 31 bytes
+            "sixteenbytekey!!",
+            "pat-aes-key",
+            base64.urlsafe_b64encode(b"k" * 31).decode().rstrip("="),
             "a" * 43 + "!",
         ],
     )

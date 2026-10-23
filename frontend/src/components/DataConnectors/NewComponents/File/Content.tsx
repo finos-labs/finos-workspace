@@ -7,7 +7,7 @@ import UploadFilesTab1 from "./UploadFilesTab1";
 
 export default function FileContent() {
   const { mode } = useDataConnectorContext();
-  const [tab, setTab] = useState("upload"); // "upload" or "edit-info"
+  const [tab, setTab] = useState("upload");
   const methods = useForm();
 
   return (

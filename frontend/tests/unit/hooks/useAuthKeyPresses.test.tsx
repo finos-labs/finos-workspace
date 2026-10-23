@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock all external dependencies
 vi.mock("use-debounce", () => ({
   useDebouncedCallback: (fn: (...args: unknown[]) => unknown) => fn,
 }));
@@ -73,7 +72,6 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 describe("useAuthKeyPresses", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset DOM
     document.body.innerHTML = "";
   });
 
@@ -134,7 +132,7 @@ describe("useAuthKeyPresses", () => {
     it("should toggle grouping visibility on Cmd+G", () => {
       renderHook(() => useAuthKeyPresses(), { wrapper });
 
-      simulateKeypressWithCode(71, { metaKey: true }); // G = 71
+      simulateKeypressWithCode(71, { metaKey: true });
 
       expect(mockThemeStore.toggleGroupingVisibility).toHaveBeenCalled();
     });
@@ -142,7 +140,7 @@ describe("useAuthKeyPresses", () => {
     it("should toggle search on Cmd+K", () => {
       renderHook(() => useAuthKeyPresses(), { wrapper });
 
-      simulateKeypressWithCode(75, { metaKey: true }); // K = 75
+      simulateKeypressWithCode(75, { metaKey: true });
 
       expect(mockThemeStore.setInitialSelectedSearchTab).toHaveBeenCalledWith(
         "widgets",
@@ -153,7 +151,7 @@ describe("useAuthKeyPresses", () => {
     it("should toggle theme on Cmd+M", () => {
       renderHook(() => useAuthKeyPresses(), { wrapper });
 
-      simulateKeypressWithCode(77, { metaKey: true }); // M = 77
+      simulateKeypressWithCode(77, { metaKey: true });
 
       expect(mockThemeStore.toggleTheme).toHaveBeenCalled();
       expect(mockThemeStore.debouncedUpdateSettings).toHaveBeenCalled();
@@ -162,7 +160,7 @@ describe("useAuthKeyPresses", () => {
     it("should toggle presenter mode on Cmd+Shift+F", () => {
       renderHook(() => useAuthKeyPresses(), { wrapper });
 
-      simulateKeypressWithCode(70, { metaKey: true, shiftKey: true }); // F = 70
+      simulateKeypressWithCode(70, { metaKey: true, shiftKey: true });
 
       expect(mockThemeStore.togglePresenterMode).toHaveBeenCalled();
     });
@@ -170,7 +168,7 @@ describe("useAuthKeyPresses", () => {
     it("should toggle shortcut sidebar on Cmd+H", () => {
       renderHook(() => useAuthKeyPresses(), { wrapper });
 
-      simulateKeypressWithCode(72, { metaKey: true }); // H = 72
+      simulateKeypressWithCode(72, { metaKey: true });
 
       expect(mockThemeStore.toggleShortcutSidebar).toHaveBeenCalled();
     });
@@ -178,7 +176,7 @@ describe("useAuthKeyPresses", () => {
     it("should create new tab on Cmd+Alt+T", () => {
       renderHook(() => useAuthKeyPresses(), { wrapper });
 
-      simulateKeypressWithCode(84, { metaKey: true, altKey: true }); // T = 84
+      simulateKeypressWithCode(84, { metaKey: true, altKey: true });
 
       expect(createTab).toHaveBeenCalled();
     });
@@ -186,7 +184,7 @@ describe("useAuthKeyPresses", () => {
     it("should open create folder popup on Cmd+Alt+F", () => {
       renderHook(() => useAuthKeyPresses(), { wrapper });
 
-      simulateKeypressWithCode(70, { metaKey: true, altKey: true }); // F = 70
+      simulateKeypressWithCode(70, { metaKey: true, altKey: true });
 
       expect(mockThemeStore.setCreateFolderPopup).toHaveBeenCalledWith(true);
     });
@@ -194,7 +192,7 @@ describe("useAuthKeyPresses", () => {
     it("should work with Ctrl key as well as Meta key", () => {
       renderHook(() => useAuthKeyPresses(), { wrapper });
 
-      simulateKeypressWithCode(71, { ctrlKey: true }); // G = 71
+      simulateKeypressWithCode(71, { ctrlKey: true });
 
       expect(mockThemeStore.toggleGroupingVisibility).toHaveBeenCalled();
     });
@@ -205,7 +203,7 @@ describe("useAuthKeyPresses", () => {
       renderHook(() => useAuthKeyPresses(), { wrapper });
 
       const event = new KeyboardEvent("keydown", {
-        keyCode: 71, // G
+        keyCode: 71,
         metaKey: true,
         bubbles: true,
         cancelable: true,

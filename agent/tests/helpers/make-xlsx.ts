@@ -1,6 +1,5 @@
 import ExcelJS from "exceljs";
 
-/** A workbook with one sheet: the keys of the first row as headings, then one row for each object. */
 export async function makeXlsx(rows: Record<string, unknown>[], sheetName = "Sheet1"): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(sheetName);

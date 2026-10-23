@@ -1,22 +1,3 @@
-/**
- * `query_documents` MCP tool.
- *
- * Receives:
- *  - `query` — natural-language question
- *  - `doc_ids` (optional) — filter to specific documents
- *  - `top_k` (optional, default 5)
- *  - `x-ines-conversation-id` (decoration) — keys the per-chat store
- *  - `x-ines-documents` (decoration) — delta of newly-uploaded docs
- *    that haven't been ingested yet. The handler extracts → chunks →
- *    embeds → stores them on first sight, then runs retrieval.
- *
- * Returns:
- *  - `text` item with the retrieved chunks formatted as markdown,
- *    each prefixed `[doc_name p.N]` so the model can cite cleanly.
- *  - One `$ines_kind: "citation"` document item per unique doc cited.
- *  - `error` item if no documents are loaded for the conversation.
- */
-
 import { z } from "zod";
 import {
   textItem,
@@ -84,9 +65,7 @@ async function ingestDocument(
 ): Promise<void> {
   const startedAt = Date.now();
   const bytes = await documentBytes(payload);
-  // Read and cut up in a process of its own: a crafted or enormous file cannot stop this server.
   const { chunks, totalChars } = await readAndChunkIsolated({ id: payload.id, format: payload.format, base64: Buffer.from(bytes).toString("base64") });
-  // What costs money (the embedding) is done only for what the chat and the user may have.
   assertRoom(conversationId, payload.id, chunks.length);
   chargeIngest(conversationId, chunks.length);
   const embeddings = await embedChunks(chunks);
@@ -177,17 +156,14 @@ export async function queryDocumentsHandler(args: {
     };
   }
 
-  // Pull persisted docs (if any) before reading the in-memory store.
   await ensureHydrated(conversationId);
 
-  // Ingest delta first so the search sees freshly-uploaded docs.
   let ingestErrors: string[] = [];
   if (newDocs.length > 0) {
     const result = await ingestNewDocs(conversationId, newDocs);
     ingestErrors = result.errors;
   }
 
-  // Confirm we actually have something to search.
   const loaded = listDocuments(conversationId);
   if (loaded.length === 0) {
     return {
@@ -220,9 +196,6 @@ export async function queryDocumentsHandler(args: {
   }
   items.push(textItem(formatRetrievedChunks(hits)));
 
-  // One entry for each page the hits are on, with the best score of the page. Which of them the answer
-  // rests on is for the agent to say once it has the answer (it cites the pages the answer names); this
-  // tool only reports what it handed to the model. Page is unset for formats without pages: one entry.
   const seen = new Map<string, number>();
   for (const h of hits) {
     const key = `${h.doc.id}\u0000${h.chunk.page ?? ""}`;

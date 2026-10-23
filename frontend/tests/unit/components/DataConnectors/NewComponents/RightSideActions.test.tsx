@@ -79,7 +79,6 @@ vi.mock("~/components/DataConnectors/NewComponents/ConfirmDeleteBackendDialog", 
 
 import { RightSideActions } from "~/components/DataConnectors/NewComponents/RightSideActions";
 
-/** Helper to click a button that wraps a specific icon. */
 function clickIconButton(iconTestId: string) {
   const icon = screen.getByTestId(iconTestId);
   const button = icon.closest("button");
@@ -224,7 +223,6 @@ describe("RightSideActions", () => {
         />,
       );
 
-      // Only intercept anchor creation; delegate everything else to jsdom.
       const realCreateElement = document.createElement.bind(document);
       const createElement = vi
         .spyOn(document, "createElement")
@@ -239,10 +237,8 @@ describe("RightSideActions", () => {
         vi.unstubAllGlobals();
       }
 
-      // Fetched from the authed API endpoint, not the S3 presigned URL.
       expect(mockGetStoredFileBlob).toHaveBeenCalledWith(FILE_URL);
       expect(anchor.href).toBe("blob:fake");
-      // Saved under the original upload name, not the uuid S3 key.
       expect(anchor.download).toBe("pga_field_trending_table.csv");
       expect(click).toHaveBeenCalledOnce();
     });

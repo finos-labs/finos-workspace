@@ -40,11 +40,9 @@ const LoadingEllipsis = memo((props: { lastGroup?: MessageGroup }) => {
   const shouldShowStandalone = useMemo(() => {
     const isLoading = loading && streamingStatus === "streaming-ready";
 
-    // Check if the last group is a step-by-step reasoning group
     const hasStepByStepInProgress =
       lastGroup && lastGroup.role === "system" && isLoading;
 
-    // Only show standalone loading ellipsis if not showing within step-by-step reasoning
     return isLoading && !hasStepByStepInProgress;
   }, [loading, streamingStatus, lastGroup]);
 
@@ -141,7 +139,6 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
     s.loading,
   ]);
 
-  // Check if this is a step-by-step reasoning group
   const isStepByStepGroup =
     group.role === "system" &&
     (group.groupTitle === "Step-by-step reasoning" ||
@@ -152,10 +149,8 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
   const hasMultipleMessages = group.messages.length > 1;
   const displayMessages = !hasMultipleMessages || isGroupExpanded;
 
-  // Generate unique group ID for targeting
   const groupId = `group-${groupIndex}`;
 
-  // Group event type is the highest severity of the messages in the group
   const { messagesMemo, groupEventType } = useMemo(() => {
     const reduced = group.messages.reduce<{
       messagesMemo: ReactNode[];
@@ -211,7 +206,6 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
     showDatetime(group.messages[0].timestamp, groupId);
   }, [group.messages[0].timestamp, groupId]);
 
-  // Now that we have the groupEventType we can decide if the gradient should run
   const isStepByStepInProgress =
     group.role === "system" &&
     isLastGroup &&
@@ -233,7 +227,6 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
           (group.role === "system" && previousGroupRole === "ai") ||
           (previousGroupRole === "human" && group.isError),
       })}
-      // Apply hover handling to the entire container for step-by-step reasoning
       {...(isStepByStepGroup && { onMouseEnter, onMouseLeave })}
     >
       <div className="relative">

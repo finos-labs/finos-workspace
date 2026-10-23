@@ -20,11 +20,9 @@ describe("Select", () => {
     const onChange = vi.fn();
     render(<Select options={options} onChange={onChange} placeholder="Select" />);
 
-    // Open the select
     const trigger = screen.getByText("Select");
     await user.click(trigger);
 
-    // Select an option
     const option1 = screen.getByText("Option 1");
     await user.click(option1);
 

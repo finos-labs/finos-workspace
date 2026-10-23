@@ -39,7 +39,6 @@ function problems(built: BuiltRequest | null) {
 }
 
 describe("the widget request (WIDGETS-JSON 4.1)", () => {
-  // The example of WIDGETS-JSON 4.9
   const teamReport = widget(
     "/teams/{team}/report",
     [

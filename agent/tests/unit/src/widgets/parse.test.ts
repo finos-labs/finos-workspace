@@ -226,11 +226,7 @@ describe("_csvToJson", () => {
   });
 
   it("regression: documented limitation — escaped double-quotes (`\"\"`) flip inQuotes (no escape support)", () => {
-    // Pinning current behavior. If we add proper RFC-4180 escape handling
-    // later, update parse.ts AND replace this test.
     const out = JSON.parse(_csvToJson('a,b\n"he said ""hi""",ok'));
-    // The escaped `""` toggles inQuotes off then on, so the comma inside
-    // is treated as a delimiter. We get more cells than expected.
     expect(out[0]).not.toEqual({ a: 'he said "hi"', b: "ok" });
   });
 

@@ -63,14 +63,6 @@ export function useAgentManagement() {
     editGroup: null,
   });
 
-  /**
-   * Syncs local `groups` state with the global `externalCopilotHolders` store.
-   *
-   * Uses a ref to track holder UUIDs and detect structural changes (add/remove)
-   * vs in-place updates. When holders are added/removed, fully replaces groups.
-   * When only updated in-place, merges store data while preserving any local
-   * URL edits the user has made (tracked via `changed` and `originalUrl` flags).
-   */
   const prevUuidsRef = useRef<string>("");
   useEffect(() => {
     const currentUuids = externalCopilotHolders.map((h) => h.uuid).join(",");
@@ -99,11 +91,6 @@ export function useAgentManagement() {
     }
   }, [externalCopilotHolders, dispatch]);
 
-  /**
-   * Persists a partial update (or deletion) of a holder to the backend and
-   * syncs the result into the global store. Reads fresh state from the store
-   * to avoid stale closure issues across async boundaries.
-   */
   const updateHolder = useCallback(
     async (holderUuid: string, partialHolder: Partial<HolderGroup> | "delete") => {
       const store = useCopilotStore.getState();
@@ -136,11 +123,6 @@ export function useAgentManagement() {
     [],
   );
 
-  /**
-   * Fetches fresh agent data for a holder and persists the result.
-   * Reads fresh holders from the store after the async fetch to avoid
-   * acting on stale closure-captured state.
-   */
   const handleSaveRefresh = useCallback(
     async (holderUuid: string, opts?: { silent?: boolean }): Promise<boolean> => {
       const silent = opts?.silent ?? false;
@@ -201,10 +183,6 @@ export function useAgentManagement() {
     [state.groups, updateHolder],
   );
 
-  /**
-   * Refreshes every holder in one pass (silently), then shows a single summary
-   * toast. Mirrors the Connections page "Refresh all" affordance.
-   */
   const handleRefreshAll = useCallback(async () => {
     const holders = useCopilotStore.getState().externalCopilotHolders;
     if (holders.length === 0) return;
@@ -290,10 +268,6 @@ export function useAgentManagement() {
     [externalCopilotHolders],
   );
 
-  /**
-   * Validates edited header pairs, fetches fresh agent data with the new
-   * URL/headers, and persists the update.
-   */
   const handleSaveEdit = useCallback(
     async (editGroupData: NonNullable<AgentManagementState["editGroup"]>) => {
       const { uuid: holderUuid, headerPairs, url } = editGroupData;

@@ -1,14 +1,3 @@
-/**
- * Tier 2 — SQL family in-process execution through the agent loop.
- *
- * Asserts:
- *   - Model calls execute_sql → loop runs it locally; no executeAgentTool
- *     SSE; no decoration emitted.
- *   - Model calls create_artifact → artifact lands on the answer stream as a
- *     copilotMessageArtifact event (ordering vs the model's text is asserted
- *     in streaming-progress).
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";
@@ -90,11 +79,10 @@ describe("SQL family — in-process execution", () => {
     expect(status).toBeDefined();
     const artifact = events.find((e) => e.event === "copilotMessageArtifact");
     expect(artifact).toBeDefined();
-    // The Workspace has no table artifact: the table is an html artifact.
     const data = artifact!.data as { type: string; name: string; content: string };
     expect(data.type).toBe("html");
     expect(data.name).toBe("Prices");
-    expect((data.content.match(/<tr>/g) ?? []).length).toBe(3); // header + 2 rows
+    expect((data.content.match(/<tr>/g) ?? []).length).toBe(3);
     expect(findFunctionCall(events, "execute_agent_tool")).toBeUndefined();
   });
 });

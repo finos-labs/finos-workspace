@@ -1,12 +1,3 @@
-/**
- * Tests for permissions Zustand store
- *
- * Tests the permissions state management including:
- * - Setting permissions (backends, files, prompts)
- * - Checking access to widgets
- * - Checking if widget is shared
- */
-
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { PermissionsT } from "~/api/user_roles.api";
@@ -15,7 +6,6 @@ import { partial } from "../../mocks";
 
 describe("usePermissionsStore", () => {
   beforeEach(() => {
-    // Reset store to initial state
     act(() => {
       usePermissionsStore.setState({
         permissions: {
@@ -193,7 +183,6 @@ describe("usePermissionsStore", () => {
           );
         });
 
-        // For files, widgetId is not used, only sourceId matters
         expect(usePermissionsStore.getState().hasAccess("file-1", "")).toBe(true);
       });
 
@@ -343,7 +332,6 @@ describe("usePermissionsStore", () => {
           );
         });
 
-        // Returns undefined for widget?.access === "access" when widget is undefined
         expect(
           usePermissionsStore.getState().isSharedWidget("backend-1", "widget-2"),
         ).toBe(false);
@@ -448,7 +436,6 @@ describe("usePermissionsStore", () => {
         );
       });
 
-      // Backend 1 widgets
       expect(usePermissionsStore.getState().hasAccess("backend-1", "widget-1")).toBe(
         true,
       );
@@ -459,16 +446,13 @@ describe("usePermissionsStore", () => {
         true,
       );
 
-      // Backend 2 widgets
       expect(usePermissionsStore.getState().hasAccess("backend-2", "widget-4")).toBe(
         true,
       );
 
-      // Files
       expect(usePermissionsStore.getState().hasAccess("file-1", "")).toBe(true);
       expect(usePermissionsStore.getState().hasAccess("file-2", "")).toBe(false);
 
-      // isSharedWidget checks
       expect(
         usePermissionsStore.getState().isSharedWidget("backend-1", "widget-1"),
       ).toBe(true);

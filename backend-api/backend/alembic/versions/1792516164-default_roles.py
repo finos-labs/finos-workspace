@@ -1,30 +1,3 @@
-"""give every organization its default roles
-
-Every organization starts with two roles (DEFAULT_ROLES in routers/app/helpers.py, which a
-new organization gets when it is created):
-
-- Agent User: the default agent with every model it offers (a `*` model grant), every tool of
-  the deployment's default MCP servers (DEFAULT_MCP_SERVERS), no daily limits. Every new user
-  of the organization gets it.
-- Sharer: sharing, and nothing else (its limits are 0 and its web tools off, so it lifts no
-  limit and switches no tool on).
-
-An organization made before them has neither, so nobody in it may use the agent until an
-admin makes a role. This revision gives each organization the ones it lacks (a role of that
-name it has already is kept as it is), and gives the superusers of an organization both, and
-its users who have no role at all Agent User, as a new user would get it. Users with a role
-keep exactly what an admin gave them. The cached usage of those it gives a role is dropped,
-so that the API reads their new limits.
-
-downgrade() takes nothing away: the roles are ordinary roles by now, which an admin may have
-changed or given to others.
-
-Revision ID: b18373ba8216
-Revises: 8615f7e17679
-Create Date: 2026-10-20
-
-"""
-
 import logging
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -36,7 +9,6 @@ from alembic import op  # type: ignore
 from api.schemas import normalize_mcp_url
 from utilities.config import settings
 
-# revision identifiers, used by Alembic.
 revision = "b18373ba8216"
 down_revision = "8615f7e17679"
 branch_labels = None
@@ -48,11 +20,9 @@ log = logging.getLogger("alembic.runtime.migration")
 
 AGENT_USER = "Agent User"
 SHARER = "Sharer"
-# The id the default agent gives itself in its agents.json
 DEFAULT_AGENT_ID = "default_agent"
 ALL = "*"
 
-# As routers/app/helpers.py's DEFAULT_ROLES had them when this revision was written
 ROLES = {
     AGENT_USER: {
         "description": "The agent, with every model it offers and the deployment's own tools, "
@@ -77,7 +47,6 @@ ROLES = {
 
 
 def _dated() -> tuple:
-    """The dates of a row, as columns of their own for each table."""
     return (sa.column("created_date", sa.DateTime), sa.column("updated_date", sa.DateTime))
 
 
@@ -137,7 +106,6 @@ def _now() -> datetime:
 
 
 def _members(bind: sa.Connection, entity_uuid) -> list[tuple]:
-    """The organization's users that are not deleted: (uuid, is_superuser)."""
     return [
         tuple(row)
         for row in bind.execute(
@@ -152,7 +120,6 @@ def _members(bind: sa.Connection, entity_uuid) -> list[tuple]:
 
 
 def _with_a_role(bind: sa.Connection, user_uuids: list) -> set:
-    """Those of the users who have a role that is not deleted."""
     if not user_uuids:
         return set()
     return set(
@@ -165,7 +132,6 @@ def _with_a_role(bind: sa.Connection, user_uuids: list) -> set:
 
 
 def _roles(bind: sa.Connection, entity_uuid) -> dict:
-    """The organization's default roles that are not deleted, by name."""
     return {
         name: uuid
         for name, uuid in bind.execute(
@@ -217,7 +183,6 @@ def _create(bind: sa.Connection, entity_uuid, name: str):
 
 
 def _give(bind: sa.Connection, user_uuid, role_uuid) -> bool:
-    """Gives the user the role unless they have it; whether it was given."""
     held = bind.execute(
         sa.select(user_role.c.uuid).where(
             user_role.c.user_uuid == user_uuid, user_role.c.role_uuid == role_uuid
@@ -238,8 +203,6 @@ def _give(bind: sa.Connection, user_uuid, role_uuid) -> bool:
 
 
 def _forget_usage(user_uuids: set) -> None:
-    """Drops the cached usage of these users (the API's `usage:<user>` keys), which holds the
-    limits of their roles as they were."""
     try:
         for user_uuid in user_uuids:
             settings.redis_cache(f"usage:{user_uuid}", delete=True)
@@ -252,7 +215,6 @@ def upgrade():
     given: set = set()
     for entity_uuid in list(bind.execute(sa.select(entity.c.uuid)).scalars()):
         members = _members(bind, entity_uuid)
-        # Who has no role at all, before the organization has its default ones
         with_a_role = _with_a_role(bind, [uuid for uuid, _ in members])
 
         roles = _roles(bind, entity_uuid)
@@ -272,4 +234,4 @@ def upgrade():
 
 
 def downgrade():
-    """Nothing: see the note above."""
+    ...

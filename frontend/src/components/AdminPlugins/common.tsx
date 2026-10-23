@@ -1,8 +1,6 @@
 import type { PluginStatus, Risk, VersionState } from "~/api/plugins.api";
 import { Tag } from "~/components/ds/atoms/Tag";
 
-/** Shared pieces of the widget plugin admin pages (docs/widget-plugins/DESIGN.md 8). */
-
 const STATE_COLORS: Record<
   VersionState | PluginStatus,
   "grey" | "success" | "warning" | "danger" | "brand"

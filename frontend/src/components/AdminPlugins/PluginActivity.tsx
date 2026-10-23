@@ -4,7 +4,6 @@ import { Button } from "~/components/ds/atoms/Button";
 import { pluginKeys } from "~/hooks/usePlugins";
 import { formatWhen, Section } from "./common";
 
-/** The recorded actions on a plugin (DESIGN.md 6.7). Details are shown as text. */
 export function PluginEvents(props: {
   pluginId: string;
   scope: "platform" | "entity";
@@ -40,11 +39,6 @@ export function PluginEvents(props: {
   );
 }
 
-/**
- * Requests the plugin's frames tried and their policy blocked (SECURITY.md 4.7). The
- * origins come from plugin code, so they are rendered as text only. "Allow" opens the
- * override editor with the source filled in; nothing changes until a superuser saves.
- */
 export function BlockedRequests(props: {
   pluginId: string;
   scope: "platform" | "entity";

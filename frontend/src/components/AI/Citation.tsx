@@ -35,12 +35,6 @@ import {
   normalizeWidgetId,
 } from "./hooks/utils";
 
-/**
- * A citation footer either offers an action or explains why there isn't one.
- * `kind: "hint"` renders as a caption, not a disabled button — a dead CTA reads
- * as something the user failed to unlock. The union also makes `onClick`
- * mandatory on real actions instead of silently optional.
- */
 type CitationCta =
   | { kind: "hint"; buttonLabel: string }
   | {
@@ -50,7 +44,6 @@ type CitationCta =
       variant?: "primary" | "secondary";
     };
 
-/** The page of a file a citation points to, which the backend sends as a number or a numeric string. */
 const toPageNumber = (value: unknown): number | undefined => {
   if (value === null || value === undefined || value === "") return undefined;
   const page = Number(value);
@@ -112,7 +105,6 @@ const ICON_MAP: Record<string, IconId> = {
   artifact: "cube-01",
 };
 
-/** What a widget citation says of the widget it cites: its uuid and the arguments it was queried with. */
 function getWidgetCitationMetadata(content: CitationT) {
   const metadata = content.source_info?.metadata;
   const widgetUuid =
@@ -166,7 +158,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
   }, [content.source_info]);
   const isIframeMcpCitation = content.source_info?.metadata?.iframe_mcp === true;
 
-  // Check if a widget with the same signature exists on the current dashboard
   const currentDashboardSignatureMatch = useMemo(() => {
     if (!content.source_info) return null;
 
@@ -205,8 +196,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
 
     let match = getWidgetFromSignature(citationSignature);
 
-    // If no match and we have a widget_id, try to find by widget_id and args only
-    // This handles cases where origin might be different or missing
     if (!match && citationSignature?.widgetId) {
       const widgetsInCurrentDashboard = getWidgetsInCurrentDashboard() as WidgetT[];
       const citationWidgetId = normalizeWidgetId(
@@ -215,7 +204,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
       );
 
       match = widgetsInCurrentDashboard?.find((widget) => {
-        // Check if widget has the same widgetId and matching args
         const normalizedWidgetId = normalizeWidgetId(
           widget.widgetId,
           widget.sourceName,
@@ -224,13 +212,11 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
           return false;
         }
 
-        // Compare the args
         const widgetArgs = widget.storage?.params || {};
         const argsMatch = Object.keys(filteredArgs).every((key) => {
           const citationValue = filteredArgs[key];
           const widgetValue = widgetArgs[key];
 
-          // Handle array comparison (like for multi-file viewer)
           if (Array.isArray(citationValue) && Array.isArray(widgetValue)) {
             const match =
               JSON.stringify(citationValue.sort()) ===
@@ -238,7 +224,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
             return match;
           }
 
-          // Normal comparison with normalization
           const normalizedCitation = citationValue?.toString?.() || citationValue;
           const normalizedWidget = widgetValue?.toString?.() || widgetValue;
           return normalizedCitation === normalizedWidget;
@@ -260,17 +245,14 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
   ]);
 
   const dashboardWidget = useMemo(() => {
-    // First, try to find the widget on the current dashboard
     const currentDashboardWidget = getWidgetsInCurrentDashboard(
       content.source_info?.uuid || undefined,
     ) as WidgetT;
 
-    // If not found on current dashboard, search across all dashboards
     let crossDashboardWidget: WidgetT | null = null;
     if (!currentDashboardWidget && content.source_info?.uuid) {
       const widgetsByUuid = getWidgetsByAttribute("id", content.source_info.uuid);
 
-      // Find the first widget with matching UUID across all dashboards
       for (const dashboardId in widgetsByUuid) {
         const widgets = widgetsByUuid[dashboardId];
         if (widgets && widgets.length > 0) {
@@ -284,7 +266,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
 
     if (widget && isIframeMcpCitation) return widget;
 
-    // Create signature for matching
     const randomUuid = uuidv4();
     const inputArgs = content.source_info?.metadata?.input_args || {};
     const filteredArgs = Object.entries(inputArgs).reduce(
@@ -329,21 +310,17 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
   const citationInfo = useMemo(() => {
     const widgetToAdd = widgetInfo?.widgetToAdd;
 
-    // Constants
     const citationType = content.source_info.type;
-    // File: citations v1, Filename: citations v2
     const fileDetail = content.details?.find(
       (detail) => detail && ("Filename" in detail || "File" in detail),
     );
     const citationIcon = ICON_MAP[fileDetail ? "file" : citationType];
 
-    // Use the properly matched widget from our improved matching logic
-    // Prioritize current dashboard signature match over cross-dashboard widget
     const matchedWidget = currentDashboardSignatureMatch || dashboardWidget;
 
     const elementIdToHighlight =
       (citationType === "widget"
-        ? matchedWidget?.id // Only use widget ID if there's an exact signature match
+        ? matchedWidget?.id
         : citationType === "artifact"
           ? content.source_info?.name
           : "") || "";
@@ -355,13 +332,10 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
 
     let label =
       matchedWidget?.name || widgetToAdd?.name || sourceName || index.toString();
-    // If this citation represents a matching widget, mark label with an asterisk
     const isMatchingCitation =
       content.source_info?.metadata?.matching === true || isIframeMcpCitation;
     if (isMatchingCitation) label = `${label}*`;
 
-    // For web citations, extract text both before and after | , - , or : separators and choose the shortest
-    // This is heuristics in order to get the name of the magazine, publication to show
     if (citationType === "web" && label) {
       const separators = [" | ", " - ", " : "];
       const candidates: string[] = [];
@@ -382,7 +356,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
       }
 
       if (candidates.length > 0) {
-        // Choose the shortest candidate
         label = candidates.reduce((shortest, current) =>
           current.length < shortest.length ? current : shortest,
         );
@@ -419,7 +392,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
 
   const addWidgetToDashboard = useShallowAppStore((state) => state.addWidget);
 
-  // Get current tab for cross-tab navigation
   const lastInnerTab = useShallowAppStore((state) =>
     state.getLastInnerTab(currentDashboardId),
   );
@@ -432,7 +404,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
   const widgetTab = citationInfo.matchedWidget?.innerTab;
   const isWidgetOnDifferentTab = widgetTab && currentTab && widgetTab !== currentTab;
 
-  // Check if the matched widget is the exact same widget (by ID) on the current dashboard
   const isExactWidgetOnCurrentDashboard = useMemo(() => {
     if (!citationInfo.matchedWidget) return false;
     const currentDashboardWidget = getWidgetsInCurrentDashboard(
@@ -441,12 +412,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
     return !!currentDashboardWidget;
   }, [citationInfo.matchedWidget, getWidgetsInCurrentDashboard]);
 
-  /**
-   * Detects when Cortex Analyst generated a new SQL query for an existing widget.
-   * This is separate from currentDashboardSignatureMatch (which compares against the
-   * current-dashboard direct match only). Here we compare against citationInfo.matchedWidget,
-   * which may be cross-dashboard, so both checks are needed.
-   */
   const hasQueryMismatch = useMemo(
     () =>
       detectQueryMismatch(
@@ -474,7 +439,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
     dispatchUpdateWidget(citationInfo.elementIdToHighlight, (prev) => {
       let storageUpdate: WidgetStorage = {};
       if (prev.connectionType === "file") {
-        // For some reason the file viewer type is not set as file_viewer
         const page = toPageNumber(citationInfo.fileDetail?.Page);
         const currentQuoteBoundingBoxes = content.quote_bounding_boxes;
         const currentPage = page ?? currentQuoteBoundingBoxes?.[0]?.[0]?.page ?? 1;
@@ -499,7 +463,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
       block: "center",
       inline: "nearest",
     });
-    // Add highlight after a brief delay to ensure scroll is complete
     setTimeout(() => {
       highlightElement(element);
     }, 100);
@@ -507,7 +470,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
   }, [content, citationInfo, setClose]);
 
   const handleCreateWidgetFromArtifact = useCallback(() => {
-    // Get the artifact from the copilot store using the artifact name/id from citation
     const artifactId = content.source_info?.name;
     if (!artifactId) {
       toast.error("Artifact reference not found");
@@ -521,7 +483,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
       return;
     }
 
-    // Handle different artifact types with proper typing
     if (artifact.type === "text") {
       dispatchCreate({
         widgetType: "text",
@@ -543,7 +504,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
   const handleAddWidgetToDashboard = useCallback(async () => {
     const inputArgs = citationInputArgs;
 
-    // Use matched widget when it's cross-dashboard or when query differs (new SQL)
     const sourceWidget =
       citationInfo.matchedWidget &&
       (!isExactWidgetOnCurrentDashboard || hasQueryMismatch)
@@ -566,12 +526,9 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
           const provided = inputArgs[paramName];
 
           if (provided && provided !== "null" && isStoredParamValue(provided)) {
-            // Use provided value from citation input args
             storedParams[paramName] = provided;
             return { ...param, value: provided } as ParamDef;
           }
-          // Only apply date modifier if the widget param has a non-null default,
-          // else leave unset to preserve empty date selection
           if (
             param.type === "date" &&
             param.value !== null &&
@@ -587,8 +544,8 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
       ...sourceWidget,
       params: newParams,
       storage: newStorage,
-      innerTab: currentTab, // Always set the current tab, not just in fullscreen
-      id: undefined, // Remove ID to force generation of new ID when adding to dashboard
+      innerTab: currentTab,
+      id: undefined,
       gridData: {
         ...sourceWidget.gridData,
         w: 40,
@@ -599,24 +556,20 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
       widget.storage.selectedGroup = sourceInfo.originalWidgetId;
     }
 
-    // Get the new widget ID from addWidgetToDashboard
     const newWidgetId = await addWidgetToDashboard(currentDashboardId, widget);
     if (!newWidgetId) return;
 
-    // Only show toast when in fullscreen mode since user can't see dashboard
     if (isFullscreen) {
       const toastDescription = currentTab
         ? `Check widget '${sourceWidget.name}' on the '${currentTab}' tab`
         : `Check widget '${sourceWidget.name}' on the dashboard`;
 
-      // Show success toast with widget name and Show button
       toast.success("Successfully added widget", {
         description: toastDescription,
         action: {
           label: "Show",
           onClick: () => {
             toggleFullscreen();
-            // Wait for the layout to adjust before scrolling
             setTimeout(() => {
               const newWidgetElement = document.getElementById(newWidgetId);
               scrollToElement(newWidgetElement);
@@ -628,7 +581,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
 
     setClose();
 
-    // Scroll to the newly added widget after a brief delay
     setTimeout(() => {
       const newWidgetElement = document.getElementById(newWidgetId);
       scrollToElement(newWidgetElement);
@@ -648,7 +600,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
     hasQueryMismatch,
   ]);
 
-  // Handler for navigating to widget's tab
   const handleGoToTab = useCallback(() => {
     if (!widgetTab) return;
 
@@ -659,14 +610,13 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
     setSearchParams({ tab: widgetTab });
     setClose();
 
-    // Delay to allow UI to update (fullscreen exit, tab switch)
     setTimeout(
       () => {
         const element = document.getElementById(citationInfo.elementIdToHighlight);
         scrollToElement(element);
       },
       isFullscreen ? 600 : 300,
-    ); // Longer delay when exiting fullscreen
+    );
   }, [
     widgetTab,
     isFullscreen,
@@ -676,29 +626,23 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
     citationInfo.elementIdToHighlight,
   ]);
 
-  // Button display and behavior
   const citationButtonsProps = useMemo((): CitationCta[] => {
     const { citationType, elementIdToHighlight, fileDetail, matchedWidget } =
       citationInfo;
-    // Use the MCP matching flag carried by the citation
     const isMatchingCitation = content.source_info?.metadata?.matching === true;
 
     if (!currentDashboardId) {
       return [{ kind: "hint", buttonLabel: "Open a dashboard to add this widget" }];
     }
 
-    // Use signature-matched widget for more accurate comparison
     if (matchedWidget || elementIdToHighlight) {
-      // If we have a signature match on current dashboard, use that widget for actions
       const targetWidget = currentDashboardSignatureMatch || matchedWidget;
       const targetWidgetId = currentDashboardSignatureMatch?.id || elementIdToHighlight;
 
-      // If no signature match on current dashboard, or query differs (new SQL), show add button
       if (
         hasQueryMismatch ||
         !(currentDashboardSignatureMatch || isExactWidgetOnCurrentDashboard)
       ) {
-        // For artifacts, show "Create widget from artifact" button
         if (citationType === "artifact") {
           return [
             {
@@ -718,7 +662,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
         ];
       }
 
-      // Check if target widget is on different tab (only for current dashboard widgets)
       const targetWidgetTab = targetWidget?.innerTab;
       const isTargetWidgetOnDifferentTab =
         currentDashboardSignatureMatch &&
@@ -764,7 +707,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
           onClick: () => {
             if (isFullscreen) {
               toggleFullscreen();
-              // Wait for the layout to adjust before scrolling
               setTimeout(() => {
                 const newWidgetElement = document.getElementById(targetWidgetId);
                 scrollToElement(newWidgetElement);
@@ -779,7 +721,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
       ];
     }
 
-    // For artifacts without matched widgets, show create widget button
     if (citationType === "artifact") {
       return [
         {
@@ -854,9 +795,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
     ],
   );
 
-  // Compute the detail objects that will actually render after restructuring and
-  // filtering. A citation can carry details whose fields are all skipped/empty,
-  // so we resolve them here instead of inferring from `content.details.length`.
   const renderableDetails = useMemo(() => {
     if (!content?.details) return [];
 
@@ -866,10 +804,8 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
 
         const enhancedDetail = { ...detail };
 
-        // Filter out null/undefined values and unwanted fields from detail before rendering
         const filteredDetail = Object.entries(enhancedDetail).reduce(
           (acc, [key, value]) => {
-            // Skip unwanted fields (only for display, don't affect functionality)
             if (
               key === "Source type" ||
               key === "Origin" ||
@@ -881,7 +817,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
               return acc;
             }
 
-            // Skip null, undefined, "null", "None" (Python None converted to string)
             if (
               value !== null &&
               value !== undefined &&
@@ -892,9 +827,7 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
               const displayKey = key;
               const displayValue = value;
 
-              // Clean up Python list strings like "['UNRATE']" to just "UNRATE"
               if (typeof displayValue === "string") {
-                // Check if it's a string representation of a Python single-item list
                 const singleItemListMatch =
                   displayValue.match(/^\[['"]([^'"]+)['"]\]$/);
                 if (singleItemListMatch) {
@@ -911,7 +844,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
           {} as Record<string, unknown>,
         );
 
-        // Drop details whose values were all filtered out
         if (Object.keys(filteredDetail).length === 0) return null;
 
         return filteredDetail;
@@ -921,11 +853,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
 
   if (citationInfo?.citationIcon === undefined) return null;
 
-  // Whether the hover card renders a content area above the action button.
-  // Artifact citations keep their original details-only gating; other citations
-  // also count artifacts. Without this, a citation whose details all filter out
-  // renders an empty content area and the single action button still gets its
-  // `mt-2`, leaving lopsided top padding.
   const hasContentAbove =
     citationInfo.citationType === "artifact"
       ? renderableDetails.length > 0
@@ -951,7 +878,6 @@ const Citation = forwardRef<HTMLDivElement, CitationProps>((props, _ref) => {
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
         >
-          {/* Only show the content area when there is actual detail or artifact content to render */}
           {hasContentAbove && (
             <div
               className="prose-sm rounded text-xs font-medium text-light-600
@@ -1026,7 +952,6 @@ const scrollToElement = (element: HTMLElement | null) => {
     block: "center",
     inline: "nearest",
   });
-  // Add highlight after a brief delay to ensure scroll is complete
   setTimeout(() => {
     highlightElement(element);
   }, 100);
@@ -1035,10 +960,8 @@ const scrollToElement = (element: HTMLElement | null) => {
 const highlightElement = (element: HTMLElement | null) => {
   if (!element) return;
 
-  // Use the same styling as hover: outline-2 outline-brand-main
   element.classList.add("outline-2", "outline-brand-main");
 
-  // Inject custom CSS for fade-out animation if not already present
   if (!document.getElementById("citation-highlight-styles")) {
     const mainColor = getConfig().whiteLabel.mainColor ?? "#0086BF";
     const style = document.createElement("style");
@@ -1055,11 +978,9 @@ const highlightElement = (element: HTMLElement | null) => {
     document.head.appendChild(style);
   }
 
-  // Start fade-out animation immediately
   setTimeout(() => {
     element.style.animation = "outline-fade-out 1.3s ease-out forwards";
 
-    // Clean up after animation completes
     setTimeout(() => {
       element.classList.remove("outline-2", "outline-brand-main");
       element.style.animation = "";

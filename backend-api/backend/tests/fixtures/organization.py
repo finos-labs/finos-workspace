@@ -1,10 +1,3 @@
-"""An organization to test what users may do.
-
-The admin's organization, with sharing switched on, holds the admin and the test user,
-who joins it as a "User". Tests add roles, users, dashboards and apps to it, and all of
-it is removed afterwards.
-"""
-
 from uuid import UUID, uuid4
 
 import pytest
@@ -22,12 +15,10 @@ MEMBER_EMAIL = _AUTH_USER["email"]
 
 
 def admin_entity_body(sharing_enabled: bool) -> dict:
-    """What a superuser puts for the admin's organization."""
     return {"name": _ADMIN_USER["entity_name"], "sharing_enabled": sharing_enabled}
 
 
 def forget_usage(*user_uuids: UUID) -> None:
-    """Drop the cached usage of users, which carries the limits of their roles."""
     for user_uuid in user_uuids:
         settings.redis_cache(f"usage:{user_uuid}", delete=True)
 
@@ -60,7 +51,6 @@ class Organization:
             .values(permissions_uuid=self.maps[user_type])
         )
         await self.db.commit()
-        # The type sets the limits (a developer has none), as the API knows
         forget_usage(user_uuid)
 
     async def set_sharing_enabled(self, enabled: bool) -> None:
@@ -90,8 +80,6 @@ class Organization:
         return user
 
     async def role(self, *user_uuids: UUID, entity_uuid=ADMIN_ENTITY, **settings_) -> UUID:
-        """A role with the given settings, assigned to the given users. A limit that is
-        not given, or given as None, is no limit."""
         role_uuid = uuid4()
         self.db.add(
             models.Role(
@@ -179,7 +167,6 @@ class Organization:
             )
         )
         await db.execute(delete(models.UserApp).where(models.UserApp.uuid.in_(self.apps)))
-        # The connections the tests made
         await db.execute(
             delete(models.StoredFile).where(models.StoredFile.creater_uuid.in_(people))
         )
@@ -211,7 +198,6 @@ class Organization:
             .where(models.User.uuid == MEMBER_UUID)
             .values(permissions_uuid=_AUTH_USER["perm_uuid"])
         )
-        # As the organization was created
         await db.execute(
             update(models.Entity)
             .where(models.Entity.uuid == ADMIN_ENTITY)
@@ -230,7 +216,6 @@ class Organization:
 
 @pytest.fixture
 async def organization(auth_client, admin_client, db_session):
-    """The admin's organization with the test user in it as a "User"."""
     org = Organization(db_session)
     await org.set_up()
     yield org

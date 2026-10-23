@@ -1,13 +1,3 @@
-/**
- * Tier 1 — vendored bridge command contract.
- *
- * Verifies:
- *   - Registry covers the 16 commands in bridge-commands.ts (PR2 surface)
- *   - WORKSPACE_BRIDGE_COMMAND_NAMES set agrees with the registry
- *   - Each command's Zod schema parses a representative example
- *   - Schemas reject obvious shape errors
- */
-
 import { describe, it } from "node:test";
 import { expect } from "expect";
 import {
@@ -114,12 +104,10 @@ describe("WORKSPACE_BRIDGE_COMMANDS — example payloads parse round-trip", () =
       const example = EXAMPLES[c.name];
       const parsed = c.inputSchema.safeParse(example);
       if (!parsed.success) {
-        // Surface the failure; fail with clear message.
         throw new Error(
           `${c.name} schema rejected example: ${JSON.stringify(parsed.error.issues)}`,
         );
       }
-      // Round-trip: re-parsing the parsed value must succeed.
       const second = c.inputSchema.safeParse(parsed.data);
       expect(second.success).toBe(true);
     });
@@ -199,7 +187,6 @@ describe("WORKSPACE_BRIDGE_COMMANDS — common shape errors are rejected", () =>
     expect(spec.inputSchema.safeParse({ widget_type: "tree" }).success).toBe(false);
   });
 
-  // The Workspace has no table or chart widget; those are drawn as html.
   it("add_generative_widget offers only note and html", () => {
     const spec = WORKSPACE_BRIDGE_COMMANDS.find(
       (c) => c.name === "add_generative_widget",

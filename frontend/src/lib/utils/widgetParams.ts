@@ -24,7 +24,6 @@ function getAuthFlags() {
   };
 }
 
-// Converts header rows (`{ key, value, location }`) to a header record; rows located in the query become params
 export function convertHeadersToRecord<PT extends object = Record<string, unknown>>(
   headers: Record<string, string> | WidgetT["endpointHeaders"] | null,
   params: PT = {} as PT,
@@ -32,8 +31,6 @@ export function convertHeadersToRecord<PT extends object = Record<string, unknow
   headers = headers || {};
 
   if (Array.isArray(headers)) {
-    // The names come from a backend's configuration: the records are built from entries,
-    // which only defines properties of their own, so no name reaches a setter or a prototype
     const rows = headers.map(({ key, value, location = "headers" }) => ({
       key,
       value,
@@ -54,15 +51,9 @@ export function convertHeadersToRecord<PT extends object = Record<string, unknow
   }
 
   headers = addExtraHeaders(headers);
-  // If it's already in the correct format, return it directly
   return { headers, newParams: params };
 }
 
-/**
- * A copy of `headers` plus the identity headers the deployment forwards (from page
- * memory). It never changes `headers` itself, so a saved header set (a custom agent's,
- * an MCP server's) never picks up an ID token or the email.
- */
 export function addExtraHeaders(
   headers: Record<string, string> = {},
 ): Record<string, string> {
@@ -81,28 +72,15 @@ export function cleanURL(url: string) {
   return url?.replace(/([^:]\/)\/+/g, "$1")?.replace(/\/+$/, "");
 }
 
-/**
- * Creates a URL string based on the provided endpoint and base URL.
- * @param endpoint - The endpoint to create the URL for.
- * @param base - The base URL to combine with the endpoint. If not provided, defaults to an empty string.
- * @return A cleaned URL string.
- * @example
- * createURLString("widget.json", "https://example.com/widgets");
- * // Returns: "https://example.com/widgets/widget.json"
- */
 export function createURLString(endpoint: string, base?: string | URL) {
-  // If the endpoint is a data URI, return it as is (without cleanURL to preserve the format)
   if (endpoint?.startsWith("data:")) return endpoint;
 
-  // If the endpoint is a full URL, return it cleaned
   if (endpoint?.startsWith("http")) return cleanURL(endpoint);
 
   const baseURL = base?.toString() || "";
-  // Otherwise, create a new URL based on the base URL and endpoint
   return cleanURL(`${baseURL}/${endpoint}`);
 }
 
-/** {@link createURLString} but returns a URL object instead of a string + appends query parameters to the URL */
 export function createURL(
   endpoint: string,
   base?: string | URL,
@@ -143,7 +121,6 @@ export function getDate(date: DateModifierValue | string) {
 }
 
 export function currentDateModifier(value: DateModifierValue | string) {
-  // If it's a regular date string (YYYY-MM-DD), return it as is
   if (isDate(value)) return value;
 
   const match = dateModRegex.exec(value);
@@ -197,7 +174,6 @@ export function createParamDefs(
   const groupIdCounts: Record<string, number> = {};
 
   if (params.success) {
-    // The schema validates what a backend sends; its output is the ParamDef shape.
     const parsed = params.data as ParamDef[];
     if (backendURL) populateGroupByIdCounts(parsed, groupIdCounts);
 
@@ -223,11 +199,6 @@ export function createParamDefs(
   return widget.params as ParamDef[];
 }
 
-/**
- * A widget's endpoint as dashboards and apps save it: the URL and the method (GET unless
- * it says), never a data backend's credentials, which widgets look up in their source
- * when they fetch.
- */
 export function createWidgetEndpoint(
   url: string | Partial<NonNullable<WidgetT["endpoint"]>> | undefined,
 ): NonNullable<WidgetT["endpoint"]> {
@@ -235,7 +206,6 @@ export function createWidgetEndpoint(
   return { url: cleanURL(given.url ?? ""), method: given.method ?? "GET" };
 }
 
-/** Whether a value, such as one an AI tool call supplies, is one a widget parameter can hold. */
 export function isStoredParamValue(value: unknown): value is StoredParamValue {
   const isScalar = (v: unknown) =>
     v === null || ["string", "number", "boolean"].includes(typeof v);

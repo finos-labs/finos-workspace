@@ -57,7 +57,7 @@ describe("assertSafeZip", () => {
   it("refuses a directory that points outside the file", () => {
     const zip = makeZip([{ name: "a", data: new Uint8Array(10) }]);
     const view = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
-    view.setUint32(zip.length - 22 + 16, 0x7fffffff, true); // directory offset
+    view.setUint32(zip.length - 22 + 16, 0x7fffffff, true);
     expect(refuses(zip)).toContain("damaged");
   });
 

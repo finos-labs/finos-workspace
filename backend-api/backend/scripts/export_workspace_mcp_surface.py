@@ -71,7 +71,6 @@ async def _collect_workspace_mcp_surface() -> dict[str, Any]:
                 "tags": sorted(getattr(resource, "tags", []) or []),
             }
         )
-        # A live resource is read from a browser session, which an export has none of
         if LIVE_RESOURCE_TAG in (getattr(resource, "tags", None) or set()):
             continue
         result = await server.read_resource(uri)

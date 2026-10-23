@@ -1,21 +1,3 @@
-/**
- * Tool calls that a model writes into its text.
- *
- * A model that has no native tool calling in the provider that serves it (an open-weight model behind
- * Ollama, some NIM and OpenRouter models) calls a tool by writing a marker in its text:
- * `<tool_call>{"name": "...", "arguments": {...}}</tool_call>`, `<TOOLCALL>[...]</TOOLCALL>`,
- * `<function=name>{...}</function>`, `[TOOL_CALLS][...]`. The loop knows only the tool calls that the AI SDK
- * hands it as stream parts, and a marker left in the text would be shown to the user as the answer, with
- * nothing run. So the model is wrapped here: the text of each block is read for markers, a marker that
- * names a tool the request offers becomes a real `tool-call` part (the loop then does what it does for any
- * tool call), and the text that is left is the text. A marker that cannot be read, or that names a tool
- * that is not offered, is dropped from the text rather than shown.
- *
- * The text of a block is held until the block ends. The loop shows no text token by token (it holds the text
- * of a step until it knows whether the step is reasoning or the answer), so nothing is delayed that was shown.
- * A model that makes native tool calls writes no markers, and is passed through as it is.
- */
-
 import type {
   LanguageModelV3,
   LanguageModelV3Content,
@@ -30,7 +12,6 @@ const logger = getLogger(["app", "inline-tool-calls"]);
 
 export interface InlineCall {
   name: string;
-  /** The arguments as the JSON text the AI SDK takes for a tool call. */
   input: string;
 }
 
@@ -38,21 +19,17 @@ export type InlineSegment = { type: "text"; text: string } | ({ type: "call" } &
 
 interface MarkerFormat {
   open: RegExp;
-  /** The text that ends the marker, or null when the marker runs to the end of the text. */
   close: (open: RegExpExecArray) => RegExp | null;
-  /** The calls in the body of the marker, or null when it is not one. */
   read: (body: string, open: RegExpExecArray) => unknown[] | null;
 }
 
 const FORMATS: MarkerFormat[] = [
   {
-    // <tool_call>{...}</tool_call>   <TOOLCALL>[{...}]</TOOLCALL>   <function_call>{...}</function_call>
     open: /<(tool_calls?|toolcalls?|function_calls?)>/i,
     close: (open) => new RegExp(`</${open[1]}>`, "i"),
     read: (body) => asCalls(parseJson(body)),
   },
   {
-    // <function=name>{...}</function>
     open: /<function=([\w.:-]+)>/i,
     close: () => /<\/function>/i,
     read: (body, open) => {
@@ -61,7 +38,6 @@ const FORMATS: MarkerFormat[] = [
     },
   },
   {
-    // [TOOL_CALLS][{...}]
     open: /\[TOOL_CALLS\]/,
     close: () => null,
     read: (body) => asCalls(parseJson(body)),
@@ -79,7 +55,6 @@ function parseJson(text: string): unknown {
   }
 }
 
-/** One call or a list of them, as models write them: `{name, arguments}`, `{function: {name, arguments}}`. */
 function asCalls(value: unknown): unknown[] | null {
   if (Array.isArray(value)) return value;
   if (value && typeof value === "object") return [value];
@@ -94,7 +69,6 @@ function toCall(raw: unknown, toolNames: ReadonlySet<string>): InlineCall | null
   if (typeof name !== "string" || !toolNames.has(name)) return null;
   let args: unknown = inner.arguments ?? inner.parameters ?? inner.input ?? inner.args ?? {};
   if (typeof args === "string") {
-    // Arguments are often a JSON string themselves.
     const parsed = parseJson(args);
     if (parsed === undefined) return null;
     args = parsed;
@@ -103,11 +77,6 @@ function toCall(raw: unknown, toolNames: ReadonlySet<string>): InlineCall | null
   return { name, input: JSON.stringify(args) };
 }
 
-/**
- * The text split into its text and its tool calls, in order. Markers that are not calls to an offered tool
- * are left out of both (counted in `dropped`). One pass over the text: each format's next marker is found
- * once and only again when it has been passed, so a text of many markers is not read many times.
- */
 export function extractInlineToolCalls(
   text: string,
   toolNames: ReadonlySet<string>,
@@ -180,7 +149,6 @@ function finishWithToolCalls(finish: LanguageModelV3FinishReason): LanguageModel
   return finish.unified === "stop" ? { ...finish, unified: "tool-calls" } : finish;
 }
 
-/** The AI SDK middleware: see the top of this file. */
 export const inlineToolCallsMiddleware: LanguageModelV3Middleware = {
   specificationVersion: "v3",
 
@@ -216,8 +184,6 @@ export const inlineToolCallsMiddleware: LanguageModelV3Middleware = {
     const names = offeredToolNames(params.tools as ModelTool[] | undefined);
     if (names.size === 0) return result;
 
-    // Text blocks are held until they end, and the parts that arrive meanwhile wait behind them, so that
-    // what the loop sees is in the order the model wrote it.
     const held = new Map<string, { start: LanguageModelV3StreamPart; text: string }>();
     const queue: LanguageModelV3StreamPart[] = [];
     let nativeCalls = false;
@@ -274,7 +240,6 @@ export const inlineToolCallsMiddleware: LanguageModelV3Middleware = {
             nativeCalls = true;
             break;
           case "finish":
-            // A block that was never closed.
             for (const id of [...held.keys()]) finishBlock(id, controller);
             release(controller);
             controller.enqueue(inlineCalls && !nativeCalls ? { ...part, finishReason: finishWithToolCalls(part.finishReason) } : part);
@@ -293,7 +258,6 @@ export const inlineToolCallsMiddleware: LanguageModelV3Middleware = {
   },
 };
 
-/** A model whose text is read for tool calls (see the top of this file). */
 export function withInlineToolCalls(model: LanguageModelV3): LanguageModelV3 {
   return wrapLanguageModel({ model, middleware: inlineToolCallsMiddleware });
 }

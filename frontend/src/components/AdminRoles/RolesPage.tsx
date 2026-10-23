@@ -205,7 +205,6 @@ export default function RolesPage({ roles, isLoading, error }: RolesPageProps) {
     ],
   );
 
-  // The roles show when they are there: no loading animation in between
   if (isLoading) {
     return (
       <TabsPrimitive.Content value="roles" className="p-6 text-sm only-sm:h-screen" />

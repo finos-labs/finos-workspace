@@ -36,7 +36,6 @@ function renderPage(entry: string) {
   );
 }
 
-/** The page in a data router, as the app has it, which a test can navigate. */
 function renderRouter(entry: string) {
   const router = createMemoryRouter(
     [{ path: "/reset-password", element: <ResetPasswordPage /> }],
@@ -89,7 +88,6 @@ describe("ResetPasswordPage", () => {
 
     await setPassword("weakpass");
 
-    // The rule shows once per field, and the standing hint gives way
     expect(await screen.findAllByText(invalidPassword)).toHaveLength(2);
     expect(resetPassword).not.toHaveBeenCalled();
   });
@@ -142,7 +140,6 @@ describe("ResetPasswordPage", () => {
     await setPassword(NEW_PASSWORD);
     expect(await screen.findByText("This link has expired.")).toBeInTheDocument();
 
-    // The admin's new link, pasted into the same tab: only the fragment changes
     await act(() => router.navigate("/reset-password#new-token"));
     await waitFor(() => expect(router.state.location.hash).toBe(""));
     expect(screen.queryByText("This link has expired.")).not.toBeInTheDocument();

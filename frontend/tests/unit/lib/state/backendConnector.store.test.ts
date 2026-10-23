@@ -25,8 +25,6 @@ const mockSource: Source = {
   endpointHeaders: [],
 };
 
-// An unknown key of widgets.json is an error of its widget (the schema is closed); those
-// of apps.json are reported apart, with this warning
 function mockBackendResponsesWithUnrecognizedAppKey() {
   mockFetch
     .mockResolvedValueOnce({
@@ -211,16 +209,13 @@ describe("useBackendConnectorStore unrecognized-keys warning flow", () => {
     };
     mockFetch.mockImplementation(handler);
 
-    // Initial connect — MCP gets registered
     await useBackendConnectorStore.getState().updateApiSource(mockSource);
     expect(useMcpToolsStore.getState().servers).toHaveLength(1);
 
-    // User removes the MCP from the AI tab
     const [registered] = useMcpToolsStore.getState().servers;
     useMcpToolsStore.getState().removeServer(registered.id);
     expect(useMcpToolsStore.getState().servers).toHaveLength(0);
 
-    // Manual backend refresh must NOT bring it back
     await useBackendConnectorStore.getState().updateApiSource(mockSource);
     expect(useMcpToolsStore.getState().servers).toHaveLength(0);
   });

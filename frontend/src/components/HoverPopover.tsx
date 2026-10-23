@@ -21,7 +21,6 @@ interface HoverPopoverProps {
   openDelay?: number;
 }
 
-/**TODO: move this one to components/ds/atoms/HoverPopover.tsx */
 export function HoverPopover({
   trigger,
   content,

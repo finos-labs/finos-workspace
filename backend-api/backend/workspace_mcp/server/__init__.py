@@ -1,11 +1,3 @@
-"""FastMCP tool surface for the Workspace sidecar.
-
-This package wires the per-domain tool modules into a single ``FastMCP``
-instance. The public entry point is ``create_mcp_server``; the rest of the
-re-exports keep ``from workspace_mcp.server import ...`` working for callers
-that depend on the original flat-module layout (notably the test suite).
-"""
-
 import json
 from typing import Any
 
@@ -44,7 +36,6 @@ from workspace_mcp.server.tools import (
 )
 from workspace_mcp.state import BridgeSessionManager, BrowserUnavailableError
 
-# A resource whose body comes from the user's Workspace session, read when it is asked for
 LIVE_RESOURCE_TAG = "live"
 WIDGETS_JSON_SCHEMA_URI = "workspace://specs/widgets-json-schema"
 
@@ -72,11 +63,6 @@ def create_mcp_server(
     lifespan: Lifespan | None = None,
     auth: AuthProvider | None = None,
 ) -> FastMCP:
-    """Create the Workspace MCP server with the full v1 tool list.
-
-    ``auth`` makes the HTTP transport require a bearer token that the provider accepts;
-    without it the server is open, which is only right for the local sidecar.
-    """
     server = FastMCP(
         name="Workspace MCP",
         instructions=SERVER_INSTRUCTIONS,
@@ -98,7 +84,6 @@ def create_mcp_server(
         mime_type="application/json",
     )
     def offloaded_result(result_id: str) -> str:
-        """Serve one offloaded full tool result payload."""
         try:
             data = offload_store.get(result_id)
         except KeyError:
@@ -114,7 +99,6 @@ def create_mcp_server(
         description="Generic guidance for using the Workspace MCP tool surface.",
     )
     def workspace_tool_usage() -> list[Message]:
-        """Return a compact, generic usage prompt for MCP agents."""
         return [
             Message(SERVER_INSTRUCTIONS, role="user"),
             Message(session_context_prompt_content(state), role="user"),
@@ -125,7 +109,6 @@ def create_mcp_server(
         description="Current tracked Workspace dashboard and tab context.",
     )
     def workspace_session_context() -> list[Message]:
-        """Return the current tracked Workspace dashboard and tab context."""
         return [Message(session_context_prompt_content(state), role="user")]
 
     async def run(command: Any) -> ToolResponse:
@@ -168,7 +151,6 @@ def create_mcp_server(
         tags={LIVE_RESOURCE_TAG},
     )
     async def widgets_json_schema() -> str:
-        """Serve the composed widgets.json schema the browser validates backends with."""
         result = await run(GetWidgetsSchemaCommand(command="get_widgets_schema"))
         if not result["ok"]:
             raise ResourceError(result["message"])

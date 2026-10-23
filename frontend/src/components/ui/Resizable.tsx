@@ -93,12 +93,10 @@ const ResizableHandle = memo(
     );
     const isCollapsed = collapsed ?? collapsedState;
 
-    // Get fullscreen state for AI chat priority
     const { isFullscreen } = useShallowCopilotStore((state) => ({
       isFullscreen: state.isFullscreen,
     }));
 
-    // Get setting for expand button visibility on collapsed panels
     const collapsedPanelExpandOnHover = useShallowThemeStore(
       (state) => state.collapsedPanelExpandOnHover,
     );
@@ -123,7 +121,6 @@ const ResizableHandle = memo(
             "h-[40px] w-[40px] absolute cursor-pointer": isCollapsed,
             "bg-brand-main text-light-100 pr-4": isCollapsed && type === "right",
             "bg-brand-main text-light-100 pl-4": isCollapsed && type === "left",
-            // Hide left sidebar drag handle visually when AI chat is maximized, but keep resize functional
             "opacity-0": type === "left" && isFullscreen && !isCollapsed,
           })}
         >
@@ -179,16 +176,11 @@ const ResizableHandle = memo(
               (isCollapsed && !edgeHovered),
             "hover:bg-brand-lighter dark:hover:bg-brand-lighter":
               !isDragging && (type === "right" || type === "left"),
-            // Highlight bar when edge hover zone is active
             "bg-brand-lighter dark:bg-brand-lighter": edgeHovered && isCollapsed,
-            // add some styles when dragging to the bar
             "bg-brand-darker dark:bg-brand-darker": isDragging,
             "w-px": withHandle,
-            // Ensure resize handle is above EdgeHoverZone (z-40) when collapsed
             "z-50": isCollapsed,
-            // Hide left sidebar resize handle visually when AI chat is maximized, but keep resize functional
             "after:opacity-0": type === "left" && isFullscreen,
-            // hide right side because we only need left side on full screen
             "w-0": type === "right" && isFullscreen,
           },
         )}

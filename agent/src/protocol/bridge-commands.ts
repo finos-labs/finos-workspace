@@ -1,31 +1,5 @@
-/**
- * The Workspace's bridge command contract.
- *
- * The frontend's `useWorkspaceBridgeCommandHandler` is the
- * authoritative dispatcher for these commands. The agent declares each one
- * as a no-execute Vercel AI SDK tool and emits a `copilotFunctionCall`
- * SSE with `function: <command>` and `input_arguments: <command shape>`.
- *
- * Source of truth (kept byte-compatible):
- *   frontend/src/components/AI/workspaceBridgeProtocol.ts
- *
- * What lives here:
- *   1. Per-command Zod schemas (what the model fills in).
- *   2. Per-command descriptions (what the model reads).
- *   3. WORKSPACE_BRIDGE_COMMANDS table — single registry consumed by:
- *      - src/agent/tools/workspace.ts (factory)
- *      - src/agent/loop.ts (generic dispatch on toolCall.toolName)
- *      - src/mcp/factory.ts (filter Path-B duplicates from body.tools)
- *
- * The 16 commands listed below are the new native-SSE surface migrated from
- * the workspace MCP wrappers. `get_widget_data` and `get_skill_content` are
- * also bridge commands but keep their bespoke agent paths (widget tier
- * resolution, skill payload injection) and so are NOT in this table.
- */
-
 import { z } from "zod";
 
-// ---------- shared shapes ----------
 
 const widgetConfigSchema = z
   .object({
@@ -51,7 +25,6 @@ const optionalDashboardId = z
   .optional()
   .describe(DASHBOARD_ID_DESCRIPTION);
 
-// ---------- per-command schemas ----------
 
 export const getWorkspaceSnapshotInputSchema = z.object({});
 
@@ -329,7 +302,6 @@ export const manageAppsInputSchema = z.object({
     ),
 });
 
-// ---------- registry ----------
 
 export interface WorkspaceBridgeCommandSpec {
   name: string;
@@ -470,22 +442,8 @@ export const WORKSPACE_BRIDGE_COMMAND_NAMES: ReadonlySet<string> = new Set(
   WORKSPACE_BRIDGE_COMMANDS.map((c) => c.name),
 );
 
-/**
- * Path-B bridge-mount tool names that do NOT appear in WORKSPACE_BRIDGE_COMMANDS
- * but still duplicate an agent-owned path:
- *   - `update_widget_layout` — the mcp-server mount's name for the
- *     `update_dashboard_layout` wire command (mcp-server/src/bridge/wire.ts).
- *   - `get_widget_data` / `get_skill_content` — bridge commands with bespoke
- *     agent round-trip paths (widget tier resolution, skill payload injection),
- *     deliberately excluded from the table above.
- * The MCP factory drops user-supplied wrappers with these names so they never
- * double-register against the native tools.
- */
 export const BRIDGE_MOUNT_EXTRA_NAMES: ReadonlySet<string> = new Set([
   "update_widget_layout",
-  // WebSocket-companion wire names for what the SSE agent now registers as
-  // `update_widget_in_dashboard` / `add_widget_to_dashboard`. Kept here so the
-  // MCP factory still dedups the companion's wrappers after the SSE-side rename.
   "update_widget",
   "create_widget",
   "get_widget_data",

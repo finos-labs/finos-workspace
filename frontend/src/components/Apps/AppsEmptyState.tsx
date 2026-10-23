@@ -52,7 +52,6 @@ function FeatureCard({
 }
 
 export default function AppsEmptyState() {
-  // Sharing an app is for those whose roles let them share
   const mayShare = useShallowAccessStore((state) => canShare(state.access));
   return (
     <div className="flex flex-col items-center justify-center py-10 px-4">
@@ -60,7 +59,6 @@ export default function AppsEmptyState() {
         Your Apps page is empty. Add a new App and start using it.
       </p>
 
-      {/* The cards stretch to the tallest one, so they are the same size */}
       <div className="flex flex-wrap gap-4 w-full max-w-2xl justify-center items-stretch">
         <FeatureCard
           title="Save a Dashboard as an App"

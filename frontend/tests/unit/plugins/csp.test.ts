@@ -9,10 +9,6 @@ import {
 } from "~/plugins/csp";
 import cases from "~/plugins/csp-cases.json";
 
-/**
- * The same cases as backend-api/backend/tests/test_widget_plugin_rules.py, so the
- * TypeScript and Python validators cannot drift (SECURITY.md 4.3).
- */
 describe("plugin CSP rules", () => {
   describe.each(cases.author)("an author declares: $name", (testCase) => {
     it(testCase.ok ? "is accepted" : "is refused", () => {

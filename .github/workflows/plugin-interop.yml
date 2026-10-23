@@ -1,10 +1,5 @@
 name: Widget plugin interop
 
-# Public Anywidget front-end modules, at the versions frontend/tests/e2e/plugins/
-# interop-modules.json pins, run in plugin frames on the compose stack, in Chromium, Firefox
-# and WebKit (docs/widget-plugins/GUEST-CONTRACT.md 8). The modules are fetched from PyPI
-# when the tests run, so this runs nightly rather than on every pull request.
-
 on:
   schedule:
     - cron: "17 3 * * *"
@@ -18,7 +13,6 @@ permissions:
   contents: read
 
 jobs:
-  # Node for the agent's images, built once and kept in the Actions cache (agent-node.yml).
   node:
     uses: ./.github/workflows/agent-node.yml
 
@@ -26,7 +20,6 @@ jobs:
     name: Public modules in plugin frames
     needs: node
     runs-on: ubuntu-latest
-    # A run that finds the backend's stages missing from the Actions cache compiles its dependencies.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +31,6 @@ jobs:
           python3 -m scripts.create_local_env --admin-email "$EMAIL" --entity-name "End-to-end"
           echo "E2E_USER_EMAIL=$EMAIL" >> "$GITHUB_ENV"
 
-      # The tests write the modules' packages into a directory the API reads
       - name: Mount a widget plugins directory
         run: |
           mkdir -p "$RUNNER_TEMP/widget-plugins"
@@ -53,19 +45,16 @@ jobs:
           echo "E2E_PLUGINS_DIR=$RUNNER_TEMP/widget-plugins" >> "$GITHUB_ENV"
           echo "E2E_INTEROP=1" >> "$GITHUB_ENV"
 
-      # Over HTTPS, as e2e.yml runs it (docker-compose.e2e.yml)
       - name: Make the stack's certificate
         run: frontend/tests/e2e/make-tls.sh frontend/tests/e2e/tls/certs localhost
 
-      # Built as e2e.yml builds it: the backend's stages from the Actions cache, the agent's Node from
-      # the node job
       - uses: actions/cache/restore@v6
         with:
           path: agent-node
           key: ${{ needs.node.outputs.key }}
           fail-on-cache-miss: true
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+      - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487
       - name: Build the stack's images
         run: >-
           docker buildx bake -f docker-compose.yml -f docker-compose.e2e.yml --load
@@ -87,8 +76,6 @@ jobs:
             curl -fsS --cacert frontend/tests/e2e/tls/certs/ca.pem -o /dev/null "$url"
           done
 
-      # The administrator has no password until one is set, as an operator sets it: read
-      # from standard input, never printed
       - name: Set the administrator's password
         run: |
           PASSWORD="$(python3 -c 'import secrets; print("E2e-" + secrets.token_urlsafe(24) + "!1a")')"

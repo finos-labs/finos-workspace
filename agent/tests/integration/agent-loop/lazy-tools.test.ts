@@ -1,10 +1,3 @@
-/**
- * Tier 2 — the model is given the tools it uses, and knows the rest exist.
- *
- * Drives the real loop with a spy model to see exactly what each model call is given: the definitions in
- * its tool list, and the catalog and instructions in its system prompt.
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";
@@ -78,7 +71,6 @@ describe("a question that needs no tool", () => {
     const names = toolNamesOf(spy.calls[0]);
     expect(names.sort()).toEqual(["get_skill_content", "get_widget_data", "load_tools", "search_widgets"]);
 
-    // The rest is named in the system prompt, by group.
     const catalog = catalogToolNamesOf(spy.calls[0]);
     for (const tool of ["execute_sql", "create_artifact", "update_widget_in_dashboard", "create_html_artifact"]) {
       expect(catalog).toContain(tool);
@@ -92,7 +84,6 @@ describe("a question that needs no tool", () => {
     const spy = makeSpyMockLlm(llmEmitsText("Tokyo."));
     await run(spy.model);
     const tokens = (systemPromptOf(spy.calls[0]).length + sizeOf(spy.calls[0])) / 4;
-    // Every tool, with every instruction, was ~10k tokens before the question.
     expect(tokens).toBeLessThan(4_500);
   });
 
@@ -109,8 +100,6 @@ describe("a question that needs no tool", () => {
     const spy = makeSpyMockLlm(llmEmitsText("Tokyo."));
     await run(spy.model, { tools: [] });
     const catalog = catalogToolNamesOf(spy.calls[0]);
-    // The agent's own tools are there, its dashboard tools among them (the request has none of the
-    // Workspace's); the MCP tools are not.
     expect(catalog).toContain("execute_sql");
     expect(catalog).toContain("create_app");
     expect(catalog).toContain("update_widget_in_dashboard");
@@ -130,7 +119,6 @@ describe("a question that needs a group", () => {
     expect(toolNamesOf(spy.calls[1])).toEqual(expect.arrayContaining(["execute_sql", "peek_table", "peek_column_values", "create_artifact"]));
     expect(systemPromptOf(spy.calls[1])).toContain("SQL TOOLS:");
     expect(systemPromptOf(spy.calls[1])).toContain("- sql [loaded]");
-    // What it did not load is still not there.
     expect(toolNamesOf(spy.calls[1])).not.toContain("update_widget_in_dashboard");
   });
 
@@ -197,7 +185,6 @@ describe("a group that the state makes certain", () => {
     expect(names.some((n) => n.endsWith("query_documents"))).toBe(true);
     expect(names.some((n) => n.endsWith("list_documents"))).toBe(true);
     expect(systemPromptOf(spy.calls[0])).toContain("DOCUMENTS TOOLS:");
-    // ...and nothing else that was not asked for.
     expect(names.some((n) => n.endsWith("web_search"))).toBe(false);
     expect(names).not.toContain("execute_sql");
   });

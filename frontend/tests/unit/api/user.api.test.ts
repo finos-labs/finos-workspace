@@ -8,7 +8,6 @@ import {
 import type { DisplaySettings } from "~/types/auth.type";
 import { partial } from "../mocks";
 
-// Mock apiClient
 vi.mock("~/api/api", () => ({
   apiClient: {
     get: vi.fn(),
@@ -17,7 +16,6 @@ vi.mock("~/api/api", () => ({
   },
 }));
 
-// Mock useThemeStore
 vi.mock("~/lib/state/theme", () => ({
   useThemeStore: {
     getState: vi.fn().mockReturnValue({

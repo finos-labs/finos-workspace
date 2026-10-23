@@ -14,8 +14,6 @@ concurrency:
 permissions:
   contents: read
 
-# Ines is the built-in agent: the agent (agent/src) and the MCP server it uses for its tools (agent/mcp-server).
-# The tests need no keys and no network. The evals (agent/evals) call a real model and are run by hand.
 jobs:
   typecheck:
     name: Types
@@ -25,21 +23,19 @@ jobs:
         working-directory: agent
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 26.12.1
       - run: npm ci
       - run: npm run typecheck
 
-  # The tests run on the Node the images run on: the stage that agent-node.yml builds, in a container of
-  # its own, with the packages npm installed here.
   tests:
     name: Tests
     needs: node
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 26.12.1
       - run: npm ci
@@ -55,8 +51,6 @@ jobs:
           docker run --rm -v "$PWD/agent:/app" -w /app agent-node:tests /usr/local/bin/node --test \
             --experimental-test-module-mocks --import ./tests/setup.ts 'tests/**/*.test.ts' 'mcp-server/test/**/*.test.ts'
 
-  # A critical advisory in what the agent ships fails the check. Lower ones are reviewed by hand: most are in
-  # code that is not reached (sprintf-js under mammoth's command-line parser, for one).
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest
@@ -65,12 +59,11 @@ jobs:
         working-directory: agent
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 26.12.1
       - run: npm audit --omit=dev --audit-level=critical
 
-  # Node for the images, built once and kept in the Actions cache (agent-node.yml).
   node:
     uses: ./.github/workflows/agent-node.yml
 

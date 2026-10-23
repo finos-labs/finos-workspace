@@ -3,12 +3,6 @@ import type { ParamDef } from "~/components/types";
 import { CommandError, type CommandErrorName, MAX_EXPORT_BYTES } from "./protocol";
 import { MAX_STATE_BYTES, type Permission, type PluginWidgetDef } from "./types";
 
-/**
- * The runtime authority: every write and command a frame sends is checked here, against
- * the effective permissions the server listed for this user and widget, before anything
- * acts on it (docs/widget-plugins/GUEST-CONTRACT.md 3 and 4, DESIGN.md 2).
- */
-
 export type BindingSource =
   | "data"
   | "params"
@@ -24,7 +18,6 @@ export type BindingSource =
 export interface TraitBinding {
   trait: string;
   source: BindingSource;
-  /** For `param:<name>`, `config:<key>` and `adminSettings:<key>` */
   key?: string;
   writable: boolean;
 }
@@ -52,7 +45,6 @@ function parseBinding(bind: string): { source: BindingSource; key?: string } | n
   return null;
 }
 
-/** The traits a widget's model has, and which of them the frame may write. */
 export function traitBindings(
   widget: Pick<PluginWidgetDef, "model">,
   permissions: ReadonlySet<string>,
@@ -86,7 +78,6 @@ export function traitBindings(
 
 const MAX_TEXT_PARAM = 4096;
 
-/** A param value the frame wrote, coerced to the param's type, or an error. */
 export function coerceParamValue(param: ParamDef, value: unknown): unknown {
   const multiple =
     ("multiSelect" in param && param.multiSelect) ||
@@ -151,9 +142,7 @@ export function checkStateWrite(value: unknown) {
   return value;
 }
 
-/** The permission each host command needs. */
 export const COMMAND_PERMISSIONS: Record<string, Permission> = {
-  // The plugin's own files, which the review lists as served to browsers
   "core:asset:read": "core:default",
   "core:ui:notify": "core:ui:notify",
   "core:ui:open-link": "core:ui:open-link",
@@ -165,7 +154,6 @@ export const COMMAND_PERMISSIONS: Record<string, Permission> = {
 
 const ASSET_PATH = /^assets\/[A-Za-z0-9._-]{1,128}(\/[A-Za-z0-9._-]{1,128})*$/;
 
-/** The path a `core:asset:read` asks for: a file under the package's `assets/`. */
 export function assetPath(msg: Record<string, unknown>): string {
   const path = msg.path;
   if (
@@ -186,8 +174,6 @@ export function commandPermission(name: string, permissions: ReadonlySet<string>
     throw new CommandError("not_granted", `${name} needs the permission ${needed}`);
 }
 
-// The API's refusals of a proxy or backend call (SERVER-SIDE.md 3.3 and 5), as the
-// frame's error names; anything else is unavailable
 const CALL_ERRORS: Record<string, CommandErrorName> = {
   invalid_args: "invalid_args",
   permission_denied: "not_granted",
@@ -199,7 +185,6 @@ const CALL_ERRORS: Record<string, CommandErrorName> = {
   response_too_large: "too_large",
 };
 
-/** The frame's error for a failed call: the API's message, never a response body. */
 export function serverCallError(error: unknown): CommandError {
   const detail = (error as { response?: { data?: { detail?: unknown } } })?.response
     ?.data?.detail;
@@ -213,10 +198,6 @@ export function serverCallError(error: unknown): CommandError {
   );
 }
 
-/**
- * A call's request from the frame: a proxy (`{ id, args }`) or a backend route
- * (`{ route, args }`) the widget declares, and an object of arguments.
- */
 export function serverCallRequest(
   msg: Record<string, unknown>,
   key: "id" | "route",
@@ -234,7 +215,6 @@ export function serverCallRequest(
   return { name, args: args as Record<string, unknown> };
 }
 
-/** A token bucket: `rate` per second sustained, bursts of `burst`. */
 export class RateLimiter {
   private tokens: number;
   private last: number;
@@ -261,7 +241,6 @@ export class RateLimiter {
   }
 }
 
-/** Protocol violations within a window; past the limit the frame is ended. */
 export class ViolationCounter {
   private times: number[] = [];
 
@@ -271,7 +250,6 @@ export class ViolationCounter {
     private readonly now: () => number = () => performance.now(),
   ) {}
 
-  /** Records a violation. True when the frame must be ended. */
   add(): boolean {
     const now = this.now();
     this.times = [...this.times.filter((t) => now - t < this.windowMs), now];
@@ -293,10 +271,6 @@ export function safeLink(url: unknown): string {
   return parsed.toString();
 }
 
-/**
- * What a widget can export right now (GUEST-CONTRACT.md 5): its `exportOptions` decides,
- * from its own state, each time the user opens Export. The host assumes no format.
- */
 export const ExportOptionSchema = z
   .object({
     id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/),
@@ -328,10 +302,6 @@ export function readExportOptions(value: unknown): ExportOption[] {
   return parsed.data;
 }
 
-/**
- * The file `exportData` delivered, typed as its option says. It returns the contents:
- * a string, an ArrayBuffer, a typed array or a Blob; nothing means nothing to export.
- */
 export function exportFile(value: unknown, option: ExportOption): Blob | null {
   if (value === undefined || value === null) return null;
   const type = option.mime;

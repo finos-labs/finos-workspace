@@ -1,11 +1,3 @@
-/**
- * Tool-routing cases. Once data is loaded, the model must query it with
- * execute_sql for filters / aggregations / joins.
- *
- * Each case starts from a state where price data is already loaded
- * (simulated via prior tool message).
- */
-
 import type { EvalCase } from "../runner.ts";
 import type { ToolMessage } from "../../src/protocol/types.ts";
 import {
@@ -14,16 +6,6 @@ import {
   toolCalled,
 } from "../graders/index.ts";
 
-// Prior tool message uses `$ines_kind: sqlite_table` so the rows land
-// in `pendingTables` instead of inline message JSON. The model sees a
-// schema preview but cannot read raw rows from context — it has to call
-// `execute_sql`.
-//
-// Close values are deliberately synthetic (not real-world AAPL/NVDA
-// price ranges) to break "model hallucinates from training priors and
-// happens to match the fixture" failure modes. If a model returns the
-// fixture's specific numbers without calling execute_sql, that's a
-// regression — there is no other way to know them.
 const PRICES_LOADED: ToolMessage = {
   role: "tool",
   function: "execute_agent_tool",
@@ -80,10 +62,6 @@ export const toolRoutingCases: EvalCase[] = [
       { role: "human", content: "what's the average close price for AAPL?" },
       PRICES_LOADED,
     ],
-    // Empty workspace by design — see sql-analysis.ts for the rationale.
-    // Pre-loaded `prices` table is the only data source, forcing the
-    // model toward execute_sql instead of a get_widget_data
-    // re-fetch escape.
     workspace: { primary: [], secondary: [], extra: [] },
     tools: [SQL_TOOL],
     trials: 3,
@@ -105,10 +83,6 @@ export const toolRoutingCases: EvalCase[] = [
       },
       PRICES_LOADED,
     ],
-    // Empty workspace by design — see sql-analysis.ts for the rationale.
-    // Pre-loaded `prices` table is the only data source, forcing the
-    // model toward execute_sql instead of a get_widget_data
-    // re-fetch escape.
     workspace: { primary: [], secondary: [], extra: [] },
     tools: [SQL_TOOL],
     trials: 3,

@@ -1,10 +1,3 @@
-/**
- * update_widget — change widget config (not layout).
- *
- * Mirrors workspace_mcp/server.py:772-808. Rejects layout-shaped ui_args
- * (x/y/w/h/grid_data/etc.) so callers route those to update_widget_layout.
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";
@@ -73,8 +66,6 @@ export async function updateWidgetHandler(args: {
     };
   }
 
-  // Python's required_widget_config always builds a config object even when
-  // both args are empty (server.py:799-802). Match that for wire parity.
   const config = {
     data_args: Object.keys(dataArgs).length > 0 ? dataArgs : null,
     ui_args: Object.keys(uiArgs).length > 0 ? uiArgs : null,

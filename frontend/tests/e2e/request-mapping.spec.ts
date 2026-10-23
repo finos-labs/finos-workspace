@@ -4,12 +4,6 @@ import { type ReceivedRequest, startEchoBackend } from "./echoBackend";
 import { authFile, deleteDashboard } from "./helpers";
 import { type ApiResponse, type PageApi, pageApi } from "./plugins/api";
 
-/**
- * The request mapping of `widgets.json` (docs/widget-plugins/WIDGETS-JSON.md 4) on the
- * full stack: a widget's request and its option lookup reach a backend with the method,
- * path, query, headers and body its definition declares.
- */
-
 const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const BACKEND_PORT = Number(process.env.E2E_ECHO_BACKEND_PORT ?? 7791);
 const WIDGET = "E2E team report";
@@ -31,7 +25,6 @@ async function json(response: ApiResponse) {
   return response.json();
 }
 
-/** The first request the backend received that matches, once it has arrived. */
 async function arrived(match: (r: ReceivedRequest) => boolean) {
   await expect.poll(() => received.some(match), { timeout: 20000 }).toBe(true);
   return received.find(match) as ReceivedRequest;
@@ -84,17 +77,14 @@ test("widget-request-goes-where-its-params-say", async () => {
   const request = await arrived(
     (r) => r.method === "POST" && r.path === "/teams/platform/report",
   );
-  // The path param is in the path only; the query param and the host's theme in the query
   const query = new URLSearchParams(request.query);
   expect([...query.keys()]).toEqual(["period", "theme"]);
   expect(query.get("period")).toBe("month");
   expect(["dark", "light"]).toContain(query.get("theme"));
-  // The header param as a header, the body param as a JSON body
   expect(request.headers["x-region"]).toBe("eu");
   expect(request.headers["content-type"]).toBe("application/json");
   expect(JSON.parse(request.body)).toEqual({ filters: "active" });
 
-  // The browser asked first, for the method and the headers the request carries
   const preflight = await arrived(
     (r) => r.method === "OPTIONS" && r.path === "/teams/platform/report",
   );
@@ -112,7 +102,6 @@ test("option-lookup-posts-its-params", async () => {
   );
   expect(lookup.query).toBe("");
   expect(lookup.headers["content-type"]).toBe("application/json");
-  // `$X-Region` took the value of the widget's param
   expect(JSON.parse(lookup.body)).toEqual({ active: true, region: "eu" });
 });
 

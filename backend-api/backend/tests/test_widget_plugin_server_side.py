@@ -1,9 +1,3 @@
-"""The server side of widget plugins through the API (docs/widget-plugins/SERVER-SIDE.md 3
-and 4): reviewing proxies and secrets, write-only secret values, the superuser's network
-override, an entity's narrowing, and widget calls to a real HTTPS upstream
-(tests/fixtures/plugin_proxies.py).
-"""
-
 import json
 
 import pytest
@@ -170,7 +164,6 @@ class TestNetwork:
         assert items["server:https://10.0.0.8"]["overridden"] is True
         assert items["server:https://10.0.0.8"]["risk"] == "critical"
 
-        # The override is replaced whole: without server_network the declared hosts apply again
         await superuser.put("/plugins/test-chart/overrides", json={"csp": {"img-src": ["https://tiles.example.org"]}})
         assert "server_network" not in (await plugin_view(superuser))["overrides"]
         view = version_view(await plugin_view(superuser))

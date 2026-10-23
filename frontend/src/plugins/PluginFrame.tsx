@@ -27,15 +27,6 @@ import {
 } from "./protocol";
 import type { AvailablePlugin } from "./types";
 
-/**
- * One plugin widget instance in one sandboxed frame (docs/widget-plugins/SECURITY.md 5).
- *
- * The host announces nothing and trusts nothing the frame says: it hands a private port
- * to the window that announced itself, requires the canary to pass before any plugin
- * byte is sent, verifies the bundle, and checks every message against the budgets and
- * the plugin's permissions (through `onWrite` and `onCommand`).
- */
-
 export type FrameStatus =
   | { kind: "booting" }
   | { kind: "loading" }
@@ -47,7 +38,6 @@ export type FrameStatus =
   | { kind: "unresponsive" }
   | { kind: "ended"; detail: string };
 
-/** The states a frame ends in; each is reported to the API, without its detail. */
 export type FrameFailure = Exclude<
   FrameStatus,
   { kind: "booting" | "loading" | "running" }
@@ -63,10 +53,8 @@ export interface PluginFrameProps {
   plugin: AvailablePlugin;
   title: string;
   bindings: TraitBinding[];
-  /** The current value of every bound trait, by trait name */
   traits: Record<string, unknown>;
   permissions: string[];
-  /** Apply a write the frame made to a writable trait; return the accepted value. */
   onWrite: (binding: TraitBinding, value: unknown) => unknown;
   onCommand: (
     name: string,
@@ -74,7 +62,6 @@ export interface PluginFrameProps {
     buffers: ArrayBuffer[],
   ) => Promise<{ value?: unknown; buffers?: ArrayBuffer[] }>;
   onStatus: (status: FrameStatus) => void;
-  /** The Workspace theme's scheme; a change is applied in place, without a reload */
   colorScheme: ColorScheme;
   visible?: boolean;
   handleRef?: Ref<PluginFrameHandle>;
@@ -84,7 +71,6 @@ const PING_INTERVAL_MS = 5000;
 const MISSED_PINGS = 3;
 const MAX_PENDING_COMMANDS = 32;
 const REPORT_INTERVAL_MS = 5000;
-// How long each export member may take in the frame; producing a file can take a while
 const EXPORT_TIMEOUTS_MS: Record<ExportMember, number> = {
   exportOptions: 10_000,
   exportData: 60_000,
@@ -105,7 +91,6 @@ export default function PluginFrame(props: PluginFrameProps) {
   const [srcdoc, setSrcdoc] = useState<string | null>(null);
   const [generation, setGeneration] = useState(0);
 
-  // The latest props, read from message handlers without re-binding the port
   const latest = useRef(props);
   latest.current = props;
 
@@ -165,9 +150,7 @@ export default function PluginFrame(props: PluginFrameProps) {
       current.running = false;
       try {
         post(current.port, { t: "dispose" });
-      } catch {
-        // the port may already be closed
-      }
+      } catch {}
       current.port?.close();
       current.port = null;
       for (const pending of current.pendingExports.values())
@@ -175,7 +158,6 @@ export default function PluginFrame(props: PluginFrameProps) {
       current.pendingExports.clear();
       status(next);
       setSrcdoc(null);
-      // For the metrics (DESIGN.md 11): the kind only, never the detail
       postPluginReports({
         plugin_id: plugin.id,
         version: plugin.version,
@@ -193,7 +175,6 @@ export default function PluginFrame(props: PluginFrameProps) {
     [end, plugin.id],
   );
 
-  /** Sends 50 reports a request, as the API takes them: one batch, or all when the frame goes. */
   const flushReports = useCallback(
     (everything = false) => {
       const current = session.current;
@@ -217,8 +198,6 @@ export default function PluginFrame(props: PluginFrameProps) {
     const changed: Record<string, unknown> = {};
     for (const binding of latest.current.bindings) {
       const value = latest.current.traits[binding.trait];
-      // The same object as last time is unchanged; only a new one is compared by value,
-      // so a large data set is not serialized on every render
       if (Object.is(current.sentRefs[binding.trait], value)) continue;
       current.sentRefs[binding.trait] = value;
       const serialized = JSON.stringify(value ?? null);
@@ -390,7 +369,6 @@ export default function PluginFrame(props: PluginFrameProps) {
     [end, plugin, pushTraits, status],
   );
 
-  // Build the document for this generation of the frame
   useEffect(() => {
     let cancelled = false;
     resetSession();
@@ -413,15 +391,12 @@ export default function PluginFrame(props: PluginFrameProps) {
         current.ended = true;
         try {
           post(current.port, { t: "dispose" });
-        } catch {
-          // already closed
-        }
+        } catch {}
         current.port?.close();
       }
     };
   }, [plugin.id, plugin.digest, JSON.stringify(plugin.csp), generation]);
 
-  // The announcement: the only window message the host accepts from a frame
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       const frameWindow = iframeRef.current?.contentWindow;
@@ -438,7 +413,6 @@ export default function PluginFrame(props: PluginFrameProps) {
           protocolViolation("message rate exceeded");
           return;
         }
-        // Only the answer to the host's own exportData call may carry a whole file
         const data = portEvent.data as { t?: unknown; id?: unknown } | null;
         const answersExport =
           data?.t === "export-result" &&
@@ -459,19 +433,16 @@ export default function PluginFrame(props: PluginFrameProps) {
         );
       };
       frameWindow.postMessage({ type: SHELL_PORT }, "*", [channel.port2]);
-      // The theme may have changed since the document was built
       post(channel.port1, { t: "scheme", mode: latest.current.colorScheme });
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, [handleGuest, protocolViolation]);
 
-  // Pushes when host state changes
   useEffect(() => {
     pushTraits();
   });
 
-  // Watchdog and report batching
   useEffect(() => {
     const ping = setInterval(() => {
       const current = session.current;
@@ -516,7 +487,6 @@ export default function PluginFrame(props: PluginFrameProps) {
           }
           const id = current.nextExport++;
           const timeout = EXPORT_TIMEOUTS_MS[member];
-          // A little longer than the frame's own limit, so its error arrives first
           const timer = setTimeout(() => {
             current.pendingExports.delete(id);
             reject(new Error(`${member} did not answer in time`));
@@ -557,7 +527,6 @@ export default function PluginFrame(props: PluginFrameProps) {
       onLoad={() => {
         const current = session.current;
         current.loads += 1;
-        // A second load means the document navigated: a way out for data
         if (current.loads > 1)
           end({ kind: "ended", detail: "the frame navigated away" });
       }}

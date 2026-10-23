@@ -1,13 +1,3 @@
-"""
-Integration tests for what users may do.
-
-A user's type is the name of their permissions map. What they may do with shared items
-and their daily limits come from the roles an admin assigned them: the
-most any role allows, and nothing that no role grants. A new role has no limits, and a
-developer has none at all. An organization's sharing switch, which a superuser sets,
-turns sharing off for all its users.
-"""
-
 import os
 import sys
 
@@ -80,7 +70,6 @@ class TestAccessFromRoles:
         await organization.set_type(MEMBER_UUID, models.DEVELOPER_TYPE)
         assert await get_user_limits(db_session, MEMBER_UUID) == NO_LIMITS
 
-        # Not even when a role of theirs sets limits
         await organization.role(
             MEMBER_UUID, copilot_calls_day=0, copilot_tokens_day=0, upload_size_gb=0
         )
@@ -338,7 +327,6 @@ class TestSignOut:
         user = await organization.add_user(password=PASSWORD)
         response = await app_client.post("/app/login", json=_login(user.email))
         assert response.status_code == 200, response.text
-        # The web app's session is the cookie only
         assert "access_token" not in response.json()
 
         response = await app_client.post("/app/logout")
@@ -390,7 +378,6 @@ class TestOrganizations:
                         )
                     )
                 ).scalar_one()
-                # Its roles decide who shares, and a new role shares nothing
                 assert sharing_enabled is True
             finally:
                 await db_session.execute(
@@ -407,7 +394,6 @@ class TestOrganizations:
     ):
         body = admin_entity_body(sharing_enabled=False)
         with superuser_override():
-            # The switch has to be given
             response = await auth_client.put(
                 f"/entity/entity/{ADMIN_ENTITY}",
                 json={key: value for key, value in body.items() if key != "sharing_enabled"},
@@ -493,7 +479,6 @@ class TestLeavingTheOrganization:
         assert (await get_user_limits(db_session, user.uuid)).copilot_calls_day == 0
         assert (await get_user_copilot_access(db_session, user.uuid)).models == []
 
-        # Nor is the user listed among the role's members
         members = (await admin_client.get(f"/admin/role/{role_uuid}")).json()["users"]
         assert user.email not in members
 
@@ -509,7 +494,6 @@ class TestLeavingTheOrganization:
         response = await admin_client.delete(f"/admin/users/{user.uuid}/remove")
         assert response.status_code == 200, response.text
 
-        # Every session of theirs ended at once
         assert (await app_client.get("/app/user")).status_code == 401
         sessions = (
             await db_session.execute(
@@ -518,7 +502,6 @@ class TestLeavingTheOrganization:
         ).scalars()
         assert list(sessions) == []
 
-        # They are no user any more: the right password signs nobody in, and puts them nowhere
         response = await app_client.post("/app/login", json=_login(user.email))
         assert response.status_code == 401
         permissions = (

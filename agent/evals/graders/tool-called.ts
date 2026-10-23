@@ -1,13 +1,6 @@
 import type { Trace } from "../trace.ts";
 import type { GraderSpec } from "./index.ts";
 
-/**
- * Pass if any captured tool call matches the given name.
- *
- * For MCP tools (which arrive wrapped in execute_agent_tool), the eval
- * compares against `serverToolName` so callers can write `toolCalled(
- * "execute_sql")` regardless of dispatch envelope.
- */
 export function toolCalled(name: string): GraderSpec {
   return {
     name: `toolCalled(${name})`,

@@ -1,8 +1,3 @@
-/**
- * SQL family — read-widget-data tools that run in-process on the agent.
- * Stateless per call, no MCP detour, no decoration.
- */
-
 import type { ToolSet } from "ai";
 import type { SSEEvent } from "../../../protocol/types.ts";
 import { makeExecuteSqlTool } from "./execute-sql.ts";

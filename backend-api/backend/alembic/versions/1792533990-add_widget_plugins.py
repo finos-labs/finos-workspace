@@ -1,22 +1,9 @@
-"""add widget plugins
-
-Tables for widget plugins (docs/widget-plugins/DESIGN.md 6.3): what discovery found in
-the plugins directory, a superuser's approval of a version, each entity's enablement,
-viz-type handler choices, role grants, events and blocked-request reports.
-
-Revision ID: 5e2b8c41d907
-Revises: 4871959e3457
-Create Date: 2026-10-20
-
-"""
-
 import sqlalchemy as sa
 import sqlalchemy_utils
 
 import api.models.model_helpers
 from alembic import op  # type: ignore
 
-# revision identifiers, used by Alembic.
 revision = "5e2b8c41d907"
 down_revision = "4871959e3457"
 branch_labels = None

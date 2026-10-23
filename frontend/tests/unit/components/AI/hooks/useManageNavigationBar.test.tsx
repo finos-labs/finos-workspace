@@ -64,8 +64,6 @@ describe("useManageNavigationBar rename_tabs", () => {
 
     expect(response[0].status).toBe("success");
 
-    // The nav bar's stored tabs must keep their original ids — held
-    // references (widget.innerTab, current_tab_id, URLs) depend on them.
     const updateCall = mockTriggerCustomEvent.mock.calls.find(
       ([eventName]) => eventName === "updateWidget-navbar-uuid",
     );
@@ -86,8 +84,6 @@ describe("useManageNavigationBar rename_tabs", () => {
       rename_map: { Charts: "Data" },
     });
 
-    // A `newId` here drives the grid-layout/currentTab migration in the app
-    // store — the mechanism that spawned phantom tabs with the stale id.
     expect(mockUpdateInnerTabs).toHaveBeenCalledWith("dash-1", {
       overview: { id: "overview", name: "Overview" },
       charts: { id: "charts", name: "Data" },

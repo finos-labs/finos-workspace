@@ -1,11 +1,3 @@
-/**
- * create_widget — place a catalog widget on a target dashboard.
- *
- * Mirrors workspace_mcp/server.py:725-766. Rejects rich_note (must use
- * add_generative_widget). config built lazily so omitted args don't ship
- * an empty {data_args:null,ui_args:null} payload.
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";

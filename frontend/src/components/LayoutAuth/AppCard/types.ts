@@ -17,7 +17,6 @@ export type FilterOption = {
 export type AppsOptions = {
   filterBy: FilterOption["value"];
   sortBy: SortOption["value"];
-  // null = "all selected" sentinel; [] = explicit none; [...ids] = filter set.
   selectedBackends: SelectedBackends;
 };
 

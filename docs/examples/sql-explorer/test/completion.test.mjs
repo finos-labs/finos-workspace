@@ -1,5 +1,3 @@
-// Completion against DuckDB itself: the same Completer the widget uses, over DuckDB-WASM's
-// Node build and the same binary the frame receives (assets/duckdb-eh.wasm).
 import assert from "node:assert/strict";
 import { copyFileSync, mkdirSync, mkdtempSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -27,9 +25,6 @@ const FILES = [
 let completer;
 
 before(async () => {
-  // DuckDB-WASM's Node build reads extensions from $HOME/.duckdb/extensions/<repository>/
-  // <version>/<platform>/: a home of the test's own, with the build's verified copies, so
-  // nothing is downloaded and the user's home is not touched
   const home = mkdtempSync(join(tmpdir(), "sql-explorer-test-"));
   const extensions = join(home, ".duckdb/extensions/extensions.duckdb.org/v1.5.4/wasm_eh");
   mkdirSync(extensions, { recursive: true });
@@ -119,7 +114,6 @@ test("only what is worth showing", () => {
     { text: "read ", start: 14, kind: "keyword" },
     { text: "sum", start: 14, kind: "function" },
   ]);
-  // What is already typed whole is not suggested again
   assert.deepEqual(usable([{ suggestion: "readings", suggestion_start: 14 }], "SELECT * FROM readings", names), []);
   assert.equal(kindOf('"sensor"', names), "column");
 });

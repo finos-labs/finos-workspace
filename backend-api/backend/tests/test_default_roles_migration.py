@@ -1,13 +1,3 @@
-"""Revision b18373ba8216: the organizations that exist get their default roles.
-
-An organization made before the default roles has neither Agent User nor Sharer. The revision
-gives it the ones it lacks (keeping a role of that name it has), gives its superusers both and
-its users without any role Agent User, and leaves alone what an admin gave everyone else.
-
-As in test_roles_migration, alembic runs in a subprocess against a SQLite file: the database
-is brought to the revision before, filled, and upgraded.
-"""
-
 import os
 import subprocess
 import sys
@@ -132,9 +122,6 @@ def _user(uuid, name: str, map_uuid, *, superuser: bool = False, deleted: bool =
 
 
 def _seed(engine: sa.Engine) -> dict:
-    """Two organizations made before the default roles. The first has a superuser, a user
-    without a role, a user with a role an admin made and a deleted user; the second has a
-    role named Agent User of its own and a user without a role."""
     ids = {
         name: uuid4()
         for name in (
@@ -238,7 +225,6 @@ def test_each_organization_gets_the_roles_it_lacks(database):
         ).one()
     assert tuple(sharer) == ("share", 0, False)
 
-    # The second organization keeps its own Agent User as it was, and gets Sharer
     second = _roles(engine, ids["second"])
     assert set(second) == {"Agent User", "Sharer"}
     assert second["Agent User"] == ids["their_agent_user"]
@@ -260,7 +246,6 @@ def test_superusers_get_both_and_users_without_a_role_agent_user(database):
     second = _roles(engine, ids["second"])
     assert _held(engine, ids["superuser"]) == {first["Agent User"], first["Sharer"]}
     assert _held(engine, ids["roleless"]) == {first["Agent User"]}
-    # What an admin gave is left as it is, and a deleted user gets nothing
     assert _held(engine, ids["analyst"]) == {ids["analysts"]}
     assert _held(engine, ids["deleted"]) == set()
     assert _held(engine, ids["second_user"]) == {second["Agent User"]}

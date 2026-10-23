@@ -23,7 +23,6 @@ type PdfViewerState = {
 export default function PdfViewer() {
   const { widget, updateWidget } = useWidgetContext();
 
-  // Get values from widget storage with defaults
   const currentPage = (widget.storage?.page ?? 1) as number;
   const currentScale = (widget.storage?.scale ?? 1) as number;
   const currentQuoteBoundingBoxes = (widget.storage?.quoteBoundingBoxes ?? null) as
@@ -86,7 +85,6 @@ export default function PdfViewer() {
     [clearQuoteBoundingBoxes],
   );
 
-  // Clear highlights when selected chat changes
   useEffect(clearQuoteBoundingBoxes, [currentChat]);
   const { renderRow0Params, renderBelowNavbarRows } = useWidgetParamsPositions();
 

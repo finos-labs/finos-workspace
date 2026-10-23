@@ -1,5 +1,3 @@
-"""Test fixture registration for backend tests."""
-
 from os import environ
 
 pytest_plugins = [

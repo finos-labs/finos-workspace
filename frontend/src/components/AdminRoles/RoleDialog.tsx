@@ -46,7 +46,6 @@ const SHARING_OPTIONS: { value: SharingLevel; label: string }[] = [
   { value: "share", label: "Can share" },
 ];
 
-// A daily limit: none, or the whole number the admin typed
 const limit = z
   .object({ none: z.boolean(), value: z.string().trim() })
   .refine((l) => l.none || /^\d+$/.test(l.value), {
@@ -93,10 +92,6 @@ const limitForm = (value: number | null | undefined): LimitForm =>
   value == null ? { none: true, value: "" } : { none: false, value: String(value) };
 const limitValue = (limit: LimitForm) => (limit.none ? null : Number(limit.value));
 
-/**
- * The form for `role`. A new role shares nothing and has no limits: its members may use
- * whatever the admin grants it.
- */
 function roleFormValues(role: RoleT | undefined): RoleForm {
   return {
     name: role?.name ?? "",
@@ -174,7 +169,6 @@ export function RoleDialog(props: Props) {
   useEffect(() => {
     if (mode === "edit" && initialData) {
       form.reset(roleFormValues(initialData));
-      // Settle isValid on mount for prefilled edit forms.
       form.trigger();
     } else if (mode === "create") {
       form.reset(roleFormValues(undefined));
@@ -243,11 +237,6 @@ export function RoleDialog(props: Props) {
 
   const users = form.watch("users") ?? [];
 
-  // Track the AddUsersSelect dropdown's open state. Close intents fired while
-  // the dropdown is open (or in the same event window where the dropdown is
-  // closing) are dismiss-dropdown clicks — not Dialog-close intents — so we
-  // swallow them here. Without this, clicking the Dialog backdrop to dismiss
-  // the dropdown also tries to close the Dialog and pops the discard confirm.
   const dropdownStateRef = useRef({ isOpen: false, closedAt: 0 });
 
   const handleAddUsersOpenChange = useCallback((isOpen: boolean) => {
@@ -277,8 +266,6 @@ export function RoleDialog(props: Props) {
     onClose();
   }, [form, initialData, onClose]);
 
-  // Memoised member list for the dialog body — avoids O(n·m) .find on each
-  // re-render now that every checkbox tick re-renders the parent.
   const filteredUsersList = useMemo(() => {
     return users
       .map((userEmail) => {

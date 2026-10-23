@@ -78,7 +78,6 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
         </DropdownMenuPrimitive.Item>,
       );
     }
-    // Only show Parameters for backend widgets (external === true), not built-in ones
     if ((widget?.params?.length ?? 0) > 0 && widget?.external) {
       regularItems.push(
         <DropdownMenuPrimitive.Item
@@ -173,7 +172,6 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
     const { regularItems, exportItems } = defaultItems;
     const widget = widgetRef.current;
 
-    // Process extra settings
     const extras = extraSettings
       .filter((item) => {
         if (item.hide) return false;
@@ -256,7 +254,6 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
         );
       });
 
-    // Combine all items in the desired order: regular items -> extras -> export items
     return [...regularItems, ...extras, ...exportItems];
   }, [defaultItems, settings, extraSettings, widgetRef]);
 

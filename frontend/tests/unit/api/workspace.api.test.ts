@@ -319,8 +319,6 @@ describe("Workspace API", () => {
     });
 
     it("returns the stored note text as data when the copilot store has none", () => {
-      // Generative notes are markdown widgets that keep their text in storage.text
-      // and never populate the copilot data store — read_widget must still echo it.
       const noteWidget = createMockWidget({
         id: widgetUuid,
         widgetId: "markdown",
@@ -507,9 +505,6 @@ describe("Workspace API", () => {
       });
 
       mockGetTabWidgetById.mockReturnValue(mockWidget);
-      // A non-cancelable event returns true even with no listener, so the old
-      // `result === false` throw was dead; Fix B persists through the store so
-      // widgets on inactive tabs still get the update.
       mockTriggerCustomEvent.mockReturnValue(false);
 
       await expect(
@@ -711,7 +706,6 @@ describe("Workspace API", () => {
         (call) => call[0] === `updateWidget-${widgetUuid}`,
       );
 
-      // The new symbol overrides symbol/id but keeps the other fields (color, etc.)
       expect(updateFnCall?.[1]).toBeTypeOf("function");
       if (typeof updateFnCall?.[1] === "function") {
         const result = updateFnCall[1](mockWidget);
@@ -746,8 +740,6 @@ describe("Workspace API", () => {
         dataArgs: { symbol: "TSLA" },
       });
 
-      // Fix B: the update is written straight to the store (covers inactive-tab
-      // widgets), carrying both the new mainTicker and storage params.
       expect(mockUpdateWidgetInStore).toHaveBeenCalledTimes(1);
       expect(mockUpdateWidgetInStore).toHaveBeenCalledWith(
         dashboardId,
@@ -921,7 +913,6 @@ describe("Workspace API", () => {
         "dashboard-123",
         expect.objectContaining({ gridData: { x: 0, y: 0, w: 40, h: 12 } }),
       );
-      // gridData should NOT be in storage
       const widget = mockAddWidget.mock.calls[0][1];
       expect(widget.storage.gridData).toBeUndefined();
     });
@@ -1070,7 +1061,6 @@ describe("Workspace API", () => {
       });
 
       expect(result.params).toEqual({ symbol: "AAPL" });
-      // declared-but-unset keys are sentinels, not undeclared keys
       expect(result.droppedKeys).toEqual([]);
     });
 

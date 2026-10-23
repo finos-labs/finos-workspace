@@ -117,7 +117,7 @@ export const functionCallSchema = z
         return true;
       }
       if (func === "add_widget_to_dashboard") {
-        return true; // TODO: Add validation for add_widget_to_dashboard
+        return true;
       }
       if (
         func === "add_generative_widget" &&
@@ -126,7 +126,7 @@ export const functionCallSchema = z
         return true;
       }
       if (func === "update_widget_in_dashboard") {
-        return true; // TODO: Add validation for update_widget_in_dashboard
+        return true;
       }
       if (
         func === "assign_tasks_to_agents" &&
@@ -135,7 +135,6 @@ export const functionCallSchema = z
         return true;
       }
       if (func === "execute_agent_tool") {
-        // Validate that we have tool_name and parameters
         return (
           inputArgs &&
           typeof inputArgs.server_id === "string" &&
@@ -150,11 +149,9 @@ export const functionCallSchema = z
         return true;
       }
       if (func === "get_skill_content") {
-        // Validate that we have slug
         return inputArgs && typeof inputArgs.slug === "string";
       }
       if (func === "save_skill") {
-        // Both name and instructions are optional
         return true;
       }
       return false;
@@ -256,7 +253,6 @@ export async function handleStreamingResponse(
 
   async function read(accumulated = "") {
     if (signal?.aborted) {
-      // If the request has been aborted, exit the function
       if (onDone) {
         onDone(accumulated);
       }

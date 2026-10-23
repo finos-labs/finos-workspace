@@ -1,10 +1,3 @@
-/**
- * Nothing secret is written to browser storage. The page holds the user's Workspace
- * session as an HttpOnly cookie it never sees; every other credential it uses (agent
- * token, IdP ID tokens, data backend keys, custom agent keys, MCP headers) lives in page
- * memory only. This fills every store with such values in the places they really sit,
- * then reads back everything in localStorage, sessionStorage and IndexedDB.
- */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { apiClient } from "~/api/api";
 import { getAgentToken } from "~/lib/state/agentToken";
@@ -40,7 +33,6 @@ const credentialWidget = (key: string) => ({
   },
 });
 
-/** Every value IndexedDB's Workspace store holds, as text. */
 function readIndexedDB(): Promise<string> {
   return new Promise((resolve, reject) => {
     const open = indexedDB.open("Workspace");
@@ -71,7 +63,6 @@ describe("browser storage after a session full of credentials", () => {
       data: { token: SECRETS.agentToken, expires_in: 1800 },
     });
 
-    // Signing in, and what the page keeps in memory from it
     useAuthStore.getState().login(
       partial<LoginResponse>({
         uuid: "user-uuid",
@@ -87,7 +78,6 @@ describe("browser storage after a session full of credentials", () => {
     });
     await getAgentToken();
 
-    // A data backend and the copies of its credentials on its widgets
     useBackendConnectorStore.setState({
       apiSources: [
         {
@@ -106,7 +96,6 @@ describe("browser storage after a session full of credentials", () => {
       ] as never,
     });
 
-    // A custom agent's own keys
     useCopilotStore.setState({
       externalCopilotHolders: [
         {
@@ -124,7 +113,6 @@ describe("browser storage after a session full of credentials", () => {
       ] as never,
     });
 
-    // Another user's dashboard and the user's own app, each with a credentialed widget
     useSharedAppStore.setState({
       sharedItems: {
         "shared-1": {
@@ -144,7 +132,6 @@ describe("browser storage after a session full of credentials", () => {
     });
     useThemeStore.setState({ aiEnhancements: true });
 
-    // IndexedDB writes finish on their own time
     await vi.waitFor(async () => {
       expect(await getStorage("backend-connector")).not.toBeNull();
       expect(await getStorage("user-apps-storage")).not.toBeNull();
@@ -172,7 +159,6 @@ describe("browser storage after a session full of credentials", () => {
     expect(await readIndexedDB()).not.toContain(secret);
   });
 
-  // The check above reads real data: the stores did persist what is not secret
   it("still persists the non-secret parts", async () => {
     const webStorage = readWebStorage(localStorage);
     expect(webStorage).toContain("https://agent.example.test");

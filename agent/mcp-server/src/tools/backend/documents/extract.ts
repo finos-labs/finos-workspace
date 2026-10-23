@@ -1,16 +1,3 @@
-/**
- * Text extraction for uploaded documents.
- *
- * - PDF: `unpdf` (modern, no native deps; built on pdfjs). Extracts per-page
- *   so the chunking pass can attach `page` metadata to each chunk.
- * - DOCX: `mammoth.extractRawText` — strips formatting, returns plain text.
- *   No page concept in DOCX so `page` is undefined for chunks from DOCX.
- * - TXT / MD: utf-8 decode.
- *
- * Output is normalized as `ExtractedPage[]` even for single-page formats so
- * the chunker has a uniform interface.
- */
-
 import { extractText, getDocumentProxy } from "unpdf";
 import mammoth from "mammoth";
 import * as cheerio from "cheerio";
@@ -22,14 +9,12 @@ import { MAX_EXTRACTED_CHARS, MAX_PDF_PAGES } from "./limits.ts";
 const logger = getLogger(["mcp", "documents", "extract"]);
 
 export interface ExtractedPage {
-  /** 1-indexed; undefined for non-paginated formats. */
   page?: number;
   text: string;
 }
 
 export interface ExtractResult {
   pages: ExtractedPage[];
-  /** Total characters across all pages — used for telemetry / size guards. */
   totalChars: number;
 }
 
@@ -66,8 +51,6 @@ async function extractByFormat(
 }
 
 async function extractPdf(bytes: Uint8Array): Promise<ExtractResult> {
-  // unpdf accepts Uint8Array directly. `mergePages: false` returns one
-  // string per page, which we want for page-level chunk metadata.
   const pdf = await getDocumentProxy(bytes);
   if (pdf.numPages > MAX_PDF_PAGES) {
     throw new Error(`The PDF has ${pdf.numPages} pages: the most that is read is ${MAX_PDF_PAGES}.`);
@@ -84,7 +67,6 @@ async function extractPdf(bytes: Uint8Array): Promise<ExtractResult> {
 }
 
 async function extractDocx(bytes: Uint8Array): Promise<ExtractResult> {
-  // A DOCX is a ZIP: look at what it unpacks to before anything unpacks it.
   assertSafeZip(bytes);
   const buf = Buffer.from(bytes);
   const result = await mammoth.extractRawText({ buffer: buf });

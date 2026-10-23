@@ -76,7 +76,6 @@ describe("the ui_args schema", () => {
     expect(keys({ type: "newsfeed" })).toEqual(common);
     expect(keys({ type: "markdown" })).toEqual([...common, "text"]);
     expect(keys({ type: "html" })).toEqual([...common, "html"]);
-    // A note is rendered by its id, whatever its type says
     expect(keys({ type: "custom" as WidgetT["type"], widgetId: "markdown" })).toEqual([
       ...common,
       "text",

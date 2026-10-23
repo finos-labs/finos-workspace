@@ -1,15 +1,3 @@
-# The SQL explorer's backend beside a Workspace stack, as Workspace's recipe A
-# (docs/widget-plugins/SERVER-SIDE.md 5.3). The backend runs without privileges on a
-# network of its own, which only the gateway joins from the Workspace side. It reaches
-# nothing but the Postgres on a second network and the files mounted read-only at /data.
-#
-#   VERSION=<package version> WORKSPACE_NETWORK=<the Workspace stack's network> \
-#     docker compose -f examples/compose.yaml up -d --build
-#
-# Run examples/setup.py first: it writes the passwords this file reads and the data files.
-# Workspace then registers the backend as http://sql-explorer-gateway:8081
-# (WIDGET_PLUGIN_BACKENDS), and a superuser adds tcp://postgres:5432 to the plugin's server
-# network.
 name: sql-explorer
 
 x-hardened: &hardened
@@ -44,7 +32,6 @@ services:
       - ./gateway.conf:/etc/nginx/nginx.conf:ro
     networks: [workspace, plugin-rpc]
 
-  # The deployment's database: the example's own, with a role that may only read
   postgres:
     image: postgres:18.6
     restart: unless-stopped

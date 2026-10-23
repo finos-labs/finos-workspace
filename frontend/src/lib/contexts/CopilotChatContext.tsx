@@ -29,7 +29,7 @@ export const useCopilotContext = () => {
 };
 
 export function CopilotProvider({ children }: { children: ReactNode }) {
-  const commandRef = useRef(localStorage.getItem("command") || ""); // Load 'command' from local storage
+  const commandRef = useRef(localStorage.getItem("command") || "");
   const handleSubmitRef = useRef<(params?: HandleSubmitParams) => void>();
   const stopSubmitRef = useRef<() => void>();
 

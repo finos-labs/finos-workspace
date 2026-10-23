@@ -102,7 +102,6 @@ describe("a chat's data is kept in the store and nowhere else", () => {
     await rememberRows("c-large", "prices", rows);
     expect(await store.get("rows:c-large:prices")).not.toBeNull();
 
-    // Another store, as on another replica without the shared one: this process has nothing of its own to give.
     keepChatDataIn(createLocalStore());
     expect((await getCachedRows("c-large")).size).toBe(0);
 

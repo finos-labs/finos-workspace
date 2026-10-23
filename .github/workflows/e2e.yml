@@ -19,7 +19,6 @@ permissions:
   contents: read
 
 jobs:
-  # Node for the agent's images, built once and kept in the Actions cache (agent-node.yml).
   node:
     uses: ./.github/workflows/agent-node.yml
 
@@ -27,13 +26,10 @@ jobs:
     name: Playwright against the compose stack
     needs: node
     runs-on: ubuntu-latest
-    # A run that finds the backend's stages missing from the Actions cache compiles its dependencies.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
-      # A stack of its own: random secrets, and an administrator whose password only this
-      # run knows. The tests sign in as that administrator.
       - name: Configure the stack
         working-directory: backend-api/backend
         run: |
@@ -41,9 +37,6 @@ jobs:
           python3 -m scripts.create_local_env --admin-email "$EMAIL" --entity-name "End-to-end"
           echo "E2E_USER_EMAIL=$EMAIL" >> "$GITHUB_ENV"
 
-      # The widget plugin tests write their packages into a directory the API reads. The
-      # proxy test's upstream runs on the runner with a certificate signed by a CA made
-      # for this run; the API trusts that CA and reaches the upstream by its name.
       - name: Mount a widget plugins directory
         run: |
           mkdir -p "$RUNNER_TEMP/widget-plugins"
@@ -65,31 +58,21 @@ jobs:
           echo "E2E_PLUGINS_DIR=$RUNNER_TEMP/widget-plugins" >> "$GITHUB_ENV"
           echo "E2E_PROXY_TLS_DIR=$RUNNER_TEMP/proxy-tls" >> "$GITHUB_ENV"
           echo "E2E_BACKENDS=1" >> "$GITHUB_ENV"
-          # The API container reaches the runner through the Docker bridge, not loopback
           echo "E2E_PROXY_LISTEN=0.0.0.0" >> "$GITHUB_ENV"
           echo "E2E_BACKEND_LISTEN=0.0.0.0" >> "$GITHUB_ENV"
 
-      # The stack runs over HTTPS, as a deployment does (docker-compose.e2e.yml): its certificate
-      # for localhost comes from a certificate authority made for this run. The browsers ignore
-      # that the authority is unknown (playwright.config.ts); the tests' own servers that call
-      # the API, and curl, trust it.
       - name: Make the stack's certificate
         run: |
           frontend/tests/e2e/make-tls.sh frontend/tests/e2e/tls/certs localhost
           echo "NODE_EXTRA_CA_CERTS=$GITHUB_WORKSPACE/frontend/tests/e2e/tls/certs/ca.pem" >> "$GITHUB_ENV"
 
-      # docker-compose.e2e.yml adds the TLS front and the stubbed model and points Ines at it, so the
-      # tests can ask the Copilot a question without a provider key (a pull request from a fork gets
-      # no secrets). The backend's images compile their dependencies from source: they are built with
-      # their stages kept in the Actions cache (the scopes the image workflows use). The agent's images
-      # take Node from the node job. Then the stack is started.
       - uses: actions/cache/restore@v6
         with:
           path: agent-node
           key: ${{ needs.node.outputs.key }}
           fail-on-cache-miss: true
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+      - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487
       - name: Build the stack's images
         run: >-
           docker buildx bake -f docker-compose.yml -f docker-compose.e2e.yml --load
@@ -103,9 +86,6 @@ jobs:
       - name: Start the stack
         run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" up -d
 
-      # Ines is in this stack and no test here asks her a question, so without this a run where she
-      # never started would still be green. /status is hers; the MCP server publishes no port, so the
-      # closest check on it is that her container is up, which compose's health check already is.
       - name: Wait for the stack
         run: |
           for url in https://localhost:8000/health https://localhost:3000/ https://localhost:7777/status; do
@@ -116,8 +96,6 @@ jobs:
             curl -fsS --cacert "$NODE_EXTRA_CA_CERTS" -o /dev/null "$url"
           done
 
-      # The administrator has no password until one is set, as an operator sets it: read
-      # from standard input, never printed
       - name: Set the administrator's password
         run: |
           PASSWORD="$(python3 -c 'import secrets; print("E2e-" + secrets.token_urlsafe(24) + "!1a")')"
@@ -135,8 +113,6 @@ jobs:
           npm ci --ignore-scripts
           npx playwright install --with-deps chromium firefox webkit
 
-      # Every spec in Chromium; the widget plugin specs in Firefox and WebKit as well, since a
-      # plugin's frame, policy and workers are where the engines differ (playwright.config.ts)
       - name: Playwright tests
         working-directory: frontend
         run: npx playwright test --project=chromium --project=firefox --project=webkit

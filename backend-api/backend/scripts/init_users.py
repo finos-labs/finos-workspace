@@ -1,15 +1,3 @@
-"""Create the organizations and administrators that ``scripts/cfgs/*.toml`` name.
-
-    python -m scripts.init_users                         # what the configs name; safe to rerun
-    python -m scripts.init_users --new-password <email>  # set an administrator's password
-
-A config names an administrator by address only. A new account has no password that anyone
-knows; ``--new-password`` sets one, for a new administrator or one who lost theirs. It reads
-the password from the terminal without echoing it, or the first line of standard input when
-that is not a terminal, so no password is ever printed, logged or kept in a file. Every
-session of the account ends.
-"""
-
 import argparse
 import asyncio
 import getpass
@@ -48,8 +36,6 @@ USER_CREATE_JSON_PATH.touch(exist_ok=True)
 
 
 def show(text: str) -> None:
-    """Prints a line for the person running the script: on their terminal, or once in the
-    log of the container that ran it. Never through the logger, which may ship lines on."""
     sys.stdout.write(f"{text}\n")
     sys.stdout.flush()
 
@@ -70,7 +56,6 @@ class EntityConfig(BaseModel):
 
 class Config(BaseModel):
     entity: EntityConfig
-    # The first administrator owns the entity: a config without one is an error
     admins: list[AdminUser] = Field(min_length=1)
     users: list[UserConfig] | None = []
 
@@ -104,9 +89,6 @@ class SetupConfig:
         self.admin_user = admin_users[0]
 
     async def create_admin(self, admin_user: AdminUser, permissions_uuid: UUID) -> User:
-        """The administrator the config names. A new account gets a random password that
-        nobody sees, until ``--new-password`` sets theirs, and the organization's default
-        roles; an account that exists keeps its password and its roles."""
         logger.info(f"Checking for admin: {admin_user.email}")
         query = select(User).where(User.email == admin_user.email)
         result = await self.db.execute(query)
@@ -221,15 +203,11 @@ async def setup_configs():
 
 
 async def get_administrator(db: AsyncSession, email: str) -> User | None:
-    "The administrator with this address, or None."
     user = (await db.execute(select(User).where(User.email == email))).scalars().first()
     return user if user is not None and user.is_superuser else None
 
 
 def read_password() -> str:
-    """The new password: typed twice on the terminal without echo, or the first line of
-    standard input when that is not a terminal. Raises ValueError for one that does not
-    pass the password rules."""
     if sys.stdin.isatty():
         password = getpass.getpass("New password: ")
         if getpass.getpass("Repeat the new password: ") != password:
@@ -240,7 +218,6 @@ def read_password() -> str:
 
 
 async def set_password(db: AsyncSession, user: User, password: str) -> None:
-    "Give the administrator this password and end every session of theirs."
     await db.execute(
         update(User)
         .where(User.uuid == user.uuid)
@@ -251,7 +228,6 @@ async def set_password(db: AsyncSession, user: User, password: str) -> None:
 
 
 async def change_password(db: AsyncSession, email: str) -> int:
-    """Set the password of the administrator with this address; the exit status."""
     user = await get_administrator(db, email)
     if user is None:
         sys.stderr.write(f"{email} is not an administrator of this Workspace.\n")
@@ -277,8 +253,6 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Create the organizations and administrators that scripts/cfgs/*.toml name."
     )
-    # The option's value is the administrator's address, kept as such: the password itself
-    # is read from the terminal or standard input
     parser.add_argument(
         "--new-password",
         dest="admin_email",

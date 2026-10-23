@@ -2,7 +2,6 @@ import { createWithEqualityFn } from "zustand/traditional";
 import type { InvalidItem } from "~/lib/utils/invalidItems";
 
 interface InvalidItemsState {
-  /** The backend whose invalid items are shown, none when the dialog is closed */
   sourceName: string | null;
   items: InvalidItem[];
   show: (sourceName: string, items: InvalidItem[]) => void;

@@ -1,11 +1,3 @@
-"""
-Tests for the MCP servers that every user has by default (``DEFAULT_MCP_SERVERS``).
-
-The service that serves the Copilot is registered this way in a deployment, so that its tools
-are there without each user adding the server. What a user stores under the same URL wins, so
-they can still switch a default off.
-"""
-
 import os
 import sys
 from unittest.mock import patch
@@ -33,7 +25,6 @@ USER_SERVER = {
 
 
 async def _servers(client, stored: list[dict]) -> list[dict]:
-    """What the backend returns for a user who stores ``stored``."""
     response = await client.post("/app/mcp-servers", json={"servers": stored})
     assert response.status_code == 200, response.text
     return response.json()["servers"]
@@ -64,7 +55,7 @@ class TestDefaultMcpServers:
         switched_off = {
             "id": "tools",
             "name": "Tools",
-            "url": TOOLS_URL + "/",  # stored URLs are compared without a trailing slash
+            "url": TOOLS_URL + "/",
             "enabled": False,
             "tools": [],
         }
@@ -75,7 +66,6 @@ class TestDefaultMcpServers:
 
     @pytest.mark.asyncio
     async def test_the_defaults_are_not_stored(self, auth_client):
-        """Taking the default away from the configuration takes it away from every user."""
         with patch.object(settings, "DEFAULT_MCP_SERVERS", [DEFAULT]):
             await _servers(auth_client, [USER_SERVER])
         with patch.object(settings, "DEFAULT_MCP_SERVERS", []):

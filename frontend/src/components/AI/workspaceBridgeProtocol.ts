@@ -39,7 +39,6 @@ export type GetWidgetSchemaCommand = CommandBase<"get_widget_schema"> & {
   widget_id?: string | null;
 };
 
-/** The widgets.json schema in force for the user (WIDGETS-JSON 3.9). */
 export type GetWidgetsSchemaCommand = CommandBase<"get_widgets_schema">;
 
 export type GetParamsOptionsCommand = CommandBase<"get_params_options"> & {
@@ -193,7 +192,6 @@ export interface WorkspaceBridgeCommandResult {
   };
 }
 
-/** The page's bridge session. The websocket authenticates with the session cookie. */
 export interface BrowserSession {
   session_id: string;
   client_name: string;

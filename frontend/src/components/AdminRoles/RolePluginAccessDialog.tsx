@@ -23,11 +23,6 @@ interface Props {
 const ALL = "*";
 const key = (pluginId: string, widgetId: string) => `${pluginId}\u0000${widgetId}`;
 
-/**
- * Lets an admin choose the plugin widgets the members of a role may use
- * (docs/widget-plugins/DESIGN.md 6). Unlike Copilot access, nothing is open by default:
- * a plugin whose entity access is "roles only" is available only through these grants.
- */
 export default function RolePluginAccessDialog({ open, onClose, role }: Props) {
   const queryClient = useQueryClient();
   const roleUuid = role?.uuid ?? "";

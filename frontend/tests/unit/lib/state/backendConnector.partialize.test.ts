@@ -148,7 +148,6 @@ describe("backendConnector partialize", () => {
     expect(raw).not.toContain("query-secret");
     const persisted = await readPersisted();
     expect(persisted?.apiSources[0].widgets).toEqual({ foo: { name: "Foo Widget" } });
-    // The page still has them in memory for the widgets' requests
     expect(useBackendConnectorStore.getState().apiSources[0].endpointHeaders).toEqual(
       endpointHeaders,
     );

@@ -242,7 +242,6 @@ describe("what a tool's description may show", () => {
     const { container } = render(
       <SlashSuggestionItem index={0} item={item} onSelect={vi.fn()} />,
     );
-    // The description is shown as text in the list and as markdown in the hover: an `<img>` is in neither.
     expect(container.querySelector("img")).not.toBeInTheDocument();
   });
 });

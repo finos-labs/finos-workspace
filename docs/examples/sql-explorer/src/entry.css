@@ -5,7 +5,6 @@ body,
   margin: 0;
 }
 
-/* This plugin's own look, in a light and a dark version that follow the site's mode */
 .sx[data-mode="dark"] {
   color-scheme: dark;
   --sx-bg: #16181d;
@@ -190,7 +189,6 @@ body,
   min-height: 0;
 }
 
-/* Completion, at the cursor */
 .sx-main {
   position: relative;
 }

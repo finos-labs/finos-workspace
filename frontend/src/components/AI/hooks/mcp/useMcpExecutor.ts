@@ -19,9 +19,7 @@ interface WidgetCitation {
   source: string;
   name?: string;
   description?: string;
-  /** The call's arguments as the widget's params */
   inputArgs: Record<string, unknown>;
-  /** The call's arguments that map to no param */
   details: Record<string, unknown>;
 }
 
@@ -35,10 +33,6 @@ interface IframeMcpCitation {
   iframeParams?: Record<string, string>;
 }
 
-/**
- * The widget a call of a linked tool is cited as: one of the server's own backend that opts
- * in to this tool (WIDGETS-JSON 5.3 and 5.4).
- */
 function findEquivalentWidget(
   server: McpServer,
   toolName: string,
@@ -69,7 +63,6 @@ function getErrorContent(
   _serverName: string,
   error: Error,
 ): CopilotDataT {
-  // Create a user-friendly error message
   const errorContent = {
     error_type: CopilotErrorType.UNEXPECTED,
     content: `Error executing MCP tool "${toolName}": ${error.message}
@@ -94,14 +87,12 @@ export function useMcpExecutor() {
 
   const executeAgentTool = useCallback<ExecuteAgentTool>(
     async (serverId, toolName, parameters) => {
-      // Extract server ID from tool name (format: serverId_toolName)
       const [serverName, ...toolNameParts] = toolName.split("_");
       const actualToolName = toolNameParts.join("_");
 
       if (!(serverId && actualToolName))
         throw new Error(`Invalid tool name format: ${toolName}`);
 
-      // Get server info from store
       const { getServerById, getMCPConnection } = mcpToolsStore;
       const mcpConnection = getMCPConnection(serverId);
       const server = getServerById(serverId);
@@ -109,33 +100,28 @@ export function useMcpExecutor() {
       try {
         if (!server) throw new Error(`Server not found: ${serverName}`);
 
-        // Check if server is enabled (not disconnected via MCP Server config)
         if (!server.enabled) {
           throw new Error(
             `Server ${server.name} is disconnected. Connect it in the MCP Servers settings.`,
           );
         }
 
-        // Check if server tools are enabled
         if (!server.toolsEnabled) {
           throw new Error(
             `Server ${server.name} tools are disabled. Enable them in the MCP Tools dialog to use its tools.`,
           );
         }
 
-        // Check if server is connected
         if (!server.connected) {
           throw new Error(
             `Server ${server.name} is not connected. Check connection in MCP Servers settings.`,
           );
         }
 
-        // Get the MCP connection from the connection registry
         if (!mcpConnection?.callTool) {
           throw new Error(`No active MCP connection found for server ${server.name}.`);
         }
 
-        // Additional validation - check if connection is truly ready
         if (mcpConnection.state !== "ready") {
           throw new Error(
             `MCP connection for server \`${server.name}\` is not ready (state: ${mcpConnection.state})`,
@@ -149,27 +135,23 @@ export function useMcpExecutor() {
           );
         }
 
-        // Add retry logic for race conditions
         let retryCount = 0;
         const maxRetries = 3;
         let result: unknown;
 
         while (retryCount < maxRetries) {
           try {
-            // Ensure parameters is always an object, even for parameter-less tools
             const safeParameters = parameters || {};
             result = await mcpConnection.callTool(actualToolName, safeParameters);
-            break; // Success, exit retry loop
+            break;
           } catch (error) {
             if (
               toError(error).message.includes("not ready") &&
               retryCount < maxRetries - 1
             ) {
               retryCount++;
-              // Wait a bit before retrying
               await new Promise((resolve) => setTimeout(resolve, 500));
 
-              // Refresh connection from registry in case it was updated
               const refreshedConnection = getMCPConnection(serverId);
               if (
                 refreshedConnection?.callTool &&
@@ -179,7 +161,7 @@ export function useMcpExecutor() {
                 mcpConnection.state = refreshedConnection.state;
               }
             } else {
-              throw error; // Re-throw if not a retry-able error or max retries reached
+              throw error;
             }
           }
         }
@@ -193,7 +175,6 @@ export function useMcpExecutor() {
         const getContent = (result: unknown): unknown => {
           if (result && typeof result === "object") {
             const isMcpErrorResult = "isError" in result && result.isError === true;
-            // Preserve the raw MCP error payload so backend logic can detect isError.
             if (isMcpErrorResult) return result;
 
             if (
@@ -223,9 +204,6 @@ export function useMcpExecutor() {
             ? rawContent
             : JSON.stringify(rawContent, null, 2);
 
-        // Find equivalent widget and build citation (if any). Iframe-bound MCP
-        // calls cite the iframe widget itself because they may not have a
-        // catalog widget mapping.
         const equivalentWidget = server.iframeWidgetId
           ? null
           : findEquivalentWidget(server, actualToolName, parameters ?? {});
@@ -324,12 +302,10 @@ export function useMcpExecutor() {
             : null,
         );
 
-        // Convert response to CopilotDataT format
         return [{ items: [{ content }], extra_citations: extraCitations }];
       } catch (error) {
         console.error(`[MCP Executor] Tool execution failed for ${toolName}:`, error);
 
-        // Return error in the expected format
         return [getErrorContent(toolName, server?.name || serverId, toError(error))];
       }
     },

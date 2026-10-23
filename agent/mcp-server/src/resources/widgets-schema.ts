@@ -1,10 +1,3 @@
-/**
- * `workspace://specs/widgets-json-schema`: the JSON Schema a backend's widgets.json is validated against for
- * the signed-in user, with the plugin types enabled for their organization (docs/widget-plugins/WIDGETS-JSON.md
- * 3.9). It is read from the connected Workspace browser when it is asked for, as the resource of the same URI in
- * backend-api/backend/workspace_mcp/server/__init__.py is.
- */
-
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { bridgeManager } from "../bridge/singleton.ts";

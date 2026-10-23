@@ -1,5 +1,3 @@
-"""Role and permission events."""
-
 import asyncio
 import warnings
 from contextlib import suppress
@@ -38,7 +36,6 @@ async def _create_role_audit_entry_task(  # noqa: PLR0913, PLR0917
     details: dict,
     session_uuid: UUID | None = None,
 ):
-    """Create an audit entry for role-related changes"""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         try:
@@ -76,7 +73,6 @@ def _create_role_audit_entry(  # noqa: PLR0913, PLR0917
     resource_uuid: UUID | None,
     details: dict,
 ):
-    # The session of the current request, from shared context
     session_uuid = session_uuid_ctx.get()
     with suppress(Exception):
         asyncio.ensure_future(
@@ -91,7 +87,6 @@ def _create_role_audit_entry(  # noqa: PLR0913, PLR0917
         )
 
 
-# What the audit records of a role
 ROLE_SETTINGS = [
     "name",
     "description",
@@ -104,10 +99,7 @@ ROLE_SETTINGS = [
 ]
 
 
-# Role events
 def track_role_insert(mapper, connection: Connection, target: Role):
-    """Track role creation"""
-    # Only loaded values: a value the database chose is not loaded inside the flush
     values = inspect(target).dict
     _create_role_audit_entry(
         target.uuid,
@@ -119,11 +111,9 @@ def track_role_insert(mapper, connection: Connection, target: Role):
 
 
 def track_role_update(mapper, connection: Connection, target: Role):
-    """Track role updates"""
     state: InstanceState = inspect(target)
     changed = {}
 
-    # Track regular attribute changes
     for attr in ROLE_SETTINGS:
         hist = state.get_history(attr, passive=True)
         if hist.has_changes():
@@ -132,10 +122,8 @@ def track_role_update(mapper, connection: Connection, target: Role):
                 "new": hist.added[0] if hist.added else None,
             }
 
-    # Track soft deletion
     deleted_hist = state.get_history("deleted_at", passive=True)
     if deleted_hist.has_changes():
-        # If deleted_at was set from None to a timestamp, it's a deletion
         if deleted_hist.deleted == [None] and deleted_hist.added:
             _create_role_audit_entry(
                 target.uuid,
@@ -150,8 +138,7 @@ def track_role_update(mapper, connection: Connection, target: Role):
                     ),
                 },
             )
-            return  # Return early as this is a deletion event
-        # If deleted_at was set from a timestamp to None, it's a restoration
+            return
         elif deleted_hist.added == [None] and deleted_hist.deleted:
             _create_role_audit_entry(
                 target.uuid,
@@ -162,9 +149,8 @@ def track_role_update(mapper, connection: Connection, target: Role):
                     "restored_at": datetime.now(UTC).isoformat(),
                 },
             )
-            return  # Return early as this is a restoration event
+            return
 
-    # Log other changes if any occurred
     if changed:
         _create_role_audit_entry(
             target.uuid,
@@ -175,10 +161,7 @@ def track_role_update(mapper, connection: Connection, target: Role):
         )
 
 
-# UserRole events
 def track_user_role_insert(mapper, connection: Connection, target: UserRole):
-    """Track user role assignments"""
-    # Get user email
     user_email = connection.execute(
         select(User.email).where(User.uuid == target.user_uuid)
     ).scalar_one_or_none()
@@ -193,8 +176,6 @@ def track_user_role_insert(mapper, connection: Connection, target: UserRole):
 
 
 def track_user_role_delete(mapper, connection: Connection, target: UserRole):
-    """Track user role removals"""
-    # Get user email
     user_email = connection.execute(
         select(User.email).where(User.uuid == target.user_uuid)
     ).scalar_one_or_none()
@@ -209,12 +190,9 @@ def track_user_role_delete(mapper, connection: Connection, target: UserRole):
 
 
 def get_widget_changes(new_widgets: list[dict], old_widgets: list[dict]) -> dict:
-    """Get widget changes for a role backend"""
-
     if not (old_widgets and new_widgets):
         return {"old": old_widgets, "new": new_widgets}
 
-    # Compare the widgets to find the differences
     old_widgets: dict[str, dict] = {
         widget.get("widgetId"): widget.get("access") for widget in old_widgets
     }
@@ -223,10 +201,8 @@ def get_widget_changes(new_widgets: list[dict], old_widgets: list[dict]) -> dict
     }
 
     changed_data = {"new": [], "old": []}
-    # Find the widgets that have changed access
     for widget_id, access in new_widgets.items():
         if widget_id not in old_widgets:
-            # New widget added
             changed_data["new"].append({"widgetId": widget_id, "access": access})
             continue
 
@@ -244,8 +220,6 @@ def get_widget_changes(new_widgets: list[dict], old_widgets: list[dict]) -> dict
 
 
 def get_template_changes(new_templates: list[dict], old_templates: list[dict]) -> dict:
-    """Get template changes for a role backend"""
-
     if not (old_templates and new_templates):
         return {"old": old_templates, "new": new_templates}
 
@@ -258,10 +232,8 @@ def get_template_changes(new_templates: list[dict], old_templates: list[dict]) -
 
     result = {"new": [], "old": []}
 
-    # Compare the templates to find the differences including prompts
     for template_id, new_template in new_templates.items():
 
-        # New template added
         if template_id not in old_templates:
             result["new"].append({"templateId": template_id, **new_template})
             continue
@@ -269,12 +241,10 @@ def get_template_changes(new_templates: list[dict], old_templates: list[dict]) -
         updated_data = {"new": {}, "old": {}}
         old_template = old_templates[template_id]
 
-        # Check for access changes
         if old_template.get("access") != new_template.get("access"):
             updated_data["new"]["access"] = new_template.get("access")
             updated_data["old"]["access"] = old_template.get("access")
 
-        # Check for prompt changes
         changed_prompts = {"new": [], "old": []}
         if (
             new_template.get("prompts")
@@ -291,16 +261,13 @@ def get_template_changes(new_templates: list[dict], old_templates: list[dict]) -
                 for prompt in old_template["prompts"]
                 if old_template["prompts"]
             }
-            # Find the prompts that have changed access
             for prompt_id, new_prompt in new_prompts.items():
                 if prompt_id not in old_prompts:
-                    # New prompt added
                     changed_prompts["new"].append({"promptId": prompt_id, **new_prompt})
                     continue
 
                 old_prompt = old_prompts[prompt_id]
                 if old_prompt.get("access") != new_prompt.get("access"):
-                    # Access changed
                     changed_prompts["new"].append({"promptId": prompt_id, **new_prompt})
                     changed_prompts["old"].append({"promptId": prompt_id, **old_prompt})
 
@@ -319,9 +286,7 @@ def get_template_changes(new_templates: list[dict], old_templates: list[dict]) -
     return result
 
 
-# RoleBackend events
 def track_role_backend_update(mapper, connection: Connection, target: RoleBackend):
-    """Track backend permission changes"""
     state: InstanceState = inspect(target)
     changed = {}
     for attr in ["access", "widgets", "templates"]:
@@ -363,7 +328,6 @@ def track_role_backend_update(mapper, connection: Connection, target: RoleBacken
 
 
 def track_role_backend_insert(mapper, connection: Connection, target: RoleBackend):
-    """Track backend permission assignments"""
     has_templates = target.templates is not None and len(target.templates) > 0
     widgets = target.widgets or []
     widgets_with_access = [
@@ -390,10 +354,7 @@ def track_role_backend_insert(mapper, connection: Connection, target: RoleBacken
     )
 
 
-# RoleFile events
 def track_role_file_update(mapper, connection: Connection, target: RoleFile):
-    """Track file permission changes"""
-
     state: InstanceState = inspect(target)
     hist = state.get_history("access", passive=True)
     if hist.has_changes():
@@ -417,7 +378,6 @@ def track_role_file_update(mapper, connection: Connection, target: RoleFile):
 
 
 def track_role_file_insert(mapper, connection: Connection, target: RoleFile):
-    """Track file permission assignments"""
     if target.access == "no-access":
         return
 
@@ -434,9 +394,7 @@ def track_role_file_insert(mapper, connection: Connection, target: RoleFile):
     )
 
 
-# RolePrompt events
 def track_role_prompt_update(mapper, connection: Connection, target: RolePrompt):
-    """Track prompt permission changes"""
     state: InstanceState = inspect(target)
     hist = state.get_history("access", passive=True)
     if hist.has_changes():
@@ -455,7 +413,6 @@ def track_role_prompt_update(mapper, connection: Connection, target: RolePrompt)
 
 
 def track_role_prompt_insert(mapper, connection: Connection, target: RolePrompt):
-    """Track prompt permission assignments"""
     if target.access == "no-access":
         return
 
@@ -468,7 +425,6 @@ def track_role_prompt_insert(mapper, connection: Connection, target: RolePrompt)
     )
 
 
-# RoleWidgetPlugin events
 def _widget_plugin_details(connection: Connection, target: RoleWidgetPlugin) -> dict:
     plugin_id = connection.execute(
         select(WidgetPlugin.plugin_id).where(WidgetPlugin.uuid == target.plugin_uuid)
@@ -479,7 +435,6 @@ def _widget_plugin_details(connection: Connection, target: RoleWidgetPlugin) -> 
 def track_role_widget_plugin_insert(
     mapper, connection: Connection, target: RoleWidgetPlugin
 ):
-    """Track a plugin widget granted to a role"""
     _create_role_audit_entry(
         target.role_uuid,
         RoleAuditAction.ASSIGN,
@@ -492,7 +447,6 @@ def track_role_widget_plugin_insert(
 def track_role_widget_plugin_delete(
     mapper, connection: Connection, target: RoleWidgetPlugin
 ):
-    """Track a plugin widget a role no longer grants"""
     _create_role_audit_entry(
         target.role_uuid,
         RoleAuditAction.REMOVE,
@@ -503,8 +457,7 @@ def track_role_widget_plugin_delete(
 
 
 async def init_audit_listeners():
-    """Enable role and permission audit listeners"""
-    await asyncio.sleep(5)  # Wait for the database to be ready
+    await asyncio.sleep(5)
     event.listen(Role, "after_insert", track_role_insert)
     event.listen(Role, "after_update", track_role_update)
     event.listen(UserRole, "after_insert", track_user_role_insert)

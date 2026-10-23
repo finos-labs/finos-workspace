@@ -1,16 +1,8 @@
 import { createServer, type Server } from "node:https";
 import { localhostTls } from "./tls";
 
-/**
- * A Workspace backend that records every request it receives, for the request mapping
- * of `widgets.json` (docs/widget-plugins/WIDGETS-JSON.md 4). Its one widget uses every
- * location: a path param, a query param, a header param and a body param, and its
- * options come from a POST lookup whose body takes another param's value.
- */
-
 export interface ReceivedRequest {
   method: string;
-  /** As sent, still percent-encoded */
   path: string;
   query: string;
   headers: Record<string, string | undefined>;
@@ -63,7 +55,6 @@ export function startEchoBackend(
   origin: string,
 ): Promise<{ server: Server; received: ReceivedRequest[] }> {
   const received: ReceivedRequest[] = [];
-  // Over HTTPS, as the stack is: a page on HTTPS may not fetch http://localhost in WebKit
   const server = createServer(localhostTls(), (request, response) => {
     const url = new URL(request.url ?? "/", `https://localhost:${port}`);
     let body = "";
@@ -87,7 +78,6 @@ export function startEchoBackend(
         },
         body,
       });
-      // The CORS the widget's request needs (WIDGETS-JSON 4.5)
       response.setHeader("Access-Control-Allow-Origin", origin);
       response.setHeader("Access-Control-Allow-Methods", "GET, POST");
       response.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Region");
@@ -104,7 +94,6 @@ export function startEchoBackend(
         /^\/teams\/[^/]+\/report$/.test(url.pathname) &&
         request.method === "POST"
       )
-        // The widget shows what arrived
         response
           .writeHead(200, { "Content-Type": "text/plain" })
           .end(

@@ -135,8 +135,6 @@ async function convertDocxToHtml(docx: ArrayBuffer) {
   }
 }
 
-// backend can't have space idents in the markdown otherwise it will render as a code block
-// we need to add this to the docs
 export default function Markdown() {
   const addWidget = useShallowAppStore((state) => state.addWidget);
   const { widget, activeDashboardId } = useWidgetContext();
@@ -184,7 +182,6 @@ export default function Markdown() {
     },
   );
 
-  // Without an endpoint the widget holds its own text (what the Copilot wrote), which can change.
   const body = validEndpoint ? data : widget.storage?.text;
 
   const markdownPayload = useMemo(() => {

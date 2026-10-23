@@ -5,8 +5,6 @@ import {
   useSkillSuggestions,
 } from "~/components/AI/hooks/useSkillSuggestions";
 
-// --- Mocks ---
-
 const mockSkills = [
   {
     id: "skill-1",
@@ -41,7 +39,6 @@ vi.mock("~/lib/state/skillsLibrary", () => ({
     mockUseShallowSkillsLibraryStore(selector),
 }));
 
-/** The skills that come with the selected agent, as its /agents.json lists them. */
 let agentSkills: { slug: string; description: string }[] | undefined;
 
 vi.mock("~/lib/state/copilot", () => ({
@@ -49,7 +46,6 @@ vi.mock("~/lib/state/copilot", () => ({
     selector({ selectedCopilot: { id: "default-copilot", skills: agentSkills } }),
 }));
 
-// --- Tests ---
 
 describe("useSkillSuggestions", () => {
   beforeEach(() => {
@@ -186,7 +182,6 @@ describe("useSkillSuggestions", () => {
     it("performs fuzzy matching", () => {
       const { result } = renderHook(() => useSkillSuggestions());
 
-      // "finan" should fuzzy match "financial-analysis"
       const suggestions = result.current.searchSkills("/finan");
 
       expect(suggestions.length).toBeGreaterThanOrEqual(1);

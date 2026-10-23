@@ -11,19 +11,6 @@ import {
   writePackage,
 } from "./plugins/fixtures";
 
-/**
- * The admin journey of a widget plugin through the UI (docs/widget-plugins/PLAN.md Phase
- * 3): a deployer places a package; a superuser rescans, reviews and approves it; the
- * entity admin enables it and grants it to a role; a member of the role adds the widget;
- * the activity log and the entity dialog name it; a blocked request is allowed through a
- * superuser's override; a second version waits for its approval; revoking leaves a
- * placeholder. The plugin also floods the blocked-request feed (abuse case 25).
- *
- * The plugin has an id of its own per run, and its files are removed and the plugin
- * forgotten at the end. The account the tests sign in as is a superuser and the admin of
- * its entity. Without E2E_PLUGINS_DIR the tests are skipped.
- */
-
 const PLUGINS_DIR = process.env.E2E_PLUGINS_DIR;
 const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const REACH_PORT = Number(process.env.E2E_REACH_PORT ?? 7793);
@@ -63,7 +50,6 @@ function placeVersion(version: string, label: string) {
   );
 }
 
-/** The plugin's row on the Deployment tab, opened. */
 async function openDeployment() {
   await page.goto("/admin/widgets");
   await page.getByRole("tab", { name: "Deployment" }).click();
@@ -73,11 +59,9 @@ async function openDeployment() {
   return { row, detail: page.getByTestId(`plugin-detail-${PLUGIN}`) };
 }
 
-/** Acknowledges every added request of a version's review and approves it. */
 async function approveInTheUi(version: string) {
   const summary = page.getByTestId(`trust-summary-${version}`);
   for (const box of await summary.getByRole("checkbox").all()) await box.check();
-  // Done when the API answered: WebKit cancels a request still going when the page leaves
   const approved = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
@@ -117,7 +101,6 @@ test.afterAll(async () => {
   }
   if (api) {
     if (roleUuid) await api.delete(`/admin/role/${roleUuid}`);
-    // The deployer removes the package; the superuser forgets the plugin
     rmSync(join(PLUGINS_DIR ?? "", PLUGIN), { recursive: true, force: true });
     await api.post("/plugins/rescan");
     await api.delete(`/plugins/${PLUGIN}`);
@@ -136,7 +119,6 @@ test("superuser-rescans-reviews-and-approves", async () => {
 
   const summary = page.getByTestId(`trust-summary-${FIRST}`);
   await expect(summary.getByText("Runs code on the server")).toBeVisible();
-  // Nothing is approved until every added request and the responsibility are acknowledged
   const approve = summary.getByRole("button", { name: `Approve ${FIRST}` });
   await expect(approve).toBeDisabled();
   await approveInTheUi(FIRST);
@@ -193,13 +175,9 @@ test("a-member-of-the-role-adds-the-widget", async () => {
   await expect(frame().locator("#e2e-journey-version")).toHaveText("first", {
     timeout: 30000,
   });
-  // The frame's policy does not allow the host yet
   await expect(frame().locator("#e2e-journey-reach")).toHaveText("blocked");
   expect(hits).toEqual([]);
 
-  // What it blocked reaches the superuser while the dashboard is open, 50 every few
-  // seconds (abuse case 25): only what the browser blocked, and at most 200 origins. The
-  // frame's message budget may drop a few of the flood's reports on the way.
   await expect
     .poll(async () => (await reports()).length, { timeout: 40000, intervals: [2000] })
     .toBeGreaterThanOrEqual(150);
@@ -241,7 +219,6 @@ test("a-blocked-request-is-allowed-through-an-override", async () => {
   const { row, detail } = await openDeployment();
   await row.click();
   const feed = detail.locator("section").filter({ hasText: "Blocked requests" });
-  // Every origin as text: the feed shows what the API kept, and no markup
   await expect(feed.locator("li")).toHaveCount((await reports()).length);
   await expect(feed.locator("b")).toHaveCount(0);
   await feed
@@ -250,7 +227,6 @@ test("a-blocked-request-is-allowed-through-an-override", async () => {
     .getByRole("button", { name: "Allow" })
     .click();
 
-  // Allow fills in the override; nothing changes until the superuser confirms and saves
   await expect(detail.getByRole("checkbox", { name: "connect-src" })).toBeChecked();
   await expect(detail.getByLabel("connect-src sources")).toHaveValue(REACH);
   await expect(detail.getByRole("button", { name: "Save overrides" })).toBeDisabled();
@@ -277,7 +253,6 @@ test("a-second-version-waits-for-its-approval", async () => {
   await page.getByRole("button", { name: "Rescan" }).click();
   await expect(row).toContainText(`(update ${SECOND})`);
 
-  // The active version keeps serving
   await openDashboard();
   await expect(frame().locator("#e2e-journey-version")).toHaveText("first", {
     timeout: 30000,

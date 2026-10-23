@@ -1,7 +1,3 @@
-"""A server for tests of outbound calls: it records what it receives and answers as the
-test says. Over HTTPS with a certificate authority made for the test and a certificate it
-signs (proxies), or plain HTTP (a plugin backend on the private network, a data source)."""
-
 from __future__ import annotations
 
 import asyncio
@@ -41,8 +37,6 @@ def _name(common_name: str) -> x509.Name:
 
 
 def make_certificates(directory: Path, hostname: str = "localhost") -> tuple[Path, Path, Path]:
-    """A CA and a certificate for ``hostname`` (and 127.0.0.1) it signs: the CA's file,
-    the certificate's and its key's."""
     now = datetime.datetime.now(datetime.UTC)
     ca_key = ec.generate_private_key(ec.SECP256R1())
     ca = (
@@ -102,9 +96,6 @@ def make_certificates(directory: Path, hostname: str = "localhost") -> tuple[Pat
 
 
 class Upstream:
-    """A server on 127.0.0.1 that records each request and answers with ``answer``: HTTPS
-    with the certificate and key given, plain HTTP without them."""
-
     def __init__(
         self,
         cert_file: Path | None = None,

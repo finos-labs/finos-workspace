@@ -98,12 +98,6 @@ function validateDashboardLayout(
   }
 }
 
-/**
- * Create a new dashboard in the local Workspace session.
- * @param dashboardId The dashboard identifier.
- * @param config Dashboard configuration.
- * @throws If dashboard already exists or creation fails.
- */
 function createDashboard(dashboardId: string, config: DashboardConfig): string {
   const appState = useAppStore.getState();
   if (appState.items?.[dashboardId]) {
@@ -128,12 +122,6 @@ function createDashboard(dashboardId: string, config: DashboardConfig): string {
   return dashboardId;
 }
 
-/**
- * Update light metadata for a dashboard.
- * @param dashboardId The dashboard identifier.
- * @param config Dashboard configuration.
- * @throws If dashboard does not exist.
- */
 function updateDashboard(dashboardId: string, config: Partial<DashboardConfig>): void {
   const appState = useAppStore.getState();
   const dashboard = appState.items?.[dashboardId];
@@ -247,15 +235,6 @@ function updateDashboardLayout(
   appState.updateWidget(dashboardId, { ...widget, innerTab: targetTabId });
 }
 
-/**
- * Create a new widget instance on a dashboard.
- * @param dashboardId The dashboard identifier.
- * @param backendName The backend name.
- * @param widgetId The widget identifier.
- * @param config Widget configuration data.
- * @returns Promise resolving to the new widget's unique ID.
- * @throws If dashboard does not exist or creation fails.
- */
 async function createWidget(
   dashboardId: string,
   backendName: string,
@@ -264,21 +243,12 @@ async function createWidget(
 ): Promise<string> {
   const widgetDefinition = getWidgetDefinitionOrThrow(backendName, widgetId);
   const widget = updateWidgetState(widgetDefinition, config);
-  // Clear the definition id so addWidget generates a fresh UUID
-  // (definition ids like "income" are not valid UUIDs)
   const { id: _defId, ...rest } = widget;
   const id = await useAppStore.getState().addWidget(dashboardId, rest as WidgetT);
   if (!id) throw new Error("Failed to create widget");
   return id;
 }
 
-/**
- * Read a widget instance by ID.
- * @param dashboardId The dashboard identifier (uuid).
- * @param widgetUuid The widget instance identifier (uuid).
- * @returns Promise resolving to widget data.
- * @throws If dashboard or widget not found.
- */
 function readWidget(
   dashboardId: string,
   widgetUuid: string,
@@ -286,9 +256,6 @@ function readWidget(
   const widget = getDashboardWidgetOrThrow(dashboardId, widgetUuid);
 
   const origin = getWidgetOrigin(widget as WidgetT);
-  // Applied data_args are persisted onto storage.params by updateWidgetState (the
-  // create/update path); the params[] array only carries schema defaults. Prefer
-  // the stored value so read_widget reflects what was actually applied.
   const storedParams = widget.storage?.params ?? {};
   const resolveParamValue = (param: ParamDef) =>
     storedParams[param.paramName] ?? param.value;
@@ -321,9 +288,6 @@ function readWidget(
       : [],
   };
 
-  // Include rendered data from copilot store if available. Generative widgets
-  // never populate that store — their (sanitized) body lives in storage, so fall
-  // back to it or read_widget returns a widget with no content.
   const widgetData = useCopilotDataStore.getState().getDashboardWidgetData(widgetUuid);
   if (widgetData?.data) {
     result.data = widgetData.data;
@@ -336,14 +300,6 @@ function readWidget(
   return result;
 }
 
-/**
- * Update an existing widget instance.
- * @param dashboardId The dashboard identifier.
- * @param widgetUuid The widget instance identifier (uuid).
- * @param config Updated widget configuration.
- * @returns Promise resolving to void.
- * @throws If dashboard or widget not found, or update fails.
- */
 async function updateWidget(
   dashboardId: string,
   widgetUuid: string,
@@ -357,8 +313,6 @@ async function updateWidget(
     const tickerValue = config.dataArgs?.[tickerParam.paramName];
     if (tickerValue && tickerValue !== "null") {
       const symbol = String(tickerValue);
-      // Keep mainTicker in step with the new symbol so the widget's parameter group
-      // (and anything reading data.mainTicker) sees the change.
       mainTicker = {
         ...(widget.data?.mainTicker ?? {}),
         id: symbol.replace(/[\^$]/g, ""),
@@ -380,14 +334,9 @@ async function updateWidget(
     return updatedWidget;
   };
 
-  // Fix B: persist the update directly to the store so widgets on inactive tabs
-  // (not mounted, so no `updateWidget-` listener) still pick up the new ticker/
-  // params. The DOM event alone silently misses them yet reports success.
   const persistedWidget = applyUpdate(widget);
   useAppStore.getState().updateWidget(dashboardId, persistedWidget);
 
-  // Notify a mounted widget so it updates its live provider state and refetches
-  // immediately (mounted widgets are the source of truth for their live query).
   const updateFn = (w: WidgetT) => {
     const updatedWidget = applyUpdate(w);
     triggerCustomEvent(
@@ -408,13 +357,6 @@ async function updateWidget(
   }
 }
 
-/**
- * Delete a widget instance from a dashboard.
- * @param dashboardId The dashboard identifier.
- * @param widgetUuid The widget instance identifier (uuid).
- * @returns Promise resolving to void.
- * @throws If dashboard or widget not found.
- */
 async function deleteWidget(dashboardId: string, widgetUuid: string): Promise<void> {
   const appState = useAppStore.getState();
   getDashboardWidgetOrThrow(dashboardId, widgetUuid);
@@ -441,11 +383,6 @@ export {
   updateWidget,
 };
 
-/**
- * Resolve a widget definition from the widget library, throwing the same
- * recovery-hint error createWidget surfaces when the origin/widget_id pair is
- * unknown. Shared by the real create path and the dry-run path.
- */
 function getWidgetDefinitionOrThrow(backendName: string, widgetId: string): WidgetT {
   const widgetDefinition = useGetWidgetsStore
     .getState()
@@ -457,14 +394,6 @@ function getWidgetDefinitionOrThrow(backendName: string, widgetId: string): Widg
   return widgetDefinition;
 }
 
-/**
- * Pure param-merge rule shared by the real mutation path (updateWidgetState)
- * and the dry-run path: copy dataArgs values for declared params, skipping
- * unset sentinels (undefined/null/"null") — falsy values like false, 0, and ""
- * are valid param values and must be applied. A value its param's schema
- * (WIDGETS-JSON 3.8) does not accept is collected as an invalidKey, and dataArgs
- * keys the widget does not declare as droppedKeys.
- */
 function computeWidgetParamUpdates(
   paramsDef: WidgetT["params"] | null | undefined,
   dataArgs: Record<string, unknown> | null | undefined,
@@ -485,8 +414,6 @@ function computeWidgetParamUpdates(
       continue;
     declared.add(paramName);
     const paramValue = args[paramName];
-    // Only drop unset values; falsy values like false, 0, and "" are valid
-    // param values and must be applied.
     if (paramValue !== undefined && paramValue !== null && paramValue !== "null") {
       const valid =
         isStoredParamValue(paramValue) &&
@@ -500,27 +427,17 @@ function computeWidgetParamUpdates(
   return { params, droppedKeys, invalidKeys };
 }
 
-/** What `ui_args` change, once they passed the widget's `ui_args` schema. */
 interface WidgetUiUpdates {
   name?: string;
   description?: string;
   source?: string | string[];
   innerTab?: string;
   gridData?: Record<string, number>;
-  /** The keys the widget's type reads from its storage (`text`, `html`) */
   storage: Record<string, unknown>;
-  /** A plugin widget's configuration */
   config?: Record<string, unknown>;
-  /** Why the arguments were refused; nothing is applied when there is any */
   problems: string[];
 }
 
-/**
- * Pure ui_args rule shared by updateWidgetState and the dry-run path. The keys are the
- * ones the widget's `ui_args` schema defines (WIDGETS-JSON 3.8); any other key, or a
- * value of the wrong kind, is a problem instead of being stored. Unset sentinels
- * (undefined/null/"null") are skipped.
- */
 function computeWidgetUiUpdates(
   widget: Pick<WidgetT, "type" | "plugin" | "widgetId" | "connectionType">,
   uiArgs: Record<string, unknown> | null | undefined,

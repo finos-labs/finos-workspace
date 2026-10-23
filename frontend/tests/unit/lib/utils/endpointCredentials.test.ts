@@ -81,11 +81,9 @@ describe("credentials of a data backend", () => {
 
   it("go only to the backend's own origin, whatever a widget pairs with its source id", () => {
     const none = { headers: {}, query: {} };
-    // A widget shared back with the victim's source id and a URL of the sharer's
     expect(getSourceCredentials("src-1", "https://attacker.example/collect")).toEqual(
       none,
     );
-    // Same host, another port or scheme, and a lookalike host are other origins
     expect(getSourceCredentials("src-1", "https://api.example.com:8443/x")).toEqual(
       none,
     );

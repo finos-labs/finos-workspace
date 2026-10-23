@@ -13,27 +13,14 @@ import {
 import { addExtraHeaders, currentDateModifier, dateModRegex } from "./widgetParams";
 import { PLACEHOLDER, placeholders } from "./widgetsContractChecks";
 
-/**
- * The one place a request to a backend is built from a definition and the current param
- * values (docs/widget-plugins/WIDGETS-JSON.md 4): a widget's data request, an `endpoint`
- * param's option lookup and a form's submission. The widgets, the parameter bar and the
- * Copilot all call it, so an agent gets what the widget gets.
- */
-
-/** A request ready to send. */
 export interface BackendRequest {
-  /** With its query: the credentials', the params' and the host's */
   url: string;
   method: HttpMethod | "PUT";
-  /** The backend connection's credential headers; their values stay out of cache keys */
   credentials: Record<string, string>;
-  /** The params sent as headers */
   paramHeaders: Record<string, string>;
-  /** A JSON body */
   body?: string;
 }
 
-/** Why a request is not sent: a param that needs a value, or has one that cannot go. */
 export interface RequestProblem {
   paramName: string;
   kind: "missing" | "invalid";
@@ -44,17 +31,11 @@ export type BuiltRequest =
   | { ok: true; request: BackendRequest }
   | { ok: false; problems: RequestProblem[] };
 
-/**
- * A data backend's credentials, split by where a request carries them. Widgets never keep
- * them: callers look them up in the widget's source when they build the request
- * (`getSourceCredentials`, `useSourceCredentials`).
- */
 export type Credentials = {
   headers: Record<string, string>;
   query: Record<string, string>;
 };
 
-/** A widget's endpoint, its declared params and their stored values. */
 type WidgetValues = Pick<WidgetT, "endpoint" | "params"> & {
   storage?: { params?: Record<string, StoredParamValue> };
 };
@@ -95,7 +76,6 @@ function scalarFor(
   const name = param?.paramName ?? "";
   if (typeof value === "object" && value !== null)
     return { ok: false, message: `\`${name}\` has a value that is not a single value` };
-  // A literal of an option lookup keeps its JSON type
   if (!param) return { ok: true, value: value as JsonScalar };
   switch (param.type) {
     case "number": {
@@ -123,10 +103,6 @@ function scalarFor(
   }
 }
 
-/**
- * A value as WIDGETS-JSON 4.3 sends it: a string in the path, the query or a header, and
- * a JSON value in a body. Call with a value that is not empty.
- */
 function serialize(
   param: AnyParam | undefined,
   value: unknown,
@@ -159,10 +135,6 @@ function serialize(
   return at === "body" ? scalar : { ok: true, value: String(scalar.value) };
 }
 
-/**
- * Fills each `{name}` with its value, encoded as one path segment (4.2). A placeholder
- * whose value is empty, or that nothing fills, is a problem: the request is not sent.
- */
 function fillPath(
   template: string,
   resolve: (name: string) => { param?: AnyParam; value: unknown } | null,
@@ -195,7 +167,6 @@ function fillPath(
   });
 }
 
-/** The URL with the connection's query credentials; a relative path is on this origin. */
 function startUrl(
   href: string,
   credentials: Credentials | undefined,
@@ -221,7 +192,6 @@ function lowerKeys(record: Record<string, string> | undefined): Set<string> {
   return new Set(Object.keys(record ?? {}).map((key) => key.toLowerCase()));
 }
 
-/** Places one non-path value in the query, the headers or the body. */
 function place(
   param: AnyParam | undefined,
   name: string,
@@ -294,14 +264,12 @@ function finish(
   };
 }
 
-/** The params a widget's request carries: every declared param but a form. */
 function requestParams(params: WidgetT["params"]): ParamDef[] {
   return ((params ?? []) as (ParamDef | ParamDef[])[])
     .flat()
     .filter((param) => param && param.type !== "form" && !!param.paramName);
 }
 
-/** A param's current value: the one stored for it, else its default. */
 function currentValue(
   param: AnyParam,
   values: Record<string, unknown> | undefined,
@@ -309,11 +277,6 @@ function currentValue(
   return values && param.paramName in values ? values[param.paramName] : param.value;
 }
 
-/**
- * A widget's data request (4.1): the endpoint with its path params filled, the query and
- * header params, and the body params as JSON when the method is POST. `hostQuery` is what
- * the host adds itself, such as `theme` and `raw`. Null when the widget has no endpoint.
- */
 export function buildWidgetRequest(
   widget: WidgetValues,
   credentials: Credentials | undefined,
@@ -365,12 +328,6 @@ export function buildWidgetRequest(
   return finish(target, problems);
 }
 
-/**
- * An `endpoint` param's option lookup (4.7): `optionsEndpoint` with its placeholders filled
- * from `optionsParams`, the other `optionsParams` in the query (GET) or a JSON body (POST).
- * A `$name` value is the current value of the param `name` among `scope`. Null when the
- * param has no `optionsEndpoint`.
- */
 export function buildOptionsRequest(
   param: ParamDefT<"endpoint"> | Extract<FormInputParamDef, { type: "endpoint" }>,
   scope: { params: AnyParam[]; values?: Record<string, unknown> },
@@ -416,10 +373,6 @@ export function buildOptionsRequest(
   return finish(target, problems);
 }
 
-/**
- * What a form's `{name}` and `$name` refer to: its own inputs, with the values entered,
- * then the widget's params.
- */
 export function formScope(
   form: ParamDefT<"form">,
   inputValues: Record<string, unknown>,
@@ -436,10 +389,6 @@ export function formScope(
   };
 }
 
-/**
- * A form's submission: its inputs as a JSON body to its own endpoint, with its own method.
- * The endpoint's placeholders are filled from the form's inputs or the widget's params.
- */
 export function buildFormRequest(
   form: ParamDefT<"form">,
   inputValues: Record<string, unknown>,
@@ -467,7 +416,6 @@ export function buildFormRequest(
   return finish(target, problems, true);
 }
 
-/** A GET of a URL with a data backend's credentials, for requests no param shapes. */
 export function plainRequest(
   url: string,
   credentials: Credentials | undefined,
@@ -486,10 +434,6 @@ export function plainRequest(
   };
 }
 
-/**
- * What `fetch` takes for a request (4.1): the credentials, then the headers the deployment
- * adds, then the header params, and the body as JSON.
- */
 export function requestInit(
   request: BackendRequest,
   init: RequestInit = {},
@@ -507,10 +451,6 @@ export function requestInit(
   };
 }
 
-/**
- * What identifies a request's response in a cache (4.6): the method, the URL with its
- * query, the header params' values and the body. Credential values stay out.
- */
 export function requestKey(built: BuiltRequest): string[] {
   if (!built.ok) return ["problems", JSON.stringify(built.problems)];
   const { method, url, paramHeaders, body, credentials } = built.request;

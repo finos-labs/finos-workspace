@@ -7,8 +7,6 @@ import { stubStoreState } from "../mocks";
 
 const mockNavigate = vi.fn();
 
-// The real `useShallowAuthStore` compares with `isEqual`, so the selected value keeps
-// its identity across renders. A fresh object literal per render would not.
 const LOGGED_IN_USER = makeAuthUser({ email: "test@test.com" });
 
 vi.mock("react-router-dom", async () => {
@@ -54,9 +52,6 @@ describe("HomePage", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/login", { replace: true });
   });
 
-  // Regression guard: the redirect effect had no dependency array, so it re-fired on
-  // every render. Each run was a history push, which under react-router v7's
-  // transition-wrapped location updates can outrun the commit and spin.
   it("issues the redirect once, even across re-renders", async () => {
     const { useShallowAuthStore } = await import("~/lib/state/auth");
     stubStoreState(useShallowAuthStore, { user: LOGGED_IN_USER });
@@ -75,8 +70,6 @@ describe("HomePage", () => {
     expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 
-  // "/" only ever redirects, so leaving it on the stack makes Back bounce the user
-  // straight forward again.
   it("replaces the entry for / instead of pushing", async () => {
     const { useShallowAuthStore } = await import("~/lib/state/auth");
     stubStoreState(useShallowAuthStore, { user: LOGGED_IN_USER });

@@ -12,7 +12,6 @@ vi.mock("@tanstack/react-query", () => ({
 
 describe("Avatar Component", () => {
   beforeEach(() => {
-    // Scoped mocks
     vi.resetAllMocks();
 
     (useQuery as Mock).mockReturnValue({

@@ -1,4 +1,3 @@
-/** A 16-bit PCM WAV, optionally with another chunk before its data (as macOS writes them). */
 export function wav({ sampleRate = 16_000, channels = 1, bits = 16, format = 1, extraChunk = false, samples = 160 } = {}) {
   const data = new Uint8Array(samples * channels * (bits / 8));
   const extra = extraChunk ? 12 : 0;

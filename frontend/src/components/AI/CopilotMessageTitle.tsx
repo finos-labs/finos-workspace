@@ -27,13 +27,11 @@ export default function CopilotMessageTitle(props: CopilotMessageTitleProps) {
     isLastGroup = false,
   } = props;
 
-  // Downgrade WARNING/ERROR to INFO when the agent recovered (continued past this group)
   const displayEventType =
     !isLastGroup && (eventType === "WARNING" || eventType === "ERROR")
       ? "INFO"
       : eventType;
 
-  // Calculate animation delay based on group index to create continuous flow
   const animationDelay = -(groupIndex * 0.4);
 
   return (

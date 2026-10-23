@@ -8,7 +8,6 @@ const widget = (overrides: Partial<Widget> = {}): Widget =>
 
 const ROWS = [{ symbol: "AAPL", price: 336.64 }];
 
-/** What the browser re-POSTs for a call of the Workspace's MCP tool: the tool's JSON result, as the list of its text items, as one JSON string. */
 function mcpMessage(result: unknown, parameters: Record<string, unknown> = { origin: "ODP", widget_id: "asset_info", widget_uuid: "w-1" }): ToolMessage {
   return {
     role: "tool",
@@ -39,7 +38,6 @@ describe("asWidgetDataMessage", () => {
       function: "get_widget_data",
       input_arguments: { data_sources: [{ widget_uuid: "w-1", origin: "ODP", id: "asset_info", input_args: {} }] },
     });
-    // The rows are the JSON text that the widget parsers read.
     expect(message?.data).toEqual([{ items: [{ content: JSON.stringify(ROWS) }] }]);
   });
 
@@ -57,7 +55,6 @@ describe("asWidgetDataMessage", () => {
   });
 
   it("finds a file attached to the chat when the model names it by the stored file's uuid alone", () => {
-    // An attachment has no uuid of its own: the request carries `file-<stored file uuid>` as its id and uuid.
     const stored = "98569980-e380-46d4-b3c6-c23db2e75180";
     const attachment = widget({ uuid: `file-${stored}`, origin: "the backend", widget_id: `file-${stored}`, name: "notes.txt" });
     const message = asWidgetDataMessage(mcpMessage(OK, { origin: "the backend", widget_id: "file", widget_uuid: stored }), [widget(), attachment]);

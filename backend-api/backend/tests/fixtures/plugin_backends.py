@@ -1,12 +1,3 @@
-"""A plugin with a backend, a stand-in for the backend the deployer would run, and a
-Workspace backend it may read through the broker, for the tests of T2
-(docs/widget-plugins/SERVER-SIDE.md 5).
-
-The stand-in speaks the RPC of SERVER-SIDE 5.6 over plain HTTP on 127.0.0.1, as a backend
-on the deployment's private network does. It answers its identity from ``identity``,
-which a test sets to what was approved, and each route call with ``route_answer``.
-"""
-
 import json
 from dataclasses import dataclass, field
 from uuid import UUID, uuid4
@@ -63,8 +54,6 @@ def backend_manifest(**changes) -> dict:
 
 @dataclass
 class FakeBackend:
-    """What the stand-in answers, and what it received."""
-
     server: Upstream
     identity: dict = field(default_factory=dict)
     route_answer: Answer = field(default_factory=lambda: Answer(body=b'{"forecast": [1, 2, 3]}'))
@@ -83,7 +72,6 @@ class FakeBackend:
 
 @pytest.fixture
 async def plugin_backend(monkeypatch):
-    """The stand-in, listed in WIDGET_PLUGIN_BACKENDS for test-chart."""
     backends.reset()
     fake = FakeBackend(server=Upstream())
     fake.server.answer = fake.answer
@@ -94,8 +82,6 @@ async def plugin_backend(monkeypatch):
 
 
 async def ready_backend(superuser, plugins_dir, backend: FakeBackend, *, secret: bool = True, **changes) -> dict:
-    """Discover, approve, enable and grant the plugin, set its secret, and have the
-    stand-in answer the approved version's identity. Returns the version's view."""
     write_package(plugins_dir, backend_manifest(**changes))
     await rescan(superuser)
     await approve(superuser)
@@ -117,7 +103,6 @@ class DataSource:
 
 @pytest.fixture
 async def data_source(db_session):
-    """A backend of the admin's entity, with credentials in a header and in the query."""
     server = Upstream(answer=lambda _r: Answer(body=b'{"rows": [{"region": "emea", "sales": 10}]}'))
     async with server:
         source = models.ApiSource(

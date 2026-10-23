@@ -10,11 +10,6 @@ import { Switch } from "~/components/ds/atoms/Switch";
 import { pluginKeys } from "~/hooks/usePlugins";
 import { errorText, Section } from "./common";
 
-/**
- * Superusers: which organizations use an approved plugin (docs/widget-plugins/DESIGN.md
- * 8.5). Entity admins manage the same switch for their own organization, along with the
- * role grants that give its widgets to users, and narrowing.
- */
 export function PluginEntities({ pluginId }: { pluginId: string }) {
   const queryClient = useQueryClient();
   const { data } = useQuery({

@@ -87,7 +87,6 @@ export default function AddSkillDialog() {
 
   const onSubmit = useCallback(
     async (data: SkillFormData) => {
-      // Validate slug uniqueness
       if (!isSlugUnique(data.slug, skill?.id ?? undefined)) {
         form.setError("slug", {
           type: "manual",
@@ -121,12 +120,11 @@ export default function AddSkillDialog() {
 
   const handleSlugChange = useCallback(
     (value: string) => {
-      // Allow hyphens while sanitizing other invalid characters
       const sanitized = value
         .toLowerCase()
-        .replace(/[^a-z0-9-]/g, "-") // Replace invalid chars with hyphen
-        .replace(/-+/g, "-") // Collapse multiple hyphens
-        .replace(/^-/, "") // Remove leading hyphen
+        .replace(/[^a-z0-9-]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-/, "")
         .slice(0, 50);
       form.clearErrors("slug");
       form.setValue("slug", sanitized, { shouldDirty: true });

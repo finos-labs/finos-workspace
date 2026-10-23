@@ -63,7 +63,6 @@ describe("showInvalidItemsToast", () => {
     expect(title).toBe("Invalid items in My Backend");
     expect(options.description).toBe("2 widgets and 1 app could not be loaded.");
     expect(options.action.label).toBe("Inspect");
-    // One toast per backend, replaced on the next load rather than stacked
     expect(options.id).toBe("backend-invalid-items-b1");
   });
 

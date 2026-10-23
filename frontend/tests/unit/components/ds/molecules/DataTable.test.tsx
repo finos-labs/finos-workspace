@@ -30,15 +30,12 @@ describe("DataTable", () => {
 
     expect(screen.getByRole("table")).toBeInTheDocument();
     expect(screen.getAllByRole("columnheader")).toHaveLength(2);
-    // 1 header row + 3 data rows
     expect(screen.getAllByRole("row")).toHaveLength(4);
     expect(screen.getByText("User 1")).toBeInTheDocument();
     expect(screen.getByText("User 3")).toBeInTheDocument();
   });
 
   it("exposes explicit ARIA grid roles when virtualized", async () => {
-    // jsdom has no layout; give the scroll container a height and a firing
-    // ResizeObserver so @tanstack/react-virtual measures a viewport and mounts rows.
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
       width: 800,
       height: 400,
@@ -87,7 +84,6 @@ describe("DataTable", () => {
 
       expect(screen.getByRole("grid")).toBeInTheDocument();
       expect(screen.getAllByRole("columnheader")).toHaveLength(2);
-      // header row + virtualized body rows, with explicit gridcell roles
       await waitFor(() => {
         expect(screen.getAllByRole("gridcell").length).toBeGreaterThan(0);
       });
@@ -103,8 +99,6 @@ describe("DataTable", () => {
       { id: "age", header: "Age", width: 80, cell: (r) => r.age },
     ];
     render(<DataTable columns={cols} data={makeData(1)} getRowId={getRowId} />);
-    // Floor = fixed col (80) + the hugging col's minWidth (160). The table can
-    // never shrink below this; it scrolls horizontally instead.
     expect(screen.getByRole("table")).toHaveStyle({ minWidth: "240px" });
   });
 
@@ -114,8 +108,6 @@ describe("DataTable", () => {
       { id: "age", header: "Age", width: 80, cell: (r) => r.age },
     ];
     render(<DataTable columns={cols} data={makeData(1)} getRowId={getRowId} />);
-    // No fill column -> table sizes to the sum of tracks (240) and stays
-    // left-aligned with empty space to the right, rather than stretching.
     expect(screen.getByRole("table")).toHaveStyle({ width: "240px" });
   });
 
@@ -125,8 +117,6 @@ describe("DataTable", () => {
       { id: "age", header: "Age", width: 80, cell: (r) => r.age },
     ];
     render(<DataTable columns={cols} data={makeData(1)} getRowId={getRowId} />);
-    // A "%" column is flexible -> the table spans its container (proportional fill)
-    // rather than hugging to the column sum.
     expect(screen.getByRole("table")).toHaveStyle({ width: "100%" });
   });
 
@@ -136,8 +126,6 @@ describe("DataTable", () => {
       { id: "age", header: "Age", width: 80, cell: (r) => r.age },
     ];
     render(<DataTable columns={cols} data={makeData(1)} getRowId={getRowId} />);
-    // A fill column makes the table span its container; the fill column absorbs
-    // the slack while the min-width floor is still honoured.
     const table = screen.getByRole("table");
     expect(table).toHaveStyle({ width: "100%" });
     expect(table).toHaveStyle({ minWidth: "240px" });
@@ -173,7 +161,6 @@ describe("DataTable", () => {
 
   it("does not render a sort affordance for non-sortable columns", () => {
     render(<DataTable columns={columns} data={makeData(1)} getRowId={getRowId} />);
-    // "Name" is sortable (button); "Age" is not.
     expect(screen.getByRole("button", { name: /Name/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Age/ })).not.toBeInTheDocument();
   });
@@ -193,7 +180,7 @@ describe("DataTable", () => {
     );
 
     const checkboxes = screen.getAllByRole("checkbox");
-    expect(checkboxes).toHaveLength(3); // header + 2 rows
+    expect(checkboxes).toHaveLength(3);
 
     fireEvent.click(checkboxes[1]);
     expect(onToggleRow).toHaveBeenCalledWith("1", true);
@@ -299,7 +286,6 @@ describe("DataTable", () => {
     const row2Before = renders.get("2") ?? 0;
     const row1Before = renders.get("1") ?? 0;
 
-    // Toggle row 1 (checkboxes[0] is the header select-all).
     fireEvent.click(screen.getAllByRole("checkbox")[1]);
 
     expect(renders.get("1") ?? 0).toBeGreaterThan(row1Before);

@@ -39,7 +39,6 @@ type DialogProps = {
   ignoreClickOutside?: boolean;
 };
 
-/** @deprecated use /components/ds/Dialog instead */
 export default function Dialog({
   title,
   children,

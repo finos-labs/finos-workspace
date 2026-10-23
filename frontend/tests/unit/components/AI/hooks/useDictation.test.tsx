@@ -15,7 +15,6 @@ vi.mock("~/components/AI/hooks/useGetCopilotRequestHeaders", () => ({
   }),
 }));
 
-// The default Copilot's bearer is the agent token, which fetchAgent adds
 vi.mock("~/lib/state/agentToken", () => ({
   fetchAgent: (input: string, init: RequestInit) => {
     const headers = new Headers(init.headers);
@@ -30,7 +29,6 @@ const agent = {
   features: { "speech-to-text": true },
 } as unknown as Copilot;
 
-// The browser's microphone, recorder and audio decoding, which jsdom does not have.
 const stopTrack = vi.fn();
 let getUserMedia: ReturnType<typeof vi.fn>;
 

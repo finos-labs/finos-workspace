@@ -1,11 +1,3 @@
-/**
- * add_generative_widget — render a generative widget (note/table/chart/html).
- *
- * Mirrors workspace_mcp/server.py:945-991. data_json shape varies by
- * widget_type; chart additionally requires chart_params_json with
- * {chartType, xKey, non-empty yKey}.
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";
@@ -87,7 +79,6 @@ export async function addGenerativeWidgetHandler(args: {
     return { content: [invalidRequestItem(validationError)] };
   }
 
-  // Wire schema accepts data as list[dict] | string | null.
   const dataValue =
     data === null
       ? null

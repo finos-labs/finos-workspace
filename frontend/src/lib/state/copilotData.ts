@@ -93,12 +93,12 @@ interface CopilotDataState {
   signaturesMap: Record<string, WidgetSignature>;
   widgetsLastUpdated: number;
   widgetsInCurrentDashboard: WidgetT[];
-  dashboardWidgetsData: Record<string, DashboardWidgetData>; // used for function calling
-  widgetSubsetData: WidgetSubsetData[]; // new state for storing subset data
-  selectedWidgetIDs: string[]; // selected widgets (widgets added as context)
-  mentionTrackedWidgetUuids: Set<string>; // widgets added via @ mentions
-  preSelectedWidgetUuids: Set<string>; // widgets that were selected before being mentioned
-  widgetRuntimeState: Map<string, CopilotWidgetRuntimeState>; // runtime state for widgets (like fileOptions for multi-file viewer)
+  dashboardWidgetsData: Record<string, DashboardWidgetData>;
+  widgetSubsetData: WidgetSubsetData[];
+  selectedWidgetIDs: string[];
+  mentionTrackedWidgetUuids: Set<string>;
+  preSelectedWidgetUuids: Set<string>;
+  widgetRuntimeState: Map<string, CopilotWidgetRuntimeState>;
 }
 
 export interface CopilotDataStore extends CopilotDataState {
@@ -110,9 +110,8 @@ export interface CopilotDataStore extends CopilotDataState {
   debounceUpdateSignaturesMap: () => Promise<void> | undefined;
   getWidgetsInCurrentDashboard: (uuid?: string) => WidgetT | WidgetT[] | undefined;
   setWidgetsInCurrentDashboard: (widgets: WidgetT[]) => void;
-  /* Dashboard widgets data */
-  getDashboardWidgetData: (uuid?: string) => DashboardWidgetData | undefined; // get data for a specific widget
-  getDashboardWidgetsData: () => Record<string, DashboardWidgetData> | null; // get data for all widgets
+  getDashboardWidgetData: (uuid?: string) => DashboardWidgetData | undefined;
+  getDashboardWidgetsData: () => Record<string, DashboardWidgetData> | null;
   addDataOnDashboardWidget: (widgetId: string, data: DashboardWidgetData) => void;
   setWidgetCopilotDraftParams: (
     widgetId: string,
@@ -122,34 +121,29 @@ export interface CopilotDataStore extends CopilotDataState {
     widgetId: string,
     submittedParams: Record<string, unknown>,
   ) => void;
-  removeDataFromDashboardWidget: (widgetId: string, checkData?: boolean) => void; // new action for removing data from dashboard widget
-  /* Widget subset data */
-  addWidgetSubsetData: (uuid: string, content: string) => void; // new action for adding subset data
-  removeWidgetSubsetData: (widgetSusbetId: string) => void; // new action for removing subset data
-  clearWidgetSubsetData: () => void; // new action for clearing subset data
-  /* Selected widgets */
-  getSelectedWidgetsData: () => Record<string, DashboardWidgetData>; // get all selected widgets data
-  removeWidgetSelected: (widgetId: string) => void; // remove widget from selected widgets
-  isWidgetSelected: (widgetId: string) => boolean; // check if widget is selected
-  toggleSelectedWidget: (uuid: string) => void; // remove or add widget to selected widgets
-  clearSelectedWidgets: () => void; // clear all selected widgets
-  /* Mention tracking */
-  setMentionTrackedWidgets: (uuids: string[]) => void; // set mention-tracked widgets
-  addMentionTrackedWidget: (uuid: string) => void; // add widget to mention tracking
-  removeMentionTrackedWidget: (uuid: string) => void; // remove widget from mention tracking
-  clearMentionTrackedWidgets: () => void; // clear all mention-tracked widgets
-  isMentionTrackedWidget: (uuid: string) => boolean; // check if widget is mention-tracked
-  /* Pre-selected widgets */
-  addPreSelectedWidget: (uuid: string) => void; // mark widget as pre-selected
-  removePreSelectedWidget: (uuid: string) => void; // remove widget from pre-selected tracking
-  isPreSelectedWidget: (uuid: string) => boolean; // check if widget was pre-selected
-  clearState: () => void; // clear all state related to copilot data
-  removeWidgetData: (uuid: string) => void; // clear all data related to a specific widget
-  removeTabWidgetsData: (widgetIds: string[]) => void; // clear all data related to a list of widgets
-  /* Widget runtime state */
-  setWidgetRuntimeState: (widgetId: string, state: CopilotWidgetRuntimeState) => void; // set runtime state for a widget
-  getWidgetRuntimeState: (widgetId: string) => CopilotWidgetRuntimeState | undefined; // get runtime state for a widget
-  clearWidgetRuntimeState: (widgetId: string) => void; // clear runtime state for a widget
+  removeDataFromDashboardWidget: (widgetId: string, checkData?: boolean) => void;
+  addWidgetSubsetData: (uuid: string, content: string) => void;
+  removeWidgetSubsetData: (widgetSusbetId: string) => void;
+  clearWidgetSubsetData: () => void;
+  getSelectedWidgetsData: () => Record<string, DashboardWidgetData>;
+  removeWidgetSelected: (widgetId: string) => void;
+  isWidgetSelected: (widgetId: string) => boolean;
+  toggleSelectedWidget: (uuid: string) => void;
+  clearSelectedWidgets: () => void;
+  setMentionTrackedWidgets: (uuids: string[]) => void;
+  addMentionTrackedWidget: (uuid: string) => void;
+  removeMentionTrackedWidget: (uuid: string) => void;
+  clearMentionTrackedWidgets: () => void;
+  isMentionTrackedWidget: (uuid: string) => boolean;
+  addPreSelectedWidget: (uuid: string) => void;
+  removePreSelectedWidget: (uuid: string) => void;
+  isPreSelectedWidget: (uuid: string) => boolean;
+  clearState: () => void;
+  removeWidgetData: (uuid: string) => void;
+  removeTabWidgetsData: (widgetIds: string[]) => void;
+  setWidgetRuntimeState: (widgetId: string, state: CopilotWidgetRuntimeState) => void;
+  getWidgetRuntimeState: (widgetId: string) => CopilotWidgetRuntimeState | undefined;
+  clearWidgetRuntimeState: (widgetId: string) => void;
 }
 
 export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
@@ -255,13 +249,6 @@ export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
       }, 100);
     },
     clearSelectedWidgets: () => set({ selectedWidgetIDs: [] }),
-    /**
-     * Stores widget data for copilot context and optionally promotes pending params.
-     *
-     * When `captureExecutedParams` is true and data is present, promotes `copilotPendingParams`
-     * to `copilotExecutedParams`. This ensures the copilot sees the actual params used to
-     * fetch the data, not potentially stale draft params.
-     */
     addDataOnDashboardWidget: (widgetId, data) => {
       set((state) => {
         const nextState = {
@@ -303,13 +290,6 @@ export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
         set({ widgetsLastUpdated: Date.now() });
       }, 300);
     },
-    /**
-     * Updates the draft parameters for a widget's copilot context.
-     *
-     * Draft params represent what the user is currently editing in the UI (e.g., typing
-     * a query). These are shown as `current_value` in copilot context, distinct from
-     * `executed_value` which reflects the last successfully executed params.
-     */
     setWidgetCopilotDraftParams: (widgetId, draftParams) =>
       set((prev) => {
         const currentRuntimeState = prev.widgetRuntimeState.get(widgetId) || {};
@@ -332,12 +312,6 @@ export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
           widgetsLastUpdated: Date.now(),
         };
       }),
-    /**
-     * Stores the submitted params as pending for copilot param reconciliation.
-     *
-     * When the execution completes and `addDataOnDashboardWidget` is called with
-     * `captureExecutedParams: true`, the pending params are promoted to `copilotExecutedParams`.
-     */
     beginWidgetCopilotExecution: (widgetId, submittedParams) => {
       set((prev) => {
         const currentRuntimeState = prev.widgetRuntimeState.get(widgetId) || {};
@@ -361,7 +335,6 @@ export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
       set((state) => {
         if (Object.keys(state.dashboardWidgetsData).includes(widgetId)) {
           const newDashboardWidgetsData = { ...state.dashboardWidgetsData };
-          // If checkData is true, we only remove the widget if it has no data
           if (checkData && state.dashboardWidgetsData[widgetId]?.data) return state;
           delete newDashboardWidgetsData[widgetId];
           return {
@@ -396,7 +369,6 @@ export const useCopilotDataStore = createWithEqualityFn<CopilotDataStore>()(
       }));
     },
     removeWidgetSubsetData: (content: string) =>
-      // TODO: Remove widget by subset uuid instead
       set((state) => ({
         ...state,
         widgetSubsetData: state.widgetSubsetData.filter(

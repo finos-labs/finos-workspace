@@ -69,7 +69,6 @@ export function CopilotFeedback({ message }: { message: AIMessage }) {
     [message.voteStatus, dispatch],
   );
 
-  // Update the feedback submission logic in the onClick handler
   const handleFeedback = useCallback(
     async (vote: "thumbs_up" | "thumbs_down") => {
       const updatedState = {} as AIMessageFeedback;

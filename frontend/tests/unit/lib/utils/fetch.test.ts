@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import { isApiFileUrl, isApiUrl, isDefaultCopilotUrl } from "~/lib/utils/fetch";
 import { mockConfig } from "../../../mocks/runtimeConfig";
 
-// The test runtime config: API http://localhost:3000, default Copilot http://localhost:3000/ai
 describe("isApiUrl", () => {
   it.each([
     "http://localhost:3000/app/session",

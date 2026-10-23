@@ -20,36 +20,6 @@ async def worker_queue(
     failure_ttl: int = 5,
     **kwargs: P.kwargs,
 ) -> T:
-    """Worker Queue
-
-    Send a job to the rq worker queue. If key exists in redis, return the result.
-
-    If not in redis, send the job to the worker queue.
-    If the job status is failed, it will return a failure message.
-
-
-    Parameters
-    ----------
-    callback : function
-        The function to be called.
-    cmd_name : str
-        The name of the command.
-    *args : list
-        The arguments to be passed to the function.
-    result_ttl : int
-        The time to live for the result.
-    sleep : float
-        The time to sleep between checking the job status.
-    failure_ttl : int
-        The time to live for the failure message.
-    **kwargs : dict
-        The keyword arguments to be passed to the function.
-
-    Returns
-    -------
-    dict | Any
-        The result of the job.
-    """
     job_timeout = kwargs.pop("job_timeout", None)
     if isinstance(result_ttl, timedelta):
         result_ttl = result_ttl.total_seconds()
@@ -92,33 +62,6 @@ async def worker_queue_at(
     failure_ttl: int = 5,
     **kwargs: P.kwargs,
 ) -> T:
-    """Worker Queue At
-
-    Send a job to the rq worker queue at a specific time. If job already scheduled return True.
-
-
-    Parameters
-    ----------
-    callback : function
-        The function to be called.
-    schedule : datetime
-        The time to schedule the job.
-    *args : list
-        The arguments to be passed to the function.
-    result_ttl : int | timedelta
-        The time to live for the result.
-    sleep : float
-        The time to sleep between checking the job status.
-    failure_ttl : int
-        The time to live for the failure message.
-    **kwargs : dict
-        The keyword arguments to be passed to the function.
-
-    Returns
-    -------
-    dict | Any
-        The result of the job.
-    """
     job_timeout = kwargs.pop("job_timeout", 1800)
 
     if isinstance(result_ttl, timedelta):

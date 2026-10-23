@@ -1,11 +1,3 @@
-/**
- * Tier 2 — get_widget_data identifier resolution.
- *
- * The loop matches only the canonical widget `uuid` and logs a warning when
- * the model supplies an identifier that is not fetchable in the current
- * request. These tests pin that lean dispatch contract.
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { cacheWidgetItemsFromReboot, runAgentLoop } from "../../../src/agent/loop.ts";
@@ -113,8 +105,6 @@ describe("get_widget_data identifier resolution", () => {
       }),
     );
 
-    // Plain widgets load in one round-trip — the bridge fetches every
-    // data_source in a single call — with a per-widget status line each.
     const statusMessages = events
       .filter((e) => e.event === "copilotStatusUpdate")
       .map((e) => (e.data as { message?: string }).message);
@@ -129,8 +119,6 @@ describe("get_widget_data identifier resolution", () => {
   });
 
   it("injects all widget results from a single batched round-trip", async () => {
-    // Outbound batching emits N data_sources in one call; confirm the reboot
-    // maps all N results back to their widgets and loads each.
     const first = widget({ uuid: "w-1", name: "Indexed ESG Trend Comparison" });
     const second = widget({ uuid: "w-2", name: "Executive ESG KPI Snapshot" });
     const tool: ToolMessage = {
@@ -270,8 +258,6 @@ describe("get_widget_data identifier resolution", () => {
   });
 
   it("all-cached re-loop: iter-0 preamble is reasoning, not part of the answer; artifact ordering holds", async () => {
-    // The all-cached path re-loops internally (one POST, one FE bubble). Prose written in a step that calls
-    // a tool (iter-0) is reasoning and is shown as a status; the answer is the step that calls no more tools.
     const table = widget({ uuid: "w-cache", name: "Prices Table", params: [] });
     const cachedTool: ToolMessage = {
       role: "tool",
@@ -299,15 +285,11 @@ describe("get_widget_data identifier resolution", () => {
         } as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
         model: makeSequencedMockLlm([
-          // iter-0: preamble prose + a cached get_widget_data → internal re-loop,
-          // NO SSE round-trip (the data is already cached).
           llmCallsToolWithText(
             "get_widget_data",
             { widgets: [{ widget_uuid: "w-cache" }] },
             "Let me pull the prices first.",
           ),
-          // iter-1: a raw-data artifact, then the final answer with a paragraph
-          // break (so the artifact weaves between the two paragraphs).
           llmCallsTool("create_artifact", {
             data: [
               { symbol: "NVDA", close: 100 },
@@ -328,7 +310,6 @@ describe("get_widget_data identifier resolution", () => {
       .filter((e) => e.event === "copilotMessageChunk")
       .map((e) => (e.data as { delta: string }).delta)
       .join("");
-    // iter-0 preamble is reasoning: it is not in the answer.
     expect(text).not.toContain("Let me pull the prices first.");
     expect(text).toBe("Here are the prices.\n\nTop close is 200.");
     expect(
@@ -337,7 +318,6 @@ describe("get_widget_data identifier resolution", () => {
       ),
     ).toBe(true);
 
-    // Ordering: iter-0 reasoning → artifact → the answer.
     const preambleIdx = events.findIndex(
       (e) => e.event === "copilotStatusUpdate" && (e.data as { message?: string }).message === "Let me pull the prices first.",
     );
@@ -530,11 +510,6 @@ describe("get_widget_data identifier resolution", () => {
   });
 
   it("fetches a connected catalog widget that has no uuid (model sends widget_id)", async () => {
-    // Connected widgets that are NOT on a dashboard arrive as catalog entries
-    // with only a widget_id slug and no instance uuid. search_widgets surfaces
-    // no uuid, so the model copies the widget_id into widget_uuid — the only
-    // identifier it ever sees. Build allWidgets through getTieredWidgets, the
-    // same ingest path query.ts uses, so the resolution is faithful to prod.
     const catalog = widget({
       uuid: undefined,
       widget_id: "financial_statements",
@@ -587,8 +562,6 @@ describe("get_widget_data identifier resolution", () => {
   });
 
   it("regression: identifier match is exact, not substring (uuid prefix collision)", async () => {
-    // Two widgets — the model picks "u-1" but only "u-12" is in scope. We
-    // shouldn't silently match the longer uuid.
     const w1 = widget({ uuid: "u-12", widget_id: "wid-12", name: "Twelve" });
     const events = await collectGenerator(
       runAgentLoop({
@@ -638,10 +611,6 @@ describe("get_widget_data identifier resolution", () => {
         conversationId: "wr-dashboard-reconcile",
       }),
     );
-    // The dashboard cell uuid (5c3bb6bc) differs from the request widget id
-    // (file-03971611) — they share only the name. The prompt feeds the model
-    // that dashboard uuid, so a unique-name match must reconcile it to the
-    // fetchable request widget.
     const wd = findGetWidgetData(events);
     expect(wd).toBeDefined();
     const payload = wd!.data as {
@@ -672,7 +641,6 @@ describe("get_widget_data identifier resolution", () => {
         conversationId: "wr-dashboard-ambiguous",
       }),
     );
-    // Two widgets named "Report" — reconciliation must decline, not guess.
     expect(findGetWidgetData(events)).toBeUndefined();
   });
 
@@ -849,14 +817,11 @@ describe("the widget data cache keeps one chat's data for that chat", () => {
 
   it("does not hand one user's data to another who asks for the same widget", async () => {
     await cacheWidgetItemsFromReboot(tableMessage(111), [sharedWidget], "alice:chat-1");
-    // Alice's own request is answered from her cache: no round trip to the browser.
     expect(await fetchedBy("alice:chat-1")).toBeUndefined();
-    // Bob asks for the same widget and gets no data from Alice's cache: the agent goes to the browser for it.
     expect(await fetchedBy("bob:chat-9")).toBeDefined();
   });
 
   it("does not let one user fill in what another is then shown", async () => {
-    // Mallory sends a made-up result for the widget Alice uses.
     await cacheWidgetItemsFromReboot(tableMessage(999999), [sharedWidget], "mallory:chat-1");
     expect(await fetchedBy("alice:chat-1")).toBeDefined();
   });

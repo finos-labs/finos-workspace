@@ -3,8 +3,6 @@ import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import AddUsersSelect from "~/components/AdminRoles/AddUsersSelect";
 
-// Mock the Radix DropdownMenu primitive so the portaled Content is rendered
-// inline once the trigger is clicked. Same pattern as DropdownMenu.test.tsx.
 vi.mock("@radix-ui/react-dropdown-menu", () => {
   const React = require("react");
   const DropdownContext = React.createContext({
@@ -105,7 +103,6 @@ function setup(extra?: {
       isLoading={extra?.isLoading ?? false}
     />,
   );
-  // The trigger is the first/only top-level button before opening.
   const trigger = screen.getAllByRole("button")[0];
   return { trigger, onChange };
 }
@@ -149,14 +146,13 @@ describe("AddUsersSelect", () => {
       const onChange = vi.fn();
       setup({ value: ["bob@example.com"], onChange });
 
-      openDropdownAndSearch("al"); // matches Alice + Alex
+      openDropdownAndSearch("al");
 
       const selectAll = screen.getByLabelText("Select all");
       fireEvent.click(selectAll);
 
       expect(onChange).toHaveBeenCalledTimes(1);
       const next = onChange.mock.calls[0][0] as string[];
-      // Bob preserved, filtered (Alice + Alex) added
       expect(new Set(next)).toEqual(
         new Set(["bob@example.com", "alice@example.com", "alex@example.com"]),
       );
@@ -169,15 +165,13 @@ describe("AddUsersSelect", () => {
         onChange,
       });
 
-      openDropdownAndSearch("al"); // matches Alice + Alex (both selected)
+      openDropdownAndSearch("al");
 
       const selectAll = screen.getByLabelText("Select all");
-      // allFilteredSelected → checked=true → click toggles to false
       fireEvent.click(selectAll);
 
       expect(onChange).toHaveBeenCalledTimes(1);
       const next = onChange.mock.calls[0][0] as string[];
-      // Bob preserved, filtered (Alice + Alex) removed
       expect(next).toEqual(["bob@example.com"]);
     });
   });

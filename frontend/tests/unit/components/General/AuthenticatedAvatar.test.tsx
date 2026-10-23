@@ -22,14 +22,12 @@ const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk";
 const fetchState = (state: { data?: string; isError?: boolean }) =>
   vi.mocked(useJsonData).mockReturnValue({ isError: false, ...state } as never);
 
-/** The request the avatar asks useJsonData to send for an app's image */
 const requestFor = (src: string) => {
   vi.mocked(useJsonData).mockClear();
   render(<AuthenticatedAvatar src={src} alt="App" source={SOURCE} />);
   return vi.mocked(useJsonData).mock.calls.at(-1)?.[0].request;
 };
 
-/** A GET of the URL with these credential headers */
 const sentAs = (url: string, credentials: Record<string, string>) => ({
   ok: true,
   request: { url, method: "GET", credentials },

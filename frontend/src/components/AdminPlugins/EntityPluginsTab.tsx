@@ -19,10 +19,6 @@ import { RenderNoData } from "~/routes/admin";
 import { errorText, Section, StateTag } from "./common";
 import { BlockedRequests, PluginEvents } from "./PluginActivity";
 
-/**
- * Entity admins: the plugins a superuser approved, and how this organization uses them
- * (docs/widget-plugins/DESIGN.md 6 and 8.3). Narrowing only removes what was approved.
- */
 export function EntityPluginsTab() {
   const { data, isLoading, isError } = useQuery({
     queryKey: pluginKeys.entity,

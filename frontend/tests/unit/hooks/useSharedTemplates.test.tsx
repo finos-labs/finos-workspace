@@ -455,7 +455,7 @@ describe("useSharedTemplates", () => {
 
       expect(useUserResourcePermissions).toHaveBeenCalledWith(
         expect.objectContaining({
-          staleTime: 300000, // 5 minutes
+          staleTime: 300000,
         }),
       );
     });

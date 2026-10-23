@@ -98,8 +98,6 @@ export const PopoverArrow = React.forwardRef<
 });
 PopoverArrow.displayName = PopoverPrimitive.Arrow.displayName;
 
-/* Composed Component */
-
 export interface PopoverProps extends TooltipProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -107,7 +105,6 @@ export interface PopoverProps extends TooltipProps {
   onCloseAutoFocus?: (event: Event) => void;
 }
 
-/** `Popover` is a hint, same as `Tooltip`, but appears on click or manually */
 export const Popover = React.forwardRef<
   React.ElementRef<typeof PopoverContent>,
   PopoverProps

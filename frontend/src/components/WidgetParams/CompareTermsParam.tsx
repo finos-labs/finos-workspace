@@ -29,7 +29,7 @@ export default function CompareTermsParam({
   selectedLabel: string;
   popupWidth?: number;
   contentClassName?: string;
-  value?: string; // comma separated values e.g., google,apple,microsoft
+  value?: string;
   onUpdateParam?: (val: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -61,7 +61,6 @@ export default function CompareTermsParam({
           .map((term) => term.trim())
           .filter((term) => term && !newTerms.has(term));
 
-        // No new terms to add
         if (trimmed.length === 0) return { ...prev, search: "" };
 
         trimmed.forEach((term) => newTerms.add(term));
@@ -143,7 +142,7 @@ export default function CompareTermsParam({
         <DropdownMenuPrimitive.Content
           onCloseAutoFocus={(e) => {
             e.stopPropagation();
-            if (inputRef.current) inputRef.current.blur(); // Prevents focus from moving to the input when closing
+            if (inputRef.current) inputRef.current.blur();
           }}
           style={{
             minWidth: popupWidth ? `${popupWidth}px` : "200px",

@@ -52,16 +52,13 @@ export default function ExportModal() {
   const { hasMultipleTabs, tabsInfo } = useTabsInfo(currentDashboard);
 
   const [state, dispatch] = useStateReducer<ExportState>(null, () => {
-    // Create the formatted date and time string
     const formattedDateTime = dayjs().format("YYYY-MM-DD HH:mm");
 
-    // Get the tickers in the groups
     const groups = isShared ? sharedTab?.data?.groups : tab?.data?.groups || [];
     const tickersInGroups = (groups || []).map((group) => getGroupLabel(group));
     const tickersString =
       tickersInGroups.length > 0 ? `- ${tickersInGroups.join("_")} - ` : "- ";
 
-    // Create the title
     const title = `${formattedDateTime} ${tickersString}${isShared ? sharedTab?.data?.name : tab?.data?.name} report`;
 
     return {

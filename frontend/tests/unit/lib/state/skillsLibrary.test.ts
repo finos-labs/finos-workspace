@@ -1,17 +1,7 @@
-/**
- * Tests for skillsLibrary Zustand store
- *
- * Tests the skills library state management including:
- * - Dialog state management
- * - Slug validation and uniqueness
- * - Skills catalog generation
- */
-
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { isValidSlug, toSlug, useSkillsLibraryStore } from "~/lib/state/skillsLibrary";
 
-// Test data factory
 const createMockSkill = (
   overrides: Partial<{
     id: string;
@@ -37,15 +27,15 @@ describe("skillsLibrary utilities", () => {
       expect(isValidSlug("my-skill")).toBe(true);
       expect(isValidSlug("skill-123")).toBe(true);
       expect(isValidSlug("a-b-c")).toBe(true);
-      expect(isValidSlug("ab")).toBe(true); // minimum length
+      expect(isValidSlug("ab")).toBe(true);
     });
 
     it("returns false for invalid slugs", () => {
       expect(isValidSlug("")).toBe(false);
-      expect(isValidSlug("a")).toBe(false); // too short
-      expect(isValidSlug("-invalid")).toBe(false); // leading hyphen
-      expect(isValidSlug("invalid-")).toBe(false); // trailing hyphen
-      expect(isValidSlug("Invalid")).toBe(false); // uppercase
+      expect(isValidSlug("a")).toBe(false);
+      expect(isValidSlug("-invalid")).toBe(false);
+      expect(isValidSlug("invalid-")).toBe(false);
+      expect(isValidSlug("Invalid")).toBe(false);
       expect(isValidSlug("has spaces")).toBe(false);
       expect(isValidSlug("has_underscore")).toBe(false);
       expect(isValidSlug("special!chars")).toBe(false);
@@ -88,7 +78,6 @@ describe("skillsLibrary utilities", () => {
 
 describe("useSkillsLibraryStore", () => {
   beforeEach(() => {
-    // Reset store to initial state
     act(() => {
       useSkillsLibraryStore.setState({
         skills: [],
@@ -326,7 +315,6 @@ describe("useSkillsLibraryStore", () => {
         useSkillsLibraryStore.getState().updateSkills([mockSkill]);
       });
 
-      // Same slug is allowed when excluding the skill's own id (for editing)
       expect(
         useSkillsLibraryStore.getState().isSlugUnique("my-skill", "skill-123"),
       ).toBe(true);

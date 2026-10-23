@@ -14,9 +14,6 @@ vi.mock("~/components/SpecialTooltip", () => ({
   ),
 }));
 
-// Mirrors the real Popover, whose trigger uses `asChild` — the open handler is
-// merged onto the child button rather than wrapping it, so the child's own
-// stopPropagation does not prevent the popover from opening.
 vi.mock("~/components/ds/atoms/Popover", async () => {
   const { cloneElement } = await import("react");
   return {

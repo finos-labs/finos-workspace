@@ -51,10 +51,6 @@ const getEnabledFeatures = (features: Copilot["features"] | undefined) => {
   return featuresEnabled;
 };
 
-/**
- * The options a request sends. An agent that offers its models through its model setting
- * gets the one the user picked there when their roles grant it, else the first they grant.
- */
 const withGrantedModelSetting = (
   options: Record<string, boolean | string>,
   agent: Copilot | null | undefined,
@@ -71,12 +67,7 @@ const withGrantedModelSetting = (
   return modelId ? { ...options, [MODEL_SETTING]: modelId } : options;
 };
 
-/**
- * Parses slash skill commands from a message.
- * Returns the parsed slugs and the message with slash commands removed.
- */
 export function parseSkillSlashCommands(message: string) {
-  // Match /slug: patterns at word boundaries
   const regex = /\/skill:([a-z0-9]+(?:-[a-z0-9]+)*)\b/gi;
   const slugs = new Set<string>();
   let cleanedMessage = message;
@@ -84,7 +75,6 @@ export function parseSkillSlashCommands(message: string) {
   while ((match = regex.exec(message)) !== null) {
     const slug = match[1].toLowerCase();
     slugs.add(slug);
-    // Remove the slash command from the message
     cleanedMessage = cleanedMessage.replace(match[0], " ").replace(/\s+/g, " ").trim();
   }
   return { slugs: Array.from(slugs), cleanedMessage };
@@ -98,7 +88,6 @@ export function useAiFetchRequestInit() {
   );
   const getEnabledToolCount = useShallowMcpToolsStore((s) => s.getEnabledToolCount);
 
-  // Skills store access
   const { getSkillsCatalog, getSkillBySlug, skills } = useShallowSkillsLibraryStore(
     (s) => ({
       getSkillsCatalog: s.getSkillsCatalog,
@@ -123,7 +112,6 @@ export function useAiFetchRequestInit() {
     getSelectedModelForAgent: s.getSelectedModelForAgent,
   }));
 
-  // dashboardWidgetsData contain all the widgets with data filled in a dashboard
   const { getCopilotWidgets, widgetSubsetData, copilotWidgetsLastUpdated } =
     useShallowCopilotDataStore((s) => ({
       widgetSubsetData: s.widgetSubsetData,
@@ -134,10 +122,8 @@ export function useAiFetchRequestInit() {
   const workspaceOptions = useMemo(() => {
     const options: Record<string, boolean | string> = {};
     const features = selectedCopilot?.features || {};
-    // Features that are available within the UI and the agent just needs to expose them
     const EXCLUDE = ALL_AI_FEATURES;
 
-    // Built-in options: what the agent can do, and what the UI has turned on
     if (features?.["widget-global-search"]) options["widget-global-search"] = true;
 
     if (features?.["agent-orchestration"] && orchestrationModeEnabled)
@@ -146,7 +132,6 @@ export function useAiFetchRequestInit() {
     if (features?.["mcp-tools"] && getEnabledToolCount() > 0)
       options["mcp-tools"] = true;
 
-    // Custom features (object metadata) obey customFeatureStates
     for (const [key, val] of Object.entries(features)) {
       if (EXCLUDE.has(key)) continue;
       if (val && typeof val === "object") {
@@ -160,7 +145,6 @@ export function useAiFetchRequestInit() {
           options[key] = true;
         }
       } else if (val === true) {
-        // Boolean features that are not excluded are forwarded as options
         options[key] = true;
       }
     }
@@ -212,16 +196,13 @@ export function useAiFetchRequestInit() {
         ...(widgetSubsetData || []),
       ] as CopilotContextItem[];
 
-      // Get enabled MCP tools for AI agent
       const enabledTools = await getEnabledToolsForAgent();
 
-      // Only include agents in workspace state if orchestration is enabled
       const finalWorkspaceState = { ...(workspaceState || {}) } as WorkspaceStateT;
 
       if (!(orchestrationModeEnabled && orchestrationModeCap))
         finalWorkspaceState.agents = undefined;
 
-      // Build skills catalog and selected skills from slash commands
       const skillsCatalog = getSkillsCatalog();
       const { slugs: forcedSkillSlugs } = parseSkillSlashCommands(incomingMessage);
       const selectedSkills: SkillPayload[] = [];
@@ -238,7 +219,6 @@ export function useAiFetchRequestInit() {
           });
           continue;
         }
-        // One of the agent's own skills goes by its slug: the agent has its instructions.
         const agentSkill = agentSkills.find((s) => s.slug === slug);
         if (agentSkill) {
           selectedSkills.push({
@@ -345,7 +325,6 @@ export function useAiFetchRequestInit() {
         orchestrationModeEnabled: orchestrationModeCap,
       } = getEnabledFeatures(features);
 
-      // Get enabled MCP tools for AI agent - CRITICAL for sequential tool execution
       const enabledTools = await getEnabledToolsForAgent();
 
       const artifacts = getCurrentChatArtifacts();
@@ -367,13 +346,11 @@ export function useAiFetchRequestInit() {
         ...(widgetSubsetData || []),
       ] as CopilotContextItem[];
 
-      // Only include agents in workspace state if orchestration is enabled
       const finalWorkspaceState = { ...(workspaceState || {}) } as WorkspaceStateT;
 
       if (!(orchestrationModeEnabled && orchestrationModeCap))
         finalWorkspaceState.agents = undefined;
 
-      // Include skills catalog for function call context
       const skillsCatalog = getSkillsCatalog();
       const agentForModel = targetAgent ?? selectedCopilot;
       const agentModels = agentForModel?.models;
@@ -408,7 +385,7 @@ export function useAiFetchRequestInit() {
               (!targetAgent && flag === "agent-orchestration") || features?.[flag],
           ),
         ),
-        tools: mcpToolsEnabled ? enabledTools : [], // Include tools only if agent supports MCP
+        tools: mcpToolsEnabled ? enabledTools : [],
         skills_catalog: skillsCatalog.length > 0 ? skillsCatalog : undefined,
       };
 
@@ -472,7 +449,6 @@ export function useAiFetchRequestInit() {
   ] as const;
 }
 
-// Helper function to compute expanded widgets from the various widget sources
 export const computeExpandedWidgets = (
   selectedWidgets: CopilotWidget[],
   temporaryWidgets: CopilotWidget[],
@@ -480,7 +456,6 @@ export const computeExpandedWidgets = (
   mentionWidgets: CopilotWidget[],
   finalDashboardWidgets: CopilotWidget[],
 ) => {
-  // Step 1: Build the initial groups (pre-expansion)
   const preExpandedPrimary = [
     ...selectedWidgets,
     ...temporaryWidgets,
@@ -488,18 +463,15 @@ export const computeExpandedWidgets = (
   ];
   const preExpandedSecondary = finalDashboardWidgets;
 
-  // Step 2: Expand tabs to their constituent widgets for *each* group
   const expandedPrimary = expandTabsToWidgets(preExpandedPrimary);
   const expandedSecondary = expandTabsToWidgets(preExpandedSecondary);
   const expandedAllWidgets = expandTabsToWidgets(allWidgets);
 
-  // Step 3: Ensure widgets are NOT duplicated between primary and secondary
   const [dedupedPrimaryRaw, dedupedSecondaryRaw] = mutuallyExclude(
     [expandedPrimary, expandedSecondary],
     widgetDedupeKey,
   );
 
-  // Step 4: Remove any accidental duplicates within each list (edge-case safety)
   const uniqueBy = (arr: CopilotWidget[], key: (item: CopilotWidget) => unknown) => {
     const seen = new Set();
     return arr.filter((item) => {
@@ -520,8 +492,6 @@ export const computeExpandedWidgets = (
   };
 };
 
-// Attachment widgets have no `uuid`, only `widget_id` — without the fallback they
-// all collide on `undefined` and get dropped as duplicates of each other.
 const widgetDedupeKey = (widget: CopilotWidget) => widget.uuid ?? widget.widget_id;
 
 function mutuallyExclude(
@@ -540,7 +510,6 @@ function mutuallyExclude(
   }, [] as CopilotWidget[][]);
 }
 
-/** Each row of a widget whose MCP link is active gains it (WIDGETS-JSON 5.4). */
 function linkRows(widgets: CopilotWidgets, tools: AgentToolConfig[]): CopilotWidgets {
   if (!tools.length) return widgets;
   const { servers } = useMcpToolsStore.getState();
@@ -564,7 +533,6 @@ function expandTabsToWidgets(widgets: CopilotWidget[]): CopilotWidget[] {
     (widget) => !widget.widget_id?.startsWith("tab_"),
   );
 
-  // Extract constituent widgets from tabs
   const expandedWidgets: CopilotWidget[] = [];
 
   tabWidgets.forEach((tabWidget) => {
@@ -574,7 +542,6 @@ function expandTabsToWidgets(widgets: CopilotWidget[]): CopilotWidget[] {
     }
   });
 
-  // Return non-tab widgets plus expanded widgets from tabs
   return [...nonTabWidgets, ...expandedWidgets];
 }
 
@@ -586,30 +553,27 @@ export function extractUrls(text: string, limit = 4) {
 export function convertArtifactsToContextItems(
   artifacts: ArtifactT[],
 ): CopilotContextItem[] {
-  return (
-    artifacts
-      // #TODO: @jose-donato RITA AI
-      .filter((artifact) => artifact.type !== "app")
-      .map((artifact) => {
-        return {
-          uuid: artifact.uuid,
-          name: artifact.name ?? "",
-          description: artifact.description ?? "",
-          metadata: artifact.metadata,
-          data: {
-            items: [
-              {
-                content: JSON.stringify(artifact.content),
-                data_format: {
-                  data_type: "object",
-                  parse_as: artifact.type,
-                },
+  return artifacts
+    .filter((artifact) => artifact.type !== "app")
+    .map((artifact) => {
+      return {
+        uuid: artifact.uuid,
+        name: artifact.name ?? "",
+        description: artifact.description ?? "",
+        metadata: artifact.metadata,
+        data: {
+          items: [
+            {
+              content: JSON.stringify(artifact.content),
+              data_format: {
+                data_type: "object",
+                parse_as: artifact.type,
               },
-            ],
-          },
-        };
-      })
-  );
+            },
+          ],
+        },
+      };
+    });
 }
 
 export type XHeadersT = {
@@ -670,7 +634,7 @@ type FunctionCallPayload = {
   context: CopilotContextItem[];
   workspace_state?: WorkspaceStateT;
   workspace_options?: Record<string, boolean | string>;
-  tools: AgentToolConfig[]; // CRITICAL: Include tools for sequential execution
+  tools: AgentToolConfig[];
   skills_catalog?: SkillCatalogEntry[];
   selected_skills?: SkillPayload[];
 };

@@ -28,8 +28,8 @@ import { useGetAppWidgets } from "../AI/hooks/useGetAppWidgets";
 
 export default function useSyncItems() {
   const { pathname } = useLocation();
-  useGetAppWidgets(); // Initialize the app widgets store
-  usePluginRegistrySync(); // The widget plugins this user may use
+  useGetAppWidgets();
+  usePluginRegistrySync();
 
   const user = useShallowAuthStore((state) => state.user);
   const updateThemeSettings = useShallowEntityThemeStore(
@@ -59,7 +59,7 @@ export default function useSyncItems() {
   const { refetch: refetchApiSources } = useQuery({
     queryKey: ["apiSources"],
     queryFn: async () => getApiSources().then(updateApiSources),
-    enabled: false, // Only fetch when needed
+    enabled: false,
     staleTime: Number.POSITIVE_INFINITY,
     refetchInterval: false,
     refetchOnWindowFocus: false,
@@ -71,7 +71,6 @@ export default function useSyncItems() {
         .get("/app/dash/validate-and-sync")
         .catch((error) => {
           if (error?.response?.status === 401) {
-            // If the user is unauthorized, log them out
             useAuthStore.getState().logout();
           }
           throw error;
@@ -104,8 +103,6 @@ export default function useSyncItems() {
         useCopilotAccessStore.getState().setAccess(data.copilot_access);
         updateUserApps(data.user_apps || {}, true);
         updateUserSkills(data.user_skills || []);
-        // Data backend credentials are never persisted: after a reload only this
-        // refetch puts them back in page memory, whatever page the user is on
         refetchApiSources();
       });
     },
@@ -117,44 +114,37 @@ export default function useSyncItems() {
   });
 
   useEffect(() => {
-    // Check if the user is logged in and items are null
     if (user && !itemsRef?.current) {
       getDashboards();
     }
   }, [user, items, itemsRef]);
 
   useEffect(() => {
-    // Saved as the page is hidden or goes away, with a request that outlives it: one made in
-    // beforeunload is cancelled in WebKit, and a change of the last minute was lost
     const onVisibility = () => {
       if (document.visibilityState === "hidden") saveDashboardsOnExit();
     };
     window.addEventListener("pagehide", saveDashboardsOnExit);
     document.addEventListener("visibilitychange", onVisibility);
-    // And two seconds after any change, so little waits for the page to go away
     const unsubscribeItems = useAppStore.subscribe(
       (state) => state.items,
       () => useAppStore.getState().debounceSaveDashboards(),
     );
 
-    const debouncedSaveInt = setInterval(() => saveDashboards(), 1000 * 60 * 1); // Save every minute
-    const clearInt = setInterval(() => dispatchSaveState(), 1000 * 30); // Save every 30 seconds
+    const debouncedSaveInt = setInterval(() => saveDashboards(), 1000 * 60 * 1);
+    const clearInt = setInterval(() => dispatchSaveState(), 1000 * 30);
 
     return () => {
       window.removeEventListener("pagehide", saveDashboardsOnExit);
       document.removeEventListener("visibilitychange", onVisibility);
       unsubscribeItems();
-      // Cleanup function: cancel the debounced call and immediately save changes
       clearInterval(debouncedSaveInt);
       clearInterval(clearInt);
-      dispatchSaveState(); // Ensure all local widget changes are pushed to the store
+      dispatchSaveState();
 
-      // Clear the selected widgets
       useCopilotDataStore.getState().clearState();
 
-      saveDashboards(); // Save immediately when the component unmounts or before re-running the effect
+      saveDashboards();
 
-      // Makes sure the user is logged in and items aren't null before refetching
       if (user && !itemsRef?.current) {
         getDashboards();
       }

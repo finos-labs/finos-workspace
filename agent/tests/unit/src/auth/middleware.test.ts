@@ -112,7 +112,7 @@ describe("authMiddleware — workspace auth", () => {
     const app = appWith(workspace, 30, () => now);
     expect((await app.request("/v1/me", bearer("late"))).status).toBe(401);
     users.late = { ok: true, value: { userId: "user-1" } };
-    expect((await app.request("/v1/me", bearer("late"))).status).toBe(401); // still the answer of a moment ago
+    expect((await app.request("/v1/me", bearer("late"))).status).toBe(401);
     expect(asked).toHaveLength(1);
     now += 11_000;
     expect((await app.request("/v1/me", bearer("late"))).status).toBe(200);
@@ -150,7 +150,6 @@ describe("createAuthCache", () => {
     const store = createLocalStore();
     const cache = createAuthCache(store, 30);
     await cache.set("a-secret-session-token", "alice");
-    // Asked under the token itself, the store has nothing; only the cache knows how to look it up.
     expect(await store.get("auth:a-secret-session-token")).toBeNull();
     expect(await cache.get("a-secret-session-token")).toBe("alice");
   });
@@ -211,7 +210,7 @@ describe("signing in callers the cache does not know", () => {
         return { ok: true, value: { userId: "alice" } };
       },
     };
-    const app = appWith(slow, 0); // no memory of users: only the single flight is in the way
+    const app = appWith(slow, 0);
     const answers = await Promise.all(Array.from({ length: 50 }, () => app.request("/v1/me", bearer("same-token"))));
     expect(answers.every((a) => a.status === 200)).toBe(true);
     expect(calls).toBe(1);
@@ -236,9 +235,8 @@ describe("signing in callers the cache does not know", () => {
     const results = await Promise.all(Array.from({ length: 30 }, (_, i) => signIn(`token-${i}`)));
     expect(mostInFlight).toBe(4);
     const busy = results.filter((r) => !r.ok && r.reason === "busy").length;
-    expect(calls).toBe(10); // 4 running and 6 waiting
+    expect(calls).toBe(10);
     expect(busy).toBe(20);
-    // And when it is over, it asks again.
     expect(await signIn("token-again")).toEqual({ ok: false, reason: "rejected" });
   });
 
@@ -262,13 +260,11 @@ describe("signing in callers the cache does not know", () => {
     app.use("/v1/*", servicesMiddleware(services), authMiddleware(services, cache));
     app.get("/v1/me", (c) => c.json({ userId: c.get("principal").userId }));
 
-    // 32 asking and 256 waiting is all there is room for: the next one is told to try again.
     const flood = Array.from({ length: 32 + 256 }, (_, i) => app.request("/v1/me", bearer(`made-up-${i}`)));
     await new Promise((r) => setTimeout(r, 50));
     const refused = await app.request("/v1/me", bearer("one-more"));
     expect(refused.status).toBe(503);
     expect(refused.headers.get("retry-after")).toBe("1");
-    // A user the agent remembers does not wait for the API at all.
     const remembered = await app.request("/v1/me", bearer("remembered"));
     expect(remembered.status).toBe(200);
     release();

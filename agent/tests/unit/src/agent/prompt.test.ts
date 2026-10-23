@@ -21,7 +21,6 @@ function w(overrides: Partial<Widget> = {}): Widget {
   };
 }
 
-/** The catalog of a request that has the tools of every group, with the given groups loaded. */
 function withTools(loaded: string[] = [], tools: AgentTool[] = []) {
   const mcp = makeMcpTools(tools);
   const names = [
@@ -68,7 +67,6 @@ describe("buildSystemPrompt — base content", () => {
 
   it("is lean: the instructions of tools that are not in use are not in it", () => {
     const out = buildSystemPrompt(req(), withTools());
-    // Ines's own skills are always listed (about 900 characters).
     expect(out.length).toBeLessThan(11_000);
     for (const notThere of ["execute_sql:", "create_artifact renders", "operation 'create'", "_llm_think: show"]) {
       expect(out).not.toContain(notThere);
@@ -97,10 +95,6 @@ describe("buildSystemPrompt — base content", () => {
     expect(out).toContain("MORE TOOLS");
   });
 
-  // Regression: with only the "widget list is metadata" and "only query
-  // already-loaded tables" rules, the model answered "that widget's data is
-  // not loaded — want me to load it?" instead of fetching a widget it could
-  // already see. The complement of the prohibition has to be stated.
   it("tells the model that an unloaded but visible widget is a fetch, not a question", () => {
     const out = buildSystemPrompt(req());
     expect(out).toContain("a fetch, not a question");
@@ -108,8 +102,6 @@ describe("buildSystemPrompt — base content", () => {
     expect(out).toContain("not evidence that the widget is empty, broken or unavailable");
   });
 
-  // The rule above must not become fabrication pressure: a widget that errors
-  // or returns nothing IS unavailable, and saying so is the honest answer.
   it("still requires reporting real fetch failures after the fetch", () => {
     const out = buildSystemPrompt(req());
     expect(out).toContain("After a fetch, report what actually happened");
@@ -142,7 +134,6 @@ describe("buildSystemPrompt — base content", () => {
     );
     expect(out).toContain("- Prices (prices) [origin: example] [uuid: w-2]: Sample description");
     expect(out).toContain("a widget tagged [query tool: name] names the one for it");
-    // Without the request's tools there is no tag
     expect(buildSystemPrompt(req({ widgets: { primary: [linked], secondary: [], extra: [] } }))).toContain(
       "- Team report (team_report) [origin: example] [uuid: w-1]: Sample description",
     );
@@ -219,7 +210,6 @@ describe("buildSystemPrompt — base content", () => {
   it("states the current date so the model doesn't fall back to its training cutoff", () => {
     const out = buildSystemPrompt(req());
     expect(out).toContain("CURRENT DATE");
-    // The actual bug: model used its cutoff year. Assert the real current year appears.
     expect(out).toContain(String(new Date().getUTCFullYear()));
   });
 
@@ -372,11 +362,6 @@ describe("buildSystemPrompt — skills + MCP tools + timezone", () => {
     expect(out).toContain("User timezone: Europe/Lisbon");
   });
 
-  // The prompt-cache regression. The Workspace sends `timezone` on the first
-  // POST of a turn only, so the re-POST used to drop the trailing "User
-  // timezone" line — two system prompts alternating by POST type, identical
-  // for the first 99.9%, splitting the OpenAI prompt cache into two lineages.
-  // Measured 2026-08-19: 21960 vs 21928 bytes across four POSTs.
   it("is byte-identical whether the timezone arrives on the request or via extra_state", () => {
     const fresh = buildSystemPrompt(req({ timezone: "America/New_York" }));
     const rePost = buildSystemPrompt(req(), { timezone: "America/New_York" });
@@ -384,8 +369,6 @@ describe("buildSystemPrompt — skills + MCP tools + timezone", () => {
   });
 
   it("still emits the timezone line when no timezone is known anywhere", () => {
-    // Unconditional so the SECTION SHAPE is fixed even when the value is not:
-    // a line that appears and disappears is what broke the cached prefix.
     const out = buildSystemPrompt(req());
     expect(out).toContain("User timezone: UTC");
   });
@@ -395,9 +378,6 @@ describe("buildSystemPrompt — skills + MCP tools + timezone", () => {
     expect(out).toContain("User timezone: Asia/Tokyo");
   });
 
-  // extra_state round-trips through the browser, so this value is untrusted.
-  // Reporting a zone Intl rejected would claim the date was rendered somewhere
-  // it was not.
   for (const [label, bad] of [
     ["an unknown IANA zone", "Not/AZone"],
     ["an empty string", ""],
@@ -499,10 +479,6 @@ describe("buildSystemPrompt — tool groups", () => {
   });
 });
 
-// Regression guard: the system prompt must advertise exactly the MCP tools the
-// factory registered. Listing raw request.tools leaks bridge-command wrappers
-// the filter dropped, and the model calls ghosts (18x inesmcp_update_widget,
-// then a hallucinated "I've updated the widget" — 2026-06-11 trace).
 describe("buildSystemPrompt — catalog matches registration", () => {
   const agentTools: AgentTool[] = [
     { name: "inesmcp_web_search", server_id: "ws", url: "u", description: "Search the web" },

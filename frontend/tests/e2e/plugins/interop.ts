@@ -3,18 +3,10 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-/**
- * The interop smoke tests' fixtures (docs/widget-plugins/GUEST-CONTRACT.md 8): public
- * Anywidget front-end modules, fetched from their wheels on PyPI when the tests run and
- * checked against the pinned SHA-256, then carried unmodified in a package of the test's own.
- * Nothing of them is committed: interop-modules.json names them.
- */
-
 export interface InteropModule {
   id: string;
   name: string;
   wheel: string;
-  /** The module's path in the wheel, and its style sheet's when it has one */
   esm: string;
   css?: string;
   traits: Record<string, unknown>;
@@ -29,7 +21,6 @@ const pins: {
 
 export const INTEROP_MODULES = pins.modules;
 
-/** Downloads each pinned wheel into `dir` once, checks it, and returns where it is. */
 async function wheel(dir: string, name: string) {
   const pin = pins.wheels[name];
   const path = join(dir, `${name}.whl`);
@@ -43,7 +34,6 @@ async function wheel(dir: string, name: string) {
   return path;
 }
 
-/** The module's files, read out of its wheel (a zip archive) with `unzip`. */
 export async function fetchInteropModules(dir: string) {
   mkdirSync(dir, { recursive: true });
   const wheels = new Map<string, string>();
@@ -64,11 +54,6 @@ export async function fetchInteropModules(dir: string) {
   return files;
 }
 
-/**
- * The package's own module: it reads the public module from its assets, gives it the traits
- * its Python class would have sent, then hands it the lifecycle, so the public code runs as
- * it was published.
- */
 export function interopEntry(module: InteropModule) {
   return `const TRAITS = ${JSON.stringify(module.traits)};
 let widget;

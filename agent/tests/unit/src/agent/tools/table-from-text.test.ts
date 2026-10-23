@@ -50,7 +50,6 @@ describe("runTableFromText", () => {
     expect(pendingTables.get(tableName)).toHaveLength(2);
     expect(artifactQueue).toHaveLength(1);
     const artifact = artifactQueue[0].data as unknown as CopilotArtifact;
-    // The Workspace has no table artifact; the table is an HTML artifact.
     expect(artifact.type).toBe("html");
     expect((artifact as { content: string }).content).toContain("<table>");
   });

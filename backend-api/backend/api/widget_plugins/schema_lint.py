@@ -1,11 +1,3 @@
-"""Checks on the JSON Schemas a plugin manifest carries.
-
-A widget's ``handles[].definition`` describes the ``data.<type>`` object of a
-``widgets.json`` entry, and ``settings``/``adminSettings`` describe forms the host
-renders. Both must be closed and bounded, in a small subset of JSON Schema
-(docs/widget-plugins/WIDGETS-JSON.md 3.2 and 3.3, DESIGN.md 4.4).
-"""
-
 import json
 import re
 from typing import Any
@@ -62,10 +54,6 @@ def _types(node: dict) -> set[str]:
 
 
 def lint_fragment(schema: Any) -> list[str]:  # noqa: PLR0915 - one walk over the schema
-    """Return the problems of a ``definition`` fragment, each with its JSON pointer.
-
-    An empty list means the fragment is closed, bounded and in the allowed subset.
-    """
     if not isinstance(schema, dict):
         return ["/: must be a JSON Schema object"]
     if len(json.dumps(schema)) > MAX_FRAGMENT_BYTES:
@@ -167,14 +155,6 @@ _CONDITIONS = ("if", "then", "else", "not", "contains")
 
 
 def closedness_problems(schema: Any) -> list[str]:  # noqa: PLR0912 - one rule per keyword
-    """The places a composed schema is not closed and bounded (WIDGETS-JSON 3.2).
-
-    Every object shape has ``additionalProperties`` false or a value schema, every string
-    a ``maxLength``, ``enum``, ``const``, ``pattern`` or ``format``, every array
-    ``maxItems``. Subschemas under ``if``, ``then``, ``else``, ``not`` and ``contains``
-    constrain values that the shapes already define, so they are walked but not held to
-    these rules.
-    """
     problems: list[str] = []
 
     def walk(node: Any, path: list[str], shape: bool) -> None:  # noqa: PLR0912 - one rule per keyword
@@ -225,11 +205,6 @@ SETTINGS_TYPES = {"string", "number", "integer", "boolean"}
 
 
 def lint_settings_schema(schema: Any) -> list[str]:  # noqa: PLR0912 - one rule per keyword
-    """Return the problems of a ``settings`` or ``adminSettings`` schema.
-
-    The host renders these as forms, so only a flat object of string, number,
-    integer, boolean and enum properties is accepted.
-    """
     if not isinstance(schema, dict):
         return ["/: must be a JSON Schema object"]
     if schema.get("type", "object") != "object":
@@ -266,7 +241,6 @@ def lint_settings_schema(schema: Any) -> list[str]:  # noqa: PLR0912 - one rule 
 
 
 def validate_settings_values(schema: dict, values: Any) -> list[str]:
-    """Check values (defaults, or what an admin saved) against a settings schema."""
     if not isinstance(values, dict):
         return ["settings must be an object"]
     properties = schema.get("properties", {})

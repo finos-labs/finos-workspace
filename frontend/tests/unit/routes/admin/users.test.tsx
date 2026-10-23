@@ -67,7 +67,6 @@ import AdminUsers from "~/routes/admin/users";
 let originalRO: typeof ResizeObserver;
 
 beforeEach(() => {
-  // jsdom has no layout; force the virtualized table to measure a viewport.
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
     width: 1000,
     height: 500,

@@ -1,18 +1,10 @@
 import { isValidCronExpression } from "./cronSchedule";
 import type { SchemaProblem } from "./widgetsSchemaValidation";
 
-/**
- * The rules of the `widgets.json` contract that JSON Schema cannot state
- * (docs/widget-plugins/WIDGETS-JSON.md 3.7 and 4.2): references between keys of one
- * widget, the path placeholders, and header names against the backend connection's
- * credentials. They run on a definition the composed schema already accepted.
- */
-
 type Param = Record<string, unknown> & { paramName?: string; type?: string };
 
 export const PLACEHOLDER = /\{([^{}]+)\}/g;
 
-/** The `{name}` placeholders of an endpoint, in order. */
 export function placeholders(endpoint: string): string[] {
   return [...endpoint.matchAll(PLACEHOLDER)].map((m) => m[1]);
 }
@@ -72,7 +64,6 @@ export function contractProblems(
   const requestParams = params.filter(({ param }) => param.type !== "form");
   const declared = new Set(requestParams.map(({ param }) => String(param.paramName)));
 
-  // paramName is a param's identity: storage and parameter groups key on it
   const seen = new Set<string>();
   for (const { param, pointer } of requestParams) {
     const name = String(param.paramName);
@@ -84,7 +75,6 @@ export function contractProblems(
     seen.add(name);
   }
 
-  // Path params: each placeholder names a declared param, sent nowhere else, one value
   const pathNames = new Set(placeholders(String(widget.endpoint ?? "")));
   for (const name of pathNames) {
     const found = requestParams.find(({ param }) => param.paramName === name);
@@ -159,7 +149,6 @@ export function contractProblems(
       });
   }
 
-  // A `$name` in the MCP link's mapping is the value of a declared param (WIDGETS-JSON 5.2)
   const link = widget.mcp_tool as { args?: Record<string, unknown> } | undefined;
   for (const [arg, value] of Object.entries(link?.args ?? {}))
     if (
@@ -172,7 +161,6 @@ export function contractProblems(
         message: `\`${value}\` names no param of this widget`,
       });
 
-  // A header or query param may not stand in for the connection's credentials
   const credentialHeaders = new Set(
     (context.credentialHeaders ?? []).map((h) => h.toLowerCase()),
   );

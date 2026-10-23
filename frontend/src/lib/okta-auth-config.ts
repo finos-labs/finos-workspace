@@ -1,8 +1,3 @@
-/*
- * Okta authentication configuration for the Workspace.
- * Based on Okta Auth JS SDK: https://github.com/okta/okta-auth-js
- */
-
 import { OktaAuth, type OktaAuthOptions } from "@okta/okta-auth-js";
 import { getConfig } from "./runtimeConfig";
 
@@ -23,7 +18,6 @@ export function getOktaAuth(): OktaAuth | null {
         redirectUri: window.location.origin,
         scopes: ["openid", "profile", "email"],
         pkce: true,
-        // Okta's tokens stay in page memory, never in browser storage
         tokenManager: {
           storage: "memory",
         },
@@ -31,7 +25,6 @@ export function getOktaAuth(): OktaAuth | null {
       try {
         _oktaAuth = new OktaAuth(oktaAuthConfig);
       } catch (error) {
-        // A malformed issuer leaves Okta sign-in out instead of breaking the login page
         console.error(
           "Okta sign-in is disabled: the Okta issuer URL is not valid.",
           error,
@@ -42,9 +35,6 @@ export function getOktaAuth(): OktaAuth | null {
   return _oktaAuth;
 }
 
-/**
- * Configuration for popup-based authentication.
- */
 export const oktaLoginRequest = {
   scopes: ["openid", "profile", "email"],
   prompt: "select_account",

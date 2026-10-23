@@ -61,10 +61,8 @@ describe("ConnectionStatusDot", () => {
     const { container } = render(
       <ConnectionStatusDot status="connected" label="Connected" coloredLabel />,
     );
-    // wrapper carries the status text color; the dot inherits it via currentColor
     expect(container.querySelector(".text-alert-success")).toBeTruthy();
     expect(container.querySelector(".bg-current")).toBeTruthy();
-    // label no longer uses the muted caption color
     expect(container.querySelector(".text-ds-text-caption")).toBeFalsy();
   });
 });

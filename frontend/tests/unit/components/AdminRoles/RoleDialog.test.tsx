@@ -5,8 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RoleDialog } from "~/components/AdminRoles/RoleDialog";
 import type { RoleT } from "~/components/AdminRoles/types";
 
-// --- mocks ------------------------------------------------------------------
-
 vi.mock("react-router-dom", async () => {
   const actual =
     await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
@@ -57,7 +55,6 @@ vi.mock("@tanstack/react-query", async () => {
   );
   return {
     ...actual,
-    // Saving calls the API function the mutation wraps, so a test sees what is sent.
     useMutation: vi.fn(
       ({ mutationFn }: { mutationFn: (variables: unknown) => unknown }) => ({
         mutate: vi.fn(),
@@ -77,8 +74,6 @@ vi.mock("~/api/entity_roles.api", () => ({
   patchEntityRole: (...args: unknown[]) => mockUpdate(...args),
   deleteEntityRole: (...args: unknown[]) => mockDelete(...args),
 }));
-
-// ---------------------------------------------------------------------------
 
 function renderDialog(overrides?: {
   mode?: "create" | "edit";
@@ -233,7 +228,6 @@ describe("RoleDialog", () => {
     const SEARCH_WEB = "Copilot may search the web (SEARCH_WEB)";
     const FETCH_FROM_WEB = "Copilot may read pages from the web (FETCH_FROM_WEB)";
     const checkbox = (name: string) => screen.getByRole("checkbox", { name });
-    // The select's label names its form item, not the trigger
     const sharingSelect = () =>
       within(
         screen.getByText("Sharing").closest(".BB-FormSelect") as HTMLElement,
@@ -386,7 +380,6 @@ describe("RoleDialog", () => {
     it("removes a member via trash and the form becomes dirty", async () => {
       renderDialog({ mode: "edit", initialData: role });
 
-      // Wait for the member list to render.
       await screen.findByText("Alice Admin");
 
       const trashBtn = screen.getByRole("button", {
@@ -394,7 +387,6 @@ describe("RoleDialog", () => {
       });
       fireEvent.click(trashBtn);
 
-      // "Unsaved" tag appears, the user vanishes, and Save enables.
       await waitFor(() => {
         expect(screen.getByText("Unsaved")).toBeInTheDocument();
       });

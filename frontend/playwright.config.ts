@@ -1,14 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
 
-/**
- * End-to-end tests against a running stack over HTTPS (docker-compose.e2e.yml serves the
- * web app on https://localhost:3000). They sign in as an account that exists there, which
- * they name through E2E_USER_EMAIL and E2E_USER_PASSWORD; see TESTING.md.
- */
-
-// Specs that also run in Firefox and WebKit: the widget plugins' (a plugin's frame, its
-// policy and its workers are where the engines differ, docs/widget-plugins/SPIKE.md), and
-// keeping a dashboard's changes as the page goes away (WebKit cancels requests made then)
 const CROSS_ENGINE_SPECS = [/plugins?[-.][^/]*spec\.ts$/, /dashboard-persistence\.spec\.ts$/];
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -20,8 +11,6 @@ export default defineConfig({
   reporter: "html",
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "https://localhost:3000",
-    // The stack's certificate comes from a certificate authority made for the run
-    // (tests/e2e/make-tls.sh), which the browsers do not know
     ignoreHTTPSErrors: true,
     trace: "on-first-retry",
   },

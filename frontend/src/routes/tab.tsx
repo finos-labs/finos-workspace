@@ -37,7 +37,6 @@ function useTabWidgets(tabId: string) {
 
   useEffect(() => {
     return () => {
-      // just in case pending export is still true
       useThemeStore.getState().setPendingExport(false);
     };
   }, [tabId]);
@@ -83,8 +82,6 @@ function TabContent({ id }: { id: string }) {
       lastInnerTab,
       searchParams,
     });
-    // `null` means the URL already matches — navigating anyway would push a
-    // duplicate history entry on every pass and trip the browser's navigation throttle.
     if (nextParams) setSearchParams(nextParams, { replace: true });
   }, [hasLayout, gridLayout, currentTab, lastInnerTab, searchParams, setSearchParams]);
 
@@ -93,7 +90,6 @@ function TabContent({ id }: { id: string }) {
     [gridLayout?.[currentTab]],
   );
 
-  // Current tab widgets (visible in grid)
   const gridItemsMemo = useMemo(() => {
     const uniqueGrid = currentGrid.reduce((acc, layout) => {
       if (!acc.has(layout.i)) acc.set(layout.i, layout);

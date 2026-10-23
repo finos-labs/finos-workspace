@@ -1,12 +1,3 @@
-/**
- * Tier 2 — turn-level tracing across re-POSTs.
- *
- * A logical turn is N HTTP POSTs, not one: every round-trip ends the generator
- * and the browser re-POSTs. These tests pin the two things that make the turn
- * observable anyway — the traceparent that keeps all N requests in one trace,
- * and the token total that would otherwise die with each generator.
- */
-
 import { describe, it, before as beforeAll, beforeEach, after as afterAll } from "node:test";
 import { expect } from "expect";
 import { trace } from "@opentelemetry/api";
@@ -32,10 +23,6 @@ import { clearAllModuleState } from "../../helpers/clear-state.ts";
 const exporter = new InMemorySpanExporter();
 let provider: BasicTracerProvider | undefined;
 
-// Registered once for the file, not per test: the OTel global is process-wide,
-// and tearing it down between tests leaves the API unable to re-register.
-// initTelemetry() is deliberately bypassed — it is env-gated, so going through
-// it would make these tests depend on process env.
 beforeAll(() => {
   provider = new BasicTracerProvider({ spanProcessors: [new SimpleSpanProcessor(exporter)] });
   trace.setGlobalTracerProvider(provider);
@@ -43,7 +30,6 @@ beforeAll(() => {
 
 afterAll(async () => {
   await provider?.shutdown();
-  // Restore the no-op global.
   trace.disable();
 });
 
@@ -64,7 +50,6 @@ function bridgeExtraState(events: SSEEvent[]): ExtraState {
   return (fc!.data as { extra_state?: ExtraState }).extra_state ?? {};
 }
 
-/** A turn's first request: the model fires a bridge command, so we round-trip. */
 function firstRequest(conversationId: string) {
   return runAgentLoop({
     request: {
@@ -83,7 +68,6 @@ function firstRequest(conversationId: string) {
   });
 }
 
-/** The browser's re-POST: the bridge result plus whatever extra_state we echoed. */
 function rePost(conversationId: string, extraState: Record<string, unknown>) {
   const toolMsg: ToolMessage = {
     role: "tool",
@@ -106,11 +90,6 @@ function rePost(conversationId: string, extraState: Record<string, unknown>) {
   });
 }
 
-/**
- * A re-POST whose model fires ANOTHER bridge call, so the request emits its
- * own extra_state — the only way to observe what a middle request propagates
- * onward to the rest of the turn.
- */
 function rePostWithBridgeCall(conversationId: string, extraState: Record<string, unknown>) {
   const toolMsg: ToolMessage = {
     role: "tool",
@@ -173,14 +152,9 @@ describe("turn tracing across re-POSTs", () => {
   });
 
   it("keeps every later request a direct CHILD of the first — not nested one level deeper each time", async () => {
-    // A queued-bridge-call drain can re-POST 19 times. Parenting each request
-    // to the previous one would bury the last span 19 levels deep.
     const first = await collectGenerator(firstRequest("t-flat"));
     const rootTraceparent = bridgeExtraState(first).traceparent!;
 
-    // A middle request must echo the ROOT's traceparent onward unchanged —
-    // asserted unconditionally, because a guarded assertion here would pass
-    // vacuously the moment the emission stopped happening.
     const middle = await collectGenerator(
       rePostWithBridgeCall("t-flat", { traceparent: rootTraceparent }),
     );
@@ -208,30 +182,22 @@ describe("turn tracing across re-POSTs", () => {
 
     const attrs = turnSpans()[0].attributes;
     expect(attrs["ines.usage.turn.post_count"]).toBe(2);
-    // Mock LLM reports 1 in / 1 out per call: 2 tokens per request, 4 for the turn.
     expect(attrs["ines.usage.turn.total_tokens"]).toBe(4);
     expect(attrs["ines.conversation_id"]).toBe("t-usage-span");
   });
 
   it("tags the turn span with the standard session.id attribute", async () => {
-    // `session.id` is OTel semconv, not a vendor key — but it is also what
-    // Langfuse reads to group a chat's turns into one session. Emitting the
-    // standard name gets that grouping without coupling to a backend.
     await collectGenerator(firstRequest("chat-abc"));
     expect(turnSpans()[0].attributes["session.id"]).toBe("chat-abc");
   });
 
   it("omits session.id entirely when there is no conversation id", async () => {
-    // A placeholder like "(missing)" would collapse every anonymous turn from
-    // every user into one bogus shared session — worse than no grouping.
     await collectGenerator(firstRequest(""));
     expect(turnSpans()[0].attributes).not.toHaveProperty("session.id");
     expect(turnSpans()[0].attributes["ines.conversation_id"]).toBe("(missing)");
   });
 
   it("ends the span even when the request exits early through a round-trip return", async () => {
-    // Every round-trip leaves runAgentLoop via `return`, not by running off the
-    // end — an end() outside `finally` would leak a span on exactly these.
     await collectGenerator(firstRequest("t-early-exit"));
     expect(turnSpans()).toHaveLength(1);
     expect(turnSpans()[0].ended).toBe(true);
@@ -270,17 +236,11 @@ describe("turn tracing — untrusted echoed state", () => {
   }
 
   it("does not propagate a traceparent it refused to parse", async () => {
-    // Otherwise the two derivations of "what is the turn root" disagree: the
-    // span parents to nothing (correct) while the corrupt string keeps riding
-    // extra_state, so every later request in the turn also fails to parse it
-    // and starts its own trace. The turn shatters and never recovers, even
-    // though this request had a perfectly good span context to offer instead.
     const events = await collectGenerator(
       rePostWithBridgeCall("t-poison", { traceparent: "garbage-not-a-traceparent" }),
     );
     const echoed = bridgeExtraState(events).traceparent;
     expect(echoed).not.toBe("garbage-not-a-traceparent");
-    // It must offer this request's own span so the REST of the turn can stitch.
     expect(parseTraceparent(echoed)).not.toBeNull();
     expect(echoed).toBe(
       `00-${turnSpans()[0].spanContext().traceId}-${turnSpans()[0].spanContext().spanId}-01`,
@@ -298,16 +258,6 @@ describe("turn tracing — untrusted echoed state", () => {
   });
 });
 
-/**
- * The prompt-cache regression, end to end.
- *
- * The Workspace sends `timezone` on the first POST of a turn and not on the
- * bridge re-POST. `buildDateSection` appended its "User timezone" line only
- * when it had a value, so the system prompt alternated between two byte
- * strings across a turn's POSTs — measured against a live OpenAI trace on
- * 2026-08-19 as 21960 vs 21928 bytes, identical for the first 99.9%, each
- * variant maintaining its own prompt-cache lineage.
- */
 describe("turn tracing — timezone carries across the round-trip", () => {
   const TZ = "America/New_York";
 
@@ -332,7 +282,6 @@ describe("turn tracing — timezone carries across the round-trip", () => {
     });
   }
 
-  /** The browser's re-POST: carries no `timezone`, only the echoed extra_state. */
   function bridgeRePost(spy: SpyMockLlm, extraState: Record<string, unknown>) {
     const toolMsg: ToolMessage = {
       role: "tool",
@@ -383,8 +332,6 @@ describe("turn tracing — timezone carries across the round-trip", () => {
     expect(systemPromptOf(secondSpy)).toBe(systemPromptOf(firstSpy));
   });
 
-  // The correctness half: without the echo the re-POST fell back to UTC, which
-  // is the wrong calendar day for a user west of Greenwich late in their day.
   it("renders the re-POST date in the user's zone, not UTC", async () => {
     const firstSpy = makeSpyMockLlm(
       llmCallsTool("manage_navigation_bar", {
@@ -403,7 +350,6 @@ describe("turn tracing — timezone carries across the round-trip", () => {
     expect(systemPromptOf(secondSpy)).not.toContain("User timezone: UTC");
   });
 
-  // A turn that never had a timezone must still produce ONE stable prompt.
   it("stays stable across the round-trip when no timezone is ever supplied", async () => {
     const firstSpy = makeSpyMockLlm(
       llmCallsTool("manage_navigation_bar", {
@@ -422,7 +368,6 @@ describe("turn tracing — timezone carries across the round-trip", () => {
     expect(systemPromptOf(secondSpy)).toContain("User timezone: UTC");
   });
 
-  // extra_state round-trips through the browser and is untrusted.
   it("falls back to UTC on a corrupted echoed timezone instead of failing the turn", async () => {
     const spy = makeSpyMockLlm(llmEmitsText("Done."));
     const events = await collectGenerator(bridgeRePost(spy, { timezone: "Not/AZone" }));

@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Helpers for the local stack in compose.yaml. The Makefile calls these; run
-# `./dev.sh -h` to see them.
 set -euo pipefail
 
 LOCAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -46,8 +44,6 @@ doctor() {
   version="$(docker compose version --short 2>/dev/null)" || fail "Docker Compose v2 is missing. Update Docker Desktop."
   echo "ok: Docker Compose ${version#v}"
 
-  # Ports already taken by something other than this stack. The stack in the
-  # repository root's docker-compose.yml also uses 8000.
   if command -v lsof >/dev/null && [[ -z "$(compose ps -q 2>/dev/null)" ]]; then
     local port
     for port in "${PORTS[@]}"; do
@@ -67,8 +63,6 @@ create_env() {
   [[ -n "${ADMIN_EMAIL:-}" ]] ||
     fail "backend-api/backend/envs/.env does not exist yet. Name the administrator: ADMIN_EMAIL=<your-email> make up"
   command -v python3 >/dev/null || fail "python3 is needed once to write the settings (standard library only)."
-  # Writes envs/.env with random secrets and scripts/cfgs/config.toml with the
-  # administrator's address. It refuses to replace files that exist.
   (cd "$BACKEND_DIR" && python3 -m scripts.create_local_env --admin-email "$ADMIN_EMAIL")
 }
 

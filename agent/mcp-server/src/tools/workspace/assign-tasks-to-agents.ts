@@ -1,9 +1,3 @@
-/**
- * assign_tasks_to_agents — delegate work to configured external agents.
- *
- * Mirrors workspace_mcp/server.py:1003-1018.
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";

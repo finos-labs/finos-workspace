@@ -22,7 +22,6 @@ const widgets = {
   elsewhere: { ...widget, endpoint: "https://elsewhere.test/stock/price" },
 } as unknown as WidgetsType;
 
-/** Each request the backend got, by the origin and path it went to */
 const sentTo = () =>
   Object.fromEntries(
     mockFetch.mock.calls.map(([url, init]) => {
@@ -39,7 +38,6 @@ const sentTo = () =>
     }),
   );
 
-/** Answers like a backend: a 404 for the path that cannot exist, its routes for the rest */
 const answer = async (url: string | URL, init?: RequestInit) => {
   if (init?.method === "OPTIONS")
     return { status: String(url).includes("__workspace_route_probe_") ? 404 : 204 };

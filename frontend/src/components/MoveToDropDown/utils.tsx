@@ -11,7 +11,6 @@ export function getExportFns(exportFns?: ExportFns) {
     { value: "TXT", fn: exportFns?.txtFunction },
   ];
 
-  // Filter out undefined functions
   return exportFunctions.filter(({ fn }) => fn !== undefined && fn !== null);
 }
 

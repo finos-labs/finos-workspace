@@ -2,18 +2,10 @@ import { serialize } from "./csp";
 import type { ColorScheme } from "./protocol";
 import shellSource from "./shell/shell.js?raw";
 
-/**
- * The document of a plugin frame (docs/widget-plugins/SECURITY.md 4.6): a `srcdoc` whose
- * first element is the policy, then the shell, whose hash is in that policy. The iframe
- * carries `sandbox="allow-scripts"` and nothing else, so the document has an opaque
- * origin.
- */
-
 export const FRAME_SANDBOX = "allow-scripts";
 
 let shellHashPromise: Promise<string> | null = null;
 
-/** `sha256-<base64>` of the shell script, as CSP hash sources write it. */
 export function shellHash(): Promise<string> {
   shellHashPromise ??= crypto.subtle
     .digest("SHA-256", new TextEncoder().encode(shellSource))
@@ -33,7 +25,6 @@ function escapeAttribute(value: string) {
     .replace(/>/g, "&gt;");
 }
 
-/** Which policy checks the canary runs: each must produce a violation event. */
 export function canaryProbes(effective: Record<string, string[]>): string[] {
   const probes = ["connect", "img", "inline"];
   if (!(effective["script-src"] ?? []).includes("'unsafe-eval'")) probes.push("eval");

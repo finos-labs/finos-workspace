@@ -1,5 +1,3 @@
-"""Worker tasks for the API."""
-
 import asyncio
 import warnings
 from datetime import datetime, timedelta  # type: ignore
@@ -33,7 +31,6 @@ async def login_information(
     user_uuid: UUID,
     source: None | Literal["app", "oauth-app"],
 ) -> None:
-    """Records a login"""
     async with AsyncWriteSessionLocal.session() as db:
         query = insert(Login).values(source=source or "app", user_uuid=user_uuid)
         await db.execute(query)
@@ -41,10 +38,6 @@ async def login_information(
 
 
 async def delete_old_saves() -> bool:
-    """Delete old dashboard saves if they are older than two days old and
-    if the user has more than 10 saves.
-    """
-
     async with AsyncWriteSessionLocal.session() as db:
         to_delete = await crud.get_dashboard_saves_to_delete(db)
         delete_date = base.get_now() - timedelta(days=2)
@@ -58,8 +51,6 @@ async def delete_old_saves() -> bool:
 
 
 async def delete_unconfirmed_files(delete_delay: int = 7) -> bool:
-    """Deletes unconfirmed files that are older than a certain number of days"""
-
     delete_end = base.get_now() - timedelta(days=delete_delay)
     delete_start = delete_end - timedelta(days=7)
 
@@ -85,7 +76,6 @@ async def delete_unconfirmed_files(delete_delay: int = 7) -> bool:
 async def update_share_files(
     owner_uuid: str, dashboard_uuid: str | None = None, user_app_uuid: str | None = None
 ) -> bool:
-    """Updates the shared files for a dashboard or user app"""
     try:
         dashboard_uuid = UUID(dashboard_uuid) if dashboard_uuid else None
         user_app_uuid = UUID(user_app_uuid) if user_app_uuid else None
@@ -101,7 +91,6 @@ async def update_share_files(
 
 @repeat_every(seconds=timedelta(hours=10), wait_first=False)
 async def delete_old_saves_task():
-    """Task to delete old dashboard saves"""
     return await workers_queue.worker_queue_at(
         delete_old_saves,
         next_schedule_dt(base.get_midnight(), add_days=3),
@@ -111,7 +100,6 @@ async def delete_old_saves_task():
 
 @repeat_every(seconds=timedelta(hours=10), wait_first=False)
 async def delete_unconfirmed_files_task():
-    """Task to delete unconfirmed files"""
     return await workers_queue.worker_queue_at(
         delete_unconfirmed_files,
         next_schedule_dt(base.get_midnight(), add_days=2),
@@ -121,7 +109,6 @@ async def delete_unconfirmed_files_task():
 
 @repeat_every(seconds=timedelta(minutes=2), wait_first=True, max_repetitions=1)
 async def delete_unconfirmed_files_no_delay_task():
-    """Task to delete unconfirmed files"""
     clear_date = settings.CLEAR_UNCONFIRMED_FILES_DATE
 
     for delete_delay in reversed(range(0, 30)):
@@ -135,7 +122,6 @@ async def delete_unconfirmed_files_no_delay_task():
 
 
 async def get_usage_tasks(uuid: UUID, usage_type: Literal["file", "copilot", "limits"]):
-    """Get usage tasks for a user"""
     async with AsyncReadSessionLocal.session() as db:
         if usage_type == "limits":
             return await get_user_limits(db, uuid)
@@ -200,7 +186,6 @@ async def update_user_usage_cache(user_uuid: UUID, reset_copilot_calls: bool = F
 
 
 async def user_usage(reset_copilot_calls: bool = False):
-    """Sync the usage of the users who used the Copilot today"""
     logger.info("Starting user_usage task")
     async with AsyncWriteSessionLocal.session() as db:
         query = select(UserUsage.user_uuid).where(
@@ -260,7 +245,6 @@ async def user_usage(reset_copilot_calls: bool = False):
 
 @repeat_every(seconds=timedelta(minutes=5), wait_first=False)
 async def user_usage_task():
-    """Sync the usage of the users who used the Copilot today"""
     return await workers_queue.worker_queue(
         user_usage,
         "user_usage",
@@ -270,7 +254,6 @@ async def user_usage_task():
 
 
 async def user_usage_cache_task(user_uuid: UUID):
-    """Update user usage"""
     return await update_user_usage_cache(user_uuid)
 
 
@@ -280,7 +263,6 @@ async def reset_copilot_calls():
 
 @repeat_every(seconds=timedelta(hours=2), wait_first=False)
 async def reset_copilot_calls_task():
-    """Task to reset copilot calls"""
     return await workers_queue.worker_queue_at(
         reset_copilot_calls,
         next_schedule_dt(base.get_midnight()),
@@ -289,8 +271,6 @@ async def reset_copilot_calls_task():
 
 
 async def start_background_tasks():
-    """Start all background tasks"""
-
     await reset_copilot_calls_task()
     await user_usage_task()
     await delete_old_saves_task()
@@ -300,8 +280,6 @@ async def start_background_tasks():
         settings.CLEAR_UNCONFIRMED_FILES_DATE, "%Y-%m-%d"
     )
 
-    # Clear unconfirmed files if the current day is the same
-    # as the clear date
     if base.get_now().day == clear_datetime.day:
         await delete_unconfirmed_files_no_delay_task()
 

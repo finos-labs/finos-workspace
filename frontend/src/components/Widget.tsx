@@ -16,8 +16,6 @@ import Widgets, { getWidgetComponent, type WidgetId } from "./Widgets";
 
 const PluginWidget = lazy(() => import("~/plugins/PluginWidget"));
 
-/** Whether a widget is rendered by a widget plugin: a standalone plugin widget, or a
- * backend widget of a type that is not built in (docs/widget-plugins/DESIGN.md 5). */
 export function isPluginRendered(
   widget: { plugin?: unknown; type?: string | null } | undefined,
 ) {
@@ -57,7 +55,6 @@ export function WidgetWrapper(props: { uuid: string; activeDashboardId: string }
   const element = useMemo(
     () => (
       <WidgetProvider {...value}>
-        {/* A plugin frame is released when its widget scrolls far out of view */}
         <RenderIfVisible stayRendered={!pluginRendered}>
           <Suspense fallback={<WidgetFallback key={`widget-fallback-${uuid}`} />}>
             <WidgetComponent />
@@ -95,7 +92,6 @@ export function WidgetWrapper(props: { uuid: string; activeDashboardId: string }
     [uuid, widgetId, activeDashboardId],
   );
 
-  // empty dashboard cta widget
   if (uuid === "empty-dashboard-cta") return <EmptyDashboardCTA />;
 
   return <ErrorBoundary {...errorBoundaryProps}>{element}</ErrorBoundary>;
@@ -112,7 +108,6 @@ export function WidgetComponent() {
     return null;
   }
 
-  // A standalone plugin widget names its plugin
   if (widget.plugin) return <PluginWidget />;
 
   const endpointUrl = widget?.endpoint?.url;
@@ -141,7 +136,6 @@ export function WidgetComponent() {
 
   if (widgetTypeComponent) return widgetTypeComponent;
 
-  // A type that is not built in is a plugin's to render, or shows as not available
   if (isPluginRendered({ type: widgetType })) return <PluginWidget />;
 
   return (

@@ -22,37 +22,26 @@ LOGURU_FORMAT = (
 
 MASK = "********"
 
-# Names whose values never reach a log: credential headers, any key that holds a token,
-# secret, password or key, and the signatures of pre-signed URLs (Signature,
-# X-Amz-Signature, sig). The lookahead finds the word inside a name; the name
-# itself is then taken whole and possessively, so a failed match never backtracks
-# through it (every pattern here runs in time linear in the message). "KeyError: 'x'"
-# names a missing key, not a credential.
 _MASKED_NAME = (
     r"(?!KeyError\b)"
     r"(?=sig(?![\w-])"
     r"|[\w-]*?(?:authorization|cookie|token|secret|password|key|signature))[\w-]++"
 )
-# A quoted value up to its closing quote, or to the end of the line when it has none
 _QUOTED_VALUE = r"""'(?:\\.|[^'\\\n])*+'?|"(?:\\.|[^"\\\n])*+"?"""
 
-# 'name': 'value', "name": "value" and 'name': 123, as in dict reprs and JSON
 _QUOTED_PAIR = re.compile(
     rf"""(?P<q>['"])(?P<name>{_MASKED_NAME})(?P=q)(?P<sep>\s*+:\s*+)"""
     rf"""(?P<value>{_QUOTED_VALUE}|(?!['"\[{{(])[^,}}\]\s]++)""",
     re.IGNORECASE,
 )
-# name: value and name=value: header lines, query strings, form bodies, f-strings
 _BARE_PAIR = re.compile(
     rf"""(?<![\w-])(?P<name>{_MASKED_NAME})(?P<sep>\s*+[:=]\s*+)"""
     rf"""(?P<value>{_QUOTED_VALUE}|(?!['"\[{{(*])[^\s,;&'"}}\])]++)""",
     re.IGNORECASE,
 )
-# The credential of an Authorization value, wherever it appears
 _AUTH_SCHEME = re.compile(
     r"\b(?P<scheme>Bearer|Basic|Digest)\s++[A-Za-z0-9\-._~+/]++=*", re.IGNORECASE
 )
-# Workspace tokens by their prefixes, and the session cookies by their names
 _WORKSPACE_TOKEN = re.compile(r"\bws_mcp_[A-Za-z0-9_-]++")
 _SESSION_COOKIE = re.compile(r"(?P<name>__Host-ws_\w++)=[^;\s'\",]++")
 
@@ -65,7 +54,6 @@ def _mask_value(match: re.Match) -> str:
 
 
 def redact(message: str) -> str:
-    """The message with every credential it carries masked."""
     message = _AUTH_SCHEME.sub(rf"\g<scheme> {MASK}", message)
     message = _WORKSPACE_TOKEN.sub(MASK, message)
     message = _SESSION_COOKIE.sub(rf"\g<name>={MASK}", message)
@@ -103,8 +91,6 @@ def get_secrets() -> dict[str, str]:
 
 
 def obfuscate_secrets(message: str) -> str:
-    """The message with the value of every setting masked, and every credential it carries.
-    A value is masked, not named: nothing taken from the settings is written out."""
     for value in get_secrets().values():
         message = message.replace(value, MASK)
     return redact(message)
@@ -112,13 +98,11 @@ def obfuscate_secrets(message: str) -> str:
 
 class InterceptHandler(logging.Handler):
     def emit(self, record):  # noqa: PLR6301
-        # Get corresponding Loguru level if it exists
         try:
             level = logger.level(record.levelname).name
         except ValueError:
             level = record.levelno
 
-        # Find caller from where originated the logged message
         frame, depth = logging.currentframe(), 2
         while frame.f_code.co_filename == logging.__file__:
             frame = frame.f_back
@@ -151,8 +135,6 @@ def serialize(record: dict) -> str:
     ):
         return None
 
-    # Redacted before JSON encoding: once quotes are escaped the patterns no longer see
-    # the names
     subset = {
         "asctime": record["time"].strftime("%Y-%m-%d %H:%M:%S.%f"),
         "levelname": record["level"].name,
@@ -194,7 +176,6 @@ def setup_logging(settings: "Settings") -> None:
             "colorize": settings.LOGURU_COLORIZE,
             "format": LOGURU_FORMAT,
             "level": settings.LOG_LEVEL,
-            # diagnose would print the values of local variables, credentials included
             "diagnose": False,
             "backtrace": False,
         }
@@ -214,8 +195,6 @@ def setup_logging(settings: "Settings") -> None:
         if name not in seen:
             seen.add(name.split(".")[0])
             logging.getLogger(name).handlers = [intercept_handler]
-    # The HTTP clients log the full URL of every request at INFO, and a URL can carry a
-    # credential: only their warnings and errors are logged
     for name in ("httpx", "httpcore"):
         logging.getLogger(name).setLevel(logging.WARNING)
 

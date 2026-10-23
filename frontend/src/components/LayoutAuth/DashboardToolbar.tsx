@@ -78,7 +78,6 @@ export default function DashboardToolbar() {
       const widgetsInGroup = getWidgetsFromGroup(groupId, id);
 
       if (widgetsInGroup?.length > 0) {
-        // If there are, show a warning message
         return showNotificationWithRememberMe({
           id: NotificationId.GroupNotEmpty,
           message: "Group not empty",
@@ -96,7 +95,6 @@ export default function DashboardToolbar() {
         });
       }
 
-      // If there are no widgets in the group, delete the group
       deleteGroup(id, groupId);
     },
     [id, deleteGroup, getWidgetsFromGroup],
@@ -141,7 +139,6 @@ export default function DashboardToolbar() {
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    // Check if mouse is over dropdown content or tooltip content - we need a delay to allow for the mouse to enter the dropdown content
     setTimeout(() => {
       const dropdownContent = document.querySelector("._dropdown-menu-content");
       const tooltipContent = document.querySelector(".TooltipContent");

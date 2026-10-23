@@ -1,10 +1,3 @@
-/**
- * get_workspace_snapshot — fetch current Workspace snapshot.
- *
- * Pure pass-through to the connected browser bridge. Mirrors
- * workspace_mcp/server.py:496.
- */
-
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";
 import { executeBridgeCommand } from "../../bridge/execute.ts";

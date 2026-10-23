@@ -3,8 +3,6 @@ import { expect } from "expect";
 import { parseJsonResponse, truncate } from "../../../../src/lib/llm.ts";
 
 describe("singleShotLlm model choice", () => {
-  // No model id is baked in: with no caller model and no DEFAULT_MODEL it fails
-  // loudly. A fresh copy of the module is loaded because other test files mock lib/llm.
   const saved = process.env.DEFAULT_MODEL;
   afterEach(() => {
     if (saved === undefined) delete process.env.DEFAULT_MODEL;

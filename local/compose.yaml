@@ -1,19 +1,11 @@
-# The whole app on one machine, with hot reload. Run `make up` in this folder;
-# LOCAL_SETUP.md explains each part. docker-compose.yml at the repository root
-# runs the built images instead.
 name: workspace-local
 
-# Shared by the backend services: same code, same settings. envs/.env is the
-# file that scripts.create_local_env writes for the root docker-compose.yml.
 x-backend: &backend
   build:
     context: ../backend-api/backend
     dockerfile: fastapi.Dockerfile
-  # The images are built from scratch, so they are built for, and run on, this platform.
   platform: ${PLATFORM:-linux/amd64}
   env_file: ../backend-api/backend/envs/.env
-  # These take priority over envs/.env: the containers' hosts, and the address of
-  # the Vite dev server in links the backend builds.
   environment:
     DB_HOST: mysql
     REDIS_HOST: valkey
@@ -21,7 +13,6 @@ x-backend: &backend
     FRONTENDURL: http://localhost:1420
     APPURL: http://localhost:1420
   volumes:
-    # The source is mounted, so edits reach the containers without a rebuild.
     - ../backend-api/backend:/opt/code
 
 services:
@@ -34,8 +25,6 @@ services:
       MYSQL_DATABASE: workspace
     ports:
       - "3306:3306"
-    # Pinged over TCP: on a first start the entrypoint runs a temporary server on the socket only,
-    # while it creates the database, and a socket ping would call that healthy too early.
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -P 3306 -u root -proot --silent"]
       interval: 5s
@@ -55,14 +44,8 @@ services:
       timeout: 3s
       retries: 20
 
-  # Runs to completion before the backend starts: applies the migrations, then
-  # creates the organization and administrator from scripts/cfgs/config.toml
-  # (printing the administrator's password once, in this service's log) and
-  # writes user_create.json, which the backend reads at start. Safe to re-run;
-  # it keeps what exists.
   init:
     <<: *backend
-    # The image has no shell: Python starts user_create.json empty, then runs the migrations and init_users.
     command:
       - python
       - -c
@@ -79,14 +62,6 @@ services:
 
   backend:
     <<: *backend
-    # Widget plugins (LOCAL_SETUP.md): uncomment, with the source mount kept, and set
-    # WIDGET_PLUGINS_DIR=/opt/widget-plugins in envs/.env.
-    # volumes:
-    #   - ../backend-api/backend:/opt/code
-    #   - <plugins directory>:/opt/widget-plugins:ro
-    #   # Optional, with WIDGET_PLUGIN_SECRETS_DIR=/run/secrets/widget-plugins:
-    #   - <plugin secrets directory>:/run/secrets/widget-plugins:ro
-    # Restarts itself when a file under backend-api/backend changes.
     command:
       [
         "python", "-m", "uvicorn", "main:app",
@@ -99,8 +74,6 @@ services:
       init:
         condition: service_completed_successfully
 
-  # Runs background jobs. Does not reload by itself: after changing worker
-  # code, run `make restart s=backend-worker`.
   backend-worker:
     <<: *backend
     build:
@@ -111,8 +84,6 @@ services:
         condition: service_completed_successfully
 
   frontend:
-    # Same Node as frontend/Dockerfile. The packages' own install scripts are
-    # not run, as in the image: the app needs none of them.
     image: node:22
     working_dir: /app
     command:
@@ -121,8 +92,6 @@ services:
         "-c",
         "npm install --ignore-scripts --no-audit --no-fund && exec npm run dev",
       ]
-    # These take priority over the values in frontend/.env. The browser calls
-    # the URLs, so they are host addresses.
     environment:
       VITE_BACKEND_URL: http://localhost:8000
       VITE_AI_API_URL: ""
@@ -130,7 +99,6 @@ services:
       - "1420:1420"
     volumes:
       - ../frontend:/app
-      # Linux packages for the container, kept apart from any node_modules on the host.
       - frontend-node-modules:/app/node_modules
     healthcheck:
       test: ["CMD", "curl", "-fs", "-o", "/dev/null", "http://localhost:1420"]

@@ -25,7 +25,6 @@ import { resolveCronRefetchInterval } from "./utils/cronSchedule";
 
 export { convertHeadersToRecord } from "~/lib/utils/widgetParams";
 
-/** What a failed request's JSON body may carry. */
 type ApiErrorBody = {
   warnings?: string[];
   detail?: unknown;
@@ -42,10 +41,9 @@ export type TResponseCb<TData> = (
 ) => Promise<void>;
 
 export interface QueryOptions<TQueryFnData = unknown> {
-  /** What to send (`widgetRequest.ts`); null sends nothing */
   request: BuiltRequest | null;
-  asText?: boolean; // If asText is true, the response will be returned as text instead of JSON
-  responseCb?: TResponseCb<TQueryFnData>; // Custom resolve callback to handle the response before resolving the promise
+  asText?: boolean;
+  responseCb?: TResponseCb<TQueryFnData>;
   queryKey?: unknown[];
 }
 
@@ -74,8 +72,6 @@ export function useJsonData<
     activeDashboardId,
   } = useWidgetContext(true);
 
-  // A widget whose data backend is not the viewer's waits, or never fetches: it would
-  // go out without the backend's credentials
   const sourceState = useWidgetSourceState({
     sourceId,
     connectionType,
@@ -83,15 +79,11 @@ export function useJsonData<
   });
   const sourceReady = canFetchFromSource(sourceState);
 
-  // Check if the widget has permission before making the API call
   const hasAccess = useShallowPermissionsStore((state) =>
     isSharedWidget
       ? state.hasAccess(sourceId ?? "", (widgetId ?? "").replace(`${sourceName}-`, ""))
       : true,
   );
-  // The URL comes from a widget: saved or shared content, a data backend, the AI. Only a
-  // GET of the API's own file routes gets the Workspace session; nothing else a widget
-  // names is called with it, so a widget cannot act as the viewer on the API.
   const sent = request?.ok ? request.request : null;
   const withAuth = !!sent && sent.method === "GET" && isApiFileUrl(sent.url);
   const updateQueuedRefreshId = useShallowBackendConnectorStore(
@@ -108,7 +100,6 @@ export function useJsonData<
         }
         return;
       }
-      // Read the response once and use it for both logging and refresh logic
       try {
         const data = asText ? await response.text() : await response.json();
 
@@ -117,7 +108,6 @@ export function useJsonData<
           data?.refreshBackend !== undefined &&
           sourceId
         ) {
-          // Add or remove the sourceId from the queued refresh ids
           updateQueuedRefreshId(sourceId, data?.refreshBackend);
         }
 
@@ -150,7 +140,6 @@ export function useJsonData<
           return reject(new Error(SOURCE_UNAVAILABLE_MESSAGE));
         }
         if (!request) return reject(new Error("Nothing to request"));
-        // A param needs a value, or has one that cannot be sent: nothing goes out
         if (!request.ok) return reject(new RequestProblemsError(request.problems));
 
         fetch(
@@ -201,8 +190,6 @@ export function useJsonData<
       !(error instanceof RequestProblemsError) && failures < 1,
     retryDelay: 1000,
     ...(options ?? {}),
-    // Nothing to request, no access or no credentials yet: a caller may hold the request
-    // back, never let one through these checks
     enabled: (query) =>
       !!request &&
       hasAccess &&
@@ -217,11 +204,6 @@ export function useJsonData<
   });
 }
 
-/**
- * fetch to the Workspace API with the web session cookie and the client header. It
- * refuses any URL that is not on the API's exact origin, so Workspace credentials never
- * reach another host.
- */
 export function fetchBackend(
   url: string | URL,
   options: RequestInit = {},

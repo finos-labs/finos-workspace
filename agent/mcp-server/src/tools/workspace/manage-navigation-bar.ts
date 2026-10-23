@@ -1,11 +1,3 @@
-/**
- * manage_navigation_bar — create or mutate navigation tabs on a dashboard.
- *
- * Mirrors workspace_mcp/server.py:886-936. tabs_json + rename_map_json carry
- * structured payloads as JSON-string args (workaround for MCP clients that
- * struggle with nested object inputs).
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";
@@ -113,8 +105,6 @@ export async function manageNavigationBarHandler(args: {
     return { content: [invalidRequestItem(tabValidation)] };
   }
 
-  // Wire schema's rename_map is Record<string, string>. Cast values that
-  // happen to be non-strings to string for safety; could also reject upstream.
   const renameMapStr: Record<string, string> = {};
   for (const [k, v] of Object.entries(renameMap)) {
     renameMapStr[k] = String(v);

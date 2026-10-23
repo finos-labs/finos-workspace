@@ -1,10 +1,5 @@
 name: Backend Docker Images (ECR)
 
-# Builds the API and worker images when backend-api changes. Pull requests build
-# them to check the Dockerfiles; a tag like backend-v1.1.0 pushes them to ECR as
-# 1.1.0. Deploying a pushed image is a change to the environment's values file in
-# the infrastructure repository. A pushed image gets an SBOM attestation, pushed
-# to ECR with it (.github/actions/image-sbom).
 on:
   pull_request:
     branches:
@@ -44,9 +39,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Tags are the release: backend-v1.1.0 pushes finos/backend:1.1.0 and
-      # finos/backend-worker:1.1.0. The version must be X.Y.Z and the tagged commit
-      # must be on main.
       - name: Read version
         if: github.ref_type == 'tag'
         run: |
@@ -62,12 +54,9 @@ jobs:
           fi
           echo "IMAGE_TAG=$version" >> "$GITHUB_ENV"
 
-      # OIDC: GitHub vouches for this run and AWS hands back credentials for an
-      # hour. The role only trusts tags of this repository and can only push to
-      # the finos/* repositories.
       - name: Configure AWS credentials
         if: github.ref_type == 'tag'
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
         with:
           role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
@@ -75,9 +64,8 @@ jobs:
       - name: Login to Amazon ECR
         if: github.ref_type == 'tag'
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd
 
-      # Tags are immutable, so a rerun for the same commit keeps the image already there.
       - name: Check for an existing image
         if: github.ref_type == 'tag'
         id: existing
@@ -91,11 +79,9 @@ jobs:
             exit 1
           fi
 
-      # The image compiles its dependencies from source: the stages are kept in the Actions cache,
-      # and only a change to a stage builds it again.
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
         if: steps.existing.outputs.exists != 'true'
-      - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
+      - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487
         if: steps.existing.outputs.exists != 'true'
 
       - name: Build image

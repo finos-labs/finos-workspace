@@ -1,6 +1,3 @@
-"""The backend without a database server: its identity, its values, DuckDB over files, and
-the requests Workspace's API sends it. tests/test_postgres.py covers Postgres."""
-
 import base64
 import hashlib
 import importlib
@@ -21,7 +18,6 @@ from values import EXACT_INTEGER, MAX_TEXT, cell
 
 @pytest.fixture
 def data(tmp_path, monkeypatch) -> Path:
-    """A data directory with a Parquet file, a CSV file, and a file of another kind."""
     directory = tmp_path / "data"
     directory.mkdir()
     duckdb.sql(
@@ -143,7 +139,6 @@ class TestFiles:
 class TestServer:
     @pytest.fixture
     def client(self, data, tmp_path, monkeypatch):
-        """The app over a package of its own: it computes its identity when it starts."""
         package = tmp_path / "package"
         package.mkdir()
         (package / "plugin.json").write_text('{"id": "sql-explorer", "version": "1.0.0"}', encoding="utf-8")
@@ -180,6 +175,5 @@ class TestServer:
         assert client.post("/.workspace/routes/other", json={}).status_code == 404
         assert client.post("/.workspace/routes/files_query", json={"args": {}}).status_code == 400
         assert client.post("/.workspace/routes/files_query", content=b"not json").status_code == 400
-        # Workspace sends the secret; a call without it is not Workspace's
         assert client.post("/.workspace/routes/postgres_schema", json={"args": {}}).status_code == 400
         assert client.get("/anything").status_code == 404

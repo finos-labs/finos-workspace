@@ -9,14 +9,10 @@ import type { WidgetId } from "~/components/Widgets";
 import type { CopilotWidget } from "~/lib/state/copilot";
 
 interface WidgetTooltipItemProps {
-  /** The actual widget name — used in the tooltip detail panel */
   name: string;
-  /** Display name shown in the row (e.g. with count suffix). Defaults to `name`. */
   displayName?: string;
   description?: string | null;
-  /** Backend/source label shown in the tooltip badge (e.g. "Exponential Technology") */
   origin?: string;
-  /** Widget ID used to look up the full widget definition for richer tooltip metadata */
   widgetId?: string;
 }
 
@@ -27,10 +23,6 @@ interface WidgetNameItemProps {
   iconClassName?: string;
 }
 
-/**
- * Displays a widget row: optional icon + bold name + muted truncated description.
- * Used in the @ context dropdown suggestions and in App Card widget hover lists.
- */
 export const WidgetNameItem = memo<WidgetNameItemProps>(
   ({ name, description, icon, iconClassName }) => {
     return (
@@ -61,11 +53,6 @@ export const WidgetNameItem = memo<WidgetNameItemProps>(
   },
 );
 
-/**
- * Renders a `WidgetNameItem` row (icon + bold name + muted description) wrapped in a
- * hover `Tooltip` showing the full `TabWidgetElement` detail panel (backend tag, name,
- * category, description). Used in AppCard widget lists.
- */
 export const WidgetTooltipItem = memo<WidgetTooltipItemProps>((props) => {
   const { name, displayName, description, origin, widgetId } = props;
 

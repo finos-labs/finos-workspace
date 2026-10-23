@@ -1,5 +1,3 @@
-"""Functions to help with AWS"""
-
 from mimetypes import guess_type
 from typing import Any, BinaryIO
 from urllib.parse import quote as parse_quote
@@ -50,22 +48,6 @@ class S3Stream(StreamingResponse):
 class S3Storage(StorageAbstract):
     @staticmethod
     async def create_presigned_url(bucket_name: str, object_name: str, expiration: int = 3600) -> None | str:
-        """Generate a presigned URL to share an S3 object
-
-        Parameters
-        ----------
-        bucket_name: str
-        object_name: str
-        expiration: int
-            Time in seconds for the presigned URL to remain valid
-
-        Returns
-        -------
-        url: str
-            Presigned URL as string. If error, returns None.
-        """
-
-        # Generate a presigned URL for the S3 object
         s3_client = settings.get_s3_client()
         try:
             response = s3_client.generate_presigned_url(
@@ -77,13 +59,10 @@ class S3Storage(StorageAbstract):
             logger.error(e)
             return None
 
-        # The response contains the presigned URL
         return response
 
     @staticmethod
     async def upload_file(local_file: BinaryIO, bucket: str, s3_file: str) -> bool:
-        "Upload an image to aws. This image will always be saved as a png."
-
         try:
             async with settings.async_s3_client() as s3_async:
                 await s3_async.upload_fileobj(local_file, bucket, s3_file, ExtraArgs={"ContentType": "image/png"})
@@ -98,8 +77,6 @@ class S3Storage(StorageAbstract):
 
     @staticmethod
     async def upload_pending_file(local_file: BinaryIO, pending_file: StoredFileSchema) -> StoredFileSchema:
-        "Upload any file type to AWS and save with whatever extension that was provided."
-
         try:
             async with settings.async_s3_client() as s3_async:
                 await s3_async.upload_fileobj(
@@ -119,8 +96,6 @@ class S3Storage(StorageAbstract):
 
     @staticmethod
     async def delete_file(bucket: str, s3_file: str) -> bool:
-        "Remove a given file from the AWS bucket."
-
         try:
             async with settings.async_s3_client() as s3_async:
                 await s3_async.delete_object(Bucket=bucket, Key=s3_file)
@@ -133,7 +108,6 @@ class S3Storage(StorageAbstract):
 
     @staticmethod
     async def check_file_exists(store_file: StoredFileSchema) -> bool:
-        "Check if a file exists in the AWS bucket."
         try:
             async with settings.async_s3_client() as s3_async:
                 await s3_async.head_object(Bucket=store_file.bucket, Key=store_file.s3_file_name)
@@ -146,7 +120,6 @@ class S3Storage(StorageAbstract):
 
     @staticmethod
     async def get_file(bucket: str, s3_file: str) -> None | BinaryIO | bytes:
-        "Get a file from the AWS bucket."
         try:
             async with settings.async_s3_client() as s3_async:
                 stream = await s3_async.get_object(Bucket=bucket, Key=s3_file)

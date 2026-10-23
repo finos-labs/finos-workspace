@@ -33,7 +33,6 @@ export function EntityRelationshipDialog({
   entities,
   onClose,
 }: {
-  /** The relationship to edit; without one the dialog adds a relationship. */
   relationship?: EntityRelationship;
   entities: Entity[];
   onClose: () => void;

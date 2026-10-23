@@ -399,8 +399,6 @@ describe("formatUnrecognizedKeysMessage", () => {
     expect(formatUnrecognizedKeysMessage([])).toBeNull();
   });
 
-  // This renders inside the warning toast, which has a forced light background,
-  // so the header uses a dark primitive rather than the brand/semantic colors.
   it("renders header emphasised in a colour readable on the light toast", () => {
     const reports: UnrecognizedKeysReport[] = [
       { label: "[widgets.json]", entries: [{ name: "Widget", keys: ["foo"] }] },
@@ -515,7 +513,6 @@ describe("showUnrecognizedKeysToast", () => {
     const button = container.querySelector("button");
     expect(button).not.toBeNull();
 
-    // Spy on console to check for no errors
     const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     button?.click();
     expect(consoleErrorSpy).not.toHaveBeenCalled();

@@ -39,7 +39,6 @@ export default function InviteSingleUser({
 }) {
   const userFormRef = useRef<HTMLFormElement>(null);
   const [errorMessage, setErrorMessage] = useState<null | string>(null);
-  // The user added without an invitation, and the link to give them
   const [added, setAdded] = useState<{
     name: string;
     answer: PasswordLinkAnswer;
@@ -47,7 +46,6 @@ export default function InviteSingleUser({
 
   const queryClient = useQueryClient();
 
-  // Fetch roles from the API
   const { data: roles = [], isLoading: rolesLoading } = useQuery({
     queryKey: ["roles"],
     enabled: true,
@@ -55,7 +53,6 @@ export default function InviteSingleUser({
     staleTime: 1000 * 60 * 5,
   });
 
-  // Transform roles data for the dropdown
   const roleOptions = useMemo(
     () => roles.map((role) => ({ label: role.name, value: role.uuid })),
     [roles],
@@ -91,7 +88,6 @@ export default function InviteSingleUser({
           const answer = await createUser(dto);
           if (answer.success) {
             refetch();
-            // The dialog shows the link until the admin is done with it
             setAdded({ name, answer });
           }
           return;

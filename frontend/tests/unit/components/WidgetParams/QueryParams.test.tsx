@@ -266,7 +266,6 @@ describe("RenderParamsForRow", () => {
     render(<ParamsHarness />);
     await user.click(screen.getByText("Wire"));
 
-    // One update, with the provider and the feed it needs, so the widget loads once
     await waitFor(() => expect(mocks.updateWidget).toHaveBeenCalledTimes(1));
     const update = mocks.updateWidget.mock.calls[0][0];
     expect(update(mocks.widget).storage.params).toEqual({ outlet: "bbc", source: "" });
@@ -484,7 +483,6 @@ describe("forms", () => {
 
     expect(screen.getByRole("button", { name: "Add note" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Flag a row" })).toBeInTheDocument();
-    // A form with no label is named by its paramName
     expect(screen.getByRole("button", { name: "archive" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Open Form" })).toBeNull();
 

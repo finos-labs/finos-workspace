@@ -25,16 +25,10 @@ const STATUS_STYLES: Record<
 export interface ConnectionTestResultProps {
   status: ConnectionTestStatus;
   message: string;
-  /** Overrides the default "Test successful" / "Error" heading. */
   title?: string;
   className?: string;
 }
 
-/**
- * Inline success/error box shown after testing a connection (backend, agent, …).
- * Theme-aware translucent accent tint with a colored icon and neutral heading/body
- * text, so the result stays subtle in both light and dark mode.
- */
 export function ConnectionTestResult({
   status,
   message,

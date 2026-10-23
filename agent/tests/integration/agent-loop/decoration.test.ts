@@ -1,13 +1,3 @@
-/**
- * Tier 2 — agent-loop decoration & schema-strip scenarios.
- *
- * Pinned to CLAUDE.md gotchas:
- * - the SQL family runs in-process, with no decoration
- * - every round-trip emission carries the continuation extra_state
- * - earlier MCP results of the turn, and their artifacts, stay visible
- * - x-ines-* keys never appear in the model-facing tool schema
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";
@@ -21,8 +11,6 @@ beforeEach(() => {
   clearAllModuleState();
 });
 
-// MCP tools of the ines tool server: a renderer, and a tool that keeps state per chat and so
-// carries decoration. The SQL family lives in-process on the agent and never round-trips through MCP.
 function tools(): AgentTool[] {
   return [
     {
@@ -91,9 +79,6 @@ describe("round-trip extra_state — continuation state survives every emission"
   beforeEach(() => clearAllModuleState());
 
   it("get_widget_data emission carries documents_shipped forward", async () => {
-    // A prior query_documents call shipped "doc-1"; the model now fetches a
-    // widget. If the widget emission drops documents_shipped, the re-POST
-    // restores nothing and the next query_documents re-ships the document.
     const widget: Widget = {
       uuid: "w-1",
       origin: "example",
@@ -131,9 +116,6 @@ describe("round-trip extra_state — continuation state survives every emission"
   });
 
   it("execute_agent_tool emission carries loaded_skill_slugs forward", async () => {
-    // Prior re-POST loaded a skill; the model now calls mermaid_diagram. If the
-    // MCP emission drops loaded_skill_slugs, the skill inventory is lost for
-    // the rest of the turn and the model may reload the skill.
     const skillResult: ToolMessage = {
       role: "tool",
       function: "get_skill_content",
@@ -237,8 +219,6 @@ describe("MCP artifacts — land in the message stream, not the status timeline"
         (e.data as { name?: string }).name === "Top Chart",
     );
     expect(artifactEvent).toBeDefined();
-    // Status update also carries the output artifact so the tool-call details
-    // can show both input and output artifacts.
     const status = events.find(
       (e) =>
         e.event === "copilotStatusUpdate" &&
@@ -310,8 +290,6 @@ describe("MCP artifacts — land in the message stream, not the status timeline"
         e.event === "copilotFunctionCall" &&
         (e.data as { function?: string }).function === "execute_agent_tool",
     );
-    // Artifact must be emitted before the turn pauses for the next round-trip
-    // — the artifactQueue is request-scoped and dies at the re-POST.
     expect(artifactIdx).toBeGreaterThanOrEqual(0);
     expect(callIdx).toBeGreaterThanOrEqual(0);
     expect(artifactIdx).toBeLessThan(callIdx);
@@ -341,8 +319,6 @@ describe("decoration — x-ines-* never reaches the model", () => {
     );
     expect(spy.calls.length).toBeGreaterThan(0);
     const surfacedTools = spy.calls[0].tools as Record<string, { inputSchema: { jsonSchema?: { properties?: Record<string, unknown> } } } | undefined>;
-    // The Vercel AI SDK shapes tools as { name: { type, inputSchema, ... } }; we
-    // assert no key on any tool's input schema starts with x-ines-.
     for (const t of Object.values(surfacedTools)) {
       const schema = (t as unknown as { inputSchema?: { jsonSchema?: { properties?: Record<string, unknown> } } } | undefined)?.inputSchema?.jsonSchema?.properties;
       if (schema) {

@@ -134,14 +134,6 @@ import {
 
 const logger = getLogger(["mcp", "server"]);
 
-// What keeps one user's chat from another: the scope key of every call that reaches a tool holding state
-// for a chat is signed by the agent with this secret, and these tools act on no other. A server that ran
-// without it would take any key a client sent, so it does not start without it (INES_AUTH=none, the
-// deployment that has no users, is the named opt-out — the same one the agent takes).
-//
-// Only when this file is the process, which is how it is served (see the Dockerfile): a test that imports
-// it for its `fetch` is not a server starting, and stopping the process would stop the test run. Such a
-// server would in any case refuse every scoped call, because `scopeProblem` makes the same judgement.
 if (import.meta.main) {
   const secretProblem = scopeSecretProblem();
   if (secretProblem) {
@@ -150,10 +142,6 @@ if (import.meta.main) {
   }
 }
 
-// The Workspace's links to its users' files are on the address the browser uses; these tools fetch them from
-// the API's address inside the deployment (see src/lib/safe-fetch.ts), with WORKSPACE_ORIGIN as their Origin:
-// the API refuses the calls of an origin it does not allow. Without WORKSPACE_PUBLIC_URL a link is fetched as
-// it is.
 const workspacePublicUrl = (process.env.WORKSPACE_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
 if (workspacePublicUrl) {
   const internalUrl = (process.env.WORKSPACE_API_URL ?? "").trim().replace(/\/+$/, "") || workspacePublicUrl;
@@ -178,24 +166,13 @@ if (workspacePublicUrl) {
   configureFetchPolicy({ workspace: { publicUrl: workspacePublicUrl, internalUrl, origin } });
 }
 
-// Which tools exist is decided once, at start, and said once. Each request then gets a server
-// that registers exactly these (see `buildMcpServer`).
 
-// Document RAG — uploaded PDF/DOCX/TXT/MD search via per-conversation
-// vector store. Needs INES_EMBED_MODEL to name the embedding model as
-// <provider>:<model> (no model id is baked in) and that provider's credentials,
-// so the tools are only registered when both are in place.
 const embedProblem = embeddingProblem();
 const docRagEnabled = embedProblem === null;
 if (!docRagEnabled) {
   logger.warn(`${embedProblem} query_documents/list_documents disabled (embeddings unavailable)`);
 }
 
-// Workspace bridge (companion) tools — require a Workspace browser
-// tab connected to /bridge/ws. Behind COMPANION_TOOLS_ENABLED (default off)
-// so a plain backend-tools deployment doesn't advertise 18 tools that need
-// a connected browser. Prompts and app-builder resources only describe
-// these tools, so they're gated together.
 const companionToolsEnabled = process.env.COMPANION_TOOLS_ENABLED === "true";
 if (!companionToolsEnabled) {
   logger.warn(
@@ -203,11 +180,6 @@ if (!companionToolsEnabled) {
   );
 }
 
-/**
- * A server with every tool that is enabled. One is built per request: a server and its transport
- * keep the JSON-RPC ids of the requests in flight, and every client counts its ids from the same
- * start, so one shared by all clients mixes up their answers.
- */
 async function buildMcpServer(): Promise<McpServer> {
   const mcp = new McpServer({
     name: "ines-tools",
@@ -223,8 +195,6 @@ async function buildMcpServer(): Promise<McpServer> {
     observed("inspect_webpage", requireScope(inspectWebpageHandler)),
   );
 
-  // Read-widget-data SQL family lives in the agent now (in-process,
-  // closure on pendingTables). It's no longer registered here.
 
   if (docRagEnabled) {
     mcp.tool(
@@ -340,11 +310,8 @@ async function buildMcpServer(): Promise<McpServer> {
       manageAppsHandler,
     );
 
-    // Workspace MCP prompts (workspace_tool_usage + workspace_session_context).
     registerWorkspacePrompts(mcp);
 
-    // App-builder MCP resources (16 markdown documents under workspace://*), and the widgets.json schema in
-    // force for the user, read from their browser.
     await registerAppBuilderResources(mcp);
     registerWidgetsSchemaResource(mcp);
   }
@@ -373,8 +340,6 @@ app.use(
   }),
 );
 
-// Stateless: every request is answered by its own server and transport, and there is no session to
-// resume and no stream from the server to the client.
 app.post("/mcp", async (c) => {
   const mcp = await buildMcpServer();
   const transport = new StreamableHTTPTransport();
@@ -439,8 +404,6 @@ app.get("/", (c) =>
 
 const PORT = Number(process.env.MCP_PORT ?? 8787);
 
-// Prometheus scrapes this on its own port (MCP_METRICS_PORT, 9465 unless set; 0 turns it off), which is
-// not published: the metrics are for the operator. Only when this file is the program that runs.
 const METRICS_PORT = Number(process.env.MCP_METRICS_PORT ?? 9465);
 if (import.meta.main && METRICS_PORT > 0) {
   serve({
@@ -454,7 +417,6 @@ if (import.meta.main && METRICS_PORT > 0) {
   logger.info("Metrics on port {port}", { port: METRICS_PORT });
 }
 
-// Served only when this file is the program that runs; a test imports it for its `fetch`.
 if (import.meta.main) {
   serve({ fetch: app.fetch, port: PORT, websocket: { server: new WebSocketServer({ noServer: true }) } });
   logger.info(

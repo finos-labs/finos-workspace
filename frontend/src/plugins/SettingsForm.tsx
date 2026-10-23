@@ -1,11 +1,6 @@
 import { useId } from "react";
 import type { SettingsSchema } from "./types";
 
-/**
- * A form for a plugin's settings schema (DESIGN.md 4.4): a flat object of string,
- * number, integer, boolean and enum properties. Used for a widget's instance settings
- * and for a plugin's admin settings. Plugin text is shown as text, never as markup.
- */
 export function SettingsForm(props: {
   schema: SettingsSchema;
   values: Record<string, unknown>;
@@ -102,7 +97,6 @@ export function SettingsForm(props: {
   );
 }
 
-/** Values checked against a settings schema; unknown keys and wrong types are dropped. */
 export function cleanSettings(
   schema: SettingsSchema | undefined,
   values: Record<string, unknown> | undefined,

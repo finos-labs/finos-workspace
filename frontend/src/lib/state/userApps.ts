@@ -49,7 +49,6 @@ export type UserAppsSync = {
   shared?: Record<string, UserAppReturn>;
 };
 
-/** Apps as they are persisted: no widget carries a data backend's credentials. */
 function withoutAppCredentials(apps: Record<string, UserAppReturn>) {
   return Object.fromEntries(
     Object.entries(apps).map(([id, app]) => [

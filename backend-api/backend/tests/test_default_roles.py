@@ -1,12 +1,3 @@
-"""
-The roles every organization starts with.
-
-Agent User grants the default agent with every model it offers (a `*` model grant) and every
-tool of the deployment's default MCP servers, with no daily limits; every new user of the
-organization gets it. Sharer gives sharing and nothing else: it lifts no limit and switches
-no web tool on. Both are roles like any other.
-"""
-
 import os
 import sys
 

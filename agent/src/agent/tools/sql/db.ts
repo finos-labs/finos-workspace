@@ -1,28 +1,8 @@
-/**
- * In-process SQL helpers for the read-widget-data tool family.
- *
- * Stateless per call: every tool invocation builds a fresh
- * `DatabaseSync(":memory:")`, loads pendingTables from the agent's request
- * scope, runs its query, and lets the DB GC. No conversation state.
- *
- * Moved here from mcp-server/ as part of the agent in-process migration:
- * the tool now executes locally via a Vercel AI SDK `execute` function
- * (closure on `pendingTables`) rather than over MCP with decoration.
- */
-
 import { DatabaseSync } from "node:sqlite";
 import { FETCH_MISSING_TABLE_HINT, NO_TABLES_LOADED_MESSAGE } from "./error-hints.ts";
 
-/** The most rows of a table that go into the database a query runs on. */
 export const MAX_SQL_TABLE_ROWS = 200_000;
 
-/**
- * The longest string or blob a query may make. Past it the query ends with a "string or blob too big"
- * error instead of taking the memory of the machine (a query can build a gigabyte out of nothing:
- * `randomblob`, `group_concat`). Node builds SQLite without memory accounting, so a heap limit would not
- * be enforced; this is what bounds a query, and sorts and recursive queries spill to temporary files.
- * It is the most the child that runs the query may answer with (lib/isolate.ts) anyway.
- */
 export const SQL_MAX_VALUE_BYTES = 64 * 1024 * 1024;
 
 export interface LoadedTable {
@@ -38,7 +18,6 @@ function sanitize(name: string): string {
     .toLowerCase();
 }
 
-// Mirror of `src/sql/loader.ts:TYPE_SAMPLE_LIMIT` — see that file's comment.
 const TYPE_SAMPLE_LIMIT = 500;
 
 function inferType(rows: unknown[], key: string): string {
@@ -53,7 +32,6 @@ function inferType(rows: unknown[], key: string): string {
   return "TEXT";
 }
 
-// Mirror of `src/sql/loader.ts:dedupColumnNames` — see that file's comment.
 function dedupColumnNames<T extends { name: string }>(cols: T[]): T[] {
   const seen = new Map<string, number>();
   return cols.map((col) => {
@@ -101,10 +79,6 @@ function loadOne(db: DatabaseSync, name: string, rows: unknown[]): LoadedTable {
   return { tableName, columns, rowCount: rows.length };
 }
 
-/**
- * Build a fresh per-call in-memory DB from a Map of tables.
- * Caller owns `db.close()` (defer in a `try/finally`).
- */
 export function buildDb(
   tables: ReadonlyMap<string, Record<string, unknown>[]> | undefined,
 ): { db: DatabaseSync; loaded: LoadedTable[] } {

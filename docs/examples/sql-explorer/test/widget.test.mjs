@@ -1,5 +1,3 @@
-// The widget's parts that need no browser: names, CSV, what the agent is told, the saved
-// state, and the exports before anything ran. The rest is checked on a dashboard (README).
 import assert from "node:assert/strict";
 import { test } from "node:test";
 

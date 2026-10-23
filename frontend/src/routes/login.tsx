@@ -72,7 +72,6 @@ export function getErrorMessage(
       if (detail === "Registration is disabled") return "Registration is disabled.";
       if (!detail || detail === "User is not confirmed")
         return "Please confirm your account to proceed.";
-      // The API says why, as when Microsoft has not verified the account's email
       return detail;
     }
     case 404:
@@ -102,11 +101,8 @@ export type LoginState = {
   passwordLoading: boolean;
   oauthLoading: boolean;
   showReset: boolean;
-  // Set up an authenticator: required by the organization, or turned on for the account
   showQR: boolean;
   enterQR: boolean;
-  // If the user has logged in and doesnt need to
-  // fill in any pop ups, we send them to the next page
   loggedIn: boolean;
   error: null | string;
 };
@@ -130,7 +126,6 @@ export default function LoginPage() {
     error: null,
   });
 
-  // A visitor whose session cookie still holds a session goes straight on
   useEffect(() => {
     if (user) return;
     let active = true;
@@ -310,7 +305,6 @@ export default function LoginPage() {
   );
 }
 
-// HTTP 202: set up the authenticator the organization requires, or enter its code
 function handle2FAResponse(response: Login2FAResponse): Partial<LoginState> {
   return response.two_factor_required ? { showQR: true } : { enterQR: true };
 }
@@ -390,9 +384,6 @@ function useLogin(props: { dispatch: StateDispatch<LoginState>; state: LoginStat
     [form.getValues, captureError],
   );
 
-  // Turning on the authenticator the organization requires starts the session, and the
-  // code it takes is single-use, so it never goes to /app/login: the page reads that
-  // session from the API, as after a reload
   const onTOTPEnroll = useCallback(
     async (token: number): Promise<number> => {
       dispatch({ error: null });
@@ -489,20 +480,14 @@ function useLogin(props: { dispatch: StateDispatch<LoginState>; state: LoginStat
   const handleMicrosoftSuccess = useCallback(
     async (instance: IPublicClientApplication) => {
       try {
-        // The API accepts the ID token only with the nonce it issued for this sign-in
         const { res, response } = await withSignInNonce(async (nonce) => {
           const res = await instance.loginPopup({ ...loginRequest, nonce });
-          // The API verifies the ID token MSAL issued for this app
           return { res, response: await microsoftLogin(res.accessToken, res.idToken) };
         });
 
         if (isLoggedIn(response)) {
-          // Kept in page memory for the backends the deployment forwards it to
           if (sendMicrosoftIdToken) setIdpTokens({ microsoftIdToken: res.idToken });
           rememberSignInProvider("microsoft");
-          // Remember which MSAL account this session belongs to; the silent
-          // token refresh relies on it instead of matching the backend email
-          // (which comes from Graph `mail` and can differ from the MSAL UPN)
           instance.setActiveAccount(res.account);
           return loginSuccess(response)
             .then(dispatch)
@@ -534,7 +519,6 @@ function useLogin(props: { dispatch: StateDispatch<LoginState>; state: LoginStat
   const handleOktaSuccess = useCallback(
     async (oktaAuth: OktaAuth) => {
       try {
-        // The API accepts the ID token only with the nonce it issued for this sign-in
         const { idToken, response } = await withSignInNonce(async (nonce) => {
           const tokenResponse = await oktaAuth.token.getWithPopup({
             ...oktaLoginRequest,
@@ -547,12 +531,10 @@ function useLogin(props: { dispatch: StateDispatch<LoginState>; state: LoginStat
             throw new Error("Failed to get the access and ID tokens from Okta");
           }
 
-          // The API verifies the ID token Okta issued for this app
           return { idToken, response: await oktaLogin(accessToken, idToken) };
         });
 
         if (isLoggedIn(response)) {
-          // Kept in page memory for the backends the deployment forwards it to
           if (sendOktaIdToken) setIdpTokens({ oktaIdToken: idToken });
           rememberSignInProvider("okta");
           return loginSuccess(response)
@@ -595,7 +577,6 @@ function useLogin(props: { dispatch: StateDispatch<LoginState>; state: LoginStat
 }
 
 export async function loginSuccess(data: LoginResponse) {
-  // Save user information in the auth store
   useAuthStore.getState().login(data);
   const user = data.user;
 

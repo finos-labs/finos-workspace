@@ -17,7 +17,6 @@ describe("widgetHighlight utils", () => {
 
     element.scrollIntoView = vi.fn();
 
-    // Mock RAF
     vi.stubGlobal(
       "requestAnimationFrame",
       vi.fn((cb) => setTimeout(cb, 16)),
@@ -25,11 +24,8 @@ describe("widgetHighlight utils", () => {
 
     const promise = scrollToAndHighlightWidget(widgetId);
 
-    // Advance time to resolve waitForElement
     await vi.advanceTimersByTimeAsync(100);
-    // Advance time to resolve waitForScrollCompletion (fallback 1000ms)
     await vi.advanceTimersByTimeAsync(1100);
-    // Advance time for highlight cleaning (1300ms)
     await vi.advanceTimersByTimeAsync(1500);
 
     await promise;
@@ -40,7 +36,6 @@ describe("widgetHighlight utils", () => {
   it("should warn if element is not found", async () => {
     const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    // Mock RAF
     vi.stubGlobal(
       "requestAnimationFrame",
       vi.fn((cb) => setTimeout(cb, 16)),

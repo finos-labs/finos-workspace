@@ -33,12 +33,6 @@ export function getTieredWidgets(request: QueryRequest): TieredWidget[] {
   for (const tier of tiers) {
     const list = request.widgets?.[tier] ?? [];
     for (const w of list) {
-      // Catalog widgets that are not placed on a dashboard arrive with only a
-      // widget_id slug and no instance uuid. Everything downstream (search
-      // result identifiers, get_widget_data matching/emission, reboot
-      // match-back, citations) keys on uuid, so fall back to widget_id as the
-      // canonical id. Dashboard instances already carry a real uuid — leave
-      // those untouched.
       out.push({ widget: w.uuid ? w : { ...w, uuid: w.widget_id }, tier });
     }
   }

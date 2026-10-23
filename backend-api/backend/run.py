@@ -16,39 +16,17 @@ sys.tracebacklimit = 3
 
 
 def worker_address_space_limit_bytes() -> int | None:
-    """Per-worker virtual address space cap (RLIMIT_AS), applied in post_fork.
-
-    A runaway request (large JSON payloads amplify 3-5x in heap) then gets a
-    MemoryError in its own request instead of the kernel OOM-killing the whole
-    container at the pod's cgroup limit, which drops every in-flight request
-    on all workers.
-
-    Resolution order:
-      1. WORKER_ADDRESS_SPACE_LIMIT_GB setting (0 disables the cap).
-      2. Auto: 75% of the container's cgroup memory limit (v2, then v1).
-         Address space runs ~1.5-2x resident memory for these workers, so a
-         worker tripping this cap is resident at roughly 40-50% of the
-         container limit — contained before the cgroup kill, with room for
-         its siblings. The cap is deliberately NOT divided by worker count:
-         it is a per-process fuse for a single runaway, not a summed budget —
-         address space includes copy-on-write pages shared across the forked
-         workers, so per-process caps cannot meaningfully sum against the
-         container's resident limit, and dividing would put the cap below a
-         healthy worker's normal ~1.5GB address space.
-      3. No cgroup limit found (e.g. bare local runs): no cap.
-    """
     configured = settings.WORKER_ADDRESS_SPACE_LIMIT_GB
     if configured is not None:
         return int(configured * 1024**3) if configured > 0 else None
     for cgroup_path in (
-        "/sys/fs/cgroup/memory.max",  # cgroup v2
-        "/sys/fs/cgroup/memory/memory.limit_in_bytes",  # cgroup v1
+        "/sys/fs/cgroup/memory.max",
+        "/sys/fs/cgroup/memory/memory.limit_in_bytes",
     ):
         try:
             raw = Path(cgroup_path).read_text().strip()
         except OSError:
             continue
-        # v2 reports "max" when unlimited; v1 reports a ~2^63 sentinel
         if raw.isdigit() and int(raw) < 1 << 60:
             return int(int(raw) * 0.75)
     return None
@@ -73,8 +51,6 @@ class StubbedGunicornLogger(Logger):
 
 
 class PaymentsBackend(BaseApplication):
-    """PaymentsBackend Gunicorn application."""
-
     forks: int = 0
 
     def __init__(self, application, options=None):
@@ -98,7 +74,6 @@ class PaymentsBackend(BaseApplication):
                 (WORKER_ADDRESS_SPACE_LIMIT_BYTES, WORKER_ADDRESS_SPACE_LIMIT_BYTES),
             )
 
-        # Start prometheus metrics server
         if settings.PROMETHEUS:
             prometheus_server = Thread(
                 target=start_prometheus, args=(cls.forks,), daemon=True
@@ -120,9 +95,6 @@ class PaymentsBackend(BaseApplication):
             self.cfg.set(key.lower(), value)
 
         self.cfg.set("pre_fork", self.pre_fork)
-        # post_fork was never registered with gunicorn, so this hook (and the
-        # prometheus thread it guards) never ran. It now applies the per-worker
-        # address space limit above.
         self.cfg.set("post_fork", self.post_fork)
 
     def load(self):
@@ -151,7 +123,6 @@ if __name__ == "__main__":
         "max_requests": 2048,
         "max_requests_jitter": 512,
         "keepalive": 75,
-        # X-Forwarded-For and the secure-scheme headers count only from these peers
         "forwarded_allow_ips": TRUSTED_PROXIES,
         "secure_scheme_headers": {
             "X-FORWARDED-PROTOCOL": "ssl",

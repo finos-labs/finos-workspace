@@ -1,5 +1,3 @@
-"""Credentials never reach the logs, and rate limits count the address the server resolved."""
-
 import logging
 import time
 
@@ -112,7 +110,6 @@ def test_json_log_records_are_redacted(monkeypatch):
 
 
 def test_tracebacks_do_not_show_local_variables(capsys):
-    """loguru's diagnose mode would print the value of every local variable."""
     settings.setup_logging()
     credential = "".join(["plain", "-credential-", "value"])
 
@@ -174,11 +171,9 @@ def test_rate_limit_key_ignores_a_forwarded_header_it_did_not_resolve():
 @pytest.mark.parametrize(
     ("peer", "expected"),
     [
-        # A proxy on loopback or a private network passes the client on
         ("127.0.0.1", "198.51.100.1"),
         ("10.4.0.7", "198.51.100.1"),
         ("172.18.0.2", "198.51.100.1"),
-        # A client on the internet cannot pick its own rate-limit bucket
         ("203.0.113.9", "203.0.113.9"),
     ],
 )
@@ -230,7 +225,6 @@ def test_the_rate_limiter_logs_no_headers():
 
 
 def test_the_http_clients_log_no_request_urls():
-    """httpx logs each request's full URL at INFO, and a URL can carry a credential."""
     log_helpers.setup_logging(settings)
 
     assert not logging.getLogger("httpx").isEnabledFor(logging.INFO)

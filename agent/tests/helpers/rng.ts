@@ -1,4 +1,3 @@
-/** A seeded random number generator (mulberry32): the same seed gives the same numbers, so a failure can be run again. */
 export function seeded(seed: number): () => number {
   let a = seed | 0;
   return () => {
@@ -9,7 +8,6 @@ export function seeded(seed: number): () => number {
   };
 }
 
-/** A whole number from 0 up to, not including, `n`. */
 export function below(random: () => number, n: number): number {
   return Math.floor(random() * n);
 }

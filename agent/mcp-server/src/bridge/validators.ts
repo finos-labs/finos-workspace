@@ -1,10 +1,3 @@
-/**
- * Tool-side validators ported verbatim from workspace_mcp/server.py:198-408.
- *
- * Each function returns `null` when the payload is valid or a string error
- * message when it is not. Callers wrap the message in an errorItem.
- */
-
 import { errorItem, type ContentItem } from "../lib/typed.ts";
 
 export function invalidRequestItem(message: string): ContentItem {
@@ -45,10 +38,6 @@ export function isGenerativeOnlyWidget(widgetId: string): boolean {
   return widgetId === "rich_note";
 }
 
-/**
- * Mirrors workspace_mcp/server.py:310-333. Returns null when valid, or a
- * `ToolResponse`-shaped error with command set to "manage_navigation_bar".
- */
 export function validateNavigationTabs(
   operation: string,
   tabs: Array<Record<string, unknown>>,
@@ -74,10 +63,6 @@ export function validateNavigationTabs(
   return null;
 }
 
-/**
- * Mirrors workspace_mcp/server.py:365-408. Returns null when valid, or an
- * error message string ready to wrap in errorItem.
- */
 export function validateAddGenerativeWidgetRequest(args: {
   widget_type: string;
   data: Array<Record<string, unknown>> | string | null;

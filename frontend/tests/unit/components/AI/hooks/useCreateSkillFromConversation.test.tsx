@@ -12,7 +12,6 @@ import { useSkillsLibraryStore } from "~/lib/state/skillsLibrary";
 import type { Skill, SkillCreate } from "~/types/auth.type";
 import { mockConfig } from "../../../../mocks/runtimeConfig";
 
-// Mock sonner toast
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -22,22 +21,16 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Mock API
 const mockCreateUserSkill = vi.fn();
 vi.mock("~/api/auth.api", () => ({
   createUserSkill: (...args: unknown[]) => mockCreateUserSkill(...args),
 }));
 
-/** The slugs of the skills saved in the library. */
 const savedSkillSlugs = () =>
   useSkillsLibraryStore.getState().skills.map((skill) => skill.slug);
 
-// Mock fetch for the skill generation endpoint
 global.fetch = vi.fn();
 
-// In browsers DOMException inherits from Error, but jsdom's DOMException comes
-// from another realm so `instanceof Error` fails. Shim it to match browsers so
-// the hook's AbortError handling behaves as it does in production.
 class TestDOMException extends Error {
   constructor(message?: string, name?: string) {
     super(message);
@@ -118,7 +111,6 @@ async function runHook(
 describe("useCreateSkillFromConversation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // The API mints the agent token the default Copilot is called with
     vi.mocked(apiClient.post).mockResolvedValue({
       data: { token: "agent-token", expires_in: 1800 },
     });
@@ -278,7 +270,6 @@ describe("useCreateSkillFromConversation", () => {
         capturedCancel = options?.cancel?.onClick;
         return "toast-id";
       });
-      // Like fetch: a request already aborted when it is made is refused at once
       fetchMock.mockImplementation(
         (_url: string, init: RequestInit) =>
           new Promise((_, reject) => {
@@ -323,7 +314,6 @@ describe("useCreateSkillFromConversation", () => {
       fetchMock.mockResolvedValue({
         ok: true,
         json: async () => {
-          // Simulate the user clicking Edit Skill just as generation resolves
           capturedCancel?.();
           return generatedResponse;
         },

@@ -298,7 +298,6 @@ describe("dataConnectors utility functions", () => {
 
         handleConnectionAdded("dashboard-123", widgets, navigate);
 
-        // Uses singular "widget" when count is 0 (0 > 1 is false)
         expect(toast.success).toHaveBeenCalledWith(
           "0 widget added to dashboard",
           expect.anything(),

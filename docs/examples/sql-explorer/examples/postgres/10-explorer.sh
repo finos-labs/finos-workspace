@@ -1,7 +1,4 @@
 #!/bin/sh
-# Runs once, when the example's Postgres starts with an empty data directory: `explorer`,
-# a role that may only read, and a `demo` schema for it to read. The role's password is
-# the one examples/setup.py generated.
 set -eu
 
 password="$(cat /run/secrets/explorer_password)"

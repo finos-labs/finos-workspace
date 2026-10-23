@@ -153,7 +153,6 @@ describe("AddCopilotDialog", () => {
       expect(mockSetExternalCopilotHolders).toHaveBeenCalled();
       expect(mockSetShowAddAgentsDialog).toHaveBeenCalledWith(false);
     });
-    // Add reuses the tested holder — no second fetch.
     expect(mockFetchAgentsData).toHaveBeenCalledTimes(1);
     expect(mockToast.success).toHaveBeenCalledWith(
       "AI Agent successfully added",

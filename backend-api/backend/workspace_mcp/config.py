@@ -1,5 +1,3 @@
-"""Runtime configuration for the Workspace MCP sidecar."""
-
 import os
 from dataclasses import dataclass
 
@@ -9,7 +7,6 @@ RESULT_OFFLOAD_THRESHOLD_DEFAULT = 40000
 
 
 def result_offload_threshold() -> int:
-    """Return the char threshold above which large tool results are offloaded."""
     return int(
         os.getenv(
             f"{ENV_PREFIX}RESULT_OFFLOAD_THRESHOLD",
@@ -19,7 +16,6 @@ def result_offload_threshold() -> int:
 
 
 def parse_csv(value: str | None) -> tuple[str, ...]:
-    """Parse a comma-separated environment value into non-empty entries."""
     if not value:
         return ()
     return tuple(entry.strip() for entry in value.split(",") if entry.strip())
@@ -27,8 +23,6 @@ def parse_csv(value: str | None) -> tuple[str, ...]:
 
 @dataclass(slots=True)
 class Settings:
-    """Configuration for the MCP and browser bridge HTTP surfaces."""
-
     host: str = "127.0.0.1"
     port: int = 8787
     mcp_path: str = "/mcp"
@@ -40,7 +34,6 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        """Build settings from environment variables used by reload mode."""
         defaults = cls()
         return cls(
             host=os.getenv(f"{ENV_PREFIX}HOST", defaults.host),
@@ -64,5 +57,4 @@ class Settings:
 
     @property
     def base_url(self) -> str:
-        """Return the HTTP base URL for the current settings."""
         return f"http://{self.host}:{self.port}"

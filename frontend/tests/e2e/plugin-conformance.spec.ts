@@ -9,20 +9,9 @@ import {
   writePackage,
 } from "./plugins/fixtures";
 
-/**
- * The guest contract in a real frame (docs/widget-plugins/GUEST-CONTRACT.md 8), with the
- * real host on the other end: the cases a frame can only show with the browser's sandbox,
- * the Blob URL import and the host's checks. The shell's own semantics are pinned in
- * tests/unit/plugins/shell.conformance.test.ts.
- *
- * The plugin has an id of its own per run and is forgotten at the end. Without
- * E2E_PLUGINS_DIR the tests are skipped.
- */
-
 const PLUGINS_DIR = process.env.E2E_PLUGINS_DIR;
 const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const PLUGIN = `e2e-conformance-${Math.random().toString(36).slice(2, 8)}`;
-// A file of the package under assets/, which the frame reads with core:asset:read
 const ASSET = "conformance asset, as approved\n";
 
 test.describe.configure({ mode: "serial" });
@@ -108,15 +97,11 @@ test("the-contract-holds-in-a-real-frame", async () => {
   await expect(results).toBeVisible({ timeout: 30000 });
   expect(JSON.parse((await results.textContent()) ?? "{}")).toEqual({
     order: ["initialize", "render"],
-    // A command the widget may call resolves to [value, buffers]; one it may not is refused
     invoke: ["resolved", null],
     refused: "not_granted",
-    // anywidget's own invoke, over model.send, is answered as msg:custom
     send: ["anywidget-command-response", null, 0],
-    // The host echoes the previous value of a write it refuses
     unpermitted: "restored",
     oversized: "restored",
-    // The plugin reads its own asset, checked against the approved version; nothing else
     asset: [ASSET.length, ASSET],
     assetOutside: "invalid_args",
     assetMissing: "out_of_scope",
@@ -131,7 +116,6 @@ test("the-contract-holds-in-a-real-frame", async () => {
 test("a-refresh-reaches-the-frame-as-a-host-event", async () => {
   const refreshes = frame().locator("#e2e-refreshes");
   await expect(refreshes).toHaveText("0");
-  // What the dashboard's refresh dispatches
   await page.evaluate(() =>
     window.dispatchEvent(
       new CustomEvent("refreshQuery", { detail: { refreshQuery: true } }),

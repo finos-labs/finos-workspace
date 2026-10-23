@@ -28,12 +28,6 @@ const PRIVATE_SERVER_TEXT =
 
 const words = (text: string | undefined) => (text ?? "").split(/\s+/).filter(Boolean);
 
-/**
- * A superuser's overrides of a plugin, replaced whole on save: its frame policy per
- * directive (SECURITY.md 4) and the hosts the API may call for its proxies (SERVER-SIDE.md
- * 6), each wider or narrower than the author declared. The same rules as the server check
- * them as they are typed; the server checks them again.
- */
 export function OverrideEditor(props: {
   plugin: PlatformPlugin;
   declared: Record<string, string[]>;
@@ -82,7 +76,6 @@ export function OverrideEditor(props: {
     () => (networkOverridden ? words(networkText) : null),
     [networkOverridden, networkText],
   );
-  // tcp:// endpoints are for a backend, which a version of the plugin declares
   const backend = plugin.versions.some((v) => v.server.backend);
   const check = useMemo(() => {
     const csp = checkPolicy(policy, { confirmations, override: true });

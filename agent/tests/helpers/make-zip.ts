@@ -2,19 +2,11 @@ import { deflateRawSync } from "node:zlib";
 
 export interface ZipEntry {
   name: string;
-  /** What the central directory says, whatever the data is. */
   packedSize?: number;
   unpackedSize?: number;
   data?: Uint8Array;
 }
 
-/**
- * The table every CRC-32 implementation uses: the remainder for each possible byte, worked out once.
- *
- * Doing those eight steps per byte instead costs a second per 40 MB, and the ZIP-bomb fixtures are
- * tens of megabytes, which was most of the time those tests took and what made them miss the 5 s
- * budget on a slower machine than the one they were written on.
- */
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
   for (let byte = 0; byte < 256; byte++) {
@@ -31,7 +23,6 @@ function crc32(data: Uint8Array): number {
   return ~c >>> 0;
 }
 
-/** A ZIP made by hand: its entries deflated, unless the test gives sizes of its own for the directory to claim. */
 export function makeZip(entries: ZipEntry[]): Uint8Array {
   const parts: Uint8Array[] = [];
   const central: Uint8Array[] = [];
@@ -42,7 +33,6 @@ export function makeZip(entries: ZipEntry[]): Uint8Array {
     const packed = deflateRawSync(raw);
     const packedSize = entry.packedSize ?? packed.length;
     const unpackedSize = entry.unpackedSize ?? raw.length;
-    // Once per entry: the local header and the central directory record the same checksum.
     const checksum = crc32(raw);
     const local = new DataView(new ArrayBuffer(30));
     local.setUint32(0, 0x04034b50, true);

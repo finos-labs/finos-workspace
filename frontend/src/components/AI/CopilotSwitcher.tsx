@@ -20,7 +20,6 @@ const aiCopilotDefaultCopilotFF = getConfig().copilot.defaultCopilot;
 
 const aiShowCustomCopilotKeyFF = getConfig().copilot.showCustomKey;
 
-/** Hover card for an agent: avatar, name and description. */
 const AgentTooltipContent = memo(({ agent }: { agent: Copilot }) => {
   return (
     <div className="flex flex-col gap-2">
@@ -326,7 +325,6 @@ const AgentItem = memo(
               className="flex items-center gap-2 flex-1 hover:bg-general-bg-secondary rounded px-2 py-1 cursor-pointer"
               onClick={() => {
                 setSelectedCopilot(agent);
-                // Turn off orchestration when selecting a non-default agent
                 if (orchestrationModeEnabled) setOrchestrationModeEnabled(false);
               }}
             >

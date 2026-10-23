@@ -472,8 +472,6 @@ describe("ConnectionsPage", () => {
       renderConnections();
       expect(screen.getByText("My Backend")).toBeInTheDocument();
       expect(screen.getByText("Shared Backend")).toBeInTheDocument();
-      // "Another Backend" has status "error" and is in the collapsed Inactive section
-      // Expand the inactive section to see it
       const inactiveButton = screen.getByRole("button", { name: /inactive/i });
       await user.click(inactiveButton);
       expect(screen.getByText("Another Backend")).toBeInTheDocument();
@@ -486,7 +484,6 @@ describe("ConnectionsPage", () => {
       expect(myBackendRow).toBeDefined();
       if (myBackendRow) {
         const cells = within(myBackendRow).getAllByRole("cell");
-        // Column order: Checkbox, Backend, Apps, Widgets, Prompts, Agents, Last Updated, Actions
         expect(cells[3]).toHaveTextContent("2");
       }
     });
@@ -566,8 +563,6 @@ describe("ConnectionsPage", () => {
       const searchInput = screen.getByTestId("search-input");
       await user.type(searchInput, "another.example");
 
-      // "Another Backend" has status "error" and is in the collapsed Inactive section
-      // Expand the inactive section to see filtered results
       await waitFor(() => {
         const inactiveButton = screen.getByRole("button", { name: /inactive/i });
         return inactiveButton;
@@ -682,7 +677,6 @@ describe("ConnectionsPage", () => {
       const user = userEvent.setup();
       renderConnections();
 
-      // The Tooltip wrapper has the title, find the button inside
       const deleteWrappers = screen.getAllByTitle("Delete connection");
       const deleteButton = within(deleteWrappers[0]).getByRole("button");
       await user.click(deleteButton);
@@ -725,7 +719,6 @@ describe("ConnectionsPage", () => {
         expect(screen.getByTestId("confirm-dialog")).toBeInTheDocument();
       });
 
-      // Find the confirm button inside the dialog (the danger variant button)
       const dialog = screen.getByTestId("confirm-dialog");
       const confirmButton = within(dialog).getByRole("button", {
         name: /yes, delete/i,
@@ -768,7 +761,6 @@ describe("ConnectionsPage", () => {
       const user = userEvent.setup();
       renderConnections();
 
-      // Before selection, bulk delete button should not be rendered
       expect(
         screen.queryByRole("button", { name: /delete connection/i }),
       ).not.toBeInTheDocument();
@@ -776,7 +768,6 @@ describe("ConnectionsPage", () => {
       const checkboxes = screen.getAllByRole("checkbox");
       await user.click(checkboxes[1]);
 
-      // After selection, bulk delete button appears
       const bulkDeleteButton = screen.getByRole("button", {
         name: /delete connection/i,
       });
@@ -813,12 +804,10 @@ describe("ConnectionsPage", () => {
       const user = userEvent.setup();
       renderConnections();
 
-      // Expand inactive section to have more selectable connections
       const inactiveButton = screen.getByRole("button", { name: /inactive/i });
       await user.click(inactiveButton);
 
       const checkboxes = screen.getAllByRole("checkbox");
-      // [0]=Active header, [1]=My Backend, [2]=Shared Backend (disabled), [3]=Inactive header, [4]=Another Backend
       await user.click(checkboxes[1]);
       await user.click(checkboxes[4]);
 
@@ -838,7 +827,6 @@ describe("ConnectionsPage", () => {
       const user = userEvent.setup();
       renderConnections();
 
-      // The Tooltip wrapper has the title, find the button inside
       const editWrappers = screen.getAllByTitle("Edit backend");
       const editButton = within(editWrappers[0]).getByRole("button");
       await user.click(editButton);
@@ -911,7 +899,6 @@ describe("ConnectionsPage", () => {
     it("shows URL in backend name tooltip", () => {
       renderConnections();
 
-      // URL is rendered inside HintLabel tooltip content
       expect(screen.getByText("https://api.example.com")).toBeInTheDocument();
     });
 
@@ -926,7 +913,6 @@ describe("ConnectionsPage", () => {
 
       renderConnections();
 
-      // The copy button is rendered inside the HintLabel tooltip content, next to the URL
       const urlElement = screen.getByText("https://api.example.com");
       const copyButton = urlElement.parentElement?.querySelector("button");
       expect(copyButton).toBeTruthy();

@@ -1,11 +1,3 @@
-/**
- * Tier 2 — what the loop adds to the calls of the page tools.
- *
- * `fetch_webpage` holds the page it fetched for the chat, and `inspect_webpage` reads parts of it, so both
- * carry the chat's scope key and its signature (the tools check the signature before they hold or read
- * anything). The address a fetch is given is signed only if it was in what the model was given.
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";

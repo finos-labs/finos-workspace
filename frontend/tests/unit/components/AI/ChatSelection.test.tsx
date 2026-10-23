@@ -22,10 +22,6 @@ vi.mock("~/lib/utils/chatExport", () => ({
   downloadChatAsMarkdown: vi.fn(),
 }));
 
-// @tanstack/react-virtual relies on real layout measurements (ResizeObserver-driven
-// element sizes) that JSDOM never produces, which would report zero rendered rows.
-// Render every row synchronously instead, matching the pattern used for
-// NewAdvancedSelect's virtualized dropdown list.
 vi.mock("@tanstack/react-virtual", () => ({
   useVirtualizer: (opts: {
     count: number;

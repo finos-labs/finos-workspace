@@ -14,7 +14,6 @@ interface ExternalLinkDialogProps {
   url: string;
   onOpenInIframe: (url: string) => void;
   onOpenInNewTab: (url: string) => void;
-  /** When false, the iframe option is disabled (e.g. no active dashboard to add the widget to). */
   canOpenInIframe?: boolean;
 }
 
@@ -26,8 +25,6 @@ export function ExternalLinkDialog({
   onOpenInNewTab,
   canOpenInIframe = true,
 }: ExternalLinkDialogProps) {
-  // The page is not loaded until the user asks for the preview: the link may have been written by a model or
-  // taken from a web page, and loading it runs its scripts and styles here, before the user has chosen anything.
   const [previewing, setPreviewing] = useState(false);
   useEffect(() => {
     setPreviewing(false);

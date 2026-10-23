@@ -1,14 +1,3 @@
-/**
- * Bridge HTTP + WebSocket routes for the ines MCP server.
- *
- * - POST /bridge/session/start: mints session_id + token, returns WS URL
- * - GET  /bridge/ws:            WebSocket upgrade for the Workspace tab
- * - GET  /bridge/health:        liveness + counts (sessions, pending commands)
- *
- * StreamableHTTPTransport handles `/mcp` separately and does not consume
- * `/bridge/ws` upgrade frames — paths are independent in Hono's router.
- */
-
 import { upgradeWebSocket } from "@hono/node-server";
 import type { Hono } from "hono";
 
@@ -25,14 +14,12 @@ import {
 
 const logger = getLogger(["mcp", "bridge", "routes"]);
 
-/** The WebSocket upgrades are served by the server's WebSocketServer (mcp-server/src/server.ts). */
 export function mountBridgeRoutes(app: Hono, manager: BridgeSessionManager): void {
   app.post("/bridge/session/start", async (c) => {
     let body: unknown = {};
     try {
       body = await c.req.json();
     } catch {
-      // Empty body OK — schema fills in defaults.
     }
     const parsed = BrowserSessionStartRequestSchema.safeParse(body);
     if (!parsed.success) {

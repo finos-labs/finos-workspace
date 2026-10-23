@@ -16,7 +16,6 @@ import {
 } from "../../factories";
 import { malformed, partial, required } from "../../mocks";
 
-/** What it takes to add a tab. */
 type NewTab = Parameters<AppState["addTab"]>[0];
 
 const sharedAppMocks = vi.hoisted(() => {
@@ -35,7 +34,6 @@ const sharedAppMocks = vi.hoisted(() => {
   return state;
 });
 
-// Mock all external dependencies
 vi.mock("~/api/dashboard.api", () => ({
   postDashboards: vi.fn().mockResolvedValue({}),
 }));
@@ -86,7 +84,6 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Mock triggerCustomEvent since it depends on DOM
 vi.mock("~/lib/utils/utils", async () => {
   const actual = await vi.importActual("~/lib/utils/utils");
   return {
@@ -97,7 +94,6 @@ vi.mock("~/lib/utils/utils", async () => {
   };
 });
 
-// Helper to create test items structure
 const createTestItems = (): Items => {
   const rootId = "root-id";
   const tabId = "tab-1";
@@ -152,7 +148,6 @@ const createTestItems = (): Items => {
 describe("useAppStore", () => {
   beforeEach(() => {
     sharedAppMocks.sharedDashboard = undefined;
-    // Reset store to initial state
     const items = createTestItems();
     useAppStore.setState({
       items,
@@ -240,7 +235,6 @@ describe("useAppStore", () => {
   describe("getRootTabs", () => {
     it("should return all tabs including nested in folders", () => {
       const items = createTestItems();
-      // Add a tab inside the folder
       const nestedTabId = "nested-tab";
       items["nested-tab"] = {
         index: nestedTabId,
@@ -344,9 +338,7 @@ describe("useAppStore", () => {
     });
 
     it("should unlock a tab", () => {
-      // First lock
       useAppStore.getState().setTabLocked("tab-1", true);
-      // Then unlock
       useAppStore.getState().setTabLocked("tab-1", false);
 
       const tab = useAppStore.getState().getTabById("tab-1");
@@ -428,7 +420,7 @@ describe("useAppStore", () => {
 
       const tab = useAppStore.getState().getTabById("tab-1");
       expect(tab?.data?.name).toBe("Updated Name");
-      expect(tab?.data?.templateId).toBe("custom"); // Should preserve other fields
+      expect(tab?.data?.templateId).toBe("custom");
     });
 
     it("should do nothing for non-existent tab", () => {
@@ -546,7 +538,6 @@ describe("useAppStore", () => {
       const items = createTestItems();
       const cloudItems = JSON.parse(JSON.stringify(items));
 
-      // Modify local items
       required(items["tab-1"].data).name = "Modified Name";
 
       useAppStore.setState({
@@ -632,7 +623,6 @@ describe("useAppStore", () => {
 
   describe("deleteGroup", () => {
     it("should delete a group from a tab", () => {
-      // First add a group
       const items = createTestItems();
       required(items["tab-1"].data).groups = [
         partial<Group>({
@@ -757,7 +747,6 @@ describe("useAppStore", () => {
 
   describe("getAllFoldersFlat", () => {
     it("should return all folders in a flat list", () => {
-      // Set up sidebar items
       const items = createTestItems();
       const sideBarItems = Object.entries(items).reduce<SideBarItems>(
         (acc, [key, item]) => {
@@ -989,7 +978,6 @@ describe("useAppStore", () => {
   describe("getMoveToTabs", () => {
     it("should return tabs available to move to", () => {
       const items = createTestItems();
-      // Add another tab
       items["tab-2"] = {
         index: "tab-2",
         children: [],
@@ -1007,7 +995,6 @@ describe("useAppStore", () => {
 
       const moveTabs = useAppStore.getState().getMoveToTabs("tab-1");
 
-      // Should include tab-2 and folder-1, but not tab-1 (current tab)
       expect(moveTabs.length).toBeGreaterThan(0);
     });
   });
@@ -1114,10 +1101,8 @@ describe("useAppStore", () => {
     });
 
     it("should move tab to root when folderId is 'root'", () => {
-      // First move to folder
       useAppStore.getState().moveTabToFolder("folder-1", "tab-1", "");
 
-      // Then move to root
       useAppStore.getState().moveTabToFolder("root", "tab-1", "");
 
       const tab = useAppStore.getState().getTabById("tab-1");
@@ -1127,7 +1112,6 @@ describe("useAppStore", () => {
 
   describe("moveFolderToFolder", () => {
     it("should move folder to root", () => {
-      // Add nested folder first
       const items = createTestItems();
       items["nested-folder"] = {
         index: "nested-folder",
@@ -1269,7 +1253,6 @@ describe("useAppStore", () => {
     });
 
     it("should update existing tab if index already exists", () => {
-      // tab-1 already exists from createTestItems
       const updatedTab = {
         index: "tab-1",
         data: {
@@ -1350,7 +1333,6 @@ describe("useAppStore", () => {
         originalTab?.data?.widgets?.length || 0,
       );
 
-      // Widget IDs should be different
       const originalWidgetIds = originalTab?.data?.widgets?.map((w) => w.id) || [];
       const newWidgetIds = newTab?.data?.widgets?.map((w) => w.id) || [];
 
@@ -1367,7 +1349,6 @@ describe("useAppStore", () => {
     });
 
     it("should duplicate groups with new IDs", () => {
-      // Setup tab with a group
       const items = createTestItems();
       required(items["tab-1"].data).groups = [
         partial<Group>({
@@ -1436,7 +1417,7 @@ describe("useAppStore", () => {
 
       expect(widgetId).toBeDefined();
       const tab = useAppStore.getState().getTabById("tab-1");
-      expect(tab?.data?.widgets?.length).toBe(2); // Original + new
+      expect(tab?.data?.widgets?.length).toBe(2);
     });
 
     it("should generate widget ID if not provided", async () => {
@@ -1502,7 +1483,7 @@ describe("useAppStore", () => {
       await useAppStore.getState().addWidgets("tab-1", partial(widgets));
 
       const tab = useAppStore.getState().getTabById("tab-1");
-      expect(tab?.data?.widgets?.length).toBe(3); // 1 original + 2 new
+      expect(tab?.data?.widgets?.length).toBe(3);
     });
 
     it("should return ID of last added widget", async () => {

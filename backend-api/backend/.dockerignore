@@ -1,14 +1,11 @@
-# Environment & Configuration
 .env*
 envs
 
-# Testing & Coverage
 htmlcov
 tests
 .coverage
 .pytest_cache
 
-# Caching & Build Artifacts
 .ruff_cache
 .mypy_cache
 __pycache__/
@@ -16,25 +13,20 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Virtual Environments
 venv
 .venv
 
-# Development Files
 .ipynb_checkpoints
 README.md
 .gitignore
 scripts/cfgs/
 
-# Docker Files
 *Dockerfile*
 .dockerignore
 
-# Editor & IDE
 .vscode/
 .idea/
 *.swp
 *~
 
-# System Files
 .DS_Store

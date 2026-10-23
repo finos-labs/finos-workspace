@@ -1,13 +1,3 @@
-"""
-A superuser's All users: GET /entity/user and PUT /entity/user/{user_uuid}.
-
-The list holds the users of every organization that are not deleted, by email, and a
-search narrows it to the emails that contain the text. A move puts a user in another
-permission map: into another organization, they leave its roles and get the new one's
-Agent User, as a new user of it does; within the organization, they keep their roles.
-Only superusers do either.
-"""
-
 import os
 import sys
 

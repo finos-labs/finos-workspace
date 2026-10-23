@@ -1,12 +1,3 @@
-"""What this backend answers to Workspace's identity check (GET /.workspace/identity).
-
-The plugin, its version and the digest of the package this process runs from. The digest
-is computed from the files at start, as Workspace computes a version's digest: the
-SHA-256, unpadded base64url, of the sorted lines "<path>\\0<sha256 hex>\\n" of every file.
-A file that differs from the approved version's changes it, and Workspace then sends
-this backend nothing.
-"""
-
 import base64
 import hashlib
 import json
@@ -15,7 +6,6 @@ from pathlib import Path
 
 PROTOCOL = 1
 
-# The package's directory: where the image put it, or beside this file
 PACKAGE = Path(os.environ.get("SQL_EXPLORER_PACKAGE") or Path(__file__).resolve().parent.parent)
 
 

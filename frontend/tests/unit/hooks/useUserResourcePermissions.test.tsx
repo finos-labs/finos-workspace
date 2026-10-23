@@ -113,7 +113,6 @@ describe("useUserResourcePermissions", () => {
 
       expect(getUserResourcePermissions).toHaveBeenCalledTimes(1);
       expect(mockSetPermissions).toHaveBeenCalledWith(mockPermissions);
-      // .map() passes (item, index, array) to the callback
       expect(mockProcessBackendWidgets).toHaveBeenCalledWith(
         mockBackend,
         0,

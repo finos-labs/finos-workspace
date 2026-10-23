@@ -1,13 +1,3 @@
-"""A widget's calls to the server side of its plugin (docs/widget-plugins/SERVER-SIDE.md
-3.3 and 5): a declared proxy, or a route of the plugin's backend.
-
-Every call is authorized like any API call: the plugin available to the user, the
-effective permission, and the proxy or route named by the widget. A revoked plugin is
-not available, so revoking stops its calls at once. Calls are capped in size, time,
-concurrency and rate, and logged with the plugin, widget, proxy or route, outcome,
-duration and size: never arguments, bodies or secrets.
-"""
-
 import contextlib
 import json
 import time
@@ -37,7 +27,6 @@ from .proxy import CallError, Proxy, ProxyResult
 PROXY_PERMISSION = "core:proxy:call"
 BACKEND_PERMISSION = "core:backend:call"
 
-# Calls running now, per plugin and kind, in this process
 _running: dict[str, int] = {}
 
 
@@ -53,14 +42,12 @@ async def _slot(key: str, cap: int) -> AsyncIterator[None]:
 
 
 def _count(kind: str, user_uuid: UUID, plugin_id: str, per_user: str, per_plugin: str) -> None:
-    """The per-user and the per-plugin rate limits, in the API's rate limit storage."""
     for rate, keys in ((per_user, (plugin_id, str(user_uuid))), (per_plugin, (plugin_id,))):
         if not limiter.limiter.hit(parse(rate), f"widget-plugin-{kind}", *keys):
             raise CallError("rate_limited", "too many calls; try again shortly", status=429)
 
 
 async def _widget(db: AsyncSession, user_uuid: UUID, plugin_id: str, widget_id: str, permission: str):
-    """The available plugin entry and the widget, which has the permission."""
     entry = next((e for e in await service.available(db, user_uuid) if e["plugin"].plugin_id == plugin_id), None)
     widget = next((w for w in entry["widgets"] if w["id"] == widget_id), None) if entry else None
     if entry is None or widget is None:
@@ -72,11 +59,6 @@ async def _widget(db: AsyncSession, user_uuid: UUID, plugin_id: str, widget_id: 
 
 def _server(entry: dict) -> dict:
     return (entry["version"].manifest or {}).get("server") or {}
-
-
-# ---------------------------------------------------------------------------
-# Proxies (SERVER-SIDE 3)
-# ---------------------------------------------------------------------------
 
 
 async def _proxy_target(db: AsyncSession, user_uuid: UUID, plugin_id: str, widget_id: str, proxy_id: str):
@@ -94,7 +76,6 @@ async def _proxy_target(db: AsyncSession, user_uuid: UUID, plugin_id: str, widge
 async def proxy_call(
     db: AsyncSession, user_uuid: UUID, plugin_id: str, widget_id: str, proxy_id: str, args: dict[str, Any]
 ) -> ProxyResult:
-    """Authorize, limit, make, count and log one proxy call."""
     started = time.monotonic()
     outcome, size, upstream, available = "ok", 0, None, False
     try:
@@ -131,13 +112,11 @@ async def proxy_call(
         outcome, upstream = error.code, error.upstream
         raise
     except Exception as error:
-        # An error's text can carry a URL with arguments; only its type is logged
         outcome = "failed"
         logger.error(f"widget plugin proxy {plugin_id}/{proxy_id} failed with {type(error).__name__}")
         raise CallError("upstream_error", "the call failed", status=502) from None
     finally:
         seconds = time.monotonic() - started
-        # Counted for plugins the user may use, so the label is a plugin of the deployment
         if available:
             metrics.PROXY_CALLS.labels(plugin_id, outcome, metrics.status_class(upstream)).inc()
             metrics.PROXY_SECONDS.labels(plugin_id).observe(seconds)
@@ -145,11 +124,6 @@ async def proxy_call(
             f"widget plugin proxy plugin={plugin_id} widget={widget_id} proxy={proxy_id} outcome={outcome} "
             f"bytes={size} duration_ms={int(seconds * 1000)}"
         )
-
-
-# ---------------------------------------------------------------------------
-# Backend routes (SERVER-SIDE 5)
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -174,8 +148,6 @@ async def _route_target(db: AsyncSession, user_uuid: UUID, plugin_id: str, widge
 
 
 async def backend_ready(db: AsyncSession, entry: dict, *, force: bool = False) -> backends.Identity:
-    """The backend's identity, checked against the active version (SERVER-SIDE 5.5). A
-    mismatch stops routing, and its start is recorded."""
     plugin, version = entry["plugin"], entry["version"]
     identity = await backends.check_identity(plugin.plugin_id, version.version, version.digest, force=force)
     metrics.BACKEND_IDENTITY.labels(plugin.plugin_id, identity.state).inc()
@@ -191,8 +163,6 @@ async def backend_ready(db: AsyncSession, entry: dict, *, force: bool = False) -
 
 
 def _headers(token: str, route: Route, secrets: dict[str, str]) -> dict[str, str]:
-    """The call's token and the secrets the route declares. A secret name's underscores
-    become hyphens, which every proxy in between passes through."""
     missing = [name for name in route.secrets if name not in secrets]
     if missing:
         raise CallError("secret_missing", f"the secret {missing[0]} is not set", status=409)
@@ -203,8 +173,6 @@ def _headers(token: str, route: Route, secrets: dict[str, str]) -> dict[str, str
 
 
 def _context(entry: dict, user_uuid: UUID, widget_id: str, instance_id: str) -> tuple[str, dict[str, str]]:
-    """The call-context token the backend shows the broker, and what the backend learns
-    of the caller: a pseudonymous id when the admin approved one, otherwise nothing."""
     plugin, version = entry["plugin"], entry["version"]
     token = backends.mint_token(
         {
@@ -224,7 +192,6 @@ def _context(entry: dict, user_uuid: UUID, widget_id: str, instance_id: str) -> 
 
 def _decode(status: int, content_type: str, raw: bytes) -> Any:
     if not 200 <= status < 300:  # noqa: PLR2004
-        # A refusal of the backend's own is not a failure of the backend
         code = "backend_error" if status >= 500 else "backend_refused"  # noqa: PLR2004
         raise CallError(code, f"the backend answered {status // 100}xx", 502, status)
     if content_type != "application/json":
@@ -276,7 +243,6 @@ async def backend_call(  # noqa: PLR0913 - who calls what, with what
     route_id: str,
     args: dict[str, Any],
 ) -> BackendResult:
-    """Authorize, limit, make, count and log one call to a backend route."""
     started = time.monotonic()
     outcome, size, status, available = "ok", 0, None, False
     try:
@@ -311,8 +277,6 @@ async def backend_call(  # noqa: PLR0913 - who calls what, with what
 
 
 async def check_backend(db: AsyncSession, plugin_id: str) -> dict[str, Any]:
-    """A superuser's check of a plugin's backend: its identity against the active
-    version, asked now, and what the admin page shows."""
     plugin, version = await service.plugin_and_active_version(db, plugin_id)
     if version is None:
         raise CallError("not_approved", "no version of this plugin is active", status=409)

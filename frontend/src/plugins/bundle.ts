@@ -1,13 +1,6 @@
 import { getPluginFile } from "~/api/plugins.api";
 import type { AvailablePlugin } from "./types";
 
-/**
- * Plugin code as the host hands it to a frame: fetched with the user's credentials and
- * checked, file by file, against the SHA-256 the listing carries for the approved
- * version (docs/widget-plugins/SECURITY.md 3, layer 4). A file that does not match is
- * never delivered.
- */
-
 export class BundleIntegrityError extends Error {
   constructor(
     public readonly path: string,
@@ -52,15 +45,9 @@ async function verifiedFile(
     cache.set(key, pending);
     pending.catch(() => cache.delete(key));
   }
-  // Each frame gets its own copy, because the buffer is transferred to it
   return (await pending).slice(0);
 }
 
-/**
- * One of the plugin's own files under `assets/`, checked like its code, for the frame that
- * asks for it (`core:asset:read`). A file outside `assets/`, or not in the approved
- * version, is not one.
- */
 export async function loadAsset(
   plugin: AvailablePlugin,
   path: string,

@@ -29,7 +29,6 @@ function hostOf(url: string): string {
   }
 }
 
-/** The chat to hold a page for: only one the agent signed (see scope-check.ts), and only when there is one. */
 function chatToHold(args: { "x-ines-conversation-id"?: string; "x-ines-scope-sig"?: string }): string | null {
   if (scopeProblem(args) !== null) return null;
   return args["x-ines-conversation-id"] || null;
@@ -46,7 +45,6 @@ export async function fetchWebpageHandler(args: {
   if (problem) return { content: [textItem(problem)] };
   try {
     const { page, status } = await fetchPage(url);
-    // Read in a process of its own: a page built to be slow to read cannot stop this server.
     const overview = await describePage(page, logger);
     const title = overview.title || hostOf(url);
 

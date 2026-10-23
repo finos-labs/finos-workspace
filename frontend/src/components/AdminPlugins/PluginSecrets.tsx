@@ -12,11 +12,6 @@ import { Tag } from "~/components/ds/atoms/Tag";
 import { pluginKeys } from "~/hooks/usePlugins";
 import { errorText, formatWhen, Section } from "./common";
 
-/**
- * The values of the secrets a plugin declares for its proxies (SERVER-SIDE.md 4). Values
- * are write-only: the page sends one and never receives one. A value the deployment sets
- * in WIDGET_PLUGIN_SECRETS_DIR wins and cannot be changed here.
- */
 export function PluginSecrets({ plugin }: { plugin: PlatformPlugin }) {
   if (!plugin.secrets.length) return null;
   return (

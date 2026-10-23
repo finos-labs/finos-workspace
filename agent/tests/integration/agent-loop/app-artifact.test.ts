@@ -1,13 +1,3 @@
-/**
- * Tier 2 — create_app in-process execution through the agent loop.
- *
- * Asserts the harness wiring (NOT model behavior — that's a Tier 3 eval):
- *   - Model calls create_app with valid refs → an `app` artifact lands on the
- *     answer stream as a copilotMessageArtifact; no executeAgentTool round-trip.
- *   - Model calls create_app with an unknown ref → no artifact emitted, the loop
- *     continues from the returned error tool-result and still produces text.
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";

@@ -12,9 +12,6 @@ export interface ConversationContext {
   related_artifacts: ArtifactT[];
 }
 
-/**
- * Returns a human-readable fallback name for a widget based on its type.
- */
 export function getFallbackName(widgetType: string): string {
   const typeNames: Record<string, string> = {
     text: "Text Artifact",
@@ -23,10 +20,6 @@ export function getFallbackName(widgetType: string): string {
   return typeNames[widgetType] || "Artifact";
 }
 
-/**
- * Creates a conversation context payload for the AI widget info API.
- * Limits recent messages to last 5 and artifacts to last 3.
- */
 export function createConversationContextPayload(
   user_prompt: string,
   recent_messages: Message[],
@@ -49,10 +42,6 @@ export function createConversationContextPayload(
   };
 }
 
-/**
- * Removes citation tags from text content.
- * Handles patterns like: ". <citation>...</citation>" or "<citation>...</citation>."
- */
 export function removeCitationsFromText(text: string): string {
   return text.replace(/(?:\.\s*)?<citation>.*?<\/citation>(\s*\.)?/g, "$1");
 }

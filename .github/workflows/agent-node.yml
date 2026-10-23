@@ -1,16 +1,5 @@
 name: Agent Node
 
-# The agent's images run on a Node compiled from source (agent/Dockerfile, stage node-build), which
-# takes hours on a hosted runner. This builds the stage that holds it, `node`, once for what the stage
-# is made of, and keeps it in the Actions cache. Every job that builds the agent's images calls this
-# workflow, restores the stage from the cache into the directory agent-node and hands it to the build
-# in place of the stage (docker build --build-context node=agent-node), so no other job compiles Node.
-#
-# The cache key is the text of the node-build stage and the runner's platform: a change to that stage
-# (Node's version, a configure flag, the files it collects) builds it again; nothing else does. A
-# branch reads its own caches and its base branch's, so a pull request that leaves node-build alone
-# uses the one develop built.
-
 on:
   workflow_call:
     outputs:
@@ -26,7 +15,6 @@ jobs:
     name: Node for the agent's images
     runs-on: ubuntu-latest
     timeout-minutes: 360
-    # One build per branch: a second caller waits for the first, then finds the stage in the cache.
     concurrency:
       group: agent-node-${{ github.ref }}
       cancel-in-progress: false

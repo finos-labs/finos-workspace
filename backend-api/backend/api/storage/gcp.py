@@ -1,5 +1,3 @@
-"""Functions to help with Google Cloud"""
-
 from typing import Any, BinaryIO
 
 from fastapi.responses import StreamingResponse

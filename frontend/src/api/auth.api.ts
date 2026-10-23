@@ -49,8 +49,6 @@ import { formatZodErrorMessage } from "~/utils/zodErrors";
 import { apiClient } from "./api";
 import { getErrorResponse, loginFailure } from "./errors";
 
-/* Login */
-
 export interface PostApiSource {
   name: string;
   url: string;
@@ -105,14 +103,11 @@ export async function login(
   }
 }
 
-/* Validate user */
-
 export async function validateUser() {
   const { data } = await apiClient.get("/app/validate");
   return data;
 }
 
-/** The signed-in user from the session cookie, or null when there is no valid session. */
 export async function getSession(): Promise<SessionResponse | null> {
   const { data } = await apiClient
     .get<SessionResponse>("/app/session")
@@ -120,13 +115,11 @@ export async function getSession(): Promise<SessionResponse | null> {
   return data;
 }
 
-/** Ends the web session; the API deletes it and clears the session cookie. */
 export async function logout(): Promise<SuccessReturn> {
   const { data } = await apiClient
     .post<SuccessReturn>("/app/logout")
     .catch((e: AxiosError) => {
       console.error("Logout failed:", e);
-      // A session the API no longer knows is as good as ended
       const success = [e?.response?.status, e?.status].some((v) => v === 401);
       return { data: { success } as SuccessReturn };
     });
@@ -147,25 +140,13 @@ export async function googleLogin(
   }
 }
 
-/**
- * A single-use nonce for a Microsoft or Okta sign-in, issued by the API right before it.
- * The provider puts it in the ID token, and the API accepts that token only with the
- * nonce it issued to this browser (it keeps it bound to an HttpOnly cookie), so an ID
- * token the page forwards elsewhere cannot be used to sign in.
- */
 export async function getSignInNonce(): Promise<string> {
   const { data } = await apiClient.post<{ nonce: string }>("/app/sign-in/nonce");
   return data.nonce;
 }
 
-/** What the API answers (400) when a sign-in's nonce expired or was used already. */
 export const SIGN_IN_EXPIRED = "The sign-in has expired; please sign in again";
 
-/**
- * Runs a Microsoft or Okta sign-in with a nonce the API issues right before it. A nonce
- * lives five minutes and serves one attempt: when the API answers that it expired, the
- * sign-in starts once more with a new one.
- */
 export async function withSignInNonce<
   T extends { response: LoginResponse | Login2FAResponse },
 >(signIn: (nonce: string) => Promise<T>): Promise<T> {
@@ -178,7 +159,6 @@ export async function withSignInNonce<
   return expired ? signIn(await getSignInNonce()) : first;
 }
 
-/** Signs in with Microsoft: the API verifies the ID token MSAL issued for this app. */
 export async function microsoftLogin(
   token: string,
   idToken: string,
@@ -195,7 +175,6 @@ export async function microsoftLogin(
   }
 }
 
-/** Signs in with Okta: the API verifies the ID token Okta issued for this app. */
 export async function oktaLogin(
   token: string,
   idToken: string,
@@ -289,8 +268,6 @@ export async function updatePassword(
   return status;
 }
 
-/** Sets a new password with the link an admin gave: the HTTP status, and what the API
- * said went wrong. */
 export async function resetPassword(
   token: string,
   newPassword: string,
@@ -322,13 +299,6 @@ export async function generateQRCode(): Promise<{
   }
 }
 
-/**
- * Turns on the authenticator set up with generateQRCode once the user enters a code from
- * it. A wrong code is a 401 that says nothing about the session, so this bypasses the
- * apiClient's sign-out on 401. At sign-in (the enrollment cookie) the API then starts the
- * web session as POST /app/login does, with the sign-in's `remember`, and the code is
- * used up: the page reads that session with getSession.
- */
 export async function activateTotp(
   totpToken: number,
   signIn?: { remember: boolean },
@@ -348,7 +318,6 @@ export async function getApiSources(): Promise<Source[]> {
   const { data } = await apiClient
     .get("/app/data-connectors/api-source")
     .catch((_e: AxiosError) => {
-      // If the request fails, return an empty array
       return { data: [] };
     });
   return data;
@@ -510,16 +479,13 @@ export async function getUserAppShares(userAppUuid: string) {
 }
 
 export async function shareUserApp(userAppUuid: string, emails: string) {
-  // Split the emails string into an array
   const emailArray = emails.split(",");
 
-  // Convert the email array into the required shares object format
   const shares = emailArray.reduce<Record<string, "view">>((acc, email) => {
-    acc[email] = "view"; // Assuming "view" is the desired permission for all
+    acc[email] = "view";
     return acc;
   }, {});
 
-  // Make the API call
   const { data } = await apiClient
     .post(`/app/user-apps/${userAppUuid}/share`, {
       shares,
@@ -595,7 +561,6 @@ export async function getUsage(): Promise<Usage> {
   return data;
 }
 
-/** What the roles an admin assigned the signed-in user let them do. */
 export async function getAccess(): Promise<UserAccess> {
   const { data } = await apiClient.get<UserAccess>("/app/access");
   return data;
@@ -690,7 +655,6 @@ export async function fetchAgentsData(
   holder: Partial<CustomCopilot>,
   signal?: AbortSignal,
 ): Promise<Copilot[]> {
-  // The identity headers go out with the request only; they are never kept on the agents
   const initRequest: RequestInit = {
     headers: addExtraHeaders(holder?.headers),
     signal,
@@ -698,7 +662,6 @@ export async function fetchAgentsData(
 
   let res: Response;
   try {
-    // Try agents.json first, then fall back to copilots.json for backward compatibility
     res = await fetch(createURL("agents.json", holder.url), initRequest).then((res) =>
       res.ok ? res : fetch(createURL("copilots.json", holder.url), initRequest),
     );
@@ -738,7 +701,6 @@ export async function fetchAgentsData(
   const rawAgents = data as Record<string, Copilot>;
   const dataArray = Object.entries(rawAgents).map(
     ([id, copilot]: [string, Copilot]) => {
-      // Ensure copilot has a valid URL for endpoints
       const endpoints = copilot?.endpoints;
       if (endpoints) {
         for (const key of Object.keys(endpoints) as (keyof typeof endpoints)[]) {
@@ -763,7 +725,6 @@ export async function fetchAgentsData(
   }
 }
 
-/** The default agent, as the agents.json of the AI API describes it; that file is public. */
 export async function fetchDefaultAgent(
   signal?: AbortSignal,
 ): Promise<Copilot | undefined> {
@@ -847,7 +808,6 @@ export async function getExternalCopilotHolders(
             ...holder,
           };
 
-        // Update the custom copilot in the database
         putCustomCopilot({ ...holder, copilots });
 
         return {

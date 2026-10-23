@@ -70,7 +70,6 @@ function formatSqlIndentation(
   retry = true,
 ): string {
   try {
-    // Use sql-formatter with compact configuration
     return format(sql, {
       language: dialect,
       tabWidth: 2,
@@ -78,7 +77,6 @@ function formatSqlIndentation(
       functionCase: "preserve",
       identifierCase: "preserve",
       linesBetweenQueries: 1,
-      // Compact formatting to avoid excessive line breaks
       logicalOperatorNewline: "before",
       expressionWidth: 80,
       denseOperators: true,
@@ -87,13 +85,11 @@ function formatSqlIndentation(
   } catch (error) {
     if (retry && error instanceof Error && error.message.includes("postgres"))
       return formatSqlIndentation(sql, "postgresql", false);
-    // If formatting fails, return the original SQL
     console.error("SQL formatting error:", error);
     return sql;
   }
 }
 
-/** Whether a paragraph holds anything but text, which a `<p>` cannot hold in markdown that is not text. */
 export const hasObjectChild = (children: ReactNode) =>
   Array.isArray(children) && children.some((child) => typeof child === "object");
 
@@ -122,18 +118,10 @@ const ArtifactComponent = memo(
         let artifact: ArtifactT | null | undefined = null;
         const className = props.className || "";
         if (className) {
-          // This is the new way of getting artifactId
-          // The old way is to get it from props.children[0]
-          // but it creates problems when the artifactId is JSX-parsable,
-          // like <artifact>https://this-id-is-a-url</artifact>
-          // New option disableAutoLink from markdown-to-jsx disables links
-          // globally so we can't use that
           const artifactId = className;
-          // Remove escape characters from the artifact ID
           const normalizedArtifactId = artifactId.replace(/\\/g, "");
           artifact = getCurrentChatArtifact(normalizedArtifactId);
         } else {
-          // Leaving this here for backwards compatibility
           if (!props?.children || props?.children?.length === 0) return null;
           const artifactId = props.children[0];
           if (typeof artifactId !== "string") return null;
@@ -165,7 +153,6 @@ const TableComponent = memo(
   (props: { children: ReactElement<{ children: ReactNode[] }>[] }) => {
     if (!props?.children || props?.children?.length === 0) return null;
 
-    // ensure thead and tbody exist
     const firstChild = props.children[0];
 
     if (firstChild?.type === "tr") {
@@ -231,18 +218,12 @@ const LinkComponent = memo(
   (p, n) => p.href === n.href && p.children === n.children,
 );
 
-/**
- * The chat never loads an image. What it shows is written by a model, a web page or a file, and loading
- * `![](address)` asks the server at that address for it, with whatever was put in the address: the user's data
- * can leave that way, with no click. So an image in chat text is its alt text, and nothing is requested.
- */
 const ImageComponent = memo(
   (props: ComponentPropsWithoutRef<"img">) =>
     props.alt ? <span>{props.alt}</span> : null,
   (p, n) => p.alt === n.alt,
 );
 
-/** For every markdown the chat shows: the `img` of markdown-to-jsx would otherwise render an `<img>`. */
 export const inertImageOverride = { img: { component: ImageComponent } };
 
 const ParagraphComponent = memo(
@@ -256,10 +237,8 @@ const ParagraphComponent = memo(
 );
 
 const parseTableHTML = (code: string) => {
-  // Unescape underscores
   code = code.replace(/\\_/g, "_");
 
-  // Ensures that table HTML is properly wrapped
   if (!code.startsWith("<table")) {
     if (code.startsWith("<thead") || code.startsWith("<tbody")) {
       code = `<table>${code}</table>`;
@@ -268,9 +247,6 @@ const parseTableHTML = (code: string) => {
     }
   }
 
-  // A document of its own that nothing runs or loads in: an element made with `innerHTML` in this page starts
-  // loading its `src` and runs its `onerror` at once, even when it is never put on the page, and `code` is a
-  // model's text.
   const doc = new DOMParser().parseFromString(code, "text/html");
   const table = doc.querySelector("table");
 
@@ -453,7 +429,6 @@ export const MarkdownAIMessageOptions: MarkdownToJSX.Options = {
   overrides: MarkdownAIMessageOverrides,
 };
 
-/** For markdown shown in the chat panel that has no overrides of its own: no raw HTML, and no images. */
 export const InertMarkdownOptions: MarkdownToJSX.Options = {
   disableParsingRawHTML: true,
   overrides: { ...inertImageOverride },

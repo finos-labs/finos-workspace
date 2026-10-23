@@ -1,15 +1,3 @@
-"""Print the ``widgets.json`` schema for the built-in types, plus plugin types.
-
-    python -m scripts.compose_widgets_schema [--plugin <type>=<definition.json>]...
-        [--settings <type>=<settings.json>]... [--id <id>]
-
-The API serves the schema in force for an entity (``GET /app/widget-plugins/widgets-schema``);
-this prints the same composition offline, for checking a backend's ``widgets.json`` in CI,
-or with a plugin's ``definition`` for one of its types before the plugin is installed
-(docs/widget-plugins/WIDGETS-JSON.md 3.5). ``--settings`` gives the settings schema of the
-plugin widget that handles a type, which checks a template's ``plugin.config`` (3.10).
-"""
-
 import argparse
 import json
 import re
@@ -46,7 +34,9 @@ def _settings(value: str) -> tuple[str, dict]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
+    parser = argparse.ArgumentParser(
+        description="Print the ``widgets.json`` schema for the built-in types, plus plugin types."
+    )
     parser.add_argument("--plugin", action="append", type=_plugin_type, default=[], help="<type>=<definition.json>")
     parser.add_argument("--settings", action="append", type=_settings, default=[], help="<type>=<settings.json>")
     parser.add_argument("--id", default="offline", help="the schema's id suffix")

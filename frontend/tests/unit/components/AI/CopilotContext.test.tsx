@@ -181,7 +181,6 @@ describe("CopilotContext", () => {
     };
 
     beforeEach(() => {
-      // The web app knows the default agent as default-copilot
       useCopilotStore.setState({
         selectedCopilot: {
           id: "default-copilot",

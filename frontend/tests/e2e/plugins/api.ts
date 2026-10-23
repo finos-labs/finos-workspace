@@ -1,6 +1,5 @@
 import type { BrowserContext } from "@playwright/test";
 
-/** What the API answered, read the way a Playwright APIResponse is. */
 export type ApiResponse = {
   ok(): boolean;
   status(): number;
@@ -18,17 +17,11 @@ export type PageApi = {
   dispose(): Promise<void>;
 };
 
-/**
- * The Workspace API as the signed-in web app calls it: from a page of the web app's
- * origin, with the session cookie, the client header and that origin as the Origin. The
- * session is an HttpOnly cookie, which the tests never read.
- */
 export async function pageApi(
   context: BrowserContext,
   apiUrl: string,
 ): Promise<PageApi> {
   const page = await context.newPage();
-  // A file of the web app's origin, where nothing of the app runs
   await page.goto("/robots.txt");
   const call = async (method: string, path: string, data?: unknown) => {
     const url = new URL(path, apiUrl).toString();
@@ -66,10 +59,6 @@ export async function pageApi(
   };
 }
 
-/**
- * A role of the signed-in admin's organization, held by `email`, that grants these plugins:
- * a role is the only way to a plugin. Returns its uuid; the test deletes the role.
- */
 export async function grantPlugins(
   api: PageApi,
   email: string,

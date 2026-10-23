@@ -3,9 +3,8 @@ import type { ParamDef, WidgetT } from "~/components/types";
 import type { WidgetSignature } from "~/lib/state/copilot";
 import type { DashboardWidgetData } from "~/lib/state/copilotData";
 
-// Mock external dependencies
 vi.mock("~/lib/utils/widgetParams", () => ({
-  currentDateModifier: vi.fn((value) => value), // Default passthrough
+  currentDateModifier: vi.fn((value) => value),
 }));
 
 import {
@@ -14,11 +13,9 @@ import {
   detectQueryMismatch,
   normalizeCitations,
 } from "~/components/AI/hooks/utils";
-// Import after mocking
 import { currentDateModifier } from "~/lib/utils/widgetParams";
 import { malformed, partial } from "../../../mocks";
 
-// Helper function to create test widgets with proper typing
 const createTestWidget = (overrides: Partial<WidgetT> = {}): WidgetT => ({
   id: "test-widget",
   name: "Test Widget",
@@ -256,8 +253,6 @@ describe("compareSignatures", () => {
 
   describe("critical regression test for isEqual args comparison", () => {
     it("should return false when args comparison is disabled/commented out", () => {
-      // This test ensures that if someone comments out the isEqual(sig1.args, sig2.args) line,
-      // the test will fail, preventing the regression you experienced
       const sig1: WidgetSignature = {
         origin: "the backend",
         widgetId: "equity_price",
@@ -267,10 +262,9 @@ describe("compareSignatures", () => {
       const sig2: WidgetSignature = {
         origin: "the backend",
         widgetId: "equity_price",
-        args: { symbol: "TSLA", period: "6m" }, // Different args
+        args: { symbol: "TSLA", period: "6m" },
       };
 
-      // This MUST return false - if it returns true, the args comparison is broken
       expect(compareSignatures(sig1, sig2)).toBe(false);
     });
 
@@ -287,7 +281,6 @@ describe("compareSignatures", () => {
         args: { symbol: "AAPL", period: "1y", limit: 100 },
       };
 
-      // This MUST return true - if it returns false, the comparison logic is broken
       expect(compareSignatures(sig1, sig2)).toBe(true);
     });
   });
@@ -399,7 +392,7 @@ describe("createSignatureMap", () => {
         data: {},
         metadata: {
           params: {
-            symbol: "TSLA", // Override the widget's default value
+            symbol: "TSLA",
           },
         },
       },
@@ -408,7 +401,7 @@ describe("createSignatureMap", () => {
     const result = createSignatureMap(widgets, dashboardWidgetsData);
 
     expect(result["widget-1"].args).toEqual({
-      symbol: "TSLA", // Should use dashboard data value
+      symbol: "TSLA",
     });
   });
 
@@ -465,12 +458,12 @@ describe("createSignatureMap", () => {
     expect(result).toEqual({
       "workspace-widget": {
         origin: "Workspace",
-        widgetId: "workspace-widget", // Uses widget.id for Workspace widgets
+        widgetId: "workspace-widget",
         args: {},
       },
       "backend-widget": {
         origin: "my_backend",
-        widgetId: "equity_price", // Uses the normalized widget.widgetId for backend widgets
+        widgetId: "equity_price",
         args: {},
       },
     });
@@ -511,13 +504,12 @@ describe("createSignatureMap", () => {
       }),
     ];
 
-    // dashboardWidgetsData doesn't have this widget
     const dashboardWidgetsData: Record<string, DashboardWidgetData> = {};
 
     const result = createSignatureMap(widgets, dashboardWidgetsData);
 
     expect(result["widget-1"].args).toEqual({
-      symbol: "AAPL", // Should fall back to widget's default value
+      symbol: "AAPL",
     });
   });
 
@@ -547,7 +539,6 @@ describe("createSignatureMap", () => {
 
       const result = createSignatureMap(widgets, {});
 
-      // Ensure origin is always present in the signature
       expect(result["widget-1"]).toHaveProperty("origin");
       expect(typeof result["widget-1"].origin).toBe("string");
       expect(result["widget-1"].origin.length).toBeGreaterThan(0);
@@ -571,10 +562,8 @@ describe("createSignatureMap", () => {
 
       const result = createSignatureMap([workspaceWidget, backendWidget], {});
 
-      // Workspace widgets should use widget.id as widgetId
       expect(result["workspace-1"].widgetId).toBe("workspace-1");
 
-      // Non-workspace widgets should use widget.widgetId
       expect(result["backend-1"].widgetId).toBe("equity_price");
     });
 
@@ -595,7 +584,6 @@ describe("createSignatureMap", () => {
 
       const result = createSignatureMap(widgets, {});
 
-      // Ensure all parameters are present in args
       expect(Object.keys(result["widget-1"].args)).toHaveLength(3);
       expect(result["widget-1"].args).toEqual({
         param1: "value1",
@@ -618,8 +606,8 @@ describe("createSignatureMap", () => {
       ];
 
       mockCurrentDateModifier
-        .mockReturnValueOnce("2023-01-01") // for start_date
-        .mockReturnValueOnce("2024-01-01"); // for end_date
+        .mockReturnValueOnce("2023-01-01")
+        .mockReturnValueOnce("2024-01-01");
 
       const result = createSignatureMap(widgets, {});
 
@@ -630,7 +618,7 @@ describe("createSignatureMap", () => {
       expect(result["widget-1"].args).toEqual({
         start_date: "2023-01-01",
         end_date: "2024-01-01",
-        symbol: "AAPL", // Non-date param should not be processed
+        symbol: "AAPL",
       });
     });
   });

@@ -165,9 +165,6 @@ vi.mock("~/components/AI/hooks/useAiFetchRequestInit", () => ({
 }));
 
 vi.mock("~/api/workspace.api", async (importOriginal) => ({
-  // Keep the real pure helpers (computeWidgetParamUpdates, getWidgetDefinitionOrThrow,
-  // ...) so dry-run paths run the same rules as the mutation paths; only the
-  // store-mutating entry points are mocked.
   ...(await importOriginal<typeof import("~/api/workspace.api")>()),
   readWidget: (...args: unknown[]) => mockReadWidget(...args),
   createWidget: (...args: unknown[]) => mockCreateWidget(...args),
@@ -438,8 +435,6 @@ describe("useWorkspaceBridgeCommandHandler", () => {
         widget_uuid: null,
       },
     ]);
-    // The bridge un-stringifies JSON content so MCP callers receive structured
-    // rows rather than a JSON string inside items[].content.
     expect(response).toMatchObject({
       ok: true,
       command: "get_widget_data",
@@ -1205,7 +1200,6 @@ describe("useWorkspaceBridgeCommandHandler", () => {
       },
     });
     expect(response?.warnings).toEqual([expect.stringContaining("bogus_param")]);
-    // the dropped-key warning must list the declared params for recovery
     expect(
       response?.warnings?.find((warning) => warning.includes("bogus_param")),
     ).toContain("symbol");
@@ -1396,7 +1390,6 @@ describe("useWorkspaceBridgeCommandHandler", () => {
     });
     const data = response?.data as { warnings: string[] };
     expect(data.warnings).toEqual([expect.stringContaining("bogus_param")]);
-    // the dropped-key warning must list the declared params for recovery
     expect(data.warnings[0]).toContain("symbol");
   });
 
@@ -1449,8 +1442,6 @@ describe("useWorkspaceBridgeCommandHandler", () => {
         valid: true,
         dashboard_id: "dashboard-1",
         widget_uuid: "widget-instance-1",
-        // existing storage.params { symbol: "AAPL" } merged with the computed
-        // update — without writing.
         effective_params: { symbol: "TSLA" },
         warnings: [],
       },

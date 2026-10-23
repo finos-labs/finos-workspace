@@ -33,7 +33,6 @@ const widgets = {
     type: "html",
     params: [],
   },
-  // A widget needs a name and a description
   bad: { name: "", endpoint: "/bad", type: "html", params: [] },
 };
 
@@ -43,7 +42,6 @@ const apps = [
     description: "Loads fine",
     tabs: { main: { id: "main", name: "Main", layout: [] } },
   },
-  // An app needs its tabs
   { name: "Broken App" },
 ];
 
@@ -121,7 +119,6 @@ describe("backends with invalid widgets or apps", () => {
     await useBackendConnectorStore.getState().updateApiSources([source], false);
     expect(warnings()).toBe(1);
 
-    // The user asked for a refresh: say it again
     await useBackendConnectorStore.getState().updateApiSources([source], true);
     expect(warnings()).toBe(2);
   });
@@ -302,7 +299,6 @@ describe("backends with invalid widgets or apps", () => {
         "widgets.json": { report: linked("Team data"), note: widgets.good },
         "apps.json": [
           app("Teams", [{ name: "Team data", url: "https://mcp.example/a" }]),
-          // The name already names another server of this backend
           app("Other", [{ name: "Team data", url: "https://mcp.example/b" }]),
         ],
       });

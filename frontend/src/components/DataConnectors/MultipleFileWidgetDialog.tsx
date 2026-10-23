@@ -144,9 +144,6 @@ export function FileFormElement(props: FileFormElementProps) {
                   if (status === 200) {
                     setFiles((prevFiles) => {
                       const newFiles = prevFiles.filter((f) => f.uuid !== file.uuid);
-                      /*       if (newFiles.length === 0) {
-                          setSearchParams({ currentTab });
-                        }*/
                       return newFiles;
                     });
                   }

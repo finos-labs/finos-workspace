@@ -1,5 +1,3 @@
-"""The backend's modules import as the image runs them, from backend/."""
-
 import sys
 from pathlib import Path
 

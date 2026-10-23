@@ -1,12 +1,3 @@
-"""The values of the secrets plugins declare (docs/widget-plugins/SERVER-SIDE.md 4).
-
-A manifest declares a secret by name and purpose. Its value comes from the deployment,
-as the file ``<WIDGET_PLUGIN_SECRETS_DIR>/<plugin id>/<secret name>``, or from a
-superuser, write-only, stored encrypted in ``widget_plugin_secret``. The deployment's
-value wins. A value is read only to fill the headers of a proxy that names it: no
-endpoint, listing, log line or event carries one.
-"""
-
 import os
 import re
 from collections.abc import Iterable
@@ -27,12 +18,10 @@ MAX_SECRET_LENGTH = 4096
 SOURCE_CONFIGURATION = "configuration"
 SOURCE_ADMIN = "admin"
 
-# A value goes into a header: printable ASCII, no line breaks
 _VALUE = re.compile(r"[\x20-\x7e]+")
 
 
 def value_problem(value: str) -> str | None:
-    """Why a value cannot be used, in words that do not repeat it."""
     if not value:
         return "the value is empty"
     if len(value) > MAX_SECRET_LENGTH:
@@ -43,9 +32,6 @@ def value_problem(value: str) -> str | None:
 
 
 def configured(plugin_id: str, name: str) -> str | None:
-    """The deployment's value: the file's text without its final line break, or None
-    when there is no file. Only a plugin id and a secret name of the manifest's forms are
-    looked up, and only inside the directory."""
     if not settings.WIDGET_PLUGIN_SECRETS_DIR:
         return None
     if not (re.fullmatch(PLUGIN_ID_PATTERN, plugin_id) and re.fullmatch(NAME_PATTERN, name)):
@@ -65,7 +51,6 @@ def configured(plugin_id: str, name: str) -> str | None:
 
 
 def declared(versions: Iterable[models.WidgetPluginVersion]) -> dict[str, str]:
-    """Name to purpose for every secret a version on disk declares, newest first."""
     found: dict[str, str] = {}
     for row in versions:
         if row.state == VERSION_MISSING:
@@ -83,8 +68,6 @@ async def stored(db: AsyncSession, plugin_uuid: UUID) -> dict[str, models.Widget
 async def status(
     db: AsyncSession, plugin: models.WidgetPlugin, versions: Iterable[models.WidgetPluginVersion]
 ) -> list[dict[str, Any]]:
-    """Whether each secret is set, by whom and when; never the value. A stored value
-    for a secret no version declares any more is listed so a superuser can clear it."""
     names = declared(versions)
     rows = await stored(db, plugin.uuid)
     result = []
@@ -112,8 +95,6 @@ async def status(
 
 
 async def resolve(db: AsyncSession, plugin: models.WidgetPlugin, names: Iterable[str]) -> dict[str, str]:
-    """The usable values of the named secrets. One without a usable value is left out,
-    and the call that needs it fails with ``secret_missing``."""
     values: dict[str, str] = {}
     rows: dict[str, models.WidgetPluginSecret] | None = None
     for name in names:

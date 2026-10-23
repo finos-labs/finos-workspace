@@ -121,7 +121,6 @@ describe("AdminApps", () => {
     expect(screen.getByPlaceholderText("Search")).toBeInTheDocument();
     expect(screen.getByText("Add backend")).toBeInTheDocument();
     expect(screen.getByText("Export apps")).toBeInTheDocument();
-    // No grouped/flat toggle anymore.
     expect(screen.queryByRole("button", { name: "Grouped" })).not.toBeInTheDocument();
   });
 
@@ -132,9 +131,7 @@ describe("AdminApps", () => {
     );
     expect(screen.getByText("user3@example.com")).toBeInTheDocument();
 
-    // header select-all + one checkbox per row
     expect(screen.getAllByRole("checkbox")).toHaveLength(mockApps.length + 1);
-    // a view-users + connect action per row
     expect(screen.getAllByTestId("icon-user-group")).toHaveLength(mockApps.length);
     expect(screen.getAllByTestId("icon-external-link-icon")).toHaveLength(
       mockApps.length,
@@ -143,7 +140,6 @@ describe("AdminApps", () => {
     fireEvent.click(
       screen.getAllByTestId("icon-user-group")[0].closest("button") as HTMLElement,
     );
-    // The users dialog opens with a "Users with apps" section (SettingsMenu).
     await waitFor(() =>
       expect(screen.getByText("Users with apps")).toBeInTheDocument(),
     );

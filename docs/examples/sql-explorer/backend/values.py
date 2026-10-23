@@ -1,10 +1,3 @@
-"""Database values as JSON.
-
-Numbers stay numbers while JSON can carry them exactly; a decimal, or an integer beyond
-2^53, becomes text so no digit is lost. Dates and times are ISO 8601. Long text, bytes,
-arrays and maps are cut to a size a table cell can show.
-"""
-
 import math
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal

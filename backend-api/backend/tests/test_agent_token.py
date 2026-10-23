@@ -1,12 +1,3 @@
-"""The agent token of the default Copilot.
-
-The web app mints it with its session cookie (POST /app/copilot/token) and sends it to the
-default Copilot only, which calls the API with it server to server: GET /app/user (who the
-user is, without anything they keep), PUT /app/usage and POST /app/copilot/authorize (with
-the user's own provider keys). Every other route refuses it. Redis keeps its hash for 30
-minutes at most; signing out revokes it, and it ends with its session.
-"""
-
 import hashlib
 import json
 from datetime import UTC, datetime, timedelta
@@ -34,7 +25,6 @@ async def agent_token(auth_client):
 
 @pytest.fixture
 async def stored_backend(auth_client, db_session):
-    """A data backend of the test user, with a key in its headers."""
     source = models.ApiSource(
         name="Backend with a key",
         url="http://localhost:8001",
@@ -79,10 +69,8 @@ class TestMinting:
         headers = web_session_headers(auth_client.headers["Cookie"].split("=", 1)[1])
         client.headers.update(headers)
         del client.headers["Origin"]
-        # Without an allowed origin: no
         assert (await client.post("/app/copilot/token")).status_code == 403
 
-        # Nor with a session sent as a bearer
         user = await organization.add_user(password="TestPassword123!")  # noqa: S106
         session = await auth_helpers.create_login_token(
             organization.db, user.uuid, timedelta(hours=1), app_session=True, source="app"
@@ -99,7 +87,6 @@ class TestItsThreeRoutes:
         own = (await auth_client.get("/app/user")).json()
         assert own["api_sources"], "the web app gets the user's backends"
 
-        # The default Copilot calls server to server: its configured origin, no cookie
         async with bearer_client(agent_token["token"]) as agent:
             response = await agent.get("/app/user")
         assert response.status_code == 200, response.text
@@ -137,7 +124,6 @@ class TestItsThreeRoutes:
             "perplexity_api_key": None,
         }
 
-        # The browser never receives them
         from_browser = await auth_client.post(
             "/app/copilot/authorize", json={"agent_id": "default-copilot"}, headers=METERING
         )
@@ -161,7 +147,6 @@ class TestItsThreeRoutes:
                 response = await agent.request(method, path)
                 assert response.status_code == 401, (method, path, response.text)
 
-        # Nor is it a cookie
         async with bearer_client("unused") as browser:
             browser.headers.update(web_session_headers(agent_token["token"]))
             del browser.headers["Authorization"]
@@ -181,7 +166,6 @@ class TestRevocation:
 
     @pytest.mark.asyncio
     async def test_it_ends_with_its_session(self, auth_client, agent_token, db_session):
-        # As when an administrator resets the user's password
         await db_session.execute(
             delete(models.Session).where(models.Session.uuid == _AUTH_USER["session_uuid"])
         )

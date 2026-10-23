@@ -180,7 +180,6 @@ export function useTabsItems(
 
         scrollIntoView(newFocusedItemId);
         const innerTab = getLastInnerTab(newFocusedItemId);
-        // Navigate to the new item
         navigate(`/app/${newFocusedItemId}${innerTab && `?tab=${innerTab}`}`);
       }
     },
@@ -220,10 +219,8 @@ export function useTabsItems(
 
       const item = currentItems[tabId];
       if (item) {
-        // Find all parent IDs
         const parentIds = findParents(tabId, currentItems);
         if (parentIds.some((parentId) => !expandedItemsRef.current.includes(parentId)))
-          // Ensure all parents are expanded
           sideBarStore.setExpandedItems((prevExpandedItems) =>
             Array.from(new Set([...prevExpandedItems, ...parentIds])),
           );
@@ -285,10 +282,8 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
             return;
           }
           if (target.targetItem === parent.index) {
-            // Trying to drop inside itself
             return;
           }
-          // trying to drop on another item
           newItems[parent.index] = {
             ...parent,
             children: parent.children.filter((child) => child !== item.index),
@@ -312,19 +307,16 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
               Array.from(new Set([...prevExpandedItems, target.targetItem])),
             );
         } else {
-          // trying to drop between items
           const newParent = currentItems[target.parentItem];
           const newParentChildren = [...(newParent.children ?? [])].filter(
             (child) => child !== item.index,
           );
 
           if (target.parentItem === item.index) {
-            // Trying to drop inside itself
             return;
           }
 
           if (target.parentItem === parent.index) {
-            // Trying to drop on another item
             const isOldItemPriorToNewItem =
               ((newParent.children ?? []).indexOf(item.index) ??
                 Number.POSITIVE_INFINITY) < target.childIndex;
@@ -339,7 +331,6 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
               children: newParentChildren,
             };
           } else {
-            // Trying to drop on another item in another folder
             newParentChildren.splice(target.childIndex, 0, item.index);
 
             newItems[parent.index] = {
@@ -379,7 +370,6 @@ function TabsItems({ tabsRef }: TabsItemsProps) {
 
   const onCollapseItem = useCallback(
     (item: TreeItem) => {
-      // Don't collapse if the current active tab is inside this folder
       const currentTabId = sideBarStore.getActiveItem();
       if (currentTabId && item.isFolder) {
         const childrenIds = recursiveChildrenIds(

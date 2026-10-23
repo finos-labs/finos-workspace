@@ -10,12 +10,10 @@ function createMockIframeRef(contentWindow: Window | null = window, src = "") {
   } as unknown as React.RefObject<HTMLIFrameElement>;
 }
 
-/** What a request of data of a widget of the iframe gives. */
 type DataRequest = ReturnType<
   ReturnType<typeof UseIframeProtocol>["requestWidgetData"]
 >;
 
-/** Stands in a window of the test for the one of the iframe. */
 function setContentWindow(iframeRef: React.RefObject<HTMLIFrameElement>, win: object) {
   Object.assign(iframeRef.current as object, { contentWindow: win });
 }
@@ -76,7 +74,6 @@ describe("useIframeProtocol", () => {
     setContentWindow(iframeRef, {
       postMessage: postMessageSpy,
     });
-    // Override source check — use the mocked contentWindow
     const mockWindow = iframeRef.current?.contentWindow;
 
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
@@ -167,7 +164,6 @@ describe("useIframeProtocol", () => {
 
     renderHook(() => useIframeProtocol({ iframeRef }));
 
-    // Should not throw — no pending request for "unknown"
     act(() => {
       postFromIframe(iframeRef, {
         type: "workspace-error",
@@ -182,7 +178,6 @@ describe("useIframeProtocol", () => {
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
     act(() => {
-      // Post with null source (different from iframe's contentWindow)
       const event = new MessageEvent("message", {
         data: {
           type: "workspace-connect",
@@ -246,7 +241,7 @@ describe("useIframeProtocol", () => {
   });
 
   it("accepts workspace-connect from an iframe nested in the widget's iframe", () => {
-    const outer = {} as Window; // the outer Streamlit window — not event.source
+    const outer = {} as Window;
     const iframeRef = createMockIframeRef(outer, "http://localhost:8501/app");
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
@@ -287,8 +282,6 @@ describe("useIframeProtocol", () => {
   });
 
   it("does not take the messages of another iframe of the same origin for its own", () => {
-    // Two widgets of one backend are two iframes with one origin. Each widget listens on the window, so
-    // each hears the other's handshake and data: only the iframe's own may count.
     const top = {} as Window;
     const own = { parent: top } as unknown as Window;
     const sibling = { postMessage: vi.fn(), parent: top } as unknown as Window;
@@ -336,7 +329,7 @@ describe("useIframeProtocol", () => {
 
     act(() => {
       handshake(own, "mine");
-      handshake(sibling, "theirs"); // the later one used to take over the bridge
+      handshake(sibling, "theirs");
     });
     act(() => {
       result.current.requestWidgetData("mine");
@@ -408,7 +401,6 @@ describe("useIframeProtocol", () => {
 
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
-    // Simulate handshake from nested iframe
     act(() => {
       const event = new MessageEvent("message", {
         data: {
@@ -421,7 +413,6 @@ describe("useIframeProtocol", () => {
       window.dispatchEvent(event);
     });
 
-    // Request should be sent to the nested source, not the outer iframe
     act(() => {
       result.current.requestWidgetData("w1");
     });
@@ -524,7 +515,6 @@ describe("useIframeProtocol", () => {
 
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
 
-    // Handshake to establish bridge source
     act(() => {
       const event = new MessageEvent("message", {
         data: {
@@ -634,7 +624,6 @@ describe("useIframeProtocol", () => {
         expect.any(Array),
       );
 
-      // Request should still be pending (not resolved by invalid message)
       act(() => {
         vi.advanceTimersByTime(10_000);
       });
@@ -671,7 +660,6 @@ describe("useIframeProtocol", () => {
         expect.any(Array),
       );
 
-      // Request should still be pending (not rejected by invalid message)
       act(() => {
         vi.advanceTimersByTime(10_000);
       });
@@ -707,7 +695,6 @@ describe("useIframeProtocol", () => {
       ],
     });
     const postMessage = vi.fn();
-    // The iframe's own window sends the handshake
     const frame = { postMessage } as unknown as Window;
     const iframeRef = createMockIframeRef(frame, "http://localhost:8501/app");
     renderHook(() => useIframeProtocol({ iframeRef }));
@@ -738,7 +725,6 @@ describe("useIframeProtocol", () => {
       },
     } as unknown as ReturnType<typeof useWidgetContext>);
     const { useBackendConnectorStore } = await import("~/lib/state/backendConnector");
-    // After a reload the source comes back from IndexedDB without its credentials
     useBackendConnectorStore.setState({
       apiSources: [
         {
@@ -750,7 +736,6 @@ describe("useIframeProtocol", () => {
       ],
     });
     const postMessage = vi.fn();
-    // The iframe's own window sends the handshake
     const frame = { postMessage } as unknown as Window;
     const iframeRef = createMockIframeRef(frame, "http://localhost:8501/app");
     const { result } = renderHook(() => useIframeProtocol({ iframeRef }));
@@ -766,7 +751,6 @@ describe("useIframeProtocol", () => {
     });
     expect(postMessage).not.toHaveBeenCalled();
 
-    // The API's answer puts the credentials back in memory
     act(() => {
       useBackendConnectorStore.setState({
         apiSources: [
@@ -786,7 +770,6 @@ describe("useIframeProtocol", () => {
       { type: "workspace-auth", headers: { "X-Api-Key": "from-source" } },
       "http://localhost:8501",
     );
-    // The page that made the handshake is still the one requests go to
     act(() => {
       result.current.requestWidgetData("w1");
     });

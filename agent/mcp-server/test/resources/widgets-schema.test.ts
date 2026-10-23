@@ -1,7 +1,3 @@
-/**
- * workspace://specs/widgets-json-schema: read from the connected browser when it is asked for.
- */
-
 import { describe, test } from "node:test";
 import { expect } from "expect";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";

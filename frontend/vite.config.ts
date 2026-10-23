@@ -9,7 +9,6 @@ import { defineConfig } from "vitest/config";
 import { dark } from "./src/components/ds/colors.ts";
 import { configFromEnv } from "./src/lib/runtimeConfigSchema.ts";
 
-// plugin so it always forces reload because hmr breaks the dev app
 const fullReloadAlways: PluginOption = {
   name: "full-reload-always",
   handleHotUpdate({ server }) {
@@ -19,15 +18,13 @@ const fullReloadAlways: PluginOption = {
 } as PluginOption;
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), ""); // we need to do this so we can use the env variables in the config
+  const env = loadEnv(mode, process.cwd(), "");
 
   const APP_NAME = env.VITE_WL_NAME;
   const APP_DESCRIPTION =
     env.VITE_WL_DESCRIPTION || configFromEnv({}).whiteLabel.description;
   const APP_SHORT_NAME = env.VITE_WL_SHORT_NAME;
 
-  // Runtime builds load config.js before the bundle, so that window.__APP_CONFIG__ is set when
-  // the app starts. Other builds and the dev server read the VITE_* variables instead.
   const injectConfigScriptPlugin: PluginOption = {
     name: "inject-config-script",
     transformIndexHtml: {
@@ -39,9 +36,6 @@ export default defineConfig(({ mode }) => {
     },
   };
 
-  // Writes config.js from the .env variables, for runtime builds. Operators edit dist/config.js
-  // at deploy time to customise without rebuilding. It uses the app's own schema, so defaults
-  // and coercion ("true" → true) are always in sync.
   const generateRuntimeConfigPlugin: PluginOption = {
     name: "generate-runtime-config",
     writeBundle(options) {
@@ -127,7 +121,7 @@ export default defineConfig(({ mode }) => {
         devOptions: { enabled: false },
         workbox: {
           cacheId: "workspace",
-          maximumFileSizeToCacheInBytes: 15000000, // 15mb
+          maximumFileSizeToCacheInBytes: 15000000,
           cleanupOutdatedCaches: true,
           runtimeCaching: [
             {
@@ -137,7 +131,6 @@ export default defineConfig(({ mode }) => {
           ],
         },
         manifest: {
-          // https://web.dev/articles/add-manifest
           name: APP_NAME,
           short_name: APP_SHORT_NAME,
           description: APP_DESCRIPTION,

@@ -1,25 +1,3 @@
-"""Sign-in providers (/app/{provider}-auth).
-
-The API takes a provider's word for who signs in only from a token the provider issued to
-this deployment's own client, and fails closed: a provider whose client is not configured
-refuses every sign-in.
-
-- Google: the page sends the access token of Google's token client. Google's tokeninfo
-  endpoint must name our client (GOOGLE_OAUTH_CLIENT_ID) as its audience or authorized
-  party and the email as verified; the profile then comes from Google's userinfo.
-- Microsoft and Okta: the page sends the ID token the provider issued to our client
-  (AZURE_CLIENT_ID, OKTA_CLIENT_ID). Its signature is checked against the issuer's
-  published keys, and its issuer, audience and expiry against our settings. Their access
-  tokens are not used.
-
-An ID token signs in only once, and only the browser that started the sign-in: right
-before it, the web app gets a nonce from POST /app/sign-in/nonce and has the provider put
-it in the ID token. The API keeps only the nonce's hash, for five minutes, under a random
-id that the browser holds in the HttpOnly `__Host-ws_signin` cookie, and uses it up with
-the sign-in. An ID token that anyone gets later (a refreshed one, or one forwarded to a
-data backend or a widget) signs nobody in.
-"""
-
 import hmac
 import secrets
 from dataclasses import dataclass
@@ -39,17 +17,11 @@ from . import auth_helpers, crypto
 GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 MICROSOFT_AUTHORITY = "https://login.microsoftonline.com"
-# Microsoft's multi-tenant configurations ("organizations", "common") name their issuer
-# with this template, which the tenant of each token fills
 MICROSOFT_TENANT_TEMPLATE = "{tenantid}"
-# The tenant of personal Microsoft accounts, which "organizations" does not admit
 MICROSOFT_CONSUMER_TENANT = "9188040d-6c67-4c5b-b112-36a304b66dad"
 
 ID_TOKEN_ALGORITHMS = ["RS256"]
-# Clock difference allowed between the provider and the API
 LEEWAY_SECONDS = 60
-# How long the providers' configuration and keys are kept, and how soon they may be
-# fetched again for a key that is not among them (keys rotate)
 DOCUMENT_CACHE_SECONDS = 3600
 DOCUMENT_REFRESH_SECONDS = 300
 
@@ -57,21 +29,15 @@ SIGN_IN_COOKIE = "__Host-ws_signin"
 SIGN_IN_NONCE_LIFETIME = timedelta(minutes=5)
 
 _client = httpx.AsyncClient(timeout=httpx.Timeout(10.0))
-# url -> (when it was fetched, the JSON document)
 _documents: dict[str, tuple[float, dict[str, Any]]] = {}
 
 
 @dataclass(frozen=True, slots=True)
 class SignInIdentity:
-    """Who a provider says is signing in."""
-
     email: str
-    # Whether the provider vouches for the email. Only then may it find an account, or an
-    # invitation, that is not linked to the provider's user yet.
     email_verified: bool
     given_name: str | None = None
     family_name: str | None = None
-    # Microsoft's object id of the user
     microsoft_id: str | None = None
 
 
@@ -85,17 +51,11 @@ def _not_configured(provider: str) -> HTTPException:
     )
 
 
-# --- The sign-in nonce ----------------------------------------------------------------
-
-
 def _nonce_key(sign_in_id: str) -> str:
     return auth_helpers.app_redis_key(f"sign_in_nonce:{crypto.hash_token(sign_in_id)}")
 
 
 async def issue_sign_in_nonce(response: Response) -> str:
-    """A nonce for this browser's next sign-in with Microsoft or Okta. Redis keeps its
-    hash for five minutes under a random id, which the browser gets as the
-    `__Host-ws_signin` cookie."""
     nonce, sign_in_id = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
     lifetime = int(SIGN_IN_NONCE_LIFETIME.total_seconds())
     async with auth_helpers.app_redis() as redis:
@@ -107,8 +67,6 @@ async def issue_sign_in_nonce(response: Response) -> str:
 
 
 async def take_sign_in_nonce(request: Request) -> str | None:
-    """The hash of the nonce issued to this browser, which is used up: None when the
-    browser has none, or it expired or was used already."""
     if not (sign_in_id := request.cookies.get(SIGN_IN_COOKIE)):
         return None
     async with auth_helpers.app_redis() as redis:
@@ -120,14 +78,9 @@ def clear_sign_in_cookie(response: Response) -> None:
     auth_helpers.clear_session_cookie(response, SIGN_IN_COOKIE)
 
 
-# --- ID tokens ------------------------------------------------------------------------
-
-
 async def _fetch_json(
     url: str, *, form: dict[str, str] | None = None, headers: dict[str, str] | None = None
 ) -> dict[str, Any] | None:
-    """The JSON object at `url`, or None when the provider answers with an error. With
-    `form` it is POSTed in the body, so a token it carries is never part of a URL."""
     try:
         if form is None:
             response = await _client.get(url, headers=headers)
@@ -145,7 +98,6 @@ async def _fetch_json(
 
 
 async def _document(url: str, *, refresh: bool = False) -> dict[str, Any]:
-    """A provider's configuration or key set, from the cache while it is fresh."""
     fetched_at, document = _documents.get(url, (0.0, {}))
     age = monotonic() - fetched_at
     if document and age < DOCUMENT_CACHE_SECONDS and not (
@@ -174,10 +126,6 @@ async def verify_id_token(
     audience: str,
     nonce_hash: str | None,
 ) -> dict[str, Any]:
-    """The claims of an ID token that the issuer at `authority` signed for `audience`,
-    that carries the nonce whose hash is `nonce_hash` and that has not expired; anything
-    else is refused. Its issuer must be the one the authority's configuration names, with
-    the token's own tenant in Microsoft's multi-tenant template."""
     if not id_token:
         raise _refused(provider)
     if not nonce_hash:
@@ -206,7 +154,6 @@ async def verify_id_token(
             leeway=LEEWAY_SECONDS,
             options={
                 "require": ["exp", "iat", "iss", "aud", "sub", "nonce"],
-                # Checked below, where a multi-tenant issuer names the token's tenant
                 "verify_iss": False,
             },
         )
@@ -225,7 +172,6 @@ async def verify_id_token(
 
 
 def _names(claims: dict[str, Any]) -> tuple[str | None, str | None]:
-    """Given and family name, from their claims or else split from the full name."""
     given, family = claims.get("given_name"), claims.get("family_name")
     if not (given or family) and isinstance(name := claims.get("name"), str):
         given, _, family = name.strip().partition(" ")
@@ -233,15 +179,10 @@ def _names(claims: dict[str, Any]) -> tuple[str | None, str | None]:
 
 
 def _admitted_tenant(tenant: str, claims: dict[str, Any]) -> bool:
-    """Whether a Microsoft ID token's issuer is its own tenant's, and AZURE_TENANT_ID
-    admits that tenant."""
     tid = claims.get("tid")
     if not isinstance(tid, str) or claims["iss"] != f"{MICROSOFT_AUTHORITY}/{tid}/v2.0":
         return False
     return not (tenant == "organizations" and tid.lower() == MICROSOFT_CONSUMER_TENANT)
-
-
-# --- The providers --------------------------------------------------------------------
 
 
 async def google_identity(access_token: str | None) -> SignInIdentity:
@@ -271,13 +212,6 @@ async def google_identity(access_token: str | None) -> SignInIdentity:
 async def microsoft_identity(
     id_token: str | None, nonce_hash: str | None
 ) -> SignInIdentity:
-    """The Microsoft user of an ID token from a tenant that AZURE_TENANT_ID admits: that
-    tenant (its id or domain), or with "organizations" or "common" the tenant the token's
-    issuer names.
-
-    The email counts as verified only when it is the `email` claim and Microsoft says the
-    owner of its domain verified it (the optional claim `xms_edov`). Otherwise `email` and
-    `preferred_username` are whatever the tenant's administrators set."""
     client_id, tenant = settings.AZURE_CLIENT_ID, (settings.AZURE_TENANT_ID or "").lower()
     if not (client_id and tenant):
         raise _not_configured("microsoft")

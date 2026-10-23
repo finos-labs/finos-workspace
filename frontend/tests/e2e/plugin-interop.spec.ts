@@ -9,14 +9,6 @@ import {
   interopManifest,
 } from "./plugins/interop";
 
-/**
- * Interop smoke tests (docs/widget-plugins/GUEST-CONTRACT.md 8): public Anywidget front-end
- * modules, unmodified, initialize and render in a plugin frame on the full stack. They are
- * fetched from PyPI at the pinned versions (plugins/interop-modules.json), so the tests run
- * only with E2E_INTEROP set, nightly (.github/workflows/plugin-interop.yml), and need the
- * plugins directory the other plugin specs use (E2E_PLUGINS_DIR).
- */
-
 const PLUGINS_DIR = process.env.E2E_PLUGINS_DIR;
 const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const FAILURES = [
@@ -121,7 +113,6 @@ for (const module of INTEROP_MODULES) {
     await menu.getByRole("button", { name: "Add widgets" }).click();
     await expect(menu).toBeHidden();
 
-    // The module drew into the frame's root, and the card shows no failure
     const frame = page.frameLocator(`iframe[title^="${name}"]`);
     await expect(frame.locator("#root > *").first()).toBeAttached({ timeout: 30000 });
     const card = page.locator("div.group\\/widget").filter({ hasText: name });

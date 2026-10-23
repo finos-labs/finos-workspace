@@ -1,5 +1,3 @@
-"""HTTP client fixtures for backend tests."""
-
 from contextlib import ExitStack
 from unittest.mock import patch
 
@@ -27,7 +25,6 @@ from .db import TestAsyncSessionLocal
 
 @pytest.fixture(scope="function")
 async def client(db_session, apply_migrations):
-    """Unauthenticated test client with DB overrides."""
     from api.database import aget_read_db, aget_write_db
     from sqlalchemy import create_engine
 
@@ -63,7 +60,6 @@ async def client(db_session, apply_migrations):
         stack.enter_context(
             patch("api.auth_helpers.database.AsyncReadSessionLocal", test_async_read)
         )
-        # The usage cache is refreshed in sessions of its own, during requests too
         stack.enter_context(
             patch("api.worker_tasks.AsyncReadSessionLocal", test_async_read)
         )
@@ -72,7 +68,6 @@ async def client(db_session, apply_migrations):
         )
 
         transport = ASGITransport(app=app)
-        # Every request names an allowed origin, as the API requires
         async with AsyncClient(
             transport=transport, base_url=TEST_BASE_URL, headers={"Origin": TEST_ORIGIN}
         ) as ac:
@@ -85,8 +80,6 @@ async def client(db_session, apply_migrations):
 
 @pytest.fixture(scope="function")
 async def app_client(client):
-    """The web app before sign-in: its client header and origin. A sign-in sets the
-    session cookie, which the client keeps and sends."""
     client.headers.update(WEB_HEADERS)
     yield client
 
@@ -104,7 +97,6 @@ async def _signed_in_client(db_session, user_config):
 
 @pytest.fixture(scope="function")
 async def auth_client(client, db_session):
-    """The web app signed in as the standard test user."""
     token = await _signed_in_client(db_session, _AUTH_USER)
     async with _make_auth_client(token) as auth_ac:
         yield auth_ac
@@ -112,7 +104,6 @@ async def auth_client(client, db_session):
 
 @pytest.fixture(scope="function")
 async def admin_client(client, db_session):
-    """The web app signed in as the admin of the admin's organization."""
     token = await _signed_in_client(db_session, _ADMIN_USER)
     async with _make_auth_client(token) as admin_ac:
         yield admin_ac
@@ -120,7 +111,6 @@ async def admin_client(client, db_session):
 
 @pytest.fixture(scope="function")
 async def second_user_client(client, db_session):
-    """The web app signed in as a second user, for cross-user tests."""
     token = await _signed_in_client(db_session, _SECOND_USER)
     async with _make_auth_client(token) as second_ac:
         yield second_ac

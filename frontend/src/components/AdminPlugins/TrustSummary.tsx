@@ -23,12 +23,6 @@ const FAMILY_TITLES: Record<ReviewItem["family"], string> = {
   code: "Code",
 };
 
-/**
- * What a superuser reads before approving a version (docs/widget-plugins/DESIGN.md 8.2):
- * what it is, its integrity, everything it asks for, the difference from the active
- * version, and an acknowledgement per added request. The product never says a plugin is
- * safe: approving it is the admin's decision.
- */
 export function TrustSummary(props: {
   plugin: PlatformPlugin;
   version: PlatformVersion;

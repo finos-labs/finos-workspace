@@ -1,11 +1,3 @@
-/**
- * The Content-Security-Policy model of plugin frames (docs/widget-plugins/SECURITY.md 4).
- *
- * The same rules as `backend-api/backend/api/widget_plugins/csp.py`; both run
- * `csp-cases.json`. The API composes the effective policy for the user's entity. The
- * host only adds the hash of its shell script to `script-src` and serializes it.
- */
-
 export const POLICY_DIRECTIVES = [
   "connect-src",
   "img-src",
@@ -28,7 +20,6 @@ export type Confirmation = (typeof CONFIRMATIONS)[number];
 const MAX_SOURCES = 32;
 const MAX_SOURCE_LENGTH = 255;
 
-/** What every frame gets. */
 export const FLOOR: Record<string, string[]> = {
   "default-src": ["'none'"],
   "base-uri": ["'none'"],
@@ -149,10 +140,6 @@ export function checkSource(directive: string, source: unknown, check: PolicyChe
   checkUrl(directive, source, check);
 }
 
-/**
- * Check a policy an author declared (`override: false`) or a superuser set. An author
- * may not request a source that needs a confirmation; a superuser may, with it.
- */
 export function checkPolicy(
   policy: unknown,
   options: { confirmations?: Iterable<string>; override?: boolean } = {},
@@ -197,13 +184,6 @@ export function checkPolicy(
 
 const TCP_PREFIX = "tcp://";
 
-/**
- * A plugin's `server.network`: the https origins the API may call for its proxies, with
- * the CSP's host rules (SERVER-SIDE.md 6), and, for a plugin with a backend, the
- * `tcp://host:port` endpoints it opens, such as a database. An author may not ask for a
- * private host; a superuser's override may, with `private-host`. The same rules as
- * `check_network` in `backend-api/backend/api/widget_plugins/proxy.py`.
- */
 export function checkNetwork(
   network: readonly unknown[],
   options: {
@@ -233,10 +213,6 @@ export function checkNetwork(
   return check;
 }
 
-/**
- * A `tcp://host:port` endpoint: only a backend opens one, the port is named, and the host
- * follows the rules of an https origin, without a wildcard.
- */
 function checkTcp(source: string, check: PolicyCheck, backend: boolean) {
   if (!backend) {
     check.errors.push(
@@ -251,7 +227,6 @@ function checkTcp(source: string, check: PolicyCheck, backend: boolean) {
   checkSource("connect-src", `https://${source.slice(TCP_PREFIX.length)}`, check);
 }
 
-/** The effective policy: the floor plus what was approved and not narrowed away. */
 export function compose(policy: Policy): Record<string, string[]> {
   const effective: Record<string, string[]> = Object.fromEntries(
     Object.entries(FLOOR).map(([directive, sources]) => [directive, [...sources]]),
@@ -268,7 +243,6 @@ export function compose(policy: Policy): Record<string, string[]> {
   return effective;
 }
 
-/** Every host a policy lets a frame reach, for the egress summary. */
 export function hosts(policy: Policy): string[] {
   const found: string[] = [];
   for (const sources of Object.values(policy)) {
@@ -282,7 +256,6 @@ export function hosts(policy: Policy): string[] {
 
 export type Risk = "none" | "low" | "medium" | "high" | "critical";
 
-/** What a directive permits (SECURITY.md 4.4). */
 export function directiveRisk(directive: string, sources: string[]): Risk {
   const remote = sources.filter((source) => URL_SOURCE.test(source));
   const insecure = remote.some(
@@ -302,11 +275,6 @@ export function directiveRisk(directive: string, sources: string[]): Risk {
 
 const SAFE_TOKEN = /^[^\s;,"<>&\\`]+$/;
 
-/**
- * The policy string a frame's meta element carries. The shell's hash goes into
- * `script-src`. Anything that is not a plain directive name or source token is refused,
- * so nothing can be injected into the attribute even if the listing were tampered with.
- */
 export function serialize(
   effective: Record<string, string[]>,
   shellHash: string,

@@ -1,20 +1,3 @@
-"""The SQL explorer's backend: the requests Workspace's API sends a plugin backend
-(Workspace docs/widget-plugins/AUTHORING.md 8), and nothing else.
-
-    GET  /.workspace/identity        the plugin, version and digest of this package
-    GET  /.workspace/health
-    POST /.workspace/routes/<route>  {"args": {...}, "widget": {...}, "caller": {...}}
-
-postgres_schema and postgres_query read the Postgres whose connection URL the API sends
-as the postgres_url secret with each call; files_schema and files_query read the files
-under /data with DuckDB. A query that fails is an answer, {"error": {"message"}}, for the
-user to read. A 4xx is a call that should not have been made.
-
-Nothing here holds a credential: the URL arrives with the call and is gone after it. The
-log names the route, the outcome, the row count, the time and the caller's pseudonym,
-never the query or the URL.
-"""
-
 import logging
 import time
 
@@ -35,7 +18,7 @@ POSTGRES_URL = "x-workspace-secret-postgres-url"
 
 
 class BadCall(Exception):
-    """A call the API should not have sent: an answer of 400."""
+    ...
 
 
 def _sql(args: dict) -> str:

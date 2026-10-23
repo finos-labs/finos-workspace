@@ -1,12 +1,3 @@
-/**
- * Tool description constants — verbatim port of workspace_mcp/server.py:39-166.
- *
- * Each tool composes its description from a `summary` plus zero or more of
- * these guidance snippets, exactly mirroring the Python `describe_tool` helper.
- * Keep these strings byte-compatible with the Python source so any LLM that
- * learned the workspace-mcp surface continues to behave identically.
- */
-
 export const USAGE_SUMMARY =
   "Use snake_case payloads. Start with get_workspace_snapshot to discover valid " +
   "dashboard_id, dashboard_composition, and skills from the live Workspace " +

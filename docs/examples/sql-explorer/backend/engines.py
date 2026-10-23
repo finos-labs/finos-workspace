@@ -1,15 +1,3 @@
-"""The two engines the explorer reads.
-
-Postgres: a database the deployment runs, reached over its own protocol with the
-connection URL Workspace sends, as the plugin's secret, with each call. DuckDB: the files
-the deployment mounts at /data, each one a view named after the file.
-
-A query is one read-only SELECT. Postgres runs it as a cursor in a read-only transaction,
-and a cursor takes nothing but a SELECT or VALUES. DuckDB checks the statement before
-running it, in a connection that can read nothing but /data and whose settings are
-locked. Both stop at a time limit and return at most MAX_ROWS rows and MAX_RESULT_BYTES.
-"""
-
 import json
 import logging
 import os
@@ -38,11 +26,10 @@ log = logging.getLogger("sql_explorer")
 
 
 class QueryError(Exception):
-    """A query the engine refused or that failed. Its message is for the user."""
+    ...
 
 
 def collect(columns: list[dict], fetch: Callable[[int], list]) -> dict:
-    """The rows as JSON cells, up to MAX_ROWS and MAX_RESULT_BYTES."""
     batch = fetch(MAX_ROWS + 1)
     truncated = len(batch) > MAX_ROWS
     rows: list[list] = []
@@ -59,7 +46,6 @@ def collect(columns: list[dict], fetch: Callable[[int], list]) -> dict:
 
 @contextmanager
 def deadline(seconds: float, cancel: Callable[[], object]) -> Iterator[None]:
-    """Calls ``cancel`` from another thread when the block runs longer than ``seconds``."""
     timer = threading.Timer(seconds, cancel)
     timer.daemon = True
     timer.start()
@@ -70,17 +56,12 @@ def deadline(seconds: float, cancel: Callable[[], object]) -> Iterator[None]:
 
 
 def _tables(rows: list[tuple]) -> list[dict]:
-    """(schema, table, column, type) rows as tables with their columns, in order."""
     tables: dict[tuple, dict] = {}
     for schema, table, column, kind in rows:
         entry = tables.setdefault((schema, table), {"schema": schema, "name": table, "columns": []})
         entry["columns"].append({"name": column, "type": kind})
     return list(tables.values())
 
-
-# ---------------------------------------------------------------------------
-# Postgres
-# ---------------------------------------------------------------------------
 
 POSTGRES_COLUMNS = """
 SELECT table_schema, table_name, column_name, data_type
@@ -92,8 +73,6 @@ LIMIT %s
 
 
 def _application_name(caller: str | None) -> str:
-    """How the database's own activity views name the session: by the user's pseudonym,
-    which is the same for a user every time and says nothing of who they are."""
     return f"workspace-sql-explorer:{caller[:16]}" if caller else "workspace-sql-explorer"
 
 
@@ -102,7 +81,6 @@ def _postgres(url: str, caller: str | None) -> Iterator[psycopg.Connection]:
     try:
         connection = psycopg.connect(url, connect_timeout=CONNECT_SECONDS, application_name=_application_name(caller))
     except psycopg.Error as error:
-        # The driver's message can name the host and the role; it stays in this log
         log.warning("postgres: could not connect: %s", str(error).splitlines()[0] if str(error) else type(error).__name__)
         raise QueryError(
             "Could not connect to the database. An administrator can check the plugin's postgres_url secret "
@@ -134,7 +112,6 @@ def postgres_query(url: str, text: str, caller: str | None) -> dict:
         try:
             with connection.transaction(), deadline(STATEMENT_SECONDS + 5, connection.cancel_safe):
                 connection.execute(pgsql.SQL("SET LOCAL statement_timeout = {}").format(STATEMENT_SECONDS * 1000))
-                # A cursor is declared FOR the query, and takes one SELECT or VALUES only
                 with connection.cursor(name="explorer") as cursor:
                     cursor.execute(text)  # type: ignore[arg-type] - the user's query is the point
                     columns = [{"name": c.name, "type": c.type_display} for c in cursor.description or []]
@@ -155,11 +132,6 @@ def postgres_schema(url: str, caller: str | None) -> dict:
     return {"engine": f"PostgreSQL {version[0] if version else ''}".strip(), "tables": _tables(rows)}
 
 
-# ---------------------------------------------------------------------------
-# DuckDB over /data
-# ---------------------------------------------------------------------------
-
-
 def _quoted(text: str) -> str:
     return "'" + text.replace("'", "''") + "'"
 
@@ -177,7 +149,6 @@ def _view_name(path: Path, taken: set[str]) -> str:
 
 @contextmanager
 def _files() -> Iterator[tuple[duckdb.DuckDBPyConnection, dict[str, str], list[str]]]:
-    """An in-memory DuckDB with a view per data file, that can then read nothing else."""
     connection = duckdb.connect(
         ":memory:",
         config={

@@ -21,10 +21,6 @@ export const entityAdminKeys = {
 
 const STALE_TIME = 1000 * 60;
 
-/**
- * Whether the signed-in user is a superuser, who manages entities. Anyone else is refused
- * by the backend, so a failed probe means no.
- */
 export function useIsEntityAdmin() {
   const { data, isLoading } = useQuery({
     queryKey: entityAdminKeys.validate,

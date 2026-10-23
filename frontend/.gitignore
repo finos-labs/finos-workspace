@@ -1,8 +1,6 @@
-# Tests
 playwright-report/
 test-results/
 
-# Logs
 logs
 *.log
 npm-debug.log*
@@ -18,7 +16,6 @@ dev-dist
 *.local
 **/api2/*
 
-# Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
@@ -40,18 +37,14 @@ yarn.lock
 /playwright/.cache/
 /playwright/.auth/
 
-# Test coverage reports
 coverage/
 
-# AI
 .cursorignore
 ai_artifacts
 
 .claude/settings.local.json
 
-# Storybook
 storybook-static/
 
 
-# The e2e stack's TLS material (tests/e2e/make-tls.sh)
 tests/e2e/tls/certs/

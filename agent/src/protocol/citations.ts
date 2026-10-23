@@ -7,11 +7,6 @@ export interface CitedWidget {
   widgetUuid?: string;
 }
 
-/**
- * Every source the answer rests on. `widgets` are the request's widgets: a hit in a document is cited as
- * the file widget it came from, so that the Workspace can find that widget and open it at the page.
- * `answer` is the final answer: of the pages the document search returned, the pages it names are cited.
- */
 export async function buildAllCitations(
   citedWidgets: Map<string, CitedWidget>,
   mcpCitations: McpCitation[],
@@ -31,10 +26,6 @@ export async function buildAllCitations(
   return preferCitationsWithPages(dedupeCitations([...intermediateCitations, ...widgetCits, ...documentCits, ...otherCits]));
 }
 
-/**
- * The page numbers an answer names: "page 3", "p. 3", "pp. 2-4", "pages 2 and 5". (The gap before the number is
- * bounded: `\s*:?\s*` tries every split of a long run of spaces, which takes time with the square of the run.)
- */
 export function pagesNamedIn(answer: string): Set<number> {
   const pages = new Set<number>();
   const reference = /\b(?:pages?|pp?\.?)[\s:]{0,20}(\d+(?:\s*(?:[-–—]|to)\s*\d+)?(?:\s*(?:,|&|and)\s*\d+(?:\s*(?:[-–—]|to)\s*\d+)?)*)/gi;
@@ -51,12 +42,6 @@ export function pagesNamedIn(answer: string): Set<number> {
 
 const MAX_CITED_PAGES = 3;
 
-/**
- * Of the pages the document search returned for a document, the ones the answer rests on: those the answer
- * names. An answer that names none (or a search that has no pages) is taken to rest on the pages that match
- * at least half as well as the best one, at most three; a page far behind the best is a passage the search
- * had to return, not a source.
- */
 export function selectCitedPages(hits: DocumentCitation[], answer?: string): DocumentCitation[] {
   const named = answer ? pagesNamedIn(answer) : new Set<number>();
   const byDocument = new Map<string, DocumentCitation[]>();
@@ -78,11 +63,6 @@ export function selectCitedPages(hits: DocumentCitation[], answer?: string): Doc
   return selected;
 }
 
-/**
- * The citation of a file widget, optionally at a page. It is a widget citation (what the Workspace needs to
- * find the widget on the dashboard and open it) whose details name the file and, when there is one, the page:
- * `Filename` marks it as a file and `Page` is where "Go to reference" takes the viewer.
- */
 async function fileWidgetCitation(widget: Widget, widgetUuid: string, page?: number): Promise<Citation> {
   const ext = widget.metadata?.extension as string | undefined;
   const filename = (widget.metadata?.originalFileName as string | undefined) ?? widget.name;
@@ -103,7 +83,6 @@ async function fileWidgetCitation(widget: Widget, widgetUuid: string, page?: num
   };
 }
 
-/** Hits in documents, as the file widgets they came from (or as a file, for a document that is no widget). */
 export async function buildDocumentCitations(
   documentCitations: DocumentCitation[],
   widgets: Widget[],
@@ -117,7 +96,6 @@ export async function buildDocumentCitations(
   return out;
 }
 
-/** A citation of a page says more than one of the whole file: when a file is cited at pages, its pageless citation goes. */
 export function preferCitationsWithPages(citations: Citation[]): Citation[] {
   const fileOf = (c: Citation) => {
     const detail = c.details.find((d) => "Filename" in d);
@@ -200,7 +178,6 @@ export function buildMcpCitations(mcpCitations: McpCitation[]): Citation[] {
         signature: "",
       };
     }
-    // A document that is no widget of this request: cited as a file, at its page.
     return {
       id: c.id,
       source_info: { type: "file" as const, name: c.title, citable: true as const },
@@ -215,7 +192,6 @@ export function dedupeCitations(citations: Citation[]): Citation[] {
   for (const c of citations) {
     let key: string;
     if (c.source_info.type === "widget") {
-      // A file widget is cited once for each page; any other widget once for its arguments.
       const page = c.details.find((d) => "Filename" in d)?.Page;
       key = `widget|${c.source_info.metadata.widget_uuid}|${JSON.stringify(c.source_info.metadata.input_args)}|${page ?? ""}`;
     } else if (c.source_info.type === "file") {

@@ -24,12 +24,6 @@ export function formatDate(value: string | undefined) {
   return value ? dayjs(value).locale("en").format("MMM D, YYYY h:mm A") : "-";
 }
 
-/**
- * The /admin/apps endpoint returns one row per database record, which can
- * include soft-deleted entries for the same (user, name, url). Collapse to the
- * most recently updated record per tuple so the UI reflects what each user
- * actually has active.
- */
 export function dedupeApps(apps: App[]): App[] {
   const latest = new Map<string, App>();
   for (const a of apps) {

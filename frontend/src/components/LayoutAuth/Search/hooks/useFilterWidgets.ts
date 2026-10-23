@@ -43,7 +43,6 @@ export function useFilterWidgets(widgets: WidgetItem[], state: SearchDialogState
       .filter((widget) => {
         if (widget?.external && (selectedOption === "external" || showAll)) return true;
 
-        // A standalone widget of a widget plugin the user may use
         if (widget?.plugin && showAll) return true;
 
         if (
@@ -63,15 +62,12 @@ export function useFilterWidgets(widgets: WidgetItem[], state: SearchDialogState
             widget?.category === "my data"),
       )
       .sort((a, b) => {
-        // Sort by category first
         if (a.category.toLowerCase() !== b.category.toLowerCase()) {
           return a.category.toLowerCase().localeCompare(b.category.toLowerCase());
         }
-        // If categories are the same, sort by sub-category
         if (a.subCategory !== b.subCategory) {
           return (a.subCategory || "").localeCompare(b.subCategory || "");
         }
-        // If sub-categories are the same, sort alphabetically by name
         return a.name.localeCompare(b.name);
       });
 

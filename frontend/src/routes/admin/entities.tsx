@@ -17,7 +17,6 @@ const TABS = [
 export default function AdminEntities() {
   const { isEntityAdmin, isLoading } = useIsEntityAdmin();
 
-  // Until the superuser check answers there is nothing to show: no loading animation
   if (isLoading) return null;
 
   if (!isEntityAdmin) return <Navigate to="/admin" />;

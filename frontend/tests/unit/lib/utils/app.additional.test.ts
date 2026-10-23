@@ -28,8 +28,6 @@ import {
 } from "../../factories";
 import { malformed, partial } from "../../mocks";
 
-// Mock external dependencies
-
 vi.mock("~/lib/state/copilotData", () => ({
   useCopilotDataStore: {
     getState: () => ({
@@ -374,7 +372,7 @@ describe("lib/utils/app - Additional Tests", () => {
       const lastWidget = { x: 0, y: 0, w: 20, h: 10 };
       const result = getGridData(lastWidget, { w: 20, h: 10 });
 
-      expect(result.x).toBe(20); // Next to last widget
+      expect(result.x).toBe(20);
     });
 
     it("wraps to next row when exceeding tabCols", () => {
@@ -382,7 +380,7 @@ describe("lib/utils/app - Additional Tests", () => {
       const result = getGridData(lastWidget, { w: 20, h: 10 }, { tabCols: 40 });
 
       expect(result.x).toBe(0);
-      expect(result.y).toBe(10); // Next row
+      expect(result.y).toBe(10);
     });
   });
 
@@ -465,7 +463,6 @@ describe("lib/utils/app - Additional Tests", () => {
 
   describe("updateWidgetGroupValues", () => {
     it("updates param group values when widget params are row-grouped", () => {
-      // Widgets saved before their params were flat group them in rows
       const widget = malformed<WidgetT>({
         widgetId: "muni_stats_filters",
         storage: { params: { use_categories: "" } },
@@ -565,13 +562,12 @@ describe("lib/utils/app - Additional Tests", () => {
             }),
           ],
           gridLayout: {
-            overview: [], // Widget not in overview either
+            overview: [],
           },
           groups: [],
         },
       };
 
-      // Should not throw "Cannot read properties of undefined"
       expect(() => duplicateTabItem(item, "root-id")).not.toThrow();
     });
 
@@ -590,12 +586,11 @@ describe("lib/utils/app - Additional Tests", () => {
               innerTab: "tab-that-doesnt-exist",
             }),
           ],
-          gridLayout: {}, // No tabs at all
+          gridLayout: {},
           groups: [],
         },
       };
 
-      // Should not throw "Cannot read properties of undefined"
       expect(() => duplicateTabItem(item, "root-id")).not.toThrow();
     });
 

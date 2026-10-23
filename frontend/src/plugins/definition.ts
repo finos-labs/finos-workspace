@@ -1,12 +1,3 @@
-/**
- * Validates a widget's `data.<type>` object against the `definition` its plugin declares.
- *
- * Definitions are written in the small, closed JSON Schema subset of
- * docs/widget-plugins/WIDGETS-JSON.md 3.3, which the server lints when it discovers a
- * plugin. This validator implements exactly that subset; a keyword outside it is
- * reported as an error rather than ignored.
- */
-
 type Schema = Record<string, unknown>;
 
 export interface DefinitionError {

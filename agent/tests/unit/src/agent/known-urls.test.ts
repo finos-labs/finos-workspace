@@ -133,7 +133,6 @@ describe("addressesGiven", () => {
     const set = given([
       human("hello"),
       ai(`Here you go: ${SECRET_URL}`),
-      // A renderer repeats what it is told to; the bridge results repeat what the model asked.
       mcp("mermaid_diagram", SECRET_URL),
       toolResult("update_widget_in_dashboard", undefined, SECRET_URL),
       toolResult("get_params_options", undefined, "ok", { query: SECRET_URL }),
@@ -161,7 +160,7 @@ describe("addressesGiven", () => {
   });
 
   it("reads a request made of a great deal of text in bounded time, the newest first, and gives nothing from what it did not reach", () => {
-    const filler = "word ".repeat(20_000); // 100 KB
+    const filler = "word ".repeat(20_000);
     const messages: Message[] = [human("the old one: https://old.example/first"), ...Array.from({ length: 2000 }, () => human(filler)), human("the new one: https://new.example/last")];
     const start = performance.now();
     const set = given(messages);

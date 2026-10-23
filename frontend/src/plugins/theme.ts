@@ -1,9 +1,3 @@
-/**
- * The `theme` trait (docs/widget-plugins/GUEST-CONTRACT.md 3.1): the mode, a set of
- * design tokens resolved to colors and fonts, the locale and the decimals, so a plugin
- * can match the Workspace without reading the host page (which it cannot).
- */
-
 export interface ThemeTrait {
   mode: "dark" | "light";
   tokens: Record<string, string>;

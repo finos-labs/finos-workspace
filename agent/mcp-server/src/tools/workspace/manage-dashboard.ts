@@ -1,10 +1,3 @@
-/**
- * manage_dashboard — create / read / update one Workspace dashboard.
- *
- * Mirrors workspace_mcp/server.py:639-686 with operation-specific required
- * fields enforced inline.
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";
@@ -73,7 +66,6 @@ export async function manageDashboardHandler(args: {
     return { content };
   }
 
-  // update
   if (!args.dashboard_id || args.name === undefined) {
     return {
       content: [

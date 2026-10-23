@@ -1,24 +1,3 @@
-# What the end-to-end tests add to the stack: HTTPS, and a model that always says the same thing.
-#
-#   frontend/tests/e2e/make-tls.sh frontend/tests/e2e/tls/certs localhost
-#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build
-#
-# Web app https://localhost:3000, API https://localhost:8000, Ines https://localhost:7777, served by
-# the `tls` front below with a certificate from a certificate authority made for the run
-# (frontend/tests/e2e/tls/certs/ca.pem). A deployment serves HTTPS, and the session cookie is Secure:
-# WebKit does not count http://localhost as secure, so over plain HTTP it never sends the cookie and
-# every WebKit test would run signed out. WEB_URL, API_URL and AI_API_URL name other addresses, as
-# for the stack on its own.
-#
-# The stack on its own has no model — `create_local_env` leaves DEFAULT_MODEL blank and a provider
-# key is a secret, which a pull request from a fork does not get. So the tests cannot ask the Copilot
-# anything, and the one feature this repository is adding goes untested. This file points Ines at a
-# server that impersonates a provider (agent/tests/stub-model), so a question goes all the way from
-# the browser to a model and back with no key, no network and the same answer every time.
-#
-# It belongs to the tests, not to the stack: `docker compose up` without `-f` is the developer's
-# stack as it was, with a real model configured in agent/.env.
-
 services:
   tls:
     image: nginx:1.31.8-alpine
@@ -37,7 +16,6 @@ services:
     networks:
       - workspace
 
-  # The services publish nothing themselves: the TLS front takes their ports
   web:
     ports: !reset []
     environment:
@@ -76,13 +54,8 @@ services:
       WORKSPACE_ORIGIN: ${WEB_URL:-https://localhost:3000}
       WORKSPACE_PUBLIC_URL: ${API_URL:-https://localhost:8000}
       INES_CORS_ORIGINS: ${WEB_URL:-https://localhost:3000}
-      # `environment` wins over the `env_file` that leaves these blank, so the stack keeps the rest
-      # of agent/.env (her secrets, which create_local_env writes) and takes its model from here.
       DEFAULT_MODEL: ollama:stub
-      # Ines registers the `ollama:` provider with no credentials and asks this address for a chat
-      # (src/lib/providers.ts). The path ends in /api because the provider appends /chat to it.
       OLLAMA_BASE_URL: http://stub-model:11434/api
-      # The stub does not embed, so document search stays off rather than answering with nonsense.
       INES_EMBED_MODEL: ""
     depends_on:
       stub-model:

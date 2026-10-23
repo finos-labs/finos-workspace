@@ -1,15 +1,3 @@
-"""Revision 8615f7e17679: the Developer organization and the On-Premise entity type go.
-
-Developer is a user type, not an organization. The API used to make an organization named
-"Developer" (entity type "Default", code DEF) at every start, and init named the first
-organization's entity type "On-Premise". The revision deletes the Developer organization
-where nothing is in it or refers to it, then the entity type it had once no organization has
-it, and renames the On-Premise type to Default.
-
-As in test_roles_migration, alembic runs in a subprocess against a SQLite file: the database
-is brought to the revision before, filled as the old code left it, and upgraded.
-"""
-
 import os
 import subprocess
 import sys
@@ -98,8 +86,6 @@ def database(tmp_path):
 
 
 def _seed(engine: sa.Engine, *, member_in_developer: bool) -> dict[str, object]:
-    """The first organization, of the On-Premise type, and the Developer organization the
-    API made, with its three maps and an invite to one of them."""
     ids = {
         name: uuid4()
         for name in ("on_premise", "default", "workspace", "developer", "invite", "user")
@@ -161,9 +147,7 @@ def test_the_developer_organization_goes_and_on_premise_becomes_default(database
 
     assert _rows(engine, entity, "name") == [("Workspace",)]
     assert _rows(engine, permissions_map, "uuid") == []
-    # The invite is kept, without the map that is gone
     assert _rows(engine, user_invite, "uuid", "permissions_uuid") == [(ids["invite"], None)]
-    # The Developer organization's type goes; On-Premise is Default now, its code kept
     assert _rows(engine, entity_type, "uuid", "entity_type", "code") == [
         (ids["on_premise"], "Default", "WOR")
     ]

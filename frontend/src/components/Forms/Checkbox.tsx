@@ -31,7 +31,6 @@ export interface CheckboxProps
     >,
     ICheckboxProps {}
 
-/** @deprecated use `~/components/ds/atoms/Checkbox` instead */
 export const Checkbox = forwardRef<HTMLButtonElement, CheckboxProps>((props, ref) => {
   const {
     id,

@@ -1,11 +1,3 @@
-"""Discovery and verification of the plugins directory (docs/widget-plugins/DESIGN.md 4.3).
-
-The directory holds ``<plugin-id>/<version>/`` packages. This module only reads it.
-For every version it refuses symbolic links and paths outside the directory, applies
-the caps, hashes every file, computes the version digest and the checksum, compares
-them with the manifest and the deployer's pins, and validates the manifest.
-"""
-
 import base64
 import hashlib
 import json
@@ -30,17 +22,15 @@ _DYNAMIC_CODE = re.compile(rb"\beval\s*\(|\bnew\s+Function\s*\(")
 @dataclass
 class FileInfo:
     size: int
-    sha256: str  # hex
+    sha256: str
     mtime_ns: int
 
 
 @dataclass
 class DiscoveredVersion:
-    """One ``<plugin-id>/<version>/`` directory as discovery found it."""
-
     plugin_id: str
     version: str
-    path: str  # relative to the plugins directory
+    path: str
     files: dict[str, FileInfo] = field(default_factory=dict)
     digest: str | None = None
     checksum: str | None = None
@@ -49,7 +39,6 @@ class DiscoveredVersion:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     pin_status: str = "unpinned"
-    # What the first blocking finding is about: files, manifest, checksum or pin
     block_reason: str | None = None
 
     @property
@@ -61,7 +50,6 @@ class DiscoveredVersion:
         self.block_reason = self.block_reason or reason
 
     def served_files(self) -> dict[str, dict[str, Any]]:
-        """The files a browser may receive, with their sizes and hashes."""
         if self.manifest is None:
             return {}
         entry = self.manifest.get("entry", {})
@@ -78,7 +66,6 @@ class DiscoveredVersion:
 @dataclass
 class ScanResult:
     versions: list[DiscoveredVersion] = field(default_factory=list)
-    # Paths that were not read at all, with the reason
     rejected: list[str] = field(default_factory=list)
     error: str | None = None
 
@@ -92,24 +79,20 @@ def sha256_file(path: Path) -> str:
 
 
 def listing_digest(files: dict[str, str]) -> str:
-    """``sha256-<base64url>`` of the sorted ``<path>\\0<sha256 hex>\\n`` lines."""
     lines = b"".join(f"{path}\0{files[path]}\n".encode() for path in sorted(files))
     raw = hashlib.sha256(lines).digest()
     return "sha256-" + base64.urlsafe_b64encode(raw).decode().rstrip("=")
 
 
 def version_digest(files: dict[str, str]) -> str:
-    """The version digest: every file of the version, plugin.json included."""
     return listing_digest(files)
 
 
 def package_checksum(files: dict[str, str]) -> str:
-    """The manifest's checksum: every file except plugin.json, so it can contain it."""
     return listing_digest({p: h for p, h in files.items() if p != MANIFEST_FILE})
 
 
 def _walk(root: Path, version: DiscoveredVersion, max_files: int, max_bytes: int) -> None:
-    """Hash every regular file under ``root``; refuse links, odd names and excess."""
     total = 0
     stack = [(root, "")]
     while stack:
@@ -163,7 +146,6 @@ def inspect_version(  # noqa: PLR0911, PLR0912 - one return per blocking finding
     max_files: int,
     max_bytes: int,
 ) -> DiscoveredVersion:
-    """Verify one version directory. Errors block the version; warnings do not."""
     found = DiscoveredVersion(plugin_id=plugin_id, version=version_name, path=f"{plugin_id}/{version_name}")
     version_dir = root / plugin_id / version_name
     _walk(version_dir, found, max_files, max_bytes)
@@ -244,7 +226,6 @@ def scan(
     max_files: int = 200,
     max_bytes: int = 64 * 1024 * 1024,
 ) -> ScanResult:
-    """Read the plugins directory. Never writes to it."""
     result = ScanResult()
     if not plugins_dir:
         result.error = "WIDGET_PLUGINS_DIR is not set"
@@ -294,8 +275,6 @@ def scan(
 
 
 def resolve_served_file(plugins_dir: str, version_path: str, file_path: str) -> Path | None:
-    """The on-disk path of a served file, or None when it would leave the version
-    directory or cross a symbolic link."""
     root = Path(plugins_dir).resolve()
     version_dir = (root / version_path).resolve()
     if root not in version_dir.parents:

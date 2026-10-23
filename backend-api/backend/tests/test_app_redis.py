@@ -1,5 +1,3 @@
-"""The client of the app's Redis database: one per event loop, kept for every call."""
-
 from api import auth_helpers
 
 

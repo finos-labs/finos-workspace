@@ -1,5 +1,3 @@
-"""Entity routes"""
-
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
@@ -29,7 +27,6 @@ CustomPage = CustomizedPage[Page, UseParamsFields(size=Query(100, ge=1, le=1000)
 async def validate_entity_admin(
     _=Depends(auth_helpers.get_current_superuser),
 ):
-    """Frontend visibility probe for entity management: 200 for superusers, 401 otherwise."""
     return schemas.SuccessReturn.success_instance()
 
 
@@ -84,7 +81,6 @@ async def add_entity_relationship(
     schema = schemas.EntityRelationshipCreate(
         parent_uuid=entity.parent_uuid, child_uuid=entity.child_uuid
     )
-    # We are keeping this for now, because this has more complicated logic
     return await crud.create_entity_relationship(db, schema)
 
 
@@ -130,7 +126,6 @@ async def get_entity_relationships(
 async def check_entity_map_free(
     db: AsyncSession, entity_map: schemas.EntityMapCreate, map_uuid: UUID | None = None
 ) -> None:
-    "An organization has one map of each user type."
     query = select(PermissionsEntityMap.uuid).where(
         PermissionsEntityMap.entity_uuid == entity_map.entity_uuid,
         PermissionsEntityMap.name == entity_map.name,
@@ -212,7 +207,6 @@ async def register_admin(
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
 ):
-    "Allows an admin to register a new user"
     extra_info = schemas.RegisterAppUser(inviting_uuid=admin.uuid)
     result = await routers_helpers.register_app_user(db, user, extra_info)
     return schemas.SuccessReturn.from_bool(result)
@@ -253,7 +247,6 @@ async def delete_entity(
     db: AsyncSession = Depends(aget_write_db),
     _=Depends(auth_helpers.get_current_superuser),
 ):
-    """Delete an entity by uuid if it has no users"""
     await administration.delete_entity(db, entity_uuid)
     return schemas.SuccessReturn.success_instance()
 
@@ -264,9 +257,6 @@ async def post_role(
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
 ):
-    """
-    Create a new role for the entity
-    """
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     insert_query = insert(models.Role).values(
         **role.model_dump(exclude={"users"}), entity_uuid=entity_uuid
@@ -289,9 +279,6 @@ async def get_roles(
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
 ):
-    """
-    Get all roles for the entity
-    """
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     query = select(models.Role).where(models.Role.entity_uuid == entity_uuid)
     roles = await db.execute(query)
@@ -309,7 +296,6 @@ async def get_role(
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
 ):
-    """Get a role by uuid"""
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     role = (
         await db.execute(
@@ -332,13 +318,11 @@ async def patch_role(
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
 ):
-    """Patch a role"""
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
     affected_users = set(await app_helpers.get_role_user_uuids(db, role_uuid))
 
-    # Update the role details and settings that were sent
     adjusted_role = role.changes()
 
     if adjusted_role:
@@ -352,8 +336,7 @@ async def patch_role(
         await db.execute(query)
         await db.commit()
 
-    # Update users if provided
-    if role.users is not None:  # Check if None since empty list is valid
+    if role.users is not None:
         await app_helpers.update_role_users(db, role_uuid, role.users)
 
     affected_users.update(await app_helpers.get_role_user_uuids(db, role_uuid))
@@ -367,13 +350,11 @@ async def delete_role(
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
 ):
-    """Delete a role"""
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
     role_users = await app_helpers.get_role_user_uuids(db, role_uuid)
 
-    # Delete the group - UserGroup entries will be cascade deleted due to foreign key constraint
     result = await db.execute(delete(models.Role).where(models.Role.uuid == role_uuid))
 
     if result.rowcount == 0:
@@ -391,7 +372,6 @@ async def put_role_permissions(
     db: AsyncSession = Depends(aget_write_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
 ):
-    """Update the permissions for a role"""
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
@@ -419,13 +399,11 @@ async def get_role_permissions(
     db: AsyncSession = Depends(aget_read_db),
     admin: User = Depends(auth_helpers.get_current_superuser),
 ):
-    """Get the permissions for a role"""
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
     if not await app_helpers.role_exists(db, role_uuid, entity_uuid):
         raise HTTPException(status_code=404, detail="Role not found")
 
     permissions = []
-    # Get backend permissions
     permissions_backends = await db.execute(
         select(models.RoleBackend).where(models.RoleBackend.role_uuid == role_uuid)
     )
@@ -443,7 +421,6 @@ async def get_role_permissions(
         ]
     )
 
-    # Get file permissions
     permissions_files = await db.execute(
         select(
             models.RoleFile.file_uuid,
@@ -475,7 +452,6 @@ async def add_data_backend(
     db: AsyncSession = Depends(aget_write_db),
     _: User = Depends(auth_helpers.get_current_superuser),
 ):
-    """Add a data backend to the entity"""
     await administration.add_data_backend(db, entity_uuid, data_backend)
     return schemas.SuccessReturn.success_instance()
 
@@ -487,7 +463,6 @@ async def delete_data_backend(
     db: AsyncSession = Depends(aget_write_db),
     _: User = Depends(auth_helpers.get_current_superuser),
 ):
-    """Delete a data backend from the entity"""
     await administration.delete_data_backend(db, entity_uuid, backend_name)
     return schemas.SuccessReturn.success_instance()
 
@@ -500,5 +475,4 @@ async def get_data_backends(
     db: AsyncSession = Depends(aget_read_db),
     _: User = Depends(auth_helpers.get_current_superuser),
 ):
-    """Get the data backends for the entity"""
     return await administration.data_backends(db, entity_uuid)

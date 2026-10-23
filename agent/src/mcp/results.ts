@@ -21,23 +21,11 @@ export interface DocumentCitation {
   uri: string;
   title: string;
   page?: number;
-  /** Cosine similarity of the passage to the question, when the tool says. */
   score?: number;
 }
 
 export type McpCitation = WebCitation | DocumentCitation;
 
-/**
- * Typed MCP result protocol. MCP servers encode rich items as JSON strings inside
- * standard MCP text content items, using `$ines_kind` as the discriminator.
- *
- * Plain text (no `$ines_kind`) → injected as user message.
- * `$ines_kind: "artifact"` → emitted as `copilotMessageArtifact` SSE.
- * `$ines_kind: "citation"` → added to citation aggregator (optional stable id).
- * `$ines_kind: "sqlite_table"` → loaded into request-scoped SQLite + preview added.
- * `$ines_kind: "error"` → typed error injected with code prefix.
- * `$ines_kind: "model_context"` → opt-in summary that REPLACES plain text in the LLM message.
- */
 type InesTypedItem =
   | { $ines_kind: "artifact"; artifact: CopilotArtifact }
   | { $ines_kind: "citation"; citation: WebCitationData | DocumentCitationData }
@@ -95,12 +83,7 @@ export interface McpResultContext {
   artifactQueue: SSEEvent[];
   citations: McpCitation[];
   messages: ModelMessage[];
-  /** Tables the SQL family queries; a `sqlite_table` result is added here. */
   pendingTables: Map<string, Record<string, unknown>[]>;
-  /**
-   * Per-chat identifier from X-Trace-Id. Used to cache MCP-emitted tables
-   * across requests so follow-up messages can use them without a re-fetch.
-   */
   conversationId: string;
 }
 
@@ -199,12 +182,6 @@ function isEmptyArtifactContent(artifact: CopilotArtifact): boolean {
   );
 }
 
-/**
- * Model-facing acknowledgment that an artifact rendered for the user. The
- * artifact itself rides the SSE side-channel (`artifactQueue`), which the
- * model never sees — without this line a successful chart/table call reads
- * as "no output" and the model re-runs work that already succeeded.
- */
 function artifactAckText(artifact: CopilotArtifact): string {
   return `[Artifact "${artifact.name}" (${artifact.type}) delivered to the user — already rendered in the chat, do not regenerate it]`;
 }
@@ -266,7 +243,6 @@ function dispatchTyped(typed: InesTypedItem, ctx: McpResultContext, c: Counters)
     }
 
     case "model_context": {
-      // Last-wins if a tool emits multiple. Replaces plain text in the LLM message.
       c.modelContext = typed.summary;
       return;
     }
@@ -276,8 +252,6 @@ function dispatchTyped(typed: InesTypedItem, ctx: McpResultContext, c: Counters)
 function processPayload(text: string, ctx: McpResultContext, c: Counters): void {
   const parsed = tryParseJson(text);
 
-  // Workspace flattens MCP `content[]` into a JSON-stringified array of text strings
-  // (the frontend's `hooks/mcp/useMcp.ts`). Recurse into each element so typed items survive.
   if (Array.isArray(parsed)) {
     for (const sub of parsed) {
       if (typeof sub === "string") {
@@ -326,8 +300,6 @@ export function processMcpResult(
 
   const { textParts, modelContext, artifactCount, citationCount, tableCount, errorCount } = counters;
 
-  // model_context REPLACES plain text in the LLM message when present (opt-in).
-  // Plain text falls back to concat if no model_context.
   const llmContent = modelContext ?? (textParts.length > 0 ? textParts.join("\n\n") : null);
   const parsedOutput = llmContent === null ? null : tryParseJson(llmContent);
   const outputRows = parsedOutput === null ? undefined : outputRowsFromJson(parsedOutput);
@@ -361,18 +333,6 @@ export function processMcpResult(
 
 const HISTORY_RENDER_MAX_CHARS = 2_000;
 
-/**
- * Pure, side-effect-free rendering of an execute_agent_tool result for the
- * rebuilt model history (`buildMessages`). Mirrors the model-facing text of
- * `dispatchTyped` — same kind→text mapping — but performs none of its state
- * effects: no artifactQueue pushes, no pendingTables writes, and critically
- * no `rememberRows` (re-dispatching stale history rows would corrupt the
- * cross-request row cache). That state is restored through its own channels
- * (row cache, extra_state); this function only restores the model's MEMORY
- * of what each earlier call did. Without it the model forgets every prior
- * tool outcome in the turn — it re-runs work that already succeeded and
- * repeats mistakes whose tracebacks it can no longer see.
- */
 export function renderToolResultForHistory(toolMsg: ToolMessage): string | null {
   const parts: string[] = [];
   let modelContext: string | null = null;
@@ -398,7 +358,6 @@ export function renderToolResultForHistory(toolMsg: ToolMessage): string | null 
 
   function visit(text: string): void {
     const parsed = tryParseJson(text);
-    // Same workspace-flattening recursion as processPayload.
     if (Array.isArray(parsed)) {
       for (const sub of parsed) {
         if (typeof sub === "string") {

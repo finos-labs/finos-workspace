@@ -11,12 +11,9 @@ interface AdminEntityTableProps<T> {
   rows: T[];
   columns: DataTableColumn<T>[];
   getRowId: (row: T) => string;
-  /** What a sortable column sorts by, per column id. */
   sortValues: Record<string, (row: T) => string | number>;
-  /** The text of a row that the search matches against. */
   searchText: (row: T) => string;
   searchPlaceholder: string;
-  /** The Add button; a table without `onAdd` has none. */
   addLabel?: string;
   onAdd?: () => void;
   onEdit: (row: T) => void;

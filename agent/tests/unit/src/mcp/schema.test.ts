@@ -119,11 +119,6 @@ describe("buildToolInputSchema — primitive types", () => {
     expect(() => s.parse({ b: "true" })).toThrow();
   });
 
-  // type:"null" is a quirk in schema.ts: the null filter empties nonNullTypes,
-  // so the base schema becomes z.unknown() and `.nullable()` adds nothing.
-  // Accepts null AND anything else. The dead `case "null"` in
-  // buildSingleTypeSchema is never reached. Tracked for follow-up; for now
-  // pin the current behavior so a future fix breaks this test on purpose.
   it("null type currently behaves as z.unknown().nullable() — known quirk", () => {
     const s = buildToolInputSchema({
       properties: { n: { type: "null" } },

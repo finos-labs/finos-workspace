@@ -14,11 +14,6 @@ const IDENTITY_TEXT = {
   unregistered: "Not listed in WIDGET_PLUGIN_BACKENDS.",
 } as const;
 
-/**
- * The plugin's backend at this deployment (SERVER-SIDE.md 5.5): whether the deployer
- * runs and lists it, and whether it is the approved version. The deployer runs and
- * isolates the process; the API only routes to it while its identity matches.
- */
 export function PluginBackend({ plugin }: { plugin: PlatformPlugin }) {
   const queryClient = useQueryClient();
   const active = plugin.versions.find((v) => v.version === plugin.active_version);

@@ -20,7 +20,7 @@ describe("Input", () => {
     const input = screen.getByRole("textbox");
     await user.type(input, "hello");
 
-    expect(onChange).toHaveBeenCalledWith("h"); // Called for each character usually
+    expect(onChange).toHaveBeenCalledWith("h");
     expect(input).toHaveValue("hello");
   });
 
@@ -30,7 +30,7 @@ describe("Input", () => {
     render(<Input value="something" clearable={true} onChange={onChange} />);
 
     const buttons = screen.queryAllByRole("button");
-    const clearButton = buttons[buttons.length - 1]; // Clear button is typically the last
+    const clearButton = buttons[buttons.length - 1];
     await user.click(clearButton);
 
     expect(onChange).toHaveBeenCalledWith("");
@@ -43,8 +43,6 @@ describe("Input", () => {
     const input = required(container.querySelector("input"));
     expect(input).toHaveAttribute("type", "password");
 
-    // Use queryAllByRole and select the correct button, or a more specific query
-    // Assuming the reveal button is the first (or only) button if clearable is false
     const revealButton = screen.queryAllByRole("button")[0];
     await user.click(revealButton);
     expect(input).toHaveAttribute("type", "text");
@@ -76,7 +74,6 @@ vi.mock("./CopyButton", () => ({
   ),
 }));
 
-// Mock molecules to avoid complex dependencies in unit test
 vi.mock("../molecules/Form", () => ({
   FormControl: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   FormItem: ({ children }: { children?: ReactNode }) => <div>{children}</div>,

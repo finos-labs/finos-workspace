@@ -147,7 +147,6 @@ describe("buildToolCatalog", () => {
   it("does not take an MCP tool for an agent tool of the same name, nor the other way round", () => {
     const c = buildToolCatalog(["execute_sql", "Other_execute_sql"], [entry("Other_execute_sql")]);
     expect(c.groupOf.get("execute_sql")).toBe("sql");
-    // An MCP tool that no group claims is never deferred.
     expect(c.groupOf.has("Other_execute_sql")).toBe(false);
   });
 

@@ -15,9 +15,6 @@ interface BaseWidgetMetadata {
   artifacts?: ArtifactT[];
 }
 
-/**
- * Builds an HTML widget from raw HTML content (no markdown conversion)
- */
 export function buildHtmlWidget(
   content: string,
   metadata: BaseWidgetMetadata,
@@ -41,9 +38,6 @@ export function buildHtmlWidget(
   } as WidgetT;
 }
 
-/**
- * Builds a markdown widget that holds a note's text, with the citations and artifacts it refers to
- */
 export function buildNoteWidget(
   content: string,
   metadata: BaseWidgetMetadata,

@@ -198,7 +198,6 @@ export const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
     const groupFirstLetter = useMemo(() => {
       const parts = group?.name?.split(" ");
       const secondPart = parts?.[1];
-      // If the second part is a number, show the full number; otherwise show the first letter
       if (Number.isNaN(Number(secondPart))) {
         return parts?.[0]?.charAt(0);
       }
@@ -364,8 +363,6 @@ export const GroupDropdown = forwardRef<HTMLButtonElement, GroupDropdownProps>(
                 align="start"
                 sideOffset={5}
                 onInteractOutside={(e) => {
-                  // Keep the dropdown open while interacting with a color picker
-                  // popover, which portals outside the dropdown DOM.
                   if ((e.target as HTMLElement)?.closest?.(".BB-Popover")) {
                     e.preventDefault();
                   }
@@ -450,16 +447,12 @@ function GroupContent(props: Omit<GroupDropdownProps, "children">) {
         widgetAssetClasses.includes("options") && group?.value?.has_options;
 
       if (group.acceptAssetClasses?.includes("all") || isOptions) return true;
-      // If the widget is in the list of exception widgets, it can be grouped with any asset class
       if (EXCEPTION_WIDGETS_IDS.includes(widget?.widgetId)) {
         return true;
       }
-      // If the widget has no specific asset classes, it's an exception and can be grouped with any
       if (!widgetAssetClasses || widgetAssetClasses.length === 0) {
         return true;
       }
-
-      // If the group has an asset class that is in the widget's supported asset classes, return true
 
       return [group?.value?.category ?? "", "all"].some((type) =>
         widgetAssetClasses.includes(type),
@@ -542,9 +535,6 @@ const GroupContentItem = memo(
         e.stopPropagation();
         e.preventDefault();
 
-        // Assuming element.assetClass represents the asset class of the group
-        // and widgetAssetClasses represents the asset classes of the widget
-
         const { canGroup, selected } = groupedInfo;
 
         if (!canGroup && external) {
@@ -565,13 +555,10 @@ const GroupContentItem = memo(
 
         if (!(activeDashboardId && widgetUUid)) return;
 
-        // For the single widget, check if it's already in the group
         if (selected) {
-          // If it is, remove it from the group
           return setWidgetGroupId(activeDashboardId, widgetUUid, element, true);
         }
 
-        // If it's not, add it to the group
         setWidgetGroupId(activeDashboardId, widgetUUid, element);
       },
       [
@@ -596,7 +583,6 @@ const GroupContentItem = memo(
         );
 
       if ((widgetsInGroup?.length ?? 0) > 0) {
-        // If there are, show a warning message
         return showNotificationWithRememberMe({
           id: NotificationId.GroupNotEmpty,
           message: "Group not empty",
@@ -614,7 +600,6 @@ const GroupContentItem = memo(
         });
       }
 
-      // If there are no widgets in the group, delete the group
       deleteGroup(activeDashboardId, element.id);
     }, [activeDashboardId, deleteGroup, element.id]);
 
@@ -676,31 +661,25 @@ export function getNewGroup(
   let newGroupName = baseGroupName + (groups.length + 1);
   let groupNameSuffix = groups.length;
 
-  // Ensure the group name is unique
   while (groups.some((group) => group.name === newGroupName)) {
     groupNameSuffix++;
     newGroupName = baseGroupName + groupNameSuffix;
   }
 
-  // Get color palette from theme store or fall back to COLORS
   const currentTheme = useThemeStore.getState().theme;
   const themeStore = useEntityThemeStore.getState();
   const palette = themeStore[currentTheme]?.appTheme?.grouping?.palette || COLORS;
 
-  // Select a unique color for the new group
   const existingColors = groups.map((group) => group.color);
   let color: string;
 
-  // Directly select a random color if all palette colors are already used
   if (existingColors.length >= palette.length) {
     color = palette[Math.floor(Math.random() * palette.length)];
   } else {
-    // Attempt to find a unique color
     const availableColors = palette.filter((c) => !existingColors.includes(c));
     if (availableColors.length > 0) {
-      color = availableColors[0]; // Take the first available unique color
+      color = availableColors[0];
     } else {
-      // Fallback to a random color if the filter fails for any reason
       color = palette[Math.floor(Math.random() * palette.length)];
     }
   }

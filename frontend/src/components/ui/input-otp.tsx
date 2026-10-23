@@ -51,10 +51,8 @@ function InputOTPSlot({
         "relative flex h-10 w-10 items-center justify-center",
         "border border-solid text-sm transition-all outline-none rounded-md",
         "data-[active=true]:z-10",
-        // Light theme
         "border-light-200 bg-light-50 text-light-600",
         "data-[active=true]:border-brand-main data-[active=true]:text-light-900",
-        // Dark theme
         "dark:bg-dark-800 dark:border-dark-600 dark:text-light-400",
         "dark:data-[active=true]:border-brand-main dark:data-[active=true]:text-white",
         className,

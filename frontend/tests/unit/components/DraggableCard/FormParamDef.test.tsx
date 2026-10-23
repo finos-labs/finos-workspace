@@ -53,7 +53,6 @@ const CUSTOM_HEADERS = {
   "X-Custom-Header": "custom-value",
 };
 
-// The data backend's credentials live on its source in page memory, never on the widget
 const SOURCE = partial<Source>({
   id: "src-1",
   name: "My API",
@@ -88,7 +87,6 @@ const mockWidget = partial<WidgetT>({
   ],
 });
 
-/** Renders the form of the widget the mocked widget context holds */
 const renderForm = () => {
   const { widget } = (useWidgetContext as Mock)() as { widget: WidgetT };
   const formParamDef = widget.params?.find(
@@ -143,7 +141,6 @@ describe("FormParamElement - EndpointType", () => {
   it("ignores headers saved on the widget itself", () => {
     const widgetWithHeaders = partial<WidgetT>({
       ...mockWidget,
-      // Saved widgets carry no credentials; one that does is not trusted
       endpoint: {
         url: "https://my-api.com/data",
         method: "GET",

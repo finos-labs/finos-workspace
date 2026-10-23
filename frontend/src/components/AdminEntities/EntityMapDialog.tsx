@@ -24,7 +24,6 @@ export function EntityMapDialog({
   entities,
   onClose,
 }: {
-  /** The permission map to edit; without one the dialog adds a map. */
   map?: EntityMapItem;
   entities: Entity[];
   onClose: () => void;

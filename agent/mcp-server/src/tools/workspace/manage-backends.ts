@@ -1,10 +1,3 @@
-/**
- * manage_backends — list/add/update/refresh/remove Workspace data backends.
- *
- * Mirrors workspace_mcp/server.py:1052-1123 with operation-specific
- * required-field checks and BackendEndpointHeader validation.
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";

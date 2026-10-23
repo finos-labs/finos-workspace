@@ -27,9 +27,7 @@ interface RightSideActionsProps {
   parentType?: string;
   selectionId: string;
   name?: string;
-  /** Stored-file endpoint URL (file rows only); fetched through the authed client to download. */
   fileUrl?: string;
-  /** Original uploaded file name (file rows only); used as the saved download name. */
   originalFileName?: string;
 }
 
@@ -149,9 +147,6 @@ export const RightSideActions = ({
       }
       dispatch({ isDownloading: true });
       try {
-        // Fetch through the authed client (the file endpoint is on the API origin,
-        // unlike the S3 presigned URL the AI flow uses). The resulting blob is
-        // same-origin, so the download attribute names the file correctly.
         const blob = await getStoredFileBlob(fileUrl);
         const objectUrl = URL.createObjectURL(blob);
         const link = document.createElement("a");

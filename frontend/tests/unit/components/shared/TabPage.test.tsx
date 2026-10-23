@@ -207,7 +207,6 @@ describe("TabPageSectionHeader", () => {
     const btn = screen.getByRole("button");
     fireEvent.click(btn);
     fireEvent.click(btn);
-    // Just verifying no crashes in controlled mode
     expect(btn).toBeInTheDocument();
   });
 });

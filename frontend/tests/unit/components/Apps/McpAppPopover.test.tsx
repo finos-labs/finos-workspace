@@ -128,7 +128,6 @@ describe("McpAppPopover", () => {
         sourceId: "src-1",
       }),
     );
-    // OAuth path never carries a token authType nor custom headers.
     const added = mockAddServer.mock.calls[0][0];
     expect(added.authType).toBeUndefined();
     expect(added.customHeaders).toBeUndefined();
@@ -167,7 +166,6 @@ describe("McpAppPopover", () => {
   });
 
   it("replaces the saved token of an already-added failed token server", () => {
-    // The API says a token is saved; its value never reaches the page
     mockMcpState.servers = [
       server({
         authType: "token",
@@ -198,9 +196,6 @@ describe("McpAppPopover", () => {
     fireEvent.click(screen.getByRole("button", { name: "save-token" }));
 
     expect(mockAddServer).not.toHaveBeenCalled();
-    // `enabled` is part of the payload because auto-registration leaves
-    // token-auth servers disabled until a token exists; the connection
-    // reconnects with the new token once it is saved.
     expect(mockUpdateServer).toHaveBeenCalledWith(
       "srv-1",
       {

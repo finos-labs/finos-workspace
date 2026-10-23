@@ -13,24 +13,20 @@ import type { Selector } from "./app";
 import { useAuthStore } from "./auth";
 import type { Source } from "./backendConnector";
 
-/** A sign-in to an MCP server waiting for its popup: the server and where to sign in. */
 type McpAuthPopup = {
   serverName?: string;
   url: string;
   authUrl: string;
   popupFeatures?: string;
 };
-/** Builds the file of an export format, named after the widget's title. */
 type ExportFormatFn = (title: string) => void;
 
-/** What the Export dialog offers for one widget. */
 export interface ExportWidgetData {
   widgetId: string;
   widgetName: string;
   selectedExportFormat: string;
   possibleExportFormats: {
     value: string;
-    /** Shown instead of the upper-cased value, as a widget plugin names its exports */
     label?: string;
     fn: ExportFormatFn | null | undefined;
   }[];
@@ -49,7 +45,7 @@ interface ThemeState {
     data: Source | null;
   };
   setManageAppDialog: (dialogState: Partial<ThemeState["manageAppDialog"]>) => void;
-  groupingVisible: boolean; // to be able to toggle the visibility of the grouping button in the dashboard toolbar
+  groupingVisible: boolean;
   setGroupingVisible: (visible: boolean) => void;
   toggleGroupingVisibility: () => void;
   showAddAgentsDialog: boolean;
@@ -160,12 +156,6 @@ interface ThemeState {
   };
 }
 
-/**
- * The preferences theme-storage keeps across reloads. Only these keys are written to
- * localStorage and only these are read back from it, so dialog state, a pending MCP
- * sign-in, and anything else that sits in theme-storage never reach the store or go
- * back to browser storage.
- */
 const PERSISTED_PREFERENCES = [
   "theme",
   "fontSize",

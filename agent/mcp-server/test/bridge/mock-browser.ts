@@ -1,14 +1,3 @@
-/**
- * Mock Workspace browser for bridge integration tests.
- *
- * Connects to a `/bridge/session/start` + `/bridge/ws` endpoint, sends
- * configurable canned `command_result` payloads in response to incoming
- * `command_request` events, and exposes the WS frames it received for
- * assertion.
- *
- * Wire shapes mirror workspace_mcp/workspace_mcp/models.py byte-for-byte.
- */
-
 export interface IncomingCommand {
   command: string;
   request_id: string;
@@ -57,9 +46,6 @@ export async function startMockBrowser(opts: {
     websocket_url: string;
   };
 
-  // Ignore the server's returned websocket_url — it may carry a stale port
-  // when the manager was constructed before the server picked an
-  // ephemeral port. Compute the canonical WS URL from `opts.baseUrl`.
   const wsUrl =
     opts.baseUrl.replace(/^http/, "ws") +
     `/bridge/ws?session_id=${startBody.session.session_id}` +
@@ -128,7 +114,6 @@ export async function startMockBrowser(opts: {
       try {
         ws.close();
       } catch {
-        // ignore
       }
     },
     async waitReady() {

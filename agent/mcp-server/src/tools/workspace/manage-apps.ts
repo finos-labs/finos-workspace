@@ -1,9 +1,3 @@
-/**
- * manage_apps — list/read/instantiate apps from a backend's apps.json.
- *
- * Mirrors workspace_mcp/server.py:1143-1179.
- */
-
 import { z } from "zod";
 import type { ContentItem } from "../../lib/typed.ts";
 import { bridgeManager } from "../../bridge/singleton.ts";

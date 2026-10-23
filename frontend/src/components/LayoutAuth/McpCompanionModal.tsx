@@ -36,9 +36,6 @@ export const McpCompanionModal = memo(() => {
 
   useEffect(() => {
     const previousStatus = previousStatusRef.current;
-    // Only celebrate user-initiated connects (attempting -> connected).
-    // Automatic reconnects recover silently — a flaky bridge would otherwise
-    // spam a success toast on every recovery.
     if (status === "connected" && previousStatus === "attempting") {
       toast.success("Workspace MCP companion connected", {
         description: "Your agent can now access this session via MCP.",
@@ -52,8 +49,6 @@ export const McpCompanionModal = memo(() => {
     const isConnecting = status === "attempting" || status === "reconnecting";
     const isDropped = status === "disabled" && lastError !== null;
 
-    // Map the bridge status to the shared connection-dot vocabulary. coloredLabel
-    // tints the dot + label one color.
     let dotStatus: ConnectionStatus = "disconnected";
     let statusLabel = "Not connected";
     if (isConnected) {
@@ -81,8 +76,6 @@ export const McpCompanionModal = memo(() => {
   );
 
   const handleClose = useCallback(() => {
-    // Closing mid-attempt cancels the in-flight bootstrap; an established
-    // connection is left running.
     if (status === "attempting" || status === "reconnecting") {
       disconnect();
     }

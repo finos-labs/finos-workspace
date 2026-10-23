@@ -1,5 +1,3 @@
-"""Agent task delegation and skill content tools."""
-
 from typing import Annotated
 
 from fastmcp import FastMCP
@@ -35,7 +33,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
         ],
     ) -> ToolResponse:
-        """Delegate work to Workspace agents through the browser bridge."""
         return await run(
             AssignTasksToAgentsCommand(
                 command="assign_tasks_to_agents",
@@ -60,7 +57,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
         ],
         reason: str | None = None,
     ) -> ToolResponse:
-        """Load one skill from Workspace's skill library."""
         return await run(
             GetSkillContentCommand(
                 command="get_skill_content",

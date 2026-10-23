@@ -1,17 +1,3 @@
-/**
- * `create_app` — assemble connected widgets into a dashboard app
- * (apps.json template shape). The workspace renders the resulting `app`
- * artifact with Open-as-dashboard and Save-to-apps actions.
- *
- * State-bound — closes over the live widget catalog (`allWidgets`) to validate
- * and resolve every `(origin, widget_id)` reference, and over `artifactQueue`
- * to push the artifact. Validation runs in-process: an unknown reference is
- * returned as the tool result so the model self-corrects without a round-trip.
- *
- * Mirrors `create_html_artifact` (./html-artifact.ts): local `execute`, returns
- * text, pushes one artifact. No round-trip, no stopWhen entry.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
 import { messageArtifact } from "../../protocol/events.ts";
@@ -117,11 +103,6 @@ export interface CreateAppToolContext {
 
 const widgetKey = (origin: string, widgetId: string): string => `${origin}::${widgetId}`;
 
-/**
- * One ticker group spanning every widget that exposes a ticker/symbol param —
- * the workspace's universal ticker registry is a single group. Other shared
- * params are left to the workspace's implicit param auto-sync.
- */
 function detectTickerGroups(
   widgetRefs: AppArtifactWidgetRef[],
   resolved: Map<string, Widget>,
@@ -161,8 +142,6 @@ export function runCreateApp(args: CreateAppArgs, ctx: CreateAppToolContext): st
     tabIds.add(t.id);
   }
 
-  // Resolve every (origin, widget_id) against the live catalog; flag misses and
-  // within-tab duplicates (a tab's layout keys must be unique).
   const resolved = new Map<string, Widget>();
   const errors: string[] = [];
   for (const t of args.tabs) {

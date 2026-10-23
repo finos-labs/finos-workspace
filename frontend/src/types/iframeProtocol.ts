@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-// --------------- Zod schemas ---------------
-
 export const WorkspaceWidgetManifestSchema = z.object({
   widgetId: z.string(),
   name: z.string(),
@@ -68,8 +66,6 @@ export const WorkspaceWidgetParamsUpdateMessageSchema = z.object({
   value: WorkspaceWidgetParamValueSchema.optional(),
 });
 
-// --------------- TypeScript types (inferred from schemas) ---------------
-
 export type WorkspaceWidgetManifest = z.infer<typeof WorkspaceWidgetManifestSchema>;
 export type WorkspaceParamDef = z.infer<typeof WorkspaceParamDefSchema>;
 export type WorkspaceConnectMessage = z.infer<typeof WorkspaceConnectMessageSchema>;
@@ -80,7 +76,6 @@ export type WorkspaceWidgetParamsUpdateMessage = z.infer<
   typeof WorkspaceWidgetParamsUpdateMessageSchema
 >;
 
-// These outgoing message types don't need validation schemas
 export interface WorkspaceParamsUpdateMessage {
   type: "workspace-params-update";
   params: Record<string, string>;
@@ -96,8 +91,6 @@ export interface WorkspaceRequestMessage {
   widgetId: string | null;
 }
 
-// --------------- Shared parsing helpers ---------------
-
 export function isWidgetParamMessageType(
   value: unknown,
 ): value is WidgetParamMessageType {
@@ -107,15 +100,6 @@ export function isWidgetParamMessageType(
   );
 }
 
-/**
- * Parses an `workspace:widget-params:update` / `workspace:params:update` postMessage
- * payload into a flat `{ paramName: value }` record.
- *
- * Returns `null` (silently) when the message is not a params-update type, so
- * callers can route every incoming message through this without spamming
- * warnings. Returns `null` (with a warning) only when the type matches but the
- * shape fails Zod validation.
- */
 export function parseIframeParamsMessage(
   data: unknown,
 ): Record<string, WorkspaceWidgetParamValue> | null {
@@ -147,11 +131,6 @@ export function parseIframeParamsMessage(
   return result;
 }
 
-/**
- * Renders a parsed `WorkspaceWidgetParamValue` to the string form used by the
- * outbound `workspace-params-update` message and the iframe query-string. Arrays
- * are joined by `,`; `null`/`undefined` collapse to `""`.
- */
 export function stringifyParamValue(
   value: WorkspaceWidgetParamValue | undefined,
 ): string {

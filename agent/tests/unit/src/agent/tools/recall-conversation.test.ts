@@ -8,7 +8,6 @@ import { renderMetrics } from "../../../../../src/lib/metrics.ts";
 const human = (content: string): Message => ({ role: "human", content });
 const ai = (content: string): Message => ({ role: "ai", content });
 
-/** A chat of numbered questions and answers, then the current question. */
 function chat(pairs: number): Message[] {
   const messages: Message[] = [];
   for (let k = 1; k <= pairs; k++) {

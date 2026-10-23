@@ -1,15 +1,3 @@
-"""
-Integration tests for Copilot metering.
-
-An admin sets a daily Copilot query limit and a daily token limit on the roles of their
-organization (``copilot_calls_day`` and ``copilot_tokens_day``). A user's limits are the
-highest of their roles, a role without a limit lifts it, and a user without roles may use
-nothing. The limits are checked against the usage that the service serving the Copilot
-reports to ``PUT /app/usage``. Limits are changeable by that organization's admins and
-usage is writable by that service, and by nobody else: a limit its own holder can raise or
-a counter its own holder can reset is not a limit.
-"""
-
 import os
 import sys
 
@@ -39,7 +27,6 @@ OUTSIDER_UUID = UUID(_SECOND_USER["user_uuid"])
 
 @pytest.fixture
 async def metered(organization):
-    """The role of the test user: 2 queries and 100 tokens a day."""
     return await organization.role(
         MEMBER_UUID, copilot_calls_day=2, copilot_tokens_day=100
     )
@@ -47,7 +34,6 @@ async def metered(organization):
 
 @pytest.fixture
 async def member(metered, auth_client):
-    """The test user, a member of the admin's organization with the metered role."""
     return auth_client
 
 
@@ -55,7 +41,6 @@ METERING = {"X-Metering-Authorization": "Bearer " + create_metering_token()[0]}
 
 
 async def _use(client, count: int = 1, **usage):
-    """Report usage the way the Copilot service does."""
     return await client.put(
         "/app/usage", json={"add_copilot_count": count, **usage}, headers=METERING
     )
@@ -139,7 +124,6 @@ class TestTokenMetering:
         self, member
     ):
         assert (await _use(member, 1, add_copilot_tokens=90)).status_code == 200
-        # A query that is already running cannot be refused, so its tokens are recorded
         assert (await _use(member, 0, add_copilot_tokens=30)).status_code == 200
         data = await _limits(member)
         assert data["number_copilot_tokens_day_count"] == 120
@@ -186,7 +170,6 @@ class TestUsersCannotWriteUsage:
 
     @pytest.mark.asyncio
     async def test_other_service_tokens_do_not_meter(self, member):
-        # The token every browser client carries is valid for the API but not for metering
         for token in (
             _build_service_jwt(),
             jwt.encode({"sub": "app"}, settings.JWT_SECRET, algorithm="HS256"),
@@ -202,7 +185,6 @@ class TestUsersCannotWriteUsage:
 
     @pytest.mark.asyncio
     async def test_a_metering_token_that_never_runs_out_is_refused(self, member):
-        """A token without an expiry could only be withdrawn by changing JWT_SECRET."""
         forever = jwt.encode({"sub": "metering"}, settings.JWT_SECRET, algorithm="HS256")
         response = await member.put(
             "/app/usage",
@@ -222,7 +204,6 @@ class TestUsersCannotWriteUsage:
             headers={"X-Metering-Authorization": f"Bearer {expired}"},
         )
         assert response.status_code == 403
-        # The operator has to mint a new one, so the answer says that rather than "invalid".
         assert "expired" in response.json()["detail"].lower()
         assert "create_metering_token" in response.json()["detail"]
 
@@ -292,7 +273,6 @@ class TestAdminSetsLimit:
     @pytest.mark.asyncio
     async def test_lowered_limit_applies_at_once(self, metered, member, admin_client):
         assert (await _use(member)).status_code == 200
-        # Warm the usage cache with the old limit
         assert (await _limits(member))["copilot_calls_limit"] == 2
 
         response = await admin_client.patch(
@@ -371,7 +351,5 @@ class TestOnlyOwnOrganizationAdminsSetLimits:
         assert (await admin_client.get(path)).status_code == 404
         response = await admin_client.post(f"/admin/usage/{OUTSIDER_UUID}/reset")
         assert response.status_code == 403
-        # The outside role still allows 2 calls a day (the outsider, a developer, has
-        # no limits whatever their roles say)
         db_session.expire_all()
         assert (await db_session.get(models.Role, outside)).copilot_calls_day == 2

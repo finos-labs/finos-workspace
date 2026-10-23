@@ -21,7 +21,6 @@ import { PluginEntities } from "./PluginEntities";
 import { PluginSecrets } from "./PluginSecrets";
 import { TrustSummary } from "./TrustSummary";
 
-/** What the newest version asks for, as small markers in the list (DESIGN.md 8.1). */
 function AsksFor({ plugin }: { plugin: PlatformPlugin }) {
   const version =
     plugin.versions.find((v) => v.version === plugin.active_version) ??
@@ -47,11 +46,6 @@ function AsksFor({ plugin }: { plugin: PlatformPlugin }) {
   );
 }
 
-/**
- * Superusers: the plugins the deployer placed on the server, and what to approve
- * (docs/widget-plugins/DESIGN.md 8.1). There is no install or upload here: packages reach
- * the server through the plugins directory, the image or configuration.
- */
 export function DeploymentTab() {
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useQuery({

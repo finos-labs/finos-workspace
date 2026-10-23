@@ -3,7 +3,6 @@ import { addUser, deleteUser, userInfo } from "./helpers";
 
 const USERS_URL = "/admin/entities?tab=users";
 
-/** The row of a table that shows `text`. */
 function rowWith(page: Page, text: string) {
   return page.getByRole("row").filter({ hasText: text });
 }
@@ -27,7 +26,6 @@ test("an entity opens with its sharing switch", async ({ page }) => {
   await expect(dialog).toBeHidden();
 });
 
-/** The row of All users that shows `email`, found with the search box. */
 async function allUsersRow(page: Page, email: string) {
   await page.goto(USERS_URL);
   await page.getByPlaceholder("Search for users").fill(email);
@@ -42,7 +40,6 @@ test("All users lists the superuser with their user type", async ({ page }) => {
   await expect(row).toContainText("Admin");
 });
 
-// A user an admin adds is moved to another user type of their entity, and deleted again
 test("a superuser moves a user to another user type", async ({ page }) => {
   const email = `e2e-move-${crypto.randomUUID().slice(0, 8)}@example.com`;
   await addUser(page, email, "Move");

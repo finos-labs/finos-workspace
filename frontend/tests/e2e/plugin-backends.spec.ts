@@ -12,20 +12,6 @@ import {
   writePackage,
 } from "./plugins/fixtures";
 
-/**
- * A plugin backend on the full stack (docs/widget-plugins/SERVER-SIDE.md 5): the frame
- * calls a route, the API checks the backend's identity, sends the route's secret and a
- * call-context token, the backend reads the organization's data source through the
- * broker with that token, and the broker adds the data source's key and applies the
- * user's access. Neither the frame nor the backend holds the key; the backend learns a
- * pseudonymous id, not the user.
- *
- * The deployer's part is played by this machine: the backend and the data source run
- * here, and the API lists the backend in WIDGET_PLUGIN_BACKENDS under E2E_BACKEND_HOST,
- * which resolves to this machine. Without E2E_PLUGINS_DIR and E2E_BACKENDS the tests are
- * skipped.
- */
-
 const PLUGINS_DIR = process.env.E2E_PLUGINS_DIR;
 const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const HOST = process.env.E2E_BACKEND_HOST ?? "plugin-backend.e2e.test";
@@ -34,7 +20,6 @@ const DATA_PORT = Number(process.env.E2E_DATA_PORT ?? 7795);
 const LISTEN = process.env.E2E_BACKEND_LISTEN ?? "127.0.0.1";
 const PLUGIN = "e2e-forecast";
 const SOURCE = `E2E sales ${Math.random().toString(36).slice(2, 8)}`;
-// Made for this run
 const MODEL_KEY = `model-${crypto.randomUUID()}`;
 const DATA_KEY = `data-${crypto.randomUUID()}`;
 
@@ -94,7 +79,6 @@ test.beforeAll(async ({ browser }, testInfo) => {
   await page.goto("/app");
   api = await pageApi(context, API_URL);
 
-  // A superuser approves the version and sets the route's secret
   await json(await api.post("/plugins/rescan"));
   const plugin = await json(await api.get(`/plugins/${PLUGIN}`));
   const entry = plugin.versions.find((v: { version: string }) => v.version === version);
@@ -115,7 +99,6 @@ test.beforeAll(async ({ browser }, testInfo) => {
     }),
   );
 
-  // The organization enables it, adds its data backend and maps the data source to it
   await json(
     await api.put(`/admin/plugins/${PLUGIN}`, {
       data: { enabled: true },
@@ -199,16 +182,13 @@ test("a-route-reads-the-organizations-data-for-the-user", async () => {
     other: "refused:out_of_scope",
   });
 
-  // The data source got its key from the broker; the backend never saw it
   const [read] = dataReceived;
   expect(read.path).toBe("/api/sales?region=emea");
   expect(read.headers["x-api-key"]).toBe(DATA_KEY);
   const call = backendReceived.find((r) => r.path === "/.workspace/routes/forecast");
   expect(JSON.stringify(call)).not.toContain(DATA_KEY);
-  // The token is opaque and the caller is not named
   expect(String(call?.headers["x-workspace-call"])).toMatch(/^wpc1\./);
   expect(JSON.parse(call?.body ?? "{}").caller.id).not.toContain("@");
-  // The frame holds neither key
   const html = await frame().locator("html").innerHTML();
   expect(html).not.toContain(MODEL_KEY);
   expect(html).not.toContain(DATA_KEY);

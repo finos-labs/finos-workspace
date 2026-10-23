@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SingleDatePicker } from "~/components/ui/SingleDatePicker";
 
-// Mock Calendar
 vi.mock("~/components/ui/Calendar", () => ({
   Calendar: ({ onSelect }: { onSelect: (date: Date) => void }) => (
     <div data-testid="mock-calendar">
@@ -26,25 +25,20 @@ describe("SingleDatePicker", () => {
   it("calls onSave when a date is selected", async () => {
     render(<SingleDatePicker defaultDate="2023-01-01" onSave={onSave} />);
 
-    // Open calendar
     fireEvent.click(screen.getByText("Jan 01, 2023"));
 
-    // Select date
     const selectBtn = await screen.findByText("Select date");
     fireEvent.click(selectBtn);
 
     expect(onSave).toHaveBeenCalled();
-    // formatDate(new Date("2023-05-20")) should be "2023-05-20" usually
     expect(onSave).toHaveBeenCalledWith(expect.stringContaining("2023-05"));
   });
 
   it("calls onSave with empty string when cleared", async () => {
     render(<SingleDatePicker defaultDate="2023-01-01" onSave={onSave} />);
 
-    // Open calendar
     fireEvent.click(screen.getByText("Jan 01, 2023"));
 
-    // Click clear
     const clearBtn = await screen.findByText("Clear");
     fireEvent.click(clearBtn);
 

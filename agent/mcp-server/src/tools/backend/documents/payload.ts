@@ -1,14 +1,3 @@
-/**
- * The documents the agent ships to the document tools, and how their bytes are got.
- *
- * A document comes either as its bytes (`content_b64`) or as a link to them (`url`). The agent passes a
- * link for the files of the Workspace, which the Workspace gives out as signed links: the file then goes
- * from where it is kept straight to the document search, and neither the agent nor the browser that
- * carries the call holds its bytes. The link is fetched like every URL a client supplies (see
- * src/lib/safe-fetch.ts): only the Workspace's own file links and public addresses, and no more than
- * MAX_DOC_BYTES.
- */
-
 import { z } from "zod";
 import { fetchClientUrl } from "../../../../../src/lib/safe-fetch.ts";
 
@@ -26,7 +15,6 @@ export interface ShippedDocument {
   url?: string;
 }
 
-/** The `x-ines-documents` entry both document tools take. */
 export const shippedDocumentSchema = z
   .object({
     id: z.string(),

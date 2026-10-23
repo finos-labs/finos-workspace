@@ -1,11 +1,5 @@
 name: Production Deployment of the Workspace (AWS)
 
-# Builds the frontend as static files and publishes them to S3 and CloudFront
-# when main changes, or when someone starts it by hand and types "deploy".
-# Repository variable: AWS_REGION. Secrets of the prod environment:
-# AWS_PROD_KEY_ID, AWS_PROD_SECRET_ACCESS_KEY, PROD_S3_BUCKET,
-# PROD_CLOUDFRONT_DISTRIBUTION_ID, PROD_VITE_BACKEND_URL, PROD_VITE_AI_API_URL
-# and PROD_VITE_GOOGLE_OAUTH_CLIENT_ID.
 on:
   push:
     branches:
@@ -36,7 +30,6 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_PROD_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_PROD_SECRET_ACCESS_KEY }}
     steps:
-      # Runs before checkout, so the frontend working directory doesn't exist yet.
       - name: Confirm Deployment/Branch
         working-directory: .
         run: |
@@ -75,7 +68,7 @@ jobs:
         run: npm run build
 
       - name: Deploy to S3 & Invalidate CloudFront
-        uses: staevs/s3-deploy-action@ba007d3fd18709a01dbadd56ade8ffbd3beee150 # v1.2.3
+        uses: staevs/s3-deploy-action@ba007d3fd18709a01dbadd56ade8ffbd3beee150
         with:
           args: --follow-symlinks --delete --no-progress
         env:

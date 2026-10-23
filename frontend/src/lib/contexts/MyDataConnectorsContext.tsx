@@ -33,7 +33,6 @@ import { useAppStore } from "../state/app";
 import { isRenderableVizType } from "../types/app";
 import { convertAdvancedBackend, generateRandomName, uuidv4 } from "../utils";
 
-/** What the user picked in My Data Connectors: a widget of a backend, a stored file or a feed, or a whole backend. */
 export type SelectedWidget = WidgetCardItem &
   Partial<Omit<WidgetType, keyof WidgetCardItem>> & {
     parentName?: string;
@@ -98,7 +97,6 @@ export const createDashboardWidget = (
     case "backend": {
       const { type, ...backendWidget } = widget;
       if (!isRenderableVizType(type, getPluginVizTypes())) return null;
-      // The widget is a definition the backend returned, which has nulls where a widget has nothing
       return {
         ...backendWidget,
         type,
@@ -122,7 +120,6 @@ export const findSelectedWidgets = (
   allElems.forEach((elem) => {
     elem.items.forEach((item: WidgetCardItem & { widgets?: WidgetCardItem[] }) => {
       if (elem.type === "backend" && item.widgets?.length === 0) {
-        // means backend couldnt connect to see the widgets so we want to select only backend not the widgets inside
         foundWidgets.push({
           ...item,
           type: elem.type,
@@ -149,7 +146,6 @@ export const findSelectedWidgets = (
   return foundWidgets;
 };
 
-/** The widgets that are selected and that a user can delete: not shared, and not the backends, which the Apps page manages. */
 export const findDeletableWidgets = (
   allElems: ElementType[],
   selectedWidgets: Set<string>,
@@ -422,7 +418,6 @@ export function MyDataConnectorsProvider({ children }: { children: ReactNode }) 
 
       for (const widget of foundWidgets) {
         if (!widget?.widgetType) continue;
-        // we need to do something like this because Category of these widgets are now "Others"
         const typeToUse = getTypeToUse(widget.widgetType, widget.selectionId);
 
         const dashboardWidget = createDashboardWidget(widget, typeToUse);

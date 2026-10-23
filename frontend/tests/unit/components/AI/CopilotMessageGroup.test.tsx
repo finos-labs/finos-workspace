@@ -84,7 +84,6 @@ describe("createMessageGroups - reasoning title derives from per-message snapsho
     const off: Message[] = [sysMsg("Searching widgets...", false, 1)];
     const on: Message[] = [sysMsg("Searching widgets...", true, 1)];
 
-    // Identical messages + identical isLoading, only the per-message snapshot differs.
     expect(createMessageGroups(off, false).groupedMessages[0].groupTitle).toBe(
       "Step-by-step reasoning",
     );

@@ -30,10 +30,6 @@ function widgetKind(w: Widget): "data" | "note" | "display" {
   return "data";
 }
 
-/**
- * `linkedTool` names, as the model calls it, the tool of the widget's own backend that the widget opted in to,
- * when this request registered it (src/mcp/factory.ts `linkedToolName`).
- */
 export function makeSearchWidgetsTool(
   tiered: TieredWidget[],
   linkedTool: (widget: Widget) => string | undefined = () => undefined,

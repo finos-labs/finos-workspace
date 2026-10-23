@@ -1,12 +1,3 @@
-"""The Workspace bridge socket serves only while the web session that opened it lasts.
-
-A socket is admitted with the web session cookie, and from then on it is tied to that
-session: once the session is signed out, replaced by a new sign-in, ended by a password
-change or an administrator's reset, or expired, the socket is closed (1008) and no command
-reaches it, on whichever worker holds it. A socket that a newer one replaced is closed too,
-and nothing it sends acts on the newer one.
-"""
-
 import asyncio
 import importlib
 from contextlib import asynccontextmanager
@@ -35,7 +26,6 @@ from tests.fixtures.base import (
 )
 from tests.test_workspace_mcp_bridge import FakeAsyncRedis, FakeSocket
 
-# The module: the package exports its APIRouter under the same name
 bridge_router = importlib.import_module("routers.app.workspace_mcp.router")
 
 PASSWORD = "TestPassword123!"  # noqa: S105
@@ -43,8 +33,6 @@ SNAPSHOT = {"command": "get_workspace_snapshot"}
 
 
 class SessionFlag:
-    """Whether the web session behind a test socket lasts; a test ends it."""
-
     def __init__(self):
         self.lasts = True
 
@@ -85,7 +73,6 @@ async def _connect(
 
 
 async def _sent(socket) -> list:
-    """What the server sent the socket, once it sent something."""
     for _ in range(200):
         if socket.sent:
             break
@@ -151,7 +138,6 @@ class TestTheBridge:
         user, socket, session = uuid4(), FakeSocket(), SessionFlag()
         try:
             await _connect(holder, user, socket, session)
-            # The holder's listener subscribes to its command channel
             await asyncio.sleep(0)
 
             session.lasts = False
@@ -178,7 +164,6 @@ class TestTheBridge:
         command = asyncio.create_task(manager.execute_command(user, SNAPSHOT))
         request_id = (await _sent(new))[0]["command"]["request_id"]
 
-        # The replaced socket can neither answer the new one's command nor touch it
         for message in (_result(request_id), {"type": "ping"}):
             with pytest.raises(BrowserUnavailableError):
                 await manager.handle_browser_message(user, message, old)
@@ -205,8 +190,6 @@ class TestTheBridge:
 
 
 class BridgeTab:
-    """The web app's bridge socket: it sends nothing and waits until the server closes it."""
-
     def __init__(self, cookie: str, session_id: str):
         self.headers = {"origin": TEST_ORIGIN}
         self.cookies = {auth_helpers.SESSION_COOKIE: cookie}
@@ -253,7 +236,6 @@ async def _open_tab(manager, user_uuid: UUID, cookie: str) -> tuple[BridgeTab, a
 
 @asynccontextmanager
 async def _browser(headers: dict[str, str] | None = None):
-    """A client of its own, with exactly these headers and an empty cookie jar."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url=TEST_BASE_URL, headers=headers or {}
     ) as browser:
@@ -288,7 +270,6 @@ class TestTheSocketClosesWhenItsSessionEnds:
                 async with _browser(WEB_HEADERS) as other:
                     await _sign_in(other, user.email)
             elif how == "password change":
-                # From another web session of the user's, which the change keeps
                 other = await auth_helpers.create_login_token(
                     organization.db, user.uuid, timedelta(hours=1), app_session=True, source="app"
                 )
@@ -310,7 +291,6 @@ class TestTheSocketClosesWhenItsSessionEnds:
     async def test_the_socket_closes_when_the_session_expires(
         self, organization, db_session, bridge, monkeypatch
     ):
-        # No periodic check comes before the session expires: the expiry closes it
         monkeypatch.setattr(bridge_router, "SESSION_CHECK_SECONDS", 60.0)
         user = await organization.add_user(password=PASSWORD)
         async with _browser(WEB_HEADERS) as web:
@@ -339,7 +319,6 @@ class TestTheSocketClosesWhenItsSessionEnds:
                 bridge, user.uuid, web.cookies[auth_helpers.SESSION_COOKIE]
             )
 
-        # Several checks go by
         await asyncio.sleep(0.3)
         assert not serving.done()
         assert tab.close_code is None

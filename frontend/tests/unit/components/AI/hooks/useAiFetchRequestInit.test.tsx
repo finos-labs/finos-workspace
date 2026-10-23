@@ -140,8 +140,6 @@ async function getPayloads() {
   ];
 }
 
-// Chat attachments become temporary widgets without a `uuid` (only `widget_id`),
-// mirroring useGetCopilotWidgets' temporaryWidgets.
 const makeAttachmentWidget = (uuid: string, name: string) => ({
   origin: "the backend",
   widget_id: `file-${uuid}`,
@@ -297,7 +295,6 @@ describe("useAiFetchRequestInit", () => {
         },
       ]);
 
-    // MCP tools off for the agent: no tools, so no link
     mockState.selectedCopilot.features["mcp-tools"] = false;
     for (const payload of await getPayloads())
       expect(payload.widgets.extra).toEqual([mockState.allWidget]);

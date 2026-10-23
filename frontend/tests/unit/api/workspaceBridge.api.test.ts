@@ -14,7 +14,6 @@ vi.mock("~/lib/runtimeConfig", () => ({
   getConfig: () => ({ urls: { backend: "https://backend.test/" } }),
 }));
 
-// apiClient and queryClient are mocked globally in tests/mocks/api-client.ts.
 const mockPost = vi.mocked(apiClient.post);
 const mockGet = vi.mocked(apiClient.get);
 const mockDelete = vi.mocked(apiClient.delete);

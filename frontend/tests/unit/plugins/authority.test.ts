@@ -66,7 +66,6 @@ describe("the runtime authority", () => {
   });
 
   it("gives the frame nothing of the widget's MCP link (WIDGETS-JSON 5.3, rule 7)", () => {
-    // No trait binds it, and no host command calls an MCP tool
     expect(
       traitBindings(
         {
@@ -177,9 +176,7 @@ describe("the runtime authority", () => {
       ).toEqual({ name: "forecast", args: { region: "emea" } });
       for (const [msg, key] of [
         [{ id: "other" }, "id"],
-        // A proxy's id does not name a route, nor the other way round
         [{ id: "forecast" }, "route"],
-        // The frame names a proxy; it never gives a URL
         [{ url: "https://169.254.169.254/" }, "id"],
       ] as const)
         expect(() => serverCallRequest(msg, key, ["quote", "forecast"])).toThrow(
@@ -236,7 +233,7 @@ describe("the runtime authority", () => {
       expect(counter.add()).toBe(false);
       now = 5000;
       expect(counter.add()).toBe(false);
-      now = 16_000; // the first two are older than ten seconds now
+      now = 16_000;
       expect(counter.add()).toBe(false);
       now = 17_000;
       expect(counter.add()).toBe(false);

@@ -1,9 +1,3 @@
-r"""Unit tests for the search term of the chat search (api.crud).
-
-The term is the user's, so the prefix match of its last word is made without a
-regular expression: re.sub(r"(\w+)$", ...) takes time quadratic in its length.
-"""
-
 import re
 import time
 

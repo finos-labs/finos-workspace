@@ -1,13 +1,4 @@
-/**
- * Runtime Config Schema — single source of truth for config shape and defaults.
- *
- * Imported by both the app (`runtimeConfig.ts`) and the build (`vite.config.ts`).
- * Boolean, string-array and JSON fields use z.preprocess so raw env-var strings
- * ("true"/"false", comma-separated, JSON) are coerced automatically.
- */
 import { z } from "zod";
-
-// ── Coercion helpers (private) ─────────────────────────────────────────
 
 function coerceBool(v: unknown): boolean | undefined {
   if (typeof v === "boolean") return v;
@@ -27,8 +18,6 @@ function coerceStringArray(v: unknown): string[] | undefined {
   return undefined;
 }
 
-// ── Public coercion helpers (re-exported by runtimeConfig.ts) ──────────
-
 export function parseBool(value: unknown, fallback: boolean): boolean {
   return coerceBool(value) ?? fallback;
 }
@@ -37,15 +26,11 @@ export function parseStringArray(value: unknown): string[] {
   return coerceStringArray(value) ?? [];
 }
 
-// ── Schema field builders ──────────────────────────────────────────────
-
 const boolField = (defaultVal: boolean) =>
   z.preprocess(coerceBool, z.boolean().default(defaultVal));
 
 const strArrayField = (defaultVal: string[] = []) =>
   z.preprocess(coerceStringArray, z.array(z.string()).default(defaultVal));
-
-// ── Schema ─────────────────────────────────────────────────────────────
 
 export const RuntimeConfigSchema = z.object({
   urls: z.object({
@@ -91,11 +76,9 @@ export const RuntimeConfigSchema = z.object({
     allowHtmlJsExecution: boolField(false),
   }),
   links: z.object({
-    /** Where the documentation lives. Empty: the links to it are hidden. */
     docsUrl: z.string().default(""),
   }),
   contact: z.object({
-    /** Where users are sent for help. Empty: no address is shown. */
     supportEmail: z.string().default(""),
   }),
   whiteLabel: z.object({
@@ -124,13 +107,6 @@ export const RuntimeConfigSchema = z.object({
 
 export type RuntimeConfig = z.infer<typeof RuntimeConfigSchema>;
 
-/**
- * The environment variable that sets each setting: `VITE_*` in the browser during
- * development and in the build that writes `config.js`; the nginx image takes the same
- * names without the `VITE_` prefix (`app-config.js`, checked by
- * `scripts/check-runtime-config.ts`).
- * Typed so that a setting without a variable does not compile.
- */
 export const ENV_NAMES = {
   urls: {
     backend: "VITE_BACKEND_URL",
@@ -198,7 +174,6 @@ export const ENV_NAMES = {
   [G in keyof RuntimeConfig]: { [F in keyof RuntimeConfig[G]]: string };
 };
 
-/** The configuration that the environment variables of `ENV_NAMES` describe. Coercion and defaults are the schema's. */
 export function configFromEnv(env: Record<string, unknown>): RuntimeConfig {
   const groups = Object.entries(ENV_NAMES).map(([group, fields]) => [
     group,

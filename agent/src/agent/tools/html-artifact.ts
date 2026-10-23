@@ -1,13 +1,3 @@
-/**
- * `create_html_artifact` — emit a workspace HTML artifact rendered in a
- * sandboxed iframe (`Artifact.tsx:119`). Use for one-off inline reports the
- * model assembles from text + table data; do NOT use as a substitute for a
- * proper table/chart artifact.
- *
- * State-bound — closes over `artifactQueue` and validates the payload before
- * pushing. Size cap mirrors Ada's `llm_create_html_artifact` (50 KB).
- */
-
 import { tool } from "ai";
 import { z } from "zod";
 import { messageArtifact } from "../../protocol/events.ts";

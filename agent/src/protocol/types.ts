@@ -13,30 +13,18 @@ export interface Widget {
   widget_id: string;
   name: string;
   description: string;
-  /** What the widget is; `iframe` for a widget that embeds a page of its own backend. */
   widget_type?: string;
   params: WidgetParam[];
   category?: string;
   sub_category?: string;
   source?: string | null;
   metadata?: Record<string, unknown>;
-  /** The widget's opt-in to a tool of its own backend, present only while that tool is in the request's `tools`. */
   mcp_tool?: WidgetMcpLink;
 }
 
-/**
- * A widget's link to one MCP tool of its own backend (docs/widget-plugins/WIDGETS-JSON.md 5.4): the tool the
- * agent uses to query that backend beyond the widget's params. The web app names it as the request's `tools`
- * list it, from its registry, never from the widget's own strings.
- */
 export interface WidgetMcpLink {
   server_id: string;
-  /** The tool's own name on its server, as `AgentTool.tool_name`. */
   tool_name: string;
-  /**
-   * How the widget's params fill the tool's arguments: an argument maps to `$<param>` (the widget's value of
-   * that param) or to a fixed value. Absent, each param fills the argument of the same name.
-   */
   args?: Record<string, string | number | boolean>;
 }
 
@@ -72,15 +60,12 @@ export interface SkillCatalogEntry {
 export interface SkillPayload {
   slug: string;
   description: string;
-  /** The skill's instructions; absent for one of Ines's own skills, whose instructions she has. */
   contentMarkdown?: string;
   source: "forced_slash" | "model_selected";
 }
 
 export interface AgentTool {
-  /** The Workspace's name for the tool: `<server>_<tool>`. */
   name: string;
-  /** The tool's own name on its MCP server. */
   tool_name?: string;
   server_id: string;
   url: string;
@@ -118,18 +103,10 @@ export interface WorkspaceState {
 export type UploadedDocumentFormat = "pdf" | "docx" | "txt" | "md" | "html";
 
 export interface UploadedDocument {
-  /** Stable per-conversation identifier — used for caching + citation. */
   id: string;
-  /** Display name (filename) shown to model + workspace. */
   name: string;
   format: UploadedDocumentFormat;
-  /** Base64-encoded bytes. Mutually exclusive with `url`. */
   content_b64?: string;
-  /**
-   * URL the agent fetches once at request start. Mutually exclusive with
-   * `content_b64`. Useful for Hub-hosted files where the workspace already
-   * has them on disk.
-   */
   url?: string;
 }
 
@@ -149,14 +126,6 @@ export interface QueryRequest {
   selected_skills?: SkillPayload[];
   model?: string;
   tools?: AgentTool[];
-  /**
-   * Documents the user attached to this conversation (PDF/DOCX/TXT/MD).
-   * Workspace ships them on every POST in this chat; the agent decodes,
-   * holds them in-memory, and ships them to the ines-tools MCP server's
-   * `query_documents` tool via the `x-ines-documents` decoration.
-   * Only the delta (docs not yet shipped this chat) is sent on each call,
-   * tracked through `extra_state.documents_shipped` across re-POSTs.
-   */
   documents?: UploadedDocument[];
 }
 
@@ -165,7 +134,6 @@ export interface HtmlArtifact {
   uuid: string;
   name: string;
   description: string;
-  /** Inline HTML — workspace renders in a sandboxed iframe (Artifact.tsx:119). */
   content: string;
 }
 
@@ -193,8 +161,6 @@ export interface AppsJsonTab {
 export interface AppsJsonGroup {
   name: string;
   type: "param" | "endpointParam" | "ticker";
-  // Omitted for `ticker` groups — they bind to the workspace's universal ticker
-  // registry, not a named widget param (apps.json spec).
   paramName?: string;
   defaultValue: string;
   widgetIds: string[];
@@ -226,7 +192,6 @@ export interface AppArtifact {
   widget_refs: AppArtifactWidgetRef[];
 }
 
-/** The artifact types the Workspace renders and Ines emits; tables are `html`. */
 export type CopilotArtifact = HtmlArtifact | AppArtifact;
 
 export interface WidgetCitationSourceInfo {

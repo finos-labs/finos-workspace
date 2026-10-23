@@ -16,17 +16,11 @@ export interface McpToolSuggestion {
   toolName: string;
   toolId: string;
   description: string;
-  /** ### MCP Tool Slash Text
-   *  Formatted as `/{serverName}_{toolName}`.*/
   slashText: string;
   inputSchema?: unknown;
 }
 
 export function useMcpToolSuggestions() {
-  // `connSignature` makes this subscription react to connection-state changes
-  // (mcpConnectionRegistry), not just `servers`. Without it, a server flipping
-  // to "ready" without a `servers` mutation — e.g. an iframe-bound MCP whose
-  // tools are already in the store — left the list stale and hid its tools.
   const { servers, getMCPConnection, connSignature } = useShallowMcpToolsStore((s) => ({
     servers: s.servers,
     getMCPConnection: s.getMCPConnection,
@@ -40,8 +34,6 @@ export function useMcpToolSuggestions() {
   const mcpToolOptions = useMemo((): McpToolSuggestion[] => {
     const tools: McpToolSuggestion[] = [];
 
-    // Only include tools from servers that are enabled and connected, collapsing
-    // duplicate copies of the same iframe widget into a single entry
     const connectedServers = dedupeIframeServersByUrl(
       servers.filter((server) => {
         const connection = getMCPConnection(server.id);
@@ -63,7 +55,6 @@ export function useMcpToolSuggestions() {
             toolId: tool.id,
             description: tool.description || "",
             inputSchema: tool.inputSchema,
-            // Non-breaking space/hyphen to prevent textarea line breaks
             slashText: `/${server.name}_${tool.name}`
               .replace(/ /g, "\u00A0")
               .replace(/-/g, "\u2011"),
@@ -86,22 +77,16 @@ export function useMcpToolSuggestions() {
 
   const searchMcpTools = useCallback(
     (query: string): McpToolSuggestion[] => {
-      // Remove the "/" prefix
       const searchTerm = query.startsWith(MCP_TOOL_TRIGGER)
         ? query.slice(MCP_TOOL_TRIGGER.length)
         : query;
 
       if (!searchTerm) return mcpToolOptions;
 
-      return (
-        fuse
-          .search(searchTerm)
-          // Drop results that don't partially match the query if ends with a space
-          // "Daily R" -> ["Daily Report"]
-          // "Daily Report " -> []
-          .filter((result) => query.length <= result.item.slashText.length)
-          .map((result) => result.item)
-      );
+      return fuse
+        .search(searchTerm)
+        .filter((result) => query.length <= result.item.slashText.length)
+        .map((result) => result.item);
     },
     [mcpToolOptions, fuse],
   );

@@ -1,12 +1,7 @@
-/**
- * Tests for useGlobalTitleManager hook
- */
-
 import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import useGlobalTitleManager from "~/hooks/useTitle";
 
-// Mock react-router-dom
 const mockUseLocation = vi.fn();
 const mockUseMatches = vi.fn();
 vi.mock("react-router-dom", () => ({
@@ -14,20 +9,17 @@ vi.mock("react-router-dom", () => ({
   useMatches: () => mockUseMatches(),
 }));
 
-// Mock runtimeConfig
 const mockGetConfig = vi.fn();
 vi.mock("~/lib/runtimeConfig", () => ({
   getConfig: () => mockGetConfig(),
 }));
 
-// Mock appState store
 const mockUseShallowAppStore = vi.fn();
 vi.mock("~/lib/state/app", () => ({
   useShallowAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     mockUseShallowAppStore(selector),
 }));
 
-// Mock sharedAppState store
 const mockUseShallowSharedAppStore = vi.fn();
 vi.mock("~/lib/state/sharedApp", () => ({
   useShallowSharedAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
@@ -41,18 +33,15 @@ describe("useGlobalTitleManager", () => {
     vi.clearAllMocks();
     document.title = "Initial Title";
 
-    // Set default config
     mockGetConfig.mockReturnValue({
       whiteLabel: {
         name: undefined,
       },
     });
 
-    // Set default location and matches
     mockUseLocation.mockReturnValue({ pathname: "/" });
     mockUseMatches.mockReturnValue([]);
 
-    // Default store mocks (empty)
     mockUseShallowAppStore.mockImplementation((selector) => selector({}));
     mockUseShallowSharedAppStore.mockImplementation((selector) => selector({}));
   });
@@ -136,10 +125,8 @@ describe("useGlobalTitleManager", () => {
       { pathname: "/app/tab456", params: { id: "tab456" } },
     ]);
 
-    // Regular store returns undefined
     mockUseShallowAppStore.mockImplementation((selector) => selector({}));
 
-    // Shared store returns tab
     mockUseShallowSharedAppStore.mockImplementation((selector) =>
       selector({
         sharedItems: {

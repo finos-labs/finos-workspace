@@ -1,11 +1,3 @@
-"""The bootstrap that creates the first entity and admin of a fresh installation.
-
-The image runs it on every start. When it fails, the app comes up with no account to
-sign in with, and nothing else in the suite notices. A new administrator has no password
-that anyone knows: ``--new-password`` sets one, read from the terminal or from standard
-input. No password is ever printed, and a later run never changes it.
-"""
-
 import io
 import re
 import secrets
@@ -34,7 +26,6 @@ def _password() -> str:
 
 
 def _type(monkeypatch, text: str) -> None:
-    "Standard input that is not a terminal, holding ``text``."
     monkeypatch.setattr(init_users.sys, "stdin", io.StringIO(text))
 
 
@@ -69,7 +60,6 @@ async def bootstrap_cleanup(db_session, monkeypatch, tmp_path):
         delete(models.User).where(models.User.email.in_([ADMIN_EMAIL, OTHER_EMAIL]))
     )
     if entity_uuid:
-        # Its default roles, and what they grant and to whom
         roles = select(models.Role.uuid).where(models.Role.entity_uuid == entity_uuid)
         for table in (models.UserRole, models.RoleCopilotModel, models.RoleMcpAccess):
             await db_session.execute(delete(table).where(table.role_uuid.in_(roles)))
@@ -123,7 +113,6 @@ async def test_bootstrap_creates_the_entity_and_a_working_admin(
 
     admin = await _admin(db_session)
     assert admin.is_superuser
-    # The organization starts with its default roles, and its administrator has both
     roles = dict(
         (
             await db_session.execute(
@@ -140,10 +129,8 @@ async def test_bootstrap_creates_the_entity_and_a_working_admin(
         )
     ).scalars()
     assert set(held) == set(roles.values())
-    # The only output says how to set the password, and shows none
     created = CREATED.search(out)
     assert created
-    # (The JSON lines are the logger's)
     printed = [line for line in out.splitlines() if line.strip() and not line.startswith("{")]
     assert printed == [created.group(0)]
     assert admin.password
@@ -241,7 +228,6 @@ async def test_a_new_password_is_read_from_standard_input_and_ends_every_session
 
     admin = await _admin(db_session)
     assert base.verify_password(password, admin.password)
-    # The admin chose it: the web app does not ask for another one
     assert not admin.temporary_password
     assert await _sessions(db_session, admin.uuid) == 0
     shown = capsys.readouterr()

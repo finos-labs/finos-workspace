@@ -51,18 +51,15 @@
 }
 
 .ws-admin-table .ag-row-selected::before {
-  /* Remove the background color from the selected row with left checkbox */
   background-color: transparent !important;
   background-image: none !important;
 }
 
 .ws-admin-table.dark .ag-row-selected::before {
-  /* Remove the background color from the selected row with left checkbox */
   background-color: transparent !important;
   background-image: none !important;
 }
 
-/* Detail rows (master/detail expanded panel) opt out of the 40px cell clamp above */
 .ws-admin-table .ag-details-row,
 .ws-admin-table.dark .ag-details-row {
   padding: 0 !important;

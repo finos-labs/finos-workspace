@@ -4,7 +4,6 @@ import { validateBackend, validateBackendEndpoints } from "~/lib/utils/validateB
 import type { WidgetsType } from "~/utils/zodForms";
 import { installWidgetsSchemaFixture } from "../../../mocks/widgetsSchema";
 
-// Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 installWidgetsSchemaFixture();
@@ -32,20 +31,17 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
 
   describe("widgets.json response handling", () => {
     it("should handle jsonify({}) for widgets.json - returns empty widgets, no error message", async () => {
-      // Mock widgets.json response with empty object
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({}),
           headers: new Headers(),
         })
-        // Mock apps.json response (empty for this test)
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
           headers: new Headers(),
         })
-        // Mock agents.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
@@ -54,26 +50,22 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
 
       const result = await validateBackend(mockSource, false);
 
-      // Empty object {} is a valid widgets.json format (just means no widgets)
       expect(result.widgets).toEqual({});
       expect(result.errorMessage).toBeNull();
     });
 
     it("should handle jsonify([]) for widgets.json - shows appropriate error message", async () => {
-      // Mock widgets.json response with empty array
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
           headers: new Headers(),
         })
-        // Mock apps.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
           headers: new Headers(),
         })
-        // Mock agents.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
@@ -113,20 +105,17 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         },
       };
 
-      // Mock widgets.json response with valid widgets
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(validWidgets),
           headers: new Headers(),
         })
-        // Mock apps.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
           headers: new Headers(),
         })
-        // Mock agents.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
@@ -199,7 +188,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
       expect(Object.keys(result.validWidgets ?? {})).toEqual(["report", "chart"]);
       expect(result.invalidItems?.map((item) => item.id)).toEqual(["prices"]);
       expect(result.unsupportedWidgets).toEqual(["trend"]);
-      // The catalog hides it until a plugin that renders it is available to the user
       expect(result.unrenderedWidgets).toEqual(["chart"]);
     });
 
@@ -244,31 +232,26 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         invalid_widget: {
           name: "Invalid Widget",
           type: "html",
-          // Missing required fields like endpoint
           description: "This widget is missing required fields",
         },
         another_invalid: {
-          // Missing name field
           type: "html",
           endpoint: "/test",
-          params: "invalid_params_format", // Should be object not string
+          params: "invalid_params_format",
         },
       };
 
-      // Mock widgets.json response with invalid widgets
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(invalidWidgets),
           headers: new Headers(),
         })
-        // Mock apps.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
           headers: new Headers(),
         })
-        // Mock agents.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
@@ -283,7 +266,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
     });
 
     it("should handle widgets.json fetch failure with appropriate error", async () => {
-      // Mock widgets.json fetch failure
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
@@ -298,7 +280,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
     });
 
     it("should handle widgets.json with authentication errors", async () => {
-      // Mock widgets.json fetch with 401 error
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
@@ -313,7 +294,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
     });
 
     it("should handle widgets.json network timeout", async () => {
-      // Mock widgets.json fetch with timeout error
       mockFetch.mockRejectedValueOnce({
         code: 23,
         message: "Request timed out",
@@ -332,7 +312,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
       params,
     });
 
-    /** Answers by path: the canary and anything unlisted with `fallback`. */
     function answer(
       statuses: Record<string, number | "unreachable">,
       fallback: number | "unreachable" = 404,
@@ -509,7 +488,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
         },
       ];
 
-      // Mock both responses as successful
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
@@ -522,7 +500,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
           url: `${mockSource.url}/apps.json`,
           headers: new Headers(),
         })
-        // Mock agents.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),
@@ -548,7 +525,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
     it("should handle widgets validation errors alongside template errors", async () => {
       const invalidWidgets = {
         invalid_widget: {
-          name: "", // Invalid empty name
+          name: "",
           endpoint: "/test",
           type: "html",
         },
@@ -557,11 +534,9 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
       const invalidApps = [
         {
           name: "Invalid App",
-          // Missing required tabs field
         },
       ];
 
-      // Mock both responses with invalid data
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
@@ -574,7 +549,6 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
           url: `${mockSource.url}/apps.json`,
           headers: new Headers(),
         })
-        // Mock agents.json response
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve([]),

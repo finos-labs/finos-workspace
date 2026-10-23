@@ -1,11 +1,3 @@
-/**
- * Prometheus metrics, in the text exposition format, with no dependency.
- *
- * Labels are for what there are a few of (route, outcome, provider, tool). Never put a user id, a
- * conversation id or a model-generated string in one: every distinct value is a series that Prometheus
- * keeps. A metric therefore holds at most MAX_SERIES label sets and ignores the rest.
- */
-
 type Labels = Record<string, string | number | undefined>;
 
 export interface Counter {
@@ -23,7 +15,6 @@ export interface Registry {
   counter(name: string, help: string, labelNames?: readonly string[]): Counter;
   gauge(name: string, help: string, labelNames?: readonly string[]): Gauge;
   histogram(name: string, help: string, labelNames?: readonly string[], buckets?: readonly number[]): Histogram;
-  /** The text a scrape returns. */
   render(): string;
 }
 
@@ -47,7 +38,6 @@ function numberText(value: number): string {
 export function createRegistry(): Registry {
   const renderers: (() => string[])[] = [];
 
-  /** The series of one metric, keyed by label values; refuses new series past MAX_SERIES. */
   function series<T>(labelNames: readonly string[], make: () => T) {
     const all = new Map<string, { values: string[]; state: T }>();
     return {
@@ -211,7 +201,6 @@ export const metrics = {
   toolDuration: registry.histogram("ines_mcp_tool_duration_seconds", "Time an MCP tool takes.", ["tool"]),
 };
 
-/** What a scrape returns: the registered metrics and a few about the process. */
 export function renderMetrics(): string {
   const process_ = [
     "# HELP process_resident_memory_bytes Resident memory of the process.",

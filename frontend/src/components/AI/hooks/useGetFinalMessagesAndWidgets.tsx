@@ -68,7 +68,7 @@ export function useGetFinalMessagesAndWidgets() {
         const dataSources =
           (message.input_arguments as GetWidgetDataInputArgumentsT)?.data_sources ?? [];
         if (dataSources.length > 0) {
-          const BUFFER = 5 * 60 * 1000; // 5 minutes
+          const BUFFER = 5 * 60 * 1000;
           await Promise.all(
             dataSources.map(async (dataSource, i) => {
               if (dataSource.origin === "the backend") {
@@ -116,10 +116,6 @@ export function useGetFinalMessagesAndWidgets() {
       };
 
       const checkToolMessage = (message: Message | undefined) => {
-        // For the built-in copilot, widget data tool messages are redundant (data is
-        // read from the store), so we drop them unless extra_state carries metadata.
-        // Iframe sub-widget data is fetched on-demand via the bridge and is NOT stored
-        // in the dashboard widget store, so those tool messages must be preserved.
         if (message?.role !== "tool") return !message;
         const hasIframeSubWidgets = message.input_arguments?.data_sources?.some(
           (ds: { id?: string }) => ds.id?.includes("::iframe::"),
@@ -143,9 +139,7 @@ export function useGetFinalMessagesAndWidgets() {
         } catch (_) {
           return basicAiMessage();
         }
-        // An answer can be JSON too ("18", "true", a list): only an object that names a function is a call.
         if (typeof content?.function !== "string") return basicAiMessage();
-        // Function Call
         if (!AVAILABLE_FUNCTIONS.includes(content.function)) {
           messagesToRemove.add(message.timestamp);
           return null;
@@ -174,8 +168,6 @@ export function useGetFinalMessagesAndWidgets() {
           }
           const widgetUuids = extractWidgetUuids(message);
           for (const uuid of widgetUuids) {
-            // Unreachable widgets are not in the dashboard,
-            // but are referenced in tool messages
             if (!allDashboardWidgets?.some((dW) => dW?.uuid === uuid))
               unreachableUuids.add(uuid);
           }
@@ -192,8 +184,6 @@ export function useGetFinalMessagesAndWidgets() {
       };
 
       const processHumanMessage = (message: HumanMessage) => {
-        // TODO: This is not very efficient, should just get the mentions
-        // for the last Human message
         const { result: prompt, mentions } = processMentions(message.content);
         if (mentions) {
           mentionWidgets = mentions

@@ -1,5 +1,3 @@
-"""Backend connection management and app-template tools."""
-
 from typing import Annotated
 
 from fastmcp import FastMCP
@@ -69,7 +67,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
         ] = None,
     ) -> ToolResponse:
-        """List, add, update, refresh, or remove Workspace data backends."""
         allowed_operations = literal_values(BackendsOperation)
         if operation not in allowed_operations:
             return invalid_request(
@@ -172,7 +169,6 @@ def register(server: FastMCP, run: CommandRunner) -> None:
             ),
         ] = None,
     ) -> ToolResponse:
-        """List, read, or instantiate Workspace apps across all app sources."""
         allowed_operations = literal_values(AppsOperation)
         if operation not in allowed_operations:
             return invalid_request(

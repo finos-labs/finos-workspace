@@ -114,7 +114,6 @@ export const SkillCard = memo(function SkillCard({
   );
 });
 
-/** A skill that comes with the agent: the agent has its instructions, so it is listed and cannot be changed. */
 export const AgentSkillCard = memo(function AgentSkillCard({
   skill,
   agentName,

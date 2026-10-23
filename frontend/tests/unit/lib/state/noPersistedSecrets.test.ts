@@ -1,7 +1,3 @@
-/**
- * No secret reaches browser storage: data-backend credentials, custom agents' headers and
- * pending MCP sign-ins stay in page memory, whatever the persisted stores write.
- */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WidgetT } from "~/components/types";
 import type { Item } from "~/lib/state/app";
@@ -25,7 +21,6 @@ const widgetWithSavedCredentials = partial<WidgetT>({
   id: "w1",
   name: "Prices",
   sourceId: "src-1",
-  // Saved widgets carry no credentials; content from elsewhere is not trusted to
   endpoint: {
     url: "https://api.example.com/prices",
     method: "GET",

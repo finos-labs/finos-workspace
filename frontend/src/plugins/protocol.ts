@@ -1,23 +1,11 @@
 import { z } from "zod";
 
-/**
- * Messages between the host and the shell in a plugin frame.
- *
- * Window messages carry only the announcement (`ws-shell-ready`) and the handover of a
- * private `MessageChannel` port. Everything after that goes over the port, and the
- * host's identity for the frame is the port it created, never a field in a message
- * (docs/widget-plugins/SECURITY.md 3 and 5). What the frame sends is untrusted input and
- * is validated here before anything reads it.
- */
-
 export const SHELL_READY = "ws-shell-ready";
 export const SHELL_PORT = "ws-shell-port";
 export const RUNTIME_VERSION = 1;
 export const AFM_VERSION = "0.11";
 
-/** A guest-to-host message at most this large is accepted (SECURITY.md 3, budgets). */
 export const MAX_GUEST_MESSAGE_BYTES = 1024 * 1024;
-/** An answer to the host's own `exportData` call: the file a user asked for */
 export const MAX_EXPORT_BYTES = 25 * 1024 * 1024;
 
 const CanaryCheckSchema = z.object({
@@ -103,23 +91,16 @@ export type HostMessage =
       id: number;
       member: ExportMember;
       args: unknown[];
-      /** How long the member may take, in milliseconds */
       timeout: number;
     }
   | { t: "ping"; seq: number }
   | { t: "scheme"; mode: ColorScheme }
   | { t: "dispose" };
 
-/**
- * The frame's color scheme follows the Workspace theme: when it differs from the host
- * page's, the browser paints the frame opaque.
- */
 export type ColorScheme = "light" | "dark";
 
-/** The members of a plugin's exports object the host calls (GUEST-CONTRACT.md 5). */
 export type ExportMember = "exportOptions" | "exportData" | "copilotContext";
 
-/** The error names a refused call rejects with (GUEST-CONTRACT.md 4). */
 export type CommandErrorName =
   | "not_granted"
   | "invalid_args"
@@ -140,7 +121,6 @@ export class CommandError extends Error {
   }
 }
 
-/** A rough size of a message, for the budget: buffers by length, the rest as JSON. */
 export function approximateSize(
   value: unknown,
   limit = MAX_GUEST_MESSAGE_BYTES,

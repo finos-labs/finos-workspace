@@ -1,10 +1,3 @@
-"""App-builder resource catalog and FastMCP registration.
-
-Each entry binds an ``workspace://...`` URI to a markdown file shipped
-inside this package. The file's YAML frontmatter doubles as the resource's
-human-readable title and ``use_when`` description.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -24,15 +17,12 @@ MIME_TYPE = "text/markdown"
 
 @dataclass(frozen=True)
 class AppBuilderResource:
-    """One app-builder knowledge resource backed by a packaged markdown file."""
-
     uri: str
     title: str
     description: str
     relative_path: str
 
     def read(self) -> str:
-        """Return the markdown body for this resource."""
         traversable = _resource_file(self.relative_path)
         return traversable.read_text(encoding="utf-8")
 
@@ -189,7 +179,6 @@ _INITIAL_RESOURCES: tuple[AppBuilderResource, ...] = (
 
 
 def app_builder_resources() -> tuple[AppBuilderResource, ...]:
-    """Return the registered app-builder resources in stable order."""
     return _INITIAL_RESOURCES
 
 
@@ -198,18 +187,12 @@ def register_app_builder_resources(
     *,
     resources_iter: Iterable[AppBuilderResource] | None = None,
 ) -> None:
-    """Register every app-builder resource on the given FastMCP server."""
     items = tuple(resources_iter) if resources_iter is not None else app_builder_resources()
     for resource in items:
         _register_one(server, resource)
 
 
 def _register_one(server: FastMCP, resource: AppBuilderResource) -> None:
-    """Register a single resource on the server.
-
-    The closure captures the resource so each registration reads its own file.
-    """
-
     def read_resource() -> str:
         return resource.read()
 
@@ -222,7 +205,6 @@ def _register_one(server: FastMCP, resource: AppBuilderResource) -> None:
 
 
 def _resource_file(relative_path: str) -> Traversable:
-    """Resolve a packaged resource file by relative path."""
     traversable: Traversable = resources.files(RESOURCE_PACKAGE) / RESOURCE_DIR
     for part in relative_path.split("/"):
         traversable /= part

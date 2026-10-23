@@ -77,7 +77,6 @@ function findView(text: string, args: Args, where: string): string {
   ].join("\n");
 }
 
-/** The tables of a view are returned as tables for the agent to load, and are named for the page. */
 function tableItems(result: { text: string; tables?: Array<{ name: string; rows: Record<string, string>[] }> }): ContentItem[] {
   return [textItem(result.text), ...(result.tables ?? []).map((t) => sqliteTableItem(t.name, t.rows))];
 }

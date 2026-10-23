@@ -1,15 +1,3 @@
-"""Prepares the example deployment in examples/compose.yaml, and prints only paths.
-
-    .venv/bin/python examples/setup.py
-
-- secrets/: generated passwords for the Postgres administrator and for `explorer`, the
-  role the plugin reads with, and the plugin's postgres_url secret. Kept when they exist,
-  since the database was created with them; delete the directory and the compose volume to
-  start over. Mount secrets/workspace as Workspace's WIDGET_PLUGIN_SECRETS_DIR, or enter
-  secrets/workspace/sql-explorer/postgres_url on the plugin's Deployment page.
-- data/: the files DuckDB reads, rewritten on every run: readings.parquet and stations.csv.
-"""
-
 import os
 import secrets
 from pathlib import Path
@@ -22,8 +10,6 @@ DATA = HERE / "data"
 
 
 def secret(path: Path, make) -> str:
-    """The value at ``path``, written first when missing. Readable inside its 0700 directory:
-    the Postgres container reads it as its own user."""
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(make(), encoding="utf-8")

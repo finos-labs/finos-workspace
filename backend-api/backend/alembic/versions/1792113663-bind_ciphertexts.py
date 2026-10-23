@@ -1,29 +1,3 @@
-"""bind ciphertexts to their place
-
-Every value the API keeps encrypted is bound to where it is kept (api/crypto.py, format
-v2): the AES-GCM associated data is "<table>.<column>", so a value copied to another
-column does not decrypt there. The values of revision ff59d563599c (format v1, without
-associated data) are re-encrypted; a value that does not decrypt is cleared, and the log
-counts them.
-
-An MCP server URL may carry a credential, in its path or query:
-
-- mcp_servers.servers, the server list, becomes an encrypted column like the servers'
-  headers (MEDIUMTEXT on MySQL, as the list was a MEDIUMBLOB).
-- mcp_oauth_grant names its server by the SHA-256 of the normalized URL (server_hash)
-  instead of the URL. The URL and the user move into the encrypted credentials, and the
-  API refuses credentials that name another user or server than their row. A grant that
-  does not decrypt is deleted: the user signs in to that server again.
-
-downgrade() restores the v1 format, the server list as gzipped JSON and the grants'
-server_url (from their credentials; a grant whose URL no longer fits is deleted).
-
-Revision ID: 4c1d2e8f9a3b
-Revises: 210b7a161dbc
-Create Date: 2026-10-15
-
-"""
-
 import base64
 import gzip
 import hashlib
@@ -44,7 +18,6 @@ from alembic import op  # type: ignore
 from api import crypto
 from utilities.config import settings
 
-# revision identifiers, used by Alembic.
 revision = "4c1d2e8f9a3b"
 down_revision = "210b7a161dbc"
 branch_labels = None
@@ -52,7 +25,6 @@ depends_on = None
 
 log = logging.getLogger("alembic.runtime.migration")
 
-# (table, column) of the encrypted columns that keep their place
 ENCRYPTED_COLUMNS = [
     ("api_source", "endpointHeaders"),
     ("custom_copilot", "headers"),
@@ -72,8 +44,6 @@ BATCH_SIZE = 200
 UUID_TYPE = sqlalchemy_utils.types.uuid.UUIDType()
 MEDIUM_TEXT = sa.Text().with_variant(mysql.MEDIUMTEXT(), "mysql")
 
-# The format of revision ff59d563599c: "v1." + base64url(nonce || ciphertext || tag),
-# AES-256-GCM without associated data under HKDF-SHA256 of WORKSPACE_AES_KEY
 V1_PREFIX = "v1."
 V1_HKDF_INFO = b"workspace-at-rest:v1"
 V1_NONCE_BYTES = 12
@@ -92,7 +62,6 @@ def _v1_encrypt(plaintext: bytes) -> str:
 
 
 def _v1_decrypt(token: str) -> bytes:
-    """The plaintext of a v1 ciphertext. Raises ValueError for anything else."""
     encoded = token.removeprefix(V1_PREFIX)
     raw = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
     try:
@@ -102,12 +71,10 @@ def _v1_decrypt(token: str) -> bytes:
 
 
 def _server_hash(server_url: str) -> str:
-    """What mcp_oauth_grant keys a server by: SHA-256 of its normalized URL."""
     return hashlib.sha256(server_url.encode("utf-8")).hexdigest()
 
 
 def _batches(table: sa.TableClause, columns: list[str], *where):
-    """The rows that match, a batch at a time."""
     bind = op.get_bind()
     uuids = bind.execute(sa.select(table.c.uuid).where(*where)).scalars().all()
     for start in range(0, len(uuids), BATCH_SIZE):
@@ -227,7 +194,6 @@ def _key_grants_by_hash() -> None:
         deleted,
     )
 
-    # The new unique key first: on MySQL the old one is the index of the user's foreign key
     with op.batch_alter_table("mcp_oauth_grant", schema=None) as batch_op:
         batch_op.create_unique_constraint(GRANT_UNIQUE, ["user_uuid", "server_hash"])
         batch_op.drop_constraint(OLD_GRANT_UNIQUE, type_="unique")

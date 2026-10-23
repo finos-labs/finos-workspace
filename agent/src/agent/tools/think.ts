@@ -1,14 +1,3 @@
-/**
- * `_llm_think` — pure pass-through "thinking" tool. The model emits a plan
- * (string or bullet list); the tool yields a `planningStep` SSE and returns
- * the same text so the model can reference it in subsequent turns.
- *
- * No external LLM call, no state mutation, no side effects beyond appending
- * one planning event to the SSE artifact queue. The benefit is purely UX:
- * the workspace can render the plan inline, and the eval trace sees an
- * explicit chain-of-thought handle.
- */
-
 import { tool } from "ai";
 import { z } from "zod";
 import { planningStep } from "../../protocol/events.ts";
@@ -104,12 +93,9 @@ function cleanDanglingText(text: string): string {
     .trim();
 }
 
-/** The plan is shown to the user as a short note: what is cleaned here is no more than that, whatever the model wrote. */
 const MAX_DISPLAY_CHARS = 4_000;
 
 function userFacingPlanningText(whole: string): string {
-  // The patterns below start again at every character of a long run of spaces, which takes time with the
-  // square of the run: they are given a bounded text.
   const value = whole.length > MAX_DISPLAY_CHARS ? whole.slice(0, MAX_DISPLAY_CHARS) : whole;
   const withoutIds = value
     .replace(/\s*[\[(]\s*(?:widget_uuid|widget_id|dashboard_id|widget\s+id|dashboard\s+id|uuid)\s*:\s*[^)\]]+[\])]/gi, "")

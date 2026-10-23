@@ -94,7 +94,6 @@ describe("getConfig", () => {
     const cfg = getConfig();
     expect(cfg.urls.backend).toBe("https://backend.test");
     expect(cfg.urls.ai).toBe("https://ai.test");
-    // Inner defaults should be applied by Zod
     expect(cfg.authentication.allowEmailLogin).toBe(true);
     expect(cfg.copilot.enabled).toBe(false);
   });
@@ -111,14 +110,12 @@ describe("getConfig", () => {
   it("logs error and falls back on malformed window.__APP_CONFIG__", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    // Zod won't fail on extra keys, so use a bad type for a required nested object
     window.__APP_CONFIG__ = { urls: "not-an-object" };
 
     const cfg = getConfig();
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining("failed Zod validation"),
     );
-    // Should still return a valid config via env fallback
     expect(cfg.urls).toBeDefined();
     expect(typeof cfg.urls.backend).toBe("string");
 
@@ -141,14 +138,12 @@ describe("getConfig", () => {
   it("falls back to env when window.__APP_CONFIG__ is partial (missing top-level keys)", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    // Missing required top-level objects → Zod validation fails → env fallback
     window.__APP_CONFIG__ = { urls: { backend: "https://partial.test" } };
 
     const cfg = getConfig();
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining("failed Zod validation"),
     );
-    // Falls back to env — the partial value is NOT used
     expect(cfg.urls.backend).not.toBe("https://partial.test");
 
     errorSpy.mockRestore();

@@ -89,43 +89,25 @@ async def dash_validate_and_get_items(  # noqa: PLR0914, PLR0915
         )
     ),
 ):
-    """
-    Retrieve the complete dashboard data of the signed-in user; the session was
-    validated by the user dependency, which refuses a missing or expired one with 401.
-
-    Args:
-        db (Session): Database session dependency.
-        user (User): Current user dependency.
-
-    Returns:
-        schemas.DashboardComplete: Complete dashboard data (owned, shared and entity shared dashboards).
-    """
     start_time = time()
     dashboards_complete = await app_helpers.get_dashboards_complete(user=user)
     user_apps_complete = await app_helpers.get_user_apps_complete(user=user)
 
-    # Get copilot chats
     chats = await app_helpers.get_copilot_chats(db, user.uuid)
     questions_history = await app_helpers.get_user_questions_history(db, user.uuid)
 
-    # Get MCP servers
     mcp_servers = await app_helpers.get_mcp_servers(db, user)
 
-    # Get user skills
     user_skills = await app_helpers.get_user_skill_state(db, user.uuid)
 
-    # Get usage
     usage = await schemas.UsageGet.check_cache(db, user)
 
-    # Get the Copilot models and MCP tools the user's roles grant
     copilot_access = await app_helpers.get_user_copilot_access(db, user.uuid)
 
-    # Get what the user may do
     access = await app_helpers.get_user_access(db, user.uuid)
     own_connections = access.user_type in models.CONNECTION_TYPES
 
     entity_uuid = await app_helpers.get_entity_uuid(db, user.uuid)
-    # Get Theme Settings
     entity_theme_settings = await app_helpers.get_entity_theme_settings(db, entity_uuid)
     widget_metadata = await app_helpers.get_widget_metadata(db=db, user=user)
 
@@ -158,8 +140,6 @@ async def update_items(
         auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)
     ),
 ):
-    "Handles insert, update, and delete of a user's dashboards"
-
     try:
         await crud.bulk_dashboard_insert_update(
             db, dashboard, user.uuid, user.permissions_uuid
@@ -181,8 +161,6 @@ async def dashboard_versions(
         auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)
     ),
 ):
-    "This function currently does not work because we are not actually saving DashboardSaves"
-
     async def get_versions():
         query = (
             select(
@@ -193,10 +171,8 @@ async def dashboard_versions(
         )
         return (await db.execute(query)).mappings().all()
 
-    # First we check if the user owns the query
     if not await crud.dashboard_owner_errors(db, dashboard_uuid, user.uuid):
         return await get_versions()
-    # Next we check if the user has been shared the query
     shared_query = (
         select(DashboardShare.uuid)
         .where(DashboardShare.dashboard_item_uuid == dashboard_uuid)
@@ -207,8 +183,6 @@ async def dashboard_versions(
     ).limit(1)
     if (await db.execute(shared_query)).first():
         return await get_versions()
-    # Finally we check if the dashboard has been shared with everyone in the user's
-    # entity, which only users who may receive shared items see
     if (await crud.get_users_sharing(db, [user.uuid]))[user.uuid] == models.SHARING_NONE:
         raise HTTPException(
             status_code=403, detail="You do not have permission to view this dashboard"
@@ -508,7 +482,6 @@ async def see_available_users(
         )
     )
     all_users = (await db.execute(all_users_query)).mappings().all()
-    # Only users who may receive shared items can be shared with
     recipients = set(await crud.get_share_recipients(db, [x.uuid for x in all_users]))
     all_users = [x for x in all_users if x.uuid in recipients]
 
@@ -553,9 +526,6 @@ async def get_shared_dashboard_viewed(
     user: User = Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     dashboard_uuid: UUID | None = None,
 ):
-    """
-    Get the shared dashboard viewed status.
-    """
     shared_dashboard_query = select(
         DashboardShare.dashboard_item_uuid.label("dashboard_uuid"),
         DashboardShare.viewed,
@@ -583,9 +553,6 @@ async def patch_shared_dashboard_viewed(
     db: AsyncSession = Depends(aget_read_db),
     user: User = Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Mark a shared dashboard as viewed.
-    """
     update_query = (
         update(DashboardShare)
         .where(

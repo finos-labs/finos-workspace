@@ -1,15 +1,3 @@
-/*
- * SQL explorer for Workspace: an Anywidget front-end module (AFM 0.11) for a standalone
- * widget that runs read-only SQL through the plugin's own backend, against the
- * deployment's Postgres or DuckDB over the data files the deployment mounts.
- *
- * The SQL of each source and the chosen source are the widget's state, saved with the
- * dashboard. The result lives in the frame: the query runs when the widget opens and when
- * the card is refreshed. The editor completes keywords, functions, tables and columns
- * from DuckDB-WASM running in the frame (completion.js, duckdb.js). The look is this
- * plugin's own, a light and a dark version that follow the site's mode.
- */
-
 export const SOURCES = {
   postgres: {
     label: "Postgres",
@@ -26,7 +14,6 @@ export const SOURCES = {
 };
 
 const MAX_SQL = 32_768;
-// A query may run 15 seconds on the database; the API allows the route 30
 const CALL_TIMEOUT = 35_000;
 
 const REFUSALS = {
@@ -40,12 +27,10 @@ const REFUSALS = {
   out_of_scope: () => "This widget may not run queries here.",
 };
 
-/** A name as SQL writes it: bare when it can be, quoted otherwise. */
 export function identifier(name) {
   return /^[a-z_][a-z0-9_]*$/.test(name) ? name : `"${name.replaceAll('"', '""')}"`;
 }
 
-/** A result as CSV: a header of column names, then the rows. */
 export function csvOf(result) {
   const quote = (value) => {
     if (value === null || value === undefined) return "";
@@ -57,7 +42,6 @@ export function csvOf(result) {
     .join("\n");
 }
 
-/** What the agent is told about the last run: the query and the shape of its answer. */
 export function contextOf(run) {
   if (!run) return null;
   const base = { source: SOURCES[run.source].label, sql: run.sql.slice(0, 4000) };
@@ -70,7 +54,6 @@ export function contextOf(run) {
   };
 }
 
-/** The saved state, completed: the source and the SQL of each source. */
 export function stateOf(saved) {
   const state = saved && typeof saved === "object" ? saved : {};
   const source = state.source in SOURCES ? state.source : "postgres";
@@ -83,7 +66,6 @@ export function stateOf(saved) {
   return { source, sql };
 }
 
-// One frame is one widget: the last run, for the exports and the agent
 let lastRun = null;
 
 function element(tag, className, text) {
@@ -96,7 +78,6 @@ function element(tag, className, text) {
 const NUMERIC_TYPE =
   /^(numeric|decimal|integer|int\d?|bigint|smallint|tinyint|hugeint|ubigint|uinteger|usmallint|utinyint|real|double|float\d?)\b/i;
 
-/** Whether a cell reads as a number: a JSON number, or the text of a decimal or wide integer. */
 export function isNumeric(column, value) {
   return typeof value === "number" || NUMERIC_TYPE.test(column?.type ?? "");
 }
@@ -178,7 +159,6 @@ export default {
       root.dataset.mode = model.get("theme")?.mode === "light" ? "light" : "dark";
     };
 
-    // -- State ------------------------------------------------------------------
     let saveTimer;
     const save = () => {
       clearTimeout(saveTimer);
@@ -195,7 +175,6 @@ export default {
       if (editor.value !== state.sql[state.source]) editor.value = state.sql[state.source];
     };
 
-    // -- Tables -----------------------------------------------------------------
     const insert = (text) => {
       const start = editor.selectionStart ?? editor.value.length;
       const end = editor.selectionEnd ?? start;
@@ -264,8 +243,6 @@ export default {
       }
     };
 
-    // -- Completion ---------------------------------------------------------------
-    // The tables of each source as the backend last listed them, which DuckDB mirrors
     const known = {};
     let completer = null;
     let starting = null;
@@ -282,7 +259,6 @@ export default {
       return bytes;
     };
 
-    // DuckDB starts the first time the editor is used: a dashboard that only shows results never loads it
     const startCompletion = () => {
       starting ??= (async () => {
         assist.textContent = "Completion starting…";
@@ -322,7 +298,6 @@ export default {
       editor.dispatchEvent(new Event("input"));
     };
 
-    // Where the cursor is drawn, from a copy of the editor's text in the same box and type
     const caretPoint = () => {
       const style = getComputedStyle(editor);
       const copy = document.createElement("div");
@@ -343,13 +318,11 @@ export default {
       return point;
     };
 
-    // Each request is numbered: an answer that arrives after a newer request is dropped
     let asking = 0;
     const suggest = async (asked) => {
       if (!completer) return closePopup();
       const cursor = editor.selectionStart;
       const before = editor.value.slice(0, cursor);
-      // Typing opens the list after a letter, digit, underscore, quote or dot; Ctrl+Space anywhere
       if (cursor !== editor.selectionEnd || (!asked && !/[A-Za-z0-9_."]$/.test(before))) return closePopup();
       const ticket = ++asking;
       let found;
@@ -367,7 +340,6 @@ export default {
           option.id = `sx-option-${i}`;
           option.setAttribute("role", "option");
           option.append(element("span", "sx-suggestion", suggestion.text.trimEnd()), element("span", "sx-kind", suggestion.kind));
-          // Keep the editor focused, then take the suggestion
           option.addEventListener("mousedown", (event) => event.preventDefault());
           option.addEventListener("click", () => accept(i));
           return option;
@@ -381,7 +353,6 @@ export default {
       highlight(0);
     };
 
-    // -- Results ----------------------------------------------------------------
     const showResult = (result, elapsed) => {
       const table = element("table", "sx-table");
       const head = element("thead");
@@ -452,7 +423,6 @@ export default {
       }
     };
 
-    // -- Wiring -----------------------------------------------------------------
     function choose(id) {
       if (id === state.source) return;
       state = { ...state, source: id };
@@ -469,7 +439,6 @@ export default {
     editor.addEventListener("input", (event) => {
       state = { ...state, sql: { ...state.sql, [state.source]: editor.value } };
       save();
-      // What the user types or deletes asks again; text put in by the widget does not
       if (event.inputType === "insertText" || (event.inputType === "deleteContentBackward" && !popup.hidden)) {
         clearTimeout(suggestTimer);
         suggestTimer = setTimeout(() => suggest(false), 30);
@@ -504,7 +473,6 @@ export default {
     for (const name of ["blur", "click", "scroll"]) editor.addEventListener(name, closePopup);
     run.addEventListener("click", execute);
 
-    // The host echoes what it saved; a refused write comes back as the previous state
     const onState = () => {
       if (document.activeElement === editor) return;
       state = stateOf(model.get("state"));

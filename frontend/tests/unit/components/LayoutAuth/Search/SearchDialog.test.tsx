@@ -273,9 +273,7 @@ describe("SearchDialog", () => {
         </MemoryRouter>,
       );
 
-      // Mobile layout renders without dialog wrapper
       expect(screen.queryByText("Widget Menu")).not.toBeInTheDocument();
-      // But should have the widget menu and search
       expect(screen.getByTestId("widget-menu")).toBeInTheDocument();
       expect(screen.getByPlaceholderText("Search for widgets")).toBeInTheDocument();
     });

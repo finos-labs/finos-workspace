@@ -138,19 +138,10 @@ function successResult(
   };
 }
 
-/**
- * Bridge-internal command names are not always the tool names the MCP sidecar
- * exposes to agents. Error/help text must reference the MCP-facing name so an
- * agent can actually call the tool it is pointed at.
- */
 const MCP_TOOL_NAME_OVERRIDES: Record<string, string> = {
   update_dashboard_layout: "update_widget_layout",
 };
 
-/**
- * Appended to backend widgets.json/apps.json validation failures so agents can
- * self-correct from the shipped specs instead of guessing payload shapes.
- */
 const BACKEND_AUTHORING_HINT =
   "For the expected widgets.json/apps.json shape, read the MCP resources workspace://specs/widgets-json, workspace://specs/apps-json, and workspace://validation/common-errors (index: workspace://app-builder/index).";
 
@@ -334,7 +325,6 @@ function buildWidgetConfigForDashboard(
 ) {
   const normalizedConfig = buildWidgetConfig(config);
   const uiArgs = asRecord(normalizedConfig.uiArgs);
-  // ui_args come from external MCP callers; a non-string innerTab is ignored.
   const rawInnerTab = uiArgs?.innerTab;
   const innerTab = typeof rawInnerTab === "string" ? rawInnerTab.trim() : undefined;
 
@@ -349,11 +339,6 @@ function buildWidgetConfigForDashboard(
   };
 }
 
-/**
- * Widget mutations ignore data_args keys the widget does not declare and values
- * its params do not accept. Surface both so the calling agent learns the real
- * contract instead of assuming success.
- */
 function widgetConfigWarnings(
   paramsDef: WidgetT["params"] | null | undefined,
   config?: WorkspaceWidgetConfig | null,
@@ -383,7 +368,6 @@ function widgetConfigWarnings(
   return warnings;
 }
 
-/** Why the ui_args cannot be applied to this widget: keys or values its schema refuses. */
 function uiArgsProblems(
   widget: Pick<WidgetT, "type" | "plugin" | "widgetId" | "connectionType">,
   uiArgs: Record<string, unknown> | undefined,
@@ -455,7 +439,6 @@ function toWidgetCatalogEntry(widget: WidgetT, originOverride?: string) {
     category: widget.category,
     sub_category: widget.subCategory,
     widget_type: widget.type,
-    // The MCP tool of the backend that queries what the widget shows (WIDGETS-JSON 5)
     ...(widget.mcp_tool ? { mcp_tool: widget.mcp_tool } : {}),
   };
 }
@@ -476,7 +459,6 @@ function getWidgetSchemaPayload(
     params: Array.isArray(widget.params)
       ? widget.params.map((param) => ({
           ...(toWidgetParamPayload(param) as Record<string, unknown>),
-          // Where the value goes in the widget's request: the path, the query, a header or the body
           in: paramPlace(param, endpointUrl),
         }))
       : [],
@@ -653,14 +635,6 @@ function buildSkillPayload(skill: WorkspaceSkill): SkillPayload {
   };
 }
 
-/**
- * `getWidgetData` returns the in-app `CopilotDataT` shape, where each item's
- * `content` is JSON-stringified (a copilot content-block convention). MCP callers
- * want structured rows, so for the bridge response only we parse those strings
- * back into arrays/objects. Only JSON-array/object strings are parsed — plain
- * text content (markdown text, single-column SQL text) is left as-is. The
- * in-app copilot data path is unaffected.
- */
 export function normalizeWidgetDataForBridge(data: unknown): unknown {
   if (!Array.isArray(data)) return data;
   return data.map((entry) => {
@@ -752,7 +726,6 @@ async function handleDataCommand(
       return successResult("Widget schema loaded.", { widget });
     }
     case "get_widgets_schema": {
-      // The schema backends are validated against here, once the registry has it
       const schema = await widgetsSchemaReady();
       return successResult("widgets.json schema loaded.", { schema });
     }
@@ -988,9 +961,6 @@ async function handleDashboardCommand(
             );
           }
 
-          // The snapshot serializes the default (tab-less) view as "__no_tab__";
-          // round-trip it back to the plain dashboard route instead of a
-          // phantom ?tab=__no_tab__.
           const storedTabId = deserializeDashboardTabId(command.tab_id);
           const serializedTabId = serializeDashboardTabId(storedTabId);
           if (!dashboardInfo.tabs.some((tab) => tab.tab_id === serializedTabId)) {
@@ -1618,12 +1588,6 @@ type AppEntry =
     }
   | { kind: "saved"; app: UserGeneratedApp };
 
-/**
- * Mirrors the app sources merged by `useAllTemplates` for the Apps page:
- * templates from the user's own backends, templates shared through role
- * permissions, and saved (user-generated) apps owned by or shared with the
- * user. Backends that are both owned and shared only contribute once.
- */
 function collectAppEntries(
   getSharedTemplates: CommandHandlerDeps["getSharedTemplates"],
 ): AppEntry[] {
@@ -1797,7 +1761,6 @@ async function handleManageAppsCommand(
     });
   }
 
-  // instantiate: always create a fresh dashboard (predictable for automated callers)
   const appName = entry.kind === "saved" ? entry.app.name : entry.template.name;
   let dashboardId: string | undefined;
   try {

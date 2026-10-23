@@ -64,7 +64,6 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
       localStorageKey,
       transformScale = 1,
       isDroppable = false,
-      // this handles the widget being "bounded by the canvas"
       isBounded = false,
       draggableHandle = ".draggable-handle",
       rowHeight = 25,
@@ -105,9 +104,6 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
           updateTabWidgetsLayout(
             tabId,
             layout.map((item) => {
-              // remove all undefined values from the layout
-              // this is to prevent dashboard diff always being different causing
-              // unnecessary saves to the server
               const newItem = Object.fromEntries(
                 Object.entries(item).filter(([, value]) => value !== undefined),
               ) as GridItem;
@@ -156,7 +152,6 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
           const scrollMargin = 50;
           const scrollThreshold = 80;
 
-          // if cursor or element is close to the edge of the workarea scroll the workarea
           const bottomNeedsScroll =
             elementRect.bottom + scrollMargin >= workareaRect.bottom;
           const topNeedsScroll = elementRect.top - scrollMargin <= workareaRect.top;
@@ -168,8 +163,6 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
           if (topNeedsScroll && e.clientY < scrollThreshold) {
             workarea.scrollTop -= scrollSpeed;
           }
-
-          // if cursor is outside the workarea and comes back in put the element back in the workarea
 
           if (
             elementRect.left <= workareaRect.left ||
@@ -195,7 +188,6 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
 
           if (!workarea) return;
 
-          // if cursor is outside the workarea don't resize till it's back in the workarea
           const workareaRect = workarea.getBoundingClientRect();
           const elementRect = element.getBoundingClientRect();
           const isRight =
@@ -218,14 +210,12 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
             };
           }
         },
-        //onBreakpointChange={} use this to change rowHeight
         onResize: (_layout, oldItem, newItem, _placeholder, e, element) => {
           const workarea = document.getElementById("workarea");
 
           if (!workarea) return;
           setPointerEvents(false);
 
-          // if cursor is outside the workarea don't resize till it's back in the workarea
           const workareaRect = workarea.getBoundingClientRect();
           const elementRect = element.getBoundingClientRect();
           const _isLeft =
@@ -320,7 +310,6 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
           onDragStop={memoizedGridProps.onDragStop}
           onDrop={memoizedGridProps.onDrop}
           onResizeStart={memoizedGridProps.onResizeStart}
-          //onBreakpointChange={} use this to change rowHeight
           onResize={memoizedGridProps.onResize}
           onResizeStop={memoizedGridProps.onResizeStop}
           measureBeforeMount={false}

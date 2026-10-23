@@ -1,9 +1,3 @@
-/**
- * The Workspace's own tools, which the agent in the app is given with the tools of the MCP servers the user
- * connected. They come from the Workspace, once for each signed-in session, and what the user's roles grant
- * applies to them as it does to any tool.
- */
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getWorkspaceTools } from "~/api/workspaceTools.api";
 import { useAuthStore } from "~/lib/state/auth";

@@ -1,10 +1,6 @@
 import type { Chat } from "~/lib/state/copilot";
 import { slugify } from "~/lib/utils/utils";
 
-/**
- * Converts a chat's human and AI messages into a readable Markdown document.
- * System and tool messages are skipped because they carry non-textual payloads.
- */
 export function chatToMarkdown(chat: Chat): string {
   const lines: string[] = [`# ${chat.label?.trim() || "Untitled chat"}`];
 
@@ -14,11 +10,8 @@ export function chatToMarkdown(chat: Chat): string {
     } else if (message.role === "ai") {
       try {
         const parsed = JSON.parse(message.content);
-        // Tool message - skip
         if (parsed.function) continue;
-      } catch {
-        // Not a tool message, proceed as normal
-      }
+      } catch {}
       appendTurn(lines, "AI", message.content);
     }
   }
@@ -32,9 +25,6 @@ function appendTurn(lines: string[], speaker: string, content: string): void {
   lines.push("", `**${speaker}:**`, "", trimmed);
 }
 
-/**
- * Triggers a browser download of the chat serialized as a Markdown file.
- */
 export function downloadChatAsMarkdown(chat: Chat): void {
   const markdown = chatToMarkdown(chat);
   const blob = new Blob([markdown], { type: "text/markdown" });

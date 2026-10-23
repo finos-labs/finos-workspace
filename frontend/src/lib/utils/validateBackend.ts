@@ -8,9 +8,6 @@ import {
   WidgetVizTypes,
 } from "~/lib/types/app";
 
-// Snake_case aliases accepted on apps.json templates. Backends following the
-// public docs may emit snake_case; we rewrite to camelCase before validation
-// so the schema and downstream consumers only see one shape.
 const TEMPLATE_KEY_ALIASES: Record<string, string> = {
   mcp_servers: "mcpServers",
 };
@@ -54,21 +51,16 @@ import {
   validateWidgetDefinition,
 } from "./widgetsSchemaValidation";
 
-/** What the endpoint probe found (docs/widget-plugins/WIDGETS-JSON.md 4.8). */
 export interface ProbeReport {
-  /** Routes the backend does not have, or that did not answer */
   failed: string[];
-  /** Routes that were not checked, and why */
   unchecked: string[];
 }
 
 const PLACEHOLDER = /\{([^{}]+)\}/g;
 const PROBE_CONCURRENCY = 6;
 
-/** The route of an endpoint, with its placeholders filled; null when one has no value. */
 function fillRoute(endpoint: string, value: (name: string) => unknown): string | null {
   let missing = false;
-  // The probe sends no query: only the path is a route
   const path = endpoint.split(/[?#]/, 1)[0];
   const filled = path.replace(PLACEHOLDER, (_, name: string) => {
     const v = value(name);
@@ -78,11 +70,6 @@ function fillRoute(endpoint: string, value: (name: string) => unknown): string |
   return missing ? null : filled;
 }
 
-/**
- * The distinct routes of a widgets.json: every widget's `endpoint`, every `optionsEndpoint`
- * and every `form` param's `endpoint`, with what refers to each. Placeholders take the
- * params' defaults; a route on another origin than the backend's is not checked.
- */
 export function probeRoutes(widgets: WidgetsType, backendUrl: URL) {
   const routes = new Map<string, string[]>();
   const unchecked: string[] = [];
@@ -116,7 +103,6 @@ export function probeRoutes(widgets: WidgetsType, backendUrl: URL) {
     const optionsParams = (param.optionsParams ?? {}) as Record<string, unknown>;
     add(param.optionsEndpoint, `${ref}, options of ${param.paramName}`, (name) => {
       const v = optionsParams[name];
-      // `$name` is the current value of the widget's param of that name
       return typeof v === "string" && v.startsWith("$") ? defaults[v.slice(1)] : v;
     });
   };
@@ -141,7 +127,6 @@ export function probeRoutes(widgets: WidgetsType, backendUrl: URL) {
   return { routes, unchecked };
 }
 
-/** The status of a plain `OPTIONS` to the URL, or null when nothing answered. */
 async function sendOptions(url: string, signal?: AbortSignal): Promise<number | null> {
   try {
     const response = await fetch(url, {
@@ -157,14 +142,6 @@ async function sendOptions(url: string, signal?: AbortSignal): Promise<number | 
   }
 }
 
-/**
- * Checks that the routes of a widgets.json exist, without running any widget
- * (docs/widget-plugins/WIDGETS-JSON.md 4.8): one plain `OPTIONS` per distinct route, with
- * no credentials, query, headers or body. A `404` is a missing route; any other status
- * means the backend answered for it. A path that cannot exist is asked first: a backend
- * that answers it with anything but a `404` answers every route, so its routes are
- * reported as not checked instead of valid.
- */
 export async function validateBackendEndpoints(
   widgets: WidgetsType,
   backendUrl: URL,
@@ -203,9 +180,6 @@ export async function validateBackendEndpoints(
   return { failed: failed.sort(), unchecked };
 }
 
-/**
- * The file is not a map of widgets: an array, or one widget definition on its own.
- */
 function fileShapeError(object: unknown): string | null {
   const isMap = !!object && typeof object === "object" && !Array.isArray(object);
   const record = object as Record<string, unknown>;
@@ -222,24 +196,13 @@ function fileShapeError(object: unknown): string | null {
 }
 
 export interface WidgetItems {
-  /** Set when the file as a whole is not a map of widgets */
   fileError: string | null;
-  /** The widgets that keep to the contract */
   valid: WidgetsType;
-  /** The widgets that do not, each with its problems */
   invalid: InvalidItem[];
-  /** Widgets of a well-formed type this entity has no renderer for, left out */
   unsupported: string[];
-  /** Valid widgets of a type no widget plugin available to this user renders */
   unrendered: string[];
 }
 
-/**
- * Validates widgets.json entry by entry against the schema in force for the entity
- * (docs/widget-plugins/WIDGETS-JSON.md 3.6), then by the rules JSON Schema cannot state
- * (3.7). A widget that fails is reported on its own, with each problem's pointer, and left
- * out; the others are kept.
- */
 export function validateWidgetItems(
   object: unknown,
   context: {
@@ -258,11 +221,8 @@ export function validateWidgetItems(
   };
   if (items.fileError) return items;
 
-  // The ids are the backend's: the map of valid widgets is built from entries, which only
-  // defines properties of its own, so no id reaches a setter or a prototype
   const valid: [string, WidgetsType[string]][] = [];
   for (const [widgetId, widget] of Object.entries(object as Record<string, unknown>)) {
-    // The top level allows the schema's own keys beside the widgets
     if (widgetId === "$schema" || widgetId === "$id") continue;
     if (!widget || typeof widget !== "object" || Array.isArray(widget)) {
       items.invalid.push({
@@ -275,7 +235,6 @@ export function validateWidgetItems(
     }
     const definition = widget as Record<string, unknown>;
     const type = definition.type;
-    // A type nothing here handles: left out with a warning, not an error in the backend
     if (
       typeof type === "string" &&
       isWellFormedVizType(type) &&
@@ -316,7 +275,6 @@ export function validateWidgetItems(
   return { ...items, valid: Object.fromEntries(valid) as WidgetsType };
 }
 
-/** The widgets.json problems as one message: the file's, or each invalid widget's. */
 function widgetErrorMessage(items: WidgetItems) {
   if (items.fileError) return items.fileError;
   return items.invalid.length > 0
@@ -326,7 +284,6 @@ function widgetErrorMessage(items: WidgetItems) {
 
 const expectedRegex = /expected one of (.+) - received (.*)/;
 function formatZodIssue(issue: $ZodIssue, widgetId?: string): string {
-  // Which of the fields an issue has depends on its code
   const {
     message,
     path,
@@ -337,7 +294,6 @@ function formatZodIssue(issue: $ZodIssue, widgetId?: string): string {
   const cleanedPath = path.filter((p) => p !== widgetId).join(", ") || "object";
 
   if (code === "invalid_type") {
-    // The app's error messages can be as short as "Invalid input": say what was expected
     const hint =
       expected && !String(message).includes(String(expected))
         ? ` (expected \`${expected}\`)`
@@ -403,10 +359,6 @@ export function formatZodIssues(
   return errors;
 }
 
-/**
- * The problems of the `plugin.config` an app sets in a layout item's state: the widget is
- * rendered by a plugin, and the configuration fits its settings (WIDGETS-JSON 3.10).
- */
 function templatePluginConfigProblems(
   template: BackendTemplate,
   context: { schema: ComposedWidgetsSchema; widgets: Record<string, unknown> },
@@ -416,7 +368,6 @@ function templatePluginConfigProblems(
     (tab.layout ?? []).forEach((item, index) => {
       const plugin = item.state?.storage?.plugin;
       if (!plugin) return;
-      // A layout item whose widget did not load reports that on its own
       const type = (context.widgets[item.i] as { type?: unknown } | undefined)?.type;
       if (typeof type !== "string") return;
       const where = `tabs/${tabKey}/layout/${index}/state/storage/plugin`;
@@ -430,7 +381,6 @@ function templatePluginConfigProblems(
   return problems;
 }
 
-/** A server name an earlier app of the backend already gives another server. */
 function serverNameProblems(
   template: BackendTemplate,
   serverUrls: Map<string, string>,
@@ -448,11 +398,6 @@ function serverNameProblems(
   return problems;
 }
 
-/**
- * A widget's MCP link names a server its own backend's apps.json declares (WIDGETS-JSON
- * 5.3, rule 2): one that names no declared server is left out, with its path. Run only
- * when apps.json loaded valid, so one broken file does not remove every linked widget.
- */
 function checkMcpLinks(items: WidgetItems, templates: BackendTemplate[]) {
   const declared = new Set(
     templates.flatMap((template) => (template.mcpServers ?? []).map((s) => s.name)),
@@ -472,11 +417,6 @@ function checkMcpLinks(items: WidgetItems, templates: BackendTemplate[]) {
   }
 }
 
-/**
- * Validates apps.json entry by entry. An app that fails validation is reported on its own
- * and left out, the others are kept. With the schema and the backend's widgets, the plugin
- * configuration of its layout items is checked too.
- */
 function partitionTemplates(
   templates: BackendTemplate[],
   file: "apps.json" | "templates.json" = "apps.json",
@@ -484,11 +424,9 @@ function partitionTemplates(
 ): { valid: BackendTemplate[]; invalid: InvalidItem[] } {
   const valid: BackendTemplate[] = [];
   const invalid: InvalidItem[] = [];
-  // A server name is one server of the backend: a widget's mcp_tool names it (WIDGETS-JSON 5.3)
   const serverUrls = new Map<string, string>();
 
   for (const template of templates) {
-    // Skip null, undefined, or invalid templates
     if (!template || typeof template !== "object") {
       continue;
     }
@@ -543,9 +481,7 @@ export const errorResponse = {
 
 const DEFAULT_OPTIONS = {
   validateAllWidgets: false,
-  // The viz types widget plugins render for this user (a worker cannot read the registry)
   pluginVizTypes: [] as string[],
-  // The widgets.json schema in force for the user's entity, from the API
   widgetsSchema: undefined as ComposedWidgetsSchema | undefined,
   agents: true,
   apps: true,
@@ -554,7 +490,6 @@ const DEFAULT_OPTIONS = {
 
 export type GetApiSourceWidgetsOptions = Partial<typeof DEFAULT_OPTIONS>;
 
-// On the main thread the plugin registry keeps these current, so callers need not pass them
 let defaultPluginVizTypes: string[] = [];
 let defaultWidgetsSchema: ComposedWidgetsSchema | undefined;
 let schemaWaiters: {
@@ -562,12 +497,10 @@ let schemaWaiters: {
   reject: (e: Error) => void;
 }[] = [];
 
-/** The viz types available widget plugins render, used when a caller passes none. */
 export function setDefaultPluginVizTypes(types: Iterable<string>) {
   defaultPluginVizTypes = [...types];
 }
 
-/** The widgets.json schema for the user's entity, used when a caller passes none. */
 export function setDefaultWidgetsSchema(schema: ComposedWidgetsSchema | undefined) {
   defaultWidgetsSchema = schema;
   if (!schema) return;
@@ -575,19 +508,16 @@ export function setDefaultWidgetsSchema(schema: ComposedWidgetsSchema | undefine
   schemaWaiters = [];
 }
 
-/** The schema could not be loaded: backends waiting to be validated fail with this. */
 export function failWidgetsSchema(error: Error) {
   for (const waiter of schemaWaiters) waiter.reject(error);
   schemaWaiters = [];
 }
 
-/** The schema backends are validated against, once the registry has loaded it. */
 export function widgetsSchemaReady(): Promise<ComposedWidgetsSchema> {
   if (defaultWidgetsSchema) return Promise.resolve(defaultWidgetsSchema);
   return new Promise((resolve, reject) => schemaWaiters.push({ resolve, reject }));
 }
 
-/** The header or query names the backend connection's credentials use, which a param cannot take. */
 function credentialNames(source: Source, location: "headers" | "query"): string[] {
   return (source.endpointHeaders ?? [])
     .filter((header) => (header.location ?? "headers") === location && header.key)
@@ -625,7 +555,6 @@ function validateWidgetsAppsJson(params: {
   const templateErrorMessage =
     templateErrors.length > 0 ? templateErrors.join("\n\n") : null;
 
-  // combine widget validation errors and endpoint errors
   const allWidgetErrors = [];
   if (widgetValidationError) allWidgetErrors.push(widgetValidationError);
   if (failedEndpoints.length > 0) allWidgetErrors.push(...failedEndpoints);
@@ -644,7 +573,6 @@ function validateWidgetsAppsJson(params: {
   };
 }
 
-// Modify the validateBackend function to include template validation
 export async function validateBackend(
   source: Source,
   options?: GetApiSourceWidgetsOptions | boolean,
@@ -657,12 +585,10 @@ export async function validateBackend(
     credentialQuery: credentialNames(source, "query"),
   };
 
-  // 60s timeout when you connect - in the future we can do something else here -
-  // let user set it or turn off for on prem?
   const requestTimeout = 60000;
   const { headers, newParams } = convertHeadersToRecord(source.endpointHeaders);
 
-  Object.assign(headers, options.extraHeaders || {}); // Merge extra headers into the main headers object
+  Object.assign(headers, options.extraHeaders || {});
 
   const backendUrl = createURL(source.url);
   const widgetsUrl = createURL("widgets.json", backendUrl, newParams);
@@ -681,7 +607,6 @@ export async function validateBackend(
     let errorMessage =
       "Unable to find a widgets.json file. Please check the console logs for more details.";
 
-    // Handle specific status codes with more descriptive messages
     if (statusCode === 401 || statusCode === 403) {
       errorMessage =
         "Authentication failed. Please check your Authorization header or check the console logs for more details.";
@@ -700,8 +625,6 @@ export async function validateBackend(
     throw new Error(`${errorMessage} (Status: ${statusCode})`);
   }
 
-  // Unknown keys of widgets.json are errors of the widget (the schema is closed); those
-  // of apps.json are still reported apart
   const unrecognizedReports = [] as UnrecognizedKeysReport[];
 
   const widgetItems = validateWidgetItems(await widgetsRes.json(), widgetContext);
@@ -716,7 +639,6 @@ export async function validateBackend(
     return fn().catch(() => ({ ok: false }) as Response);
   };
 
-  // After widgets validated, fire apps + agents in parallel (independent of each other).
   const appsPromise = getPromise(async () => {
     const appsUrl = createURL("apps.json", backendUrl, newParams);
     const templatesUrl = createURL("templates.json", backendUrl, newParams);
@@ -730,7 +652,6 @@ export async function validateBackend(
     return fetch(agentsUrl, reqInit);
   }, options.agents);
 
-  // Whether the backend's MCP servers are known: apps.json loaded, or it has none
   let appsKnown = false;
   if (options.apps) {
     const tempsRes = await appsPromise;
@@ -742,18 +663,12 @@ export async function validateBackend(
         : "templates.json";
       templatesFile = fileName;
       const data = await tempsRes.json().catch(() => []);
-      // Handle different response types properly:
-      // - [] (empty array) -> []
-      // - {} (empty object) -> [] (treat as no templates)
-      // - undefined/null -> []
-      // - [template1, template2] -> [template1, template2]
-      // - {valid template object} -> [{valid template object}]
       if (Array.isArray(data)) {
         templates = data;
       } else if (data && typeof data === "object" && Object.keys(data).length > 0) {
         templates = [data];
       } else {
-        templates = []; // Handle empty object {}, null, undefined, etc.
+        templates = [];
       }
 
       for (const t of templates) normalizeBackendTemplate(t);
@@ -791,7 +706,6 @@ export async function validateBackend(
   const unrenderedWidgets = widgetItems.unrendered;
   const widgetValidationError = widgetErrorMessage(widgetItems);
 
-  // don't fail here when widgets have errors: the apps and the errors are still shown
   let probe: ProbeReport = { failed: [], unchecked: [] };
   if (options.validateAllWidgets && !widgetValidationError) {
     probe = await validateBackendEndpoints(widgets, backendUrl, reqInit.signal);
@@ -806,15 +720,14 @@ export async function validateBackend(
   });
 
   return {
-    widgets: widgetValidationError ? {} : widgets, // return empty widgets if validation failed
+    widgets: widgetValidationError ? {} : widgets,
     validWidgets: widgetItems.valid,
     unsupportedWidgets,
     unrenderedWidgets,
     ...jsonErrors,
-    templates: jsonErrors.templateErrors.length > 0 ? [] : templates, // return empty templates if validation failed
+    templates: jsonErrors.templateErrors.length > 0 ? [] : templates,
     validTemplates: templateItems.valid,
     invalidItems: [...widgetItems.invalid, ...templateItems.invalid],
-    // What leaves nothing usable: the file is not a map of widgets, or endpoints are unreachable
     fatalErrorMessage:
       [widgetItems.fileError, ...failedEndpoints].filter(Boolean).join("\n\n") || null,
     uncheckedRoutes: probe.unchecked,
@@ -852,7 +765,6 @@ export async function validateSource(
       .join("\n\n");
   }
 
-  // What loads: an invalid widget or app does not take the others down with it
   const loadedTemplates = validated.validTemplates ?? validated.templates;
   if (!loadedTemplates.length || validated.fatalErrorMessage) return validated;
 
@@ -863,15 +775,13 @@ export async function validateSource(
       .map((item) => item.id),
   );
 
-  // The widget ids of each app's tabs, by app name and tab id: names from the backend's
-  // apps, which a map keeps apart from any object's own properties
   const tabWidgets = new Map<string, Map<string, string[]>>();
 
   for (const t of loadedTemplates) {
     for (const tab of Object.values(t.tabs || {})) {
       for (const layout of tab.layout || []) {
         const widgetId = layout.i;
-        if (getJsonWidget(widgetId)?.name) continue; // skip if it's a built-in widget
+        if (getJsonWidget(widgetId)?.name) continue;
 
         const appTabs = tabWidgets.get(t.name) ?? new Map<string, string[]>();
         const ids = appTabs.get(tab.id) ?? [];
@@ -882,7 +792,6 @@ export async function validateSource(
     }
   }
 
-  // check for widgets used in apps that are missing from the backend widgets
   for (const [appName, item] of tabWidgets) {
     for (const [tabId, widgetIds] of item) {
       const missingWidgetIds = widgetIds.filter(
@@ -890,7 +799,6 @@ export async function validateSource(
           !(
             loadedWidgets[id] ||
             validated.unsupportedWidgets?.includes(id) ||
-            // Already reported as invalid
             invalidWidgetIds.has(id)
           ),
       );
@@ -928,11 +836,9 @@ export async function getApiSourceWidgets(
 
   const loadedTemplates = validated.validTemplates ?? validated.templates;
   if (loadedTemplates.length > 0) {
-    // do some validation here
     const processed = loadedTemplates.map((template) => {
       template.id = `custom-${source.id ?? source.uuid}-${slugify(template.name)}`;
       template.templateId = template.templateId || template.id;
-      // handle relative URLs for images
       for (const img_key of ["img", "img_dark", "img_light"] as const) {
         const img = template[img_key];
         if (!img) continue;
@@ -963,8 +869,6 @@ export function processWorkerResults(
       const { source: apiSource, result } = cur;
 
       try {
-        // An invalid widget or app is skipped and reported, the backend still loads. Only a
-        // backend with nothing usable (unreachable, not a widgets.json) is an error.
         const fatalErrorMessage = result.validWidgets
           ? result.fatalErrorMessage
           : result.errorMessage;

@@ -65,15 +65,10 @@ export type ReactTextareaProps = Omit<
 >;
 
 export interface TextareaProps extends ReactTextareaProps {
-  /** Show copy icon appears to copy input value. */
   copiable?: boolean;
-  /** Make its height auto expandable depending on value. Default is `true` */
   autoheight?: boolean;
-  /** Add floating label. Requires `placeholder`. */
   label?: React.ReactNode;
-  /** Text below input */
   message?: React.ReactNode;
-  /** Make it red and display error message */
   error?: boolean;
   size?: "md";
   onChange?: (value: string) => void;
@@ -151,11 +146,8 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 );
 Textarea.displayName = "Textarea";
 
-/* Form */
-
 export type FormTextareaProps = Omit<TextareaProps, "error">;
 
-/** Input field used inside <Form> only. */
 export const FormTextarea = React.forwardRef<HTMLTextAreaElement, FormTextareaProps>(
   (props, ref) => {
     const { label, message, ...rest } = props;

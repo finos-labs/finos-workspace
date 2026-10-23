@@ -1,22 +1,3 @@
-/**
- * Tier 2 — live progress during a no-round-trip in-process tool chain.
- *
- * Regression guard for the streamText migration (loop.ts). When the model
- * runs in-process tools (execute_sql, create_artifact — both have `execute`,
- * neither round-trips) and then answers, the loop must surface each tool as a
- * structured reasoning step as it completes. The rendered answer artifact is
- * deferred until the model finishes any follow-up tool work, but the reasoning
- * status carries the artifact payload immediately so step-by-step progress can
- * continue without the chart interrupting the trace. The old `generateText`
- * path walked `result.steps` only after the whole call finished, so an all-
- * in-process workflow showed no progress (the reported "stuck on Analyzing
- * your question..." hang).
- *
- * The interleave assertions are narrow harness-contract checks. The mock fixes
- * the tool order deterministically, so these assert harness emission behavior,
- * not the model's reasoning order (which the test discipline rightly forbids pinning).
- */
-
 import { describe, it, beforeEach } from "node:test";
 import { expect } from "expect";
 import { runAgentLoop } from "../../../src/agent/loop.ts";
@@ -256,8 +237,6 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
           messages: [{ role: "human", content: "summarize and chart prices" }],
         } as QueryRequest,
         rawModelId: "openai:gpt-4o-mini",
-        // Single streamText call, three internal steps, zero round-trips:
-        // execute_sql → create_artifact → final text.
         model: makeSequencedMockLlm([
           llmCallsTool("execute_sql", {
             display_summary: "Checking the top close",
@@ -276,8 +255,6 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
       }),
     );
 
-    // Both in-process tools surfaced as structured reasoning steps (the
-    // contract the eval trace runner reads to attribute non-round-trip calls).
     const toolNames = reasoningToolNames(events);
     expect(toolNames).toContain("execute_sql");
     expect(toolNames).toContain("create_artifact");
@@ -312,7 +289,6 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
         sql: "SELECT MAX(close) AS m FROM prices",
       },
     });
-    // No round-trip happened — fully in-process.
     expect(
       events.find(
         (e) =>
@@ -351,9 +327,6 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
       name: "Prices",
     });
     expect(tableRows(artifact).length).toBe(2);
-    // The artifact status is visible before final text, while the answer
-    // artifact is emitted in the final phase so it does not interrupt any
-    // later tool reasoning.
     expect(artifactResultStatusIdx).toBeLessThan(finalTextIdx);
     expect(artifactEventIdx).toBeLessThan(finalTextIdx);
   });
@@ -723,8 +696,6 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
       }),
     );
 
-    // The answer is the step that calls no more tools. Text written alongside a tool call is reasoning:
-    // it is a status in the reasoning group, never part of the answer.
     const chunks = events.filter((e) => e.event === "copilotMessageChunk").map((e) => (e.data as { delta: string }).delta);
     expect(chunks).toEqual(["Top close is 200."]);
     const reasoning = events
@@ -733,7 +704,6 @@ describe("streaming — in-process tool chain surfaces progress live", () => {
       .filter((d) => d.group === "reasoning")
       .map((d) => d.message);
     expect(reasoning).toContain("I'll inspect the prices first.");
-    // The reasoning comes before the tool it introduced, and before the answer.
     const reasoningIdx = events.findIndex(
       (e) => e.event === "copilotStatusUpdate" && (e.data as { message?: string }).message === "I'll inspect the prices first.",
     );

@@ -26,9 +26,6 @@ export interface WorkspaceMcpTokenCreateResponse extends WorkspaceMcpTokenMetada
 }
 
 export function getWorkspaceMcpEndpoint() {
-  // urls.backend is often relative (e.g. "/api") in single-origin deployments.
-  // Resolve it against the page origin so the value is a usable absolute URL —
-  // external MCP agents and the bridge websocket can't use a relative path.
   const baseUrl = createURLString(getConfig().urls.backend, window.location.origin);
 
   return createURLString("/mcp", baseUrl);

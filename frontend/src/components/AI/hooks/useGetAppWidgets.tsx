@@ -51,18 +51,17 @@ export function useGetAppWidgets() {
   const builtInJsonWidgets = useMemo(
     () => jsonWidgetsToWidgets(API_WIDGETS),
     [API_WIDGETS],
-  ); // the built-in widgets from widgets.json: iframe, navigation_bar
+  );
 
-  const hubWidgets = useMemo(() => storedFilesToWidgets(storedFiles), [storedFiles]); // images, pdfs, etc
+  const hubWidgets = useMemo(() => storedFilesToWidgets(storedFiles), [storedFiles]);
 
   const workspaceWidgets = useMemo(
     () => widgetMetadataToWidgets(widgetMetadata),
     [widgetMetadata],
-  ); // includes copilot artifacts
+  );
 
   const sharedWidgets = useSharedResources();
 
-  // Standalone widgets of the plugins available to the user
   const plugins = usePluginRegistryStore((s) => s.plugins);
   const pluginWidgets = useMemo(() => standalonePluginWidgets(plugins), [plugins]);
 
@@ -91,7 +90,6 @@ export function useGetAppWidgets() {
       ...pluginWidgets,
     ]);
 
-    // Handle custom backends dynamically
     for (const widget of customBackendWidgets) {
       const backendName = widget.sourceName;
       if (!(backendName && widget.widgetId)) continue;
@@ -109,7 +107,6 @@ export function useGetAppWidgets() {
 
     for (const widget of sharedUserAppWidgets) {
       if (!widget.widgetId) continue;
-      // Skip if widgetId conflicts with built-in JSON widget
       if (!widget.external && getJsonWidget(widget.widgetId)) continue;
       const connectionMap: Partial<Record<string, string>> = {
         file: "the backend",
@@ -174,7 +171,6 @@ export const useGetWidgetsStore = createWithEqualityFn<GetWidgetsState>()(
       if (sourceName)
         return map.get(sourceName)?.get(widgetId.replace(`${sourceName}-`, ""));
 
-      // Search all sources for the widgetId
       for (const sourceMap of map.values()) {
         if (sourceMap.has(widgetId)) {
           return sourceMap.get(widgetId);
@@ -203,7 +199,6 @@ function apiSourcesToWidgets(apiSources: Source[]): WidgetT[] {
     .flatMap((source) => {
       return convertAdvancedBackend(source);
     });
-  // TODO: This assertion can be inaccurate, needs fix
   return customBackendWidgets as WidgetT[];
 }
 
@@ -228,13 +223,11 @@ function storedFilesToWidgets(storedFiles: StoredFile[]): WidgetT[] {
       data: { dataKey: widget?.dataKey },
     };
   });
-  // TODO: This assertion can be inaccurate, needs fix
   return hubWidgets as WidgetT[];
 }
 
 function jsonWidgetsToWidgets(apiWidgets: WidgetJsonT[]): WidgetT[] {
   const jsonWidgets = apiWidgets.map((widget) => cloneDeep({ ...widget }));
-  // TODO: This assertion can be inaccurate, needs fix
   return jsonWidgets as unknown as WidgetT[];
 }
 
@@ -244,7 +237,7 @@ function userAppsToWidgets(userApps: UserGeneratedApp[]): WidgetT[] {
       (widget) =>
         ({
           ...cloneDeep({ ...widget }),
-          id: undefined, // Clear id to avoid conflicts
+          id: undefined,
           category: getCleanedCategory(widget?.category) || "User Apps",
           sourceName: widget.sourceName || "Shared App Widgets",
           storage: { ...(widget.storage ?? {}), userAppId: app.uuid },

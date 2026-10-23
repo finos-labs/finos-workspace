@@ -12,16 +12,6 @@ import {
   writePackage,
 } from "./plugins/fixtures";
 
-/**
- * Widget plugins on the full stack (docs/widget-plugins/PLAN.md): a plugin approved at
- * the deployment and enabled for the entity renders a backend's widgets in a sandboxed
- * frame, and a hostile one cannot leave it (SECURITY.md 7).
- *
- * The API reads plugins from WIDGET_PLUGINS_DIR; E2E_PLUGINS_DIR names the same directory
- * on this machine, where the tests write their packages. Without it they are skipped.
- * The account the tests sign in as has to be a platform administrator.
- */
-
 const PLUGINS_DIR = process.env.E2E_PLUGINS_DIR;
 const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
 const BACKEND_PORT = Number(process.env.E2E_PLUGINS_BACKEND_PORT ?? 7790);
@@ -45,7 +35,6 @@ const probeFrame = () => page.frameLocator('iframe[title^="E2E probe"]');
 const card = (title: string) =>
   page.locator("div.group\\/widget").filter({ hasText: title });
 
-/** What the init script saw: frames that announced themselves, and toasts. */
 async function seen(): Promise<{ boots: string[]; toasts: string[] }> {
   return page.evaluate(() => (window as unknown as { __e2e: never }).__e2e);
 }
@@ -59,7 +48,6 @@ async function json(response: ApiResponse) {
   return response.json();
 }
 
-/** Approves the written version of each fixture, enables it and grants it to the user. */
 async function approveAndEnable() {
   await json(await api.post("/plugins/rescan"));
   const listing = await json(await api.get("/plugins"));
@@ -128,7 +116,6 @@ test.beforeAll(async ({ browser }, testInfo) => {
   await context.addInitScript(() => {
     const state = { boots: [] as string[], toasts: [] as string[] };
     (window as unknown as { __e2e: typeof state }).__e2e = state;
-    // A frame that announces itself is a frame (re)starting; its title names it
     window.addEventListener("message", (event) => {
       if (event.data?.type !== "ws-shell-ready") return;
       const frame = [...document.querySelectorAll("iframe")].find(
@@ -201,7 +188,6 @@ test("plugin-writes-a-param-and-notifies", async () => {
   await expect(
     page.locator("[data-sonner-toast]").filter({ hasText: "Region apac" }),
   ).toBeVisible();
-  // The refetch for the new param kept the plugin running
   expect(await tableBoots()).toBe(boots);
 });
 
@@ -209,13 +195,10 @@ test("plugin-cannot-leave-its-frame", async () => {
   const text = await probeFrame().locator("#e2e-results").textContent();
   const results = JSON.parse(text ?? "{}") as Record<string, string>;
   expect(Object.keys(results).length).toBeGreaterThanOrEqual(16);
-  // The widget's MCP link stays the host's (abuse case 38)
   expect(results["mcp-link"]).toBe("blocked");
   expect(results["core:mcp:call"]).toBe("blocked");
   for (const [attempt, outcome] of Object.entries(results))
     expect.soft(outcome, attempt).toBe("blocked");
-  // Its prototype pollution stayed in its realm, its forged messages were ignored, and
-  // its markup was shown as text
   expect(await page.evaluate(() => "e2ePolluted" in {})).toBe(false);
   await expect(card("E2E probe").getByText("forged")).toHaveCount(0);
   const toasts = (await seen()).toasts.filter((t) => t.includes("e2e-markup"));
@@ -231,7 +214,6 @@ test("plugin-policy-violations-reach-the-administrator", async ({ browserName })
     version: string;
     last_seen: string;
   };
-  // Reports of this run: a rerun writes the same version, and reports keep their rows
   const since = started - 2000;
   await expect
     .poll(
@@ -250,8 +232,6 @@ test("plugin-policy-violations-reach-the-administrator", async ({ browserName })
         "connect-src wss://example.com",
         "img-src https://example.com",
         "worker-src data",
-        // From a worker, and from the worker it started. WebKit refuses a worker's
-        // requests too, but raises no violation event there, so none can be reported
         ...(browserName === "webkit"
           ? []
           : [
@@ -268,7 +248,6 @@ test("plugin-exports-what-its-code-offers", async () => {
   await rows.getByTestId("_navbar-controls-right").getByRole("button").last().click();
   await page.getByRole("menuitem", { name: "Export", exact: true }).click();
 
-  // The options come from the plugin's exportOptions, for what it shows now
   const dialog = page.getByRole("dialog").filter({ hasText: "Export widget" });
   await expect(dialog.getByText("Rows of apac (JSON)")).toBeVisible();
   await expect(dialog.getByRole("radio")).toHaveCount(1);
@@ -278,9 +257,7 @@ test("plugin-exports-what-its-code-offers", async () => {
     dialog.getByRole("button", { name: "Export" }).click(),
   ]);
 
-  // The file is what its exportData delivered, named and typed as the option says
   expect(download.suggestedFilename()).toBe("e2e-rows.json");
-  // A copy of its own: a browser driven remotely has no local path
   const saved = test.info().outputPath("e2e-rows.json");
   await download.saveAs(saved);
   expect(JSON.parse(readFileSync(saved, "utf8"))).toEqual({
@@ -298,7 +275,6 @@ test("plugin-follows-the-theme-without-restarting", async () => {
   const before = (await theme.textContent())?.replace("theme ", "");
   const after = before === "dark" ? "light" : "dark";
   const boots = await tableBoots();
-  // The endpoint is asked again with the site's theme, as a markdown or html one is
   const asked = page.waitForRequest((request) => {
     const url = new URL(request.url());
     return (
@@ -335,7 +311,6 @@ test("standalone-plugin-widget-is-added-from-the-menu", async () => {
     .frameLocator('iframe[title^="End-to-end note"]')
     .locator("#e2e-note");
   await expect(note).toHaveText("Hello from a plugin");
-  // The dashboard keeps it, with its plugin reference
   await page.reload();
   await expect(note).toHaveText("Hello from a plugin", { timeout: 30000 });
 });

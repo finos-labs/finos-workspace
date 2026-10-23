@@ -2,7 +2,6 @@ import * as fs from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
 import { deleteDashboard } from "./helpers";
 
-/** Creates a dashboard from the "My Dashboards" menu and returns its id. */
 async function createNewDashboard(page: Page): Promise<string> {
   await page.waitForSelector("#tabs", { timeout: 30000 });
   await page.locator("#tabs").getByRole("button").first().click();
@@ -14,7 +13,6 @@ async function createNewDashboard(page: Page): Promise<string> {
   return id;
 }
 
-/** Adds a widget of the library to the open dashboard. */
 async function addWidget(page: Page, name: string) {
   await page.getByRole("button", { name: "Add widgets" }).click();
   const menu = page.getByRole("dialog");
@@ -23,7 +21,6 @@ async function addWidget(page: Page, name: string) {
   await expect(menu).toBeHidden();
 }
 
-/** The entry of a dashboard in the sidebar tree. */
 function dashboardItem(page: Page, id: string) {
   return page.locator(`#tab-${id}`);
 }
@@ -60,13 +57,11 @@ test("dashboards-export", async ({ page }) => {
   await page.goto("/app");
   await page.waitForLoadState("networkidle");
   const id = await createNewDashboard(page);
-  // An empty dashboard has nothing to export
   await addWidget(page, "Iframe");
 
   await openDashboardContextMenu(page, id);
   await page.getByRole("menuitem", { name: "Export PDF" }).click();
 
-  // Wait for the export dialog and start the download
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     page.getByRole("button", { name: "Export" }).click(),

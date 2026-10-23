@@ -1,22 +1,9 @@
-"""add widget plugin secrets and network narrowing
-
-The values superusers set for the secrets plugins declare (docs/widget-plugins/
-SERVER-SIDE.md 4), encrypted at rest with the deployment's AES key, and the hosts of a
-plugin's server.network an entity removes for itself (SERVER-SIDE.md 6).
-
-Revision ID: 7c3d5f20a1b4
-Revises: 5e2b8c41d907
-Create Date: 2026-10-20
-
-"""
-
 import sqlalchemy as sa
 import sqlalchemy_utils
 
 import api.models.model_helpers
 from alembic import op  # type: ignore
 
-# revision identifiers, used by Alembic.
 revision = "7c3d5f20a1b4"
 down_revision = "5e2b8c41d907"
 branch_labels = None

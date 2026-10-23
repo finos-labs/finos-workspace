@@ -1,16 +1,3 @@
-/*
- * The shell of a widget plugin frame: the host side of the Anywidget front-end module
- * contract (AFM 0.11), running inside the sandboxed frame (docs/widget-plugins/
- * GUEST-CONTRACT.md, SECURITY.md 5).
- *
- * It is a classic script whose SHA-256 is in the frame's policy, identical for every
- * frame. It announces itself to the parent, takes the private port the host hands over
- * (and ignores every other window message), proves that the sandbox and the policy are
- * in force, and only then receives the verified bundle and evaluates it from a Blob URL.
- *
- * The shell is a convenience for plugin code, not a security boundary: the host checks
- * every message that arrives on the port against the plugin's permissions.
- */
 (() => {
   const RUNTIME = 1;
   const AFM = "0.11";
@@ -88,8 +75,6 @@
     post({ t: "log", level, text: String(text).slice(0, 2000) });
   }
 
-  // Requests the policy blocked: kept for the canary, and reported once the canary is done,
-  // including what the plugin does while it initializes and renders
   function origin(blocked) {
     if (!blocked) return "inline";
     if (["inline", "eval", "wasm-eval"].includes(blocked)) return blocked;
@@ -118,25 +103,11 @@
   }
 
   document.addEventListener("securitypolicyviolation", (event) => {
-    // Only what the browser blocked: plugin code can dispatch an event of its own
     if (!event.isTrusted) return;
     record(event.effectiveDirective || event.violatedDirective || "", event.blockedURI);
   });
 
-  /*
-   * A worker has a global scope of its own: what the policy blocks there is reported to
-   * the worker and never reaches the document's listener. So every worker the plugin
-   * starts from a blob: or data: URL first runs this function, from its own text, and
-   * hands over what the browser blocked on a port the shell gave it; the workers that
-   * worker starts do the same through it. It runs in the frame too, with `deliver`, and
-   * uses nothing from around it. Other URLs go to the browser's Worker unchanged, which
-   * refuses them in an opaque-origin frame as before.
-   *
-   * Reports are for the administrator, not a boundary: a worker that evades this still
-   * has every request the policy blocks refused.
-   */
   function reportWorkers(scope, source, deliver) {
-    // In a worker: reports wait for the shell's port, which is the worker's first message
     function toShell() {
       const held = [];
       let port = null;
@@ -157,7 +128,6 @@
         scope.removeEventListener("message", take, true);
         const data = event.data;
         if (!data || data.type !== "ws-worker-port" || !event.ports?.[0]) return;
-        // The plugin's own listeners never see it
         event.stopImmediatePropagation();
         port = event.ports[0];
         port.postMessage({ t: "started" });
@@ -176,8 +146,6 @@
     const nativePost = Native.prototype.postMessage;
     const nativeTerminate = Native.prototype.terminate;
 
-    // A plugin may revoke its worker's URL right after `new Worker(url)`, as the browser
-    // allows; the worker here loads it later, so the revocation waits until it started
     const loading = new Map();
     const revokeLater = new Set();
     urls.revokeObjectURL = function revokeObjectURL(url) {
@@ -199,7 +167,6 @@
     const script = (text) =>
       create(new scope.Blob([text], { type: "text/javascript" }));
 
-    // The text of a data: URL, or null when it cannot be read
     function dataText(address) {
       const comma = address.indexOf(",");
       if (comma < 0) return null;
@@ -237,7 +204,6 @@
           pending = address;
           loading.set(address, (loading.get(address) || 0) + 1);
         } else if (address.startsWith("data:")) {
-          // Still a data: URL, so the policy's worker-src decides as it would have
           const text = dataText(address);
           if (text !== null) {
             const strict = !module && /^\s*(['"])use strict\1/.test(text);
@@ -291,8 +257,6 @@
     log("error", `unhandled rejection: ${describe(event.reason)}`),
   );
 
-  // ---------------------------------------------------------------- canary
-
   function expectThrow(name, read) {
     try {
       read();
@@ -302,8 +266,6 @@
     }
   }
 
-  // No cookies: Chromium and Firefox refuse document.cookie in an opaque origin, WebKit
-  // reads it as empty and keeps nothing written to it
   function cookieCheck() {
     let jar;
     try {
@@ -311,7 +273,6 @@
     } catch {
       return { name: "cookie", ok: true };
     }
-    // Written to only in an opaque origin, never into a jar the frame could share
     if (jar || self.origin !== "null")
       return { name: "cookie", ok: false, detail: "was readable" };
     try {
@@ -355,8 +316,6 @@
     },
     eval: {
       directives: ["script-src"],
-      // A refused eval throws an EvalError, which proves the policy as the event does:
-      // WebKit throws it and raises no event
       run: () => {
         try {
           new Function("return 1")();
@@ -397,9 +356,7 @@
       let refused = false;
       try {
         refused = (await probe.run()) === true;
-      } catch {
-        // only the violation event, or a refusal the probe proves, counts
-      }
+      } catch {}
       const seen =
         refused ||
         (await new Promise((resolve) => {
@@ -420,12 +377,9 @@
         detail: seen ? undefined : "the frame's policy was not applied",
       });
     }
-    // The events of probes proven otherwise arrive late: they are the canary's, not the plugin's
     if (probes.length) await new Promise((resolve) => setTimeout(resolve, 50));
     return checks;
   }
-
-  // ----------------------------------------------------------------- model
 
   const model = {
     get(name) {
@@ -455,8 +409,6 @@
       if (callback === undefined) listeners.delete(event);
       else listeners.get(event)?.delete(callback);
     },
-    // Only the message anywidget's own invoke sends: a host command, answered with a
-    // msg:custom of the same id (GUEST-CONTRACT 3.4). Anything else is dropped and counted.
     send(content, _callbacks, buffers) {
       if (
         !content ||
@@ -476,7 +428,6 @@
             { id: content.id, kind: "anywidget-command-response", response },
             views,
           ),
-        // No answer: the caller's own deadline ends the call
         (error) =>
           log("warn", `${content.name} was refused: ${error?.name || "Error"}`),
       );
@@ -678,9 +629,7 @@
     for (const cleanup of cleanups.reverse()) {
       try {
         cleanup();
-      } catch {
-        // a failing cleanup does not stop the others
-      }
+      } catch {}
     }
     listeners.clear();
     for (const { reject, timer } of pending.values()) {

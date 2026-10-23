@@ -15,9 +15,6 @@ export interface TabsProps
   extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.Root>,
     TabsContextValue {}
 
-/**
- * @see {@link https://ui.shadcn.com/docs/components/tabs | Shadcn/ui Docs - Tabs} for more information
- */
 export const Tabs = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Root>,
   TabsProps
@@ -63,7 +60,7 @@ export const TabTriggerVariants = cva(["BB-TabTrigger transition"], {
     variant: {
       default: [
         "border-transparent border-b",
-        "disabled:pointer-events-none disabled:opacity-50", // TODO: fix with colors
+        "disabled:pointer-events-none disabled:opacity-50",
         "text-ds-text-body",
         "hover:text-general-label-hover",
         "radix-state-active:border-current radix-state-active:text-tab-action-active",
@@ -71,7 +68,7 @@ export const TabTriggerVariants = cva(["BB-TabTrigger transition"], {
       ],
       filled: [
         "text-nowrap rounded-t-sm px-2.5",
-        "disabled:pointer-events-none disabled:opacity-50", // TODO: fix with colors
+        "disabled:pointer-events-none disabled:opacity-50",
         "bg-tab-bg-secondary text-ds-text-caption",
         "hover:text-general-label",
         "radix-state-active:bg-tab-filled-primary-bg-active radix-state-active:text-tab-filled-primary-text-active",

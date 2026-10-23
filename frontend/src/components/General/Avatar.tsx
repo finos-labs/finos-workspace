@@ -57,7 +57,6 @@ function alternativeText(alt: string) {
     .join("");
 }
 
-// The image types base64 data is recognised by, from the start of its encoding
 const BASE64_IMAGE_TYPES: [prefix: string, type: string][] = [
   ["iVBORw0KGgo", "image/png"],
   ["/9j/", "image/jpeg"],
@@ -68,7 +67,6 @@ const BASE64_IMAGE_TYPES: [prefix: string, type: string][] = [
   ["AAABAA", "image/x-icon"],
 ];
 
-/** The data URI of `text` when it is an image's base64 data. */
 function base64ImageUri(text: string) {
   const data = text.trim();
   if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) return undefined;
@@ -76,8 +74,6 @@ function base64ImageUri(text: string) {
   return type ? `data:${type};base64,${data}` : undefined;
 }
 
-// The image a response carries: an image file, or sent as text, an SVG, a data URI or
-// base64 data. The body is read once.
 const responseCb: TResponseCb<string> = async (response, resolve, reject) => {
   try {
     const blob = await response.blob();
@@ -119,10 +115,7 @@ export const Avatar = memo((props: AvatarProps) => {
     cacheKey = src ?? "",
   } = props;
 
-  // A data URI, or a path on the Workspace itself, is shown as it is
   const isInline = !!src && (src.startsWith("data:") || src.startsWith("/"));
-  // An image that needs a data backend's credentials comes only through the request that
-  // carries them
   const needsCredentials =
     Object.keys(headers ?? {}).length + Object.keys(params ?? {}).length > 0;
   const [failedSrc, setFailedSrc] = useState<string>();
@@ -132,8 +125,6 @@ export const Avatar = memo((props: AvatarProps) => {
       request: src
         ? plainRequest(src, { headers: headers ?? {}, query: params ?? {} })
         : null,
-      // By the credentials' names, never their values: the image is fetched again when
-      // its backend's credentials arrive
       queryKey: [cacheKey, Object.keys(headers ?? {}), Object.keys(params ?? {})],
       responseCb,
     }),
@@ -145,13 +136,9 @@ export const Avatar = memo((props: AvatarProps) => {
     staleTime: Number.POSITIVE_INFINITY,
     refetchInterval: false,
     retry: false,
-    // An image that failed is not asked for again while the page is open
     retryOnMount: false,
   });
 
-  // The fetched image. Until it arrives, a public image is shown from its address; one
-  // that needs credentials is not, before its fetch has failed. A page cannot fetch an
-  // image from a host that does not share it, which an <img> still shows.
   const shownSrc = isInline
     ? src
     : (data ?? (needsCredentials && !isError ? undefined : src));
@@ -201,8 +188,6 @@ interface AuthenticatedAvatar
 export const AuthenticatedAvatar = memo<AuthenticatedAvatar>((props) => {
   const { src, source, className, ...rest } = props;
 
-  // An app's image: an address, a path on its data backend (such as the backend's
-  // `/thumbnails/{name}`), or the image itself as a data URI or base64 data
   const url = useMemo(() => {
     const value = src?.trim();
     if (!value) return undefined;
@@ -212,9 +197,6 @@ export const AuthenticatedAvatar = memo<AuthenticatedAvatar>((props) => {
     return source?.url ? createURLString(value, source.url) : value;
   }, [src, source?.url]);
 
-  // The backend's credentials go with an image on its origin only: its headers, and its
-  // query rows as parameters of the request, never in the image's address. Until the
-  // backends are loaded they are not known, and the image waits for them.
   const credentials = useSourceCredentials(source?.id, url);
   const sourcesLoaded = useShallowBackendConnectorStore((state) => state.sourcesLoaded);
   const waiting = !!source?.url && !sourcesLoaded;

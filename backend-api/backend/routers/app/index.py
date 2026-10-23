@@ -1,5 +1,3 @@
-"""Workspace user routes"""
-
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import (
     date as dateType,
@@ -57,8 +55,6 @@ async def process_create_user(
     db: AsyncSession,
     microsoft_id: str | None = None,
 ) -> UUID | bool:
-    """Creates the user for a pending invite, with their organization's Agent User role;
-    returns the new user's uuid, or False"""
     query = select(
         UserInvite.data,
         UserInvite.email,
@@ -81,8 +77,6 @@ async def process_create_user(
         email=result.email,
         clean_email=base.clean_email(result.email),
         permissions_uuid=result.permissions_uuid,
-        # A random password nobody knows, stored as its bcrypt hash only: the user signs
-        # in with single sign-on, or an administrator resets the password
         password=base.random_password(),
         first_name=result.data["first_name"],
         last_name=result.data["last_name"],
@@ -97,7 +91,6 @@ async def process_create_user(
         update(UserInvite).where(UserInvite.uuid == the_uuid).values(used=True)
     )
     await db.execute(update_query)
-    # Add role if provided
     if (role := result.data.get("role", None)) and role != "None" and role.strip():
         role_insert = insert(UserRole).values(
             user_uuid=user_uuid,
@@ -119,8 +112,6 @@ async def logout(
     response: Response,
     db: AsyncSession = Depends(aget_write_db),
 ):
-    """Signs the web app out: its sessions end, with the agent tokens minted for this one,
-    and the web app's cookie is cleared even when its session had already ended."""
     credential = auth_helpers.read_credential(request)
     session = (
         await db.execute(
@@ -139,8 +130,6 @@ async def logout(
 
 
 def two_factor_required() -> JSONResponse:
-    """The answer to a sign-in whose organization requires an authenticator that the user
-    has not set up: 202, with no session."""
     return JSONResponse(
         content={
             "two_factor_required": True,
@@ -153,10 +142,6 @@ def two_factor_required() -> JSONResponse:
 async def _start_two_factor_enrollment(
     db: AsyncSession, user_uuid: UUID, source: str
 ) -> JSONResponse:
-    """A sign-in whose organization requires an authenticator that the user has not set
-    up: 202, and for the web app the `__Host-ws_totp` cookie, a five-minute session that
-    only POST /totp and POST /totp/activate accept. Activating the authenticator finishes
-    the sign-in (POST /totp/activate)."""
     pending = two_factor_required()
     if (enroll_source := auth_helpers.TOTP_ENROLL_SOURCES.get(source)) is not None:
         await db.execute(
@@ -185,8 +170,6 @@ async def _start_session(  # noqa: PLR0913, PLR0917
     source: str,
     remember: bool,
 ) -> tuple[str, timedelta]:
-    """A new session of the web app and its lifetime: it ends the web app's other sessions
-    and is set as the session cookie."""
     lifetime = helpers.get_app_session_expiration(remember)
     await auth_helpers.delete_user_app_sessions(db, user_uuid, ["app", "oauth-app"])
 
@@ -211,8 +194,6 @@ async def login(
     user: schemas.AppUserLogin,
     db: AsyncSession = Depends(aget_write_db),
 ):
-    """Signs in. The web app's session is the `__Host-ws_session` cookie and the answer
-    carries no token."""
     source = user.source or "app"
     auth_helpers.check_browser_sign_in(request)
 
@@ -221,12 +202,11 @@ async def login(
     ):
         raise EXCEPTION_401
 
-    # A user removed from their organization is no user any more: answered as an unknown one
     if not result._asdict().get("permissions_uuid", None):
         raise EXCEPTION_401
 
     db_user = schemas.AppUserSchema.model_validate(result)
-    app_helpers.check_login(user, db_user)  # Will raise if a problem is encountered
+    app_helpers.check_login(user, db_user)
 
     if not db_user.confirmed:
         return JSONResponse(
@@ -270,8 +250,6 @@ async def finish_sign_in(  # noqa: PLR0914
     remember: bool,
     version: str | None,
 ) -> schemas.AppTokenWithContext:
-    """Starts the session of a user who passed every check of a sign-in (POST /app/login,
-    or POST /totp/activate finishing it), and answers with what the client needs."""
     show_changelog = (
         db_user.latest_version is not None and db_user.latest_version != version
     )
@@ -285,33 +263,25 @@ async def finish_sign_in(  # noqa: PLR0914
         request, response, db, db_user.uuid, source, remember
     )
 
-    # Check if the user is logging in for the first time
     is_first_login = await helpers.check_first_login(
         db, db_user.uuid, ["oauth-app", "app"]
     )
 
-    # Enter the login into our database
     helpers.handle_add_login(db_user.uuid, source)
 
-    # Get Copilot Chats
     chats = await app_helpers.get_copilot_chats(db, db_user.uuid)
     questions_history = await app_helpers.get_user_questions_history(db, db_user.uuid)
 
-    # Get MCP servers: the names of their stored headers, never the values
     mcp_servers = await app_helpers.get_mcp_servers(db, db_user)
 
-    # Get Theme Settings
     entity_theme_settings = await app_helpers.get_entity_theme_settings(
         db, db_user.entity_uuid
     )
 
-    # Get Dashboards
     dashboards_complete = await app_helpers.get_dashboards_complete(db_user)
 
-    # Get User Apps
     user_apps_complete = await app_helpers.get_user_apps_complete(db_user)
 
-    # Get User Data
     curr_user = await auth_helpers.generate_user_query(
         auth_helpers.session_filters(
             auth_helpers.Credential("web", access_token)
@@ -320,7 +290,6 @@ async def finish_sign_in(  # noqa: PLR0914
         auth_helpers.CURRENT_APP_USER["tables"],
     )
 
-    # The organization's backends; a user without one has none (never compared with None)
     if db_user.entity_uuid is not None:
         entity_query = select(models.ApiSource).where(
             models.ApiSource.entity_uuid == db_user.entity_uuid
@@ -329,18 +298,14 @@ async def finish_sign_in(  # noqa: PLR0914
         if entity_backends and isinstance(curr_user.ApiSource, list):
             curr_user.ApiSource.extend(entity_backends)
 
-    # Get Widget Metadata
     widget_metadata = await app_helpers.get_widget_metadata(db=db, user=db_user)
     user_data = await app_helpers.set_app_user_data(curr_user, db)
     user_data.widget_metadata = widget_metadata
 
-    # Get usage
     usage = await helpers.get_user_usage(db_user)
 
-    # Get custom copilots
     custom_copilots = await app_helpers.get_custom_copilots(db, db_user.uuid)
 
-    # Get user skills
     user_skills = await app_helpers.get_user_skill_state(db, db_user.uuid)
 
     content = {
@@ -386,12 +351,6 @@ UNVERIFIED_EMAIL = HTTPException(
 async def _provider_account(
     db: AsyncSession, identity: sign_in_providers.SignInIdentity
 ) -> RowMapping | None:
-    """The account a provider's user signs in to, or None for a new user. A Microsoft
-    user is keyed on Microsoft's object id; the email finds an account that is not linked
-    to a Microsoft user yet, never one linked to another. An email that the provider does
-    not vouch for finds no account or invitation, and makes no new account under that
-    address either (the address's owner would later sign in to it): such a sign-in is
-    refused."""
     accounts = (
         select(User.uuid, User.email, User.microsoft_id)
         .where(User.deleted.is_(False))
@@ -417,7 +376,6 @@ async def handle_oauth_user(
     identity: sign_in_providers.SignInIdentity,
     auth_data: schemas.AuthData,
 ):
-    """Signs a provider's user in, and up when they are new."""
     account = await _provider_account(db, identity)
     if account is None:
         user_create = schemas.UserCreateAppAdmin(
@@ -450,7 +408,6 @@ async def handle_oauth_user(
         and account["microsoft_id"] is None
         and not isinstance(answer, Response)
     ):
-        # The account is linked to the Microsoft user once the sign-in succeeded
         await db.execute(
             update(User)
             .where(User.uuid == account["uuid"])
@@ -467,9 +424,6 @@ async def post_reset_password(
     reset: schemas.PasswordReset,
     db: AsyncSession = Depends(aget_write_db),
 ):
-    """Sets the password of the user an administrator's password reset link was issued
-    for (POST /admin/reset-password/{user_uuid}). The link is used up, every session of
-    the user ends, and the user signs in with the new password."""
     auth_helpers.check_browser_sign_in(request)
     user_uuid = await auth_helpers.take_password_reset(reset.token)
     result = (
@@ -494,8 +448,6 @@ async def post_reset_password(
 @router.post("/sign-in/nonce", response_model=schemas.SignInNonce)
 @limiter.limit(LIMIT_FEW)
 async def post_sign_in_nonce(request: Request, response: Response):
-    """The nonce for the web app's next sign-in with Microsoft or Okta, which only this
-    browser can use, once, within five minutes (api/sign_in_providers.py)."""
     auth_helpers.check_browser_sign_in(request)
     return schemas.SignInNonce(
         nonce=await sign_in_providers.issue_sign_in_nonce(response)
@@ -511,16 +463,11 @@ async def oauth_auth(
     data: schemas.AuthData,
     db: AsyncSession = Depends(aget_write_db),
 ):
-    """Endpoint for OAuth Authentication, both for sign-in and sign-up. The provider's
-    token must have been issued to this deployment's client, and Microsoft's or Okta's ID
-    token must carry this browser's sign-in nonce (api/sign_in_providers.py)."""
     auth_helpers.check_browser_sign_in(request)
     if provider == "google":
         identity = await sign_in_providers.google_identity(data.token)
         return await handle_oauth_user(request, response, db, identity, data)
 
-    # The browser's nonce is used up by this attempt, whatever its outcome, so its cookie
-    # is cleared with the answer, a refusal too
     nonce_hash = await sign_in_providers.take_sign_in_nonce(request)
     identify = (
         sign_in_providers.microsoft_identity
@@ -549,8 +496,6 @@ async def get_2fa(
         )
     ),
 ):
-    """Endpoint to get the 2FA status for a user."""
-
     entity_uuid = await app_helpers.get_entity_uuid(db, user.uuid)
     entity_require_authenticator = await app_helpers.entity_require_authenticator(
         db, entity_uuid
@@ -590,8 +535,6 @@ async def get_user(
     user=Depends(auth_helpers.GetCurrentUser(**auth_helpers.CURRENT_APP_USER, agent=True)),
 ):
     if user.via_agent:
-        # The default Copilot learns who the user is, and nothing they keep: no
-        # connections, no credentials
         return schemas.AppUserReturn(
             expiration_date=user.expiration_date,
             first_name=user.first_name,
@@ -610,8 +553,6 @@ async def get_user(
 
 @router.get("/validate", response_model=SuccessReturn)
 async def validate_user(request: Request):
-    """Whether the request's app session is valid. Changes nothing, except that an
-    expired session is deleted."""
     try:
         await auth_helpers.GetCurrentUser(["uuid"], app_session=True)(request)
     except HTTPException:
@@ -630,8 +571,6 @@ async def get_session(
         )
     ),
 ):
-    """The signed-in user from the web app's session cookie, as the web app needs it
-    after a reload; 401 when there is none."""
     if request.headers.get(auth_helpers.CLIENT_HEADER) != auth_helpers.WEB_CLIENT:
         raise auth_helpers.credentials_exception
     account = (await db.execute(helpers.get_app_user_query(user.email))).first()
@@ -665,9 +604,6 @@ async def post_copilot_token(
     request: Request,
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """A token for the default Copilot to act for the user: 30 minutes, ending with the
-    session. The web app sends it to the default Copilot only, which may read who the
-    user is, record their usage and authorize their requests with it, and nothing else."""
     if request.headers.get(auth_helpers.CLIENT_HEADER) != auth_helpers.WEB_CLIENT:
         raise auth_helpers.credentials_exception
     token, lifetime = await auth_helpers.mint_agent_token(user)
@@ -679,7 +615,6 @@ async def get_access(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """What the user may do: their type, and what the roles an admin assigned them give."""
     return await app_helpers.get_user_access(db, user.uuid)
 
 
@@ -689,8 +624,6 @@ async def post_display_settings(
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_write_db),
 ):
-    """Store the user's display settings. Provider keys are dropped from them (the schema
-    does it): they go to PUT /copilot-keys."""
     query = (
         update(User).where(User.uuid == user.uuid).values(display_settings=payload)
     )
@@ -705,23 +638,6 @@ async def post_copilot_chats(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Endpoint to create or update copilot chats for a user.
-
-    If the user does not have any existing chats, a new entry is created.
-    If the user already has chats, the existing entry is updated with the new chats.
-    The idea of this endpoint is to allow the client to manage the chats for the user and simply
-    keep the server in sync with the client's state.
-
-    Args:
-        chats (schemas.CopilotChatsCreate): The chats to be created or updated.
-        db (AsyncSession): The database session.
-        user: The current authenticated user.
-
-    Returns:
-        SuccessReturn: An instance indicating the operation was successful.
-    """
-
     try:
         await crud.bulk_copilot_chats_insert_update(db, user.uuid, chats)
     except SQLAlchemyError as e:
@@ -739,18 +655,6 @@ async def delete_copilot_chats(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Endpoint to delete copilot chats for a user.
-
-    This endpoint deletes the copilot chats associated with the current authenticated user.
-
-    Args:
-        db (AsyncSession): The database session.
-        user: The current authenticated user.
-
-    Returns:
-        SuccessReturn: An instance indicating the operation was successful.
-    """
     query = delete(models.CopilotChat).where(
         models.CopilotChat.user_uuid == user.uuid,
     )
@@ -769,23 +673,6 @@ async def search_copilot_chats(
     start_date: dateType | datetime | None = None,
     end_date: dateType | datetime | None = None,
 ):
-    """
-    Endpoint to search copilot chats for a user.
-
-    This endpoint searches the copilot chats associated with the current authenticated user
-    based on the provided query string.
-
-    Args:
-        query (str): The search query string.
-        db (AsyncSession): The database session.
-        user: The current authenticated user.
-        start_date (dateType | datetime | None, optional): The start date for filtering messages (inclusive).
-        end_date (dateType | datetime | None, optional): The end date for filtering messages (inclusive).
-
-    Returns:
-        list[schemas.Chat | schemas.ChatInfo]: A list of copilot chats matching the search query.
-    """
-
     return await crud.search_copilot_chats(db, user.uuid, query, start_date, end_date)
 
 
@@ -795,20 +682,6 @@ async def get_copilot_chat(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Endpoint to retrieve a specific copilot chat for a user.
-
-    This endpoint fetches the copilot chat associated with the specified chat UUID
-    for the current authenticated user.
-
-    Args:
-        chat_uuid (UUID): The UUID of the copilot chat to retrieve.
-        db (AsyncSession): The database session.
-        user: The current authenticated user.
-
-    Returns:
-        schemas.Chat: The copilot chat corresponding to the provided UUID.
-    """
     where_clause = (
         models.CopilotChat.uuid == chat_uuid,
         models.CopilotChat.user_uuid == user.uuid,
@@ -853,16 +726,6 @@ async def put_usage(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True, agent=True)),
 ):
-    """Record the Copilot usage of a user.
-
-    Only the service that serves the Copilot may call this (see
-    `auth_helpers.check_metering`): the usage that limits are checked against must not be
-    writable by the people the limits apply to. Users cannot add, subtract or reset it.
-
-    A query is refused once it would exceed the daily query limit, or once the daily
-    token limit is used up. Tokens are reported after a query ran, so they are always
-    recorded.
-    """
     limits = await schemas.UsageGet.check_cache(db, user)
     row = (
         await db.execute(
@@ -906,8 +769,6 @@ async def put_usage(
             )
         )
     else:
-        # Tokens are added in the database so that concurrent queries do not overwrite
-        # each other
         query = (
             update(models.UserUsage)
             .where(models.UserUsage.user_uuid == user.uuid)
@@ -928,7 +789,6 @@ async def get_copilot_access(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """The Copilot models and MCP tools the user may use, as their roles grant them."""
     return await app_helpers.get_user_copilot_access(db, user.uuid)
 
 
@@ -942,13 +802,6 @@ async def post_copilot_authorize(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True, agent=True)),
 ):
-    """Check a Copilot request against what the user may use.
-
-    The service that serves the Copilot calls this before it runs a query, with the
-    user's agent token and the metering token (see `auth_helpers.check_metering`). The
-    browser only hides what a user may not use, this is what enforces it. The answer to an
-    agent token also carries the user's own provider keys, which the browser never sees.
-    """
     access = await app_helpers.get_user_copilot_access(db, user.uuid)
     result = app_helpers.check_copilot_access(access, request)
     if user.via_agent:
@@ -984,19 +837,6 @@ async def get_widget_metadata(
     name: str | None = None,
     widget_id: UUID | None = None,
 ):
-    """
-    Retrieve widget metadata for a specific widget type and name.
-
-    Args:
-        widget_type (str): The type of the widget.
-        name (str): The name of the widget.
-        id (UUID): The ID of the widget.
-    Returns:
-        List[schemas.WidgetMetadataResponse]: A list of widget metadata responses.
-
-    Raises:
-        HTTPException: If no widget metadata is found.
-    """
     result = await app_helpers.get_widget_metadata(
         db=db, user=user, widget_id=widget_id, widget_type=widget_type, name=name
     )
@@ -1014,15 +854,6 @@ async def post_widget_metadata(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Create a new widget metadata entry.
-
-    Args:
-        widget_metadata (schemas.WidgetMetadataResponse): The widget metadata to be created.
-
-    Returns:
-        schemas.SuccessReturn: A success response indicating the operation was successful.
-    """
     query = insert(models.WidgetMetadata).values(
         user_uuid=user.uuid, **widget_metadata.model_dump()
     )
@@ -1038,18 +869,6 @@ async def patch_widget_metadata(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Update an existing widget metadata entry.
-
-    Args:
-        widget_metadata (schemas.WidgetMetadataResponse): The widget metadata to be updated.
-        widget_id (UUID): The ID of the widget whose metadata is updated.
-        db (AsyncSession): The database session.
-        user (User): The authenticated user.
-
-    Returns:
-        schemas.SuccessReturn: A success response indicating the operation was successful.
-    """
     query = (
         update(models.WidgetMetadata)
         .where(
@@ -1076,20 +895,6 @@ async def delete_widget_metadata(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Delete an existing widget metadata entry and return the list of remaining entries.
-
-    Args:
-        widget_id (UUID): The ID of the widget to delete.
-        db (AsyncSession): The database session.
-        user (User): The authenticated user.
-
-    Returns:
-        List[schemas.WidgetMetadataResponse]: A list of remaining widget metadata entries.
-
-    Raises:
-        HTTPException: If no matching widget metadata is found.
-    """
     delete_query = delete(models.WidgetMetadata).where(
         models.WidgetMetadata.user_uuid == user.uuid,
         models.WidgetMetadata.widget_id == widget_id,
@@ -1104,7 +909,6 @@ async def delete_widget_metadata(
 
     await db.commit()
 
-    # Fetch remaining widget metadata for the user
     return await app_helpers.get_widget_metadata(db=db, user=user)
 
 
@@ -1114,9 +918,6 @@ async def put_custom_copilot(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Update or insert a custom copilot for a user.
-    """
     await app_helpers.check_may_add_connections(db, user.uuid)
     await app_helpers.insert_or_update_custom_copilot(db, user.uuid, custom_copilot)
     return SuccessReturn.success_instance()
@@ -1127,9 +928,6 @@ async def get_custom_copilot(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Get all custom copilots for a user.
-    """
     return await app_helpers.get_custom_copilots(db, user.uuid)
 
 
@@ -1139,10 +937,6 @@ async def delete_custom_copilot(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Delete a custom copilot(s) for a user.
-    If the url is provided, delete only that copilot, otherwise delete all custom copilots for the user.
-    """
     await app_helpers.delete_custom_copilot(db, user.uuid, uuid)
     return SuccessReturn.success_instance()
 
@@ -1153,9 +947,6 @@ async def post_user_prompt(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Add the user prompts state.
-    """
     await app_helpers.insert_user_prompt_state(db, user.uuid, prompts)
     return SuccessReturn.success_instance()
 
@@ -1165,9 +956,6 @@ async def get_user_prompt(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Get the user prompts state.
-    """
     return await app_helpers.get_user_prompt_state(db, user.uuid)
 
 
@@ -1177,9 +965,6 @@ async def create_user_skill(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Add the user skills state.
-    """
     query = insert(models.UserSkills).values(**skill.model_dump(), user_uuid=user.uuid)
     await db.execute(query)
     await db.commit()
@@ -1193,9 +978,6 @@ async def update_user_skill(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Update a user skill.
-    """
     await app_helpers.update_user_skill(db, user.uuid, skill_uuid, skill)
     return await app_helpers.get_user_skill_state(db, user.uuid)
 
@@ -1206,9 +988,6 @@ async def delete_user_skill(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Delete a user skill.
-    """
     await app_helpers.delete_user_skills(db, user.uuid, skill_uuids)
     return await app_helpers.get_user_skill_state(db, user.uuid)
 
@@ -1218,9 +997,6 @@ async def get_user_role_permissions(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Get the role permissions for a user.
-    """
     return await app_helpers.get_user_role_permissions(db, user.uuid)
 
 
@@ -1231,9 +1007,6 @@ async def get_resource_permissions(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """
-    Get the resource permissions for a user.
-    """
     permissions = await app_helpers.get_user_role_permissions(db, user.uuid)
     return app_helpers.flatten_permissions(permissions.model_dump())
 
@@ -1243,7 +1016,6 @@ async def get_theme_settings(
     db: AsyncSession = Depends(aget_read_db),
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """Get the theme settings for the entity"""
     entity_uuid = await app_helpers.get_entity_uuid(db, user.uuid)
     return await app_helpers.get_entity_theme_settings(db, entity_uuid)
 
@@ -1254,18 +1026,11 @@ async def post_mcp_servers(
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_write_db),
 ):
-    """Save the user's MCP servers.
-
-    Custom header values are write-only: a value sets the header, null removes it, a
-    header left out keeps its stored value. They are stored encrypted apart from the
-    server list, and the answer names each server's headers without their values.
-    """
     await app_helpers.check_may_add_connections(db, user.uuid)
     await app_helpers.save_mcp_servers(db, user.uuid, mcp_servers.servers)
     return await app_helpers.get_mcp_servers(db, user)
 
 
-# The hosts of MCP servers on the user's own machine, which the browser reaches directly
 LOCAL_MCP_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
 
@@ -1275,13 +1040,6 @@ async def get_local_mcp_server_headers(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(mcp_oauth.web_user),
 ):
-    """The stored headers of the user's saved MCP server at this local URL (in the body).
-
-    The browser connects to a server on the user's machine itself and keeps these in
-    memory for the connection. For any other server the API adds the headers to the
-    requests it proxies, and their values never reach the browser. Served to the web app
-    only (its session cookie), never to a bearer session.
-    """
     if urlparse(payload.url.strip()).hostname not in LOCAL_MCP_HOSTS:
         raise HTTPException(400, detail="Only the headers of a local server are served")
     await app_helpers.check_may_add_connections(db, user.uuid)
@@ -1296,7 +1054,6 @@ async def get_copilot_keys(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """Which of the user's own Copilot provider keys are stored; never their values."""
     return await app_helpers.get_copilot_key_status(db, user.uuid)
 
 
@@ -1306,19 +1063,13 @@ async def put_copilot_keys(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """Store the user's own Copilot provider keys, encrypted: a key sets it, null clears
-    it, a key left out stays. The keys reach the default Copilot through
-    /copilot/authorize, never through the browser."""
     await app_helpers.set_copilot_provider_keys(db, user.uuid, keys)
     return await app_helpers.get_copilot_key_status(db, user.uuid)
 
 
-# The headers of the browser's MCP requests that reach the server: the protocol's own.
-# Credentials come from what the API keeps for the server, never from the browser.
 MCP_REQUEST_HEADERS = frozenset(
     {"accept", "content-type", "mcp-session-id", "mcp-protocol-version", "last-event-id"}
 )
-# The headers of the server's answers that reach the browser
 MCP_RESPONSE_HEADERS = (
     "content-type",
     "cache-control",
@@ -1326,19 +1077,14 @@ MCP_RESPONSE_HEADERS = (
     "www-authenticate",
     "mcp-protocol-version",
 )
-# The ones of them the web app reads, on its requests to another origin (the API's)
 MCP_EXPOSED_HEADERS = "mcp-session-id, mcp-protocol-version, www-authenticate"
 
 
-# How long the messages endpoint an SSE server announced takes the server's credentials
 SSE_ENDPOINT_LIFETIME = timedelta(hours=24)
-# How much of an SSE stream is read for its first event, where the endpoint is announced
 SSE_ANNOUNCEMENT_MAX_BYTES = 16 * 1024
 
 
 def on_mcp_origin(server_url: str, url: str) -> bool:
-    """Whether `url` is on the host of the MCP server at `server_url`: the same scheme,
-    host and port, and a path without "." or ".." segments."""
     try:
         server = httpx.URL(schemas.normalize_mcp_url(server_url))
         target = httpx.URL(url)
@@ -1350,8 +1096,6 @@ def on_mcp_origin(server_url: str, url: str) -> bool:
 
 
 def under_mcp_server_path(server_url: str, url: str) -> bool:
-    """Whether the path of `url` is the saved server's path or under it (the server's
-    credentials are bound to that path as a prefix). Both are on the same origin."""
     prefix = httpx.URL(schemas.normalize_mcp_url(server_url)).path.rstrip("/")
     path = httpx.URL(url).path
     return path == prefix or path.startswith(f"{prefix}/")
@@ -1362,7 +1106,6 @@ def _canonical_url(url: str | httpx.URL) -> str:
 
 
 def _sse_endpoint_key(user_uuid: UUID, server: str, endpoint: str) -> str:
-    # Hashes only: the endpoint's query names the server's session
     return auth_helpers.app_redis_key(
         f"mcp_sse_endpoint:{user_uuid}:{crypto.hash_token(server)}:"
         f"{crypto.hash_token(_canonical_url(endpoint))}"
@@ -1372,9 +1115,6 @@ def _sse_endpoint_key(user_uuid: UUID, server: str, endpoint: str) -> str:
 async def _record_sse_endpoint(
     user_uuid: UUID, server: str, stream_url: str, announced: str
 ) -> None:
-    """Keep the messages endpoint that an SSE server announced on a stream the user
-    opened (the legacy SSE transport), so that the user's requests to it, beside the
-    server's own path, take the server's credentials."""
     try:
         endpoint = httpx.URL(stream_url).join(announced.strip())
     except httpx.InvalidURL:
@@ -1395,8 +1135,6 @@ async def _announced_by_server(user_uuid: UUID, server: str, url: str) -> bool:
 
 
 def _first_sse_event(start: bytes) -> dict[str, str] | None:
-    """The event and data of the first event in the start of an SSE stream, or None
-    while no event is complete. Comments and empty blocks dispatch no event."""
     text = start.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
     *blocks, _incomplete = text.split("\n\n")
     for block in blocks:
@@ -1416,8 +1154,6 @@ def _first_sse_event(start: bytes) -> dict[str, str] | None:
 async def _watch_sse_announcement(
     chunks: AsyncIterator[bytes], record: Callable[[str], Awaitable[None]]
 ) -> AsyncIterator[bytes]:
-    """Pass an SSE stream through, recording the endpoint its first event announces
-    before that event reaches the browser."""
     start: bytes | None = b""
     async for chunk in chunks:
         if start is not None:
@@ -1433,9 +1169,6 @@ async def _watch_sse_announcement(
 
 
 class MCPProxyRequest(BaseModel):
-    """A request of the web app's MCP client: `server_url` names the server (the URL it is
-    saved under, compared normalized), and `url` is where the request goes, on that server."""
-
     model_config = {"extra": "ignore"}
 
     server_url: str = Field(max_length=2048)
@@ -1463,7 +1196,6 @@ class MCPProxyRequest(BaseModel):
 
 
 async def check_own_mcp_server(db: AsyncSession, user_uuid: UUID, url: str) -> None:
-    """Refuse users who may not bring connections the MCP servers they added."""
     if await app_helpers.may_add_connections(db, user_uuid):
         return
 
@@ -1485,8 +1217,6 @@ async def check_own_mcp_server(db: AsyncSession, user_uuid: UUID, url: str) -> N
 async def check_mcp_tool_calls(
     db: AsyncSession, user_uuid: UUID, data: MCPProxyRequest
 ) -> None:
-    """Refuse the tool calls in a proxied request that the user's roles do not grant on
-    the server it names."""
     calls = data.body if isinstance(data.body, list) else [data.body]
     tool_names = [
         call["params"]["name"]
@@ -1510,8 +1240,6 @@ async def check_mcp_tool_calls(
 async def _send_to_mcp_server(
     data: MCPProxyRequest, stored_headers: dict[str, str], authorization: str | None
 ) -> httpx.Response:
-    """Sends the browser's request with the protocol headers it carries, the headers the
-    user stored for the server and the Authorization of their sign-in."""
     headers = httpx.Headers(
         {
             name: value
@@ -1534,9 +1262,6 @@ async def _mcp_answer(
     server: str,
     record_endpoint: Callable[[str], Awaitable[None]] | None = None,
 ) -> Response:
-    """The server's answer as the browser gets it: its status, body and allowed headers.
-    A refusal of credentials asks the web app to sign the user in. With `record_endpoint`,
-    the messages endpoint that an event stream announces is recorded."""
     if response.status_code == status.HTTP_401_UNAUTHORIZED:
         await response.aclose()
         return JSONResponse(
@@ -1575,21 +1300,6 @@ async def mcp_proxy(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(mcp_oauth.web_user),
 ):
-    """Send a request of the web app's MCP client to a remote MCP server.
-
-    The request names the server by the URL it is saved under and goes to that server only:
-    its scheme, host and port, and its path or a path under it. The one other path is the
-    messages endpoint that the server announced on an event stream the user opened through
-    here (the SSE transport). The API adds what it keeps for the server: the user's stored
-    headers, and the access token of their sign-in, refreshed when it has expired or the
-    server refuses it. The browser's own headers reach the server only as far as the
-    protocol needs them. The server must be on the public internet (or one of
-    ALLOWED_MCP_HOSTNAMES or DEFAULT_MCP_SERVERS), redirects are not followed, and only
-    the protocol's headers of the answer reach the browser. When the server wants credentials the user has not
-    given, the answer is 401 with `auth_required` and the server's URL. Tool calls are
-    limited to the tools the user's roles grant. Only the web app reaches it, by its
-    session cookie.
-    """
     server = schemas.normalize_mcp_url(data.server_url)
     if not under_mcp_server_path(server, data.url) and not (
         data.method == "POST" and await _announced_by_server(user.uuid, server, data.url)
@@ -1602,7 +1312,6 @@ async def mcp_proxy(
     await check_mcp_tool_calls(db, user.uuid, data)
 
     stored_headers = await app_helpers.get_mcp_server_headers(db, user.uuid, server) or {}
-    # A server with a stored token (token auth) takes no sign-in
     token_auth = any(name.lower() == "authorization" for name in stored_headers)
     try:
         authorization = (
@@ -1625,7 +1334,6 @@ async def mcp_proxy(
             status_code=504, detail="MCP service request timed out"
         ) from e
     except httpx.HTTPError as e:
-        # The host only: a server's path or query may carry a credential
         logger.error(
             f"An error occurred while requesting the MCP server at "
             f"{urlsplit(server).hostname}: {type(e).__name__}"

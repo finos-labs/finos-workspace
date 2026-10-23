@@ -6,7 +6,6 @@ import {
 } from "~/lib/utils/widgetsSchemaValidation";
 import composed from "../../../mocks/widgets-schema.json";
 
-// The API's composition for the built-in types and a test plugin type, `test_chart`
 const schema = composed as unknown as ComposedWidgetsSchema;
 const ok = { name: "N", description: "D", endpoint: "/n", type: "markdown" };
 

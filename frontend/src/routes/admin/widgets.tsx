@@ -13,11 +13,6 @@ const CORE_DESCRIPTIONS: Record<string, string> = {
   pdf: "A PDF document",
 };
 
-/**
- * Widgets (docs/widget-plugins/DESIGN.md 8.1): the core widget types, listed apart from
- * the plugin widgets your organization enables, and, for superusers, the packages on the
- * server to review.
- */
 export default function AdminWidgets() {
   const { isEntityAdmin: isSuperuser } = useIsEntityAdmin();
   const tabs = [

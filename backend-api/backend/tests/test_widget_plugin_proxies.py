@@ -1,6 +1,3 @@
-"""Declarative proxies (docs/widget-plugins/SERVER-SIDE.md 3): the template rules, the
-arguments, the outbound guard, and calls to a real HTTPS server."""
-
 import json
 
 import pytest
@@ -14,7 +11,6 @@ from utilities import egress
 from utilities.egress import EgressRefused, blocked, check_destination, pinned_request
 
 NETWORK = ["https://api.example.org"]
-# Public addresses of the IANA-reserved example.com
 PUBLIC_V4 = "93.184.215.14"
 PUBLIC_V6 = "2606:2800:21f:cb07:6820:80da:af6b:8b2c"
 
@@ -95,12 +91,10 @@ class TestManifest:
     @pytest.mark.parametrize(
         "change",
         [
-            # Private hosts and IP addresses need a superuser's override
             {"server": {"network": ["https://localhost"], "proxies": []}},
             {"server": {"network": ["https://10.0.0.1"], "proxies": []}},
             {"server": {"network": ["http://api.example.org"], "proxies": []}},
             {"server": {"network": ["https://api.example.org/path"], "proxies": []}},
-            # Secrets are for proxies, declared once
             {"secrets": [{"name": "api_key", "purpose": "a"}, {"name": "api_key", "purpose": "b"}]},
         ],
         ids=str,
@@ -127,7 +121,6 @@ class TestBuild:
         call = build_call(make_proxy(), {"symbol": "BRK/B", "period": "week"}, self.SECRETS)
         assert call.method == "GET"
         assert call.url == "https://api.example.org/quotes/BRK%2FB?period=week&format=json"
-        # The size cap counts bytes received, so the answer is asked for uncompressed
         assert call.headers == {"Authorization": "Bearer s3cret", "Accept-Encoding": "identity"}
         assert call.body is None
 
@@ -302,7 +295,6 @@ class TestCall:
             (Answer(body=b"x" * 2048), "response_too_large"),
             (Answer(content_type="image/png", body=b"\x89PNG"), "unsupported_content_type"),
             (Answer(delay=3), "timeout"),
-            # Compressed bytes would get past the size cap
             (Answer(headers={"Content-Encoding": "gzip"}, body=b"\x1f\x8b"), "upstream_error"),
         ],
         ids=["5xx", "redirect", "too-large", "type", "slow", "compressed"],
@@ -317,7 +309,6 @@ class TestCall:
 
     @pytest.mark.asyncio
     async def test_the_name_is_resolved_once_and_the_connection_goes_where_it_was_checked(self, tmp_path, monkeypatch):
-        # A resolver that rebinds: the second answer would send the request elsewhere
         ca_file, cert, key = make_certificates(tmp_path, hostname="quotes.example.org")
         answers = [["127.0.0.1"], ["10.255.255.1"]]
         asked: list[str] = []
@@ -340,7 +331,6 @@ class TestCall:
             )
         assert result.body == {"price": 1}
         assert asked == ["quotes.example.org"]
-        # The certificate was checked against the name, at the address that was checked
         assert upstream.received[0].headers["host"] == f"quotes.example.org:{upstream.port}"
 
     @pytest.mark.asyncio

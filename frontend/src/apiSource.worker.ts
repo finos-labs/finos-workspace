@@ -10,9 +10,7 @@ import type { ComposedWidgetsSchema } from "./lib/utils/widgetsSchemaValidation"
 interface EventData {
   apiSources: Source[];
   extraHeaders?: Record<string, string>;
-  /** The worker cannot read the plugin registry, so the main thread sends its types */
   pluginVizTypes?: string[];
-  /** And the widgets.json schema in force for the user's entity */
   widgetsSchema: ComposedWidgetsSchema;
 }
 
@@ -20,7 +18,6 @@ type ResultT = { source: Source; result: ValidateBackend };
 
 const debouncedPartialResults = debounce(
   (data: ResultT[]) => {
-    // Send partial results with __partial flag
     self.postMessage(processWorkerResults(data, true));
   },
   500,
@@ -28,12 +25,11 @@ const debouncedPartialResults = debounce(
 );
 
 self.onmessage = async (e: MessageEvent<EventData>) => {
-  // Only the page that started the worker posts to it, which names no other origin
   if (e.origin && e.origin !== self.location.origin) return;
   const { apiSources, extraHeaders, pluginVizTypes = [], widgetsSchema } = e.data;
 
   const results: ResultT[] = [];
-  const sliceSize = Math.ceil(apiSources.length / 5); // Adjust the slice size as needed
+  const sliceSize = Math.ceil(apiSources.length / 5);
 
   const promises = apiSources.map(async (source) => {
     let entry: ResultT;
@@ -60,6 +56,6 @@ self.onmessage = async (e: MessageEvent<EventData>) => {
   });
 
   const finalResults = await Promise.all(promises);
-  debouncedPartialResults.cancel(); // Cancel any pending partial results
+  debouncedPartialResults.cancel();
   self.postMessage(processWorkerResults(finalResults));
 };

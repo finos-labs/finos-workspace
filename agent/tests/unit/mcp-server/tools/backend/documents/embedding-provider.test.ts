@@ -23,7 +23,6 @@ interface Request {
   body: { model: string; input: string[]; input_type?: string; truncate?: string };
 }
 
-/** Answers every embeddings request with one 3-number vector per input, and records it. */
 function recordRequests(): Request[] {
   const seen: Request[] = [];
   globalThis.fetch = fn(async (input: string | URL | Request, init?: RequestInit) => {

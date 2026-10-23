@@ -3,16 +3,9 @@ import { useShallowMcpToolsStore } from "~/lib/state/mcpTools";
 import type { AppMcpServer } from "~/types/appMcpServer";
 
 interface McpServerIdentity {
-  /** Custom backend source id */
   sourceId?: string;
 }
 
-/**
- * Shared store wiring for a single MCP server declared by a backend. Both the
- * MCP hover popover and the app details modal read connection state and save
- * tokens through here so the logic lives in one place. A token is write-only: the
- * API keeps it encrypted and only says whether one is saved.
- */
 export function useMcpServerConnection(
   mcpServer: AppMcpServer | undefined,
   identity: McpServerIdentity,
@@ -57,9 +50,6 @@ export function useMcpServerConnection(
       if (!mcpServer) return;
       const customHeaders = { Authorization: `Bearer ${token}` };
       if (existingServer) {
-        // Auto-registration leaves token-auth servers disabled until a token
-        // exists, so saving one is what actually brings the server online. A
-        // connected server reconnects with the new token once it is saved.
         updateServer(
           existingServer.id,
           { customHeaders, authType: "token", enabled: true },
@@ -82,7 +72,6 @@ export function useMcpServerConnection(
     [existingServer, updateServer, addServer, mcpServer, sourceId],
   );
 
-  // Without its token a token-auth server cannot connect, so it is turned off too
   const removeToken = useCallback(() => {
     if (!existingServer) return;
     updateServer(existingServer.id, {

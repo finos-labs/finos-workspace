@@ -1,6 +1,3 @@
-# Local development. Run these in this folder (`cd local`), or from the repo
-# root with `make -C local <command>`. LOCAL_SETUP.md explains the setup.
-
 COMPOSE := docker compose
 s ?= backend
 

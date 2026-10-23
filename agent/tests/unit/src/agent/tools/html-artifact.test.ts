@@ -7,8 +7,6 @@ import {
 import type { CopilotArtifact, SSEEvent } from "../../../../../src/protocol/types.ts";
 
 describe("runHtmlArtifact", () => {
-  // This server has no diagram tool of its own, so the description names none: a description that
-  // named one would have the model call a tool that is not there.
   it("sends diagrams to a diagram tool only when one is listed", () => {
     expect(htmlArtifactDescription).toContain("flowcharts");
     expect(htmlArtifactDescription).toContain("if one is listed");

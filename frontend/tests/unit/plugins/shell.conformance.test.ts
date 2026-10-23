@@ -1,19 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import shellSource from "~/plugins/shell/shell.js?raw";
 
-/**
- * The conformance suite of the guest contract (docs/widget-plugins/GUEST-CONTRACT.md 8),
- * on the shell itself: `shell.js` runs as the frame runs it, with this test as the host
- * on the other end of its port. What only a real frame can show (the sandbox, the policy,
- * the host's checks of what arrives) is in the Playwright specs.
- *
- * The plugin modules are written here and record what they see on
- * `globalThis.conformance`. The shell's one `import(url)` of the bundle's Blob URL becomes
- * an import of a `data:` URL made from the same text: Vitest's module runner does not let
- * code built with `new Function` call `import()` itself. The frame's own import runs in
- * the Playwright specs.
- */
-
 type Posted = { t: string; [key: string]: unknown };
 
 declare global {
@@ -21,12 +8,10 @@ declare global {
   var conformance: Record<string, any>;
 }
 
-/** Stands in for the frame's Blob: the shell builds one from the entry's text. */
 class EntryBlob {
   constructor(readonly parts: string[]) {}
 }
 
-/** Stands in for the frame's URL: an object URL is a `data:` URL of the entry's text. */
 const EntryURL = Object.assign(class extends URL {}, {
   createObjectURL: (blob: unknown) =>
     `data:text/javascript;base64,${Buffer.from((blob as EntryBlob).parts.join("")).toString("base64")}`,
@@ -44,7 +29,6 @@ function until(check: () => boolean, ms = 2000) {
   return vi.waitFor(() => expect(check()).toBe(true), { timeout: ms, interval: 5 });
 }
 
-/** Stands in for the browser's Worker: records how it was started and what it was sent. */
 class FakeWorker extends EventTarget {
   static started: FakeWorker[] = [];
   posted: { message: unknown; transfer: unknown[] }[] = [];
@@ -64,7 +48,6 @@ class FakeWorker extends EventTarget {
   }
 }
 
-/** Object URLs of the frame's own scope, for the workers it starts. */
 function workerScope() {
   const texts = new Map<string, string>();
   const revoked: string[] = [];
@@ -94,7 +77,6 @@ function workerScope() {
   };
 }
 
-/** One frame: the shell running against a fake window, and the port the host holds. */
 async function startShell(globals: Record<string, unknown> = {}) {
   const root = document.createElement("div");
   root.id = "root";
@@ -129,7 +111,6 @@ async function startShell(globals: Record<string, unknown> = {}) {
     importBundle,
   );
   expect(parent.postMessage).toHaveBeenCalledWith({ type: "ws-shell-ready" }, "*");
-  // The port arrives from the parent only
   listeners.get("message")?.({
     source: parent,
     data: { type: "ws-shell-port" },
@@ -148,7 +129,6 @@ async function startShell(globals: Record<string, unknown> = {}) {
     posted,
     deliver,
     window: fakeWindow,
-    /** Sends the bundle and waits until it loaded or failed. */
     async load(entry: string, options: { state?: object; writable?: string[] } = {}) {
       deliver({
         t: "load",
@@ -258,7 +238,6 @@ describe("the guest contract, spec cases", () => {
     );
     shell.deliver({ t: "push", traits: { a: 10, b: 2 } });
     conformance.model.set("local", "x");
-    // Callbacks get no arguments; they read with get
     expect(conformance.order).toEqual(["a=10/0", 'local="x"/0']);
   });
 
@@ -319,7 +298,6 @@ describe("the guest contract, spec cases", () => {
     conformance.model.set("params", { region: "apac" });
     conformance.model.set("frameLocal", true);
     conformance.model.save_changes();
-    // A trait with no binding stays in the frame
     expect(shell.posted("write")).toEqual([
       { t: "write", traits: { params: { region: "apac" } } },
     ]);
@@ -443,7 +421,6 @@ describe("the guest contract, spec cases", () => {
         { id: "call-1", kind: "anywidget-command-response", response: "shown" },
         0,
       ]);
-      // Anything else sent is dropped, and counted as a log line
       expect(shell.posted("invoke")).toHaveLength(1);
       expect(shell.posted("log").map((m) => m.text)).toContain(
         "model.send carries only anywidget commands; the message was dropped",
@@ -512,7 +489,6 @@ describe("workers the plugin starts", () => {
     return { ...scope, shell, Worker, URLs };
   }
 
-  /** The port the shell handed the worker, and what arrives on it as the worker. */
   function handedPort(worker: FakeWorker) {
     const [first] = worker.posted;
     expect(first.message).toEqual({ type: "ws-worker-port" });
@@ -547,9 +523,7 @@ describe("workers the plugin starts", () => {
     const port = handedPort(FakeWorker.started[0]);
     port.postMessage({ t: "started" });
     await until(() => revoked.includes(own));
-    // Its own script goes with it
     expect(revoked).toContain(FakeWorker.started[0].url);
-    // An URL no worker is loading is revoked at once
     const other = URLs.createObjectURL(new EntryBlob(["y"]));
     URLs.revokeObjectURL(other);
     expect(revoked).toContain(other);
@@ -619,7 +593,6 @@ describe("workers the plugin starts", () => {
     });
     expect(plain).toContain("(function reportWorkers(");
     expect(plain.endsWith('\npostMessage("ran")')).toBe(true);
-    // A strict script stays strict: the directive still comes first
     expect(strict.startsWith('"use strict";(function reportWorkers(')).toBe(true);
     for (const worker of FakeWorker.started) handedPort(worker).close();
   });
@@ -635,7 +608,6 @@ describe("workers the plugin starts", () => {
   });
 
   describe("inside the worker", () => {
-    /** Runs the reporter as a worker does, against a fake worker scope. */
     async function inWorker() {
       const { Worker, URLs, texts } = await frame();
       new Worker(URLs.createObjectURL(new EntryBlob(["x"])));
@@ -667,7 +639,6 @@ describe("workers the plugin starts", () => {
       const received: unknown[] = [];
       channel.port1.onmessage = (event) => received.push(event.data);
       const stop = vi.fn();
-      // A message the plugin forged does not hand over a port
       listeners.get("message")?.({
         isTrusted: false,
         data: { type: "ws-worker-port" },
@@ -681,7 +652,6 @@ describe("workers the plugin starts", () => {
         ports: [channel.port2],
         stopImmediatePropagation: stop,
       });
-      // The plugin's listeners never see it, and the reporter stops listening
       expect(stop).toHaveBeenCalledOnce();
       expect(listeners.has("message")).toBe(false);
       violation("https://late.example.org/x");

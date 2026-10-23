@@ -54,11 +54,9 @@ describe("autoRegisterMcpForSource authType propagation", () => {
           tabs: {},
           mcpServers: [
             { name: "Reports", url: "https://custom.example.com/mcp" },
-            // Another server at the same URL is still another server
             { name: "Admin", url: "https://custom.example.com/mcp" },
           ],
         },
-        // The same server declared by a second app
         {
           name: "Two",
           tabs: {},
@@ -78,12 +76,6 @@ describe("autoRegisterMcpForSource authType propagation", () => {
   });
 });
 
-/**
- * A token-auth server has no OAuth fallback: `useMcp` fails the connection
- * outright on a 401 instead of prompting. Auto-connecting one before the user
- * has supplied a token therefore guarantees a failed server in the AI tab, so
- * registration has to leave it disabled until a token exists.
- */
 describe("token-auth servers are not auto-connected without a token", () => {
   function makeSource(
     authType: "oauth" | "token" | undefined,

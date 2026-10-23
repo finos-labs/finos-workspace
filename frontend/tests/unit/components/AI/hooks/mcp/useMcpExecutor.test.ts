@@ -1,17 +1,9 @@
-/**
- * Tests for useMcpExecutor hook
- *
- * Verifies that MCP tool execution errors are emitted in the correct
- * CopilotDataT format with proper error_type and content fields.
- */
-
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type CopilotDataT, CopilotErrorType } from "~/lib/state/copilot";
 import type { McpConnection, McpServer } from "~/lib/state/mcpTools";
 import { useMcpToolsStore } from "~/lib/state/mcpTools";
 
-// Mock sonner toast
 vi.mock("sonner", () => ({
   toast: {
     info: vi.fn(),
@@ -19,12 +11,10 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Mock widget utils
 vi.mock("~/lib/utils/widget", () => ({
   getAllWidgets: vi.fn().mockReturnValue([]),
 }));
 
-// Mock API calls
 vi.mock("~/api/auth.api", () => ({
   postMCPServers: vi.fn().mockResolvedValue({}),
 }));
@@ -62,11 +52,6 @@ function setupStore(server: McpServer, connection?: McpConnection) {
   });
 }
 
-/**
- * Helper to parse the error payload returned by the executor.
- * The executor returns CopilotDataT[] where each item's content is a
- * JSON-stringified object with `error_type` and `content` fields.
- */
 function parseErrorPayload(result: CopilotDataT[]) {
   expect(result).toHaveLength(1);
   const data = result[0];
@@ -87,16 +72,14 @@ describe("useMcpExecutor", () => {
     });
   });
 
-  // Dynamically import so mocks are in place
   async function getExecutor() {
     const { useMcpExecutor } = await import("~/components/AI/hooks/mcp/useMcpExecutor");
     const { result } = renderHook(() => useMcpExecutor());
-    return result.current; // executeAgentTool function
+    return result.current;
   }
 
   describe("error emission format", () => {
     it("should emit error with CopilotErrorType.UNEXPECTED when server is not found", async () => {
-      // No server in store
       const executeAgentTool = await getExecutor();
 
       const result = await executeAgentTool("server-1", "TestServer_some_tool", {
@@ -142,9 +125,6 @@ describe("useMcpExecutor", () => {
     });
 
     it("should emit error when no MCP connection exists for server", async () => {
-      // Server exists but no connection in registry.
-      // getServerById derives `connected` from connection state, so with no
-      // connection the server is treated as "not connected".
       setupStore(createMockServer());
       const executeAgentTool = await getExecutor();
 
@@ -156,8 +136,6 @@ describe("useMcpExecutor", () => {
     });
 
     it("should emit error when MCP connection is not in ready state", async () => {
-      // getServerById derives `connected` from connection.state === "ready",
-      // so a "connecting" state means server.connected is false.
       const connection = createMockConnection({ state: "connecting" });
       setupStore(createMockServer(), connection);
       const executeAgentTool = await getExecutor();
@@ -221,13 +199,11 @@ describe("useMcpExecutor", () => {
 
       const result = await executeAgentTool("server-1", "TestServer_some_tool", {});
 
-      // Verify the raw structure matches CopilotDataT
       expect(result).toHaveLength(1);
       expect(result[0]).toHaveProperty("items");
       expect(result[0].items).toHaveLength(1);
       expect(result[0].items[0]).toHaveProperty("content");
 
-      // Content should be valid JSON
       const parsed = JSON.parse((result[0].items[0] as { content: string }).content);
       expect(parsed).toHaveProperty("error_type");
       expect(parsed).toHaveProperty("content");
@@ -258,7 +234,6 @@ describe("useMcpExecutor", () => {
 
       const result = await executeAgentTool("server-1", "TestServer_some_tool", {});
 
-      // Should succeed after retries, not return error
       expect((result[0].items[0] as { content: string }).content).toContain("success");
       expect(callTool).toHaveBeenCalledTimes(3);
     });
@@ -295,7 +270,6 @@ describe("useMcpExecutor", () => {
         ticker: "INVALID",
       });
 
-      // Should pass through as content, not throw
       const content = (result[0].items[0] as { content: string }).content;
       const parsed = JSON.parse(content);
       expect(parsed.isError).toBe(true);
@@ -354,10 +328,8 @@ describe("useMcpExecutor", () => {
 
       const result = await executeAgentTool("server-1", "TestServer_some_tool", {});
 
-      // Should be treated as success — content extracted normally
       const content = (result[0].items[0] as { content: string }).content;
       expect(content).toContain("success data");
-      // Should NOT contain isError in the output
       expect(content).not.toContain("isError");
     });
 
@@ -372,7 +344,6 @@ describe("useMcpExecutor", () => {
 
       const result = await executeAgentTool("server-1", "TestServer_some_tool", {});
 
-      // Content should be extracted from text items, not raw JSON
       const content = (result[0].items[0] as { content: string }).content;
       expect(content).toContain("normal tool output");
       expect(content).not.toContain("isError");

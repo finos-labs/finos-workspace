@@ -14,7 +14,6 @@ import {
 import type { RoleSettings, RoleT } from "~/components/AdminRoles/types";
 import { required } from "../mocks";
 
-/** What a role lets its members do; a null limit is no limit. */
 const SETTINGS: RoleSettings = {
   sharing: "receive",
   copilot_calls_day: 100,

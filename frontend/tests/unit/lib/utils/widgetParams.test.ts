@@ -97,7 +97,6 @@ describe("Widget Params Utility Functions", () => {
         params: "invalid_params",
       };
       const result = createParamDefs(malformed(widget));
-      // ParamsSchema preprocess converts non-arrays to []
       expect(result).toEqual([]);
     });
 
@@ -171,7 +170,6 @@ describe("Widget Params Utility Functions", () => {
         params: [{ paramName: "empty", type: "text" }],
       } as unknown as WidgetT;
       const result = createWidgetInitParams(widget);
-      // newParamDef sets value to null when undefined, so null is included in result
       expect(result).toEqual({ empty: null });
     });
   });

@@ -34,9 +34,7 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("usehooks-ts", () => ({
-  useUpdateEffect: (_effect: () => void, _deps: unknown[]) => {
-    // Simple implementation that calls effect when deps change
-  },
+  useUpdateEffect: (_effect: () => void, _deps: unknown[]) => {},
 }));
 
 vi.mock("~/lib/state/app", () => ({
@@ -92,7 +90,6 @@ vi.mock("~/components/LayoutAuth/Skeleton/SettingsLayout", () => ({
               disabled={tab.disabled}
               data-value={tab.id}
               onClick={() => {
-                // Simulate tab change by calling setSearchParams if available
                 if (typeof window !== "undefined") {
                   const event = new CustomEvent("tabchange", {
                     detail: { tab: tab.id },
@@ -200,7 +197,6 @@ describe("Settings", () => {
       const layoutTab = screen.getByRole("tab", { name: /layout/i });
       await user.click(layoutTab);
 
-      // Tab should be clickable and not throw errors
       expect(layoutTab).toBeInTheDocument();
     });
 
@@ -211,7 +207,6 @@ describe("Settings", () => {
       const widgetTab = screen.getByRole("tab", { name: /widget/i });
       await user.click(widgetTab);
 
-      // Tab should be clickable and not throw errors
       expect(widgetTab).toBeInTheDocument();
     });
 
@@ -222,7 +217,6 @@ describe("Settings", () => {
       const advancedTab = screen.getByRole("tab", { name: /advanced/i });
       await user.click(advancedTab);
 
-      // Tab should be clickable and not throw errors
       expect(advancedTab).toBeInTheDocument();
     });
 
@@ -233,7 +227,6 @@ describe("Settings", () => {
       const securityTab = screen.getByRole("tab", { name: /security/i });
       await user.click(securityTab);
 
-      // Tab should be clickable and not disabled
       expect(securityTab).not.toBeDisabled();
     });
   });
@@ -295,7 +288,6 @@ describe("Settings Tab Accessibility", () => {
     const generalTab = screen.getByRole("tab", { name: /general/i });
     generalTab.focus();
 
-    // Simply verify the tab can receive focus
     expect(document.activeElement).toBe(generalTab);
   });
 });

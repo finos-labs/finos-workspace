@@ -31,16 +31,13 @@ import {
   MultipleCopilotDataItemSchema,
 } from "../state/copilot";
 
-/** The built-in widgets every entity can add (the widget search shows them under "All"). */
 export const CORE_WIDGET_IDS = ["navigation_bar", "iframe", "html"];
 
 // biome-ignore format: off
 export type WidgetsIds = Extract<keyof typeof WIDGETS, string> | `${string}-${number | string}`;
 
-/** The built-in widget catalog (`lib/widgets.json`), keyed by widget id. */
 const WIDGET_CATALOG = WIDGETS as unknown as Record<string, WidgetJsonT>;
 
-/** A widget of the built-in catalog (`lib/widgets.json`), if there is one with this id. */
 export function getCatalogWidget(
   widgetId: string | undefined,
 ): WidgetJsonT | undefined {
@@ -158,7 +155,6 @@ export function convertAdvancedBackend(source: Source): WidgetT[] {
   const pluginTypes = getPluginVizTypes();
   return Object.keys(widgets).flatMap((widgetId) => {
     const widget = widgets[widgetId];
-    // A type nothing renders for this user stays out of the catalog (DESIGN.md 5)
     if (!isRenderableVizType(widget.type, pluginTypes)) return [];
     const newWidget = {
       ...cloneDeep({ ...widget }),
@@ -257,20 +253,12 @@ export function getAllWidgets(
   return cloneDeep([...result]);
 }
 
-/**
- * Converts widgetId to clean widgetId because some widgetIds have the widgetId as suffix and then the uuid
- * e.g., files will have file- as prefix so they will be file-uuid
- * iframe saved to backend will have iframe- as prefix so they will be iframe-uuid
- * This function removes the prefix and returns the cleaned widgetId
- * @param widgetId
- */
 export function getCleanWidgetId(
   widgetId: string,
   connectionType?: WidgetT["connectionType"],
 ) {
   if (connectionType === "advanced-backend" || connectionType === "plugin")
     return widgetId;
-  // Anchored: an id that merely contains one of these words is not one of these widgets
   return widgetId
     ?.replace(/^shared_file-.*/, "file")
     ?.replace(/^file-.*/, "file")
@@ -282,20 +270,10 @@ const WIDGET_ID_CLEANING = ["iframe-", "shared_file-", "file-", "html-"];
 
 const WIDGET_ID_CLEANING_REGEX = new RegExp(`^(${WIDGET_ID_CLEANING.join("|")})`);
 
-/**
- * Removes the prefix from the widgetId, i.e., if widgetId is file-uuid, it will return uuid
- * @param widgetId
- * @returns widgetId without the prefix
- */
 export function getUUIDFromWidgetId(widgetId: string) {
   return widgetId.replace(WIDGET_ID_CLEANING_REGEX, "");
 }
 
-/**
- * Processes a widgetId to extract both the UUID and the clean widget ID.
- * @param widgetId - The original widget ID to process.
- * @returns An object containing the UUID and clean widget ID.
- */
 export function processWidgetId(
   widgetId: string,
   connectionType?: WidgetT["connectionType"],
@@ -314,16 +292,6 @@ export function processWidgetId(
 
 export const METADATA_WIDGETS = ["websites", "website", "html"];
 
-/**
- * Handles the deletion of a widget based on its type and ID.
- * @param type - The type of widget to delete
- * @param id - The ID of the widget
- * @param parent - Optional parent flag for database types
- * @param backendConnector - The backend connector store instance
- * @param deleteWidgets - Function to delete widgets
- * @param deleteWidgetsConnection - Function to delete widget connections
- * @param setDatabases - Function to set databases
- */
 export async function handleWidgetDeletion({
   type,
   id,
@@ -388,7 +356,6 @@ export async function handleMultiFileResponse(
         const item = parsedResponse[index];
         let fileResponse: FileResponse | null = null;
         if ("data_format" in item && item.data_format?.data_type === "pdf") {
-          // Base64 encoded PDF
           if ("content" in item && item.content) {
             const byteArray = base64ToUint8Array(item.content);
             fileResponse = {
@@ -436,7 +403,6 @@ export async function handleFileResponse(
       "data_format" in parsedResponse &&
       parsedResponse.data_format?.data_type === "pdf"
     ) {
-      // Base64 encoded PDF
       if ("content" in parsedResponse && parsedResponse.content) {
         const byteArray = base64ToUint8Array(parsedResponse.content);
         return {
@@ -447,7 +413,6 @@ export async function handleFileResponse(
         };
       }
 
-      // URL to PDF
       if ("url" in parsedResponse && parsedResponse.url) {
         const blob = await fetch(parsedResponse.url).then((res) => res.blob());
         return {
@@ -458,7 +423,6 @@ export async function handleFileResponse(
       throw new Error("Invalid data");
     }
   }
-  // PDF file blob
   if (contentType === "application/pdf") {
     const blob = await response.blob();
     return {
@@ -473,8 +437,6 @@ export async function handleFileResponse(
 }
 
 function base64ToUint8Array(base64: string) {
-  // Create a buffer directly from the decoded base64 string
-  // This approach avoids potential ArrayBuffer detachment issues
   const binaryString = atob(base64);
   const bytes = new Uint8Array(binaryString.length);
 

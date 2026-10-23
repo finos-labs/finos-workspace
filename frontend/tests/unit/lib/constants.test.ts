@@ -1,15 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { mockConfig } from "../../mocks/runtimeConfig";
 
-// getDefaultCopilot uses a module-level cache, so we need a fresh import per test.
-// We use dynamic import + vi.resetModules to bust the cache.
-
 describe("getDefaultCopilot", () => {
   let getDefaultCopilot: typeof import("~/lib/constants").getDefaultCopilot;
 
   beforeEach(async () => {
     vi.resetModules();
-    // Re-apply the runtime config mock after module reset
     vi.doMock("~/lib/runtimeConfig", () => ({
       getConfig: () => mockConfig,
       _resetConfig: vi.fn(),

@@ -10,14 +10,6 @@ type UseCopilotPromptHistoryArgs = {
   setCompletion: (value: string) => void;
 };
 
-/**
- * Shell-style prompt history for the copilot textarea: ArrowUp recalls older
- * prompts when the caret is on the first line, ArrowDown walks back toward the
- * newest and restores the in-progress draft once you go past it.
- *
- * Navigation state lives in refs so cycling never triggers a re-render — only
- * the existing `setPrompt` path does, exactly like a normal keystroke.
- */
 export function useCopilotPromptHistory({
   textAreaRef,
   questionsHistory,
@@ -25,13 +17,12 @@ export function useCopilotPromptHistory({
   setPrompt,
   setCompletion,
 }: UseCopilotPromptHistoryArgs) {
-  // null = at the bottom (live draft); otherwise an index into questionsHistory.
   const cursorRef = useRef<number | null>(null);
   const draftRef = useRef("");
 
   const applyEntry = useCallbackRef((text: string) => {
     setCompletion("");
-    setPrompt(text.replace(/\n+$/, "")); // trim trailing newlines
+    setPrompt(text.replace(/\n+$/, ""));
     queueMicrotask(() => {
       const el = textAreaRef.current;
       if (!el) return;
@@ -49,7 +40,7 @@ export function useCopilotPromptHistory({
       if (!el) return false;
 
       const { selectionStart, selectionEnd, value } = el;
-      if (selectionStart !== selectionEnd) return false; // active selection
+      if (selectionStart !== selectionEnd) return false;
 
       if (e.key === "ArrowUp") {
         const onFirstLine = value.lastIndexOf("\n", selectionStart - 1) === -1;
@@ -60,7 +51,7 @@ export function useCopilotPromptHistory({
           draftRef.current = currentPrompt;
           cursorRef.current = questionsHistory.length - 1;
         } else if (cursorRef.current === 0) {
-          e.preventDefault(); // already oldest — consume so the caret stays put
+          e.preventDefault();
           return true;
         } else {
           cursorRef.current -= 1;
@@ -71,8 +62,7 @@ export function useCopilotPromptHistory({
         return true;
       }
 
-      // ArrowDown
-      if (cursorRef.current === null) return false; // not navigating history
+      if (cursorRef.current === null) return false;
       const onLastLine = value.indexOf("\n", selectionStart) === -1;
       if (!onLastLine) return false;
 

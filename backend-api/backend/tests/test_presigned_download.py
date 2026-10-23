@@ -1,10 +1,3 @@
-"""A pre-signed file URL works server to server.
-
-The Copilot hands an attached file's pre-signed URL to the agent, which fetches it from its
-own server: no Origin, no client header, no cookie. The URL's signature and expiry are its
-whole credential, so the download needs nothing else, and refuses a wrong signature.
-"""
-
 import io
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
@@ -21,7 +14,6 @@ CONTENT = b"%PDF-1.4 a document for the agent"
 
 @pytest.fixture
 async def stored_file(auth_client, db_session):
-    """A file of the test user's in the folder storage."""
     name = f"{uuid4()}.pdf"
     bucket = settings.get_file_bucket()
     assert await FileStorage.upload_file(io.BytesIO(CONTENT), bucket, name)
@@ -51,7 +43,6 @@ async def _presigned_path(auth_client, name: str) -> str:
 
 @pytest.fixture
 async def agent(client):
-    """A server that fetches a URL: its configured origin, no client header, no cookie."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url=TEST_BASE_URL, headers={"Origin": TEST_ORIGIN}
     ) as agent:

@@ -3,7 +3,6 @@ import { expect } from "expect";
 import { createLimits, type LimitsOptions } from "../../../../src/auth/limits.ts";
 import { createLocalStore } from "../../../../src/lib/store.ts";
 
-/** Limits over a store that keeps its counts in this process, with time the test moves. */
 function limitsWith(options: Omit<LimitsOptions, "store">, now?: () => number) {
   return createLimits({ store: createLocalStore(now), ...options });
 }
@@ -55,14 +54,12 @@ describe("the agent as a whole", () => {
     expect(await limits.admit("alice")).toEqual({ ok: false, reason: "user" });
   });
 
-  // A user who is at their own limit must not go on holding one of the agent's places.
   it("gives the agent's place back when it is the user's limit that refuses the query", async () => {
     const limits = limitsWith({ maxConcurrent: 1, maxTotal: 2 });
     const alice = await limits.admit("alice");
     expect(alice.ok).toBe(true);
     expect(await limits.admit("alice")).toEqual({ ok: false, reason: "user" });
 
-    // One place of the two is Alice's; the refused query gave the other back, so Bob and then Carol fit.
     expect((await limits.admit("bob")).ok).toBe(true);
     expect(await limits.admit("carol")).toEqual({ ok: false, reason: "server" });
   });
@@ -78,7 +75,6 @@ describe("the agent as a whole", () => {
     expect((await limits.admit("carol")).ok).toBe(false);
   });
 
-  // A shutdown waits for the queries this replica is serving, not for another replica's.
   it("counts what this replica is running, which is what a shutdown waits for", async () => {
     const limits = limitsWith({ maxConcurrent: 5, maxTotal: 5 });
     expect(limits.running()).toBe(0);
@@ -95,10 +91,10 @@ describe("the agent as a whole", () => {
 describe("requests of a turn", () => {
   it("allows a turn the requests it may have, and no more", async () => {
     const limits = limitsWith({ maxConcurrent: 5, maxRequestsPerTurn: 3 });
-    await limits.startTurn("alice:c1"); // request 1
-    expect(await limits.noteRequest("alice:c1")).toBe(true); // 2
-    expect(await limits.noteRequest("alice:c1")).toBe(true); // 3
-    expect(await limits.noteRequest("alice:c1")).toBe(false); // 4
+    await limits.startTurn("alice:c1");
+    expect(await limits.noteRequest("alice:c1")).toBe(true);
+    expect(await limits.noteRequest("alice:c1")).toBe(true);
+    expect(await limits.noteRequest("alice:c1")).toBe(false);
   });
 
   it("starts the count again with a new turn", async () => {
@@ -176,7 +172,6 @@ describe("helper calls", () => {
   it("are kept for a bounded number of users", async () => {
     const limits = limitsWith({ maxConcurrent: 1, maxHelperCallsPerMinute: 1 });
     for (let i = 0; i < 25_000; i++) await limits.helperCall(`user-${i}`);
-    // The first users were forgotten, so they may call again; the last were not.
     expect(await limits.helperCall("user-0")).toBe(true);
     expect(await limits.helperCall("user-24999")).toBe(false);
   });
@@ -210,7 +205,7 @@ describe("requests that are not requests", () => {
     await limits.strike("alice");
     for (let i = 0; i < 100; i++) {
       now += 500;
-      await limits.strike("alice"); // sent anyway: not read, and not counted again
+      await limits.strike("alice");
     }
     now = 60_001;
     expect(await limits.struck("alice")).toBe(false);

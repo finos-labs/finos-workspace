@@ -1,11 +1,3 @@
-"""A plugin with a proxy to a keyed HTTPS service, and that service, for the tests of the
-server side (docs/widget-plugins/SERVER-SIDE.md 3 and 4).
-
-The service listens on 127.0.0.1 under a public-looking name the tests resolve to it, with
-a certificate for that name signed by a CA made for the test. A private address is refused
-unless a superuser's server network override confirms ``private-host``.
-"""
-
 import pytest
 
 from tests.fixtures.upstream import Answer, Upstream, make_certificates
@@ -45,7 +37,6 @@ def proxy_manifest(port: int, **changes) -> dict:
 
 @pytest.fixture
 async def upstream(tmp_path, monkeypatch):
-    """The quote service, its CA trusted by the proxies, and its name resolved to it."""
     ca_file, cert, key = make_certificates(tmp_path, hostname=HOST)
     monkeypatch.setattr(settings, "WIDGET_PLUGIN_PROXY_CA_FILE", str(ca_file))
 
@@ -70,7 +61,6 @@ async def call(client, args: dict, *, widget: str = "chart", path: str = CALL):
 
 
 async def ready(superuser, plugins_dir, port: int, *, secret: bool = True, private: bool = True, **changes):
-    """Discover, approve and enable the plugin, and grant it to the admin and the test user."""
     write_package(plugins_dir, proxy_manifest(port, **changes))
     await rescan(superuser)
     await approve(superuser)

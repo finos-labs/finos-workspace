@@ -52,7 +52,6 @@ import {
 import CompareTermsParam from "./CompareTermsParam";
 import { TabsParam } from "./TabsParam";
 
-/** A form of the widget, opened from a button named by the form's label. */
 export function FormParamDialog({ formParamDef }: { formParamDef: ParamDefT<"form"> }) {
   return (
     <DropdownMenu>
@@ -76,7 +75,6 @@ type ParamsT = Record<string, StoredParamValue>;
 
 type ParamsStateT = { localParams: ParamsT };
 
-/** What a select holds of a parameter's value: the values themselves, none empty. */
 function toSelected(
   value: StoredParamValue | undefined,
 ): string | number | boolean | (string | number | boolean)[] | undefined {
@@ -96,7 +94,6 @@ function replaceFailed(
 
 export function useWidgetParamsPositions(enabled = true) {
   const { widget, updateWidget } = useWidgetContext();
-  // The option endpoints are called with the source's credentials, read when they run
   const credentials = useSourceCredentials(widget.sourceId, widget.endpoint?.url);
   const { setWidgetCopilotDraftParams, beginWidgetCopilotExecution } =
     useShallowCopilotDataStore((s) => ({
@@ -159,7 +156,6 @@ export function useWidgetParamsPositions(enabled = true) {
           formParams.push(param);
           continue;
         }
-        // Collect tabs params separately - they render in their own row below navbar
         if (param?.type === "tabs") {
           tabsParams.push(param);
           hasParams = true;
@@ -170,7 +166,6 @@ export function useWidgetParamsPositions(enabled = true) {
           if (param?.show && param?.type === "endpoint")
             endpointParams[param.paramName] = param;
 
-          // Group parameters by their row number (default to 0 if not specified)
           const rowNumber = param.row ?? 0;
           if (!paramsGroupedByRow[rowNumber]) {
             paramsGroupedByRow[rowNumber] = [];
@@ -181,7 +176,6 @@ export function useWidgetParamsPositions(enabled = true) {
         }
       }
 
-      // Ensure all rows up to maxRows are present
       for (let i = 0; i <= maxRows; i++)
         !paramsGroupedByRow[i] && (paramsGroupedByRow[i] = []);
 
@@ -242,8 +236,6 @@ export function useWidgetParamsPositions(enabled = true) {
     (key: string, value: StoredParamValue) => {
       const updatedGroupedParam = updateGroupedParam(key, value);
 
-      // A param whose options depend on this one (the feeds of a provider) can hold a value
-      // that the new value does not offer. It takes the offered one before the widget loads.
       const hasDependents =
         !updatedGroupedParam &&
         getUngroupedDependentEndpointParams(widget, key).length > 0;
@@ -371,9 +363,6 @@ export function useWidgetParamsPositions(enabled = true) {
     );
   }, [endpointQueries, endpointParams, invalidResponseRef]);
 
-  // A value saved with another provider (a dashboard from before, a backend whose feeds
-  // changed) that the options no longer offer would make the widget load nothing: take the
-  // offered one. Params in a group follow their group.
   useEffect(() => {
     if (!enabled || widget.runButton) return;
 
@@ -466,7 +455,6 @@ export function useWidgetParamsPositions(enabled = true) {
     invalidResponseRef,
   ]);
 
-  // Return the row 0 parameters to be used in elementRightNextToTitle
   return useMemo(() => {
     const [row0, ...rowsBelow] = rowElements;
 
@@ -486,7 +474,6 @@ export function useWidgetParamsPositions(enabled = true) {
       </div>
     );
 
-    // Render tabs params in their own row below the navbar
     const renderTabsRow = tabRowElements ? (
       <div className="flex items-center gap-2 px-2.5 py-1">{tabRowElements}</div>
     ) : null;
@@ -600,7 +587,6 @@ export const RenderParamsForRow = memo(
           {typeof description === "string" && (
             <div className="body-xs-regular pt-2 break-words max-h-[296px] overflow-y-auto">
               {description.split(/\n|\\\n/).map((line, idx) => {
-                // Count leading spaces for indentation
                 const spaces = line.match(/^ */)?.[0].length ?? 0;
                 return (
                   <div
@@ -723,8 +709,6 @@ export const RenderParamsForRow = memo(
             return null;
           })
           .filter((option): option is TSelectValues => Boolean(option))
-          // Float null/empty rows to the top so they don't sit awkwardly
-          // between real values.
           .sort((a, b) => {
             const aEmpty = a.value === null || a.value === undefined || a.value === "";
             const bEmpty = b.value === null || b.value === undefined || b.value === "";

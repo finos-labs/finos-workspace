@@ -1,18 +1,3 @@
-"""Widget plugin routes (docs/widget-plugins/DESIGN.md 7.1).
-
-Three routers, all tagged ``widget-plugins`` so ``SUPPRESSED_API_ROUTERS`` can switch
-them off: superusers review and approve versions at the deployment (``/plugins``),
-entity admins enable plugins for their entity and grant them to roles (``/admin``),
-and signed-in users read what they may use and its files (``/app/widget-plugins``).
-
-No route writes plugin files. Plugins reach a deployment only through the plugins
-directory, which the API reads.
-
-The routes that receive a secret value or a proxy call's arguments read their body
-and check their path by hand: the app's validation handler logs the input of a request
-that fails validation, and these values must never reach a log.
-"""
-
 import json
 import re
 from typing import Annotated, Any, Literal
@@ -40,11 +25,9 @@ DATA_SOURCE_PATTERN = r"^[a-z][a-z0-9_-]{0,63}$"
 platform_router = APIRouter(prefix="/plugins", tags=TAGS)
 admin_router = APIRouter(prefix="/admin", tags=TAGS)
 app_router = APIRouter(prefix="/app/widget-plugins", tags=TAGS)
-# Plugin backends read data here with the token of the call they serve; no session
 broker_router = APIRouter(prefix="/internal/plugin-broker", tags=TAGS)
 
 closed = ConfigDict(extra="forbid")
-# A proxy call's arguments: at most 32 of at most 2048 characters each, with room for JSON
 MAX_CALL_BODY = 96 * 1024
 MAX_INSTANCE_ID = 64
 
@@ -56,7 +39,6 @@ def _checked(value: str, pattern: str, what: str) -> str:
 
 
 async def _json_object(request: Request, limit: int) -> dict[str, Any]:
-    """The request's JSON object body. Errors name what is wrong, never a value."""
     raw = await request.body()
     if len(raw) > limit:
         raise HTTPException(413, detail="The body is too large")
@@ -72,9 +54,7 @@ async def _json_object(request: Request, limit: int) -> dict[str, Any]:
 class ApproveBody(BaseModel):
     model_config = closed
 
-    # The digest the superuser reviewed; approval fails if the files changed since
     digest: Annotated[str, StringConstraints(max_length=80)]
-    # The keys of the review items acknowledged, one per added request
     acknowledged: list[Annotated[str, StringConstraints(max_length=400)]] = Field(default_factory=list, max_length=500)
 
 
@@ -82,7 +62,6 @@ class OverridesBody(BaseModel):
     model_config = closed
 
     csp: dict[str, list[str]] | None = None
-    # The hosts the API may call for the plugin, replacing what it declares
     server_network: list[Annotated[str, StringConstraints(max_length=255)]] | None = Field(default=None, max_length=32)
     confirmations: list[Literal["insecure-scheme", "private-host", "remote-script"]] = Field(default_factory=list)
 
@@ -96,7 +75,6 @@ class EntityChanges(BaseModel):
     server_network_narrow: list[Annotated[str, StringConstraints(max_length=255)]] | None = Field(
         default=None, max_length=32
     )
-    # Data source id -> the entity backend that serves it, or null to unmap
     data_sources: dict[Annotated[str, StringConstraints(max_length=64)], UUID | None] | None = Field(
         default=None, max_length=16
     )
@@ -139,13 +117,7 @@ class ReportBody(BaseModel):
     plugin_id: PluginId
     version: Annotated[str, StringConstraints(pattern=VERSION_PATTERN)]
     reports: list[Report] = Field(default_factory=list, max_length=50)
-    # How the frame failed, when it did (DESIGN.md 11)
     failure: FrameFailure | None = None
-
-
-# ---------------------------------------------------------------------------
-# Superusers: the deployment
-# ---------------------------------------------------------------------------
 
 
 @platform_router.get("")
@@ -153,7 +125,6 @@ async def list_plugins(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     _: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
-    """Every plugin discovery recorded, with its versions, states and review data."""
     return await service.platform_listing(db)
 
 
@@ -163,8 +134,6 @@ async def get_plugin(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     _: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
-    """One plugin: its versions with the trust summary data and the diff against the
-    active version, how every entity uses it, and its latest events."""
     return await service.platform_plugin(db, plugin_id)
 
 
@@ -173,7 +142,6 @@ async def rescan_plugins(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
-    """Read the plugins directory again and record what changed."""
     return await service.rescan(db, superuser.uuid)
 
 
@@ -185,8 +153,6 @@ async def approve_version(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
-    """Approve a version: it becomes the active one. Nothing is available to users
-    until an entity enables the plugin."""
     return await service.approve(
         db,
         plugin_id,
@@ -203,7 +169,6 @@ async def revoke_plugin(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
-    """The kill switch: nothing of the plugin is served or listed until restored."""
     return await service.set_status(db, plugin_id, True, superuser.uuid)
 
 
@@ -223,10 +188,6 @@ async def put_overrides(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
-    """Replace the plugin's overrides: its CSP per directive and its server network,
-    widening or narrowing what the author declared. Sources an author may not request
-    need their confirmation; ``private-host`` with a server network lets those hosts
-    resolve to private addresses."""
     return await service.set_overrides(
         db, plugin_id, body.csp, body.server_network, list(body.confirmations), superuser.uuid
     )
@@ -238,7 +199,6 @@ async def check_plugin_backend(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     _: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
-    """Ask the plugin's backend for its identity now, and say what the API found."""
     return await calls.check_backend(db, plugin_id)
 
 
@@ -250,8 +210,6 @@ async def put_plugin_secret(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
-    """Set the value of a secret the plugin declares, ``{"value": "..."}``. Write-only: no
-    route returns it. A value the deployment sets cannot be changed here."""
     body = await _json_object(request, MAX_SECRET_LENGTH * 2)
     if set(body) != {"value"} or not isinstance(body["value"], str):
         raise HTTPException(422, detail='The body is {"value": "<the secret>"}')
@@ -272,7 +230,6 @@ async def delete_plugin_secret(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
-    """Remove the value a superuser set for a secret."""
     await service.clear_secret(db, plugin_id, name, superuser.uuid)
     return {"success": True}
 
@@ -284,7 +241,6 @@ async def put_plugin_all_entities(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
-    """Enable or disable the plugin for every entity."""
     count = await service.update_all_entities(
         db, plugin_id, body.model_dump(mode="json", exclude_unset=True), superuser.uuid
     )
@@ -299,7 +255,6 @@ async def put_plugin_entity(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     superuser: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
-    """Enable or configure the plugin for any entity."""
     if await db.get(models.Entity, entity_uuid) is None:
         raise HTTPException(404, detail="Entity not found")
     await service.update_entity(
@@ -323,7 +278,6 @@ async def get_plugin_reports(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     _: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
-    """Requests the plugin's frames tried and their policy blocked."""
     return await service.list_reports(db, plugin_id)
 
 
@@ -333,14 +287,8 @@ async def forget_plugin(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     _: Annotated[models.User, Depends(auth_helpers.get_current_superuser)],
 ):
-    """Forget a plugin whose files are gone, with its decisions and grants."""
     await service.forget(db, plugin_id)
     return {"success": True}
-
-
-# ---------------------------------------------------------------------------
-# Entity admins: their entity
-# ---------------------------------------------------------------------------
 
 
 async def _admin_entity(db: AsyncSession, admin: Row) -> UUID:
@@ -355,8 +303,6 @@ async def list_entity_plugins(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """The plugins approved at the deployment, as this entity uses them, and the
-    entity's backends that can serve their data sources."""
     entity_uuid = await _admin_entity(db, admin)
     return {
         "enabled": service.feature_enabled(),
@@ -372,8 +318,6 @@ async def put_entity_plugin(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """Enable the plugin for this entity, narrow it, set its admin settings and the viz
-    types it renders here. Its roles grant its widgets."""
     await service.update_entity(
         db, await _admin_entity(db, admin), plugin_id, body.model_dump(mode="json", exclude_unset=True), admin.uuid
     )
@@ -404,7 +348,6 @@ async def get_role_plugin_access(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """The plugin widgets a role grants."""
     if not await app_helpers.role_exists(db, role_uuid, await _admin_entity(db, admin)):
         raise HTTPException(404, detail="Role not found")
     return {"grants": await service.get_role_grants(db, role_uuid)}
@@ -417,17 +360,10 @@ async def put_role_plugin_access(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     admin: Annotated[Row, Depends(auth_helpers.get_current_admin)],
 ):
-    """Replace the plugin widgets a role grants: a plugin reaches users only through
-    these grants."""
     if not await app_helpers.role_exists(db, role_uuid, await _admin_entity(db, admin)):
         raise HTTPException(404, detail="Role not found")
     await service.set_role_grants(db, role_uuid, [g.model_dump() for g in body.grants])
     return {"success": True}
-
-
-# ---------------------------------------------------------------------------
-# Users
-# ---------------------------------------------------------------------------
 
 
 @app_router.get("")
@@ -438,7 +374,6 @@ async def get_available_plugins(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """What this user may use: plugins, widgets, effective permissions and policy."""
     listing = await service.user_listing(db, user.uuid)
     response.headers["Cache-Control"] = "private, no-cache"
     response.headers["ETag"] = f'"{listing["etag"]}"'
@@ -454,9 +389,6 @@ async def get_widgets_schema(
     user=Depends(auth_helpers.GetCurrentUser(["uuid", "is_superuser"], app_session=True)),
     entity: UUID | None = None,
 ):
-    """The ``widgets.json`` schema in force for the user's entity (WIDGETS-JSON 3.5): the
-    built-in types and the types of the plugins enabled there. A superuser may name
-    another entity. It answers with the built-in types when the feature is off."""
     if entity is not None and not user.is_superuser:
         raise HTTPException(403, detail="Only a superuser may read another entity's schema")
     entity_uuid = entity if entity is not None else await service.user_entity(db, user.uuid)
@@ -476,8 +408,6 @@ async def get_plugin_file(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """One file of an available plugin, as bytes for the host to verify and hand to a
-    sandboxed frame. Never served as a document."""
     path, info = await service.served_file(db, user.uuid, plugin_id, digest, file_path)
     return FileResponse(
         path,
@@ -499,10 +429,6 @@ async def post_proxy_call(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """A widget's call to a proxy its plugin declares, ``{"widget": "<id>", "args": {...}}``
-    (SERVER-SIDE 3.3). The API fills the template, adds the plugin's secrets, calls the
-    approved host and answers with the body and its content type, the only upstream
-    header kept."""
     body = await _json_object(request, MAX_CALL_BODY)
     widget_id, args = body.get("widget"), body.get("args", {})
     if set(body) - {"widget", "args"} or not isinstance(widget_id, str) or not isinstance(args, dict):
@@ -529,9 +455,6 @@ async def post_backend_call(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """A widget's call to a route of its plugin's backend, ``{"widget": "<id>",
-    "instance": "<id>", "args": {...}}`` (SERVER-SIDE 5.6). The answer is the backend's
-    JSON. The write session records a backend found to be another version."""
     body = await _json_object(request, MAX_CALL_BODY)
     widget_id, instance_id, args = body.get("widget"), body.get("instance", ""), body.get("args", {})
     if (
@@ -565,17 +488,10 @@ async def post_plugin_report(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
-    """Requests a frame's policy blocked, for the admin's Blocked requests view, and how
-    a frame failed, for the metrics. Never widget data."""
     stored = await service.record_reports(
         db, user.uuid, body.plugin_id, body.version, [r.model_dump() for r in body.reports], body.failure
     )
     return {"stored": stored}
-
-
-# ---------------------------------------------------------------------------
-# Plugin backends: the data broker
-# ---------------------------------------------------------------------------
 
 
 @broker_router.post("/data/{data_source_id}")
@@ -584,9 +500,6 @@ async def post_broker_read(
     request: Request,
     db: Annotated[AsyncSession, Depends(aget_read_db)],
 ):
-    """Data a plugin backend reads for the user of the call it serves (SERVER-SIDE 5.7):
-    the call's token in ``X-Workspace-Call``, and ``{"path", "method", "query", "body"}``.
-    The user's access applies, and the backend's credentials stay here."""
     token = request.headers.get(backends.CALL_HEADER, "")
     body = await _json_object(request, MAX_CALL_BODY)
     if set(body) - {"path", "method", "query", "body"} or not isinstance(body.get("path"), str):

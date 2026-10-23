@@ -118,7 +118,6 @@ export const useSharedAppStore = createWithEqualityFn<SharedAppState>()(
       }),
       {
         name: "shared-app-storage",
-        // Another user's dashboard is persisted without any data backend credentials
         partialize: ({ sharedItems }) => ({
           sharedItems:
             sharedItems &&

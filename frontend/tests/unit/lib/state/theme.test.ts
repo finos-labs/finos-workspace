@@ -3,7 +3,6 @@ import type { WidgetItem } from "~/components/LayoutAuth/Search/WidgetMenu";
 import { useThemeStore } from "~/lib/state/theme";
 import { malformed, partial } from "../../mocks";
 
-// Mock external dependencies
 vi.mock("~/api/auth.api", () => ({
   migrateDefaultTicker: vi.fn().mockResolvedValue({
     symbol: "AAPL",
@@ -36,23 +35,19 @@ vi.mock("~/lib/types", () => ({
   },
 }));
 
-// Store original document state
 const originalDocumentElement = document.documentElement;
 
 describe("useThemeStore", () => {
   let colorSchemeMeta: HTMLMetaElement;
 
   beforeEach(() => {
-    // Create color-scheme meta element
     colorSchemeMeta = document.createElement("meta");
     colorSchemeMeta.name = "color-scheme";
     colorSchemeMeta.content = "dark";
     document.head.appendChild(colorSchemeMeta);
 
-    // Clear localStorage
     localStorage.clear();
 
-    // Reset store to default state
     useThemeStore.setState({
       mcpAuthPopup: null,
       promptsSuggestionsMenuOpen: false,
@@ -95,7 +90,6 @@ describe("useThemeStore", () => {
       isResizingGridElement: "",
     });
 
-    // Reset document state
     document.documentElement.classList.remove("dark");
     document.documentElement.style.removeProperty("--text-scale");
   });
@@ -511,7 +505,6 @@ describe("useThemeStore", () => {
       const resizeHandler = vi.fn();
       window.addEventListener("resize", resizeHandler);
 
-      // Mock fullscreen APIs
       const requestFullscreen = vi.fn().mockResolvedValue(undefined);
       const exitFullscreen = vi.fn().mockResolvedValue(undefined);
 
@@ -520,7 +513,6 @@ describe("useThemeStore", () => {
 
       useThemeStore.getState().togglePresenterMode();
 
-      // Wait for the setTimeout
       await vi.waitFor(() => {
         expect(resizeHandler).toHaveBeenCalled();
       });
@@ -674,7 +666,6 @@ describe("useThemeStore", () => {
     });
 
     it("should call debouncedUpdateSettings without throwing", async () => {
-      // The debounced function should be callable without errors
       expect(() => {
         useThemeStore.getState().debouncedUpdateSettings();
       }).not.toThrow();
@@ -682,8 +673,6 @@ describe("useThemeStore", () => {
 
     it("should return a promise from debouncedUpdateSettings", () => {
       const result = useThemeStore.getState().debouncedUpdateSettings();
-      // Debounced functions from lodash.debounce return the result of the debounced function
-      // or undefined if not yet called
       expect(result === undefined || result instanceof Promise).toBe(true);
     });
   });
@@ -738,7 +727,6 @@ describe("useThemeStore", () => {
       expect(state).not.toHaveProperty("openaiApiKey");
       expect(state).not.toHaveProperty("perplexityApiKey");
 
-      // The next write keeps the preferences and nothing else
       useThemeStore.getState().setRenamePopup(true, "Tab", "tab-1", "tab");
       const stored = localStorage.getItem("theme-storage") ?? "";
       expect(stored).not.toContain("left-by-an-earlier-version");

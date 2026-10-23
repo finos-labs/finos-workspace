@@ -134,7 +134,6 @@ describe("dependent endpoint params of a widget that is not in a group", () => {
       article: "old-article",
     });
 
-    // The cleared feed offers no article, so the article is cleared as well
     expect(updates).toEqual({ source: "", article: "" });
   });
 });

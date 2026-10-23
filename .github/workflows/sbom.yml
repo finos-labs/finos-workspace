@@ -1,24 +1,5 @@
 name: SBOM
 
-# Keeps a CycloneDX SBOM of every project in sbom/: one for each directory with a
-# package.json or a pyproject.toml, named after it (frontend/ is
-# sbom/frontend.cdx.json, backend-api/backend/ is sbom/backend-api/backend.cdx.json).
-# A merge into develop that changes a package.json, a pyproject.toml or a lockfile
-# has every SBOM generated again. develop only takes reviewed pull requests, so
-# when the SBOMs changed they go to the feature/sbom-update branch and a pull
-# request into develop. A later run brings that pull request up to date, or
-# closes it when develop's SBOMs are current again. sbom/ is written only by this
-# workflow: a project that is gone loses its SBOM.
-#
-# Syft reads the lockfiles. Dev dependencies are included, and licenses a
-# lockfile does not record come from the npm registry and PyPI. The SBOMs carry
-# no serial number or timestamp, so the same dependencies give the same files.
-#
-# The branch and the pull request are pushed and opened as the openbq-sbom-bot
-# GitHub App (variable SBOM_APP_ID, secret SBOM_APP_PRIVATE_KEY), with a token
-# limited to this repository. GITHUB_TOKEN may not open pull requests here, and a
-# pull request it opens runs no workflows, so the SBOM pull request would get no
-# checks.
 on:
   push:
     branches:
@@ -29,13 +10,10 @@ on:
       - "**/pyproject.toml"
       - "**/poetry.lock"
 
-# Every run generates all the SBOMs from its commit, so a newer merge replaces a
-# run that is still going.
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
 
-# GITHUB_TOKEN only reads: the App's token does the writing.
 permissions:
   contents: read
 
@@ -56,7 +34,6 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
 
-      # The checkout keeps the App's token, so the git push below uses it.
       - uses: actions/checkout@v7
         with:
           token: ${{ steps.token.outputs.token }}
@@ -99,7 +76,6 @@ jobs:
             echo "Pull request #$pr already has these SBOMs."
             exit 0
           fi
-          # The commit is the App's bot user's, with GitHub's noreply address for it.
           git config user.name "${APP_SLUG}[bot]"
           git config user.email "$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)+${APP_SLUG}[bot]@users.noreply.github.com"
           git commit -m "Update the SBOMs"

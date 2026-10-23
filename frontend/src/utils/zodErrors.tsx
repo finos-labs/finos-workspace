@@ -68,7 +68,6 @@ export function formatZodErrorMessage(
   });
 }
 
-/** Formats structured unrecognized-keys reports into styled React nodes for display in a toast. */
 export function formatUnrecognizedKeysMessage(
   reports: UnrecognizedKeysReport[],
 ): ReactNode {
@@ -86,7 +85,6 @@ export function formatUnrecognizedKeysMessage(
   ));
 }
 
-/** Shows a warning toast listing unrecognized keys found in widgets.json / apps.json, with a copy-to-clipboard action. */
 export function showUnrecognizedKeysToast(
   source: Partial<Source>,
   reports: UnrecognizedKeysReport[],
@@ -133,24 +131,15 @@ export function showUnrecognizedKeysToast(
   });
 }
 
-/** What was last announced per backend, so a re-sync of the same problem stays quiet. */
 const announcedInvalidItems = new Map<string, string>();
 
 const invalidItemsSignature = (items: InvalidItem[]) =>
   items.map((item) => `${item.file}:${item.id}:${item.errors}`).join("\n");
 
-/** The backends are valid again (or gone): announce them again if they break again. */
 export function forgetInvalidItems(sourceIds: (string | undefined)[]) {
   for (const id of sourceIds) if (id) announcedInvalidItems.delete(id);
 }
 
-/**
- * Warns that widgets or apps of a backend were skipped because they are invalid. The toast
- * says how many, and opens a dialog with what is wrong with each when it is clicked.
- *
- * A backend is announced once for the same problem, however often it is loaded again. Pass
- * `force` when the user asked for it (a refresh or a new connection).
- */
 export function showInvalidItemsToast(
   source: Partial<Source>,
   items: InvalidItem[],

@@ -1,18 +1,3 @@
-"""Secrets at rest: AES-256-GCM encryption for values the server uses again, and SHA-256
-hashes for tokens it only checks.
-
-The key material is ``WORKSPACE_AES_KEY``: a base64url string that decodes to at least 32
-bytes (``python -c "import secrets; print(secrets.token_urlsafe(32))"``). The data key is
-derived from it with HKDF-SHA256. A ciphertext is ``v2.`` followed by the base64url
-encoding of a random 12-byte nonce, the encrypted value and the 16-byte GCM tag; the
-version prefix names the format and the key derivation, so a later one can be introduced
-beside it.
-
-Every ciphertext is bound to where it is kept: its context (``"<table>.<column>"`` for a
-column, the key for a Redis value) is the GCM associated data, so a value copied to
-another column or key does not decrypt there.
-"""
-
 import base64
 import binascii
 import hashlib
@@ -38,11 +23,10 @@ _GENERATE_HINT = 'python -c "import secrets; print(secrets.token_urlsafe(32))"'
 
 
 class DecryptionError(ValueError):
-    """A value that is not a ciphertext of this key: altered, truncated or foreign."""
+    ...
 
 
 def _b64decode(value: str) -> bytes:
-    """Strict base64url: raises ValueError for any character outside the alphabet."""
     if not _BASE64URL.fullmatch(value):
         raise ValueError("not base64url")
     try:
@@ -56,8 +40,6 @@ def _b64encode(data: bytes) -> str:
 
 
 def decode_key_material(value: str) -> bytes:
-    """The bytes of a ``WORKSPACE_AES_KEY``. Raises ValueError for a value that is not
-    base64url or decodes to fewer than 32 bytes."""
     try:
         material = _b64decode(value or "")
     except ValueError as exc:
@@ -79,9 +61,6 @@ def _associated_data(context: str) -> bytes:
 
 
 class AtRestCipher:
-    """AES-256-GCM under the data key derived from one ``WORKSPACE_AES_KEY``. A value is
-    encrypted for a context, where it is kept, and decrypts in that context only."""
-
     def __init__(self, key_material: str):
         data_key = HKDF(
             algorithm=hashes.SHA256(), length=32, salt=None, info=HKDF_INFO
@@ -114,7 +93,6 @@ class AtRestCipher:
 
 @cache
 def at_rest_cipher() -> AtRestCipher:
-    """The cipher of this deployment's ``WORKSPACE_AES_KEY``."""
     from utilities.config import settings  # noqa: PLC0415
 
     return AtRestCipher(settings.WORKSPACE_AES_KEY)
@@ -138,5 +116,4 @@ def decrypt_json(token: str, context: str) -> Any:
 
 
 def hash_token(token: str) -> str:
-    """The SHA-256 hex digest under which a bearer token is stored and looked up."""
     return hashlib.sha256(token.encode("utf-8")).hexdigest()

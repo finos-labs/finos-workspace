@@ -18,12 +18,6 @@ USER_UUID_CLAIM = "user_uuid"
 
 
 class WorkspaceMCPTokenVerifier(TokenVerifier):
-    """Accepts the personal access tokens that users create for the Workspace MCP server.
-
-    FastMCP turns a token that this rejects into an HTTP 401 before the MCP transport sees the
-    request. Only the ``/mcp`` route is gated: other paths still answer 404, and a GET answers 405.
-    """
-
     @override
     async def verify_token(self, token: str) -> AccessToken | None:
         async with database.AsyncWriteSessionLocal.session() as db:
@@ -32,7 +26,6 @@ class WorkspaceMCPTokenVerifier(TokenVerifier):
             except HTTPException:
                 return None
         return AccessToken(
-            # the hash, so that the secret itself does not travel in the request scope
             token=hash_workspace_mcp_token(token),
             client_id=str(user_uuid),
             scopes=[],
@@ -41,8 +34,6 @@ class WorkspaceMCPTokenVerifier(TokenVerifier):
 
 
 class WorkspaceMCPUserMiddleware(Middleware):
-    """Makes the user that owns the bearer token the current user of the request."""
-
     @override
     async def on_request(self, context: MiddlewareContext, call_next):
         access_token = get_access_token()
@@ -57,7 +48,6 @@ class WorkspaceMCPUserMiddleware(Middleware):
 
 
 def create_workspace_mcp_server(auth: TokenVerifier | None = None):
-    """The Workspace MCP server; ``auth`` is what gates it over HTTP."""
     server = create_mcp_server(WorkspaceMCPBridgeState(bridge_manager), auth=auth)
     server.add_middleware(WorkspaceMCPUserMiddleware())
     return server

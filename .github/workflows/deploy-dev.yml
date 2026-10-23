@@ -1,26 +1,5 @@
 name: Deploy to dev
 
-# A push to develop that changes the backend, the frontend or the agent (Ines,
-# in agent/) builds every image from that commit, pushes them to ECR as
-# dev-<commit>, and deploys them to the dev environment with the infrastructure
-# repository's .github/scripts/deploy-workspace.sh, its chart and the
-# environment's values file. Only the image tags come from here. The run's summary lists what is
-# running. Run the workflow by hand, from develop, to build and deploy develop's
-# latest commit again. Re-running an older run deploys that older commit.
-#
-# Repository variables: AWS_REGION, AWS_IMAGE_PUSH_ROLE_ARN (the role that may
-# push to ECR), ECR_REGISTRY (<account>.dkr.ecr.<region>.amazonaws.com),
-# INFRA_REPO (<owner>/<infrastructure repository>), DEV_VALUES_FILE (the dev
-# environment's values file in that repository, which names its folder) and
-# INFRA_APP_ID.
-#
-# The infrastructure repository is read with a GitHub App installed on it:
-# INFRA_APP_ID (variable) and INFRA_APP_PRIVATE_KEY (secret). The deploy assumes
-# the environment's deployer role, which trusts this repository's develop branch.
-#
-# Every image gets an SBOM attestation, pushed to ECR with it
-# (.github/actions/image-sbom). A failed SBOM step is a warning and does not
-# stop the deploy: the next run attests the images that have none.
 on:
   push:
     branches:
@@ -31,9 +10,6 @@ on:
       - "agent/**"
   workflow_dispatch:
 
-# One run at a time, and a running deploy is never cancelled. A run that is
-# still waiting is replaced by a newer one, which builds every image from a
-# later commit, so nothing it would have deployed is lost.
 concurrency:
   group: deploy-dev
   cancel-in-progress: false
@@ -58,19 +34,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Log in to AWS to push images
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
         with:
           role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
+      - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd
 
-      # The stages are kept in the Actions cache: the images compile their dependencies from source,
-      # and only a change to a stage builds it again.
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+      - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487
 
-      # Tags are immutable, so a rerun keeps the images the first attempt pushed.
       - name: Build and push the API and worker images
         run: |
           for image in backend:fastapi.Dockerfile backend-worker:rqworker.Dockerfile; do
@@ -107,14 +80,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Log in to AWS to push images
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
         with:
           role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
+      - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd
 
-      # Tags are immutable, so a rerun keeps the image the first attempt pushed.
       - name: Build and push the frontend image
         run: |
           if output=$(aws ecr describe-images --repository-name finos/frontend --image-ids imageTag="$IMAGE_TAG" 2>&1); then
@@ -127,8 +99,6 @@ jobs:
             exit 1
           fi
 
-      # The image holds the bundle, which names no packages: they come from
-      # frontend/'s lockfile.
       - name: SBOM of the frontend image
         continue-on-error: true
         uses: ./.github/actions/image-sbom
@@ -136,11 +106,9 @@ jobs:
           image: ${{ env.ECR_REGISTRY }}/finos/frontend:${{ env.IMAGE_TAG }}
           project: frontend
 
-  # Node for the agent's images, built once and kept in the Actions cache (agent-node.yml).
   node:
     uses: ./.github/workflows/agent-node.yml
 
-  # Ines and the MCP server with her tools: the two targets of agent/Dockerfile, with Node from the node job.
   agent:
     needs: node
     runs-on: ubuntu-latest
@@ -150,12 +118,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Log in to AWS to push images
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
         with:
           role-to-assume: ${{ vars.AWS_IMAGE_PUSH_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
+      - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd
 
       - uses: actions/cache/restore@v6
         with:
@@ -163,7 +131,6 @@ jobs:
           key: ${{ needs.node.outputs.key }}
           fail-on-cache-miss: true
 
-      # Tags are immutable, so a rerun keeps the images the first attempt pushed.
       - name: Build and push the agent and agent MCP server images
         run: |
           for image in agent:ines agent-mcp:ines-mcp; do
@@ -198,7 +165,6 @@ jobs:
     env:
       IMAGE_TAG: dev-${{ github.sha }}
     steps:
-      # The environment is the folder of its values file: FINOS/dev.
       - name: Name the infrastructure repository and the environment
         id: infra
         run: |
@@ -235,12 +201,12 @@ jobs:
         run: grep -v '^#' "$ENVIRONMENT/apps/deploy.env" >> "$GITHUB_OUTPUT"
 
       - name: Log in to AWS as the deployer
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
         with:
           role-to-assume: ${{ steps.env.outputs.DEPLOYER_ROLE_ARN }}
           aws-region: ${{ steps.env.outputs.AWS_REGION }}
 
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
         with:
           version: v4.1.1
 

@@ -4,7 +4,6 @@ import { apiErrorMessage } from "~/lib/utils/apiError";
 
 const FALLBACK = "Something went wrong.";
 
-/** AxiosError carrying a FastAPI-shaped body, as the real client would produce. */
 function axiosErrorWith(data: unknown, message = "Request failed"): AxiosError {
   const error = new AxiosError(message);
   error.response = {

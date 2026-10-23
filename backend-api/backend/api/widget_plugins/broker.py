@@ -1,13 +1,3 @@
-"""The data broker (docs/widget-plugins/SERVER-SIDE.md 5.7): how a plugin backend reads a
-Workspace backend for the user whose call it is serving.
-
-A backend holds no credential. It shows the call-context token of the call it serves.
-The API reads the token, checks that the data source is one the plugin declares and the
-user's entity mapped to one of its backends, applies the **user's** access to that
-backend, adds the backend's credentials and makes the request. The plugin backend gets
-the answer, never the credentials.
-"""
-
 import json
 from typing import Any
 from urllib.parse import urlencode, urlsplit, urlunsplit
@@ -30,8 +20,6 @@ _METHODS = {"GET", "POST"}
 
 
 async def readable_backend(db: AsyncSession, user_uuid: UUID, entity_uuid: UUID, backend_uuid: UUID):
-    """The backend, when this user may read it as the app lets them: one of their entity's,
-    their own when they may bring connections, or one a role of theirs gives access to."""
     granted = (
         select(models.RoleBackend.backend_uuid)
         .join(models.UserRole, models.UserRole.role_uuid == models.RoleBackend.role_uuid)
@@ -52,8 +40,6 @@ async def readable_backend(db: AsyncSession, user_uuid: UUID, entity_uuid: UUID,
 
 
 def _target(base: str, path: str, query: dict[str, str], credentials: list[dict]) -> tuple[str, dict[str, str]]:
-    """The URL under the backend's own and the headers: the plugin names a path below the
-    backend's URL, never a host; the backend's credentials go where it declares them."""
     if (
         not path.startswith("/")
         or path.startswith("//")
@@ -109,7 +95,6 @@ def _body(content_type: str, raw: bytes) -> Any:
 
 
 async def _resolve(db: AsyncSession, claims: dict[str, Any], data_source_id: str):
-    """The plugin entry and the backend the call may read, or CallError."""
     if data_source_id not in claims.get("d", []):
         raise CallError("undeclared_data_source", f"the plugin does not declare {data_source_id}", status=403)
     user_uuid = UUID(claims["u"])
@@ -117,7 +102,6 @@ async def _resolve(db: AsyncSession, claims: dict[str, Any], data_source_id: str
         (e for e in await service.available(db, user_uuid) if e["plugin"].plugin_id == claims.get("p")),
         None,
     )
-    # Revoked, disabled, narrowed away or replaced since the call began: nothing more is read
     if entry is None or entry["version"].version != claims.get("v"):
         raise CallError("not_available", "the plugin is not available to this user", status=403)
     mapped = (entry["entity_row"].data_sources or {}).get(data_source_id)
@@ -130,8 +114,6 @@ async def _resolve(db: AsyncSession, claims: dict[str, Any], data_source_id: str
 
 
 async def read(db: AsyncSession, token: str, data_source_id: str, request: dict[str, Any]) -> dict[str, Any]:
-    """One read for a plugin backend: ``{path, method, query, body}`` in, the status, type
-    and body of the answer out."""
     claims = backends.read_token(token)
     plugin_id = str(claims.get("p", ""))
     outcome = "ok"

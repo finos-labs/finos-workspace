@@ -1,11 +1,3 @@
-"""The ``plugin.json`` manifest (docs/widget-plugins/DESIGN.md 4.4).
-
-The model is closed: an unknown key anywhere is an error, and every value is bounded.
-What the admin reviews comes in five families: host API permissions per widget,
-network (``csp`` for the frame, ``server.network`` for the server side), secrets,
-data sources and identity.
-"""
-
 import re
 from typing import Annotated, Any, Literal
 
@@ -37,7 +29,6 @@ DIGEST_PATTERN = r"^sha256-[A-Za-z0-9_-]{43}$"
 
 BUILT_IN_TYPES = frozenset({"markdown", "html", "iframe", "newsfeed", "pdf"})
 
-# The host API permissions of docs/widget-plugins/GUEST-CONTRACT.md 4 this host implements
 PERMISSIONS = frozenset(
     {
         "core:default",
@@ -54,9 +45,7 @@ PERMISSIONS = frozenset(
         "core:backend:call",
     }
 )
-# Declared by the contract for a later phase; a manifest asking for them is blocked
 PERMISSIONS_LATER = frozenset({"core:data:query"})
-# The largest answer a backend route may declare (SERVER-SIDE 5.9)
 MAX_ROUTE_BYTES = 5 * 1024 * 1024
 
 
@@ -84,7 +73,6 @@ def _package_path(value: str) -> str:
 
 PackagePath = Annotated[str, AfterValidator(_package_path)]
 
-# Without importing the app's settings, so scripts.plugin_check runs anywhere
 closed = ConfigDict(extra="forbid", frozen=True)
 
 
@@ -157,9 +145,6 @@ class RouteResponse(BaseModel):
 
 
 class Route(BaseModel):
-    """A call a widget makes to the plugin's backend (SERVER-SIDE 5.6): its arguments,
-    checked by the API, the secrets sent with it, and its limits. The answer is JSON."""
-
     model_config = closed
 
     id: Annotated[str, StringConstraints(pattern=PROXY_ID_PATTERN)]
@@ -171,9 +156,6 @@ class Route(BaseModel):
 
 
 class Backend(BaseModel):
-    """Code in the package's backend/ directory that the deployer runs as a separate,
-    restricted process and registers in WIDGET_PLUGIN_BACKENDS (SERVER-SIDE 5)."""
-
     model_config = closed
 
     protocol: Literal[1]
@@ -181,9 +163,6 @@ class Backend(BaseModel):
 
 
 class Server(BaseModel):
-    """The server side (docs/widget-plugins/SERVER-SIDE.md): the hosts it may call, the
-    request templates the API fills (T1) and the plugin's backend (T2)."""
-
     model_config = closed
 
     network: list[Annotated[str, StringConstraints(max_length=255)]] = Field(default_factory=list, max_length=32)
@@ -260,7 +239,6 @@ class Handle(BaseModel):
 class Grid(BaseModel):
     model_config = closed
 
-    # The dashboard grid is 40 columns wide, as widgets.json gridData
     w: Annotated[int, Field(ge=1, le=40)] = 20
     h: Annotated[int, Field(ge=1, le=100)] = 12
     minW: Annotated[int, Field(ge=1, le=40)] | None = None  # noqa: N815
@@ -356,7 +334,7 @@ class Manifest(BaseModel):
     server: Server | None = None
     adminSettings: SettingsSpec | None = None  # noqa: N815
     contributes: Contributes
-    signatures: None = None  # reserved for signed packages
+    signatures: None = None
 
     @model_validator(mode="after")
     def valid(self):
@@ -372,8 +350,6 @@ class Manifest(BaseModel):
         return self
 
     def _check_server(self) -> None:
-        """Proxies and the hosts they call (SERVER-SIDE 3): every template keeps to the
-        rules, every widget names declared proxies, every secret is declared once."""
         secrets = [s.name for s in self.secrets]
         if len(set(secrets)) != len(secrets):
             raise ValueError("a secret is declared twice")
@@ -400,7 +376,6 @@ class Manifest(BaseModel):
             raise ValueError("; ".join(problems))
 
     def _backend_problems(self, server: Server, secrets: set[str]) -> list[str]:
-        """A backend's routes, and what only a backend uses: data sources and identity."""
         problems: list[str] = []
         sources = [d.id for d in self.dataSources]
         if len(set(sources)) != len(sources):
@@ -423,7 +398,6 @@ class Manifest(BaseModel):
         return problems
 
     def served_paths(self) -> set[str]:
-        """The files of the package a browser may receive: entry, styles, icon."""
         paths = {self.entry.module, *self.entry.styles}
         if self.icon:
             paths.add(self.icon)

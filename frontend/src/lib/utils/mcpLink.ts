@@ -2,23 +2,14 @@ import type { WidgetT } from "~/components/types";
 import type { AgentToolConfig, McpServer } from "~/lib/state/mcpTools";
 import type { McpToolContractT } from "~/lib/types/widgetsContract";
 
-/**
- * A widget's opt-in to one MCP tool of its own backend (docs/widget-plugins/WIDGETS-JSON.md
- * 5): `mcp_tool` names a server the backend's apps.json declares, and a tool on it. The
- * server is found among the registered ones by the backend's source id and the declared
- * name, never by a label a user can edit, so a widget cannot name another backend's server.
- */
-
 type LinkedWidget = Pick<WidgetT, "sourceId"> & { mcp_tool?: McpToolContractT };
 
-/** What the agent is told of a widget's link: the tool as its request lists it. */
 export interface ActiveMcpLink {
   server_id: string;
   tool_name: string;
   args?: McpToolContractT["args"];
 }
 
-/** The registered server a widget's link names, if its backend declared and registered it. */
 export function linkedServer(
   widget: LinkedWidget | undefined,
   servers: McpServer[],
@@ -31,11 +22,6 @@ export function linkedServer(
   );
 }
 
-/**
- * The link when its tool is in the agent's tools for this request: the server connected and
- * enabled, the tool switched on, granted by the user's roles, and MCP tools on for the
- * agent. Otherwise none: the link enables nothing (5.3, rule 4).
- */
 export function activeMcpLink(
   widget: LinkedWidget | undefined,
   tools: AgentToolConfig[],
@@ -55,10 +41,6 @@ export function activeMcpLink(
   };
 }
 
-/**
- * Each row of a widget whose link is active gains it (5.4): the server and the tool as the
- * request's `tools` list them, from the registry, and the mapping as declared.
- */
 export function withMcpLinks<R extends object>(
   rows: R[],
   tools: AgentToolConfig[],
@@ -75,26 +57,16 @@ export function withMcpLinks<R extends object>(
 const isParamRef = (value: unknown): value is string =>
   typeof value === "string" && value.startsWith("$");
 
-/** The literal (non-`$param`) arguments a link fixes. */
 function literals(link: McpToolContractT): [string, unknown][] {
   return Object.entries(link.args ?? {}).filter(([, value]) => !isParamRef(value));
 }
 
 export interface McpCallCitation<W> {
   widget: W;
-  /** The call's arguments as the widget's params, for finding it on a dashboard */
   inputArgs: Record<string, unknown>;
-  /** The arguments that map to no param */
   details: Record<string, unknown>;
 }
 
-/**
- * The widget a tool call is cited as (5.3, rule 5, and 5.4): among the widgets of the
- * server's own backend that link to this tool, those whose literal `args` all equal the
- * call's, the one with the most literals first, then the first the backend declares. The
- * call's arguments become the widget's params through the mapping in reverse: a `$param`
- * entry names the param, and without `args` an argument named like a param fills it.
- */
 export function citeMcpCall<W extends LinkedWidget & Pick<WidgetT, "params">>(
   server: McpServer,
   toolName: string,

@@ -13,7 +13,6 @@ import {
 
 type Node = Record<string, unknown>;
 
-/** The places a schema is not closed and bounded (WIDGETS-JSON 3.2). */
 function closednessProblems(schema: unknown): string[] {
   const problems: string[] = [];
   const walk = (node: unknown, path: string) => {
@@ -56,9 +55,7 @@ describe("the widgets.json schema kit", () => {
   const kit = buildWidgetsSchemaKit();
 
   it("is what the backend has committed", () => {
-    // The tests run from frontend/, as the generator does
     const committed = readFileSync(resolve(process.cwd(), KIT_PATH), "utf8");
-    // Run `node scripts/generate-widgets-schema.ts` from frontend/ after changing the contract
     expect(committed).toBe(serializeKit(kit));
   });
 

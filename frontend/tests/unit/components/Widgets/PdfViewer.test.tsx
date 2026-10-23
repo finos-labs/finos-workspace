@@ -96,7 +96,6 @@ describe("PdfViewer Widget", () => {
     render(<PdfViewer />);
 
     const card = screen.getByTestId("draggable-card");
-    // With our mock returning isLoading: false, this should be false
     expect(card.getAttribute("data-loading")).toBe("false");
   });
 });

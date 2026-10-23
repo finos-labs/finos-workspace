@@ -19,7 +19,6 @@ import { showNotificationWithRememberMe } from "~/lib/utils/toast";
 import { partial } from "../mocks";
 import "../../mocks/runtimeConfig";
 
-// Mock apiClient
 vi.mock("~/api/api", () => ({
   apiClient: {
     get: vi.fn(),
@@ -34,7 +33,6 @@ vi.mock("~/api/api", () => ({
   },
 }));
 
-// Mock state management functions
 vi.mock("~/lib/state/app", () => ({
   useAppStore: {
     getState: vi.fn().mockReturnValue({
@@ -53,7 +51,6 @@ vi.mock("~/lib/state/auth", () => ({
   },
 }));
 
-// Mock useSharedAppStore
 vi.mock("~/lib/state/sharedApp", () => ({
   useSharedAppStore: {
     getState: vi.fn().mockReturnValue({
@@ -74,7 +71,6 @@ vi.mock("~/lib/utils/toast", () => ({
   NotificationId: { SaveDashboards: "save-dashboards" },
 }));
 
-// Test suite
 describe("Dashboard API functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -146,7 +142,6 @@ describe("Dashboard API functions", () => {
 
       saveDashboardsOnExit();
 
-      // Matches mockConfig.urls.backend from tests/mocks/runtimeConfig
       expect(fetch).toHaveBeenCalledWith("http://localhost:3000/app/dash/sync", {
         method: "POST",
         keepalive: true,
@@ -221,7 +216,6 @@ describe("Dashboard API functions", () => {
       "55d809ef-19d1-4e63-8dce-ce57f66e5536": { creator: false, content: {} },
     };
 
-    /** The server's answers: the user's access, then the dashboards shared with them. */
     const serve = (sharing: SharingLevel) =>
       vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
         if (url === "/app/access") {

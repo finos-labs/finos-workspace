@@ -1,12 +1,3 @@
-"""Plugin backends (docs/widget-plugins/SERVER-SIDE.md 5): the manifest, the review, the
-identity check, calls to routes with their token, secrets and caller, the limits and the
-breaker, and the broker that reads a Workspace backend for the user.
-
-The backend is a stand-in on 127.0.0.1 (tests/fixtures/plugin_backends.py). What the
-deployer's container or runner enforces (SERVER-SIDE 5.2) is outside the API and is
-checked in the spike (SPIKE.md).
-"""
-
 import json
 import time
 from uuid import UUID, uuid4
@@ -128,7 +119,7 @@ class TestBreaker:
         assert backends.breaker_open("p")
         now = time.time()
         monkeypatch.setattr(backends.time, "time", lambda: now + 31)
-        assert not backends.breaker_open("p")  # one probe goes through
+        assert not backends.breaker_open("p")
         backends.record_outcome("p", failed=True)
         assert backends.breaker_open("p")
         monkeypatch.setattr(backends.time, "time", lambda: now + 62)
@@ -184,7 +175,6 @@ class TestCalls:
         body = json.loads(received.body)
         assert body["args"] == {"region": "emea"}
         assert body["widget"] == {"id": "chart", "instanceId": "instance-1"}
-        # A pseudonymous id, not the user
         assert body["caller"]["id"] == backends.pseudonym("test-chart", str(MEMBER))
         assert str(MEMBER) not in received.body.decode()
         claims = backends.read_token(received.headers["x-workspace-call"])
@@ -221,7 +211,6 @@ class TestCalls:
         events = (await superuser.get("/plugins/test-chart/events")).json()
         assert [e["details"]["digest"] for e in events if e["action"] == "backend-mismatch"] == ["sha256-" + "F" * 43]
 
-        # The superuser's check asks again, and the right image brings routing back
         plugin_backend.identity = {
             **plugin_backend.identity,
             "digest": version_view(await plugin_view(superuser))["digest"],
@@ -295,14 +284,12 @@ class TestCalls:
 
 
 async def _token(member, superuser, plugins_dir, plugin_backend) -> str:
-    """A token of a real call, as the backend received it."""
     await ready_backend(superuser, plugins_dir, plugin_backend)
     assert (await route(member, {"region": "emea"})).status_code == 200
     return plugin_backend.calls[-1].headers["x-workspace-call"]
 
 
 async def _grant(member, db_session, source_uuid) -> None:
-    """A role of the member's that gives access to the backend."""
     role = await member.role("Sales readers")
     db_session.add(models.RoleBackend(role_uuid=role, backend_uuid=source_uuid, access="access"))
     await db_session.commit()
@@ -337,8 +324,6 @@ class TestBroker:
     async def test_the_users_access_applies(  # noqa: PLR0913 - the parts of the setup
         self, member, superuser, plugins_dir, plugin_backend, data_source, db_session
     ):
-        """A member reads the organization's backends. A backend that is no longer the
-        organization's is read only by a user a role of theirs gives it to."""
         token = await _token(member, superuser, plugins_dir, plugin_backend)
         await enable(superuser, data_sources={"sales": str(data_source.uuid)})
         await db_session.execute(
@@ -359,7 +344,6 @@ class TestBroker:
         call = lambda path="/sales", url=BROKER, headers=None: member.post(  # noqa: E731
             url, headers=headers if headers is not None else {"X-Workspace-Call": token}, json={"path": path}
         )
-        # Not mapped by the organization yet
         assert (await call()).json()["detail"]["code"] == "data_source_unmapped"
         await enable(superuser, data_sources={"sales": str(data_source.uuid)})
         await _grant(member, db_session, data_source.uuid)
@@ -370,7 +354,6 @@ class TestBroker:
         for path in ("/../admin", "//elsewhere.example.org/x", "sales", "/a/./b"):
             assert (await call(path=path)).json()["detail"]["code"] == "invalid_args", path
         assert data_source.server.received == []
-        # Revoking stops the backend's reads at once, with a token it already holds
         await superuser.post("/plugins/test-chart/revoke")
         assert (await call()).json()["detail"]["code"] == "not_available"
 

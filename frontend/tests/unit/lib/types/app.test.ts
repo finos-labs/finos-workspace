@@ -103,7 +103,6 @@ describe("Zod Schemas from app.ts", () => {
 
   describe("ParamDefSchema (and base/form variants)", () => {
     it("ParamDefSchemaBase: should have a consistent shape", () => {
-      // Create a valid base param definition that will pass schema validation
       const validBaseParam = {
         paramName: "testParam",
         type: "text",
@@ -111,11 +110,9 @@ describe("Zod Schemas from app.ts", () => {
         show: true,
       };
 
-      // Parse it through the schema to get the expected shape
       const result = ParamDefSchema.safeParse(validBaseParam);
       expect(result.success).toBe(true);
 
-      // Check the shape by examining what fields are accepted
       const baseParamKeys = [
         "paramName",
         "type",
@@ -132,14 +129,12 @@ describe("Zod Schemas from app.ts", () => {
         "roles",
       ];
 
-      // Compare with expected keys
       expect(Object.keys(validBaseParam)).toEqual(
         expect.arrayContaining(baseParamKeys.slice(0, 4)),
       );
     });
 
     it("FormParamDefSchema: should have a consistent shape", () => {
-      // Create a valid form param definition that will pass schema validation
       const validFormParam = {
         type: "form",
         paramName: "testFormParam",
@@ -155,11 +150,9 @@ describe("Zod Schemas from app.ts", () => {
         ],
       };
 
-      // Parse it through the schema to get the expected shape
       const result = ParamDefSchema.safeParse(validFormParam);
       expect(result.success).toBe(true);
 
-      // Check the shape by examining what fields are accepted
       const formParamKeys = [
         "paramName",
         "label",
@@ -179,7 +172,6 @@ describe("Zod Schemas from app.ts", () => {
         "inputParams",
       ].sort();
 
-      // Compare with expected keys
       expect(Object.keys(validFormParam).sort()).toEqual(
         expect.arrayContaining([
           "type",
@@ -197,14 +189,14 @@ describe("Zod Schemas from app.ts", () => {
       const result = ParamDefSchema.safeParse(validParam);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.show).toBe(true); // Default
-        expect(result.data.options).toEqual([]); // Default
+        expect(result.data.show).toBe(true);
+        expect(result.data.options).toEqual([]);
       }
     });
 
     it("should validate a FormParamDefSchema", () => {
       const validFormParam = {
-        type: "form", // paramName is optional for form
+        type: "form",
         label: "My Form",
         endpoint: "/submit",
         method: "POST",
@@ -283,7 +275,6 @@ describe("Zod Schemas from app.ts", () => {
     });
 
     it("should accept other well-formed types, which widget plugins may render", () => {
-      // Whether a type renders is decided by isRenderableVizType, not by the schema
       for (const type of ["table", "chart", "note", "rich_note"])
         expect(widgetTypesSchema.safeParse(type).success).toBe(true);
     });
@@ -384,7 +375,6 @@ describe("Zod Schemas from app.ts", () => {
 
   describe("ExternalWidgetSchema", () => {
     it("should have a consistent shape", () => {
-      // Access the underlying object schema through the effects chain
       const underlyingSchema = ExternalWidgetSchema.def.in._zod.def;
       const shapeKeys = Object.keys(underlyingSchema.shape).sort();
       expect(shapeKeys).toMatchInlineSnapshot(`
@@ -426,9 +416,8 @@ describe("Zod Schemas from app.ts", () => {
       const result = ExternalWidgetSchema.safeParse(minimalWidget);
       expect(result.success).toBe(true);
       if (result.success) {
-        // Check defaults from base and transform
         expect(result.data.staleTime).toBe(1000 * 60 * 5);
-        expect(result.data.refetchInterval).toBe(1000 * 60 * 15); // Default from transform when runButton is undefined
+        expect(result.data.refetchInterval).toBe(1000 * 60 * 15);
         expect(result.data.data).toEqual({});
       }
     });
@@ -457,12 +446,12 @@ describe("Zod Schemas from app.ts", () => {
     });
 
     it("transform logic: runButton=false (or undefined), refetchInterval=undefined -> refetchInterval=default", () => {
-      const widget = { id: "w", widgetId: "w", runButton: false }; // refetchInterval undefined
+      const widget = { id: "w", widgetId: "w", runButton: false };
       const result = ExternalWidgetSchema.safeParse(widget);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.staleTime).toBe(1000 * 60 * 5); // default staleTime
-        expect(result.data.refetchInterval).toBe(1000 * 60 * 15); // default refetchInterval
+        expect(result.data.staleTime).toBe(1000 * 60 * 5);
+        expect(result.data.refetchInterval).toBe(1000 * 60 * 15);
       }
     });
 
@@ -481,7 +470,7 @@ describe("Zod Schemas from app.ts", () => {
       const invalidWidget = {
         id: "w",
         widgetId: "w",
-        endpoint: { url: "/api/data", method: "PATCH" }, // Invalid method
+        endpoint: { url: "/api/data", method: "PATCH" },
       };
       const resultInvalid = ExternalWidgetSchema.safeParse(invalidWidget);
       expect(resultInvalid.success).toBe(false);
@@ -497,7 +486,7 @@ describe("Zod Schemas from app.ts", () => {
 
     it("should return false for other types", () => {
       expect(isBuiltInVizType("unknown_type")).toBe(false);
-      expect(isBuiltInVizType("Note")).toBe(false); // Case-sensitive
+      expect(isBuiltInVizType("Note")).toBe(false);
       expect(isBuiltInVizType("")).toBe(false);
     });
 
@@ -551,8 +540,7 @@ describe("Zod Schemas from app.ts", () => {
       const result = _GridDataSchema.safeParse(minimalGridData);
       expect(result.success).toBe(true);
       if (result.success) {
-        // Check that optional fields are undefined or null if parsed as such
-        expect(result.data.minH).toBeUndefined(); // or null if parsed from `null`
+        expect(result.data.minH).toBeUndefined();
         expect(result.data.static).toBeUndefined();
       }
     });
@@ -575,7 +563,7 @@ describe("Zod Schemas from app.ts", () => {
     });
 
     it("should invalidate if a required field is missing", () => {
-      const invalidGridData = { y: 0, w: 6, h: 4 }; // Missing x
+      const invalidGridData = { y: 0, w: 6, h: 4 };
       const result = _GridDataSchema.safeParse(invalidGridData);
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -589,7 +577,7 @@ describe("Zod Schemas from app.ts", () => {
     });
 
     it("should invalidate if a field has an incorrect type", () => {
-      const invalidGridData = { x: "0", y: 0, w: 6, h: 4 }; // x is string
+      const invalidGridData = { x: "0", y: 0, w: 6, h: 4 };
       const result = _GridDataSchema.safeParse(invalidGridData);
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -604,7 +592,6 @@ describe("Zod Schemas from app.ts", () => {
 
   describe("StorageSchema", () => {
     it("should have a consistent shape (empty by definition, but check behavior)", () => {
-      // The defined shape is empty, passthrough is the key characteristic.
       const innerSchema = StorageSchema._def.innerType;
       const shapeKeys = Object.keys(innerSchema.shape).sort();
       expect(shapeKeys).toMatchInlineSnapshot("[]");
@@ -669,9 +656,9 @@ describe("Zod Schemas from app.ts", () => {
       const result = WidgetSchemaBase.safeParse(minimalWidget);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.staleTime).toBe(1000 * 60 * 5); // Default
-        expect(result.data.params).toEqual([]); // Default
-        expect(result.data.refetchInterval).toBeUndefined(); // Nullish
+        expect(result.data.staleTime).toBe(1000 * 60 * 5);
+        expect(result.data.params).toEqual([]);
+        expect(result.data.refetchInterval).toBeUndefined();
       }
     });
 
@@ -720,7 +707,7 @@ describe("Zod Schemas from app.ts", () => {
     });
 
     it("should validate staleTime minimum", () => {
-      const invalidStaleTime = { id: "w", widgetId: "w", staleTime: 500 }; // Min is 1000
+      const invalidStaleTime = { id: "w", widgetId: "w", staleTime: 500 };
       const result = WidgetSchemaBase.safeParse(invalidStaleTime);
       expect(result.success).toBe(false);
       if (!result.success) {
@@ -735,7 +722,7 @@ describe("Zod Schemas from app.ts", () => {
     });
 
     it("should validate refetchInterval minimum if number", () => {
-      const invalidRefetch = { id: "w", widgetId: "w", refetchInterval: 500 }; // Min is 1000
+      const invalidRefetch = { id: "w", widgetId: "w", refetchInterval: 500 };
       const result = WidgetSchemaBase.safeParse(invalidRefetch);
       expect(result.success).toBe(false);
       if (!result.success) {

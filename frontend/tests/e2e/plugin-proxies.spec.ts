@@ -10,20 +10,6 @@ import {
   writePackage,
 } from "./plugins/fixtures";
 
-/**
- * A plugin's declarative proxy on the full stack (docs/widget-plugins/SERVER-SIDE.md 3 and
- * 4): a superuser sets the plugin's secret, write-only, and lets its host resolve to a
- * private address; the plugin's frame names the proxy, the API fills the template, adds
- * the secret and calls the upstream, and neither the frame nor the page ever holds the
- * secret.
- *
- * The upstream runs on this machine with a certificate for E2E_PROXY_HOST, signed by a CA
- * made for the run (tests/e2e/make-tls.sh writes both into
- * E2E_PROXY_TLS_DIR). The API trusts that CA through WIDGET_PLUGIN_PROXY_CA_FILE and
- * resolves E2E_PROXY_HOST to this machine, an address that is not public. Without
- * E2E_PLUGINS_DIR and E2E_PROXY_TLS_DIR the tests are skipped.
- */
-
 const PLUGINS_DIR = process.env.E2E_PLUGINS_DIR;
 const TLS_DIR = process.env.E2E_PROXY_TLS_DIR;
 const API_URL = process.env.E2E_API_URL ?? "https://localhost:8000";
@@ -32,7 +18,6 @@ const PORT = Number(process.env.E2E_PROXY_PORT ?? 7792);
 const LISTEN = process.env.E2E_PROXY_LISTEN ?? "127.0.0.1";
 const ORIGIN = `https://${HOST}:${PORT}`;
 const PLUGIN = "e2e-quotes";
-// Made for this run, typed into the admin page once, and never shown again
 const SECRET = `e2e-${crypto.randomUUID()}`;
 
 test.describe.configure({ mode: "serial" });
@@ -49,7 +34,6 @@ let upstream: Server;
 let received: UpstreamRequest[];
 let version: string;
 let dashboardId: string;
-// Every body the page received from the proxy route
 const proxyAnswers: string[] = [];
 
 const quoteFrame = () => page.frameLocator('iframe[title^="E2E quote"]');
@@ -108,7 +92,6 @@ test("superuser-reviews-the-server-side-and-sets-the-secret", async () => {
   );
   const entry = plugin.versions.find((v: { version: string }) => v.version === version);
   if (entry.state === "discovered") {
-    // What approving accepts names the host, the proxy and the secret it sends
     const keys = entry.review.map((item: { key: string }) => item.key);
     expect(keys).toEqual(
       expect.arrayContaining([`server:${ORIGIN}`, "proxy:quote", "secret:api_key"]),
@@ -140,7 +123,6 @@ test("superuser-reviews-the-server-side-and-sets-the-secret", async () => {
     .click();
   const detail = page.getByTestId(`plugin-detail-${PLUGIN}`);
 
-  // The secret is typed once; the page never receives it back
   const secret = detail.getByTestId("plugin-secret-api_key");
   await expect(secret.getByText("not set")).toBeVisible();
   await secret.getByLabel("New value of api_key").fill(SECRET);
@@ -150,7 +132,6 @@ test("superuser-reviews-the-server-side-and-sets-the-secret", async () => {
   expect(await page.content()).not.toContain(SECRET);
   expect(await (await api.get(`/plugins/${PLUGIN}`)).text()).not.toContain(SECRET);
 
-  // The upstream's name resolves to this machine: the superuser lets it be private
   await detail.getByRole("checkbox", { name: "server network" }).click();
   await expect(detail.getByLabel("server network hosts")).toHaveValue(ORIGIN);
   await detail.getByRole("checkbox", { name: /resolve to private addresses/ }).click();
@@ -181,16 +162,13 @@ test("plugin-calls-its-proxy-and-never-holds-the-secret", async () => {
   expect(outcome).toEqual({
     quote,
     undeclared: "refused:out_of_scope",
-    // The frame's URL is ignored: the call is the declared template, nothing else
     "own-url": quote,
     "extra-arg": "refused:invalid_args",
   });
 
-  // The upstream received the secret, from the API, for the declared path only
   expect(received.map((r) => r.path)).toEqual(["/quotes/IBM", "/quotes/IBM"]);
   for (const request of received)
     expect(request.authorization).toBe(`Bearer ${SECRET}`);
-  // The frame and the page never had it
   expect(await quoteFrame().locator("html").innerHTML()).not.toContain(SECRET);
   expect(proxyAnswers.length).toBeGreaterThanOrEqual(3);
   for (const answer of proxyAnswers) expect(answer).not.toContain(SECRET);

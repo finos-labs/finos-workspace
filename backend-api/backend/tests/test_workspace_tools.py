@@ -1,12 +1,3 @@
-"""
-Tests for the Workspace's tools as the agent in the web app is given them.
-
-The tools are those of the Workspace MCP server that external hosts use, with the same
-descriptions and schemas. The user is signed in, so the endpoints are asked with the session token,
-and a call is turned into the command that the user's tab runs. As with any MCP tool, a user has
-only the tools their roles grant.
-"""
-
 import asyncio
 import json
 from pathlib import Path
@@ -25,13 +16,11 @@ ACCESS = "routers.app.workspace_tools.app_helpers.get_user_copilot_access"
 
 
 def external_tools() -> dict[str, dict]:
-    """The tools of the server that external hosts use."""
     tools = json.loads(SURFACE.read_text(encoding="utf-8"))["surface"]["tools"]
     return {tool["name"]: tool for tool in tools}
 
 
 def restricted_to(url: str, *names: str) -> schemas.CopilotAccess:
-    """The access of a user whose roles grant only these tools of the Workspace's server."""
     return schemas.CopilotAccess(
         models=[],
         mcp=[schemas.McpGrant(server_url=url, tool_name=name) for name in names],
@@ -41,7 +30,6 @@ def restricted_to(url: str, *names: str) -> schemas.CopilotAccess:
 
 @pytest.fixture
 def every_tool_granted():
-    """A user whose roles grant every tool of the Workspace's server."""
     with patch(ACCESS, return_value=restricted_to(URL, schemas.ALL_MCP_TOOLS)):
         yield
 
@@ -201,7 +189,6 @@ class TestPrepare:
 
     @pytest.mark.asyncio
     async def test_every_tool_of_the_server_can_be_prepared(self, auth_client):
-        """A tool that cannot hand its command over would leave the agent with a tool that never runs."""
         samples: dict[str, dict] = {
             "get_workspace_snapshot": {},
             "get_widget_data": {"origin": "o", "widget_id": "w"},

@@ -24,7 +24,6 @@ type ParamsForm = {
   [key: string]: string | number | boolean | undefined;
 };
 
-/** One of a widget's forms: a widget may have several, each its own form. */
 export function FormParamElement({
   formParamDef,
 }: {
@@ -172,7 +171,6 @@ function EndpointType(props: {
 
   const title = beautifySlug(label ?? paramName);
 
-  // `$name` in optionsParams is another input's entered value, or a widget param's
   const request = useMemo(
     () =>
       buildOptionsRequest(
@@ -247,7 +245,6 @@ function EndpointType(props: {
       {typeof description === "string" && (
         <div className="body-xs-regular pt-2 break-words max-h-[296px] overflow-y-auto">
           {description.split(/\n|\\\n/).map((line, idx) => {
-            // Count leading spaces for indentation
             const spaces = line.match(/^ */)?.[0].length ?? 0;
             return (
               <div

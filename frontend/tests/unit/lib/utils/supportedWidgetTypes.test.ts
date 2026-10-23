@@ -72,12 +72,9 @@ describe("the widget types this Workspace renders", () => {
       { schema: widgetsSchema },
     );
 
-    // `test_chart` is a type of a plugin enabled for the entity
     expect(Object.keys(valid)).toEqual(["notes", "headlines", "chart"]);
     expect(unsupported).toEqual(["memo", "prices"]);
-    // ...that this user has no access to
     expect(unrendered).toEqual(["chart"]);
-    // No type, or a malformed one, breaks the contract
     expect(invalid.map((item) => item.id)).toEqual(["untyped", "bad"]);
   });
 

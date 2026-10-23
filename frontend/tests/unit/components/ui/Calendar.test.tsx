@@ -10,7 +10,6 @@ describe("Calendar", () => {
 
   it("renders select when isSingle is true", () => {
     render(<Calendar isSingle={true} />);
-    // DayPicker will render components.Select
     expect(screen.getByTestId("day-picker")).toBeInTheDocument();
   });
 });

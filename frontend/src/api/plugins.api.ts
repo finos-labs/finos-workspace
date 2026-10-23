@@ -3,14 +3,11 @@ import type { FrameFailure } from "~/plugins/PluginFrame";
 import { type PluginListing, PluginListingSchema } from "~/plugins/types";
 import { apiClient } from "./api";
 
-/** Widget plugin endpoints (docs/widget-plugins/DESIGN.md 7.1). */
-
 export async function getAvailablePlugins(): Promise<PluginListing> {
   const { data } = await apiClient.get("/app/widget-plugins");
   return PluginListingSchema.parse(data);
 }
 
-/** The widgets.json schema in force for the user's entity (WIDGETS-JSON.md 3.5). */
 export async function getWidgetsSchema(): Promise<ComposedWidgetsSchema> {
   const { data } = await apiClient.get<ComposedWidgetsSchema>(
     "/app/widget-plugins/widgets-schema",
@@ -22,7 +19,6 @@ export async function getWidgetsSchema(): Promise<ComposedWidgetsSchema> {
   return data;
 }
 
-/** The bytes of one file of an available plugin, for the host to verify. */
 export async function getPluginFile(
   pluginId: string,
   digest: string,
@@ -37,10 +33,6 @@ export async function getPluginFile(
   return data;
 }
 
-/**
- * A widget's call to a proxy its plugin declares (SERVER-SIDE.md 3.4). The API fills the
- * template, adds the plugin's secrets and answers with the body and its content type.
- */
 export async function callPluginProxy(
   pluginId: string,
   proxyId: string,
@@ -55,7 +47,6 @@ export async function callPluginProxy(
   return data;
 }
 
-/** A widget's call to a route of its plugin's backend (SERVER-SIDE.md 5.6). */
 export async function callPluginBackend(
   pluginId: string,
   routeId: string,
@@ -74,13 +65,10 @@ export async function postPluginReports(body: {
   plugin_id: string;
   version: string;
   reports?: { directive: string; origin: string }[];
-  /** How the frame failed, when it did */
   failure?: FrameFailure["kind"];
 }) {
   await apiClient.post("/app/widget-plugins/report", body);
 }
-
-// -- Superusers --------------------------------------------------------------
 
 export type VersionState = "discovered" | "active" | "blocked" | "retired" | "missing";
 export type PluginStatus = "disabled" | "enabled" | "revoked";
@@ -140,7 +128,6 @@ export interface PlatformVersion {
     egress: string[];
     risk: Record<string, Risk>;
   };
-  /** The server side (SERVER-SIDE.md 3 and 4): hosts, request templates, secrets. */
   server: {
     network: { declared: string[]; approved: string[] };
     private: boolean;
@@ -170,7 +157,6 @@ export interface PluginRoute {
   response?: { maxBytes?: number; timeoutMs?: number };
 }
 
-/** Whether the deployment runs the plugin's backend, and the last identity check. */
 export interface PluginBackendStatus {
   registered: boolean;
   identity: {
@@ -182,11 +168,9 @@ export interface PluginBackendStatus {
   breaker: "open" | "closed";
 }
 
-/** Whether a secret has a value, who set it and when; never the value. */
 export interface PluginSecretStatus {
   name: string;
   purpose: string;
-  /** False for a stored value no version declares any more. */
   declared: boolean;
   set: boolean;
   source: "configuration" | "admin" | null;
@@ -271,7 +255,6 @@ export async function setPluginRevoked(pluginId: string, revoked: boolean) {
   return data;
 }
 
-/** Replace the plugin's overrides: whatever the body leaves out is dropped. */
 export async function putPluginOverrides(
   pluginId: string,
   body: {
@@ -284,7 +267,6 @@ export async function putPluginOverrides(
   return data;
 }
 
-/** Set a secret's value. Write-only: no endpoint returns it. */
 export async function putPluginSecret(pluginId: string, name: string, value: string) {
   await apiClient.put(`/plugins/${pluginId}/secrets/${name}`, { value });
 }
@@ -293,7 +275,6 @@ export async function deletePluginSecret(pluginId: string, name: string) {
   await apiClient.delete(`/plugins/${pluginId}/secrets/${name}`);
 }
 
-/** Ask the plugin's backend for its identity now. */
 export async function checkPluginBackend(pluginId: string) {
   const { data } = await apiClient.post<PluginBackendStatus>(
     `/plugins/${pluginId}/backend/check`,
@@ -325,7 +306,6 @@ export interface PluginEntityUse {
   enabled: boolean;
 }
 
-/** One plugin with how every entity uses it, and its latest events. */
 export async function getPlatformPlugin(pluginId: string) {
   const { data } = await apiClient.get<
     PlatformPlugin & { entities: PluginEntityUse[]; events: PluginEvent[] }
@@ -333,7 +313,6 @@ export async function getPlatformPlugin(pluginId: string) {
   return data;
 }
 
-/** Enable or disable a plugin for one entity, or for every entity when none is named. */
 export async function putPluginEntity(
   pluginId: string,
   entityUuid: string | null,
@@ -345,8 +324,6 @@ export async function putPluginEntity(
   const { data } = await apiClient.put(path, changes);
   return data;
 }
-
-// -- Entity admins -------------------------------------------------------------
 
 export interface EntityPlugin {
   plugin_id: string;
@@ -374,9 +351,7 @@ export interface EntityPlugin {
     effective: Record<string, string[]>;
     egress: string[];
   };
-  /** Hosts of the approved server network removed for this organization. */
   server_network_narrow: string[];
-  /** The data sources the plugin's backend reads, and the backend serving each here. */
   data_sources: { id: string; purpose: string; backend_uuid: string | null }[];
   server: {
     network: { approved: string[]; effective: string[] };
@@ -400,7 +375,6 @@ export async function getEntityPlugins() {
   const { data } = await apiClient.get<{
     enabled: boolean;
     plugins: EntityPlugin[];
-    /** The organization's backends, which can serve the plugins' data sources */
     backends: { uuid: string; name: string }[];
   }>("/admin/plugins");
   return data;

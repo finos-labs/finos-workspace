@@ -10,7 +10,6 @@ import { partial } from "../../mocks";
 
 type AddTabMock = ReturnType<typeof vi.fn<AppState["addTab"]>>;
 
-/** The first tab handed to `addTab`, with the widgets and grid a created tab always has. */
 function createdTab(addTab: AddTabMock) {
   const tab = addTab.mock.calls[0][0];
   return {
@@ -386,7 +385,6 @@ describe("createTemplates utility functions", () => {
       expect(price?.sourceId).toBe("a");
       expect(headlines?.sourceName).toBe("Backend B");
       expect(headlines?.sourceId).toBe("b");
-      // Credentials are looked up by the source id when a widget fetches, never copied
       expect(price).not.toHaveProperty("endpointHeaders");
       expect(headlines).not.toHaveProperty("endpointHeaders");
     });
@@ -706,12 +704,10 @@ describe("createTemplates utility functions", () => {
       });
 
       it("should return null for template ID with empty template name", () => {
-        // The regex requires at least one character after the final hyphen for templateName
         const templateId = "custom-550e8400-e29b-41d4-a716-446655440000-";
 
         const result = extractCustomTemplateInfo(templateId);
 
-        // Returns null because .+ requires at least one character for templateName
         expect(result.sourceId).toBeNull();
         expect(result.templateName).toBeNull();
       });

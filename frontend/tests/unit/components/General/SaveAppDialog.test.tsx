@@ -7,8 +7,6 @@ import { useShallowAppStore } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { useShallowUserAppsStore } from "~/lib/state/userApps";
 
-// ─── hoisted mocks ────────────────────────────────────────────────────────────
-
 const {
   mockToastSuccess,
   mockToastError,
@@ -26,8 +24,6 @@ const {
   mockCloseFromDashboard: vi.fn(),
   mockCloseEdit: vi.fn(),
 }));
-
-// ─── module mocks ─────────────────────────────────────────────────────────────
 
 vi.mock("sonner", () => ({
   toast: { success: mockToastSuccess, error: mockToastError },
@@ -145,8 +141,6 @@ vi.mock("~/components/ds/atoms/TextArea", () => ({
   )),
 }));
 
-// RadioGroup wires children via context so items can call onValueChange.
-// We use a simple controlled select-style implementation.
 const radioGroupContext = {
   onValueChange: undefined as ((v: string) => void) | undefined,
 };
@@ -239,8 +233,6 @@ vi.mock("~/components/Icon", () => ({
   default: () => <span />,
 }));
 
-// ─── test data factories ───────────────────────────────────────────────────────
-
 function makeDashboard(overrides?: {
   templateId?: string;
   widgets?: { id: string }[];
@@ -278,8 +270,6 @@ function makeUserApp(overrides?: {
     isShared: false,
   };
 }
-
-// ─── store wiring helpers ──────────────────────────────────────────────────────
 
 function wireThemeStore({
   dashboardId = null,
@@ -333,8 +323,6 @@ function wireUserAppsStore({
       }),
   );
 }
-
-// ─── tests ────────────────────────────────────────────────────────────────────
 
 describe("SaveAppDialog", () => {
   beforeEach(() => {
@@ -523,15 +511,9 @@ describe("SaveAppDialog", () => {
       const user = userEvent.setup();
       render(<SaveAppDialog />);
 
-      // Switch to "update existing" via the radio button
       const updateRadio = screen.getByTestId("radio-update");
       await user.click(updateRadio);
 
-      // After clicking "update", selectedAppId is set to the first option automatically
-      // (see SaveAppDialog: when switching to update with no selectedAppId and options exist,
-      // it sets to sourceAppId or first option). Since getUserApp returns undefined for
-      // all IDs, the select will show. The Save button should NOT be disabled when an app
-      // is auto-selected. Verify the app-select dropdown appears.
       await waitFor(() => {
         expect(screen.getByTestId("app-select")).toBeInTheDocument();
       });
@@ -553,20 +535,16 @@ describe("SaveAppDialog", () => {
       wireUserAppsStore({ userApps, getUserApp: getUserAppMock });
       render(<SaveAppDialog />);
 
-      // Switch to "update existing" sub-mode
       const updateRadio = screen.getByTestId("radio-update");
       await user.click(updateRadio);
 
-      // Wait for the select dropdown to appear
       const appSelect = await screen.findByTestId("app-select");
 
-      // Wait for the form name input to be populated from the selected app
       await waitFor(() => {
         const nameInput = screen.getByPlaceholderText("Enter app name...");
         expect((nameInput as HTMLInputElement).value).toBe("Existing App");
       });
 
-      // Select the app explicitly from the dropdown
       await userEvent.selectOptions(appSelect, "app-uuid");
 
       await user.click(screen.getByRole("button", { name: "Save" }));
@@ -623,7 +601,6 @@ describe("SaveAppDialog", () => {
 
       render(<SaveAppDialog />);
 
-      // The "already saved" info banner should appear
       await waitFor(() => {
         expect(screen.getByText("Dashboard already saved")).toBeInTheDocument();
       });
@@ -707,7 +684,6 @@ describe("SaveAppDialog", () => {
       await user.click(screen.getByRole("button", { name: /New prompt/i }));
       await user.click(screen.getByRole("button", { name: "Add" }));
 
-      // Input still open, no chip created
       expect(
         screen.getByPlaceholderText(/Insert prompt suggestion/i),
       ).toBeInTheDocument();

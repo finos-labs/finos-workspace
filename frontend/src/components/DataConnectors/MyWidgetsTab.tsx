@@ -424,10 +424,6 @@ export function MyWidgetsTab() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// SourceTypeSection — replaces SourcesAccordion
-// ---------------------------------------------------------------------------
-
 function SourceTypeSection<T extends POSSIBLE_SOURCES>({
   type,
   items,
@@ -535,10 +531,6 @@ function SourceTypeSection<T extends POSSIBLE_SOURCES>({
   );
 }
 
-// ---------------------------------------------------------------------------
-// SourceItemSection — replaces SourceAccordionItem
-// ---------------------------------------------------------------------------
-
 function VirtualizedWidgetList<T extends POSSIBLE_SOURCES>({
   items,
   parent,
@@ -633,7 +625,6 @@ function SourceItemSection<T extends POSSIBLE_SOURCES>({
     if (filter && hasChildren && !userClosed) setIsOpen(true);
   }, [hasChildren, filter, userClosed]);
 
-  // Scroll to section when defaultExpanded is true
   useEffect(() => {
     if (defaultExpanded && sectionRef.current) {
       setTimeout(() => {
@@ -755,10 +746,6 @@ function SourceItemSection<T extends POSSIBLE_SOURCES>({
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// WidgetCard — replaces SourceCard
-// ---------------------------------------------------------------------------
 
 const WidgetCard = memo(
   ({

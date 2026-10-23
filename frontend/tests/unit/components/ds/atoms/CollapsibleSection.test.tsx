@@ -26,8 +26,6 @@ describe("CollapsibleSection", () => {
     expect(screen.getByText("Collapsible content")).toBeInTheDocument();
 
     fireEvent.click(header);
-    // After clicking, content should be animating out (AnimatePresence)
-    // In tests framer-motion runs synchronously, so the exit removes the element
   });
 
   it("respects defaultOpen=false", () => {
@@ -74,7 +72,6 @@ describe("CollapsibleSection", () => {
     expect(screen.getByText("Should stay visible")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Disabled" }));
-    // Content should still be visible since toggle is disabled
     expect(screen.getByText("Should stay visible")).toBeInTheDocument();
   });
 

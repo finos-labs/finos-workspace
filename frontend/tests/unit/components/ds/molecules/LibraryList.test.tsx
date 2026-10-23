@@ -209,7 +209,6 @@ describe("LibraryItem", () => {
 
   it("does not render chevron when not expandable", () => {
     const { container } = render(<LibraryItem title="No Chevron" />);
-    // AnimatedChevron renders a motion.div with an Icon. If not expandable, no chevron-right icon.
     expect(container.querySelector("[data-icon='chevron-right']")).toBeNull();
   });
 });

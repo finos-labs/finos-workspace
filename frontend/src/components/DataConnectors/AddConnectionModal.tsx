@@ -55,7 +55,6 @@ export const DataConnectionTabs = ({
   showIcons?: boolean;
 }) => {
   const { dcTab, setTab, mode } = useDataConnectorContext();
-  // Users who may not bring connections can only add iframes
   const mayAdd = useShallowAccessStore((s) => canAddConnections(s.access));
   const showApps = showAppsSection && mayAdd;
 

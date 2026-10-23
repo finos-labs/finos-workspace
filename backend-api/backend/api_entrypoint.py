@@ -1,7 +1,3 @@
-"""The API image's command (fastapi.Dockerfile): applies the database migrations, then hands
-the process to the API (run.py), whose gunicorn runs and replaces its workers. The image has
-no shell, so this is Python."""
-
 import os
 import subprocess  # noqa: S404
 import sys

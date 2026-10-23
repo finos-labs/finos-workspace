@@ -1,13 +1,3 @@
-"""
-Integration tests for user types and the connections they may bring.
-
-Admins and developers may bring their own connections: data connectors, file widgets,
-uploaded files, MCP servers and custom Copilots. Users may not: the endpoints that add
-connections refuse them, the connections they have are not served back to them, and the
-MCP proxy does not reach their own MCP servers. They may still delete them. An admin's
-uploads are limited by the upload size of their roles; a developer's are not limited.
-"""
-
 import os
 import sys
 
@@ -38,8 +28,6 @@ PASSWORD = "TestPassword123!"  # noqa: S105
 
 @pytest.fixture
 def storage():
-    """File storage that keeps nothing, so uploads succeed without a bucket."""
-
     async def upload(_file, pending_file):
         return pending_file
 
@@ -57,7 +45,6 @@ def _upload(client, size: int = 10):
 
 
 async def _add_connections(client) -> dict:
-    """Add one connection of each kind; the responses by kind."""
     pending_file = uuid4()
     settings.redis_cache(pending_file, {"pending": True}, timedelta(minutes=5))
     return {
@@ -116,7 +103,6 @@ async def _count_connections(db_session, user_uuid: UUID) -> dict:
 
 
 async def _store_connections(db_session, user_uuid: UUID) -> None:
-    """Connections a user brought while their type allowed it."""
     db_session.add_all(
         [
             models.ApiSource(
@@ -160,7 +146,6 @@ async def _store_connections(db_session, user_uuid: UUID) -> None:
 
 
 async def _served(client) -> dict:
-    """What the listings serve back to the user."""
     user = (await client.get("/app/user")).json()
     sync = (await client.get("/app/dash/validate-and-sync")).json()
     return {
@@ -260,7 +245,6 @@ class TestServingConnections:
     async def test_a_user_without_an_organization_is_served_nobodys_backends(
         self, organization, auth_client, db_session
     ):
-        # Another user's own backend, which has no organization
         other = await organization.add_user()
         await _store_connections(db_session, other.uuid)
         await db_session.execute(
@@ -379,7 +363,6 @@ class TestUsersDeleteTheirConnections:
 
 
 class TestUploadLimit:
-    # Admins upload within the limits of their roles; developers have none
     @pytest.mark.asyncio
     async def test_a_user_without_an_upload_allowance_cannot_upload(
         self, organization, auth_client, storage

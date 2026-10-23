@@ -27,7 +27,6 @@ type TooltipProps = {
   preventOnDropdown?: boolean;
 };
 
-// added this special tooltip to be used in the GroupDropdown component because the default tooltip was opening the tooltip when the element inside triggered a dropdown
 const Tooltip = forwardRef((props: TooltipProps, _forwardedRef) => {
   const {
     message,
@@ -51,12 +50,10 @@ const Tooltip = forwardRef((props: TooltipProps, _forwardedRef) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const childrenRef = useRef<HTMLDivElement>(null);
 
-  // Handle hover state with proper delay
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
 
     if (isHovering) {
-      // Check if a dropdown is open when hovering
       if (preventOnDropdown) {
         const dropdownOpen = !!document.querySelector(".ws-dropdown-container");
         if (dropdownOpen) {

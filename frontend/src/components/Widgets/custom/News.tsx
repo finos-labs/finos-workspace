@@ -34,7 +34,6 @@ function formatArticleDate(date: string) {
   return Number.isNaN(parsed.getTime()) ? date : formatDate(parsed);
 }
 
-/** A list of articles from the widget's endpoint; an article opens in a dialog. */
 export default function News() {
   const { widget } = useWidgetContext();
 

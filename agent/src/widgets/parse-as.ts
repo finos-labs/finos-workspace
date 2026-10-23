@@ -20,11 +20,8 @@ export function readParseAs(item: { data_format?: Record<string, unknown> }): Pa
 }
 
 export interface ParseAsRoute {
-  /** Load into SQLite as a structured table. */
   toSqlite: boolean;
-  /** Inject content as raw text into model context. */
   asText: boolean;
-  /** Show as a brief description placeholder rather than the full content. */
   brief: boolean;
 }
 
@@ -38,7 +35,6 @@ export function routeForParseAs(parseAs: ParseAs | null): ParseAsRoute {
     case "html":
       return { toSqlite: false, asText: false, brief: true };
     case null:
-      // Default: try SQLite for structured JSON arrays; fall through to text otherwise.
       return { toSqlite: true, asText: true, brief: false };
   }
 }

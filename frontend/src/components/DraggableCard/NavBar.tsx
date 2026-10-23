@@ -131,10 +131,6 @@ export interface NavBarProps {
     pdfFunction?: (title: string) => void;
     txtFunction?: (title: string) => void;
   };
-  /**
-   * Export decided by the widget itself (a widget plugin's export functions): the Export
-   * entry calls it instead of offering `exportFns` or a picture of the card
-   */
   onExport?: () => void;
   settingsDialogClassName?: string;
 }
@@ -201,7 +197,6 @@ export function RefreshButton(props: {
   const tooltipMessage = useMemo(() => {
     const dataUpdateFooter = <DataUpdateTooltipFooter />;
 
-    // runButton takes precedence
     if (runButton) {
       return (
         <div>
@@ -281,11 +276,9 @@ export function CopilotButton({ aiEnabled }: { aiEnabled?: boolean }) {
     Boolean(s.selectedCopilot?.features?.["widget-dashboard-select"]),
   );
 
-  // Get disableRetrievalForCopilot from the widget
   const disableRetrievalForCopilot = widgetRef?.current?.disableRetrievalForCopilot;
   const disabled = !aiEnabled || disableRetrievalForCopilot || isPreview;
 
-  // Update contextEnabled to also check for disableRetrievalForCopilot
   const contextEnabled = widgetDashboardSelectFF && !disabled;
 
   const tooltipMessage = useMemo(() => {
@@ -343,8 +336,8 @@ export function CopilotButton({ aiEnabled }: { aiEnabled?: boolean }) {
             "pulse-box-shadow bg-brand-main! text-white": isSelected,
           })}
           onClick={selectWidget}
-          onMouseDown={preventDragStart} // Prevent dragging when this button is used
-          onTouchStart={preventDragStart} // For touch devices
+          onMouseDown={preventDragStart}
+          onTouchStart={preventDragStart}
           disabled={disabled || !contextEnabled}
         >
           <Icon
@@ -374,7 +367,6 @@ const DefaultSettings = {
 
 const ValidWidgetIds = ["iframe", "file"];
 
-// Widget data larger than this many cells is not sent to the Copilot as context
 const TOTAL_CELL_LIMIT = 500_000;
 
 const showMinimizeWidgetFF = getConfig().ui.showMinimizeWidget;
@@ -461,9 +453,8 @@ const DataUpdateTooltipFooter = memo(
   },
 );
 
-// Overflow detection thresholds for collapsible navbar controls
-const COLLAPSE_THRESHOLD = 20; // Collapse when middle spacer gets this small (px)
-const EXPAND_THRESHOLD = 150; // Must be larger than controls width (~100px) to prevent flicker
+const COLLAPSE_THRESHOLD = 20;
+const EXPAND_THRESHOLD = 150;
 
 const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
   (props: NavBarProps, _ref: Ref<HTMLDivElement>) => {
@@ -518,7 +509,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
       isPreview: contextIsPreview,
     } = useWidgetContext();
 
-    // Use context isPreview if available, otherwise fall back to prop
     const isPreview = contextIsPreview ?? propIsPreview;
 
     const copilotAvailable = useCopilotAvailable();
@@ -533,7 +523,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
 
     const isMinimizedRef = useRef<boolean | undefined>(state.isMinimized);
 
-    // Ref for overflow detection - measure the middle spacer
     const middleSpacerRef = useRef<HTMLDivElement>(null);
     const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
@@ -573,18 +562,14 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
     const isMobile = useIsMobile();
     const shouldShowMinimizeButton = showMinimizeWidgetFF && showMinimizeButton;
 
-    // Overflow detection with hysteresis to prevent flickering
     const isCollapsedRef = useRef(false);
 
-    // Set up ResizeObserver when component mounts and cleanup on unmount
     useLayoutEffect(() => {
-      // Clean up existing observer
       if (resizeObserverRef.current) {
         resizeObserverRef.current.disconnect();
         resizeObserverRef.current = null;
       }
 
-      // Early return if overflow detection is disabled
       if (showWidgetControlsEllipsis) return;
 
       const element = middleSpacerRef.current;
@@ -596,12 +581,10 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
         let shouldCollapse = isCollapsedRef.current;
 
         if (isCollapsedRef.current) {
-          // Currently collapsed - only expand if there's plenty of room
           if (spacerWidth >= EXPAND_THRESHOLD) {
             shouldCollapse = false;
           }
         } else if (spacerWidth <= COLLAPSE_THRESHOLD) {
-          // Currently expanded - collapse if space is tight
           shouldCollapse = true;
         }
 
@@ -703,7 +686,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
             label: "Undo",
             onClick: (dontShowAgain) => {
               if (dontShowAgain) return;
-              // fixes validation issue with staleTime being 0
               if (widgetClone.staleTime === 0) widgetClone.staleTime = undefined;
 
               useAppStore.getState().addWidget(activeDashboardId, widgetClone);
@@ -727,7 +709,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
     const ellipsisSettings = useMemo(() => {
       const output = {
         ...settings,
-        // we enable metadata if its one of our widgets
         showMetadata: ValidWidgetIds.includes(cleanWidgetId),
         showSettings: settingsChildren === null ? false : settings.showSettings,
         showMinimize: shouldShowMinimizeButton,
@@ -805,7 +786,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
       const newMinimizedState = !isMinimizedRef.current;
       isMinimizedRef.current = newMinimizedState;
 
-      // Call the function to update the widget height
       minimizeWidget(
         activeDashboardId,
         widgetRef.current.id,
@@ -841,7 +821,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
         ? params.filter((param) => !isBadgeParam(param))
         : params;
 
-      // Render one badge per hidden param that belongs to a group.
       const hiddenBadgeParams = paramsForFallback.filter(
         (p) => (p.row ?? 0) === 0 && !p.show && isBadgeParam(p),
       );
@@ -878,11 +857,9 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
 
     const [controlsHovered] = useDebounceValue(state.controlsHovered, 500);
 
-    // Collapse when setting is ON, or when overflow is detected (setting OFF)
     const shouldCollapse =
       showWidgetControlsEllipsis || state.shouldCollapseFromOverflow;
 
-    // Lock controls open when the widget is selected
     const autoLocked = shouldCollapse && isSelected;
     const controlsVisible =
       state.controlsHovered || state.controlsExpanded || controlsHovered || autoLocked;
@@ -1073,7 +1050,6 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                       )}
                     </div>
                   }
-                  //children={children}
                 />
               )}
               {state.metadataModal && (
@@ -1173,8 +1149,8 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                     id={`close-widget-${widgetRef.current?.id}`}
                     disabled={isShared || isPreview}
                     onClick={handleClose}
-                    onMouseDown={preventDragStart} // Prevent dragging when this button is used
-                    onTouchStart={preventDragStart} // For touch devices
+                    onMouseDown={preventDragStart}
+                    onTouchStart={preventDragStart}
                     className={cn("ignore-select-widget ws-small-navbar-btn relative", {
                       "opacity-40 cursor-not-allowed": isShared,
                     })}

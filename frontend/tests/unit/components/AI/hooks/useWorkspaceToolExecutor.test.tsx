@@ -1,8 +1,3 @@
-/**
- * A tool of the Workspace, called by the agent, is run by this tab: the Workspace checks the call and says
- * what command it is, the tab runs the command, and the agent is handed what it came to.
- */
-
 import { renderHook } from "@testing-library/react";
 import { AxiosError, type AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,7 +18,6 @@ const run = (toolName: string, parameters?: Record<string, unknown>) => {
   return result.current(toolName, parameters);
 };
 
-/** What the agent is handed: the text of the one item of the result. */
 const resultOf = async (call: ReturnType<typeof run>) => {
   const data = await call;
   expect(data).toHaveLength(1);

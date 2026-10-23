@@ -1,18 +1,3 @@
-"""Check a widget plugin package the way the server will, offline.
-
-The directory is a version directory, ``<plugin-id>/<version>/``, laid out as
-docs/widget-plugins/DESIGN.md 4.2 describes. The check is the server's own discovery
-pipeline: caps, symbolic links, the manifest schema, the CSP rules, the checksum.
-
-    python -m scripts.plugin_check <dir>            # verify; exit 1 when blocked
-    python -m scripts.plugin_check --digest <dir>   # print the checksum and digest
-
-An author writes the printed ``checksum`` into ``plugin.json`` (it covers every file
-except ``plugin.json``). A deployer pins the printed version digest in
-``WIDGET_PLUGINS_PINS`` as ``"<id>@<version>": "<digest>"``. Only the standard library
-and pydantic are needed; no database or settings.
-"""
-
 import argparse
 import sys
 from pathlib import Path
@@ -38,7 +23,7 @@ def _say(text: str = "", stream=sys.stdout) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(description="Check a widget plugin package the way the server will, offline.")
     parser.add_argument("directory", type=Path, help="the <plugin-id>/<version> directory")
     parser.add_argument("--digest", action="store_true", help="only print the checksum and the version digest")
     parser.add_argument("--max-files", type=int, default=200)

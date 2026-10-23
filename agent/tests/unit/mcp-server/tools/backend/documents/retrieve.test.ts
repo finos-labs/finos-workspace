@@ -13,11 +13,6 @@ import {
   type StoredDocument,
 } from "../../../../../../mcp-server/src/tools/backend/documents/store.ts";
 
-/**
- * Build a mock embedding model that maps text → fixed vector via a lookup
- * table. Tests author the table to encode "expected similarity" semantics:
- * matching strings get the same vector, mismatched ones get orthogonal.
- */
 function makeMock(byText: Record<string, number[]>): MockEmbeddingModelV3 {
   return new MockEmbeddingModelV3({
     doEmbed: async ({ values }) => ({
@@ -104,7 +99,6 @@ describe("retrieve — cosine ranking", () => {
     expect(hits).toHaveLength(3);
     expect(hits[0].doc.id).toBe("doc-aapl");
     expect(hits[0].score).toBeCloseTo(1, 4);
-    // The two orthogonal docs tie at 0; just check AAPL beats both
     expect(hits[0].score).toBeGreaterThan(hits[1].score);
   });
 

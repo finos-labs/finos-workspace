@@ -7,13 +7,11 @@ import { type BuiltRequest, plainRequest } from "~/lib/utils/widgetRequest";
 import { HttpResponse, http, server, setupMSW } from "../../mocks/msw-utils";
 import "../../mocks/runtimeConfig";
 
-// Matches mockConfig.urls.backend from tests/mocks/runtimeConfig
 const BACKEND_URL = "http://localhost:3000";
 const CSV_BODY = "a,b\n1,2";
 
 type Seen = { client: string | null; credentials: string | null; auth: string | null };
 
-/** Answers like the API: only a request that names the web client is let through. */
 function apiHandler(url: string, seen: Seen[]) {
   return http.all(url, ({ request }) => {
     seen.push({

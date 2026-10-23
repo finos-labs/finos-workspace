@@ -45,7 +45,6 @@ const WebsiteSchema = z.object({
     .min(1, "URL is required")
     .refine(
       (value) => {
-        // Regular expression to match various URL formats
         const urlPattern =
           /^(https?:\/\/)?(localhost(:\d{1,5})?|([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})(\/\S*)?$/;
         return urlPattern.test(value);
@@ -242,10 +241,8 @@ export default function WebsiteContent() {
   );
 
   useEffect(() => {
-    // Check if the currently selected tab still exists
     const tabExists = websiteForms.some((form) => form.id === selectedTab);
 
-    // If the selected tab doesn't exist, select the last tab
     if (!tabExists && websiteForms.length > 0) {
       setSelectedTab(websiteForms[websiteForms.length - 1].id);
     }
@@ -286,7 +283,6 @@ export default function WebsiteContent() {
         const result = await patchWidgetMetadata(widgetMetadata, id);
 
         if (result.success) {
-          // Update the global widget metadata state
           const updatedMetadata = await getWidgetMetadata();
           setWidgetMetadata(updatedMetadata);
 

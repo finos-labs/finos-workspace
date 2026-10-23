@@ -53,7 +53,6 @@ const initialState = {
   message: null as null | string,
   errorMessage: null as null | string,
   templateErrorMessage: null as null | string,
-  // What "Validate Widgets" could not check, so a pass is not read as every route valid
   uncheckedRoutes: [] as string[],
   backendToAdd: null as Partial<Source> | null,
   isLocalhost: false,
@@ -147,7 +146,6 @@ export default function AdvancedWidgetDialog() {
         const appsCount = templates?.length || 0;
         const failed = totalFailed > 0 ? `, ${totalFailed} failed` : "";
 
-        // Count prompts and MCP servers across all templates
         const { promptsCount, mcpCount } = templates?.reduce(
           (acc, template) => {
             acc.promptsCount += template.prompts?.length || 0;
@@ -157,7 +155,6 @@ export default function AdvancedWidgetDialog() {
           { promptsCount: 0, mcpCount: 0 },
         ) ?? { promptsCount: 0, mcpCount: 0 };
 
-        // Create a more detailed success message
         const messageParts = [
           `${widgetsCount} ${widgetsCount === 1 ? "Widget" : "Widgets"} found${failed}`,
           `${appsCount} ${appsCount === 1 ? "App" : "Apps"} found`,

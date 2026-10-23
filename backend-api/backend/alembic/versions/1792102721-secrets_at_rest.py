@@ -1,34 +1,3 @@
-"""secrets at rest
-
-Stores every secret the API uses again encrypted with AES-256-GCM, in the v1 format below
-(revision 4c1d2e8f9a3b re-encrypts it to the format of api/crypto.py):
-
-- The encrypted columns (api_source.endpointHeaders, custom_copilot.headers and
-  custom_copilot.copilots) are re-encrypted from the old AES-CBC format, whose key was
-  SHA-256 of WORKSPACE_AES_KEY, to the v1 format under the same WORKSPACE_AES_KEY. A value
-  that does not decrypt (another key, damaged) is cleared; the log counts them.
-- user.totp_secret becomes an encrypted column; user.totp_last_step records the time step
-  of the last authenticator code accepted, so that no code is accepted twice.
-- The users' own Copilot provider keys move out of user.display_settings into the
-  encrypted columns user.openai_api_key and user.perplexity_api_key.
-- The custom headers of MCP servers move out of the server list (mcp_servers.servers)
-  into the encrypted column mcp_servers.headers, keyed by the normalized server URL.
-- session.api_token is dropped, with the sessions the SDK signed in with. The API has no
-  SDK routes (revision 9c4d7a2e1f35 dropped user.auth_token).
-- Invitations no longer hold a password: the generated ones are deleted from
-  user_invite.data.
-
-downgrade() restores the schema, and the encrypted columns go back to the AES-CBC
-format. Nothing is written back in plain text: authenticator secrets are cleared (users
-set up their authenticator again), provider keys and MCP headers are dropped, and
-session.api_token comes back empty.
-
-Revision ID: ff59d563599c
-Revises: bd12bc3c71ac
-Create Date: 2026-10-15
-
-"""
-
 import base64
 import gzip
 import hashlib
@@ -50,7 +19,6 @@ from api import crypto
 from api.schemas import normalize_mcp_url
 from utilities.config import settings
 
-# revision identifiers, used by Alembic.
 revision = "ff59d563599c"
 down_revision = "bd12bc3c71ac"
 branch_labels = None
@@ -58,24 +26,19 @@ depends_on = None
 
 log = logging.getLogger("alembic.runtime.migration")
 
-# (table, column) of every EncryptedType column
 ENCRYPTED_COLUMNS = [
     ("api_source", "endpointHeaders"),
     ("custom_copilot", "headers"),
     ("custom_copilot", "copilots"),
 ]
-# The display settings that held the users' own provider keys, and their new columns
 PROVIDER_KEYS = {
     "openaiApiKey": "openai_api_key",
     "perplexityApiKey": "perplexity_api_key",
 }
-# Where a stored MCP server kept its custom headers
 MCP_HEADER_KEYS = ("custom_headers", "customHeaders")
 
 CBC_BLOCK_BYTES = 16
 
-# The format this revision writes: "v1." + base64url(nonce || ciphertext || tag), AES-256-GCM
-# without associated data under HKDF-SHA256 of WORKSPACE_AES_KEY
 V1_PREFIX = "v1."
 V1_HKDF_INFO = b"workspace-at-rest:v1"
 V1_NONCE_BYTES = 12
@@ -85,14 +48,11 @@ JSON_TYPE = sa.JSON().with_variant(postgresql.JSONB(), "postgresql")
 
 
 def _cbc_cipher(iv: bytes) -> Cipher:
-    """The old cipher: AES-256-CBC under SHA-256 of WORKSPACE_AES_KEY."""
     key = hashlib.sha256(settings.WORKSPACE_AES_KEY.encode()).digest()
     return Cipher(algorithms.AES(key), modes.CBC(iv))
 
 
 def _cbc_decrypt(value: str) -> object:
-    """The JSON value of an old ciphertext, base64(ciphertext || IV) with PKCS#7 padding.
-    Raises ValueError for anything else."""
     raw = base64.b64decode(value, validate=True)
     if len(raw) < 2 * CBC_BLOCK_BYTES or len(raw) % CBC_BLOCK_BYTES:
         raise ValueError("not an AES-CBC ciphertext")
@@ -131,7 +91,6 @@ def _v1_encrypt_json(value: object) -> str:
 
 
 def _v1_decrypt_json(token: str) -> object:
-    """The JSON value of a v1 ciphertext. Raises ValueError for anything else."""
     encoded = token.removeprefix(V1_PREFIX)
     raw = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
     try:
@@ -217,7 +176,6 @@ def _encrypt_user_secrets():
         values = {}
         if row.totp_secret is not None:
             values["totp_secret"] = _v1_encrypt_text(row.totp_secret)
-        # The app stores display settings as a JSON document holding their JSON text
         display_settings = row.display_settings
         as_text = isinstance(display_settings, str)
         if as_text:

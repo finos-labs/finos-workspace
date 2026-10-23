@@ -1,7 +1,3 @@
-/**
- * Reading a document and cutting it into chunks, in a process of its own (see ingest-child.ts).
- */
-
 import { IsolationError, runInChild } from "../../../../../src/lib/isolate.ts";
 import { getLogger } from "../../../lib/logger.ts";
 import type { IngestChildInput, IngestChildOutput } from "./ingest-child.ts";

@@ -20,7 +20,6 @@ const usage = (overrides: Partial<Usage> = {}): Usage => ({
   ...overrides,
 });
 
-/** Renders the hook with the flags GET /app/copilot-keys answered. */
 function renderQueriesLeft(hasOpenaiKey = false) {
   const queryClient = new QueryClient();
   queryClient.setQueryData(["copilot-keys"], {
@@ -148,7 +147,6 @@ describe("QueryLimitReached", () => {
   });
 
   it("says that no role gives the agent when nothing grants it", () => {
-    // A user without roles: no grant, and limits of nothing
     useAccessStore.setState({
       usage: usage({
         copilot_calls_limit: 0,

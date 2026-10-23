@@ -376,7 +376,6 @@ const mcpServerSchema = z.object({
       }),
     )
     .default([]),
-  // Saved headers to delete: the API never sends their values back
   removedHeaders: z.array(z.string()).default([]),
 });
 
@@ -563,8 +562,6 @@ export function ManageMcpServer(props: ManageMcpServerProps) {
         customHeaders: undefined,
       };
 
-      // Header values are write-only: a value sets the header, null deletes a saved one,
-      // and a saved header left alone keeps its value
       const headersObject: Record<string, string | null> = {};
       for (const name of server.removedHeaders) headersObject[name] = null;
       for (const header of server.customHeaders) {

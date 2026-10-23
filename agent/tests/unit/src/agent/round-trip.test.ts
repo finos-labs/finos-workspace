@@ -48,8 +48,6 @@ describe("injectWidgetData — same widget, different params", () => {
       [priceItem("AAPL", 189.99), priceItem("MSFT", 430.32), priceItem("NVDA", 113.9)],
       ctx,
     );
-    // Three pulls of the same widget with different symbols must not collapse
-    // into one table — each dataset stays independently queryable.
     expect(ctx.pendingTables.size).toBe(3);
     const closes = [...ctx.pendingTables.values()]
       .flat()
@@ -62,7 +60,6 @@ describe("injectWidgetData — same widget, different params", () => {
   it("reuses one table when the same widget is loaded with identical params", () => {
     const ctx = emptyCtx();
     injectWidgetData([priceItem("AAPL", 189.99), priceItem("AAPL", 190.5)], ctx);
-    // Same (widget, params) is a refresh, not a distinct dataset.
     expect(ctx.pendingTables.size).toBe(1);
   });
 });
@@ -83,7 +80,6 @@ describe("injectFromReboot — get_params_options", () => {
         },
       ] as unknown as ToolMessage["data"],
     };
-    // workspace shape varies; stuff a sample payload on `data` for the test
     (tool.data as unknown as Array<unknown>)[0] = {
       origin: "example",
       widget_id: "stocks",
@@ -1078,7 +1074,6 @@ describe("injectFromReboot — widget data", () => {
     expect(events[0].data.message).toBe('Loaded "Energy Consumption, Renewables and Revenue" data.');
     expect((events[0].data as { artifacts?: unknown[] }).artifacts?.length).toBe(1);
     expect(events[1].data.message).toBe('Loaded "Executive ESG Change Narrative" data.');
-    // The text of a widget is not put in the chat: the status says that it loaded, and how much.
     expect((events[1].data as { artifacts?: unknown[] }).artifacts).toBeUndefined();
     expect(JSON.stringify(events[1].data.details)).toContain('"chars":41');
     expect(JSON.stringify(events[1].data)).not.toContain("Renewable energy share improved steadily.");

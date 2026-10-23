@@ -37,22 +37,18 @@ describe("scopeProblem", () => {
     expect(scopeProblem(forged)).toContain("not signed by the agent");
   });
 
-  // The deployment that has no users has nobody to keep apart.
   it("lets every call go on when there is no secret because there are no users", () => {
     const noUsers = { INES_AUTH: "none" };
     expect(scopeProblem({}, "", noUsers)).toBeNull();
     expect(scopeProblem({ "x-ines-conversation-id": "anything" }, "", noUsers)).toBeNull();
   });
 
-  // The fail-open this used to have: with users and no secret, any key a caller sent was taken as given,
-  // which is one user reaching another user's documents and sandbox.
   it("refuses every call when there are users and no secret, rather than believing the caller", () => {
     for (const env of [{}, { INES_AUTH: "workspace" }]) {
       expect(scopeProblem({}, "", env)).toContain("no chat-scope secret");
       expect(scopeProblem({ "x-ines-conversation-id": "alice:chat-1" }, "", env)).toContain(
         "no chat-scope secret",
       );
-      // Not even a signature made with some secret of the caller's own.
       expect(
         scopeProblem(
           { "x-ines-conversation-id": "alice:chat-1", "x-ines-scope-sig": signScope("their-own-secret", "alice:chat-1") },
@@ -80,7 +76,6 @@ describe("scopeSecretProblem", () => {
     expect(scopeSecretProblem({ INES_SCOPE_SECRET: "short" })).toContain("at least 16 characters");
   });
 
-  // The named opt-out, and the only one: a deployment with no users has no user to keep apart.
   it("asks for nothing when the deployment has no users", () => {
     expect(scopeSecretProblem({ INES_AUTH: "none" })).toBeNull();
   });

@@ -1,11 +1,3 @@
-"""Behavior tests for the Workspace MCP sidecar tool surface.
-
-Covers the WorkspaceBench hardening work: Literal-typed operation params,
-required identifiers, sidecar-side guards, warnings passthrough, explicit
-empty-config preservation, manage_dashboard update targeting, and error
-envelope completeness.
-"""
-
 import json
 
 import pytest
@@ -38,7 +30,6 @@ def recorded() -> list:
 
 @pytest.fixture
 def server(recorded):
-    """MCP server whose bridge records commands and answers ok."""
     state = make_state()
 
     async def fake_execute(command):
@@ -64,11 +55,6 @@ def payload(result) -> dict:
 
 async def tool_schemas(server) -> dict:
     return {tool.name: tool.parameters for tool in await server.list_tools()}
-
-
-# ---------------------------------------------------------------------------
-# H1: operation enums surfaced in the JSON schema and enforced by FastMCP
-# ---------------------------------------------------------------------------
 
 
 async def test_operation_enums_are_surfaced_in_tool_schemas(server):
@@ -119,11 +105,6 @@ async def test_invalid_operation_is_rejected_with_allowed_values(server, recorde
     assert recorded == []
 
 
-# ---------------------------------------------------------------------------
-# H2: unconditionally required params are schema-required
-# ---------------------------------------------------------------------------
-
-
 async def test_get_widget_schema_and_create_widget_require_origin_and_widget_id(server):
     schemas = await tool_schemas(server)
 
@@ -140,11 +121,6 @@ async def test_create_widget_without_origin_is_rejected_by_schema(server, record
     assert result.is_error
     assert "origin" in result.content[0].text
     assert recorded == []
-
-
-# ---------------------------------------------------------------------------
-# H3: sidecar-side identifier and config guards
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -185,11 +161,6 @@ async def test_update_widget_requires_data_args_or_ui_args(server, recorded):
     assert "update_widget requires data_args and/or ui_args" in body["message"]
     assert "get_widget_schema" in body["message"]
     assert recorded == []
-
-
-# ---------------------------------------------------------------------------
-# H4: warnings passthrough and explicit-empty config preservation
-# ---------------------------------------------------------------------------
 
 
 async def test_bridge_warnings_pass_through_verbatim(recorded):
@@ -254,11 +225,6 @@ async def test_update_widget_preserves_explicit_empty_ui_args(server, recorded):
     assert command.config.data_args is None
 
 
-# ---------------------------------------------------------------------------
-# dry_run: schema presence, forwarding, and guard ordering
-# ---------------------------------------------------------------------------
-
-
 async def test_dry_run_is_present_in_create_and_update_widget_schemas(server):
     schemas = await tool_schemas(server)
 
@@ -302,11 +268,6 @@ async def test_update_widget_guards_still_fire_with_dry_run(server, recorded):
     assert recorded == []
 
 
-# ---------------------------------------------------------------------------
-# H5: manage_dashboard update resolves omitted dashboard_id like read
-# ---------------------------------------------------------------------------
-
-
 async def test_manage_dashboard_update_forwards_omitted_dashboard_id(server, recorded):
     async with Client(server) as client:
         result = await client.call_tool(
@@ -337,11 +298,6 @@ async def test_manage_dashboard_update_without_name_errors_with_context_hint(
     assert recorded == []
 
 
-# ---------------------------------------------------------------------------
-# H8: generative widgets take string content
-# ---------------------------------------------------------------------------
-
-
 async def test_add_generative_widget_rejects_non_string_data(server, recorded):
     async with Client(server) as client:
         result = await client.call_tool(
@@ -355,11 +311,6 @@ async def test_add_generative_widget_rejects_non_string_data(server, recorded):
     assert body["error"]["code"] == "invalid_request"
     assert "requires string data" in body["message"]
     assert recorded == []
-
-
-# ---------------------------------------------------------------------------
-# H9: error envelope completeness, structured details, timeout hint
-# ---------------------------------------------------------------------------
 
 
 async def test_browser_unavailable_error_uses_complete_envelope():
@@ -418,11 +369,6 @@ async def test_timeout_error_includes_snapshot_hint():
     assert "verify identifiers exist via get_workspace_snapshot" in result.message
 
 
-# ---------------------------------------------------------------------------
-# H7: discoverability content
-# ---------------------------------------------------------------------------
-
-
 async def test_not_supported_sentences_present(server):
     tools = {tool.name: tool.description for tool in await server.list_tools()}
 
@@ -443,11 +389,6 @@ async def test_not_supported_sentences_present(server):
         "resource with the full catalog." in tools["list_available_widgets"]
     )
 
-
-# ---------------------------------------------------------------------------
-# Result offloading: large list_available_widgets catalogs move behind an
-# workspace://results/{result_id} resource with a compact inline index.
-# ---------------------------------------------------------------------------
 
 OFFLOAD_ENV = "WORKSPACE_MCP_RESULT_OFFLOAD_THRESHOLD"
 RESULT_REF_PREFIX = "workspace://results/"

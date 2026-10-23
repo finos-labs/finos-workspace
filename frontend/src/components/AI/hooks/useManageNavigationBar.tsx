@@ -7,7 +7,6 @@ import type { CopilotCommandResultT } from "~/lib/state/copilot";
 import { getJsonWidget, slugify, triggerCustomEvent } from "~/lib/utils";
 import type { ManageNavigationBarInputArgumentsT } from "~/lib/utils/ai";
 
-/** Match a tab by slug or case-insensitive name. */
 export function findTabMatch(
   tabs: { id: string; name: string }[],
   rawName: string,
@@ -23,7 +22,6 @@ type NavBarContext = {
   existingNavBar: WidgetT | undefined;
 };
 
-/** The navigation bar an operation works on, or what to tell the AI is wrong with the operation. */
 type NavBarCheck = { error: CopilotCommandResultT[] } | { navBar: WidgetT };
 
 type DashboardCommandOptions = {
@@ -327,10 +325,6 @@ export function useManageNavigationBar() {
             renameLookup[oldName.toLowerCase()] = newName;
           }
 
-          // Tab ids are stable identifiers: a rename only changes the display
-          // name. Regenerating the id from the new name breaks every held
-          // reference (widget.innerTab, current_tab_id, URLs) and lets the
-          // stale id rematerialize as an empty phantom tab.
           const matchedOldNames = new Set<string>();
           for (const t of existingTabs) {
             const newName = renameLookup[t.name.toLowerCase()];
@@ -352,8 +346,6 @@ export function useManageNavigationBar() {
             ];
           }
 
-          // Names stay unique so name-based matching (findTabMatch, future
-          // renames) remains unambiguous.
           const finalNames = new Set<string>();
           for (const t of Object.values(innerTabs)) {
             const nameKey = t.name.toLowerCase();
@@ -397,7 +389,6 @@ export function useManageNavigationBar() {
         }
 
         default:
-          // The arguments come from the AI, which may name an operation there is none of
           return [
             {
               status: "error",

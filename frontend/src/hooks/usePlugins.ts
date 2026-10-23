@@ -31,13 +31,6 @@ const REFRESH = {
   refetchOnWindowFocus: true,
 } as const;
 
-/**
- * Keeps the plugin registry and the widgets.json schema current: fetched on sign-in, on
- * window focus and every 60 seconds while the page is visible (docs/widget-plugins/
- * DESIGN.md 5, WIDGETS-JSON.md 3.6). A plugin that leaves the listing stops rendering;
- * its widgets stay in their dashboards. When the schema changes (a plugin enabled,
- * revoked or updated for the entity), the connected backends are validated again.
- */
 export function usePluginRegistrySync() {
   const userUuid = useShallowAuthStore((state) => state.user?.uuid);
   const setListing = usePluginRegistryStore((state) => state.setListing);

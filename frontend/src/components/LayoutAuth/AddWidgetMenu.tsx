@@ -83,7 +83,6 @@ export default function AddWidgetMenu() {
                 "transition-opacity",
                 "focus:outline-hidden",
               )}
-              //onClick={handleClick}
             >
               <Icon id="plus-icon" className="h-[17px] w-[17px] text-white" />
             </button>

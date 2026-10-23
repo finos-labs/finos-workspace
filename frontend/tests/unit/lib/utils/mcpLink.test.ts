@@ -53,7 +53,6 @@ describe("the active link (WIDGETS-JSON 5.3 and 5.4)", () => {
   });
 
   it("is none while the tool is not in the agent's tools", () => {
-    // Server disconnected, tool switched off, not granted, or MCP tools off for the agent
     expect(activeMcpLink(widget(LINK), [], [server()])).toBeUndefined();
     expect(
       activeMcpLink(widget(LINK), [tool({ tool_name: "other" })], [server()]),
@@ -61,11 +60,9 @@ describe("the active link (WIDGETS-JSON 5.3 and 5.4)", () => {
   });
 
   it("is only to a server of the widget's own backend, by its declared name", () => {
-    // The same name declared by another backend
     expect(
       activeMcpLink(widget(LINK), [tool()], [server({ sourceId: "backend-b" })]),
     ).toBeUndefined();
-    // A label the user gave the server plays no part
     expect(
       activeMcpLink(
         widget(LINK),
@@ -73,7 +70,6 @@ describe("the active link (WIDGETS-JSON 5.3 and 5.4)", () => {
         [server({ declaredName: "Other", name: "Team data", clientName: "Team data" })],
       ),
     ).toBeUndefined();
-    // Names compare exactly
     expect(
       activeMcpLink(widget({ ...LINK, mcp_server: "team data" }), [tool()], [server()]),
     ).toBeUndefined();
@@ -134,7 +130,6 @@ describe("citing a call of a linked tool (5.3, rule 5, and 5.4)", () => {
     expect(cite({ team_id: "a", region: "eu", period: "month" })).toBe("eu_monthly");
     expect(cite({ team_id: "a", region: "eu" })).toBe("eu");
     expect(cite({ team_id: "a", region: "us" })).toBe("general");
-    // A literal is not a param: it stays in the details
     expect(
       citeMcpCall(server(), "get_team_report", { team_id: "a", region: "eu" }, widgets)
         ?.details,

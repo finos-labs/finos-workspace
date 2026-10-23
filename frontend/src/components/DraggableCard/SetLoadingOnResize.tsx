@@ -23,11 +23,6 @@ type LoadingElementProps = {
   children?: ReactNode;
   failingUrl?: string;
   icon?: boolean | IconId;
-  /**
-   * Keep the children mounted and hide them under the loading or error state, instead of
-   * replacing them. A widget plugin's frame is its whole realm: unmounting it restarts
-   * the plugin.
-   */
   keepMounted?: boolean;
 };
 

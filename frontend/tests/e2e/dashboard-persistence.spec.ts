@@ -1,13 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { deleteDashboard } from "./helpers";
 
-/**
- * A change to a dashboard is kept when the page goes away at once: reloaded, closed or
- * navigated. WebKit cancels an ordinary request made as the page leaves, so the app saves
- * with a request the browser completes after it (`keepalive`), and soon after each change.
- * Runs in Chromium, Firefox and WebKit.
- */
-
 const widgetCards = (page: Page) => page.locator("div.group\\/widget");
 
 async function createNewDashboard(page: Page): Promise<string> {
@@ -28,7 +21,6 @@ test("a-widget-added-just-before-a-reload-is-kept", async ({ page }) => {
   await expect(menu).toBeHidden();
   await expect(widgetCards(page)).toHaveCount(1);
 
-  // At once: no time for the save that follows a change
   await page.reload();
   await expect(page.locator(`#tab-${id}`)).toBeVisible({ timeout: 30000 });
   await expect(widgetCards(page)).toHaveCount(1, { timeout: 30000 });

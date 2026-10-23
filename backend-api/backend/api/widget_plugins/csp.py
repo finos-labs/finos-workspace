@@ -1,17 +1,7 @@
-"""The Content-Security-Policy model of widget plugin frames.
-
-A policy is a map of directive to sources, never a raw string. Authors declare one,
-a superuser approves or overrides it per directive, an entity admin may only narrow
-it, and the platform owns a floor nobody can remove (docs/widget-plugins/SECURITY.md
-section 4). The same rules are implemented in ``frontend/src/plugins/csp.ts``; both
-run the cases in ``frontend/src/plugins/csp-cases.json``.
-"""
-
 import ipaddress
 import re
 from dataclasses import dataclass, field
 
-# Directives a plugin may ask for, or an admin may override
 POLICY_DIRECTIVES = (
     "connect-src",
     "img-src",
@@ -26,12 +16,10 @@ MAX_SOURCES = 32
 MAX_PORT = 65535
 MAX_SOURCE_LENGTH = 255
 
-# Confirmations a superuser gives in an override for sources an author may not request
 INSECURE_SCHEME = "insecure-scheme"
 PRIVATE_HOST = "private-host"
 REMOTE_SCRIPT = "remote-script"
 
-# What every frame gets. The host adds the hash of its shell script to script-src.
 FLOOR: dict[str, list[str]] = {
     "default-src": ["'none'"],
     "base-uri": ["'none'"],
@@ -58,8 +46,6 @@ _PRIVATE_SUFFIXES = (".local", ".internal", ".localhost", ".home.arpa", ".lan")
 
 @dataclass
 class PolicyCheck:
-    """The result of checking a policy: errors, and the confirmations it needs."""
-
     errors: list[str] = field(default_factory=list)
     needs: set[str] = field(default_factory=set)
 
@@ -107,7 +93,6 @@ def _check_url(directive: str, source: str, check: PolicyCheck) -> None:
 
 
 def check_source(directive: str, source: object, check: PolicyCheck) -> None:  # noqa: PLR0911 - one return per rule
-    """Check one source of one directive, adding errors and needed confirmations."""
     if not isinstance(source, str) or not source:
         check.errors.append(f"{directive}: sources are non-empty strings")
         return
@@ -135,7 +120,6 @@ def check_source(directive: str, source: object, check: PolicyCheck) -> None:  #
             return
         check.errors.append(f"{directive}: {source} is not allowed")
         return
-    # A whole scheme, such as "https:"
     if source == "*" or (source.endswith(":") and _SCHEME.fullmatch(source[:-1])):
         check.errors.append(f"{directive}: {source!r} is too broad; name a host")
         return
@@ -145,11 +129,6 @@ def check_source(directive: str, source: object, check: PolicyCheck) -> None:  #
 def check_policy(
     policy: object, *, confirmations: frozenset[str] | set[str] | None = None, override: bool = False
 ) -> PolicyCheck:
-    """Check a policy declared by an author (``override=False``) or set by a superuser.
-
-    An author may not request a source that needs a confirmation. A superuser may, when
-    the request carries that confirmation.
-    """
     check = PolicyCheck()
     if policy is None:
         return check
@@ -184,7 +163,6 @@ def check_policy(
 
 
 def approved_policy(declared: dict | None, overrides: dict | None) -> dict[str, list[str]]:
-    """What a superuser accepted: an override replaces the declared list per directive."""
     result = {d: list(s) for d, s in (declared or {}).items() if d in POLICY_DIRECTIVES}
     for directive, sources in (overrides or {}).items():
         if directive in POLICY_DIRECTIVES:
@@ -193,7 +171,6 @@ def approved_policy(declared: dict | None, overrides: dict | None) -> dict[str, 
 
 
 def narrow(policy: dict[str, list[str]], narrowing: dict | None) -> dict[str, list[str]]:
-    """Restrict a policy to the sources an entity allows, per narrowed directive."""
     if not narrowing:
         return policy
     result = dict(policy)
@@ -204,7 +181,6 @@ def narrow(policy: dict[str, list[str]], narrowing: dict | None) -> dict[str, li
 
 
 def compose(policy: dict[str, list[str]]) -> dict[str, list[str]]:
-    """The effective policy: the floor plus what was approved and not narrowed away."""
     effective = {d: list(s) for d, s in FLOOR.items()}
     for directive, sources in policy.items():
         added = [s for s in sources if s != "'none'"]
@@ -216,7 +192,6 @@ def compose(policy: dict[str, list[str]]) -> dict[str, list[str]]:
 
 
 def hosts(policy: dict[str, list[str]]) -> list[str]:
-    """Every host a policy lets a frame reach, for the egress summary."""
     found: list[str] = []
     for sources in policy.values():
         for source in sources:
@@ -227,7 +202,6 @@ def hosts(policy: dict[str, list[str]]) -> list[str]:
 
 
 def directive_risk(directive: str, sources: list[str]) -> str:
-    """The risk of what a directive permits (SECURITY.md 4.4)."""
     remote = [s for s in sources if _URL.match(s)]
     if any(s.startswith(("http://", "ws://")) for s in remote) or any(
         _is_ip(_URL.match(s)["host"])

@@ -1,12 +1,3 @@
-"""Widget plugins end to end through the API: discovery, a superuser's approval, an
-entity's enablement and role grants, what a user may use and the files they receive
-(docs/widget-plugins/DESIGN.md 4 to 7).
-
-Packages are generated into a temporary plugins directory per test. Nothing is
-available until a superuser approves a version and an entity enables the plugin. The
-clients and helpers are in tests/fixtures/widget_plugins.py.
-"""
-
 import asyncio
 import hashlib
 import json
@@ -122,9 +113,6 @@ class TestConcurrentSaves:
     async def test_a_row_another_save_created_first_is_updated(
         self, member, superuser, plugins_dir, db_session, monkeypatch
     ):
-        """Two saves of an organization's settings at once can both find no row and both
-        insert one; the later insert is a duplicate key. That save takes the row the other
-        one created, and updates it."""
         write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
@@ -172,7 +160,7 @@ class TestAvailability:
         assert (await user_listing(member))["plugins"] == []
         await approve(superuser)
         assert (await user_listing(member))["plugins"] == []
-        await enable(superuser)  # and no role grants it
+        await enable(superuser)
         assert (await user_listing(member))["plugins"] == []
         await grant(superuser)
         assert len((await user_listing(member))["plugins"]) == 1
@@ -211,7 +199,6 @@ class TestAvailability:
 
     @pytest.mark.asyncio
     async def test_other_entities_see_nothing(self, superuser, second_user_client, second_user_grant, plugins_dir):
-        """A role of another entity grants its plugin, but that entity has not enabled it."""
         write_package(plugins_dir)
         await rescan(superuser)
         await approve(superuser)
@@ -270,7 +257,6 @@ class TestSuperuserEntities:
         assert len((await user_listing(second_user_client))["plugins"]) == 1
         detail = (await superuser.get("/plugins/test-chart")).json()
         assert {e["entity_uuid"]: e["enabled"] for e in detail["entities"]}[second] is True
-        # The listing says which entities use it, for the entity dialogs
         assert (await plugin_view(superuser))["enabled_for"] == [{"entity_uuid": second}]
         assert (await superuser.get("/plugins/not-a-plugin")).status_code == 404
 
@@ -440,14 +426,12 @@ class TestVersions:
         write_package(plugins_dir, manifest(description="changed in place"))
         assert (await rescan(superuser))["blocked"] == ["test-chart@1.0.0"]
         assert (await user_listing(member))["plugins"] == []
-        # Restoring the old files does not unblock a version that changed
         await rescan(superuser)
         assert version_view(await plugin_view(superuser))["state"] == "blocked"
 
 
 @pytest.fixture
 async def plugin_audit_listeners():
-    """The app registers the audit listeners in its lifespan, which tests do not run."""
     from sqlalchemy import event  # noqa: PLC0415
 
     from api.events import role_permission_events as events  # noqa: PLC0415
@@ -467,10 +451,9 @@ async def plugin_audit_listeners():
     ]
     for name, listener in pairs:
         event.listen(models.RoleWidgetPlugin, name, listener)
-    # The listeners write through a session of their own, opened in a task
     with patch.object(events, "AsyncWriteSessionLocal", sessions):
         yield
-        await asyncio.sleep(0.2)  # let the last audit task finish before the engine closes
+        await asyncio.sleep(0.2)
     for name, listener in pairs:
         event.remove(models.RoleWidgetPlugin, name, listener)
     await engine.dispose()
@@ -487,9 +470,8 @@ class TestAudit:
         analysts = await member.role("Auditors")
 
         async def entries(action: str) -> list:
-            # The listeners write in a task of their own
             for _ in range(40):
-                await db_session.commit()  # a new snapshot sees what the task committed
+                await db_session.commit()
                 rows = (
                     (
                         await db_session.execute(
@@ -576,7 +558,6 @@ class TestNoInstallPath:
         from fastapi.openapi.utils import get_openapi  # noqa: PLC0415
 
         with warnings.catch_warnings():
-            # Other routers reuse operation ids; that is not what this test is about
             warnings.simplefilter("ignore", UserWarning)
             schema = get_openapi(title="x", version="1", routes=app.routes)
         for path, operations in schema["paths"].items():

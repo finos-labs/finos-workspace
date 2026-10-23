@@ -1,27 +1,20 @@
-"""Prometheus metrics of widget plugins (docs/widget-plugins/DESIGN.md 11).
-
-Registered with the default registry, so they appear on ``/metrics`` when ``PROMETHEUS``
-is on. Labels stay bounded: the plugin ids and versions a deployment has (validated before
-they are counted), and fixed outcomes, reasons, kinds and directives.
-"""
-
 from prometheus_client import Counter, Histogram
 
 DISCOVERIES = Counter(
     "widget_plugin_discoveries_total",
     "Plugin versions a rescan recorded, by what it found",
-    ["outcome"],  # discovered, blocked, missing, restored
+    ["outcome"],
 )
 BLOCKS = Counter(
     "widget_plugin_blocks_total",
     "Plugin versions blocked, by reason",
-    ["reason"],  # files, manifest, checksum, pin, changed
+    ["reason"],
 )
 APPROVALS = Counter("widget_plugin_approvals_total", "Plugin versions approved")
 FILE_FETCHES = Counter(
     "widget_plugin_file_fetches_total",
     "Plugin files asked for, by outcome",
-    ["outcome"],  # served, refused, changed
+    ["outcome"],
 )
 PROXY_CALLS = Counter(
     "widget_plugin_proxy_calls_total",
@@ -48,7 +41,7 @@ BACKEND_SECONDS = Histogram(
 BACKEND_IDENTITY = Counter(
     "widget_plugin_backend_identity_checks_total",
     "Identity checks of plugin backends, by plugin and result",
-    ["plugin", "state"],  # ok, mismatch, unreachable, unregistered
+    ["plugin", "state"],
 )
 BROKER_CALLS = Counter(
     "widget_plugin_broker_calls_total",

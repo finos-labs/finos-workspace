@@ -144,7 +144,7 @@ describe("useDetectOS", () => {
       const { result } = renderHook(() => useDetectOS());
 
       expect(result.current.isIOS).toBe(true);
-      expect(result.current.isMacOS).toBe(true); // Also true due to userAgent
+      expect(result.current.isMacOS).toBe(true);
     });
 
     it("should detect Android via userAgent", () => {
@@ -156,7 +156,7 @@ describe("useDetectOS", () => {
       const { result } = renderHook(() => useDetectOS());
 
       expect(result.current.isAndroid).toBe(true);
-      expect(result.current.isLinux).toBe(true); // Also true since Android is Linux-based
+      expect(result.current.isLinux).toBe(true);
     });
   });
 

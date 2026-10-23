@@ -112,13 +112,10 @@ const TextArea = (props: TextAreaProps) => {
     isPreSelectedWidget: state.isPreSelectedWidget,
   }));
 
-  // Enhanced submit function to clear mention-added widgets/tabs
   const enhancedHandleSubmit = useCallback(
     async (question: string) => {
-      // First send the question with full context (including mention-tracked tabs/widgets)
       handleSubmitRef.current?.({ question });
 
-      // After the message has been handed off, clean up temporary context in a micro-task
       setTimeout(() => {
         const mentionedUuids = Array.from(copilotData.mentionTrackedWidgetUuids);
         if (mentionedUuids.length === 0) return;
@@ -126,23 +123,16 @@ const TextArea = (props: TextAreaProps) => {
 
         for (const uuid of mentionedUuids) {
           const widget = copilotData.selectedWidgets?.find((w) => w.uuid === uuid);
-          // A widget is considered a "tab" widget if either:
-          // 1. It contains a populated `metadata.tabWidgets` array (normal case).
-          // 2. Its `widget_id` follows the `tab_` naming convention (fallback for edge-cases
-          //    where the `tabWidgets` array may not have been set).
           const isTabWidget =
             (widget?.metadata?.tabWidgets?.length ?? 0) > 0 ||
             widget?.widget_id?.startsWith("tab_");
 
-          // Only remove widgets that were NOT already selected before being mentioned
-          // If a widget was selected from CopilotContext first, keep it even if it was also mentioned
           const wasPreSelected = copilotData.isPreSelectedWidget(uuid);
 
           if (isTabWidget) {
             const tabId = widget?.metadata?.innerTabId;
             if (hoveredTabId === tabId) setHoveredTabId(null);
 
-            // Only remove tab if it wasn't pre-selected from CopilotContext
             if (!wasPreSelected) {
               const currentWidgets = copilotData.getCopilotWidgets();
               copilotData.setCopilotWidgets({
@@ -151,16 +141,12 @@ const TextArea = (props: TextAreaProps) => {
                 ),
               });
 
-              // For tabs, remove them from the visual list **and** from the persistent selection set
               copilotData.removeWidgetSelected(uuid);
 
-              // Also purge any lingering dashboard widget data so it can't be resurrected
               copilotData.removeDataFromDashboardWidget(uuid);
             }
-            // Only remove regular widget if it wasn't pre-selected from CopilotContext
           } else if (!wasPreSelected) copilotData.toggleSelectedWidget(uuid);
 
-          // Also remove from pre-selected tracking if it was there
           if (wasPreSelected) copilotData.removePreSelectedWidget(uuid);
         }
       });
@@ -195,7 +181,6 @@ const TextArea = (props: TextAreaProps) => {
   }, [prompt, processMentions]);
 
   const getSearchQuery = useCallback(() => {
-    // Get query from cursor position to determine if we're searching
     const textBeforeCursor = renderedPrompt.substring(0, state.cursorPosition);
     const lastTriggerIndex = textBeforeCursor.lastIndexOf(trigger);
     const searchQuery =
@@ -220,7 +205,6 @@ const TextArea = (props: TextAreaProps) => {
     textAreatype: props.type,
   });
 
-  // Unified slash command suggestions state (skills + MCP tools)
   const { searchSlashCommands, hasItems: hasSlashItems } = useSlashCommandSuggestions();
   const [slashSuggestions, setSlashSuggestions] = useState<SlashCommandItems | null>(
     null,
@@ -266,7 +250,6 @@ const TextArea = (props: TextAreaProps) => {
             .find((q) => regexHistory.test(q));
           if (match) newCompletion = match;
         } catch (_) {
-          // Intentionally empty - regex might fail, but we continue
         } finally {
           setCompletion(newCompletion);
         }
@@ -279,13 +262,9 @@ const TextArea = (props: TextAreaProps) => {
       let newSuggestions = [] as HierarchicalMention[];
       const start = textBeforeCursor.lastIndexOf(trigger);
 
-      // Check if @ is part of an email address pattern
       const isLikelyEmail = () => {
         if (start === -1) return false;
-        // Check if there's text before @ that looks like an email username
         const beforeAt = textBeforeCursor.substring(0, start);
-        // Email usernames typically contain letters, numbers, dots, hyphens, underscores
-        // and don't have spaces immediately before the @
         const emailUsernamePattern = /[\w.-]+$/;
         return emailUsernamePattern.test(beforeAt);
       };
@@ -301,7 +280,6 @@ const TextArea = (props: TextAreaProps) => {
 
       if (newSuggestions.length === 0) searchSuggestions("");
 
-      // Handle "/" triggers - unified slash command dropdown (skills + MCP tools)
       const slashStart = textBeforeCursor.lastIndexOf(MCP_TOOL_TRIGGER);
       const hasSlashTrigger = slashStart !== -1;
       const isSlashAtWordBoundary =
@@ -335,7 +313,6 @@ const TextArea = (props: TextAreaProps) => {
       }
 
       queueMicrotask(() => {
-        // Scroll to current selection if needed
         if (newSuggestions.length > 0 || hasSlashSuggestions) {
           scrollToSuggestion(selectionIndex, true);
         }
@@ -352,31 +329,22 @@ const TextArea = (props: TextAreaProps) => {
         }
       });
 
-      // Prompt with mentions like @[id:...]
       const rawTargetValue = restoreMentions(targetValue, mentions);
       if (props.type === "promptDialog") return setPrompt(rawTargetValue);
 
-      // Auto-remove widgets/tabs from context when @ mentions are deleted
       const { mentions: currentMentions } = processMentions(rawTargetValue);
       const currentTrackedUuids = new Set<string>();
 
       for (const mention of currentMentions) {
         if (mention.group === "tab" && mention.content?.uuid) {
-          // For tab mentions, track the tab UUID itself (not individual widgets)
           currentTrackedUuids.add(mention.content.uuid);
         }
 
-        // For individual widget mentions (dashboard or all)
         if (mention.group === "dashboard" || mention.group === "all") {
-          // If the mention already provides a UUID, use it directly
           if (mention.content?.uuid) {
             currentTrackedUuids.add(mention.content.uuid);
           }
 
-          // Special case: workspace ("all") mentions don't have UUIDs at suggestion time.
-          // When the user selects one, we create a temporary widget and surface it in
-          // selectedWidgets with a generated UUID. Map the mention by widget_id to that UUID
-          // so it persists while typing.
           if (mention.group === "all" && mention.content?.widget_id) {
             const selected = copilotData.selectedWidgets?.find(
               (w) => w.widget_id === mention.content?.widget_id,
@@ -389,30 +357,21 @@ const TextArea = (props: TextAreaProps) => {
       const newTrackedWidgetUuids = new Set(copilotData.mentionTrackedWidgetUuids);
       const trackedWidgetUuids = Array.from(newTrackedWidgetUuids);
 
-      // Find widgets/tabs that were removed (were in previous but not in current)
       const removedUuids = trackedWidgetUuids.filter(
         (uuid) => !currentTrackedUuids.has(uuid),
       );
 
-      // Remove widgets/tabs from context that had their mentions deleted
       for (const uuid of removedUuids) {
-        // Check if this is a tab widget
         const widget = copilotData.selectedWidgets?.find((w) => w.uuid === uuid);
-        // A widget is considered a "tab" widget if either:
-        // 1. It contains a populated `metadata.tabWidgets` array (normal case).
-        // 2. Its `widget_id` follows the `tab_` naming convention (fallback for edge-cases
-        //    where the `tabWidgets` array may not have been set).
         const isTabWidget =
           (widget?.metadata?.tabWidgets?.length ?? 0) > 0 ||
           widget?.widget_id?.startsWith("tab_");
 
         if (isTabWidget) {
-          // Check if this tab is currently being hovered and clear highlighting if so
           const tabWidget = copilotData.selectedWidgets?.find((w) => w.uuid === uuid);
           const tabId = tabWidget?.metadata?.innerTabId;
           if (hoveredTabId === tabId) setHoveredTabId(null);
 
-          // For tabs, remove them from the visual list **and** from the persistent selection set
           const currentWidgets = copilotData.getCopilotWidgets();
           copilotData.setCopilotWidgets({
             selectedWidgets: currentWidgets.selectedWidgets.filter(
@@ -420,29 +379,22 @@ const TextArea = (props: TextAreaProps) => {
             ),
           });
 
-          // Synchronously remove the tab from the selectedWidgetIDs array to avoid race-conditions
           copilotData.removeWidgetSelected(uuid);
 
-          // Also purge any lingering dashboard widget data so it can't be resurrected
           copilotData.removeDataFromDashboardWidget(uuid);
         } else if (
           !copilotData.isPreSelectedWidget(uuid) &&
           copilotData.isWidgetSelected(uuid)
         ) {
-          // For regular widgets, only remove if they were added via mention
-          // This is the key change - we don't remove widgets that were selected before being mentioned
           copilotData.toggleSelectedWidget(uuid);
         }
 
         newTrackedWidgetUuids.delete(uuid);
       }
 
-      // Update tracking by syncing with current mentions
-      // First remove items no longer mentioned
       for (const uuid of trackedWidgetUuids)
         if (!currentTrackedUuids.has(uuid)) newTrackedWidgetUuids.delete(uuid);
 
-      // Then add newly mentioned items
       for (const uuid of currentTrackedUuids)
         if (!copilotData.mentionTrackedWidgetUuids.has(uuid))
           newTrackedWidgetUuids.add(uuid);
@@ -465,7 +417,6 @@ const TextArea = (props: TextAreaProps) => {
             state.cursorPosition,
           );
 
-    // Add space before the mention if there's text before it and no space already
     const split = getBeforeAfterCursor(currentValue, mentionStart, mentionEnd);
 
     const insertValue = `${split.spacePrefix}${trigger}[id:${selection.id}]  `;
@@ -473,17 +424,14 @@ const TextArea = (props: TextAreaProps) => {
     const newPrompt = restoreMentions(newRenderedPrompt, mentions);
     const textValue = `${split.spacePrefix}${trigger}${selection.name}  `;
 
-    // Add space after
     setPrompt(`${newPrompt}${split.afterCursor === "" ? "" : " "}`);
 
-    // Clean up any hierarchical properties before processing
     const cleanSelection = {
       ...selection,
       _isChildWidget: undefined,
       _parentTabId: undefined,
     } as HierarchicalMention;
 
-    // Rest of the selection handling, web included for state update
     handleSelection(selection);
     if (props.type === "promptDialog") textAreaRef.current?.focus();
 
@@ -497,7 +445,6 @@ const TextArea = (props: TextAreaProps) => {
     onSuggestionClickRef.current = handleSelectionLocal;
   }, [handleSelectionLocal]);
 
-  // Handle selection of unified slash command suggestions (skills + MCP tools)
   const handleSlashSelection = useCallbackRef((data: SlashCommandItem) => {
     if (!textAreaRef.current) return;
     const currentValue = textAreaRef.current.value;
@@ -507,13 +454,11 @@ const TextArea = (props: TextAreaProps) => {
 
     if (slashStart === -1) return;
 
-    // Replace the partial slash command with the full one
     const split = getBeforeAfterCursor(currentValue, slashStart, cursorPos);
 
     const insertValue = `${split.spacePrefix}${data.slashText}  `;
     const newRenderedPrompt = `${split.beforeCursor}${insertValue}${split.afterCursor}`;
 
-    // Restore mentions to preserve widget/mention highlights
     const newPrompt = restoreMentions(newRenderedPrompt, mentions);
 
     setPrompt(`${newPrompt}${split.afterCursor === "" ? "" : " "}`);
@@ -528,7 +473,6 @@ const TextArea = (props: TextAreaProps) => {
   const handleKeyDownLocal = useCallbackRef(
     (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
       if (e.shiftKey) return;
-      // Handle unified slash command suggestions keyboard navigation
       const { skills = [], mcpTools = [], hasSuggestions } = slashSuggestions ?? {};
       if (hasSuggestions) {
         const suggestions = [...skills, ...mcpTools];
@@ -555,7 +499,6 @@ const TextArea = (props: TextAreaProps) => {
           return;
         }
 
-        // Scroll immediately - no delay needed for instant scrolling
         if (newIndex !== null) scrollToSuggestion(newIndex, true);
 
         return;
@@ -566,7 +509,6 @@ const TextArea = (props: TextAreaProps) => {
       if (isSuggestionsOpen) {
         if (suggestion) {
           if (e.key === "Space") {
-            // Accept suggestion if it matches the current text
             const currentValue = textAreaRef.current?.value ?? "";
             const start =
               currentValue.lastIndexOf(trigger, state.cursorPosition) + trigger.length;
@@ -586,7 +528,6 @@ const TextArea = (props: TextAreaProps) => {
       } else {
         if (handleHistoryNavigation(e)) return;
         if (completion && (e.key === "ArrowRight" || e.key === "Tab")) {
-          // Accept completion
           e.preventDefault();
           if (completion) {
             const newPrompt = restoreMentions(completion, mentions);
@@ -596,7 +537,6 @@ const TextArea = (props: TextAreaProps) => {
           return;
         }
         if (e.key === "Enter") {
-          // Only submit on Enter without Shift
           if (!e.shiftKey) {
             e.preventDefault();
             if (prompt !== "" && !loading) {
@@ -605,7 +545,6 @@ const TextArea = (props: TextAreaProps) => {
               return;
             }
           }
-          // Allow Shift+Enter to create a new line (default behavior)
         }
         if (e.key === "Escape") {
           setCompletion("");
@@ -618,8 +557,6 @@ const TextArea = (props: TextAreaProps) => {
     copilot.setIsTyping(false);
     copilot.highlightWidget(null);
   }, [copilot.setIsTyping, copilot.highlightWidget]);
-
-  // Process suggestions to create hierarchical structure like CopilotContext
 
   const suggestionsMemo = useMemo(() => {
     return (
@@ -651,13 +588,11 @@ const TextArea = (props: TextAreaProps) => {
     suggestions.length,
   ]);
 
-  // Unified slash command suggestions dropdown (skills + MCP tools)
   const slashSuggestionsMemo = useMemo(() => {
     if (!slashSuggestions?.hasSuggestions) return null;
 
     const { skills, mcpTools } = slashSuggestions;
 
-    // Build a flat index counter so keyboard nav works across sections
     let flatIndex = 0;
 
     return (
@@ -783,7 +718,6 @@ const calculateContentHeight = (
   return contentHeight + offset;
 };
 
-// Cache DOM elements to avoid creating new ones on every call
 let cachedGhostDiv: HTMLDivElement | null = null;
 let cachedGhostSpan: HTMLSpanElement | null = null;
 
@@ -796,12 +730,10 @@ const getCursorOffset = (
     return { left: 0, bottom: 0 };
   }
 
-  // Create cached elements only once
   if (!(cachedGhostDiv && cachedGhostSpan)) {
     cachedGhostDiv = document.createElement("div");
     cachedGhostSpan = document.createElement("span");
 
-    // Set static styles that don't change
     cachedGhostDiv.style.position = "absolute";
     cachedGhostDiv.style.top = "-9999px";
     cachedGhostDiv.style.left = "-9999px";
@@ -811,7 +743,6 @@ const getCursorOffset = (
     cachedGhostSpan.textContent = "";
   }
 
-  // Update dynamic styles and content
   const style = getComputedStyle(element);
   const elementValue = element.value;
   let contentToMeasure = completion || elementValue;
@@ -825,7 +756,6 @@ const getCursorOffset = (
   cachedGhostDiv.style.lineHeight = style.lineHeight;
   cachedGhostDiv.textContent = element.value.substring(0, selectionStart);
 
-  // Append span for cursor position measurement
   cachedGhostDiv.appendChild(cachedGhostSpan);
 
   document.body.appendChild(cachedGhostDiv);

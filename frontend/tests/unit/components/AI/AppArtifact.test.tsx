@@ -27,8 +27,6 @@ const mockItems = {
 
 type CreateTabArgs = Parameters<typeof createCustomTemplateTab>[0];
 
-// createCustomTemplateTab is exercised in createTemplates.test.ts; here we only assert
-// the artifact wires the dashboard creation request correctly.
 const mockCreateCustomTemplateTab = vi.fn(async (args: CreateTabArgs) => {
   args.addTab?.({
     index: "built-dashboard",

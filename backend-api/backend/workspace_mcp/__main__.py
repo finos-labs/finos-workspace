@@ -1,5 +1,3 @@
-"""CLI entrypoint for the Workspace MCP sidecar."""
-
 import argparse
 import os
 
@@ -10,7 +8,6 @@ from workspace_mcp.config import ENV_PREFIX, Settings, parse_csv
 
 
 def parse_cors_allow_origins(values: list[str] | None) -> tuple[str, ...]:
-    """Parse repeated or comma-separated CORS origin arguments."""
     if not values:
         return ()
     origins: list[str] = []
@@ -20,7 +17,6 @@ def parse_cors_allow_origins(values: list[str] | None) -> tuple[str, ...]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the command-line parser for the sidecar."""
     parser = argparse.ArgumentParser(
         description="Run the Workspace MCP sidecar.",
         epilog="Example: workspace-mcp --host 127.0.0.1 --port 8787 --mcp-path /mcp",
@@ -68,7 +64,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Run the sidecar server."""
     parser = build_parser()
     args = parser.parse_args()
     settings = Settings(

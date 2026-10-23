@@ -6,8 +6,6 @@ import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowSharedAppStore, useSharedAppStore } from "~/lib/state/sharedApp";
 
 export function useWidgetsInCurrentDashboard() {
-  // This hook is an abstraction to get either private or shared widgets in a dashboard
-
   const getPrivateWidgetById = useShallowAppStore((state) => state.getWidgetById);
   const getSharedWidgetById = useShallowSharedAppStore((state) => state.getWidgetById);
 

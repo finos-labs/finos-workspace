@@ -1,15 +1,3 @@
-// The config.js nginx serves (nginx.conf). It sets window.__APP_CONFIG__ before the app bundle
-// loads, from the container's environment variables. The image has no shell to write it when the
-// container starts, so nginx renders it with njs on each request. /healthz renders it too, so an
-// invalid value fails the health check, and config.js answers 500.
-//
-// Each row maps one RuntimeConfigSchema field (src/lib/runtimeConfigSchema.ts) to an environment
-// variable and a type. A field whose variable is unset is left out, so the schema default applies.
-// nginx passes its workers only the variables its env directives name, so nginx.conf has one for
-// each row. The image build runs scripts/check-runtime-config.ts, which fails when this table,
-// nginx.conf and the schema disagree.
-//
-// Plain JavaScript that njs runs: no destructuring, spread or for...of.
 const FIELDS = [
   ["urls", "backend", "BACKEND_URL", "string"],
   ["urls", "ai", "AI_API_URL", "string"],
@@ -62,8 +50,6 @@ function valueOf(variable, type, raw) {
     return raw;
   }
   if (type === "list") {
-    // Comma-separated values, trimmed and lowercased the same way the schema coerces a
-    // comma-separated string.
     return raw
       .split(",")
       .map(function (item) {

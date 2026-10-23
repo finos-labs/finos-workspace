@@ -14,7 +14,6 @@ import {
 } from "./useSkillSuggestions";
 
 export type SlashCommandItem<T = SkillSuggestion | McpToolSuggestion> = {
-  /** The text that will be inserted into the prompt when this item is selected. */
   slashText: string;
 } & T;
 
@@ -27,11 +26,6 @@ export type SlashCommandItems = {
 const DEFAULT_SKILL_CAP = 5;
 const DEFAULT_MCP_TOOL_CAP = 10;
 
-/**
- * Shared prose styling for tooltip descriptions. Forces long unbroken tokens
- * (slash-delimited tool names, JSON schemas) to wrap inside the constrained
- * tooltip instead of overflowing it.
- */
 const SUGGESTION_PROSE_CLASSES = `min-w-0 max-w-full whitespace-normal wrap-anywhere
   text-xs text-ds-text-body leading-relaxed
   prose prose-sm dark:prose-invert prose-p:my-1 prose-headings:my-2
@@ -63,7 +57,6 @@ export function useSlashCommandSuggestions() {
         hasSuggestions: false,
       };
       try {
-        // `/skill:...` → only skills (backward compat), space closes dropdown
         if (query.startsWith(SKILL_TRIGGER)) {
           if (!hasSkills) return output;
           const skillQuery = query.slice(SKILL_TRIGGER.length);
@@ -72,8 +65,7 @@ export function useSlashCommandSuggestions() {
           return getFinalOutput(output);
         }
 
-        // User is typing toward `/skill:` — show all skills (don't filter them out)
-        const skillTriggerNoSlash = SKILL_TRIGGER.slice(1); // "skill:"
+        const skillTriggerNoSlash = SKILL_TRIGGER.slice(1);
         const skillQuery =
           stripped.length > 0 && skillTriggerNoSlash.startsWith(stripped)
             ? ""
@@ -203,7 +195,6 @@ export const SlashSuggestionItem = memo<SlashCommandSuggestionsProps>((props) =>
         onClick={() => onSelect(item)}
         onMouseEnter={(e) => {
           e.stopPropagation();
-          // Update selection index for keyboard navigation
           highlightSelection(index, true);
         }}
       >

@@ -93,7 +93,6 @@ async def test_mcp_prompts_list_and_get_workspace_tool_usage():
 
 
 def _server_answering(result):
-    """A server whose browser answers every command with `result`."""
     state = BridgeSessionManager(
         base_url="http://127.0.0.1:8787",
         websocket_path="/bridge/ws",

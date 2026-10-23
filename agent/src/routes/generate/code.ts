@@ -5,7 +5,6 @@ import { parseJsonResponse, truncate } from "../../lib/llm.ts";
 import { getLogger } from "../../lib/logger.ts";
 import { helperLlm, invalidJson, MAX_HELPER_TEXT_CHARS, readJson } from "./helper.ts";
 
-// Code and a schema are longer than a question, but not unbounded: they are part of a prompt that is paid for.
 const MAX_CODE_CHARS = 30_000;
 const MAX_SCHEMA_CHARS = 10_000;
 

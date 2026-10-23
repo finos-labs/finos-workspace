@@ -1,5 +1,3 @@
-"""The account's routes: its details and password, its deletion, its authenticator"""
-
 from typing import Annotated
 
 import pyotp
@@ -18,7 +16,6 @@ from utilities.config import settings
 
 router = APIRouter(tags=["auth"])
 
-# The web app's sign-in that each kind of pending two-factor enrollment finishes
 ENROLLED_SIGN_INS = {
     enrollment: sign_in for sign_in, enrollment in auth_helpers.TOTP_ENROLL_SOURCES.items()
 }
@@ -44,7 +41,6 @@ async def put_user(
     await db.execute(query)
     await db.commit()
     if user_update.old_password and user_update.new_password:
-        # A new password ends every other session of the user
         query = delete(models.Session).where(
             models.Session.uuid != user.session_uuid,
             models.Session.user_uuid == user.uuid,
@@ -82,7 +78,6 @@ async def generate_totp(
     if user.totp_secret and user.totp_active:
         raise HTTPException(400, detail="TOTP already enabled")
     totp = pyotp.TOTP(pyotp.random_base32())
-    # Stored encrypted (api/crypto.py); the codes of a new secret start a new replay record
     query = (
         update(User)
         .where(User.uuid == user.uuid)
@@ -110,9 +105,6 @@ async def confirm_totp(
     ),
     db: AsyncSession = Depends(aget_write_db),
 ):
-    """Activates the user's authenticator with a code of it. A pending enrollment (the
-    `__Host-ws_totp` cookie) then finishes the sign-in it interrupted: its session ends,
-    and the web app's session starts and is answered as POST /app/login answers."""
     if not user.totp_secret:
         raise HTTPException(400, detail="TOTP secret has not been generated")
 

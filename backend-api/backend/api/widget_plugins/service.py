@@ -1,11 +1,3 @@
-"""Decisions about widget plugins, and what each user may use.
-
-Discovery (``discovery.py``) reports what is in the plugins directory. This module
-records it, applies the decisions of superusers (approve, revoke, override) and entity
-admins (enable, narrowing, handlers, role grants), and computes
-availability for a user (docs/widget-plugins/DESIGN.md 6.4). The SPA never decides.
-"""
-
 import asyncio
 import hashlib
 import json
@@ -82,10 +74,6 @@ _Row = TypeVar("_Row")
 
 
 async def _added_or_existing(db: AsyncSession, row: _Row, existing: Select) -> _Row:
-    """Adds ``row``, unless another request committed one with the same unique key first:
-    two saves of an organization's settings at once, two frames reporting the same origin.
-    Then that request's row is returned, locked until this transaction ends. The insert
-    runs in a savepoint, so a duplicate leaves the rest of the transaction as it was."""
     try:
         async with db.begin_nested():
             db.add(row)
@@ -124,7 +112,6 @@ async def record_event(
     version: str | None = None,
     details: dict | None = None,
 ) -> None:
-    """Record an event the API observed, outside of an admin's request."""
     _event(db, plugin, action, version=version, details=details)
     await db.commit()
 
@@ -147,7 +134,6 @@ def _record(row: models.WidgetPluginVersion, found: DiscoveredVersion) -> None:
 
 
 def _remember_state(row: models.WidgetPluginVersion) -> None:
-    """Keep the state a version had before a scan blocked it or found it missing."""
     if row.state in {VERSION_ACTIVE, VERSION_DISCOVERED, VERSION_RETIRED}:
         row.findings = {**(row.findings or {}), "previous_state": row.state}
 
@@ -158,12 +144,6 @@ def _restore_state(row: models.WidgetPluginVersion) -> str:
 
 
 async def rescan(db: AsyncSession, actor_uuid: UUID | None = None) -> dict[str, Any]:  # noqa: PLR0912, PLR0915 - one pass, one case per change
-    """Read the plugins directory and record what changed.
-
-    A rescan never makes anything more trusted than it was: it adds discovered
-    versions, blocks versions, marks missing ones, and returns a version to the state
-    it had when the exact files it was approved with come back.
-    """
     _require_feature()
     result: ScanResult = await asyncio.to_thread(scan, settings.WIDGET_PLUGINS_DIR, **_scan_settings())
     if result.error:
@@ -207,7 +187,6 @@ async def rescan(db: AsyncSession, actor_uuid: UUID | None = None) -> dict[str, 
             _record(new, found)
             new.state = VERSION_BLOCKED if found.blocked else VERSION_DISCOVERED
             new.blocked_reason = reason
-            # A rescan running at the same moment may have recorded it; then it is known
             row = rows[key] = await _added_or_existing(
                 db,
                 new,
@@ -231,7 +210,6 @@ async def rescan(db: AsyncSession, actor_uuid: UUID | None = None) -> dict[str, 
             continue
 
         if row.digest and found.digest and row.digest != found.digest:
-            # The reviewed record stays; the version cannot be used again.
             if row.blocked_reason != CHANGED:
                 _remember_state(row)
                 row.state = VERSION_BLOCKED
@@ -348,15 +326,11 @@ def _network_override(plugin: models.WidgetPlugin) -> list[str] | None:
 
 
 def approved_network(plugin: models.WidgetPlugin, declared: list[str]) -> list[str]:
-    """The hosts the API may call for a plugin (SERVER-SIDE 6): the superuser's override
-    when there is one, otherwise what the version declares."""
     override = _network_override(plugin)
     return list(override) if override is not None else list(declared)
 
 
 def private_allowed(plugin: models.WidgetPlugin) -> bool:
-    """Whether the plugin's hosts may resolve to private addresses (SERVER-SIDE 3.3): only
-    with a superuser's server network override confirmed with ``private-host``."""
     confirmations = (plugin.overrides or {}).get("confirmations", [])
     return _network_override(plugin) is not None and csp_rules.PRIVATE_HOST in confirmations
 
@@ -374,8 +348,6 @@ def _removed(key: str, family: str, label: str) -> dict[str, Any]:
 
 
 def _server_items(plugin: models.WidgetPlugin, manifest: dict | None, previous: dict | None) -> list[dict[str, Any]]:
-    """The review items of the server side (SERVER-SIDE 3 and 4): the hosts the API may
-    call, the proxies, and the secrets they send."""
     items: list[dict[str, Any]] = []
     network = approved_network(plugin, _server(manifest).get("network", []))
     old_network = approved_network(plugin, _server(previous).get("network", [])) if previous is not None else []
@@ -429,8 +401,6 @@ def _route_label(route: dict) -> str:
 
 
 def _backend_items(manifest: dict | None, previous: dict | None) -> list[dict[str, Any]]:
-    """The review items of a plugin backend (SERVER-SIDE 5): that code runs on the server,
-    its routes, the data it may read for the user, and what it learns of the user."""
     items: list[dict[str, Any]] = []
     backend, old_backend = _server(manifest).get("backend"), _server(previous).get("backend")
     if backend:
@@ -493,10 +463,6 @@ def review_items(
     row: models.WidgetPluginVersion,
     active: models.WidgetPluginVersion | None,
 ) -> list[dict[str, Any]]:
-    """What a superuser acknowledges to approve ``row``: every request it makes, marked
-    ``added`` when the active version does not make it (docs/widget-plugins/DESIGN.md
-    8.2 and 10). Requests the active version made and this one does not are ``removed``.
-    """
     previous = active.manifest if active is not None and active is not row else None
     items: list[dict[str, Any]] = []
 
@@ -656,7 +622,6 @@ async def _platform_entry(db: AsyncSession, plugin: models.WidgetPlugin) -> dict
         "update_available": pending[0] if pending and active is not None else None,
         "overrides": plugin.overrides or {},
         "enabled_entities": len(enabled_for),
-        # For the entity dialogs' read-only Plugins line (DESIGN.md 8.5)
         "enabled_for": [{"entity_uuid": r.entity_uuid} for r in enabled_for],
         "versions": [_version_view(plugin, v, active) for v in versions],
         "secrets": await secret_values.status(db, plugin, versions),
@@ -665,8 +630,6 @@ async def _platform_entry(db: AsyncSession, plugin: models.WidgetPlugin) -> dict
 
 
 def backend_status(plugin: models.WidgetPlugin) -> dict[str, Any]:
-    """Whether the deployment runs the plugin's backend, and the last identity check: what
-    the API last saw, without asking the backend now."""
     seen = backends.last_identity(plugin.plugin_id)
     return {
         "registered": backends.registered_url(plugin.plugin_id) is not None,
@@ -680,14 +643,11 @@ def backend_status(plugin: models.WidgetPlugin) -> dict[str, Any]:
 
 
 async def platform_listing(db: AsyncSession) -> dict[str, Any]:
-    """Every plugin discovery recorded, with versions, for superusers."""
     plugins = (await db.execute(select(models.WidgetPlugin).order_by(models.WidgetPlugin.plugin_id))).scalars().all()
     return {"enabled": feature_enabled(), "plugins": [await _platform_entry(db, p) for p in plugins]}
 
 
 async def platform_plugin(db: AsyncSession, plugin_id: str) -> dict[str, Any]:
-    """One plugin for superusers: its listing entry, how every entity uses it, and its
-    latest events."""
     plugin = await _plugin_or_404(db, plugin_id)
     rows = {
         r.entity_uuid: r
@@ -742,7 +702,6 @@ async def approve(
     acknowledged: list[str],
     actor_uuid: UUID | None,
 ) -> dict[str, Any]:
-    """Approve one version and make it the active one."""
     _require_feature()
     plugin = await _plugin_or_404(db, plugin_id)
     versions = await _versions(db, plugin)
@@ -754,7 +713,6 @@ async def approve(
     if row.digest != digest:
         raise HTTPException(409, detail="The version changed since it was reviewed; review it again")
 
-    # The files on disk must still be the ones reviewed.
     found = await asyncio.to_thread(
         inspect_version,
         Path(settings.WIDGET_PLUGINS_DIR or ""),
@@ -823,13 +781,11 @@ async def approve(
 
 
 async def set_status(db: AsyncSession, plugin_id: str, revoke: bool, actor_uuid: UUID | None) -> dict[str, Any]:
-    """Revoke a plugin (the kill switch), or restore it."""
     plugin = await _plugin_or_404(db, plugin_id)
     if revoke:
         plugin.status = PLUGIN_REVOKED
     else:
         plugin.status = PLUGIN_ENABLED if plugin.active_version else PLUGIN_DISABLED
-        # A restored plugin's backend is checked again before the next call
         backends.reset(plugin.plugin_id)
     _event(db, plugin, "revoked" if revoke else "restored", actor_uuid=actor_uuid)
     await db.commit()
@@ -844,17 +800,11 @@ async def set_overrides(  # noqa: PLR0913 - the override's parts and who sets th
     confirmations: list[str],
     actor_uuid: UUID | None,
 ) -> dict[str, Any]:
-    """Replace a plugin's overrides. A CSP directive in the override replaces the author's
-    list for it; directives left out keep the author's list. ``server_network`` replaces
-    the hosts the API may call for the plugin (SERVER-SIDE 6). A source an author may not
-    request needs its confirmation, and ``private-host`` given with a server network also
-    lets those hosts resolve to private addresses (SERVER-SIDE 3.3)."""
     plugin = await _plugin_or_404(db, plugin_id)
     given = set(confirmations)
     check = csp_rules.check_policy(csp or {}, confirmations=given, override=True)
     errors, needed = list(check.errors), set(check.needs)
     if server_network is not None:
-        # tcp:// endpoints are for a backend, which a version of the plugin declares
         backend = any(_server(v.manifest).get("backend") for v in await _versions(db, plugin))
         network_check = proxy_rules.check_network(
             server_network, confirmations=given, override=True, backend=backend
@@ -887,7 +837,6 @@ async def set_overrides(  # noqa: PLR0913 - the override's parts and who sets th
 
 
 async def set_secret(db: AsyncSession, plugin_id: str, name: str, value: str, actor_uuid: UUID | None) -> None:
-    """Set a secret's value, write-only (SERVER-SIDE 4). Rotation is setting it again."""
     plugin = await _plugin_or_404(db, plugin_id)
     if name not in secret_values.declared(await _versions(db, plugin)):
         raise HTTPException(404, detail="No version of this plugin declares this secret")
@@ -913,7 +862,6 @@ async def set_secret(db: AsyncSession, plugin_id: str, name: str, value: str, ac
 
 
 async def clear_secret(db: AsyncSession, plugin_id: str, name: str, actor_uuid: UUID | None) -> None:
-    """Remove the value a superuser set. A value the deployment sets stays."""
     plugin = await _plugin_or_404(db, plugin_id)
     row = (await secret_values.stored(db, plugin.uuid)).get(name)
     if row is None:
@@ -924,21 +872,13 @@ async def clear_secret(db: AsyncSession, plugin_id: str, name: str, actor_uuid: 
 
 
 async def forget(db: AsyncSession, plugin_id: str) -> None:
-    """Forget a plugin whose files are gone: its decisions, grants, secrets and records."""
     plugin = await _plugin_or_404(db, plugin_id)
     versions = await _versions(db, plugin)
     if any(v.state != VERSION_MISSING for v in versions):
         raise HTTPException(409, detail="Only a plugin whose files are all gone can be forgotten")
-    # The foreign key cascades too; this keeps a plugin that returns under the same id
-    # from finding its old secrets where foreign keys are not enforced
     await db.execute(delete(models.WidgetPluginSecret).where(models.WidgetPluginSecret.plugin_uuid == plugin.uuid))
     await db.delete(plugin)
     await db.commit()
-
-
-# ---------------------------------------------------------------------------
-# Entities
-# ---------------------------------------------------------------------------
 
 
 def _entity_row_query(entity_uuid: UUID, plugin: models.WidgetPlugin) -> Select:
@@ -953,7 +893,6 @@ async def _entity_row(db: AsyncSession, entity_uuid: UUID, plugin: models.Widget
 
 
 async def entity_listing(db: AsyncSession, entity_uuid: UUID) -> list[dict[str, Any]]:
-    """The plugins approved at the deployment, as one entity sees and configures them."""
     plugins = (
         (
             await db.execute(
@@ -1052,11 +991,6 @@ async def update_entity(  # noqa: PLR0912, PLR0915 - one block per setting
     changes: dict[str, Any],
     actor_uuid: UUID | None,
 ) -> None:
-    """Enable or disable a plugin for an entity and set how it is used there.
-
-    Narrowing only removes: permissions and CSP sources must be ones the superuser
-    approved, and an entity never adds to them.
-    """
     plugin = await _plugin_or_404(db, plugin_id)
     versions = await _versions(db, plugin)
     active = _active(plugin, versions)
@@ -1147,8 +1081,6 @@ async def update_entity(  # noqa: PLR0912, PLR0915 - one block per setting
 async def _data_sources(
     db: AsyncSession, entity_uuid: UUID, manifest: dict, current: dict | None, changes: dict[str, Any]
 ) -> dict | None:
-    """Map a data source the plugin declares to one of the entity's backends, or unmap
-    it with None. Only the entity's own backends can serve it."""
     declared = {d["id"] for d in manifest.get("dataSources", [])}
     mapping = dict(current or {})
     for source_id, backend_uuid in changes.items():
@@ -1171,7 +1103,6 @@ async def _data_sources(
 
 
 async def entity_backends(db: AsyncSession, entity_uuid: UUID) -> list[dict[str, str]]:
-    """The entity's backends, which can serve the data sources of its plugins."""
     rows = await db.execute(
         select(models.ApiSource.uuid, models.ApiSource.name)
         .where(models.ApiSource.entity_uuid == entity_uuid)
@@ -1181,16 +1112,10 @@ async def entity_backends(db: AsyncSession, entity_uuid: UUID) -> list[dict[str,
 
 
 async def update_all_entities(db: AsyncSession, plugin_id: str, changes: dict[str, Any], actor_uuid: UUID | None) -> int:
-    """Enable or disable a plugin for every entity."""
     entity_uuids = (await db.execute(select(models.Entity.uuid))).scalars().all()
     for entity_uuid in entity_uuids:
         await update_entity(db, entity_uuid, plugin_id, changes, actor_uuid)
     return len(entity_uuids)
-
-
-# ---------------------------------------------------------------------------
-# Roles
-# ---------------------------------------------------------------------------
 
 
 async def get_role_grants(db: AsyncSession, role_uuid: UUID) -> list[dict[str, str]]:
@@ -1206,7 +1131,6 @@ async def get_role_grants(db: AsyncSession, role_uuid: UUID) -> list[dict[str, s
 
 
 async def set_role_grants(db: AsyncSession, role_uuid: UUID, grants: list[dict[str, str]]) -> None:
-    """Replace the plugin widgets a role grants. ``widget_id`` ``*`` grants all of a plugin."""
     wanted: set[tuple[UUID, str]] = set()
     for grant in grants:
         plugin = await _plugin_or_404(db, grant["plugin_id"])
@@ -1241,11 +1165,6 @@ async def set_role_grants(db: AsyncSession, role_uuid: UUID, grants: list[dict[s
     await db.commit()
 
 
-# ---------------------------------------------------------------------------
-# What a user may use
-# ---------------------------------------------------------------------------
-
-
 async def user_entity(db: AsyncSession, user_uuid: UUID) -> UUID | None:
     return (
         await db.execute(
@@ -1257,12 +1176,6 @@ async def user_entity(db: AsyncSession, user_uuid: UUID) -> UUID | None:
 
 
 async def available(db: AsyncSession, user_uuid: UUID) -> list[dict[str, Any]]:
-    """The plugins, and their widgets, this user may use, with everything the host needs.
-
-    available(user, plugin, widget) = plugin enabled at the deployment, its active
-    version active, the plugin enabled for the user's entity, and one of the user's
-    roles grants the widget (or ``*``).
-    """
     if not feature_enabled():
         return []
     entity_uuid = await user_entity(db, user_uuid)
@@ -1348,7 +1261,6 @@ async def available(db: AsyncSession, user_uuid: UUID) -> list[dict[str, Any]]:
 
 
 async def user_listing(db: AsyncSession, user_uuid: UUID) -> dict[str, Any]:
-    """``GET /app/widget-plugins``: what this user may use (DESIGN.md 7.1)."""
     if not feature_enabled():
         return {"enabled": False, "etag": "off", "plugins": []}
     entries = await available(db, user_uuid)
@@ -1366,8 +1278,6 @@ async def user_listing(db: AsyncSession, user_uuid: UUID) -> dict[str, Any]:
         else {}
     )
 
-    # One handler per viz type: the entity's choice when this user may use it,
-    # otherwise the lowest plugin id.
     candidates: dict[str, list[tuple[str, str, UUID]]] = {}
     for entry in entries:
         for widget in entry["widgets"]:
@@ -1428,11 +1338,6 @@ async def user_listing(db: AsyncSession, user_uuid: UUID) -> dict[str, Any]:
     return {**body, "etag": etag}
 
 
-# ---------------------------------------------------------------------------
-# Files
-# ---------------------------------------------------------------------------
-
-# Absolute path -> (size, mtime_ns, sha256): files are hashed again when they change
 _hash_cache: dict[str, tuple[int, int, str]] = {}
 
 
@@ -1449,13 +1354,6 @@ def _current_hash(path: Path) -> str:
 async def served_file(
     db: AsyncSession, user_uuid: UUID, plugin_id: str, digest: str, file_path: str
 ) -> tuple[Path, dict[str, Any]]:
-    """The verified file of an available plugin, or an error.
-
-    The path must be in the active version's served-file index, stay inside its
-    directory without crossing a symbolic link, and still hash to what was recorded.
-    A file that no longer does blocks the version.
-    """
-
     def refused(detail: str) -> HTTPException:
         metrics.FILE_FETCHES.labels("refused").inc()
         return HTTPException(404, detail=detail)
@@ -1486,11 +1384,6 @@ async def served_file(
     return path, info
 
 
-# ---------------------------------------------------------------------------
-# Blocked-request reports
-# ---------------------------------------------------------------------------
-
-
 def _clean_origin(origin: str) -> str | None:
     origin = origin.strip().lower()[:255]
     if origin in _REPORT_KEYWORDS or _REPORT_ORIGIN.match(origin):
@@ -1506,13 +1399,10 @@ async def record_reports(  # noqa: PLR0913 - the report's parts
     reports: list[dict[str, str]],
     failure: str | None = None,
 ) -> int:
-    """Count requests a frame's policy blocked, and a frame's failure. Origins are
-    attacker-controlled, so they are validated, capped and stored as text only."""
     entry = next((e for e in await available(db, user_uuid) if e["plugin"].plugin_id == plugin_id), None)
     if entry is None or entry["version"].version != version:
         return 0
     if failure is not None:
-        # Only for a plugin and version this user may use, so the labels stay bounded
         metrics.FRAME_FAILURES.labels(plugin_id, version, failure).inc()
     plugin = entry["plugin"]
     entity_uuid = entry["entity_row"].entity_uuid

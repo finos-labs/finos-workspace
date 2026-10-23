@@ -1,15 +1,3 @@
-"""Plugin backends (docs/widget-plugins/SERVER-SIDE.md 5): the registry, the identity
-check, the RPC, the circuit breaker, the call-context token and pseudonymous ids.
-
-A backend is code from the package's ``backend/`` directory that the deployer runs as a
-separate, restricted process and lists in ``WIDGET_PLUGIN_BACKENDS``. The API is its
-only way in. Before routing to it the API asks for its identity, and stops routing when
-the digest is not the approved version's. Each call carries a short-lived token that
-only the API can read, which the backend presents to the data broker; the backend never
-holds a credential, and learns nothing of the user unless the admin approved a
-pseudonymous id.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -43,16 +31,10 @@ CALL_HEADER = "X-Workspace-Call"
 _IDENTITY_TIMEOUT = 5.0
 _PLUGIN_ID = re.compile(r"[a-z][a-z0-9-]{1,47}")
 
-# Identity states, as the admin page shows them
 IDENTITY_OK = "ok"
 IDENTITY_MISMATCH = "mismatch"
 IDENTITY_UNREACHABLE = "unreachable"
 IDENTITY_UNREGISTERED = "unregistered"
-
-
-# ---------------------------------------------------------------------------
-# Keys: derived from the deployment's AES key, never given to a plugin
-# ---------------------------------------------------------------------------
 
 
 def _key(purpose: bytes) -> bytes:
@@ -70,22 +52,17 @@ def _unb64(text: str) -> bytes:
 
 
 def pseudonym(plugin_id: str, user_uuid: str) -> str:
-    """A stable per-plugin id of a user (SERVER-SIDE 5.8): the same user gets another id
-    in another plugin, and no plugin can turn it back into the user."""
     digest = hmac.new(_key(b"caller id"), f"{plugin_id}\0{user_uuid}".encode(), hashlib.sha256).digest()
     return _b64(digest)
 
 
 def mint_token(claims: dict[str, Any], seconds: int = TOKEN_SECONDS) -> str:
-    """A call-context token (SERVER-SIDE 5.7): encrypted and authenticated with a key the
-    plugins never hold, so a backend can neither read nor change it."""
     nonce = os.urandom(12)
     body = json.dumps({**claims, "exp": int(time.time()) + seconds}, separators=(",", ":")).encode()
     return TOKEN_PREFIX + _b64(nonce + AESGCM(_key(b"call context")).encrypt(nonce, body, None))
 
 
 def read_token(token: str) -> dict[str, Any]:
-    """The claims of a token the API minted that has not expired, or CallError."""
     try:
         if not token.startswith(TOKEN_PREFIX):
             raise ValueError
@@ -98,13 +75,7 @@ def read_token(token: str) -> dict[str, Any]:
     return claims
 
 
-# ---------------------------------------------------------------------------
-# The registry and the RPC
-# ---------------------------------------------------------------------------
-
-
 def registered_url(plugin_id: str) -> str | None:
-    """The deployer's URL for a plugin's backend: ``http(s)://...`` or ``unix:<path>``."""
     url = settings.WIDGET_PLUGIN_BACKENDS.get(plugin_id)
     if not url or not _PLUGIN_ID.fullmatch(plugin_id):
         return None
@@ -114,8 +85,6 @@ def registered_url(plugin_id: str) -> str | None:
 
 
 def _client(url: str, timeout: float) -> tuple[httpx.AsyncClient, str]:
-    """A client for a backend and the base URL its paths go under. A unix socket is
-    addressed through a placeholder host."""
     if url.startswith("unix:"):
         transport = httpx.AsyncHTTPTransport(uds=url.removeprefix("unix:"))
         return httpx.AsyncClient(transport=transport, timeout=timeout, follow_redirects=False), "http://backend"
@@ -132,7 +101,6 @@ async def request(  # noqa: PLR0913 - one request, its limits and its headers
     timeout: float,
     limit: int,
 ) -> tuple[int, str, bytes]:
-    """One request to a backend, reading at most ``limit`` bytes: status, type, body."""
     client, base = _client(url, timeout)
     try:
         async with client:
@@ -155,28 +123,19 @@ async def request(  # noqa: PLR0913 - one request, its limits and its headers
     return response.status_code, content_type, b"".join(chunks)
 
 
-# ---------------------------------------------------------------------------
-# The identity check (SERVER-SIDE 5.5)
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class Identity:
     state: str
     detail: str
     digest: str | None = None
     checked_at: float = 0.0
-    # Whether the state differs from the last check's
     changed: bool = False
 
 
-# Plugin id -> (the digest it was checked against, the result)
 _identities: dict[str, tuple[str, Identity]] = {}
 
 
 async def check_identity(plugin_id: str, version: str, digest: str, *, force: bool = False) -> Identity:
-    """Whether the backend the deployer runs is the approved version. Held for
-    ``WIDGET_PLUGIN_BACKEND_IDENTITY_SECONDS``, and asked again at once on ``force``."""
     cached = _identities.get(plugin_id)
     ttl = settings.WIDGET_PLUGIN_BACKEND_IDENTITY_SECONDS
     if not force and cached and cached[0] == digest and time.time() - cached[1].checked_at < ttl:
@@ -211,14 +170,8 @@ async def _ask_identity(url: str, plugin_id: str, version: str, digest: str) -> 
 
 
 def last_identity(plugin_id: str) -> Identity | None:
-    """The last identity check of a plugin's backend, without asking it again."""
     cached = _identities.get(plugin_id)
     return cached[1] if cached else None
-
-
-# ---------------------------------------------------------------------------
-# The circuit breaker (SERVER-SIDE 5.9)
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -231,8 +184,6 @@ _breakers: dict[str, _Breaker] = {}
 
 
 def breaker_open(plugin_id: str) -> bool:
-    """Open after repeated failures: calls fail fast until the period ends, then one call
-    goes through as a probe."""
     breaker = _breakers.get(plugin_id)
     return bool(breaker and breaker.open_until > time.time())
 
@@ -245,7 +196,6 @@ def record_outcome(plugin_id: str, failed: bool) -> None:
     breaker.failures += 1
     if breaker.failures >= settings.WIDGET_PLUGIN_BACKEND_BREAKER_FAILURES:
         breaker.open_until = time.time() + settings.WIDGET_PLUGIN_BACKEND_BREAKER_SECONDS
-        # The probe after the period gets one chance before the breaker opens again
         breaker.failures = settings.WIDGET_PLUGIN_BACKEND_BREAKER_FAILURES - 1
 
 
@@ -254,7 +204,6 @@ def breaker_state(plugin_id: str) -> str:
 
 
 def reset(plugin_id: str | None = None) -> None:
-    """Forget identities and breakers, of one plugin or all (on restore, and in tests)."""
     for registry in (_identities, _breakers):
         if plugin_id is None:
             registry.clear()
@@ -264,7 +213,6 @@ def reset(plugin_id: str | None = None) -> None:
 
 @contextlib.contextmanager
 def outcome(plugin_id: str):
-    """Counts a call against the breaker: a failure of the backend, not a refusal of ours."""
     try:
         yield
     except CallError as error:

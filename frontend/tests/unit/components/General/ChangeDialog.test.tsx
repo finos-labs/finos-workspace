@@ -3,7 +3,6 @@ import ReactDOM from "react-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChangelogDialog from "~/components/General/ChangelogDialog";
 
-// Mock IntersectionObserver
 class IntersectionObserverMock {
   root: Element | null = null;
   rootMargin = "0px";
@@ -16,7 +15,6 @@ class IntersectionObserverMock {
 
 global.IntersectionObserver = IntersectionObserverMock;
 
-// Mock the markdown import
 vi.mock("~/../CHANGELOG.md", () => ({
   markdown: `
 # Changelog
@@ -35,12 +33,10 @@ vi.mock("~/../CHANGELOG.md", () => ({
   `,
 }));
 
-// Mock createPortal for dialog rendering
 vi.spyOn(ReactDOM, "createPortal").mockImplementation((element) => {
   return element as React.ReactPortal;
 });
 
-// Mock the parseMarkdown function
 vi.mock("./Changelog", () => ({
   parseMarkdown: () => [
     {
@@ -73,7 +69,6 @@ vi.mock("~/lib/utils", async (_importOriginal) => {
   };
 });
 
-// Add mock for ScrollSpy component
 vi.mock("~/components/General/ScrollSpy", () => ({
   default: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="scroll-spy">{children}</div>
@@ -130,7 +125,6 @@ describe("ChangelogDialog", () => {
     const versionTrigger = screen.getAllByTestId("scroll-trigger")[0];
     fireEvent.click(versionTrigger);
 
-    // Manually set the attribute to simulate the behavior
     versionTrigger.setAttribute("data-scrollspy-active", "true");
 
     await waitFor(() => {

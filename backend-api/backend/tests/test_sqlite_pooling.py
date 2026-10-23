@@ -1,19 +1,3 @@
-"""Transaction isolation of concurrent sessions on the SQLite engines.
-
-StaticPool hands the same DBAPI connection to every checkout without waiting
-for it to be returned, so two concurrent sessions share one SQLite
-transaction: one session's COMMIT persists the other's half-done writes, and
-a later ROLLBACK undoes nothing. These tests pin the required behavior --
-concurrent sessions must get isolated transactions, whether by serializing a
-single connection through pool checkout or by using separate connections.
-
-Both tests use the same handshake: writer A inserts (uncommitted) and holds
-its transaction open while writer B inserts and commits; A then fails and
-rolls back. Only B's row may survive. The wait on ``b_done`` has a timeout so
-the test also passes under a serializing pool, where B blocks until A's
-session closes.
-"""
-
 import asyncio
 import threading
 
@@ -26,12 +10,11 @@ from utilities.config import DatabaseSessionManager, DatabaseSettings
 
 @pytest.fixture(autouse=True)
 def reset_rate_limiter():
-    """Override the conftest autouse fixture; no app/rate limiter involved."""
     yield
 
 
 class _WriterAFailure(Exception):
-    """Deliberate failure that must roll back writer A's insert."""
+    ...
 
 
 async def test_concurrent_async_sqlite_sessions_are_isolated(tmp_path):
@@ -49,9 +32,6 @@ async def test_concurrent_async_sqlite_sessions_are_isolated(tmp_path):
                     text("INSERT INTO rows VALUES ('a-rolled-back')")
                 )
                 a_inserted.set()
-                # Hold the transaction open while B runs. Under a serializing
-                # pool B cannot proceed until this session closes, so give up
-                # waiting after a bounded time instead of deadlocking.
                 try:
                     await asyncio.wait_for(b_done.wait(), timeout=2.0)
                 except TimeoutError:
@@ -92,8 +72,6 @@ def test_concurrent_sync_sqlite_sessions_are_isolated(tmp_path):
             with Session(engine) as session:
                 session.execute(text("INSERT INTO rows VALUES ('a-rolled-back')"))
                 a_inserted.set()
-                # Bounded wait: under a serializing pool B blocks until this
-                # session closes, so b_done will not be set yet.
                 b_done.wait(timeout=2.0)
                 raise _WriterAFailure()
         except _WriterAFailure:

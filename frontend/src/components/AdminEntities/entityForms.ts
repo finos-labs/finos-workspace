@@ -4,13 +4,11 @@ import type { Entity } from "~/types/entity.type";
 
 const required = z.string().trim().min(1, "This field is required");
 
-/** An entity is its name and its sharing switch. */
 export const entityFormSchema = z.object({
   name: required,
   sharingEnabled: z.boolean(),
 });
 
-/** A new entity also names its first administrator. */
 export const newEntityFormSchema = entityFormSchema.extend({
   adminFirstName: required,
   adminLastName: required,

@@ -1,11 +1,3 @@
-"""Postgres through the engine, against a real server.
-
-SQL_EXPLORER_TEST_POSTGRES names an administrator's connection URL, or
-SQL_EXPLORER_TEST_POSTGRES_FILE a file holding it, of a database the tests may change: they
-create a schema and a role, and drop both after. A throwaway container will do (README).
-Without either, these tests are skipped.
-"""
-
 import os
 import secrets
 from pathlib import Path
@@ -29,7 +21,6 @@ pytestmark = pytest.mark.skipif(not ADMIN, reason="no Postgres to test against")
 
 @pytest.fixture(scope="module")
 def reader() -> str:
-    """A role that may read the test schema, and its URL."""
     password = secrets.token_urlsafe(24)
     with psycopg.connect(ADMIN, autocommit=True) as admin:
         admin.execute("DROP SCHEMA IF EXISTS explorer_test CASCADE")
@@ -64,7 +55,6 @@ def test_a_query_answers_with_typed_columns_and_json_cells(reader):
     result = engines.postgres_query(
         reader, "SELECT id, sensor, value, at FROM explorer_test.readings WHERE id <= 2 ORDER BY id", None
     )
-    # Postgres's own type names, with their modifiers
     assert result["columns"] == [
         {"name": "id", "type": "int4"},
         {"name": "sensor", "type": "text"},
@@ -96,7 +86,6 @@ def test_rows_stop_at_the_cap(reader, monkeypatch):
     ],
 )
 def test_nothing_is_written_even_by_a_role_that_could(reader, text):
-    # The administrator's URL may write; the engine still does not
     with pytest.raises(engines.QueryError):
         engines.postgres_query(ADMIN, text, None)
     assert rows_left() == 50

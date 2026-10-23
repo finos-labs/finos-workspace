@@ -33,7 +33,6 @@ type ShareData = {
     last_name?: string;
     created_date?: string;
     permissions?: "view" | "edit";
-    /** A developer's share that waits for an admin's approval */
     pending?: boolean;
   };
 };
@@ -98,20 +97,19 @@ export function ShareDashboard({
     queryKey: ["dashboardShares", shareDashboardPopupId],
     queryFn: () => getDashboardShares(shareDashboardPopupId ?? ""),
     enabled: !!shareDashboardPopupId,
-  }); // dashboard shared info e.g., users that this dashboard is shared with and their permissions and when it was shared
+  });
 
   const { data } = useQuery<ShareableUser>({
     queryKey: ["getDashboardShareUsers", shareDashboardPopupId],
     queryFn: () => getDashboardShareUsers(shareDashboardPopupId ?? ""),
     enabled: !!shareDashboardPopupId,
-  }); // users that can be shared with
+  });
 
   const tabHasBYODWidgets = useMemo(() => {
     const tab = getTabById(shareDashboardPopupId ?? "");
     return tab?.data?.widgets.some((widget) => widget.external);
   }, [shareDashboardPopupId]);
 
-  // Initialize checkedUsers state when data is fetched
   useEffect(() => {
     if (data && shareDataInfo) {
       const initialCheckedState = Object.entries(data).reduce(
@@ -144,7 +142,6 @@ export function ShareDashboard({
   }, [queryClient, shareDashboardPopupId]);
 
   const showSaveChanges = useMemo(() => {
-    // we need to compare the current state with the initial state to see if there are any changes
     return Object.entries(state.usersPermissions).some(([email, permissions]) => {
       const initialPermissions = shareDataInfo?.[email]?.permissions ?? "no-access";
       return permissions !== initialPermissions;
@@ -155,7 +152,6 @@ export function ShareDashboard({
     dispatch({ isSaving: true });
     try {
       await saveDashboards();
-      // Assuming shareDashboardPopupId holds the dashboardUuid
       if (!shareDashboardPopupId) {
         console.error("Dashboard UUID is not available.");
         return;
@@ -176,11 +172,9 @@ export function ShareDashboard({
       );
 
       if (deletedEmails.length > 0) {
-        // Delete the shares
         await deleteDashboardShare(shareDashboardPopupId, deletedEmails);
       }
 
-      // A developer's shares wait for an admin's approval
       let pendingApproval = false;
       if (sharedEmails.length > 0) {
         const data = await shareDashboard(
@@ -212,7 +206,6 @@ export function ShareDashboard({
       clearQueryCache();
       onClose();
     } catch (error) {
-      // Handle error (e.g., show an error message)
       console.error("Failed to share the dashboard:", error);
     } finally {
       dispatch({ isSaving: false });
@@ -259,17 +252,14 @@ export function ShareDashboard({
           )}
           <div className="space-y-2 overflow-y-auto max-h-[300px] xl:max-h-[400px] 2xl:max-h-[500px] p-0.5">
             {users
-              .sort(
-                // we need to sort by shared status and then by email. we need to use sharedDataInfo to see if the user is shared
-                (a, b) => {
-                  const aShared = shareDataInfo?.[a[0]] ? 1 : 0;
-                  const bShared = shareDataInfo?.[b[0]] ? 1 : 0;
-                  if (aShared !== bShared) {
-                    return bShared - aShared; // Prioritize shared users
-                  }
-                  return a[0].localeCompare(b[0]); // Then sort by email
-                },
-              )
+              .sort((a, b) => {
+                const aShared = shareDataInfo?.[a[0]] ? 1 : 0;
+                const bShared = shareDataInfo?.[b[0]] ? 1 : 0;
+                if (aShared !== bShared) {
+                  return bShared - aShared;
+                }
+                return a[0].localeCompare(b[0]);
+              })
               .map(([email, data]) => {
                 return (
                   <div
@@ -301,25 +291,7 @@ export function ShareDashboard({
                       {shareDataInfo?.[email]?.pending && (
                         <span className="ws-tag w-fit">Waiting for approval</span>
                       )}
-                      {/*shareDataInfo?.[email]?.created_date && (
-                    <Tooltip
-                      position="top"
-                      message={formatDate(
-                        new Date(shareDataInfo[email].created_date),
-                      )}
-                    >
-                      <span className="ws-tag w-fit">Already shared</span>
-                    </Tooltip>
-                  )*/}
 
-                      {/*<Checkbox
-                    className="w-5 h-5"
-                    name={email}
-                    checked={checkedUsers[email]}
-                    onCheckedChange={(isChecked) => {
-                      handleCheckboxChange(email, !!isChecked);
-                    }}
-                  />*/}
                       <Tooltip
                         position="top"
                         open={state.tooltipEmail === email}
@@ -429,8 +401,6 @@ function FileWarning({
   );
 }
 
-// test the url we hit and the headers if they contain sensitive information
-
 function getWarningMessages(widgets: Widget[]) {
   const warningMessages = { type: false, api: false };
   const connectionTypes = ["file", "single", "advanced-backend"];
@@ -454,7 +424,6 @@ export function ShareDashboardDialog() {
     getTabById: state.getTabById,
   }));
 
-  // Extract the condition for hasFileWidgets into a separate variable
   const widgets = getTabById(shareDashboardPopupId ?? "")?.data?.widgets ?? [];
 
   const warningMessages = getWarningMessages(widgets);

@@ -77,15 +77,12 @@ describe("runCreateApp — happy path", () => {
 
     const overview = artifact.app.tabs["overview"];
     expect(overview.name).toBe("Overview");
-    // i === widget_id, and x/y/w/h passed through verbatim
     expect(overview.layout[0]).toMatchObject({ i: "price", x: 0, y: 0, w: 40, h: 10 });
     expect(overview.layout[1]).toMatchObject({ i: "news", x: 0, y: 10, w: 20, h: 8 });
 
-    // name/uuid resolved from the catalog, not from model input
     const newsRef = artifact.widget_refs.find((r) => r.widget_id === "news");
     expect(newsRef?.name).toBe("News");
     expect(newsRef?.uuid).toBe("u-news");
-    // catalog widget without a uuid leaves uuid undefined
     const priceRef = artifact.widget_refs.find((r) => r.widget_id === "price");
     expect(priceRef?.uuid).toBeUndefined();
   });
@@ -216,9 +213,9 @@ describe("runCreateApp — ticker group auto-detect", () => {
       name: "Group 1",
       type: "ticker",
       widgetIds: ["price", "news"],
-      defaultValue: "AAPL", // pulled from the param's current_value
+      defaultValue: "AAPL",
     });
-    expect(groups[0].paramName).toBeUndefined(); // ticker omits paramName
+    expect(groups[0].paramName).toBeUndefined();
   });
 
   it("falls back to AAPL when no ticker value is set", () => {
@@ -291,7 +288,6 @@ describe("runCreateApp — widget_refs dedupe across tabs", () => {
     );
     const artifact = firstArtifact(artifactQueue);
     expect(artifact.widget_refs).toHaveLength(1);
-    // but the widget still appears in both tab layouts
     expect(artifact.app.tabs["one"].layout).toHaveLength(1);
     expect(artifact.app.tabs["two"].layout).toHaveLength(1);
   });
