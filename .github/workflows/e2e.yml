@@ -17,9 +17,10 @@ concurrency:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
-  # Node for the agent's images, built once and kept in the Actions cache (agent-node.yml).
+  # Node for the agent's images: the finos-node release (agent-node.yml).
   node:
     uses: ./.github/workflows/agent-node.yml
 
@@ -45,23 +46,25 @@ jobs:
       # the Copilot a question without a provider key (a pull request from a fork gets no secrets).
       # The backend's images compile their dependencies from source: they are built with their stages
       # kept in the Actions cache (the scopes the image workflows use). The agent's images take Node from
-      # the node job. Then the stack is started.
-      - uses: actions/cache/restore@v6
+      # the finos-node release the node job names. Then the stack is started.
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
-          path: agent-node
-          key: ${{ needs.node.outputs.key }}
-          fail-on-cache-miss: true
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
       - name: Build the stack's images
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
         run: >-
           docker buildx bake -f docker-compose.yml -f docker-compose.e2e.yml --load
           --set init.cache-from=type=gha,scope=fastapi.Dockerfile
           --set init.cache-to=type=gha,mode=max,scope=fastapi.Dockerfile
           --set worker.cache-from=type=gha,scope=rqworker.Dockerfile
           --set worker.cache-to=type=gha,mode=max,scope=rqworker.Dockerfile
-          --set "ines.contexts.node=$GITHUB_WORKSPACE/agent-node"
-          --set "ines-mcp.contexts.node=$GITHUB_WORKSPACE/agent-node"
+          --set "ines.contexts.node=docker-image://$NODE_IMAGE"
+          --set "ines-mcp.contexts.node=docker-image://$NODE_IMAGE"
 
       - name: Start the stack
         run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d

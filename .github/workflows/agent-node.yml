@@ -1,70 +1,39 @@
 name: Agent Node
 
-# The agent's images run on a Node compiled from source (agent/Dockerfile, stage node-build), which
-# takes hours on a hosted runner. This builds the stage that holds it, `node`, once for what the stage
-# is made of, and keeps it in the Actions cache. Every job that builds the agent's images calls this
-# workflow, restores the stage from the cache into the directory agent-node and hands it to the build
-# in place of the stage (docker build --build-context node=agent-node), so no other job compiles Node.
-#
-# The cache key is the text of the node-build stage and the runner's platform: a change to that stage
-# (Node's version, a configure flag, the files it collects) builds it again; nothing else does.
-#
-# Who reads a build depends on where it was kept. A run of a pull request reads the caches of
-# develop, of its base branch and of its own branch, but what it keeps goes under its merge ref
-# (refs/pull/<n>/merge), which only that pull request reads. So a push that changes the stage builds
-# it as well, under the pushed branch: the branch's own pull request reads it, as do pull requests
-# based on the branch (a stacked one), and on develop every pull request does.
+# The Node the agent's images run on: the finos-node release (finos-node.yml) that every job building
+# those images, or running the agent's tests, uses in place of the stage `node` of agent/Dockerfile
+# (docker build --build-context node=docker-image://<image>). No job compiles Node. A new release is
+# used by changing RELEASE below, by tag and digest.
 
 on:
   workflow_call:
     outputs:
-      key:
-        description: The cache key of the stage `node`, saved from the directory agent-node.
-        value: ${{ jobs.node.outputs.key }}
-  # Branches only: a tag push would run it whatever it changes, since paths do not apply to tags
-  push:
-    branches: ["**"]
-    paths:
-      - agent/Dockerfile
+      image:
+        description: The finos-node image, by tag and digest.
+        value: ${{ jobs.node.outputs.image }}
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   node:
     name: Node for the agent's images
     runs-on: ubuntu-latest
-    timeout-minutes: 360
-    # One build per branch: a second caller waits for the first, then finds the stage in the cache.
-    concurrency:
-      group: agent-node-${{ github.ref }}
-      cancel-in-progress: false
+    env:
+      RELEASE: "26.12.1-1"
     outputs:
-      key: ${{ steps.key.outputs.key }}
+      image: ${{ steps.image.outputs.image }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Key the stage by what it is made of
-        id: key
+      - name: Check that the release is there
+        id: image
         run: |
-          stage=$(sed -n '/ AS node-build$/,/^FROM scratch AS node$/p' agent/Dockerfile | sha256sum | cut -c1-16)
-          echo "key=agent-node-$RUNNER_OS-$RUNNER_ARCH-$stage" >> "$GITHUB_OUTPUT"
-
-      - name: Look for the stage in the cache
-        id: cache
-        uses: actions/cache/restore@v6
-        with:
-          path: agent-node
-          key: ${{ steps.key.outputs.key }}
-          lookup-only: true
-
-      - name: Build the stage
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: docker build --target node --output type=local,dest=agent-node agent
-
-      - name: Keep the stage in the cache
-        if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: agent-node
-          key: ${{ steps.key.outputs.key }}
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/finos-node:$RELEASE"
+          docker manifest inspect "$image" > /dev/null
+          echo "image=$image" >> "$GITHUB_OUTPUT"

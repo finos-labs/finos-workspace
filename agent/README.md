@@ -61,7 +61,7 @@ If you only want the MCP server with a different client (Claude Desktop, say), s
 
 The Dockerfile has two targets: `ines` runs the agent (`src/server.ts`) on port `7777`, and `ines-mcp` runs the MCP server on `8787`. The agent's logs are JSON and her metrics are on `9464` (the MCP server's on `9465`); neither port needs publishing.
 
-Both run on a Node that the Dockerfile compiles from source (with clang and LLVM's libc++: Node's own builds link GCC's libstdc++, which is GPL). The first build compiles it, which takes about 20 minutes on a fast machine; later builds take it from Docker's cache. Build for your machine's architecture (`--platform linux/arm64` on Apple silicon): under emulation the compile takes hours. CI compiles it once and shares it between its jobs (`.github/workflows/agent-node.yml`).
+Both run on a Node that the Dockerfile compiles from source (with clang and LLVM's libc++: Node's own builds link GCC's libstdc++, which is GPL). The first build compiles it, which takes about 20 minutes on a fast machine; later builds take it from Docker's cache. Build for your machine's architecture (`--platform linux/arm64` on Apple silicon): under emulation the compile takes hours. CI does not compile it: the stage is released as the image `ghcr.io/<owner>/finos-node` (`.github/workflows/finos-node.yml`), and CI builds the images with the release `.github/workflows/agent-node.yml` names (`--build-context node=docker-image://<image>`). For linux/amd64 a local build can take the release the same way instead of compiling.
 
 ```bash
 docker build --target ines -t ines .

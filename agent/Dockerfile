@@ -8,9 +8,10 @@
 # manager or build tools. They run as uid 1000. The dependencies are installed by npm, run on this
 # Node, in a stage of its own.
 #
-# Node and what it runs on are the stage `node`, which both images copy. CI builds that stage once
-# and hands it to every image build from the Actions cache (--build-context node=<directory>; see
-# .github/workflows/agent-node.yml): change node-build only together with what that workflow says.
+# Node and what it runs on are the stage `node`, which both images copy. It is released as the image
+# ghcr.io/<owner>/finos-node (.github/workflows/finos-node.yml builds it from this file), and CI uses
+# the release that .github/workflows/agent-node.yml names in place of the stage (--build-context
+# node=docker-image://<image>): a change to node-build is a new release.
 
 FROM chimeralinux/chimera@sha256:29102d7e12a1f464707d7aba19ce53e652d277861838ed4129178d0655444b1a AS node-build
 
@@ -31,7 +32,12 @@ RUN set -e; \
     echo "$NODE_SHA256  node-v${NODE_VERSION}.tar.xz" | sha256sum -c -; \
     bsdtar -xf "node-v${NODE_VERSION}.tar.xz"; \
     cd "node-v${NODE_VERSION}"; \
-    ./configure --ninja --prefix=/usr/local --without-npm --with-intl=system-icu --shared-openssl; \
+    # Hardened: Chimera clang's defaults (PIE, the strong stack protector, full RELRO, a stack that does
+    # not execute) named so that a change of defaults cannot drop them, and stack clash protection.
+    CFLAGS="-fstack-protector-strong -fstack-clash-protection" \
+    CXXFLAGS="-fstack-protector-strong -fstack-clash-protection" \
+    LDFLAGS="-pie -Wl,-z,relro,-z,now,-z,noexecstack" \
+      ./configure --ninja --prefix=/usr/local --without-npm --with-intl=system-icu --shared-openssl; \
     ninja -C out/Release node; \
     mkdir -p /rootfs/usr/local/bin /rootfs/usr/local/share/licenses/node; \
     llvm-strip -o /rootfs/usr/local/bin/node out/Release/node; \
@@ -101,6 +107,18 @@ gcc_runtime = re.compile(r"lib(gcc_s|stdc\+\+|atomic|gomp|quadmath|ssp|itm|gfort
 gcc = [f"{p}: {name}" for p in shipped for name in [p.name, *needed(p)] if gcc_runtime.match(name)]
 if gcc:
     sys.exit("GCC's runtime libraries, or files linked to them:\n" + "\n".join(gcc))
+
+# And Node was built hardened (see the flags above).
+elf = run("llvm-readelf", "--file-header", "--program-headers", "--dynamic", "--dyn-syms", str(node))
+stack = next(line for line in elf.splitlines() if "GNU_STACK" in line)
+unhardened = [what for what, ok in [
+    ("position-independent (PIE)", re.search(r"Type:\s+DYN", elf)),
+    ("full RELRO", "GNU_RELRO" in elf and "BIND_NOW" in elf),
+    ("a stack that does not execute", " RW " in stack and " RWE " not in stack),
+    ("the stack protector", "__stack_chk_fail" in elf),
+] if not ok]
+if unhardened:
+    sys.exit("Node is not built " + ", ".join(unhardened))
 
 def component(name, version, licence, purl=None, cpe=None, **properties):
     c = {"type": "library", "name": name, "licenses": [{"expression": licence}]}
