@@ -1,9 +1,3 @@
-"""The admin CLI (scripts/workspace_admin.py), run as an operator runs it inside the API
-container: each command through main(), on the database itself, with what it prints and
-its exit status. It sends no request to the API: its database work runs here on the
-test database's session.
-"""
-
 import asyncio
 import io
 import json
@@ -25,8 +19,6 @@ from utilities.log_helpers import setup_logging, stdoutSink
 
 @pytest.fixture
 async def cli(db_session, monkeypatch, capsys):
-    """Runs a command and answers (exit status, stdout, stderr). The command runs in a
-    thread of its own, as on a terminal; its database work runs on the test session."""
     loop = asyncio.get_running_loop()
 
     async def run_on_the_test_session(action):
@@ -35,7 +27,6 @@ async def cli(db_session, monkeypatch, capsys):
         )
 
     monkeypatch.setattr(workspace_admin, "run", run_on_the_test_session)
-    # As when it runs as a command (python -m scripts.workspace_admin)
     workspace_admin.log_to_stderr()
     created: dict[str, list] = {"emails": [], "entities": []}
 
@@ -73,7 +64,6 @@ async def cli(db_session, monkeypatch, capsys):
 
 
 async def _entity(cli, tmp_path, **changes) -> str:
-    """A new entity, made with the CLI; its uuid."""
     config = tmp_path / f"entity-{uuid4().hex[:6]}.json"
     config.write_text(
         json.dumps(
@@ -103,7 +93,6 @@ async def _user(cli, entity_uuid: str, role: str = "user") -> tuple[str, dict]:
 
 
 async def _user_of_link(link: str):
-    """The user a password link was issued for, which uses it up."""
     return await auth_helpers.take_password_reset(urlsplit(link).fragment)
 
 
@@ -204,8 +193,6 @@ class TestUsers:
     async def test_the_link_is_printed_as_it_is_past_the_logs_redaction(
         self, cli, tmp_path, monkeypatch, capsys
     ):
-        # Outside the tests the app's stdout masks the value of every setting, APPURL's
-        # among them, which would hide the link's address
         entity_uuid = await _entity(cli, tmp_path)
         email = f"cli-{uuid4().hex[:8]}@example.com"
         cli.created["emails"].append(email)
@@ -240,7 +227,6 @@ class TestUsers:
         user = (
             await db_session.execute(select(models.User).where(models.User.email == email))
         ).scalar_one()
-        # The newer link replaces the one the user got when they were added
         assert await _user_of_link(created["link"]) is None
         assert await _user_of_link(json.loads(out)["link"]) == user.uuid
 
@@ -368,8 +354,6 @@ class TestProvisioning:
 
 @pytest.fixture
 async def plugin_cli(cli, plugins_dir, db_session):
-    """The CLI with a plugins directory; what its commands decide is removed afterwards,
-    with the roles the test made."""
     cli.roles = []  # type: ignore[attr-defined]
     yield cli
     await db_session.execute(
@@ -415,6 +399,23 @@ class TestWidgetPlugins:
 
         status, out, _ = await plugin_cli("plugin", "list")
         assert (status, out.split(" | ")[:3]) == (0, ["test-chart", "enabled", "active 1.0.0"])
+
+    @pytest.mark.asyncio
+    async def test_approving_is_one_action(self, plugin_cli, plugins_dir, monkeypatch):
+        write_package(plugins_dir)
+        await plugin_cli("plugin", "rescan")
+        actions = []
+        run = workspace_admin.run
+
+        async def counted(action):
+            actions.append(action)
+            return await run(action)
+
+        monkeypatch.setattr(workspace_admin, "run", counted)
+        status, _, err = await plugin_cli("plugin", "approve", "test-chart", "1.0.0", "--acknowledge")
+
+        assert status == 0, err
+        assert len(actions) == 1
 
     @pytest.mark.asyncio
     async def test_a_digest_that_differs_stops_the_approval(self, plugin_cli, plugins_dir):

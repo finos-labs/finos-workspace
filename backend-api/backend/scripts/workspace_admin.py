@@ -1,13 +1,3 @@
-"""The admin CLI: entities, users, data backends and widget plugins, from inside the API
-container, where it works on the database itself. It sends no request to the API.
-
-    docker compose exec api python -m scripts.workspace_admin <resource> <action>
-
-It does what the superuser's routes do (``routers/administration.py``, and
-``api/widget_plugins`` for plugins) and prints the outcome; ``--json`` prints it as JSON. A
-refused action prints why and exits with 1.
-"""
-
 import argparse
 import asyncio
 import getpass
@@ -34,7 +24,6 @@ from routers import administration
 from routers.widget_plugins import OverridesBody
 from utilities.log_helpers import obfuscate_secrets, stdoutSink
 
-# Every entity has one permission map per user type; --role names the type
 PERMISSION_MAPS = {
     "admin": models.ADMIN_TYPE,
     "developer": models.DEVELOPER_TYPE,
@@ -43,20 +32,15 @@ PERMISSION_MAPS = {
 
 
 def say(text: str = "", *, error: bool = False) -> None:
-    """A line for whoever runs the CLI: the outcome on stdout, a refusal on stderr. The
-    app's stdout is a log, which masks the value of any setting it would show
-    (utilities/log_helpers.py) and would hide a link's address; the CLI's lines go out as
-    they are."""
     stream = sys.stderr if error else sys.stdout
     (sys.__stdout__ if isinstance(stream, stdoutSink) else stream).write(f"{text}\n")
 
 
 class Refused(Exception):
-    """An action the CLI does not carry out, and why."""
+    ...
 
 
 async def run(action: Callable[[AsyncSession], Awaitable[Any]]) -> Any:
-    """The outcome of an action on a database session of its own."""
     async with aclosing(aget_write_db()) as sessions:
         async for db in sessions:
             return await action(db)
@@ -64,7 +48,6 @@ async def run(action: Callable[[AsyncSession], Awaitable[Any]]) -> Any:
 
 
 def perform(action: Callable[[AsyncSession], Awaitable[Any]]) -> Any:
-    """Carries out an action; a refusal is printed and the CLI exits with 1."""
     try:
         return asyncio.run(run(action))
     except HTTPException as exc:
@@ -86,7 +69,6 @@ def get_config_json(path: str) -> dict[str, Any]:
 
 
 def get_val(data: dict[str, Any], path: str) -> str:
-    """A value of nested dicts by dotted path, or N/A."""
     curr: Any = data
     for part in path.split("."):
         if not isinstance(curr, dict):
@@ -120,7 +102,6 @@ def render_page(page: dict[str, Any], json_mode: bool, line: Callable[[dict], st
 async def page_of(
     db: AsyncSession, query: Select, page: int, size: int, item: Callable[[Any], Any]
 ) -> dict[str, Any]:
-    """One page of a query's rows, each made an item, as the routes page them."""
     total = (
         await db.execute(select(func.count()).select_from(query.subquery()))
     ).scalar_one()
@@ -148,7 +129,6 @@ async def user_by_email(db: AsyncSession, email: str) -> models.User:
 
 
 async def permission_map(db: AsyncSession, entity_uuid: UUID, role: str) -> UUID:
-    """The map of the user type `role` names, of the entity."""
     user_type = PERMISSION_MAPS[role.lower()]
     query = select(models.PermissionsEntityMap.uuid).where(
         models.PermissionsEntityMap.entity_uuid == entity_uuid,
@@ -169,7 +149,6 @@ async def entity_by_uuid(db: AsyncSession, entity_uuid: UUID) -> dict[str, Any]:
 
 
 def entity_post(data: dict[str, Any]) -> schemas.EntityPost:
-    """An entity of a config file."""
     return schemas.EntityPost(**data)
 
 
@@ -205,9 +184,6 @@ def print_link(email: str, answer: dict[str, Any], json_mode: bool, done: str) -
         f"✓ {done} Give {email} this link to set their password. It works once, until {answer['expires_at']}:"
     )
     say(f"  {answer['link']}")
-
-
-# --- Entities -------------------------------------------------------------------------
 
 
 def entity_create(args: argparse.Namespace) -> None:
@@ -267,7 +243,6 @@ def entity_show(args: argparse.Namespace) -> None:
 async def update_entity(
     db: AsyncSession, entity_uuid: UUID, changes: dict[str, Any]
 ) -> None:
-    """The entity with the given fields changed and the others as they are."""
     current = await entity_by_uuid(db, entity_uuid)
     values = {key: current.get(key) for key in schemas.EntityBase.model_fields}
     values.update({key: value for key, value in changes.items() if key in values})
@@ -296,9 +271,6 @@ def entity_delete(args: argparse.Namespace) -> None:
         print_json({"success": True})
     else:
         say(f"✓ Entity {args.entity_uuid} deleted")
-
-
-# --- Users ----------------------------------------------------------------------------
 
 
 def user_create(args: argparse.Namespace) -> None:
@@ -375,9 +347,6 @@ def user_move(args: argparse.Namespace) -> None:
         )
 
 
-# --- Data backends --------------------------------------------------------------------
-
-
 def data_backend_add(args: argparse.Namespace) -> None:
     headers = []
     for header in args.headers or []:
@@ -430,8 +399,6 @@ def data_backend_list(args: argparse.Namespace) -> None:
             f"{backend.get('uuid', 'N/A')} | {backend.get('name', 'N/A')} | {backend.get('url', 'N/A')}"
         )
 
-
-# --- Provisioning ---------------------------------------------------------------------
 
 REQUIRED_ENTITY_FIELDS = ("name", "admin_email")
 
@@ -494,7 +461,6 @@ def provision_sample(args: argparse.Namespace) -> None:
 
 
 async def provision(db: AsyncSession, config: dict[str, Any]) -> dict[str, Any]:
-    """The entity, then its admins and users; a user who cannot be created is reported."""
     entity_uuid = await create_entity(db, entity_post(config["entity"]))
     results: dict[str, Any] = {
         "entity": {"entity_uuid": entity_uuid},
@@ -540,11 +506,6 @@ def provision_apply(args: argparse.Namespace) -> None:
         say("✓ Provisioning complete")
 
 
-# --- Widget plugins (docs/widget-plugins/DESIGN.md 8.6) -------------------------------
-# There is no install: packages reach the server through the plugins directory. The CLI
-# acts as a superuser of every entity, and its decisions record no user.
-
-
 def _short_digest(digest: str | None) -> str:
     return f"{digest[:15]}…{digest[-6:]}" if digest else "-"
 
@@ -557,7 +518,6 @@ def _version_of(plugin: dict[str, Any], version: str) -> dict[str, Any]:
 
 
 def _print_review(view: dict[str, Any]) -> list[str]:
-    """Prints what approving a version accepts; returns the keys to acknowledge."""
     review = view.get("review") or []
     for item in review:
         mark = "+" if item.get("added") else "-" if item.get("removed") else " "
@@ -682,40 +642,30 @@ def plugin_rescan(args: argparse.Namespace) -> None:
         say(f"✓ {kind}: {', '.join(str(item) for item in items)}")
 
 
-def plugin_approve(args: argparse.Namespace) -> None:
-    view = _version_of(
-        jsonable_encoder(perform(lambda db: service.platform_plugin(db, args.plugin_id))),
-        args.version,
-    )
+async def _approve(db: AsyncSession, args: argparse.Namespace) -> dict[str, Any]:
+    plugin = jsonable_encoder(await service.platform_plugin(db, args.plugin_id))
+    view = _version_of(plugin, args.version)
     if view["state"] not in {"discovered", "retired"}:
-        say(f"✗ {args.version} is {view['state']}; nothing to approve", error=True)
-        sys.exit(1)
+        raise Refused(f"{args.version} is {view['state']}; nothing to approve")
     if args.digest and args.digest != view["digest"]:
-        say(
-            f"✗ The server has {view['digest']} for this version, not {args.digest}: "
-            "the files are not the ones you checked",
-            error=True,
+        raise Refused(
+            f"The server has {view['digest']} for this version, not {args.digest}: "
+            "the files are not the ones you checked"
         )
-        sys.exit(1)
     say(f"{args.plugin_id} {args.version} | {view['digest']} | {view['pin_status']}")
     added = _print_review(view)
     if not args.acknowledge:
-        say(
-            f"\nNothing approved. Run again with --acknowledge to accept the {len(added)} "
-            "added requests above. Approving makes this the active version.",
-            error=True,
+        raise Refused(
+            f"Nothing approved. Run again with --acknowledge to accept the {len(added)} "
+            "added requests above. Approving makes this the active version."
         )
-        sys.exit(1)
-    approved = perform(
-        lambda db: service.approve(
-            db,
-            args.plugin_id,
-            args.version,
-            digest=view["digest"],
-            acknowledged=added,
-            actor_uuid=None,
-        )
+    return await service.approve(
+        db, args.plugin_id, args.version, digest=view["digest"], acknowledged=added, actor_uuid=None
     )
+
+
+def plugin_approve(args: argparse.Namespace) -> None:
+    approved = perform(lambda db: _approve(db, args))
     if args.json:
         print_json(approved)
     else:
@@ -802,9 +752,6 @@ def plugin_override(args: argparse.Namespace) -> None:
 
 
 def _read_secret(name: str) -> str:
-    """The value from a prompt that does not echo, or from standard input when it is not
-    a terminal (one trailing line break removed). Never from an argument, which would
-    land in the shell's history and the process list."""
     if sys.stdin.isatty():
         return getpass.getpass(f"Value of {name}: ")
     return sys.stdin.read().removesuffix("\n").removesuffix("\r")
@@ -866,9 +813,6 @@ def plugin_forget(args: argparse.Namespace) -> None:
         print_json({"success": True})
     else:
         say(f"✓ {args.plugin_id} forgotten, with its decisions, grants and secrets")
-
-
-# --- Command line ---------------------------------------------------------------------
 
 
 def _action(group, name: str, func: Callable, help_text: str, json_output: bool = True):
@@ -1141,9 +1085,6 @@ def parser() -> argparse.ArgumentParser:
 
 
 def log_to_stderr() -> None:
-    """The app logs to stdout, the container's log (utilities/log_helpers.py). The CLI keeps
-    stdout for the outcome, which --json makes JSON, and writes the app's warnings and
-    errors to stderr, redacted as the app's log is."""
     logger.configure(
         handlers=[
             {
