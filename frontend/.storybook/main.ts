@@ -1,9 +1,6 @@
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import type { StorybookConfig } from "@storybook/react-vite";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
+// The `~` alias comes from vite.config.ts, which Storybook's Vite builder loads.
 const config: StorybookConfig = {
   framework: "@storybook/react-vite",
   stories: [
@@ -16,14 +13,6 @@ const config: StorybookConfig = {
     "@storybook/addon-themes",
   ],
   staticDirs: ["../public"],
-  viteFinal(config) {
-    config.resolve ??= {};
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      "~": resolve(__dirname, "../src"),
-    };
-    return config;
-  },
 };
 
 export default config;
