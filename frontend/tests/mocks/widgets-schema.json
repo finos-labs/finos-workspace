@@ -2045,7 +2045,7 @@
         "tool_id"
       ],
       "additionalProperties": false,
-      "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool (WIDGETS-JSON 5)"
+      "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
     },
     "Data_markdown": {
       "type": "object",
@@ -2227,7 +2227,7 @@
         },
         "mcp_tool": {
           "$ref": "#/definitions/McpTool",
-          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool (WIDGETS-JSON 5)"
+          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
         },
         "type": {
           "type": "string",
@@ -2572,7 +2572,7 @@
         },
         "mcp_tool": {
           "$ref": "#/definitions/McpTool",
-          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool (WIDGETS-JSON 5)"
+          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
         },
         "raw": {
           "type": "boolean",
@@ -2947,7 +2947,7 @@
         },
         "mcp_tool": {
           "$ref": "#/definitions/McpTool",
-          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool (WIDGETS-JSON 5)"
+          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
         },
         "type": {
           "type": "string",
@@ -3211,7 +3211,7 @@
         },
         "mcp_tool": {
           "$ref": "#/definitions/McpTool",
-          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool (WIDGETS-JSON 5)"
+          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
         },
         "type": {
           "type": "string",
@@ -3473,7 +3473,7 @@
         },
         "mcp_tool": {
           "$ref": "#/definitions/McpTool",
-          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool (WIDGETS-JSON 5)"
+          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
         },
         "storage": {
           "type": "object",
@@ -3914,7 +3914,7 @@
         },
         "mcp_tool": {
           "$ref": "#/definitions/McpTool",
-          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool (WIDGETS-JSON 5)"
+          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
         },
         "raw": {
           "type": "boolean",

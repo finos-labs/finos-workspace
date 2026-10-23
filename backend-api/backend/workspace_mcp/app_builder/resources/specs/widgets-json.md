@@ -51,7 +51,7 @@ Each value is an object with these keys and no others:
 | `runButton` | No | `true` or `false` | The widget fetches only when the user clicks Run |
 | `disableRetrievalForCopilot` | No | `true` or `false` | Keeps the widget's data from the AI Agent; such a widget has no `mcp_tool` |
 | `exportable` | No | `true` or `false` | False removes Export from the widget's menu |
-| `mcp_tool` | No | object | The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool (WIDGETS-JSON 5) |
+| `mcp_tool` | No | object | The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool |
 | `data` | No | object | `dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines |
 | `raw` | No | `true` or `false` | Only for `html` and plugin types. The endpoint also answers `raw=true` with the rows the widget shows, as JSON: the AI Agent and MCP get those rows, and the widget's rows button shows them |
 | `storage` | No | object | Only for `iframe`. `mcpUrl`: an MCP server of the page's own, connected for the widget without the backend's credentials |

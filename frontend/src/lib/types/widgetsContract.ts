@@ -366,7 +366,7 @@ export const McpToolContract = z
   })
   .meta({
     description:
-      "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool (WIDGETS-JSON 5)",
+      "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool",
   });
 export type McpToolContractT = z.infer<typeof McpToolContract>;
 
