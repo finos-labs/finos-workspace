@@ -21,7 +21,7 @@ jobs:
     name: Node for the agent's images
     runs-on: ubuntu-latest
     env:
-      RELEASE: "26.12.1-1"
+      RELEASE: "26.12.1-1@sha256:ead12e53441802ae738c130ba285e2517e7aa9a39449e9e4fd9bc9bbf03c5352"
     outputs:
       image: ${{ steps.image.outputs.image }}
     steps:
