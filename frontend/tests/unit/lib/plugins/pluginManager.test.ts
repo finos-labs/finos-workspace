@@ -1,12 +1,15 @@
 // Tests the Plugin Manager: registry loading and caching, URL building (with a release
-// version), approving a released version (pinned to its digest) and disabling, the
-// release states (update available, changed on the host, missing), availability for
-// unknown/inactive/disabled/blocked/no-access plugins, and host validation.
+// version), installing a released version (pinned to its digest) and uninstalling,
+// enabling an installed plugin per entity, the release states (update available,
+// changed on the host, missing), availability for unknown/inactive/not installed/
+// disabled/blocked/no-access plugins and for a preview, and host validation.
 import { describe, expect, it, vi } from "vitest";
 import {
   allowAllEntitlements,
+  createLocalEntityPlugins,
   createLocalPluginApprovals,
   createPluginManager,
+  ENTITY_PLUGINS_STORAGE_KEY,
   type EntitlementService,
   PLUGIN_APPROVALS_STORAGE_KEY,
   PluginHostNotConfiguredError,
@@ -40,10 +43,17 @@ async function setup(
     releases?: PluginRelease[];
     /** Versions approved before the test. Default: the active plugin at 1.0.0. */
     approved?: { pluginId: string; version: string }[];
+    /** Plugins the entity enabled before the test. Default: every approved one. */
+    enabled?: string[];
   } = {},
 ) {
   const { map, storage } = memoryStorage();
   const approvals = createLocalPluginApprovals(() => storage);
+  const entity = { name: "Acme" as string | null };
+  const entityPlugins = createLocalEntityPlugins(
+    () => entity.name,
+    () => storage,
+  );
   const state = { releases: options.releases ?? [makeRelease()] };
   const fetchFn = vi.fn(async (input: RequestInfo | URL) =>
     String(input).endsWith("/registry/releases.json")
@@ -55,17 +65,20 @@ async function setup(
     pluginHostUrl: options.host ?? "http://localhost:5173",
     entitlements: options.entitlements ?? allowAllEntitlements,
     approvals,
+    entityPlugins,
     open,
     fetchFn: fetchFn as unknown as typeof fetch,
   });
-  for (const { pluginId, version } of options.approved ?? [
-    { pluginId: active.id, version: "1.0.0" },
-  ]) {
+  const approved = options.approved ?? [{ pluginId: active.id, version: "1.0.0" }];
+  for (const { pluginId, version } of approved) {
     await manager.approveRelease(pluginId, version);
+  }
+  for (const pluginId of options.enabled ?? approved.map((item) => item.pluginId)) {
+    await manager.enableForEntity(pluginId);
   }
   const registryCalls = () =>
     fetchFn.mock.calls.filter(([url]) => String(url).endsWith("/plugins.json")).length;
-  return { manager, fetchFn, registryCalls, open, map, state };
+  return { manager, fetchFn, registryCalls, open, map, state, entity };
 }
 
 describe("createPluginManager", () => {
@@ -129,11 +142,11 @@ describe("createPluginManager", () => {
     });
   });
 
-  it("refuses a plugin that is not approved", async () => {
+  it("refuses a plugin that is not installed", async () => {
     const { manager } = await setup({ approved: [] });
     expect(await manager.checkAvailability("bq-advanced-grouping")).toMatchObject({
       ok: false,
-      reason: "disabled",
+      reason: "not-installed",
     });
     expect(await manager.getReleaseState("bq-advanced-grouping")).toMatchObject({
       kind: "not-approved",
@@ -141,13 +154,13 @@ describe("createPluginManager", () => {
     });
   });
 
-  describe("approvals", () => {
-    it("approves a released version pinned to its digest, globally", async () => {
+  describe("installation", () => {
+    it("installs a released version pinned to its digest, globally", async () => {
       const release = makeRelease({ releaseNotes: "First." });
       const { manager, map } = await setup({ releases: [release], approved: [] });
       await manager.approveRelease("bq-advanced-grouping", "1.0.0");
 
-      expect(await manager.getEnabledPluginIds()).toEqual(["bq-advanced-grouping"]);
+      expect(await manager.getInstalledPluginIds()).toEqual(["bq-advanced-grouping"]);
       const [approval] = JSON.parse(map.get(PLUGIN_APPROVALS_STORAGE_KEY) ?? "[]");
       expect(approval).toMatchObject({
         pluginId: "bq-advanced-grouping",
@@ -158,16 +171,23 @@ describe("createPluginManager", () => {
       });
     });
 
-    it("disables a plugin by removing its approval", async () => {
-      const { manager } = await setup();
-      await manager.disablePlugin("bq-advanced-grouping");
-      expect(await manager.getEnabledPluginIds()).toEqual([]);
+    it("uninstalls a plugin and disables it for every entity", async () => {
+      const { manager, entity, map } = await setup();
+      entity.name = "Globex";
+      await manager.enableForEntity("bq-advanced-grouping");
+
+      await manager.uninstallPlugin("bq-advanced-grouping");
+      expect(await manager.getInstalledPluginIds()).toEqual([]);
       expect(await manager.checkAvailability("bq-advanced-grouping")).toMatchObject({
-        reason: "disabled",
+        reason: "not-installed",
+      });
+      expect(JSON.parse(map.get(ENTITY_PLUGINS_STORAGE_KEY) ?? "{}")).toEqual({
+        Acme: [],
+        Globex: [],
       });
     });
 
-    it("only approves registered, active plugins at a released version", async () => {
+    it("only installs registered, active plugins at a released version", async () => {
       const { manager } = await setup({ approved: [] });
       await expect(manager.approveRelease("nope", "1.0.0")).rejects.toThrow(
         "No plugin",
@@ -178,15 +198,83 @@ describe("createPluginManager", () => {
       await expect(
         manager.approveRelease("bq-advanced-grouping", "9.9.9"),
       ).rejects.toThrow("not released");
-      expect(await manager.getEnabledPluginIds()).toEqual([]);
+      expect(await manager.getInstalledPluginIds()).toEqual([]);
     });
 
     it("treats unreadable stored approvals as nothing approved", async () => {
       const { manager, map } = await setup({ approved: [] });
       map.set(PLUGIN_APPROVALS_STORAGE_KEY, "{not json");
-      expect(await manager.getEnabledPluginIds()).toEqual([]);
+      expect(await manager.getInstalledPluginIds()).toEqual([]);
       map.set(PLUGIN_APPROVALS_STORAGE_KEY, JSON.stringify([{ pluginId: "x" }]));
-      expect(await manager.getEnabledPluginIds()).toEqual([]);
+      expect(await manager.getInstalledPluginIds()).toEqual([]);
+    });
+
+    it("keeps the entities that enabled a plugin when an update is approved", async () => {
+      const { manager, state } = await setup();
+      state.releases = [makeRelease(), makeRelease({ version: "1.1.0" })];
+      await manager.approveRelease("bq-advanced-grouping", "1.1.0");
+      expect(await manager.getEntityEnabledPluginIds()).toEqual([
+        "bq-advanced-grouping",
+      ]);
+    });
+  });
+
+  describe("entity enablement", () => {
+    it("refuses an installed plugin its entity has not enabled", async () => {
+      const { manager } = await setup({ enabled: [] });
+      expect(await manager.checkAvailability("bq-advanced-grouping")).toMatchObject({
+        ok: false,
+        reason: "disabled",
+        message: expect.stringContaining("disabled for your organization"),
+      });
+    });
+
+    it("enables and disables an installed plugin for the signed-in entity only", async () => {
+      const { manager, entity } = await setup({ enabled: [] });
+      await manager.enableForEntity("bq-advanced-grouping");
+      expect(await manager.checkAvailability("bq-advanced-grouping")).toMatchObject({
+        ok: true,
+      });
+
+      entity.name = "Globex";
+      expect(await manager.getEntityEnabledPluginIds()).toEqual([]);
+      expect(await manager.checkAvailability("bq-advanced-grouping")).toMatchObject({
+        reason: "disabled",
+      });
+
+      entity.name = "Acme";
+      await manager.disableForEntity("bq-advanced-grouping");
+      expect(await manager.getEntityEnabledPluginIds()).toEqual([]);
+    });
+
+    it("doesn't enable a plugin that is not installed", async () => {
+      const { manager } = await setup({ approved: [] });
+      await expect(manager.enableForEntity("bq-advanced-grouping")).rejects.toThrow(
+        "BQ Advanced Grouping is not installed",
+      );
+      expect(await manager.getEntityEnabledPluginIds()).toEqual([]);
+    });
+
+    it("previews an installed plugin before its entity enables it", async () => {
+      const { manager } = await setup({ enabled: [] });
+      expect(
+        await manager.checkAvailability("bq-advanced-grouping", { preview: true }),
+      ).toMatchObject({ ok: true, version: "1.0.0" });
+    });
+
+    it("doesn't preview a plugin that is not installed", async () => {
+      const { manager } = await setup({ approved: [] });
+      expect(
+        await manager.checkAvailability("bq-advanced-grouping", { preview: true }),
+      ).toMatchObject({ ok: false, reason: "not-installed" });
+    });
+
+    it("treats unreadable stored enablements as nothing enabled", async () => {
+      const { manager, map } = await setup();
+      map.set(ENTITY_PLUGINS_STORAGE_KEY, "{not json");
+      expect(await manager.getEntityEnabledPluginIds()).toEqual([]);
+      map.set(ENTITY_PLUGINS_STORAGE_KEY, JSON.stringify({ Acme: "x" }));
+      expect(await manager.getEntityEnabledPluginIds()).toEqual([]);
     });
   });
 
@@ -294,7 +382,9 @@ describe("createPluginManager", () => {
   it("opens plugins through the injected opener", async () => {
     const { manager, open } = await setup();
     manager.openPlugin("bq-advanced-grouping");
-    expect(open).toHaveBeenCalledWith("bq-advanced-grouping");
+    expect(open).toHaveBeenCalledWith("bq-advanced-grouping", undefined);
+    manager.openPlugin("bq-advanced-grouping", { preview: true });
+    expect(open).toHaveBeenLastCalledWith("bq-advanced-grouping", { preview: true });
   });
 
   it("retries the registry after a failure", async () => {

@@ -1,10 +1,12 @@
 /**
  * React hooks for plugins. `usePluginManager` builds a Plugin Manager from the runtime
- * config (plugin host URL) and the router; `usePlugins` loads the registry through
- * react-query; `usePluginApprovals` reads each plugin's approved version and release
- * state and approves or disables plugins; `useEnabledPluginWidgets` lists the enabled
- * plugins as widgets every dashboard can add; and `usePluginFrameStatus` tells an iframe
- * widget whether its plugin may be shown, and at which approved version.
+ * config (plugin host URL), the signed-in user's entity and the router; `usePlugins`
+ * loads the registry through react-query; `usePluginApprovals` reads each plugin's
+ * installed (approved) version, release state and whether it is enabled for the
+ * entity, and installs, uninstalls, enables or disables plugins;
+ * `useEnabledPluginWidgets` lists the plugins enabled for the entity as widgets its
+ * dashboards can add; and `usePluginFrameStatus` tells an iframe widget whether its
+ * plugin may be shown, and at which approved version.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
@@ -12,41 +14,60 @@ import { useNavigate } from "react-router-dom";
 import type { WidgetJsonT } from "~/components/types";
 import {
   allowAllEntitlements,
+  createLocalEntityPlugins,
   createPluginManager,
   isPluginHostUrl,
   localPluginApprovals,
+  type OpenOptions,
   type PluginManager,
   type PluginRelease,
   resolveReleaseState,
 } from "~/lib/plugins";
 import { getConfig } from "~/lib/runtimeConfig";
+import { useAuthStore } from "~/lib/state/auth";
 
-const runtimePath = (pluginId: string) =>
-  `/app/plugins/${encodeURIComponent(pluginId)}`;
+const runtimePath = (pluginId: string, options?: OpenOptions) =>
+  `/app/plugins/${encodeURIComponent(pluginId)}${options?.preview ? "?preview=1" : ""}`;
 
-/** Query keys that depend on approvals; refreshed after an approve or disable. */
+/** Query keys that depend on approvals or enablements; refreshed after any change. */
 const APPROVALS_KEY = ["plugin-approvals"];
+const ENTITY_PLUGINS_KEY = ["plugin-entity-enablements"];
 const APPROVAL_DEPENDENT_KEYS = [
   APPROVALS_KEY,
+  ENTITY_PLUGINS_KEY,
   ["plugin-releases"],
   ["plugin-runtime"],
   ["plugin-frame"],
 ];
 
-function createWorkspacePluginManager(open: (pluginId: string) => void) {
+/** The signed-in user's entity, which plugin enablements belong to. */
+const currentEntity = () => useAuthStore.getState().user?.entity_name;
+const localEntityPlugins = createLocalEntityPlugins(currentEntity);
+
+function createWorkspacePluginManager(
+  open: (pluginId: string, options?: OpenOptions) => void,
+) {
   return createPluginManager({
     pluginHostUrl: getConfig().urls.pluginHost,
     entitlements: allowAllEntitlements,
     approvals: localPluginApprovals,
+    entityPlugins: localEntityPlugins,
     open,
   });
 }
+
+/** The signed-in user's entity, for query keys. */
+export const useCurrentEntity = () =>
+  useAuthStore((state) => state.user?.entity_name ?? null);
 
 /** Plugin Manager wired to Workspace config and routing. */
 export function usePluginManager() {
   const navigate = useNavigate();
   return useMemo(
-    () => createWorkspacePluginManager((pluginId) => navigate(runtimePath(pluginId))),
+    () =>
+      createWorkspacePluginManager((pluginId, options) =>
+        navigate(runtimePath(pluginId, options)),
+      ),
     [navigate],
   );
 }
@@ -55,8 +76,8 @@ export function usePluginManager() {
 function useRouterFreePluginManager() {
   return useMemo(
     () =>
-      createWorkspacePluginManager((pluginId) =>
-        window.location.assign(runtimePath(pluginId)),
+      createWorkspacePluginManager((pluginId, options) =>
+        window.location.assign(runtimePath(pluginId, options)),
       ),
     [],
   );
@@ -86,6 +107,15 @@ function approvalsQueryOptions(manager: PluginManager) {
   };
 }
 
+/** Keyed by entity, so switching accounts never shows another entity's choices. */
+function entityPluginsQueryOptions(manager: PluginManager, entity: string | null) {
+  return {
+    queryKey: [...ENTITY_PLUGINS_KEY, entity],
+    queryFn: () => manager.getEntityEnabledPluginIds(),
+    retry: false,
+  };
+}
+
 function releasesQueryOptions(manager: PluginManager) {
   const hostKey = manager.host.ok ? manager.host.baseUrl : null;
   return {
@@ -104,13 +134,17 @@ export function usePlugins() {
 }
 
 /**
- * Each plugin's approval and release state (approved version, update available, changed
- * on the host...), and the actions that change it. Approvals are global.
+ * Each plugin's installation and release state (approved version, update available,
+ * changed on the host...) and whether it is enabled for the signed-in user's entity,
+ * with the actions that change them. Installations are global; enablements belong to
+ * the entity.
  */
 export function usePluginApprovals(manager: PluginManager) {
   const queryClient = useQueryClient();
+  const entity = useCurrentEntity();
   const approvals = useQuery(approvalsQueryOptions(manager));
   const releases = useQuery(releasesQueryOptions(manager));
+  const enabled = useQuery(entityPluginsQueryOptions(manager, entity));
 
   const invalidate = () =>
     Promise.all(
@@ -124,8 +158,19 @@ export function usePluginApprovals(manager: PluginManager) {
       manager.approveRelease(pluginId, version),
     onSettled: invalidate,
   });
+  const uninstall = useMutation({
+    mutationFn: ({ pluginId }: { pluginId: string }) =>
+      manager.uninstallPlugin(pluginId),
+    onSettled: invalidate,
+  });
+  const enable = useMutation({
+    mutationFn: ({ pluginId }: { pluginId: string }) =>
+      manager.enableForEntity(pluginId),
+    onSettled: invalidate,
+  });
   const disable = useMutation({
-    mutationFn: ({ pluginId }: { pluginId: string }) => manager.disablePlugin(pluginId),
+    mutationFn: ({ pluginId }: { pluginId: string }) =>
+      manager.disableForEntity(pluginId),
     onSettled: invalidate,
   });
 
@@ -146,18 +191,33 @@ export function usePluginApprovals(manager: PluginManager) {
     [approvals.data, releasesById],
   );
 
+  const isInstalled = useCallback(
+    (pluginId: string) =>
+      approvals.data?.some((approval) => approval.pluginId === pluginId) ?? false,
+    [approvals.data],
+  );
+  const isEnabledForEntity = useCallback(
+    (pluginId: string) => enabled.data?.includes(pluginId) ?? false,
+    [enabled.data],
+  );
+
+  const pending = [approve, uninstall, enable, disable].find(
+    (mutation) => mutation.isPending,
+  );
+
   return {
     stateFor,
-    isLoading: approvals.isLoading || releases.isLoading,
-    error: approvals.error ?? releases.error,
+    isInstalled,
+    isEnabledForEntity,
+    isLoading: approvals.isLoading || releases.isLoading || enabled.isLoading,
+    error: approvals.error ?? releases.error ?? enabled.error,
+    /** Installs a version, or approves an update to an installed plugin. */
     approveRelease: approve.mutateAsync,
-    disablePlugin: disable.mutateAsync,
-    /** The plugin whose approval is being changed, if any. */
-    pendingPluginId: approve.isPending
-      ? approve.variables?.pluginId
-      : disable.isPending
-        ? disable.variables?.pluginId
-        : undefined,
+    uninstallPlugin: uninstall.mutateAsync,
+    enableForEntity: enable.mutateAsync,
+    disableForEntity: disable.mutateAsync,
+    /** The plugin whose installation or enablement is being changed, if any. */
+    pendingPluginId: pending?.variables?.pluginId,
   };
 }
 
@@ -165,21 +225,29 @@ export function usePluginApprovals(manager: PluginManager) {
 const PLUGIN_WIDGET_GRID = { w: 40, h: 22, minW: 12, minH: 10 };
 
 /**
- * The enabled plugins as widgets for the dashboard widget library. Enabling a plugin
- * makes it addable on every dashboard; disabling it drops it from the library (and
+ * The installed plugins enabled for the signed-in user's entity, as widgets for the
+ * dashboard widget library. Enabling a plugin makes it addable on every dashboard of the
+ * entity; disabling or uninstalling it drops it from the library (and
  * usePluginFrameStatus hides copies already on dashboards). Each is a regular iframe
  * widget whose `iframe-` widgetId maps to the Iframe component.
  */
 export function useEnabledPluginWidgets(): WidgetJsonT[] {
   const manager = useRouterFreePluginManager();
+  const entity = useCurrentEntity();
   const { data: registry } = useQuery(registryQueryOptions(manager));
   const { data: approvals } = useQuery(approvalsQueryOptions(manager));
+  const { data: enabled } = useQuery(entityPluginsQueryOptions(manager, entity));
 
   return useMemo(() => {
-    if (!registry || !approvals) return [];
-    const enabledIds = approvals.map((approval) => approval.pluginId);
+    if (!registry || !approvals || !enabled) return [];
+    const installedIds = approvals.map((approval) => approval.pluginId);
     return registry.plugins
-      .filter((plugin) => plugin.status === "active" && enabledIds.includes(plugin.id))
+      .filter(
+        (plugin) =>
+          plugin.status === "active" &&
+          installedIds.includes(plugin.id) &&
+          enabled.includes(plugin.id),
+      )
       .map(
         (plugin): WidgetJsonT => ({
           widgetId: `iframe-plugin-${plugin.id}`,
@@ -194,7 +262,7 @@ export function useEnabledPluginWidgets(): WidgetJsonT[] {
           storage: { html: manager.resolvePluginUrl(plugin) },
         }),
       );
-  }, [registry, approvals, manager]);
+  }, [registry, approvals, enabled, manager]);
 }
 
 export type PluginFrameStatus =
@@ -207,16 +275,23 @@ export type PluginFrameStatus =
 /**
  * Whether an iframe widget pointing at `url` may show it. URLs outside the plugin
  * host are not plugins and are left alone. A plugin page is shown only while its
- * plugin is registered, active and approved, and only at its approved version whose
- * release still matches what was approved; so disabling a plugin removes it from every
- * dashboard, and a changed release is blocked. Usable outside the router.
+ * plugin is registered, active, installed and enabled for the user's entity, and only
+ * at its approved version whose release still matches what was approved; so disabling
+ * or uninstalling a plugin removes it from dashboards, and a changed release is
+ * blocked. Usable outside the router.
  */
 export function usePluginFrameStatus(url: string): PluginFrameStatus {
   const manager = useRouterFreePluginManager();
+  const entity = useCurrentEntity();
   const isPlugin = isPluginHostUrl(url, getConfig().urls.pluginHost);
 
   const { data, error, isLoading } = useQuery({
-    queryKey: ["plugin-frame", manager.host.ok ? manager.host.baseUrl : null, url],
+    queryKey: [
+      "plugin-frame",
+      manager.host.ok ? manager.host.baseUrl : null,
+      entity,
+      url,
+    ],
     queryFn: async () => {
       const plugin = await manager.findPluginForUrl(url);
       if (!plugin) {

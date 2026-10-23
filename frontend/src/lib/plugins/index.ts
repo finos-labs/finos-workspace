@@ -10,9 +10,16 @@ export {
   type PluginApprovalService,
 } from "./approvals";
 export { allowAllEntitlements, type EntitlementService } from "./entitlements";
+export {
+  createLocalEntityPlugins,
+  ENTITY_PLUGINS_STORAGE_KEY,
+  type EntityPluginService,
+} from "./entityPlugins";
 export { isPluginHostUrl, parsePluginHost, REGISTRY_PATH } from "./pluginHost";
 export {
+  type AvailabilityOptions,
   createPluginManager,
+  type OpenOptions,
   type PluginAvailability,
   PluginHostNotConfiguredError,
   type PluginManager,

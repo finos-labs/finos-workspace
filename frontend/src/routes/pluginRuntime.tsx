@@ -1,21 +1,26 @@
 /**
  * Route /app/plugins/:pluginId. Shows one plugin full page: checks it through the
- * Plugin Manager (registered, active, enabled), then loads the plugin host page in a
- * sandboxed iframe, with loading and error states.
+ * Plugin Manager (registered, active, installed, enabled for the user's entity), then
+ * loads the plugin host page in a sandboxed iframe, with loading and error states.
+ * With ?preview=1 (Preview in Admin Portal → Plugins) an installed plugin is shown
+ * before it is enabled for the entity.
  */
 import { useQuery } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Notice } from "~/components/ds/molecules/Notice";
 import Icon from "~/components/Icon";
-import { usePluginManager } from "~/hooks/usePluginManager";
+import { useCurrentEntity, usePluginManager } from "~/hooks/usePluginManager";
 import { IFRAME_SANDBOX_ATTRIBUTES } from "~/lib/constants";
 import { useShallowThemeStore } from "~/lib/state/theme";
 
 /** Full-page plugin runtime: the plugin host page for one plugin, in a sandboxed iframe. */
 export default function PluginRuntimePage() {
   const { pluginId = "" } = useParams<{ pluginId: string }>();
+  const [searchParams] = useSearchParams();
+  const preview = searchParams.get("preview") === "1";
   const manager = usePluginManager();
+  const entity = useCurrentEntity();
   const theme = useShallowThemeStore((state) => state.theme);
   const [frameLoaded, setFrameLoaded] = useState(false);
 
@@ -23,12 +28,17 @@ export default function PluginRuntimePage() {
     queryKey: [
       "plugin-runtime",
       manager.host.ok ? manager.host.baseUrl : null,
+      entity,
       pluginId,
       theme,
+      preview,
     ],
     queryFn: async () => {
       const plugin = await manager.getPlugin(pluginId);
-      const availability = await manager.checkAvailability(pluginId, { theme });
+      const availability = await manager.checkAvailability(pluginId, {
+        theme,
+        preview,
+      });
       return { plugin, availability };
     },
     enabled: manager.host.ok,
@@ -101,6 +111,7 @@ export default function PluginRuntimePage() {
               {data.plugin.name}
               <span className="ml-2 text-2xs text-ds-text-caption">
                 v{data.plugin.version}
+                {preview && " · Preview"}
               </span>
             </h1>
           )}

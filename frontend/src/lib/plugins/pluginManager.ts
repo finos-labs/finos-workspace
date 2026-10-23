@@ -1,12 +1,15 @@
 /**
  * Plugin Manager: the one place that knows how to load the registry and the release
- * index, approve a plugin version (globally) or disable the plugin, work out each
- * plugin's release state (up to date, update available, changed on the host...), check
- * whether it can be opened, and build the runtime URL of its approved version
- * (plugin host + registry route + version + theme). UI code goes through it.
+ * index, install a plugin version (a super administrator's approval, global) or
+ * uninstall the plugin, enable or disable an installed plugin for the signed-in user's
+ * entity (an entity administrator's choice), work out each plugin's release state (up
+ * to date, update available, changed on the host...), check whether it can be opened,
+ * and build the runtime URL of its approved version (plugin host + registry route +
+ * version + theme). UI code goes through it.
  */
 import type { PluginApproval, PluginApprovalService } from "./approvals";
 import type { EntitlementService } from "./entitlements";
+import type { EntityPluginService } from "./entityPlugins";
 import { parsePluginHost, REGISTRY_PATH } from "./pluginHost";
 import { fetchRegistry, type ParsedRegistry, type PluginMetadata } from "./registry";
 import {
@@ -21,7 +24,14 @@ export type PluginAvailability =
   | { ok: true; url: string; version: string }
   | {
       ok: false;
-      reason: "unknown" | "inactive" | "disabled" | "missing" | "changed" | "no-access";
+      reason:
+        | "unknown"
+        | "inactive"
+        | "not-installed"
+        | "disabled"
+        | "missing"
+        | "changed"
+        | "no-access";
       message: string;
     };
 
@@ -51,6 +61,18 @@ export interface ResolveOptions {
   version?: string;
 }
 
+export interface AvailabilityOptions extends Omit<ResolveOptions, "version"> {
+  /**
+   * An administrator previewing an installed plugin: it need not be enabled for their
+   * entity yet. Installation, release integrity and entitlement are still checked.
+   */
+  preview?: boolean;
+}
+
+export interface OpenOptions {
+  preview?: boolean;
+}
+
 export interface PluginManager {
   /** The validated plugin host, or why it can't be used. */
   readonly host: ReturnType<typeof parsePluginHost>;
@@ -63,23 +85,33 @@ export interface PluginManager {
   /** Every release on the plugin host. */
   getReleases(): Promise<PluginRelease[]>;
   getApprovals(): Promise<PluginApproval[]>;
-  /** Ids of the plugins an administrator has approved (enabled) for everyone. */
-  getEnabledPluginIds(): Promise<string[]>;
+  /** Ids of the plugins a super administrator has installed (approved). */
+  getInstalledPluginIds(): Promise<string[]>;
+  /** Ids of the plugins enabled for the signed-in user's entity (installed or not). */
+  getEntityEnabledPluginIds(): Promise<string[]>;
   getReleaseState(id: string): Promise<PluginReleaseState>;
   /**
-   * Approves `version` of a plugin for all users and dashboards, pinned to the digest the
-   * host reports for it now. Replaces the plugin's earlier approval.
+   * Installs (approves) `version` of a plugin, pinned to the digest the host reports for
+   * it now, so entity administrators can enable it. Replaces the plugin's earlier
+   * approval; an update keeps the entities that enabled it.
    */
   approveRelease(id: string, version: string): Promise<void>;
-  /** Disables a plugin for all users and dashboards. */
-  disablePlugin(id: string): Promise<void>;
+  /** Uninstalls a plugin: it is removed from every entity, user and dashboard. */
+  uninstallPlugin(id: string): Promise<void>;
+  /** Enables an installed plugin for the signed-in user's entity. */
+  enableForEntity(id: string): Promise<void>;
+  /** Disables a plugin for the signed-in user's entity. */
+  disableForEntity(id: string): Promise<void>;
   resolvePluginUrl(plugin: PluginMetadata, options?: ResolveOptions): string;
-  /** Checks registry status, approval, release integrity and entitlement, then returns the URL. */
+  /**
+   * Checks registry status, installation, release integrity, the entity's enablement
+   * and entitlement, then returns the URL.
+   */
   checkAvailability(
     id: string,
-    options?: Omit<ResolveOptions, "version">,
+    options?: AvailabilityOptions,
   ): Promise<PluginAvailability>;
-  openPlugin(id: string): void;
+  openPlugin(id: string, options?: OpenOptions): void;
   /** Drops the cached registry so the next call fetches it again. */
   refresh(): void;
 }
@@ -88,8 +120,9 @@ export interface PluginManagerOptions {
   pluginHostUrl: string | undefined;
   entitlements: EntitlementService;
   approvals: PluginApprovalService;
+  entityPlugins: EntityPluginService;
   /** Opens the plugin inside Workspace (e.g. a router navigate). */
-  open: (pluginId: string) => void;
+  open: (pluginId: string, options?: OpenOptions) => void;
   fetchFn?: typeof fetch;
 }
 
@@ -208,8 +241,9 @@ export function createPluginManager(options: PluginManagerOptions): PluginManage
     },
     getReleases: loadReleases,
     getApprovals: () => options.approvals.getApprovals(),
-    getEnabledPluginIds: async () =>
+    getInstalledPluginIds: async () =>
       (await options.approvals.getApprovals()).map((approval) => approval.pluginId),
+    getEntityEnabledPluginIds: () => options.entityPlugins.getEnabledPluginIds(),
     getReleaseState,
     async approveRelease(id, version) {
       const plugin = await getPlugin(id);
@@ -236,10 +270,26 @@ export function createPluginManager(options: PluginManagerOptions): PluginManage
         approvedAt: new Date().toISOString(),
       });
     },
-    // A plugin that left the registry can still be disabled, so no lookup here.
-    disablePlugin: (id) => options.approvals.revoke(id),
+    // A plugin that left the registry can still be uninstalled, so no lookup here.
+    async uninstallPlugin(id) {
+      await options.approvals.revoke(id);
+      await options.entityPlugins.disableEverywhere(id);
+    },
+    async enableForEntity(id) {
+      const installed = (await options.approvals.getApprovals()).some(
+        (approval) => approval.pluginId === id,
+      );
+      if (!installed) {
+        const name = (await getPlugin(id))?.name ?? id;
+        throw new Error(
+          `${name} is not installed. A super administrator must install it first.`,
+        );
+      }
+      await options.entityPlugins.enable(id);
+    },
+    disableForEntity: (id) => options.entityPlugins.disable(id),
     resolvePluginUrl,
-    async checkAvailability(id, resolveOptions = {}) {
+    async checkAvailability(id, { preview = false, ...resolveOptions } = {}) {
       const plugin = await getPlugin(id);
       if (!plugin) {
         return {
@@ -259,8 +309,8 @@ export function createPluginManager(options: PluginManagerOptions): PluginManage
       if (state.kind === "no-release" || state.kind === "not-approved") {
         return {
           ok: false,
-          reason: "disabled",
-          message: `${plugin.name} is disabled. An administrator can enable it in Admin Portal → Plugins.`,
+          reason: "not-installed",
+          message: `${plugin.name} is not installed. A super administrator can install it in Admin Portal → Plugins.`,
         };
       }
       if (state.kind === "missing") {
@@ -275,6 +325,16 @@ export function createPluginManager(options: PluginManagerOptions): PluginManage
           ok: false,
           reason: "changed",
           message: `${plugin.name} ${state.approval.version} changed on the plugin host after it was approved, so it is blocked until an administrator reviews it.`,
+        };
+      }
+      if (
+        !preview &&
+        !(await options.entityPlugins.getEnabledPluginIds()).includes(plugin.id)
+      ) {
+        return {
+          ok: false,
+          reason: "disabled",
+          message: `${plugin.name} is disabled for your organization. An administrator can enable it in Admin Portal → Plugins.`,
         };
       }
       if (!(await options.entitlements.hasAccess(plugin.id))) {
@@ -292,7 +352,7 @@ export function createPluginManager(options: PluginManagerOptions): PluginManage
         url: resolvePluginUrl(plugin, { ...resolveOptions, version }),
       };
     },
-    openPlugin: (id) => options.open(id),
+    openPlugin: (id, openOptions) => options.open(id, openOptions),
     refresh: () => {
       registry = null;
     },

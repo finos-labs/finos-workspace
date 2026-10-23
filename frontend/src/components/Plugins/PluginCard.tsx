@@ -1,9 +1,13 @@
 /**
  * Card for one plugin on the Admin Portal Plugins page: name, description, the approved
- * (running) version, category, what the plugin asks for, registry status and its global
- * state (Enabled, Disabled, Update available, Blocked), with "Enable"/"Disable",
- * "Review" and "Open" actions. Enabling approves the newest released version; a newer
- * release or a changed one is reviewed in a panel before it is approved.
+ * (running) version, category, what the plugin asks for and its registry status, in one
+ * of two modes:
+ * - "install" (super administrator, the catalog): whether it is installed (Installed,
+ *   Not installed, Update available, Blocked), with "Install"/"Uninstall", "Review" and
+ *   "Preview". Installing approves the newest released version; a newer release or a
+ *   changed one is reviewed in a panel before it is approved.
+ * - "enable" (entity administrator, installed plugins only): whether it is enabled for
+ *   the organization, with "Enable"/"Disable" and "Preview".
  * Presentational only.
  */
 import { useState } from "react";
@@ -23,17 +27,31 @@ const STATUS_TAG = {
   deprecated: { color: "warning", label: "Deprecated" },
 } as const;
 
-interface PluginCardProps {
+interface CardBaseProps {
   plugin: PluginMetadata;
-  /** Where the plugin stands against its releases and approval. */
+  /** Where the plugin stands against its releases and approval (installation). */
   state: PluginReleaseState;
-  /** The approval is being changed. */
+  /** The installation or enablement is being changed. */
   updating?: boolean;
-  onOpen: (plugin: PluginMetadata) => void;
-  /** Approve (enable) `version` of the plugin for all users and dashboards. */
+  onPreview: (plugin: PluginMetadata) => void;
+}
+
+interface InstallCardProps extends CardBaseProps {
+  mode: "install";
+  /** Install `version` of the plugin, or approve it as an update or after a review. */
   onApprove: (plugin: PluginMetadata, version: string) => void;
+  onUninstall: (plugin: PluginMetadata) => void;
+}
+
+interface EnableCardProps extends CardBaseProps {
+  mode: "enable";
+  /** The plugin is enabled for the administrator's organization. */
+  enabled: boolean;
+  onEnable: (plugin: PluginMetadata) => void;
   onDisable: (plugin: PluginMetadata) => void;
 }
+
+type PluginCardProps = InstallCardProps | EnableCardProps;
 
 /** The release an administrator can review from this state, and why. */
 function reviewable(state: PluginReleaseState) {
@@ -70,22 +88,18 @@ function RequestsList({
   );
 }
 
-export function PluginCard({
-  plugin,
-  state,
-  updating = false,
-  onOpen,
-  onApprove,
-  onDisable,
-}: PluginCardProps) {
+export function PluginCard(props: PluginCardProps) {
+  const { plugin, state, updating = false, onPreview } = props;
   // Which release is open for review; a new or changed release starts closed.
   const [reviewingKey, setReviewingKey] = useState<string | null>(null);
+  const installing = props.mode === "install";
   const status = STATUS_TAG[plugin.status];
   const active = plugin.status === "active";
   const approved = "approval" in state ? state.approval : undefined;
   const blocked = state.kind === "changed" || state.kind === "missing";
   const runnable = state.kind === "approved" || state.kind === "update-available";
-  const review = reviewable(state);
+  // Only a super administrator reviews releases.
+  const review = installing ? reviewable(state) : null;
   const reviewKey = review
     ? `${review.reason}:${review.candidate.version}:${review.candidate.digest}`
     : null;
@@ -115,12 +129,16 @@ export function PluginCard({
           {status && <Tag color={status.color}>{status.label}</Tag>}
           {blocked ? (
             <Tag color="danger">Blocked</Tag>
-          ) : (
+          ) : installing ? (
             <Tag color={approved ? "success" : "grey"}>
-              {approved ? "Enabled" : "Disabled"}
+              {approved ? "Installed" : "Not installed"}
+            </Tag>
+          ) : (
+            <Tag color={props.enabled ? "success" : "grey"}>
+              {props.enabled ? "Enabled" : "Disabled"}
             </Tag>
           )}
-          {state.kind === "update-available" && (
+          {installing && state.kind === "update-available" && (
             <Tag color="brand">Update available</Tag>
           )}
         </div>
@@ -132,7 +150,9 @@ export function PluginCard({
         <dt>Version</dt>
         <dd className="text-ds-text-body">
           {version}
-          {state.kind === "update-available" && ` (${state.latest.version} available)`}
+          {installing &&
+            state.kind === "update-available" &&
+            ` (${state.latest.version} available)`}
         </dd>
         <dt>Category</dt>
         <dd className="text-ds-text-body">{plugin.category}</dd>
@@ -149,8 +169,8 @@ export function PluginCard({
       {blocked && !reviewing && (
         <p className="text-2xs text-ds-text-body">
           {state.kind === "changed"
-            ? `${approved?.version} changed on the plugin host after it was approved. It is blocked for everyone until it is reviewed.`
-            : `The approved version (${approved?.version}) is no longer on the plugin host. It is blocked for everyone.`}
+            ? `${approved?.version} changed on the plugin host after it was approved. It is blocked for everyone until ${installing ? "it is reviewed" : "a super administrator reviews it"}.`
+            : `The approved version (${approved?.version}) is no longer on the plugin host. It is blocked for everyone${installing ? "" : " until a super administrator reviews it"}.`}
         </p>
       )}
       {reviewing && review && approved && (
@@ -160,7 +180,10 @@ export function PluginCard({
           candidate={review.candidate}
           reason={review.reason}
           approving={updating}
-          onApprove={() => onApprove(plugin, review.candidate.version)}
+          onApprove={() =>
+            props.mode === "install" &&
+            props.onApprove(plugin, review.candidate.version)
+          }
           onClose={() => setReviewingKey(null)}
         />
       )}
@@ -174,37 +197,61 @@ export function PluginCard({
             {review.reason === "update" ? "Review update" : "Review"}
           </Button>
         )}
-        {approved ? (
-          <Button
-            variant="outlined"
-            size="xs"
-            loading={updating && !reviewing}
-            disabled={updating}
-            onClick={() => onDisable(plugin)}
-          >
-            Disable
-          </Button>
-        ) : (
-          // Enabling approves the newest released version, pinned to its digest.
-          <Button
-            variant="outlined"
-            size="xs"
-            loading={updating}
-            disabled={updating || !active || state.kind !== "not-approved"}
-            onClick={() =>
-              state.kind === "not-approved" && onApprove(plugin, state.latest.version)
-            }
-          >
-            Enable
-          </Button>
-        )}
+        {props.mode === "install" &&
+          (approved ? (
+            <Button
+              variant="danger"
+              size="xs"
+              loading={updating && !reviewing}
+              disabled={updating}
+              onClick={() => props.onUninstall(plugin)}
+            >
+              Uninstall
+            </Button>
+          ) : (
+            // Installing approves the newest released version, pinned to its digest.
+            <Button
+              variant="primary"
+              size="xs"
+              loading={updating}
+              disabled={updating || !active || state.kind !== "not-approved"}
+              onClick={() =>
+                state.kind === "not-approved" &&
+                props.onApprove(plugin, state.latest.version)
+              }
+            >
+              Install
+            </Button>
+          ))}
+        {props.mode === "enable" &&
+          (props.enabled ? (
+            <Button
+              variant="outlined"
+              size="xs"
+              loading={updating}
+              disabled={updating}
+              onClick={() => props.onDisable(plugin)}
+            >
+              Disable
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="xs"
+              loading={updating}
+              disabled={updating || !active || !runnable}
+              onClick={() => props.onEnable(plugin)}
+            >
+              Enable
+            </Button>
+          ))}
         <Button
           variant="secondary"
           size="xs"
           disabled={!active || !runnable}
-          onClick={() => onOpen(plugin)}
+          onClick={() => onPreview(plugin)}
         >
-          Open Plugin
+          Preview
         </Button>
       </div>
     </article>
