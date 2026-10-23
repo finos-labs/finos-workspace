@@ -1,13 +1,7 @@
 import { z } from "zod";
-
-/**
- * What `GET /app/widget-plugins` returns: the plugins this user may use, with their
- * widgets, effective permissions and effective CSP (docs/widget-plugins/DESIGN.md 7.1).
- * The server decides availability; the SPA only reads this.
- */
+import { VIZ_TYPE_PATTERN } from "~/lib/types/widgetsContract";
 
 export const PLUGIN_ID_PATTERN = /^[a-z][a-z0-9-]{1,47}$/;
-export const VIZ_TYPE_PATTERN = /^[a-z][a-z0-9_-]{1,31}$/;
 const DIGEST_PATTERN = /^sha256-[A-Za-z0-9_-]{43}$/;
 const SHA256_HEX = /^[a-f0-9]{64}$/;
 
@@ -73,9 +67,7 @@ export const PluginWidgetSchema = z.object({
   handles: z.array(HandleSchema).default([]),
   standalone: z.boolean().default(false),
   permissions: z.array(z.enum(PERMISSIONS)),
-  /** The proxies the widget may call, when it has `core:proxy:call` (SERVER-SIDE.md 3). */
   proxies: z.array(z.string()).default([]),
-  /** The backend routes the widget may call, when it has `core:backend:call` (SERVER-SIDE.md 5). */
   routes: z.array(z.string()).default([]),
   model: z
     .object({ traits: z.record(z.string(), TraitBindingSchema).default({}) })
@@ -131,15 +123,12 @@ export const PluginListingSchema = z.object({
 });
 export type PluginListing = z.infer<typeof PluginListingSchema>;
 
-/** A plugin widget as the host resolves it for one dashboard widget. */
 export interface ResolvedPluginWidget {
   plugin: AvailablePlugin;
   widget: PluginWidgetDef;
-  /** The viz type a backend widget declared, when the plugin renders one. */
   vizType?: string;
 }
 
-/** What a dashboard keeps for a plugin widget, in `storage.plugin`. */
 export interface PluginInstanceStorage {
   state?: unknown;
   config?: Record<string, unknown>;

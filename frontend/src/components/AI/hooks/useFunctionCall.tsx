@@ -42,6 +42,7 @@ import {
   paramOptionQueryResult,
   type TaskRequest,
 } from "~/lib/utils";
+import { rowsOf } from "~/lib/utils/rawRows";
 import { toError } from "~/lib/utils/utils";
 import { isTruthy, isTruthyRecord } from "~/lib/utils/values";
 import { createWidgetEndpoint } from "~/lib/utils/widgetParams";
@@ -100,14 +101,6 @@ function asNonEmptyString(value: unknown): string | undefined {
   return typeof value === "string" && value ? value : undefined;
 }
 
-/**
- * Converts an artifact payload from an add_generative_widget call into the
- * internal ArtifactT shape. Accepts two shapes: an already-normalized artifact
- * ({type, content}), forwarded as-is with uuid/name backfilled, and the raw
- * copilot wire format ({source_info, data_format, content}). Returns null for
- * anything else (including artifact types Workspace does not render) so malformed
- * tool-call payloads are dropped instead of stored in widget storage.
- */
 function normalizeGenerativeWidgetArtifact(artifact: unknown): ArtifactT | null {
   if (!isRecord(artifact)) return null;
 
@@ -166,8 +159,6 @@ async function parseResponseBody(
   const contentType = response.headers.get("content-type") || "";
   const isHtml =
     widgetType === "html" ||
-    // Endpoints might return JSON as text/plain,
-    // so we only check for text/html or application/xhtml+xml to be safe
     contentType.includes("text/html") ||
     contentType.includes("application/xhtml+xml");
 
@@ -292,7 +283,6 @@ export function useFunctionCall() {
         if (dataSource.origin !== "the backend") {
           const { origin, id, input_args } = dataSource;
           const widgetUuid = dataSource.widget_uuid;
-          // This ensures that we only get the data if the widget hasn't changed
           if (
             widgetUuid &&
             checkWidgetSignature(widgetUuid, {
@@ -306,16 +296,11 @@ export function useFunctionCall() {
                 currentDashboardId,
                 widgetUuid,
               );
-              // Check if cached data is non-empty before using it
-              // SSRM widgets may have empty cached data since they fetch on-demand
               const cachedData = widgetData?.data;
-              // SSRM widgets `data.rowData` is only on requests, for `widgetData.data` we have the
-              // processed rowData that's meant to be used directly
               if (widgetData && isTruthy(cachedData)) {
                 finalResults.push(convertToCopilotData(cachedData));
                 continue;
               }
-              // If cached data is empty, fall through to fetch fresh data
             } catch (error) {
               if (import.meta.env.DEV) {
                 console.error("Error reading widget data", error);
@@ -325,8 +310,6 @@ export function useFunctionCall() {
         }
 
         try {
-          // Safety check: Tab widgets should never be used for direct data fetching
-          // They should only be expanded into their constituent widgets
           if (dataSource.id?.startsWith("tab_")) {
             console.warn(
               `Attempted to fetch data from tab widget ${dataSource.id}. Tab widgets should be expanded before reaching this stage.`,
@@ -436,13 +419,6 @@ export function useFunctionCall() {
     [aiEnhancementsEnabled, signedIn],
   );
 
-  /**
-   * Resolve a raw inner_tab name from the backend to an existing tab ID.
-   * Matches by name (case-insensitive) or slug. Returns undefined if no match.
-   */
-  // Reads state imperatively via getState() — returns a snapshot at call-time, not
-  // at render-time. Safe here because callers (addWidgetToDashboard, addGenerativeWidget)
-  // are async and don't depend on batched React state updates within the same tick.
   const resolveInnerTabId = useCallback(
     (rawInnerTab: string, dashboardId = currentDashboardId): string | undefined => {
       const appState = useAppStore.getState();
@@ -468,7 +444,6 @@ export function useFunctionCall() {
             dataArgs: dataSource.input_args,
           };
 
-          // Handle inner_tab assignment when a navigation bar exists
           const rawInnerTab = dataSource.input_args?.inner_tab;
           if (typeof rawInnerTab === "string" && rawInnerTab) {
             const tabId = resolveInnerTabId(rawInnerTab);
@@ -528,7 +503,6 @@ export function useFunctionCall() {
               dataArgs: dataSource.input_args,
             };
 
-            // A note the Copilot wrote is a markdown widget that holds its own text
             const widget = useAppStore.getState().getWidgetById(widgetUuid);
             const isNote = widget?.widgetId === "markdown" && !widget.endpoint?.url;
 
@@ -601,9 +575,7 @@ export function useFunctionCall() {
             continue;
           }
 
-          // Wait for state to update before making the request
           await new Promise((resolve) => setTimeout(resolve, 100));
-          // Pass the agent directly to avoid relying on state changes
           await forwardMessageToAi(task.description, sourceAgentId, agent);
 
           finalResults.push({
@@ -667,7 +639,6 @@ export function useFunctionCall() {
             artifacts,
           });
 
-          // Create text artifact for chat
           artifact = {
             uuid: widgetUuid,
             name,
@@ -684,7 +655,6 @@ export function useFunctionCall() {
             description,
           });
 
-          // Create HTML artifact for chat
           artifact = {
             uuid: widgetUuid,
             name,
@@ -699,7 +669,6 @@ export function useFunctionCall() {
           );
         }
 
-        // Fetch AI-generated title/description before adding to dashboard
         try {
           const response = await fetchAgent(
             `${getAiApiUrl()}/v1/generate/widget_info`,
@@ -724,16 +693,9 @@ export function useFunctionCall() {
             newWidget = { ...newWidget, description: aiInfo.description };
           }
         } catch (e) {
-          // Fallback to LLM-provided name/description
           console.warn("[GenerativeWidget] Failed to fetch AI widget info:", e);
         }
 
-        // Resolve the placement tab. An explicit inner_tab wins; otherwise, when
-        // adding to the dashboard the user is currently viewing, fall back to the
-        // tab in the URL (?tab=) — the source of truth navigate_workspace writes —
-        // rather than the store's lagging data.currentTab. The latter trails the
-        // URL by a render cycle, so a navigate→add issued back-to-back (the
-        // documented MCP workflow) would otherwise land on the previous tab.
         const requestedInnerTab =
           inner_tab ||
           (dashboardId === currentDashboardId
@@ -746,7 +708,6 @@ export function useFunctionCall() {
           }
         }
 
-        // Add widget to the dashboard
         const createdWidgetUuid = await useAppStore
           .getState()
           .addWidget(dashboardId, newWidget);
@@ -756,7 +717,6 @@ export function useFunctionCall() {
           );
         }
 
-        // Add artifact to chat for visibility
         if (artifact) {
           useCopilotStore.getState().addArtifactToCurrentChat(artifact);
         }
@@ -799,10 +759,6 @@ function notSent(problems: RequestProblem[]): CopilotError {
   );
 }
 
-/**
- * The widget's own request, with the agent's values for its params (WIDGETS-JSON 4.8), so
- * the agent gets what the widget gets. A param the agent leaves out has its default.
- */
 function getRequest(widget: WidgetT, inputArgs: Record<string, unknown>): Request {
   const declared = (widget.params ?? [])
     .filter((param) => param.type !== "form")
@@ -813,7 +769,6 @@ function getRequest(widget: WidgetT, inputArgs: Record<string, unknown>): Reques
       CopilotErrorType.NOT_FOUND,
       `input_args names no param of this widget: ${undeclared.join(", ")}. Its params are: ${declared.join(", ") || "none"}.`,
     );
-  // A registry widget's endpoint may be its path alone; the method stays the widget's
   const endpoint = createWidgetEndpoint(widget.endpoint ?? "");
   const built = buildWidgetRequest(
     {
@@ -821,8 +776,8 @@ function getRequest(widget: WidgetT, inputArgs: Record<string, unknown>): Reques
       params: widget.params,
       storage: { params: inputArgs as Record<string, StoredParamValue> },
     },
-    // The backend's credentials, for an endpoint on its origin only
     getSourceCredentials(widget.sourceId, endpoint.url),
+    widget.raw ? { raw: "true" } : {},
   );
   if (!built) throw new Error("Missing widget endpoint url.");
   if (!built.ok) throw notSent(built.problems);
@@ -846,16 +801,11 @@ export async function getCustomWidgetsData(
   const getCustomWidget = () => {
     const customWidget = getWidgetFromBackend(dataSource.origin, dataSource.id);
     if (customWidget) return customWidget;
-    // Fallback to checking shared dashboard widgets if not found in the backend registry
     return widgetUuid ? useSharedAppStore.getState().getWidgetById(widgetUuid) : null;
   };
 
   const customWidget = getCustomWidget();
   if (!customWidget) {
-    // The widget isn't in the backend registry. This happens for Widget Studio
-    // widgets that belong to an installed/shared app rather than the user's own
-    // widget metadata. If the widget is placed on the current dashboard its data
-    // is already loaded, so fall back to that instead of failing.
     if (widgetUuid) {
       const widgetData = getDashboardWidgetData(widgetUuid);
       if (widgetData) return widgetData.data;
@@ -870,9 +820,13 @@ export async function getCustomWidgetsData(
     const request = getRequest(customWidget, dataSource.input_args);
     const response = await fetch(request);
     if (!response.ok) throw response;
-    const requestResult = await parseResponseBody(response, customWidget.type);
+    const requestResult = await parseResponseBody(
+      response,
+      customWidget.raw ? undefined : customWidget.type,
+    );
     const dataKey = customWidget?.data?.dataKey;
-    if (dataKey && typeof requestResult === "object")
+    if (customWidget.raw) result = rowsOf(requestResult, customWidget.data?.rawDataKey);
+    else if (dataKey && typeof requestResult === "object")
       result = get(requestResult, dataKey, requestResult);
     else result = requestResult;
   } catch (error) {
@@ -894,7 +848,6 @@ async function getPreSignedUrls(
   dataSource: DataSourceT,
   getWidgetFromBackend: (backendName: string, widgetId: string) => WidgetT | null,
 ): Promise<DataUrl> {
-  // Uploaded file widgets
   const fileWidget = getWidgetFromBackend("the backend", dataSource.id);
   if (fileWidget?.endpoint?.url) {
     const uuid = extractUUIDFromURL(fileWidget.endpoint.url);
@@ -902,8 +855,6 @@ async function getPreSignedUrls(
     return getFileReference(uuid);
   }
 
-  // Files attached to the chat: the widget id carries the stored file uuid ("file-<uuid>"), and an
-  // agent may name the file by that uuid alone, as its widget_uuid
   const fileUuid =
     extractUuidFromWidgetId(dataSource.id) ??
     (dataSource.widget_uuid ? extractUuidFromWidgetId(dataSource.widget_uuid) : null);
@@ -922,7 +873,6 @@ async function getWorkspaceWidgetsData(
 ): Promise<unknown> {
   const widgetUuid = dataSource.widget_uuid;
 
-  // Handle iframe sub-widget requests (composite key: parentUuid::iframe::subWidgetId)
   const targetId = widgetUuid ?? dataSource.id;
   const iframeParts = targetId?.split("::iframe::");
   if (iframeParts && iframeParts.length === 2) {
@@ -961,11 +911,6 @@ export function extractUuidFromWidgetId(widgetId: string): string | null {
   return null;
 }
 
-/**
- * Parses the expiration time from a presigned URL.
- * Looks for Expires or X-Amz-Expires parameter and converts to milliseconds.
- * Uses parseInt to correctly handle trailing URL parameters (e.g., "3600&X-Amz-SignedHeaders=...")
- */
 export function parseUrlExpiration(url: string, defaultTtlSeconds: number): number {
   if (!url) return defaultTtlSeconds * 1000;
   const expiresMatch = url.split("Expires=")?.[1];
@@ -976,7 +921,7 @@ export function parseUrlExpiration(url: string, defaultTtlSeconds: number): numb
 }
 
 async function getFileReference(uuid: string): Promise<DataUrl> {
-  const ttl = 3600; // seconds
+  const ttl = 3600;
   const response = await getPreSignedUrl(uuid, ttl);
   const reference = response.pre_signed_url;
   const expiration = parseUrlExpiration(reference, ttl);
@@ -1002,7 +947,6 @@ export async function getWidgetsParamOptions(
       CopilotErrorType.NOT_FOUND,
       `Widget with id ${paramOptionsQuery.id} not found`,
     );
-  // this name should be more explicit like param_name
   const paramName = paramOptionsQuery.param;
   const widgetParam = (widget.params ?? []).find(
     (p): p is ParamDefT<"endpoint"> =>
@@ -1015,7 +959,6 @@ export async function getWidgetsParamOptions(
       params: widget.params ?? [],
       values: paramOptionsQuery.options_endpoint_input_args,
     },
-    // The backend's credentials, for an options endpoint on its origin only
     getSourceCredentials(widget.sourceId, widgetParam.optionsEndpoint),
   );
   if (!built) throw new Error(`Endpoint not found for param ${paramName}`);
@@ -1038,26 +981,10 @@ export async function getWidgetsParamOptions(
   return result.data;
 }
 
-/**
- * Converts raw widget data into the CopilotDataT format for AI context.
- *
- * Handles several data formats:
- * 1. SSRM responses: `{ rowData: [...], rowCount: n }` - extracts the `rowData` array
- * 2. Single-string-field SQL results: `[{ HTML_CONTENT: "..." }]` - converts to text content items
- * 3. Arrays of objects - wrapped as CopilotData items
- * 4. Objects with `extra_citations` - extracts citations and wraps remainder
- *
- * Falls back to JSON stringifying the entire data if parsing fails.
- *
- * @param data - Raw widget data in any supported format
- * @returns Normalized CopilotDataT with items array and optional extra_citations
- */
 export function convertToCopilotData(data: unknown): CopilotDataT {
   let items: unknown;
   let extra_citations: unknown = [];
 
-  // Helper to check if an object is a single-field object with a string value
-  // This handles SQL widgets that return a single column like HTML_CONTENT or TEXT_COLUMN
   const isSingleStringField = (obj: unknown): obj is Record<string, string> => {
     if (typeof obj !== "object" || obj === null || Array.isArray(obj)) return false;
     const record = obj as Record<string, unknown>;
@@ -1065,7 +992,6 @@ export function convertToCopilotData(data: unknown): CopilotDataT {
     return keys.length === 1 && typeof record[keys[0]] === "string";
   };
 
-  // Helper to convert a single-field object to DataContent format
   const toDataContent = (obj: Record<string, string>) => {
     const key = Object.keys(obj)[0];
     return {
@@ -1077,7 +1003,6 @@ export function convertToCopilotData(data: unknown): CopilotDataT {
     };
   };
 
-  // Helper to process an array of items for single-string-field conversion
   const processArrayForSingleStringFields = (arr: unknown[]) => {
     if (arr.length > 0 && arr.every(isSingleStringField)) {
       return arr.map(toDataContent);
@@ -1085,8 +1010,6 @@ export function convertToCopilotData(data: unknown): CopilotDataT {
     return arr;
   };
 
-  // Extract the actual data from SSRM response format ({ rowData: [...], rowCount: n })
-  // This is common for SQL backend widgets
   let dataToProcess: unknown = data;
   if (isTruthyRecord(data) && Array.isArray(data.rowData)) {
     dataToProcess = data.rowData;
@@ -1103,8 +1026,6 @@ export function convertToCopilotData(data: unknown): CopilotDataT {
       },
     ];
   } else if (Array.isArray(dataToProcess)) {
-    // Check if array contains single-field objects with string values (e.g., SQL query result)
-    // Example: [{ HTML_CONTENT: "<html>..." }] from a SELECT HTML_CONTENT query
     items = processArrayForSingleStringFields(dataToProcess);
   } else {
     const record: Record<string, unknown> = isTruthyRecord(dataToProcess)
@@ -1120,10 +1041,8 @@ export function convertToCopilotData(data: unknown): CopilotDataT {
     }
   }
 
-  // Custom widgets return an object that follows CopilotDataSchema
   const result = CopilotDataSchema.safeParse({ items, extra_citations });
   if (result.success) return result.data;
 
-  // Built-in widgets fallback here because they return an array of data
   return { items: [{ content: JSON.stringify(data) }] };
 }

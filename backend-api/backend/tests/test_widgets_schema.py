@@ -1,8 +1,3 @@
-"""The ``widgets.json`` schema in force for an entity (docs/widget-plugins/WIDGETS-JSON.md 3
-and 4): composed from the kit and the enabled plugins' fragments, closed and bounded,
-stating the request rules, and served per entity with an ETag.
-"""
-
 import copy
 import json
 from itertools import combinations
@@ -68,9 +63,6 @@ class TestComposition:
 
 
 class TestPluginConfig:
-    """A template's ``plugin.config`` for a plugin widget is checked against the handler's
-    settings, closed (WIDGETS-JSON 3.10)."""
-
     SETTINGS = {
         "type": "object",
         "properties": {
@@ -87,7 +79,6 @@ class TestPluginConfig:
         assert not config.is_valid({"palette": "neon"})
         assert not config.is_valid({"points": 1})
         assert not config.is_valid({"glow": True})
-        # A handler with no settings takes no configuration
         assert not Draft7Validator(composed["definitions"]["PluginConfig_grid_y"]).is_valid({"any": 1})
         assert "PluginConfig_markdown" not in composed["definitions"]
         assert closedness_problems(composed) == []
@@ -182,10 +173,10 @@ class TestRequestMapping:
             ({**WIDGET, "params": [{"paramName": "theme", "type": "text", "in": "header"}]}, True),
             ({**WIDGET, "type": "html", "params": [{"paramName": "raw", "type": "boolean"}]}, False),
             ({**WIDGET, "type": "pdf", "params": [{"paramName": "theme", "type": "text"}]}, True),
-            # A plugin type gets the theme from the host too
             ({**WIDGET, "type": "grid_y", "params": [{"paramName": "theme", "type": "text"}]}, False),
             ({**WIDGET, "type": "grid_y", "params": [{"paramName": "theme", "type": "text", "in": "header"}]}, True),
             ({**WIDGET, "type": "grid_y", "params": [{"paramName": "mode", "type": "text"}]}, True),
+            ({**WIDGET, "type": "grid_y", "params": [{"paramName": "raw", "type": "boolean"}]}, False),
             ({**WIDGET, "type": "iframe", "method": "POST"}, False),
             ({**WIDGET, "type": "iframe", "params": [{"paramName": "a", "type": "text", "in": "body"}]}, False),
             ({**WIDGET, "type": "iframe", "params": [{"paramName": "a", "type": "text", "in": "header"}]}, False),
@@ -207,6 +198,24 @@ class TestTypeKeys:
             ({**WIDGET, "storage": {"text": "x"}}, False),
             ({**WIDGET, "type": "grid_y", "data": {"grid_y": {}}}, False),
             ({**WIDGET, "type": "grid_y", "data": {"dataKey": "rows"}}, True),
+            ({**WIDGET, "type": "grid_y", "raw": True}, True),
+            (
+                {**WIDGET, "type": "html", "raw": True, "data": {"rawDataKey": "results.records", "rawType": "grid_y"}},
+                True,
+            ),
+            (
+                {
+                    **WIDGET,
+                    "type": "grid_y",
+                    "raw": True,
+                    "data": {"dataKey": "results.chart", "rawDataKey": "results.records", "rawType": "table_x"},
+                },
+                True,
+            ),
+            ({**WIDGET, "type": "grid_y", "data": {"rawDataKey": "results.records"}}, False),
+            ({**WIDGET, "type": "html", "raw": False, "data": {"rawType": "grid_y"}}, False),
+            ({**WIDGET, "data": {"rawDataKey": "results"}}, False),
+            ({**WIDGET, "type": "grid_y", "raw": True, "data": {"rawType": "Grid Y"}}, False),
         ],
     )
     def test_each_type_takes_its_own_keys(self, schema, widget, valid):
@@ -256,11 +265,6 @@ class TestOffline:
         )
 
     def test_the_frontend_fixture_is_current(self, capsys):
-        """The SPA's tests validate against this composition. To rewrite it, from
-        backend-api/backend: python -m scripts.compose_widgets_schema
-        --plugin test_chart=tests/fixtures/test_chart_definition.json
-        --settings test_chart=tests/fixtures/test_chart_settings.json --id fixture
-        > ../../frontend/tests/mocks/widgets-schema.json"""
         compose_main(FIXTURE_ARGS)
         assert FRONTEND_FIXTURE.read_text() == capsys.readouterr().out
 
@@ -290,7 +294,6 @@ class TestEndpoint:
         await approve(superuser)
         assert "test_chart" not in (await member.get("/app/widget-plugins/widgets-schema")).json()["x-types"]
 
-        # Enabled for the entity, for roles: the type is part of the entity's contract
         assert (await superuser.put("/admin/plugins/test-chart", json={"enabled": True})).status_code == 200
         response = await member.get("/app/widget-plugins/widgets-schema")
         schema = response.json()
@@ -298,7 +301,6 @@ class TestEndpoint:
         assert _valid(schema, {**WIDGET, "type": "test_chart", "data": {"test_chart": {"title": "T"}}})
         assert not _valid(schema, {**WIDGET, "type": "test_chart", "data": {"test_chart": {"colour": "red"}}})
 
-        # The ETag follows the inputs
         etag = response.headers["etag"]
         again = await member.get("/app/widget-plugins/widgets-schema", headers={"If-None-Match": etag})
         assert again.status_code == 304
@@ -307,7 +309,6 @@ class TestEndpoint:
         assert changed.status_code == 200
         assert "test_chart" not in changed.json()["x-types"]
 
-        # Another entity, which has not enabled it
         await superuser.post("/plugins/test-chart/restore")
         assert "test_chart" not in (await second_user_client.get("/app/widget-plugins/widgets-schema")).json()["x-types"]
 
@@ -348,7 +349,6 @@ class TestEndpoint:
         def config_of(schema):
             return schema["definitions"]["Data_test_chart"]["properties"]["test_chart"]["properties"]
 
-        # No choice: the lowest plugin id
         assert "pageSize" in config_of((await member.get("/app/widget-plugins/widgets-schema")).json())
         response = await superuser.put("/admin/plugins/test-chart", json={"handlers": {"test_chart": "chart"}})
         assert response.status_code == 200, response.text

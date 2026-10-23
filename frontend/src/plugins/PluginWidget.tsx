@@ -9,6 +9,11 @@ import type { ParamDef, StoredParamValue } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useWidgetParamsPositions } from "~/components/WidgetParams/QueryParams";
 import { buildIframeWidget } from "~/components/Widgets/custom/buildIframeWidget";
+import {
+  RowsToggle,
+  useRawRows,
+  useRowsView,
+} from "~/components/Widgets/Helpers/RawRows";
 import { useParamGroupBindings } from "~/components/Widgets/Helpers/useParamGroupBindings";
 import { useJsonData } from "~/lib/api";
 import { useShallowAppStore } from "~/lib/state/app";
@@ -39,6 +44,7 @@ import {
   resolvePluginWidget,
   resolveVizHandler,
   usePluginRegistryStore,
+  useRowsPlugin,
 } from "./registry";
 import { cleanSettings, SettingsForm } from "./SettingsForm";
 import { readThemeTrait } from "./theme";
@@ -51,7 +57,6 @@ import {
 const MAX_COPILOT_CONTEXT_BYTES = 256 * 1024;
 const MAX_NOTIFY_LENGTH = 500;
 
-/** The plugin widget that renders this dashboard widget, kept current with the registry. */
 export function useResolvedPluginWidget(): ResolvedPluginWidget | null {
   const { widget, widgetFromJSON } = useWidgetContext();
   const { plugins, vizHandlers } = usePluginRegistryStore((state) => ({
@@ -93,6 +98,8 @@ export default function PluginWidget() {
   const resolved = useResolvedPluginWidget();
   const { widget } = useWidgetContext();
   const loaded = usePluginRegistryStore((state) => state.loaded);
+  const [showRows] = useRowsView();
+  const rowsPlugin = useRowsPlugin(widget.data?.rawType);
 
   if (!resolved) {
     return (
@@ -109,10 +116,39 @@ export default function PluginWidget() {
       />
     );
   }
-  return <PluginWidgetBody resolved={resolved} />;
+  const shown = showRows && rowsPlugin ? rowsPlugin : resolved;
+  return (
+    <PluginWidgetBody
+      key={`${shown.plugin.id}:${shown.widget.id}:${showRows}`}
+      resolved={shown}
+      showRows={showRows}
+      viewName={resolved.widget.name}
+    />
+  );
 }
 
-function PluginWidgetBody({ resolved }: { resolved: ResolvedPluginWidget }) {
+export function PluginRowsCard(props: {
+  resolved: ResolvedPluginWidget;
+  viewName: string;
+}) {
+  return (
+    <PluginWidgetBody
+      resolved={props.resolved}
+      showRows={true}
+      viewName={props.viewName}
+    />
+  );
+}
+
+function PluginWidgetBody({
+  resolved,
+  showRows,
+  viewName,
+}: {
+  resolved: ResolvedPluginWidget;
+  showRows: boolean;
+  viewName: string;
+}) {
   const { plugin, widget: pluginWidget, vizType } = resolved;
   const { widget, updateWidget, activeDashboardId, isShared } = useWidgetContext();
   const addWidget = useShallowAppStore((state) => state.addWidget);
@@ -122,7 +158,6 @@ function PluginWidgetBody({ resolved }: { resolved: ResolvedPluginWidget }) {
   const [link, setLink] = useState<string | null>(null);
   const [copilotContext, setCopilotContext] = useState<unknown>(undefined);
   const notifyLimiter = useRef(new RateLimiter(0.5, 5));
-  // The API limits calls per user and plugin too; this keeps a busy frame from reaching it
   const serverLimiter = useRef(new RateLimiter(2, 10));
   const { updateGroupedParams } = useParamGroupBindings();
 
@@ -138,13 +173,12 @@ function PluginWidgetBody({ resolved }: { resolved: ResolvedPluginWidget }) {
     StoredParamValue
   >;
 
-  // -- Data ------------------------------------------------------------------
   const handle = pluginWidget.handles.find((h) => h.type === vizType);
   const endpointUrl = widget.endpoint?.url ?? "";
   const readsData = permissions.has("core:data:read") && !!endpointUrl;
+  const [, setShowRows] = useRowsView();
+  const rows = useRawRows(widget);
   const credentials = useSourceCredentials(widget.sourceId, endpointUrl);
-  // The endpoint gets the site's theme, as markdown and html endpoints do, and answers
-  // again when it changes
   const request = useMemo(
     () =>
       buildWidgetRequest(widget, credentials, {
@@ -153,7 +187,7 @@ function PluginWidgetBody({ resolved }: { resolved: ResolvedPluginWidget }) {
     [widget.endpoint, widget.params, widget.storage?.params, theme, credentials],
   );
   const dataKey = widget.data?.dataKey;
-  const { data, isLoading, error, dataUpdatedAt } = useJsonData(
+  const answer = useJsonData(
     {
       request,
       responseCb: async (response, resolve) => {
@@ -161,11 +195,10 @@ function PluginWidgetBody({ resolved }: { resolved: ResolvedPluginWidget }) {
         resolve(dataKey ? get(json, dataKey, json) : json);
       },
     },
-    { enabled: readsData, staleTime: widget.staleTime ?? 1000 * 60 * 15 },
+    { enabled: readsData && !showRows, staleTime: widget.staleTime ?? 1000 * 60 * 15 },
   );
+  const { data, isLoading, error, dataUpdatedAt } = showRows ? rows : answer;
 
-  // The card's refresh reaches the plugin as a host event (GUEST-CONTRACT.md 3.4); the
-  // data refetches on its own
   const refreshed = useRef(widget.refreshQuery);
   useEffect(() => {
     if (widget.refreshQuery === refreshed.current) return;
@@ -173,7 +206,6 @@ function PluginWidgetBody({ resolved }: { resolved: ResolvedPluginWidget }) {
     frameRef.current?.sendEvent({ kind: "workspace-event", name: "refresh" });
   }, [widget.refreshQuery]);
 
-  // -- Definition --------------------------------------------------------------
   const definitionValue = vizType ? widget.data?.[vizType] : undefined;
   const definitionErrors = useMemo(
     () =>
@@ -185,7 +217,6 @@ function PluginWidgetBody({ resolved }: { resolved: ResolvedPluginWidget }) {
     [handle, definitionValue],
   );
 
-  // -- Traits ------------------------------------------------------------------
   const config = useMemo(
     () => ({
       ...(pluginWidget.settings?.defaults ?? {}),
@@ -257,7 +288,6 @@ function PluginWidgetBody({ resolved }: { resolved: ResolvedPluginWidget }) {
     widget.id,
   ]);
 
-  // -- Writes ------------------------------------------------------------------
   const writeParams = useCallback(
     (changes: Record<string, unknown>) => {
       const accepted: Record<string, StoredParamValue> = {};
@@ -328,7 +358,6 @@ function PluginWidgetBody({ resolved }: { resolved: ResolvedPluginWidget }) {
     [writeParams, paramValues, traits, updateWidget, isShared],
   );
 
-  // -- Commands ----------------------------------------------------------------
   const onCommand = useCallback(
     async (name: string, msg: unknown, buffers: ArrayBuffer[]) => {
       commandPermission(name, permissions);
@@ -423,9 +452,6 @@ function PluginWidgetBody({ resolved }: { resolved: ResolvedPluginWidget }) {
     ],
   );
 
-  // -- Exports -----------------------------------------------------------------
-  // The plugin's code decides what it can export, each time the user opens Export, and
-  // delivers the data; the host assumes no format (GUEST-CONTRACT.md 5)
   const exportsAvailable = status.kind === "running" ? status.exports : [];
   const canExport =
     permissions.has("core:export:provide") &&
@@ -477,6 +503,7 @@ function PluginWidgetBody({ resolved }: { resolved: ResolvedPluginWidget }) {
   }, [plugin.name, setExportWidgetData, widget.id, widget.name]);
 
   const wantsCopilotContext =
+    !widget.raw &&
     permissions.has("core:copilot:context") &&
     exportsAvailable.includes("copilotContext");
   useEffect(() => {
@@ -489,7 +516,6 @@ function PluginWidgetBody({ resolved }: { resolved: ResolvedPluginWidget }) {
       .catch(() => undefined);
   }, [wantsCopilotContext, data]);
 
-  // -- Instance settings -------------------------------------------------------
   const settingsSchema = pluginWidget.settings?.schema;
   const [draft, setDraft] = useState<Record<string, unknown>>(config);
   useEffect(() => setDraft(config), [config]);
@@ -538,14 +564,26 @@ function PluginWidgetBody({ resolved }: { resolved: ResolvedPluginWidget }) {
         elementRightNextToTitle={renderRow0Params}
         elementBelowNavbar={renderBelowNavbarRows}
         aiEnabled={true}
-        aiData={copilotContext === undefined ? data : { data, context: copilotContext }}
+        aiData={
+          widget.raw
+            ? rows.data
+            : copilotContext === undefined
+              ? data
+              : { data, context: copilotContext }
+        }
+        extraNavbarElements={
+          widget.raw ? (
+            <RowsToggle
+              showRows={showRows}
+              onChange={setShowRows}
+              viewName={viewName}
+            />
+          ) : undefined
+        }
         lastUpdated={readsData ? dataUpdatedAt : undefined}
         loading={readsData && isLoading}
         error={readsData ? error : undefined}
         errorMessage={error?.message}
-        // Export is the plugin's own: what it offers and the data it delivers. Without its
-        // export functions there is none; the card's picture of its DOM cannot see into
-        // the sandboxed frame
         settings={{ overrideSettings: false, showExport: canExport }}
         onExport={canExport ? onExport : undefined}
         settingsModalChildren={

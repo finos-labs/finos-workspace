@@ -15,25 +15,10 @@ import {
   WidgetBaseContract,
 } from "./widgetsContract.ts";
 
-/**
- * The kit the API composes the `widgets.json` schema from (WIDGETS-JSON 3.4 and 3.5): the
- * shared definitions, the base widget, each built-in type with its keys and request
- * rules, the header tables and the rules for plugin types. Generated from the Zod
- * contract by `scripts/generate-widgets-schema.ts` and committed under the backend; a
- * test fails when the committed copy is stale.
- *
- * Relative imports only: the generator runs this module under Node.
- */
-
-export const KIT_VERSION = 1;
+export const KIT_VERSION = 2;
 
 type JsonSchema = Record<string, unknown>;
 
-/**
- * Marks every `oneOf` whose branches each fix `type` with the discriminator, so a
- * validator that knows it (ajv) checks a param against the branch of its own type only
- * and reports one error for an unknown type. Others ignore the keyword.
- */
 function markDiscriminators(node: unknown): unknown {
   if (Array.isArray(node)) return node.map(markDiscriminators);
   if (!node || typeof node !== "object") return node;
@@ -74,9 +59,6 @@ export function buildWidgetsSchemaKit() {
     properties: Record<string, JsonSchema>;
     required: string[];
   };
-  // Params and the MCP link by reference, so the composed schema states them once. An
-  // item is a param, or an array of params that share a row: one or the other is checked,
-  // so a validator reports the problems of the one that applies
   const { description: paramsDescription } = base.properties.params;
   base.properties.params = {
     description: paramsDescription,
@@ -94,18 +76,18 @@ export function buildWidgetsSchemaKit() {
     description: base.properties.mcp_tool.description,
   };
 
+  const json = (properties: Record<string, z.ZodType>) =>
+    Object.fromEntries(
+      Object.entries(properties).map(([key, schema]) => [key, toJson(schema)]),
+    );
   const types = Object.fromEntries(
     Object.entries(BUILT_IN_TYPES).map(([type, contract]) => [
       type,
       {
         summary: contract.summary,
         returns: contract.returns,
-        properties: Object.fromEntries(
-          Object.entries(contract.properties).map(([key, schema]) => [
-            key,
-            toJson(schema as z.ZodType),
-          ]),
-        ),
+        properties: json(contract.properties),
+        dataProperties: json(contract.dataProperties),
         methods: [...contract.methods],
         locations: [...contract.locations],
         reservedQueryNames: [...contract.reservedQueryNames],
@@ -123,6 +105,8 @@ export function buildWidgetsSchemaKit() {
     data: toJson(DataContract),
     types,
     pluginTypes: {
+      properties: json(PLUGIN_TYPE_RULES.properties),
+      dataProperties: json(PLUGIN_TYPE_RULES.dataProperties),
       methods: [...PLUGIN_TYPE_RULES.methods],
       locations: [...PLUGIN_TYPE_RULES.locations],
       reservedQueryNames: [...PLUGIN_TYPE_RULES.reservedQueryNames],
@@ -140,7 +124,6 @@ export function buildWidgetsSchemaKit() {
 
 export type WidgetsSchemaKit = ReturnType<typeof buildWidgetsSchemaKit>;
 
-/** Where the kit is committed, from the frontend directory. */
 export const KIT_PATH =
   "../backend-api/backend/api/widget_plugins/widgets_schema_kit.json";
 

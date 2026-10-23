@@ -1,16 +1,3 @@
-"""Writes the lists in the app-builder spec pages from the widgets.json schema kit.
-
-The type catalog, the widget and param field tables and the header-name rules in
-``workspace_mcp/app_builder/resources`` come from the same kit the API composes the
-widgets.json schema from (docs/widget-plugins/WIDGETS-JSON.md 3.9), so the pages cannot
-drift from what Workspace accepts. Each list sits between two markers; the prose around
-it is hand-written. Ines's MCP server serves the same pages, so its copy
-(``agent/mcp-server/src/resources/app-builder``) is written from them too.
-
-    python -m scripts.generate_app_builder_specs           # rewrite the pages
-    python -m scripts.generate_app_builder_specs --check   # fail when a page is stale
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -35,7 +22,6 @@ Node = dict[str, Any]
 
 def _code(value: object) -> str:
     text = value if isinstance(value, str) else json.dumps(value)
-    # A code span that holds a backtick is delimited by two
     return f"`` {text} ``" if "`" in text else f"`{text}`"
 
 
@@ -44,13 +30,11 @@ def _number(value: float) -> str:
 
 
 def _description(node: Node, kit: Node) -> str:
-    """A node's description, or the one of what it refers to or wraps, as a sentence."""
     text = node.get("description", "")
     if not text and "$ref" in node:
         text = kit["definitions"][node["$ref"].rsplit("/", 1)[-1]].get("description", "")
     for member in node.get("anyOf", []):
         text = text or _description(member, kit)
-    # A pattern's description reads after "must be", so it starts in lower case
     return text[:1].upper() + text[1:]
 
 
@@ -62,7 +46,6 @@ _PLAIN = {"boolean": "`true` or `false`", "object": "object", "null": "`null`"}
 
 
 def _typed(node: Node, short: bool) -> str:
-    """What a node of one JSON type accepts."""
     kind = node.get("type")
     if kind == "string":
         return f"text, at most {node['maxLength']:,} characters" if "maxLength" in node and not short else "text"
@@ -79,7 +62,6 @@ def _typed(node: Node, short: bool) -> str:
 
 
 def _value(node: Node, short: bool = False) -> str:
-    """A short reading of what a schema node accepts; `short` leaves the bounds out."""
     if "$ref" in node or "oneOf" in node:
         text = "object"
     elif "anyOf" in node:
@@ -132,10 +114,15 @@ def widget_fields_block(kit: Node) -> str:
         value = "list of params" if key == "params" else _value(node)
         rows.append([_code(key), "Yes" if key in required else "No", value, _description(node, kit)])
     rows.append(["`data`", "No", "object", _description(kit["data"], kit)])
+    owners: dict[str, tuple[Node, list[str]]] = {}
     for name, contract in kit["types"].items():
         for key, node in contract["properties"].items():
-            note = _description(node, kit)
-            rows.append([_code(key), "No", _value(node), f"Only for `{name}`. {note}".strip()])
+            owners.setdefault(key, (node, []))[1].append(_code(name))
+    for key, node in kit["pluginTypes"]["properties"].items():
+        owners.setdefault(key, (node, []))[1].append("plugin types")
+    for key, (node, types) in owners.items():
+        note = _description(node, kit)
+        rows.append([_code(key), "No", _value(node), f"Only for {' and '.join(types)}. {note}".strip()])
     return _table(["Field", "Required", "Value", "Notes"], rows)
 
 
@@ -168,7 +155,6 @@ def param_fields_block(kit: Node) -> str:
         for param_type, node in uses:
             if text := _description(node, kit):
                 notes.setdefault(text, []).append(param_type)
-        # The description most types share, then the others by type
         ordered = sorted(notes.items(), key=lambda item: -len(item[1]))
         note = ". ".join(
             [ordered[0][0], *(f"For {', '.join(_code(t) for t in ts)}: {text}" for text, ts in ordered[1:])]
@@ -208,8 +194,6 @@ BLOCKS: dict[str, tuple[str, Callable[[Node], str]]] = {
 
 
 def render(page: str, text: str, kit: Node) -> str:
-    """The page with each of its generated blocks rewritten."""
-
     def replace(match: re.Match[str]) -> str:
         name = match.group("name")
         if name not in BLOCKS or BLOCKS[name][0] != page:
@@ -220,7 +204,9 @@ def render(page: str, text: str, kit: Node) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(
+        description="Writes the lists in the app-builder spec pages from the widgets.json schema kit."
+    )
     parser.add_argument("--check", action="store_true", help="fail when a page is stale")
     args = parser.parse_args(argv)
     kit = load_kit()
@@ -238,7 +224,6 @@ def main(argv: list[str] | None = None) -> int:
             stale.append(page)
             if not args.check:
                 path.write_text(current, encoding="utf-8")
-    # Ines's copy, where the repository has it: every page as it is here, and nothing else
     if INES_COPY.parent.is_dir():
         copies = {path.relative_to(INES_COPY).as_posix() for path in INES_COPY.rglob("*.md")}
         for page in sorted(copies - pages.keys()):

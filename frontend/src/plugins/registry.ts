@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
 import type { ParamDef, WidgetT } from "~/components/types";
@@ -8,11 +9,6 @@ import type {
   ResolvedPluginWidget,
 } from "./types";
 
-/**
- * The plugins the signed-in user may use, as the API listed them
- * (docs/widget-plugins/DESIGN.md 5). It is fed by `usePluginRegistrySync`; the server
- * decides availability and the registry only holds the answer.
- */
 interface PluginRegistryState {
   loaded: boolean;
   enabled: boolean;
@@ -52,7 +48,6 @@ export const usePluginRegistryStore = createWithEqualityFn<PluginRegistryState>(
   shallow,
 );
 
-/** The viz types an available plugin renders for this user. */
 export function getPluginVizTypes(): Set<string> {
   return new Set(Object.keys(usePluginRegistryStore.getState().vizHandlers));
 }
@@ -67,7 +62,6 @@ function findWidget(
   return plugin && widget ? { plugin, widget } : null;
 }
 
-/** The plugin widget that renders a backend widget of this viz type, if any. */
 export function resolveVizHandler(
   vizType: string | null | undefined,
   state: Pick<
@@ -82,7 +76,19 @@ export function resolveVizHandler(
   return found ? { ...found, vizType } : null;
 }
 
-/** A standalone plugin widget by its plugin and widget ids. */
+export function useRowsPlugin(
+  rawType: string | undefined,
+): ResolvedPluginWidget | null {
+  const { plugins, vizHandlers } = usePluginRegistryStore((state) => ({
+    plugins: state.plugins,
+    vizHandlers: state.vizHandlers,
+  }));
+  return useMemo(
+    () => resolveVizHandler(rawType, { plugins, vizHandlers }),
+    [rawType, plugins, vizHandlers],
+  );
+}
+
 export function resolvePluginWidget(
   reference: { id: string; widget: string } | null | undefined,
   state: Pick<PluginRegistryState, "plugins"> = usePluginRegistryStore.getState(),
@@ -91,16 +97,10 @@ export function resolvePluginWidget(
   return findWidget(state.plugins, reference.id, reference.widget);
 }
 
-/** The widget id a standalone plugin widget carries in a dashboard. */
 export function pluginWidgetId(pluginId: string, widgetId: string) {
   return `plugin:${pluginId}:${widgetId}`;
 }
 
-/**
- * The standalone widgets of the plugins available to the user, as Add widget lists them
- * (DESIGN.md 5): under their category, with the plugin named as their source. The
- * instance carries the `plugin` reference, which is what renders it.
- */
 export function standalonePluginWidgets(plugins: AvailablePlugin[]): WidgetT[] {
   return plugins.flatMap((plugin) =>
     plugin.widgets

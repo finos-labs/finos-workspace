@@ -2057,7 +2057,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "`dataKey`, and for a plugin's type the configuration its plugin defines"
+      "description": "`dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines"
     },
     "Widget_markdown": {
       "type": "object",
@@ -2389,10 +2389,20 @@
           "type": "string",
           "maxLength": 256,
           "description": "The path of the widget's data in a JSON response, such as `result.items`"
+        },
+        "rawDataKey": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "The path of the rows in the `raw=true` response, such as `results.records`; without it, `results`, or the whole response"
+        },
+        "rawType": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{1,31}$",
+          "description": "A plugin's type that shows the rows when the user switches the widget to them; without it, or when the user may not use that type, an html widget shows them in a table and a plugin's widget with its own plugin"
         }
       },
       "additionalProperties": false,
-      "description": "`dataKey`, and for a plugin's type the configuration its plugin defines"
+      "description": "`dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines"
     },
     "Widget_html": {
       "type": "object",
@@ -2566,7 +2576,7 @@
         },
         "raw": {
           "type": "boolean",
-          "description": "The endpoint also answers `raw=true` with the rows the page was made from, as JSON"
+          "description": "The endpoint also answers `raw=true` with the rows the widget shows, as JSON: the AI Agent and MCP get those rows, and the widget's rows button shows them"
         },
         "type": {
           "type": "string",
@@ -2720,6 +2730,40 @@
               }
             }
           }
+        },
+        {
+          "description": "data.rawDataKey and data.rawType describe the rows of raw=true: they need \"raw\": true",
+          "if": {
+            "required": [
+              "data"
+            ],
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "rawDataKey"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "rawType"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "raw"
+            ],
+            "properties": {
+              "raw": {
+                "const": true
+              }
+            }
+          }
         }
       ]
     },
@@ -2733,7 +2777,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "`dataKey`, and for a plugin's type the configuration its plugin defines"
+      "description": "`dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines"
     },
     "Widget_newsfeed": {
       "type": "object",
@@ -2997,7 +3041,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "`dataKey`, and for a plugin's type the configuration its plugin defines"
+      "description": "`dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines"
     },
     "Widget_pdf": {
       "type": "object",
@@ -3261,7 +3305,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "`dataKey`, and for a plugin's type the configuration its plugin defines"
+      "description": "`dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines"
     },
     "Widget_iframe": {
       "type": "object",
@@ -3671,6 +3715,16 @@
           "maxLength": 256,
           "description": "The path of the widget's data in a JSON response, such as `result.items`"
         },
+        "rawDataKey": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "The path of the rows in the `raw=true` response, such as `results.records`; without it, `results`, or the whole response"
+        },
+        "rawType": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{1,31}$",
+          "description": "A plugin's type that shows the rows when the user switches the widget to them; without it, or when the user may not use that type, an html widget shows them in a table and a plugin's widget with its own plugin"
+        },
         "test_chart": {
           "type": "object",
           "additionalProperties": false,
@@ -3690,7 +3744,7 @@
         }
       },
       "additionalProperties": false,
-      "description": "`dataKey`, and for a plugin's type the configuration its plugin defines"
+      "description": "`dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines"
     },
     "Widget_test_chart": {
       "type": "object",
@@ -3862,6 +3916,10 @@
           "$ref": "#/definitions/McpTool",
           "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool (WIDGETS-JSON 5)"
         },
+        "raw": {
+          "type": "boolean",
+          "description": "The endpoint also answers `raw=true` with the rows the widget shows, as JSON: the AI Agent and MCP get those rows, and the widget's rows button shows them"
+        },
         "type": {
           "type": "string",
           "const": "test_chart"
@@ -3943,7 +4001,7 @@
           }
         },
         {
-          "description": "theme: query params the Workspace adds to this type's requests",
+          "description": "theme and raw: query params the Workspace adds to this type's requests",
           "not": {
             "required": [
               "params"
@@ -3960,7 +4018,8 @@
                       "properties": {
                         "paramName": {
                           "enum": [
-                            "theme"
+                            "theme",
+                            "raw"
                           ]
                         }
                       },
@@ -3988,7 +4047,8 @@
                         "properties": {
                           "paramName": {
                             "enum": [
-                              "theme"
+                              "theme",
+                              "raw"
                             ]
                           }
                         },
@@ -4009,6 +4069,40 @@
                     }
                   ]
                 }
+              }
+            }
+          }
+        },
+        {
+          "description": "data.rawDataKey and data.rawType describe the rows of raw=true: they need \"raw\": true",
+          "if": {
+            "required": [
+              "data"
+            ],
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "rawDataKey"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "rawType"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "raw"
+            ],
+            "properties": {
+              "raw": {
+                "const": true
               }
             }
           }

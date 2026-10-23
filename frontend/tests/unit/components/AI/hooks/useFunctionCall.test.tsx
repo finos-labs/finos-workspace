@@ -5,7 +5,6 @@ import { type Source, useBackendConnectorStore } from "~/lib/state/backendConnec
 import type { CopilotCommandResultT } from "~/lib/state/copilot";
 import type { AddGenerativeWidgetInputArgumentsT, DataSourceT } from "~/lib/utils/ai";
 
-// Mock external dependencies
 vi.mock("react-router-dom", () => ({
   useParams: vi.fn(() => ({ id: "test-dashboard-id" })),
 }));
@@ -125,7 +124,6 @@ vi.mock("~/lib/utils", async (importOriginal) => {
   };
 });
 
-// Import after mocking
 import {
   convertToCopilotData,
   extractUuidFromWidgetId,
@@ -149,7 +147,6 @@ describe("useFunctionCall", () => {
     mockUpdateWidget.mockClear();
     mockItems = {};
     vi.stubGlobal("fetch", vi.fn());
-    // The API mints the agent token the default Copilot is called with
     vi.mocked(apiClient.post).mockResolvedValue({
       data: { token: "agent-token", expires_in: 1800 },
     });
@@ -383,6 +380,61 @@ describe("useFunctionCall", () => {
         });
       });
       expect(mockGetSharedDashWidget).toHaveBeenCalledWith("dashboard-widget-uuid");
+    });
+
+    it("asks a widget with raw for its rows and reads them at data.rawDataKey", async () => {
+      const records = [{ month: "Jan", a: 43, b: 28 }];
+      const dataSource: DataSourceT = {
+        origin: "Widget Studio",
+        id: "widget_studio-raw-plotly",
+        widget_uuid: "dashboard-widget-uuid",
+        input_args: {},
+      };
+      mockGetSharedDashWidget.mockReturnValue({
+        endpoint: "http://example.com/fig",
+        type: "plotly",
+        raw: true,
+        data: { dataKey: "results.chart", rawDataKey: "results.records" },
+      });
+      vi.mocked(fetch).mockResolvedValueOnce(
+        Response.json({ results: { chart: { data: [] }, records } }),
+      );
+
+      const { result } = renderUseFunctionCall();
+      await act(async () => {
+        await expect(
+          result.current.getWidgetData([dataSource]),
+        ).resolves.toContainEqual({
+          items: [{ content: JSON.stringify(records) }],
+        });
+      });
+      const request = vi.mocked(fetch).mock.calls.at(-1)?.[0] as Request;
+      expect(new URL(request.url).searchParams.get("raw")).toBe("true");
+    });
+
+    it("reads an html widget's rows as JSON, not as its page", async () => {
+      const rows = [{ month: "Jan", a: 43 }];
+      const dataSource: DataSourceT = {
+        origin: "Widget Studio",
+        id: "widget_studio-raw-html",
+        widget_uuid: "dashboard-widget-uuid",
+        input_args: {},
+      };
+      mockGetSharedDashWidget.mockReturnValue({
+        endpoint: "http://example.com/page",
+        type: "html",
+        raw: true,
+      });
+      vi.mocked(fetch).mockResolvedValueOnce(Response.json({ results: rows }));
+
+      const { result } = renderUseFunctionCall();
+      await act(async () => {
+        await expect(
+          result.current.getWidgetData([dataSource]),
+        ).resolves.toContainEqual({
+          items: [{ content: JSON.stringify(rows) }],
+        });
+      });
     });
 
     it("throws NOT_FOUND when the widget is missing and no dashboard data exists", async () => {
@@ -724,7 +776,7 @@ describe("useFunctionCall", () => {
         );
       });
     });
-  }); // end addGenerativeWidget
+  });
 
   describe("addWidgetToDashboard - inner_tab", () => {
     it("should resolve inner_tab to uiArgs.innerTab and pass dataArgs through", async () => {
@@ -752,7 +804,6 @@ describe("useFunctionCall", () => {
       });
 
       const callArgs = mockCreateWidget.mock.calls[0][3];
-      // inner_tab stays in dataArgs (updateWidgetState whitelists by paramDef)
       expect(callArgs.dataArgs).toEqual({
         inner_tab: "Overview",
         ticker: "AAPL",
@@ -763,7 +814,7 @@ describe("useFunctionCall", () => {
     });
 
     it("should create widget without innerTab when no nav bar exists", async () => {
-      setupDashboard(); // no nav bar
+      setupDashboard();
 
       const { result } = renderUseFunctionCall();
       const { addWidgetToDashboard } = result.current;
@@ -782,12 +833,10 @@ describe("useFunctionCall", () => {
       });
 
       const callArgs = mockCreateWidget.mock.calls[0][3];
-      // inner_tab stays in dataArgs (updateWidgetState whitelists by paramDef)
       expect(callArgs.dataArgs).toEqual({
         inner_tab: "Overview",
         ticker: "AAPL",
       });
-      // uiArgs should be undefined or not contain innerTab
       expect(callArgs.uiArgs?.innerTab).toBeUndefined();
     });
   });
@@ -869,7 +918,7 @@ describe("useFunctionCall", () => {
     });
 
     it("should not set innerTab when no nav bar exists", async () => {
-      setupDashboard(); // no nav bar
+      setupDashboard();
 
       const { result } = renderUseFunctionCall();
       const { addGenerativeWidget } = result.current;
@@ -913,9 +962,6 @@ describe("useFunctionCall", () => {
           });
         });
 
-        // A navigate_workspace → add_generative_widget sequence writes the tab
-        // to the URL; the widget must land on that tab, not the store's
-        // lagging currentTab.
         expect(mockAddWidget).toHaveBeenCalledWith(
           "test-dashboard-id",
           expect.objectContaining({ innerTab: "charts" }),
@@ -944,8 +990,6 @@ describe("useFunctionCall", () => {
       });
 
       it("ignores the URL tab when targeting a different dashboard", async () => {
-        // The other dashboard has a matching tab, so only the dashboard-id
-        // guard prevents the URL fallback from applying.
         mockItems["other-dashboard-id"] = {
           data: {
             widgets: [
@@ -978,7 +1022,6 @@ describe("useFunctionCall", () => {
     });
   });
 
-  // Helper to set up mock dashboard with optional navigation bar
   function setupDashboard(
     opts: { navBarTabs?: { id: string; name: string }[]; navBarId?: string } = {},
   ) {
@@ -1328,11 +1371,6 @@ describe("useFunctionCall", () => {
   });
 
   describe("resolveInnerTabId", () => {
-    // resolveInnerTabId is internal to the hook, but we can test it indirectly
-    // through addWidgetToDashboard which uses it for inner_tab resolution.
-    // For direct testing, we verify the matching logic via manageNavigationBar's
-    // remove_tabs which uses the same findTabMatch helper.
-
     it("should match tab by slug", async () => {
       setupDashboard({
         navBarTabs: [
@@ -1344,8 +1382,6 @@ describe("useFunctionCall", () => {
       const { result } = renderHook(() => useManageNavigationBar());
       const manageNavigationBar = result.current;
 
-      // remove_tabs uses findTabMatch (same as resolveInnerTabId)
-      // Passing the slug "my-overview" should match the tab
       let response: CopilotCommandResultT[] | undefined;
       await act(async () => {
         response = await manageNavigationBar({
@@ -1401,7 +1437,6 @@ describe("useFunctionCall", () => {
       expect(required(response)[0].message).toContain(
         "not found (skipped): Nonexistent Tab",
       );
-      // updateInnerTabs should NOT be called since nothing was actually removed
       expect(mockUpdateInnerTabs).not.toHaveBeenCalled();
     });
   });

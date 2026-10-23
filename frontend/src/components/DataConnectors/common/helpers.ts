@@ -219,13 +219,11 @@ export function updateWidgetEndpoints(
     updateWidget(dashId, widget);
   };
 
-  // The widgets keep the URL and method; the source's credentials are looked up when they fetch
   for (const [dashId, widgets] of Object.entries(selectedWidgets)) {
     for (const w of widgets) {
       const widgetId = (w.widgetId ?? "").replace(`${sourceName}-`, "");
       const widgetJson = source.widgets?.[widgetId];
       if (!widgetJson) {
-        // The widget keeps its URL and method
         const { url, method } = createWidgetEndpoint(w.endpoint);
         const updatedWidget = {
           ...w,
@@ -251,8 +249,6 @@ export function updateWidgetEndpoints(
       const subCategory = widgetJson.subCategory;
       const dataKey = widgetJson.data?.dataKey ?? w.data?.dataKey;
       const type = isWellFormedVizType(widgetJson.type) ? widgetJson.type : w.type;
-      // A plugin-rendered type keeps its configuration in data.<type>, which the
-      // definition defines; a refresh takes it from the backend like the rest
       const typeConfig =
         type && !isBuiltInVizType(type)
           ? { [type]: (widgetJson.data as Record<string, unknown> | undefined)?.[type] }
@@ -272,6 +268,8 @@ export function updateWidgetEndpoints(
         data: {
           ...(w.data ?? {}),
           dataKey,
+          rawDataKey: widgetJson.data?.rawDataKey,
+          rawType: widgetJson.data?.rawType,
           ...typeConfig,
         },
         endpoint: { url, method },

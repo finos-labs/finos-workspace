@@ -227,7 +227,7 @@ For a widget definition and the current param values the host builds one request
 1. **URL.** `endpoint` is a path on the backend, or an absolute URL, with **no `?` and no `#`**: a `?` or `#` is an error, and a static query value is a param with a default value and `show: false`. Placeholders are filled as in 4.2. Each `in: "query"` param is then appended as `name=value`.
 2. **Headers.** The backend connection's credentials, then the headers the deployment adds (`X-Microsoft-Id-Token`, `X-Okta-Id-Token`, `X-Workspace-User`, when enabled), then every `in: "header"` param as `paramName: value`.
 3. **Body.** With `method: "POST"`, the `in: "body"` params as one JSON object, `{ "<paramName>": <value> }`, sent as `Content-Type: application/json`. With no body params there is no body.
-4. **Host parameters.** `theme` (`dark` or `light`, for `markdown`, `html` and plugin-handled types) and `raw=true` (the raw data view) are added to the query string by the host, whatever the method. They are reserved names. A change of the site's theme sends the request again.
+4. **Host parameters.** `theme` (`dark` or `light`, for `markdown`, `html` and plugin-handled types) and `raw=true` (when the host asks a widget with `raw` for its rows, 4.11) are added to the query string by the host, whatever the method. They are reserved names. A change of the site's theme sends the request again.
 
 A param whose value is undefined, null or an empty string is not sent, in any location. `0` and `false` are sent, as today for query params.
 
@@ -261,7 +261,7 @@ Closed rules, enforced by the schema where JSON Schema can state them and by cod
 2. `paramName` is unique in a widget. Storage and parameter groups key on it, so the location is a property of the param, not part of its identity.
 3. `in` is not accepted on a `form` param, on its `inputParams`, or on a param used in a path placeholder. A form posts its `inputParams` as a JSON body to its own `endpoint`, with its own `method` (`POST` or `PUT`), as today.
 4. `iframe`: `method` is `GET` and params are in the query or the path. Its `endpoint` is a page URL that the browser navigates to.
-5. `theme` is reserved as a query param name for `markdown`, `html`, `iframe` and plugin-handled types, and `raw` for `html`. The host adds them (4.1); the `iframe` page gets the theme in its URL.
+5. `theme` is reserved as a query param name for `markdown`, `html`, `iframe` and plugin-handled types, and `raw` for `html` and plugin-handled types. The host adds them (4.1); the `iframe` page gets the theme in its URL.
 6. **Header params.** `paramName` is the header name: 1 to 64 characters from the HTTP token set (letters, digits and ``! # $ % & ' * + . ^ _ ` | ~ -``). Not allowed:
    - the names a browser forbids page script to set, which `fetch` drops silently: `Accept-Charset`, `Accept-Encoding`, `Access-Control-Request-Headers`, `Access-Control-Request-Method`, `Connection`, `Content-Length`, `Cookie`, `Date`, `DNT`, `Expect`, `Host`, `Keep-Alive`, `Origin`, `Referer`, `Set-Cookie`, `TE`, `Trailer`, `Transfer-Encoding`, `Upgrade`, `Via`, and the prefixes `Proxy-` and `Sec-`;
    - the names the host sets or reserves: `Authorization`, `Content-Type`, `Accept`, `X-Microsoft-Id-Token`, `X-Okta-Id-Token`, `X-Workspace-User`;
@@ -311,7 +311,7 @@ An `endpoint` param loads its choices from `optionsEndpoint`. `optionsMethod` sa
 - `in`: `{ "enum": ["query", "header", "body"] }` on every param branch except `form`.
 - `endpoint` and `optionsEndpoint`: `{ "type": "string", "pattern": "^[^?#]+$" }`, with a length bound.
 - `optionsMethod`: `{ "enum": ["GET", "POST"] }` on the `endpoint` param branch. `optionsParams`: an object whose values are `string`, `number` or `boolean`, with `maxProperties`.
-- Per widget branch the composer writes the rule JSON Schema can state: if any param has `in: "body"`, then `method` is `POST` (an `if` with `contains`, and a `then`).
+- Per widget branch the composer writes the rule JSON Schema can state: if any param has `in: "body"`, then `method` is `POST` (an `if` with `contains`, and a `then`). For `html` and plugin-handled types, if `data` has `rawDataKey` or `rawType`, then `raw` is `true` (4.11).
 - Per param branch: if `in` is `header`, `paramName` matches the header-name pattern and does not match the forbidden-name pattern. The composer builds the case-insensitive forbidden list from one table in code, so the schema and the code check cannot differ.
 - Stays as code: the placeholder rules, unique `paramName`, `$name` references, and header names against the connection's credential headers (3.7).
 
@@ -348,6 +348,30 @@ With `team` set to `platform`, the widget's request is `POST <backend>/teams/pla
 - **Forms.** A form's `{name}` and its inputs' `$name` refer to its inputs (with the values entered) and then the widget's params. The inputs keep `optionsEndpoint`, `optionsMethod` and `optionsParams`; the param schema used to drop them, so a form's `endpoint` input loaded nothing.
 - **The catalog and the instance.** A backend widget's catalog entry and the widget made from it carry `endpoint` as `{ url, method }`. `createWidgetEndpoint` keeps the method, and a source refresh reads `method` from the definition. `defaultViz` and `endpointMethod` are removed.
 - **Checked.** Vitest covers the builder (`tests/unit/lib/utils/widgetRequest.test.ts`). Playwright `tests/e2e/request-mapping.spec.ts` runs the example of 4.9 against an echo backend (`tests/e2e/echoBackend.ts`) on the compose stack: `POST /teams/platform/report?period=month&theme=…` with `X-Region: eu` and the body `{"filters":"active"}`, the browser's preflight asking for `POST` and `content-type,x-region`, the option lookup `POST /teams/search` with `{"active":true,"region":"eu"}`, and `data/science` sent as one segment, `data%2Fscience`.
+
+### 4.11 The rows: `raw`
+
+A widget whose view is made from data, such as an html page or a plugin's chart, can also answer with that data as rows, so that the AI Agent, MCP clients and the user read what the widget shows. `raw` is a key of `html` and of every plugin-handled type:
+
+```json
+{
+  "monthly_sales": {
+    "name": "Monthly sales",
+    "description": "Sales per month, by series",
+    "type": "plotly",
+    "endpoint": "/charts/monthly-sales",
+    "raw": true,
+    "data": { "dataKey": "results.chart", "rawDataKey": "results.records" }
+  }
+}
+```
+
+- **The request.** The widget's own request, with its current param values, and `raw=true` in the query (4.1). The endpoint answers with JSON.
+- **The rows.** At `data.rawDataKey`, a path like `dataKey`; without it, the response's `results`, else the whole response. `dataKey` keeps pointing at the widget's own data in its normal answer, so one endpoint can answer both with `{"results": {"chart": {...}, "records": [...]}}`.
+- **Who gets them.** Whenever `raw` is set, the AI Agent and MCP clients get the rows, never the HTML or the chart: the widget's data in the Copilot, `get_widget_data` and `read_widget`. The agent loads a list of objects as a table it queries.
+- **The rows view.** The widget's database button switches between its own view and its rows, and the choice is kept with the widget. The rows are shown by the plugin of `data.rawType` when the user may use that type. Otherwise an `html` widget shows them in a table, and a plugin-handled widget with its own plugin, which gets the rows as its data (AUTHORING.md 4.2).
+- **Rules.** `data.rawDataKey` and `data.rawType` only with `"raw": true` (4.9). `rawType` is a type name, `^[a-z][a-z0-9_-]{1,31}$`. `raw` is a reserved query param name for these types (4.4).
+- **As built.** `rowsOf` (`frontend/src/lib/utils/rawRows.ts`) reads the rows for every caller. `useRawRows`, `useRowsView`, `RowsToggle` and `RowsTable` (`frontend/src/components/Widgets/Helpers/RawRows.tsx`) serve the html and plugin widgets, and `useRowsPlugin` (`frontend/src/plugins/registry.ts`) finds the plugin of `rawType`. The Copilot's and MCP's fetch (`getCustomWidgetsData`) asks a widget with `raw` for its rows. Checked by Vitest (`rawRows.test.ts`, `HtmlViewer.test.tsx`, `useFunctionCall.test.tsx`, `registry.test.ts`) and, for the schema, `backend-api/backend/tests/test_widgets_schema.py`.
 
 ## 5. The MCP tool opt-in
 

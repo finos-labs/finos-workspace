@@ -1,5 +1,3 @@
-"""Widget catalog discovery, schema, data, and lifecycle tools."""
-
 from typing import Annotated, Any
 
 from fastmcp import FastMCP
@@ -54,7 +52,6 @@ _CATALOG_OFFLOAD_MESSAGE = (
 
 
 def summarize_widget_catalog(data: Any) -> dict[str, Any]:
-    """Build the compact selection index for an offloaded widget catalog."""
     widgets = data.get("widgets") if isinstance(data, dict) else None
     if not isinstance(widgets, list):
         widgets = []
@@ -107,15 +104,13 @@ def register(
             Field(
                 description=(
                     "Object of explicit parameter values for this data source. "
-                    "For html widgets that set raw, include raw=true to fetch the "
-                    "underlying rows instead of the HTML; the HTML is for the "
-                    "renderer, reasoning needs rows."
+                    "A widget that sets raw answers with the rows it shows, not "
+                    "with its HTML or chart."
                 )
             ),
         ] = None,
         widget_uuid: WidgetUuid = None,
     ) -> ToolResponse:
-        """Fetch widget data using the same browser-side path Ada uses."""
         return await run(
             GetWidgetDataCommand(
                 command="get_widget_data",
@@ -178,7 +173,6 @@ def register(
             ),
         ] = None,
     ) -> ToolResponse:
-        """List widgets that can be created in the current Workspace session."""
         result = await run(
             ListAvailableWidgetsCommand(
                 command="list_available_widgets",
@@ -231,7 +225,6 @@ def register(
             ),
         ],
     ) -> ToolResponse:
-        """Fetch one deterministic widget schema from the Workspace widget library."""
         if not origin or not widget_id:
             return invalid_request(
                 "get_widget_schema",
@@ -280,7 +273,6 @@ def register(
             ),
         ] = None,
     ) -> ToolResponse:
-        """Fetch parameter options from the browser bridge."""
         return await run(
             GetParamOptionsCommand(
                 command="get_params_options",
@@ -308,7 +300,6 @@ def register(
         widget_id: WidgetIdFallback = None,
         dashboard_id: DashboardId = None,
     ) -> ToolResponse:
-        """Load one widget's current payload from Workspace."""
         guard = require_widget_identifier(
             "read_widget", widget_uuid=widget_uuid, widget_id=widget_id
         )
@@ -376,7 +367,6 @@ def register(
             ),
         ] = None,
     ) -> ToolResponse:
-        """Create a new Workspace widget."""
         if not origin or not widget_id:
             return invalid_request(
                 "create_widget",
@@ -449,7 +439,6 @@ def register(
             ),
         ] = None,
     ) -> ToolResponse:
-        """Update an existing Workspace widget."""
         guard = require_widget_identifier(
             "update_widget", widget_uuid=widget_uuid, widget_id=widget_id
         )
@@ -516,7 +505,6 @@ def register(
         max_w: float | None = None,
         max_h: float | None = None,
     ) -> ToolResponse:
-        """Move or resize one widget in dashboard layout space."""
         guard = require_widget_identifier(
             "update_widget_layout", widget_uuid=widget_uuid, widget_id=widget_id
         )
@@ -551,7 +539,6 @@ def register(
         widget_id: WidgetIdFallback = None,
         dashboard_id: DashboardId = None,
     ) -> ToolResponse:
-        """Delete a Workspace widget."""
         guard = require_widget_identifier(
             "delete_widget", widget_uuid=widget_uuid, widget_id=widget_id
         )

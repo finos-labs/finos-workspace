@@ -164,7 +164,7 @@ Traits are bound to host state. Without `model.traits`, they take these names:
 
 | Trait | Value | Writable |
 |---|---|---|
-| `data` | The JSON the widget's backend endpoint returned (after `dataKey`). Only with `core:data:read`. | no |
+| `data` | The JSON the widget's backend endpoint returned (after `dataKey`), or its rows when the user shows them (below). Only with `core:data:read`. | no |
 | `params` | The widget's params as `{ name: value }`. | with `core:params:write`, declared names only |
 | `definition` | The `data.<type>` object of the backend widget, checked against your `definition` schema. | no |
 | `config` | The instance's settings (section 9). | no |
@@ -173,6 +173,8 @@ Traits are bound to host state. Without `model.traits`, they take these names:
 | `theme` | `{ mode, tokens, locale, decimals }`. Follow it, and react to `change:theme`. | no |
 | `capabilities` | Your effective permissions. Check them before calling a command. | no |
 | `meta` | `{ pluginId, version, widgetId, instanceId }`. | no |
+
+A backend widget with `raw` (WIDGETS-JSON 4.11) has a button that shows its rows instead of its view. When it has no `data.rawType`, or one the user may not use, your module shows them: `data` is then the rows, typically an array of objects, and the frame starts again with them, and again when the user switches back. Show them as a table, or say they cannot be shown. The AI Agent gets the rows either way, so `copilotContext` (4.5) is not asked for a widget with `raw`.
 
 To keep an existing module's trait names, bind them: `"model": { "traits": { "rows": { "bind": "data" }, "filter": { "bind": "param:filter", "access": "readwrite" } } }`. A binding is one of the names above, `param:<name>`, `config:<key>` or `adminSettings:<key>`; only `params`, `param:<name>` and `state` can be `readwrite`. A trait with no binding stays in the frame.
 

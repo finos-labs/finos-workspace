@@ -86,7 +86,7 @@ A trait is a named value on the model. The manifest's `model.traits` binds a tra
 
 | `bind` | Host state | Writable |
 |---|---|---|
-| `data` | The widget's fetched data (JSON, after `data.dataKey`). Present only with `core:data:read`. | no |
+| `data` | The widget's fetched data (JSON, after `data.dataKey`), or its rows while the user shows them (WIDGETS-JSON 4.11). Present only with `core:data:read`. | no |
 | `params` | All declared params as `{ name: value }`. | with `core:params:write`, declared names only |
 | `param:<name>` | One declared param. | same |
 | `definition` | The widget definition's type-specific configuration: the `data.<type>` object of its `widgets.json` entry, validated by the plugin's `definition` schema (WIDGETS-JSON 3.3). | no |

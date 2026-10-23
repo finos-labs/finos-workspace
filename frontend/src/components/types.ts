@@ -10,24 +10,23 @@ import type {
 } from "~/lib/types/widgetsContract";
 import type { DateModifierValue } from "~/lib/utils/widgetParams";
 import type { ConnectionType } from "../lib/state/backendConnector";
-import { useGetAppWidgets } from "./AI/hooks/useGetAppWidgets";
 import type { WidgetId } from "./Widgets";
 
 export type GridData = Partial<Layout> & {
-  i?: string; // Unique identifier for the widget.
-  x?: number; // Horizontal grid position.
-  y?: number; // Vertical grid position.
-  w?: number; // Width for the widget in the grid.
-  h?: number; // Height for the widget in the grid.
-  minH?: number; //
-  minW?: number; //
-  maxH?: number; //
-  maxW?: number; //
-  originalMinH?: number; // Original minimum height before minimization.
-  mobileH?: number; // Height for mobile view.
-  moved?: boolean; // Indicates if the widget has been moved.
-  static?: boolean; // Indicates if the widget is static and cannot be moved.
-  isDraggable?: boolean; // Specifies if the widget can be dragged.
+  i?: string;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+  minH?: number;
+  minW?: number;
+  maxH?: number;
+  maxW?: number;
+  originalMinH?: number;
+  mobileH?: number;
+  moved?: boolean;
+  static?: boolean;
+  isDraggable?: boolean;
 };
 
 type GridInnerTab<T = string> = T;
@@ -55,7 +54,6 @@ export type EndpointParam = {
 interface LinkedParamGroup extends GroupBase<"param"> {
   type: "param";
   groupById: string;
-  /** Null until a widget in the group has a value for the parameter. */
   value: StoredParamValue;
 }
 
@@ -102,7 +100,6 @@ export type Ticker = {
   has_options?: boolean;
 };
 
-/** A parameter's value: what the widget's param controls and the grouping hold. */
 export type StoredParamValue =
   | string
   | number
@@ -110,13 +107,10 @@ export type StoredParamValue =
   | null
   | (string | number | boolean | null)[];
 
-/** What a widget keeps with itself, on top of its definition. */
 export type WidgetStorage = {
   params?: Record<string, StoredParamValue>;
   tabs?: InnerTab[];
-  /** Iframe-only: pre-set MCP server URL from widgets.json — auto-connects on mount */
   mcpUrl?: string;
-  /** ISO datetime a static artifact (file/AI artifact) was added. */
   createdAt?: string;
   html?: string;
   text?: string;
@@ -130,125 +124,87 @@ export type WidgetStorage = {
   selectedGroup?: string;
   userAppId?: string;
   iframeParams?: Record<string, StoredParamValue>;
-  /** Anything else a widget keeps, such as what an iframe stores for itself. */
   [key: string]: unknown;
 };
 
 export type Widget = {
-  // 🔹 Core Identity & Classification
-  id: string; // Unique identifier for the widget.
-  name: string; // Name of the widget in the list the user sees. Displayed on top left of widget
-  type: WidgetVizType; // Main widget type
-  widgetId?: WidgetId; // Identifier for the specific widget instance. Used to map to the widgets of the backend
-  description?: string; // description to show to user on the info button and on the search/add widget menu
-  category?: string; // Category for the widget. Used to group widgets in the widget list
-  subCategory?: string; // Subcategory for the widget. Used to group widgets in the widget list
+  id: string;
+  name: string;
+  type: WidgetVizType;
+  widgetId?: WidgetId;
+  description?: string;
+  category?: string;
+  subCategory?: string;
   // biome-ignore format: off
-  widgetType?: "backend" | "file" | "html"; // Type of widget
-  raw?: boolean; // Indicates if the widget supports raw data toggle.
-  /** The MCP tool of the widget's own backend the agent queries it with (WIDGETS-JSON 5) */
+  widgetType?: "backend" | "file" | "html";
+  raw?: boolean;
   mcp_tool?: McpToolContractT;
-  imgUrl?: string; // Image URL for the widget - will show on preview when hovering in search/add widget menu
-  innerTab?: string; // if it's from a template it may have a tab assigned. e.g., equity template
+  imgUrl?: string;
+  innerTab?: string;
 
-  // 🔹 Layout / Grouping
-  gridData?: GridData; // Grid data for the widget.
-  showTitle?: boolean; // Indicates if the widget title should be shown.
-  exportable?: boolean; // Whether this widget can be exported. Defaults to true.
-  /** @internal **/
-  groupId?: string | null; // Identifier for a widget group.
-  /** @internal **/
+  gridData?: GridData;
+  showTitle?: boolean;
+  exportable?: boolean;
+  groupId?: string | null;
   groupById?: string;
-  /** @internal **/
-  paramGroups?: { [key: string]: string }; // Param groups for the widget.
+  paramGroups?: { [key: string]: string };
 
-  // 🔹 Supported Context - only used for Internal Widgets
   supportedAssetClasses?: string[];
   defaultAssetClass?: string;
 
-  // 🔹 Data Model
   data?: {
-    /** ### Main ticker information.
-     * - Displayed on top left after the widget name.
-     * - Normally can be changed on this dropdown
-     */
     mainTicker?: Ticker;
-    /** Nested reference to the data used in the widget. */
     dataKey?: string;
-    /** `data.<type>`: the configuration of a plugin-rendered type, defined by its plugin. */
+    rawDataKey?: string;
+    rawType?: string;
     [vizType: string]: unknown;
   };
 
-  // 🔹 API / Data Fetching
   endpoint?: {
-    // Endpoint or endpoints for the widget data.
-    url: string; // URL for the endpoint.
-    method: "GET" | "POST"; // Method for the endpoint.
+    url: string;
+    method: "GET" | "POST";
   };
-  params?: ParamDef[]; // url params to send to endpoint
+  params?: ParamDef[];
 
-  // 🔹 External Integration
-  external?: boolean; // Indicates if the widget is external, i.e., if data is loaded from outside Workspace API
-  connectionType?: ConnectionType; // Connection type for the widget data.
-  source?: string | string[]; // Source for the widget. Where the data for the widget is coming from.
-  sourceId?: string; // Source id for the widget.
-  sourceName?: string; // Source name for the widget for external widgets.
+  external?: boolean;
+  connectionType?: ConnectionType;
+  source?: string | string[];
+  sourceId?: string;
+  sourceName?: string;
 
-  // 🔹 Runtime / Storage
   storage?: WidgetStorage;
 
-  /** A standalone widget of a widget plugin: which plugin and which of its widgets. */
   plugin?: { id: string; widget: string };
 
-  // 🔹 Copilot & Experimental
-  disableRetrievalForCopilot?: boolean; // Indicates if the widget can be used by Copilot.
-  // Metadata to send to the copilot
+  disableRetrievalForCopilot?: boolean;
   metadata?: { [key: string]: unknown };
 
-  /**
-   * @internal **Only available before widget {@link useGetAppWidgets | creation}**
-   * @use `data.dataKey` on creation
-   */
-  readonly dataKey?: string; // Nested reference to the data.
-  /**
-   * The rows of a data backend's credentials, as its source holds them. Widgets never
-   * carry these: they look up their source's credentials when they fetch
-   * (lib/utils/endpointCredentials). */
+  readonly dataKey?: string;
   readonly endpointHeaders?: {
     key: string;
     value: string;
     location?: "headers" | "query";
   }[];
-  /**
-   * @internal **Only available before widget {@link useGetAppWidgets | creation}**
-   */
-  readonly extension?: string; // File extension for the widget. Used to identify the file type.
-  /**
-   *  @internal **Set to true on widget creation.**
-   */
-  isNew?: boolean; // Indicates if the widget is newly created. Set to false after the first save.
-  dataUpdateDisplay?: string; // 5-field cron expression used to display the data update schedule.
+  readonly extension?: string;
+  isNew?: boolean;
+  dataUpdateDisplay?: string;
 };
 
 type WidgetT = Widget & {
   disabled?: boolean;
-  /** @internal updates queryKey to force a refresh of the widget */
   refreshQuery?: number;
   storage?: Widget["storage"];
-  staleTime?: number; // Stale time in milliseconds for the widget data.
-  refetchInterval?: number | false | string; // Refetch interval in milliseconds or as a 5-field cron expression.
-  dataUpdateDisplay?: string; // 5-field cron expression used to display the data update schedule.
-  runButton?: boolean; // Indicates if the widget has a run button.
-  /** @internal saved when the widget is minimized */
-  originalH?: number; // Original height before minimizing.
-  /** @internal saved when the widget is minimized */
-  isMinimized?: boolean; // Indicates if the widget is minimized.
-  isSharedWidget?: boolean; // Indicates if the widget is shared.
-  raw?: boolean; // Indicates if the widget supports raw data toggle.
+  staleTime?: number;
+  refetchInterval?: number | false | string;
+  dataUpdateDisplay?: string;
+  runButton?: boolean;
+  originalH?: number;
+  isMinimized?: boolean;
+  isSharedWidget?: boolean;
+  raw?: boolean;
 };
 
 export type NewWidgetT = WidgetT | ((prev: WidgetT) => WidgetT);
-/** A widget that has not been added to a dashboard yet, so it may not have an id. */
 export type NewWidget = Omit<WidgetT, "id"> & { id?: string };
 export type WidgetJsonT = Omit<WidgetT, "id" | "endpoint"> & {
   id?: string;
@@ -259,7 +215,6 @@ export type WidgetContextType = {
   widget: WidgetT;
   widgetRef: MutableRefObject<WidgetT>;
   widgetFromJSON: Partial<Widget> | null;
-  /** The dashboard the widget is on; empty for a widget outside of one (a preview). */
   activeDashboardId: string;
   isShared: boolean;
   isPreview: boolean;
@@ -291,21 +246,20 @@ type ParamOptionValue = string | number | boolean;
 
 interface BaseParamDef<PT extends ParamType = "text"> {
   type: PT;
-  paramName: string; // query param name as it appears in the url
-  value?: ParamValue; // default value
-  label?: string; // label to show in the UI
-  show?: boolean; // show in the UI
-  description?: string; // description to show on hover
-  options?: { label: string; value: ParamOptionValue }[]; // options for dropdowns
-  multiSelect?: boolean; // allow multiple selections
+  paramName: string;
+  value?: ParamValue;
+  label?: string;
+  show?: boolean;
+  description?: string;
+  options?: { label: string; value: ParamOptionValue }[];
+  multiSelect?: boolean;
   placeholder?: string;
   row?: number;
   style?: { popupWidth?: number };
-  roles?: string[]; // defines custom roles for the param, like "fileSelector" for a file switcher
+  roles?: string[];
   multiple?: boolean;
-  language?: EditorLanguage; // language of a code-valued param
-  hidden?: boolean; // hide the param in the UI
-  /** Where the param goes in the widget's request; a path param declares none */
+  language?: EditorLanguage;
+  hidden?: boolean;
   in?: ParamLocation;
 }
 
@@ -336,11 +290,9 @@ interface BooleanParamDef extends BaseParamDef<"boolean"> {
 interface EndpointParamDef extends BaseParamDef<"endpoint"> {
   type: "endpoint";
   optionsEndpoint?: string;
-  /** How the options are requested: optionsParams in the query (GET) or a JSON body (POST) */
   optionsMethod?: HttpMethod;
-  /** A literal, or `$name`: the current value of the param `name` */
   optionsParams?: Record<string, string | number | boolean>;
-  groupById?: string; // enables grouping other widgets by this endpoint param
+  groupById?: string;
 }
 
 interface FormButton extends BaseParamDef<"button"> {

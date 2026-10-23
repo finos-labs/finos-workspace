@@ -83,26 +83,20 @@ export const resetSchema = z
 
 export type resetForm = z.infer<typeof resetSchema>;
 
-/**
- * A widget of a backend's widgets.json once validated against the contract
- * (`lib/types/widgetsContract.ts`), with its params in the app's normalized form.
- */
 export type WidgetType = Omit<WidgetBaseContractT, "params"> & {
   type: WidgetVizType;
   params?: ParamDef[];
-  /** `dataKey`, and a plugin type's configuration under `data.<type>` */
-  data?: { dataKey?: string } & Record<string, unknown>;
-  /** `html`: the endpoint also answers raw=true with its rows */
+  data?: { dataKey?: string; rawDataKey?: string; rawType?: string } & Record<
+    string,
+    unknown
+  >;
   raw?: boolean;
-  /** `iframe`: an MCP server of the page's own */
   storage?: { mcpUrl?: string };
 };
 export type WidgetsType = {
   [key: string]: WidgetType & {
-    /** Set by the app to the widget's key once its backend is connected; not contract */
     widgetId?: string;
     disabled?: boolean;
-    /** The headers of the backend the widget came from, added once it is connected. */
     endpointHeaders?:
       | { key: string; value: string; location?: "headers" | "query" }[]
       | null;
@@ -119,18 +113,6 @@ export interface UnrecognizedKeysReport {
   entries: UnrecognizedKeysEntry[];
 }
 
-/**
- * Detects unrecognized top-level keys in a set of named objects.
- *
- * Designed to run on **raw** (pre-Zod-parse) JSON entries so that keys
- * stripped by Zod's `.object()` are still visible.
- *
- * - Non-object / nullish entries are silently skipped.
- * - Each entry is identified by `name`, falling back to `id`, then `"Unknown"`.
- *
- * @returns A structured report for the given label, or `null` if every entry
- *          only contains recognised keys.
- */
 export function detectUnrecognizedKeys(
   label: string,
   entries: unknown[],
@@ -153,7 +135,6 @@ export function detectUnrecognizedKeys(
   return found.length > 0 ? { label, entries: found } : null;
 }
 
-/** Formats structured reports into plain text (used for clipboard copy). */
 export function formatUnrecognizedKeysAsText(
   reports: UnrecognizedKeysReport[],
 ): string {

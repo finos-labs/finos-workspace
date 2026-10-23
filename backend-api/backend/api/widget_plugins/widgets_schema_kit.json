@@ -1,5 +1,5 @@
 {
-  "kitVersion": 1,
+  "kitVersion": 2,
   "definitions": {
     "ParamDef": {
       "discriminator": {
@@ -2158,13 +2158,14 @@
       }
     },
     "additionalProperties": false,
-    "description": "`dataKey`, and for a plugin's type the configuration its plugin defines"
+    "description": "`dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines"
   },
   "types": {
     "markdown": {
       "summary": "Prose, generated commentary, formatted text",
       "returns": "A markdown string, as text or as JSON with the string at `data.dataKey`",
       "properties": {},
+      "dataProperties": {},
       "methods": [
         "GET",
         "POST"
@@ -2184,7 +2185,19 @@
       "properties": {
         "raw": {
           "type": "boolean",
-          "description": "The endpoint also answers `raw=true` with the rows the page was made from, as JSON"
+          "description": "The endpoint also answers `raw=true` with the rows the widget shows, as JSON: the AI Agent and MCP get those rows, and the widget's rows button shows them"
+        }
+      },
+      "dataProperties": {
+        "rawDataKey": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "The path of the rows in the `raw=true` response, such as `results.records`; without it, `results`, or the whole response"
+        },
+        "rawType": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{1,31}$",
+          "description": "A plugin's type that shows the rows when the user switches the widget to them; without it, or when the user may not use that type, an html widget shows them in a table and a plugin's widget with its own plugin"
         }
       },
       "methods": [
@@ -2205,6 +2218,7 @@
       "summary": "Articles and updates, each with a title, an excerpt and a full text",
       "returns": "A JSON array of articles, or JSON with the array at `data.dataKey`",
       "properties": {},
+      "dataProperties": {},
       "methods": [
         "GET",
         "POST"
@@ -2220,6 +2234,7 @@
       "summary": "A document the user reads page by page",
       "returns": "The PDF (`application/pdf`), or JSON with its `data_format` and a base64 `content` or a `url`",
       "properties": {},
+      "dataProperties": {},
       "methods": [
         "GET",
         "POST"
@@ -2249,6 +2264,7 @@
           "description": "`mcpUrl`: an MCP server of the page's own, connected for the widget without the backend's credentials"
         }
       },
+      "dataProperties": {},
       "methods": [
         "GET"
       ],
@@ -2261,6 +2277,24 @@
     }
   },
   "pluginTypes": {
+    "properties": {
+      "raw": {
+        "type": "boolean",
+        "description": "The endpoint also answers `raw=true` with the rows the widget shows, as JSON: the AI Agent and MCP get those rows, and the widget's rows button shows them"
+      }
+    },
+    "dataProperties": {
+      "rawDataKey": {
+        "type": "string",
+        "maxLength": 256,
+        "description": "The path of the rows in the `raw=true` response, such as `results.records`; without it, `results`, or the whole response"
+      },
+      "rawType": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_-]{1,31}$",
+        "description": "A plugin's type that shows the rows when the user switches the widget to them; without it, or when the user may not use that type, an html widget shows them in a table and a plugin's widget with its own plugin"
+      }
+    },
     "methods": [
       "GET",
       "POST"
@@ -2271,7 +2305,8 @@
       "body"
     ],
     "reservedQueryNames": [
-      "theme"
+      "theme",
+      "raw"
     ]
   },
   "paramLocations": [

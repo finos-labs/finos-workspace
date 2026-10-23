@@ -1,3 +1,4 @@
+import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   getPluginVizTypes,
@@ -6,6 +7,7 @@ import {
   resolveVizHandler,
   standalonePluginWidgets,
   usePluginRegistryStore,
+  useRowsPlugin,
 } from "~/plugins/registry";
 import { PluginListingSchema } from "~/plugins/types";
 
@@ -48,6 +50,20 @@ describe("the plugin registry", () => {
     );
     expect(resolvePluginWidget({ id: "other", widget: "clock" })).toBeNull();
     expect([...getPluginVizTypes()]).toEqual(["chart"]);
+  });
+
+  it("finds the plugin that shows a widget's rows only when the user has its type", () => {
+    const { result, rerender } = renderHook(({ rawType }) => useRowsPlugin(rawType), {
+      initialProps: { rawType: "chart" as string | undefined },
+    });
+    expect(result.current).toBeNull();
+    act(() => usePluginRegistryStore.getState().setListing(listing));
+    expect(result.current?.widget.id).toBe("chart");
+    expect(result.current?.vizType).toBe("chart");
+    rerender({ rawType: "table" });
+    expect(result.current).toBeNull();
+    rerender({ rawType: undefined });
+    expect(result.current).toBeNull();
   });
 
   it("drops what a new listing no longer has", () => {

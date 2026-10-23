@@ -1,7 +1,12 @@
 import { z } from "zod";
 import type { FormInputParamDef, ParamDef } from "~/components/types";
 import { PLUGIN_ID_PATTERN } from "~/plugins/types";
-import { EditorLanguages, HTTP_METHODS, PARAM_LOCATIONS } from "./widgetsContract";
+import {
+  EditorLanguages,
+  HTTP_METHODS,
+  PARAM_LOCATIONS,
+  VIZ_TYPE_PATTERN,
+} from "./widgetsContract";
 
 function unionErrorMap(message: string) {
   return {
@@ -82,7 +87,7 @@ const ParamDefSchemaBase = z
     hidden: z.boolean().optional().default(false),
     style: z
       .object({
-        popupWidth: z.number().min(100).max(1000).optional(), // value in px for <AdvancedSelect /> popup width
+        popupWidth: z.number().min(100).max(1000).optional(),
       })
       .optional(),
     options: z
@@ -115,7 +120,6 @@ const ParamDefSchemaBase = z
   })
   .meta({ id: "ParamDef" });
 
-/** How an `endpoint` param, or an `endpoint` input of a form, loads its options. */
 const OptionsLookup = {
   optionsEndpoint: z.string().optional(),
   optionsMethod: z.enum(HTTP_METHODS).optional(),
@@ -307,19 +311,10 @@ const supportedTypesError = WidgetVizTypes.filter((v) => v !== "iframe")
   .map((v) => `\`${v}\``)
   .join(", ");
 
-/** A viz type a widget plugin renders: any well-formed type name that is not built in. */
 export type PluginVizType = string & { readonly __pluginVizType?: never };
 export type BuiltInVizType = (typeof WidgetVizTypes)[number];
 export type WidgetVizType = BuiltInVizType | "custom" | PluginVizType;
 
-/** The form a viz type name takes, built in or rendered by a widget plugin. */
-export const VIZ_TYPE_PATTERN = /^[a-z][a-z0-9_-]{1,31}$/;
-
-/**
- * Accepts the built-in types and any well-formed type name. Validation runs before the
- * plugin registry is loaded (and in a worker, which cannot read it), so whether a type
- * renders is decided by `isRenderableVizType`, not here (docs/widget-plugins/DESIGN.md 5).
- */
 export const widgetTypesSchema = z
   .string()
   .regex(
@@ -337,8 +332,6 @@ export const WidgetStateSchema = z
       .looseObject({
         text: z.string().optional(),
         html: z.string().optional(),
-        // A plugin widget's configuration, checked against its plugin's settings when the
-        // backend loads (WIDGETS-JSON 3.10)
         plugin: z
           .strictObject({ config: z.record(z.string(), z.unknown()).optional() })
           .optional(),
@@ -414,7 +407,6 @@ const templateShapeDefinition = {
       }),
     )
     .optional(),
-  // Included in the schema so unrecognized-keys detection does not flag it as unknown.
   allowCustomization: z.boolean().optional(),
 };
 
@@ -446,7 +438,6 @@ export const templateSpecificationSchema = z.array(
   z.object(templateShapeDefinition).meta({ id: "AppsJson" }),
 );
 
-// Derived from the Zod schema shape so it stays in sync automatically
 export const KNOWN_TEMPLATE_KEYS = new Set(Object.keys(templateShapeDefinition));
 
 export const WidgetSchemaBase = z.object({
@@ -476,7 +467,6 @@ export const WidgetSchemaBase = z.object({
 });
 
 export const InternalWidgetSchema = WidgetSchemaBase.extend({
-  // A standalone widget of a widget plugin: which plugin and which of its widgets
   plugin: z
     .strictObject({
       id: z.string().regex(PLUGIN_ID_PATTERN),
@@ -527,26 +517,18 @@ export const ExternalWidgetSchema = WidgetSchemaBase.extend({
   return val;
 });
 
-/** One of the types the Workspace renders itself. */
 export function isBuiltInVizType(
   type: string | null | undefined,
 ): type is BuiltInVizType {
   return WidgetVizTypes.some((vizType) => vizType === type);
 }
 
-/** A built-in type, or a well-formed name a widget plugin may render. */
 export function isWellFormedVizType(
   type: string | null | undefined,
 ): type is WidgetVizType {
   return typeof type === "string" && VIZ_TYPE_PATTERN.test(type);
 }
 
-/**
- * Whether this Workspace renders the type for the signed-in user: a built-in type, or a
- * type an available widget plugin handles. The caller passes the plugin types, from
- * `getPluginVizTypes()`, so this module does not depend on the registry and runs in a
- * worker.
- */
 export function isRenderableVizType(
   type: string | null | undefined,
   pluginTypes: ReadonlySet<string> = new Set(),

@@ -1,15 +1,5 @@
 import { z } from "zod";
 
-/**
- * The `widgets.json` contract a backend writes (docs/widget-plugins/WIDGETS-JSON.md): every
- * accepted key and value, closed and bounded. It is the source of the schema kit
- * (`scripts/generate-widgets-schema.ts`) that the API composes into the schema in force
- * for an entity, built-in types plus the types of the plugins enabled there. The SPA
- * validates a backend against that composed schema.
- *
- * Relative imports only: the generator runs this module under Node.
- */
-
 export const EditorLanguages = [
   "sql",
   "javascript",
@@ -25,16 +15,11 @@ export const EditorLanguages = [
 export const HTTP_METHODS = ["GET", "POST"] as const;
 export type HttpMethod = (typeof HTTP_METHODS)[number];
 
-/** Where a param goes in the widget's request (WIDGETS-JSON 4). The path is not one. */
 export const PARAM_LOCATIONS = ["query", "header", "body"] as const;
 export type ParamLocation = (typeof PARAM_LOCATIONS)[number];
 
-// -- Headers (WIDGETS-JSON 4.4, rule 6) -------------------------------------------------
-
-/** An HTTP token, as a header name: the name of a header param. */
 export const HEADER_NAME_PATTERN = "^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,64}$";
 
-/** Names a browser forbids page script to set; `fetch` drops them silently. */
 export const FORBIDDEN_HEADER_NAMES = [
   "accept-charset",
   "accept-encoding",
@@ -59,7 +44,6 @@ export const FORBIDDEN_HEADER_NAMES = [
 ] as const;
 export const FORBIDDEN_HEADER_PREFIXES = ["proxy-", "sec-"] as const;
 
-/** Names the host sets on a widget's request, or reserves. */
 export const RESERVED_HEADER_NAMES = [
   "authorization",
   "content-type",
@@ -69,10 +53,8 @@ export const RESERVED_HEADER_NAMES = [
   "x-workspace-user",
 ] as const;
 
-/** A header param's value: printable ASCII, at most 1,024 characters. */
 export const HEADER_VALUE_PATTERN = "^[\\x20-\\x7E]{0,1024}$";
 
-/** Whether a param may be sent as a header with this name (case-insensitive). */
 export function isAllowedHeaderName(name: string): boolean {
   if (!new RegExp(HEADER_NAME_PATTERN).test(name)) return false;
   const lower = name.toLowerCase();
@@ -83,7 +65,7 @@ export function isAllowedHeaderName(name: string): boolean {
   );
 }
 
-// -- Bounds ----------------------------------------------------------------------------
+export const VIZ_TYPE_PATTERN = /^[a-z][a-z0-9_-]{1,31}$/;
 
 export const LIMITS = {
   name: 200,
@@ -104,7 +86,6 @@ export const LIMITS = {
   dataKey: 256,
 } as const;
 
-/** `endpoint` and `optionsEndpoint`: a path or an absolute URL, with no `?` and no `#`. */
 const Endpoint = z
   .string()
   .min(1)
@@ -133,9 +114,6 @@ const Options = z
   .max(LIMITS.options)
   .meta({ description: "The choices of a dropdown, as `{ label, value }`" });
 
-// -- Params ----------------------------------------------------------------------------
-
-/** Keys every param and every form input accepts. */
 const ParamFields = {
   paramName: z.string().min(1).max(LIMITS.paramName).meta({
     description:
@@ -187,7 +165,6 @@ const ParamFields = {
     .optional(),
 };
 
-/** A param of the widget's request also says where it goes. */
 const ParamCommon = {
   ...ParamFields,
   in: z
@@ -206,7 +183,6 @@ const NumberValue = z.union([
     .max(LIMITS.shortValue)
     .regex(/^-?\d*\.?\d*$/),
 ]);
-// A value is a literal, or `$name`: the current value of the widget's param `name`
 const OptionsParams = z.record(z.string().max(LIMITS.paramName), Scalar).meta({
   maxProperties: LIMITS.optionsParams,
   description:
@@ -301,7 +277,6 @@ const EndpointParam = z.strictObject({
   optionsParams: OptionsParams.optional(),
 });
 
-/** An input of a form param: posted in the form's own JSON body, so it has no `in`. */
 const FormInputParam = z.discriminatedUnion("type", [
   z.strictObject({
     ...ParamFields,
@@ -338,7 +313,6 @@ const FormInputParam = z.discriminatedUnion("type", [
   }),
 ]);
 
-/** A form posts its inputs as a JSON body to its own endpoint, with its own method. */
 const FormParam = z.strictObject({
   type: z.literal("form"),
   paramName: z
@@ -378,14 +352,10 @@ export const ParamDefContract = z.discriminatedUnion("type", [
 ]);
 export type ParamDefContractT = z.infer<typeof ParamDefContract>;
 
-// -- The MCP tool opt-in (WIDGETS-JSON 5) ------------------------------------------------
-
 export const McpToolContract = z
   .strictObject({
-    // The name of a server in the same backend's apps.json mcpServers, not a URL
     mcp_server: z.string().min(1).max(128),
     tool_id: z.string().min(1).max(128),
-    // A tool argument to `$paramName` or a literal; whole when present, identity when absent
     args: z
       .record(
         z.string().max(LIMITS.paramName),
@@ -400,14 +370,8 @@ export const McpToolContract = z
   });
 export type McpToolContractT = z.infer<typeof McpToolContract>;
 
-// -- The widget ----------------------------------------------------------------------------
-
 const Cron = z.string().trim().min(1).max(LIMITS.cron);
 
-/**
- * Keys every widget definition accepts, whatever its type. `type`, `data` and the keys of
- * one type are added per type by the composer (WIDGETS-JSON 3.4).
- */
 export const WidgetBaseContract = z.strictObject({
   name: z
     .string()
@@ -499,7 +463,6 @@ export const WidgetBaseContract = z.strictObject({
 });
 export type WidgetBaseContractT = z.infer<typeof WidgetBaseContract>;
 
-/** `data` of every type: `dataKey`, the path of the widget's data in a JSON response. */
 export const DataContract = z
   .strictObject({
     dataKey: z
@@ -513,22 +476,43 @@ export const DataContract = z
   })
   .meta({
     description:
-      "`dataKey`, and for a plugin's type the configuration its plugin defines",
+      "`dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines",
   });
 
-/** What a built-in type adds to the base, and its request rules (WIDGETS-JSON 4.4). */
+const Raw = z
+  .boolean()
+  .meta({
+    description:
+      "The endpoint also answers `raw=true` with the rows the widget shows, as JSON: the AI Agent and MCP get those rows, and the widget's rows button shows them",
+  })
+  .optional();
+
+const RAW_DATA_PROPERTIES = {
+  rawDataKey: z
+    .string()
+    .max(LIMITS.dataKey)
+    .meta({
+      description:
+        "The path of the rows in the `raw=true` response, such as `results.records`; without it, `results`, or the whole response",
+    })
+    .optional(),
+  rawType: z
+    .string()
+    .regex(VIZ_TYPE_PATTERN)
+    .meta({
+      description:
+        "A plugin's type that shows the rows when the user switches the widget to them; without it, or when the user may not use that type, an html widget shows them in a table and a plugin's widget with its own plugin",
+    })
+    .optional(),
+};
+
 export interface BuiltInTypeContract {
-  /** What the type is for, for the generated docs */
   summary: string;
-  /** What its endpoint answers with, for the generated docs */
   returns: string;
-  /** Keys of this type only */
   properties: Record<string, z.ZodType>;
-  /** The methods its request may use */
+  dataProperties: Record<string, z.ZodType>;
   methods: readonly HttpMethod[];
-  /** Where its params may go, besides the path */
   locations: readonly ParamLocation[];
-  /** Query param names the host adds to its request */
   reservedQueryNames: readonly string[];
 }
 
@@ -537,6 +521,7 @@ export const BUILT_IN_TYPES = {
     summary: "Prose, generated commentary, formatted text",
     returns: "A markdown string, as text or as JSON with the string at `data.dataKey`",
     properties: {},
+    dataProperties: {},
     methods: HTTP_METHODS,
     locations: PARAM_LOCATIONS,
     reservedQueryNames: ["theme"],
@@ -544,15 +529,8 @@ export const BUILT_IN_TYPES = {
   html: {
     summary: "A report, page or visualization the backend renders itself",
     returns: "An HTML document as text",
-    properties: {
-      raw: z
-        .boolean()
-        .meta({
-          description:
-            "The endpoint also answers `raw=true` with the rows the page was made from, as JSON",
-        })
-        .optional(),
-    },
+    properties: { raw: Raw },
+    dataProperties: RAW_DATA_PROPERTIES,
     methods: HTTP_METHODS,
     locations: PARAM_LOCATIONS,
     reservedQueryNames: ["theme", "raw"],
@@ -561,6 +539,7 @@ export const BUILT_IN_TYPES = {
     summary: "Articles and updates, each with a title, an excerpt and a full text",
     returns: "A JSON array of articles, or JSON with the array at `data.dataKey`",
     properties: {},
+    dataProperties: {},
     methods: HTTP_METHODS,
     locations: PARAM_LOCATIONS,
     reservedQueryNames: [],
@@ -570,18 +549,15 @@ export const BUILT_IN_TYPES = {
     returns:
       "The PDF (`application/pdf`), or JSON with its `data_format` and a base64 `content` or a `url`",
     properties: {},
+    dataProperties: {},
     methods: HTTP_METHODS,
     locations: PARAM_LOCATIONS,
     reservedQueryNames: [],
   },
-  // The endpoint is a page the browser navigates to: GET, and params in the query. The
-  // host adds the theme to its query
   iframe: {
     summary: "An existing web page",
     returns: "Nothing: the endpoint is the page's URL, which the browser opens",
     properties: {
-      // An MCP server of the page's own, connected for the instance without the
-      // backend's credentials
       storage: z
         .strictObject({
           mcpUrl: z
@@ -597,18 +573,17 @@ export const BUILT_IN_TYPES = {
         })
         .optional(),
     },
+    dataProperties: {},
     methods: ["GET"],
     locations: ["query"],
     reservedQueryNames: ["theme"],
   },
 } as const satisfies Record<string, BuiltInTypeContract>;
 
-/**
- * What a plugin-handled type allows: everything; its `data.<type>` is the plugin's. The
- * host adds the theme to its query, so the endpoint answers for the dark or light site.
- */
 export const PLUGIN_TYPE_RULES = {
+  properties: { raw: Raw },
+  dataProperties: RAW_DATA_PROPERTIES,
   methods: HTTP_METHODS,
   locations: PARAM_LOCATIONS,
-  reservedQueryNames: ["theme"] as readonly string[],
+  reservedQueryNames: ["theme", "raw"] as readonly string[],
 } as const;
