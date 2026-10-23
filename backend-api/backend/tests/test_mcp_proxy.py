@@ -163,7 +163,7 @@ class TestPublicAddresses:
             "169.254.169.254",
             "100.100.100.200",
             "100.64.0.1",
-            "0.0.0.0",  # noqa: S104 - an address to refuse, not to bind
+            "0.0.0.0",  # noqa: S104
             "224.0.0.1",
             "255.255.255.255",
             "::1",

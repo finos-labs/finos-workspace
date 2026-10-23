@@ -251,7 +251,7 @@ class TestCalls:
         ],
         ids=["unknown-arg", "too-long", "required", "undeclared-proxy", "unknown-widget", "unknown-plugin"],
     )
-    async def test_refused_calls_send_nothing(  # noqa: PLR0913 - the case's parts
+    async def test_refused_calls_send_nothing(  # noqa: PLR0913
         self, member, superuser, plugins_dir, upstream, path, widget, args, status, code
     ):
         await ready(superuser, plugins_dir, upstream.port)

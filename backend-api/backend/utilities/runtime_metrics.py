@@ -36,7 +36,7 @@ def _pool_stats(engines: Mapping[str, Any]) -> dict[str, dict[str, float]]:
                 continue
             try:
                 engine_stats[state] = float(fn())
-            except Exception:  # noqa: BLE001, S112 - a single bad counter must not drop the rest
+            except Exception:  # noqa: BLE001, S112
                 continue
         if engine_stats:
             stats[name] = engine_stats
@@ -44,7 +44,7 @@ def _pool_stats(engines: Mapping[str, Any]) -> dict[str, dict[str, float]]:
 
 
 def _engines() -> dict[str, Any]:
-    from api import database  # noqa: PLC0415 - lazy import avoids a circular dependency at module load
+    from api import database  # noqa: PLC0415
 
     engines: dict[str, Any] = {}
     for name, attr in (
@@ -69,7 +69,7 @@ def _engines() -> dict[str, Any]:
 
 
 class _RuntimeCollector:
-    def collect(self):  # noqa: PLR6301 - prometheus Collector interface requires an instance method
+    def collect(self):  # noqa: PLR6301
         pools = GaugeMetricFamily(
             "db_pool_connections",
             "SQLAlchemy connection pool counters",
@@ -119,7 +119,7 @@ async def _sampler(interval: float) -> None:
 
 
 def start_runtime_metrics(interval: float | None = None) -> None:
-    global _started  # noqa: PLW0603 - module-level one-time init guard
+    global _started  # noqa: PLW0603
     if interval is None:
         interval = float(os.environ.get("RUNTIME_METRICS_INTERVAL", "2.0"))
     if _started:

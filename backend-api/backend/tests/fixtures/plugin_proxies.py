@@ -6,7 +6,7 @@ from utilities import egress
 from utilities.config import settings
 
 HOST = "quotes.example.org"
-SECRET = "k3y-for-the-test"  # noqa: S105 - a test value
+SECRET = "k3y-for-the-test"  # noqa: S105
 CALL = "/app/widget-plugins/test-chart/proxy/quote"
 
 

@@ -329,7 +329,7 @@ async def user_loop(
                     "update_widget_layout",
                     {"x": 0, "y": 2, "w": 20, "h": 8, "widget_id": "sim-widget"},
                 )
-        except Exception as exc:  # noqa: BLE001 - count transport failures, keep the loop alive
+        except Exception as exc:  # noqa: BLE001
             status = type(exc).__name__
         stats.record(action, (time.perf_counter() - start) * 1000, ok, status, detail)
         await asyncio.sleep(random.uniform(THINK_MIN, THINK_MAX))

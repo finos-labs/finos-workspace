@@ -92,7 +92,7 @@ def _check_url(directive: str, source: str, check: PolicyCheck) -> None:
         check.needs.add(REMOTE_SCRIPT)
 
 
-def check_source(directive: str, source: object, check: PolicyCheck) -> None:  # noqa: PLR0911 - one return per rule
+def check_source(directive: str, source: object, check: PolicyCheck) -> None:  # noqa: PLR0911
     if not isinstance(source, str) or not source:
         check.errors.append(f"{directive}: sources are non-empty strings")
         return

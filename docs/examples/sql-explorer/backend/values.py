@@ -10,7 +10,7 @@ MAX_DEPTH = 8
 EXACT_INTEGER = 2**53
 
 
-def cell(value: object, depth: int = 0) -> object:  # noqa: PLR0911 - one return per kind of value
+def cell(value: object, depth: int = 0) -> object:  # noqa: PLR0911
     if value is None or isinstance(value, bool):
         return value
     if isinstance(value, int):

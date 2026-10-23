@@ -24,9 +24,9 @@ from utilities.config import settings
 from .proxy import CallError
 
 PROTOCOL = 1
-TOKEN_PREFIX = "wpc1."  # noqa: S105 - a format marker, not a credential
+TOKEN_PREFIX = "wpc1."  # noqa: S105
 TOKEN_SECONDS = 60
-SECRET_HEADER = "X-Workspace-Secret-"  # noqa: S105 - a header name, not a credential
+SECRET_HEADER = "X-Workspace-Secret-"  # noqa: S105
 CALL_HEADER = "X-Workspace-Call"
 _IDENTITY_TIMEOUT = 5.0
 _PLUGIN_ID = re.compile(r"[a-z][a-z0-9-]{1,47}")
@@ -68,7 +68,7 @@ def read_token(token: str) -> dict[str, Any]:
             raise ValueError
         raw = _unb64(token.removeprefix(TOKEN_PREFIX))
         claims = json.loads(AESGCM(_key(b"call context")).decrypt(raw[:12], raw[12:], None))
-    except Exception as error:  # noqa: BLE001 - any failure is the same refusal
+    except Exception as error:  # noqa: BLE001
         raise CallError("invalid_token", "the call-context token is not valid", status=401) from error
     if not isinstance(claims, dict) or claims.get("exp", 0) < time.time():
         raise CallError("invalid_token", "the call-context token has expired", status=401)
@@ -91,7 +91,7 @@ def _client(url: str, timeout: float) -> tuple[httpx.AsyncClient, str]:
     return httpx.AsyncClient(timeout=timeout, follow_redirects=False), url
 
 
-async def request(  # noqa: PLR0913 - one request, its limits and its headers
+async def request(  # noqa: PLR0913
     url: str,
     method: str,
     path: str,

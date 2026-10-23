@@ -1,5 +1,4 @@
 {
-  "$comment": "Public Anywidget front-end modules for the interop smoke tests (docs/widget-plugins/GUEST-CONTRACT.md 8, plugin-interop.spec.ts). Each is fetched from its wheel on PyPI when the tests run, checked against the wheel's SHA-256, and never committed. traits are the defaults of the widget's Python class, which a kernel would send.",
   "wheels": {
     "wigglystuff-0.5.34": {
       "url": "https://files.pythonhosted.org/packages/a4/9c/f53eba4c2686f8d4f934f060a2af7139552e6125c2acc5ad67702e700d60/wigglystuff-0.5.34-py3-none-any.whl",

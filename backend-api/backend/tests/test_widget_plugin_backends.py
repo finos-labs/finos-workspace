@@ -237,7 +237,7 @@ class TestCalls:
         ],
         ids=["too-long", "unknown-arg", "unknown-route", "unknown-plugin"],
     )
-    async def test_refused_calls_reach_nothing(  # noqa: PLR0913 - the case's parts
+    async def test_refused_calls_reach_nothing(  # noqa: PLR0913
         self, member, superuser, plugins_dir, plugin_backend, args, path, status, code
     ):
         await ready_backend(superuser, plugins_dir, plugin_backend)
@@ -297,7 +297,7 @@ async def _grant(member, db_session, source_uuid) -> None:
 
 class TestBroker:
     @pytest.mark.asyncio
-    async def test_the_broker_reads_for_the_user_with_the_backends_credentials(  # noqa: PLR0913 - the parts of the setup
+    async def test_the_broker_reads_for_the_user_with_the_backends_credentials(  # noqa: PLR0913
         self, member, superuser, plugins_dir, plugin_backend, data_source, db_session
     ):
         token = await _token(member, superuser, plugins_dir, plugin_backend)
@@ -321,7 +321,7 @@ class TestBroker:
         assert SOURCE_SECRET not in response.text
 
     @pytest.mark.asyncio
-    async def test_the_users_access_applies(  # noqa: PLR0913 - the parts of the setup
+    async def test_the_users_access_applies(  # noqa: PLR0913
         self, member, superuser, plugins_dir, plugin_backend, data_source, db_session
     ):
         token = await _token(member, superuser, plugins_dir, plugin_backend)

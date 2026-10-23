@@ -143,7 +143,7 @@ def _restore_state(row: models.WidgetPluginVersion) -> str:
     return previous if previous in {VERSION_ACTIVE, VERSION_RETIRED} else VERSION_DISCOVERED
 
 
-async def rescan(db: AsyncSession, actor_uuid: UUID | None = None) -> dict[str, Any]:  # noqa: PLR0912, PLR0915 - one pass, one case per change
+async def rescan(db: AsyncSession, actor_uuid: UUID | None = None) -> dict[str, Any]:  # noqa: PLR0912, PLR0915
     _require_feature()
     result: ScanResult = await asyncio.to_thread(scan, settings.WIDGET_PLUGINS_DIR, **_scan_settings())
     if result.error:
@@ -792,7 +792,7 @@ async def set_status(db: AsyncSession, plugin_id: str, revoke: bool, actor_uuid:
     return {"plugin_id": plugin.plugin_id, "status": plugin.status}
 
 
-async def set_overrides(  # noqa: PLR0913 - the override's parts and who sets them
+async def set_overrides(  # noqa: PLR0913
     db: AsyncSession,
     plugin_id: str,
     csp: dict[str, list[str]] | None,
@@ -984,7 +984,7 @@ async def entity_listing(db: AsyncSession, entity_uuid: UUID) -> list[dict[str, 
     return result
 
 
-async def update_entity(  # noqa: PLR0912, PLR0915 - one block per setting
+async def update_entity(  # noqa: PLR0912, PLR0915
     db: AsyncSession,
     entity_uuid: UUID,
     plugin_id: str,
@@ -1391,7 +1391,7 @@ def _clean_origin(origin: str) -> str | None:
     return None
 
 
-async def record_reports(  # noqa: PLR0913 - the report's parts
+async def record_reports(  # noqa: PLR0913
     db: AsyncSession,
     user_uuid: UUID,
     plugin_id: str,

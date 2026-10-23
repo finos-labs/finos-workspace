@@ -22,8 +22,8 @@ from tests.fixtures.widget_plugins import (
 )
 from utilities.config import settings
 
-BACKEND_SECRET = "route-key-for-the-test"  # noqa: S105 - a test value
-SOURCE_SECRET = "source-key-for-the-test"  # noqa: S105 - a test value
+BACKEND_SECRET = "route-key-for-the-test"  # noqa: S105
+SOURCE_SECRET = "source-key-for-the-test"  # noqa: S105
 ROUTE_CALL = "/app/widget-plugins/test-chart/backend/forecast"
 
 

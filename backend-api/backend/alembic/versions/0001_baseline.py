@@ -10,7 +10,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():  # noqa: PLR0915 - the baseline creates the full schema
+def upgrade():  # noqa: PLR0915
     op.create_table(
         "data_bundle",
         sa.Column("bundle_name", sa.String(length=50), nullable=False),

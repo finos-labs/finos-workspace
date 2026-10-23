@@ -202,7 +202,7 @@ def _decode(status: int, content_type: str, raw: bytes) -> Any:
         raise CallError("backend_error", "the backend's answer is not JSON", 502, status) from error
 
 
-async def _send_route(  # noqa: PLR0913 - the call's parts
+async def _send_route(  # noqa: PLR0913
     db: AsyncSession, entry: dict, route: Route, user_uuid: UUID, widget_id: str, instance_id: str, args: dict
 ) -> BackendResult:
     plugin = entry["plugin"]
@@ -234,7 +234,7 @@ async def _send_route(  # noqa: PLR0913 - the call's parts
     return BackendResult(body=body, status=status, size=len(raw))
 
 
-async def backend_call(  # noqa: PLR0913 - who calls what, with what
+async def backend_call(  # noqa: PLR0913
     db: AsyncSession,
     user_uuid: UUID,
     plugin_id: str,

@@ -64,7 +64,7 @@ def _alembic(db_path: str, *args: str) -> None:
         "REDIS_HOST": "127.0.0.1",
         "STORAGE_PROVIDER": "aws",
     }
-    result = subprocess.run(  # noqa: S603 (the test's own alembic arguments)
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-m", "alembic", *args],
         cwd=BACKEND_DIR,
         env=env,

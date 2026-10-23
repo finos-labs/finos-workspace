@@ -963,7 +963,7 @@ def _provision_commands(resources) -> None:
     )
 
 
-def _plugin_commands(resources) -> None:  # noqa: PLR0915 - one parser per action
+def _plugin_commands(resources) -> None:  # noqa: PLR0915
     plugin = resources.add_parser(
         "plugin",
         help="Review and enable widget plugins (packages are placed on the server, "

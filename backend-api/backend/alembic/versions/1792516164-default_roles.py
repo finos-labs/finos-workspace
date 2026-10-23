@@ -206,7 +206,7 @@ def _forget_usage(user_uuids: set) -> None:
     try:
         for user_uuid in user_uuids:
             settings.redis_cache(f"usage:{user_uuid}", delete=True)
-    except Exception as exc:  # noqa: BLE001 - Redis is not always there (a SQLite stack)
+    except Exception as exc:  # noqa: BLE001
         log.warning("Could not drop the cached usage of %d users: %s", len(user_uuids), exc)
 
 

@@ -113,7 +113,7 @@ def postgres_query(url: str, text: str, caller: str | None) -> dict:
             with connection.transaction(), deadline(STATEMENT_SECONDS + 5, connection.cancel_safe):
                 connection.execute(pgsql.SQL("SET LOCAL statement_timeout = {}").format(STATEMENT_SECONDS * 1000))
                 with connection.cursor(name="explorer") as cursor:
-                    cursor.execute(text)  # type: ignore[arg-type] - the user's query is the point
+                    cursor.execute(text)  # type: ignore[arg-type]
                     columns = [{"name": c.name, "type": c.type_display} for c in cursor.description or []]
                     result = collect(columns, cursor.fetchmany)
         except psycopg.Error as error:

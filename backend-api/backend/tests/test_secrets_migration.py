@@ -43,7 +43,7 @@ def _alembic(db_path: str, *args: str) -> str:
         "SELFURL": "http://localhost:8000",
         "FRONTENDURL": "http://localhost:3000",
     }
-    result = subprocess.run(  # noqa: S603 (the test's own alembic arguments)
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-m", "alembic", *args],
         cwd=BACKEND_DIR,
         env=env,

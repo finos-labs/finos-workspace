@@ -85,7 +85,7 @@ def _alembic(db_path: str, *args: str) -> None:
         "STORAGE_PROVIDER": "aws",
         "DEFAULT_MCP_SERVERS": f'[{{"id": "tools", "name": "Tools", "url": "{TOOLS_URL}"}}]',
     }
-    result = subprocess.run(  # noqa: S603 (the test's own alembic arguments)
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-m", "alembic", *args],
         cwd=BACKEND_DIR,
         env=env,

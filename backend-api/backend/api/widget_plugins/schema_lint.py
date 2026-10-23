@@ -53,7 +53,7 @@ def _types(node: dict) -> set[str]:
     return set()
 
 
-def lint_fragment(schema: Any) -> list[str]:  # noqa: PLR0915 - one walk over the schema
+def lint_fragment(schema: Any) -> list[str]:  # noqa: PLR0915
     if not isinstance(schema, dict):
         return ["/: must be a JSON Schema object"]
     if len(json.dumps(schema)) > MAX_FRAGMENT_BYTES:
@@ -64,7 +64,7 @@ def lint_fragment(schema: Any) -> list[str]:  # noqa: PLR0915 - one walk over th
     defs = schema.get("$defs", {})
     problems: list[str] = []
 
-    def check(node: Any, path: list[str], depth: int) -> None:  # noqa: PLR0912, PLR0915 - one rule per keyword
+    def check(node: Any, path: list[str], depth: int) -> None:  # noqa: PLR0912, PLR0915
         where = _pointer(path)
         if depth > MAX_DEPTH:
             problems.append(f"{where}: nested deeper than {MAX_DEPTH} levels")
@@ -154,10 +154,10 @@ def lint_fragment(schema: Any) -> list[str]:  # noqa: PLR0915 - one walk over th
 _CONDITIONS = ("if", "then", "else", "not", "contains")
 
 
-def closedness_problems(schema: Any) -> list[str]:  # noqa: PLR0912 - one rule per keyword
+def closedness_problems(schema: Any) -> list[str]:  # noqa: PLR0912
     problems: list[str] = []
 
-    def walk(node: Any, path: list[str], shape: bool) -> None:  # noqa: PLR0912 - one rule per keyword
+    def walk(node: Any, path: list[str], shape: bool) -> None:  # noqa: PLR0912
         if not isinstance(node, dict):
             return
         where = _pointer(path)
@@ -204,7 +204,7 @@ SETTINGS_PROPERTY_KEYWORDS = ANNOTATIONS | {
 SETTINGS_TYPES = {"string", "number", "integer", "boolean"}
 
 
-def lint_settings_schema(schema: Any) -> list[str]:  # noqa: PLR0912 - one rule per keyword
+def lint_settings_schema(schema: Any) -> list[str]:  # noqa: PLR0912
     if not isinstance(schema, dict):
         return ["/: must be a JSON Schema object"]
     if schema.get("type", "object") != "object":

@@ -396,7 +396,7 @@ def _decode(proxy: Proxy, response: httpx.Response, raw: bytes) -> tuple[str, An
         raise CallError("upstream_error", "the upstream's answer could not be read", 502, upstream) from error
 
 
-async def call(  # noqa: PLR0913 - the limits come from the manifest and the deployment
+async def call(  # noqa: PLR0913
     proxy: Proxy,
     args: dict[str, Any],
     secrets: dict[str, str],

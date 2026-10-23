@@ -136,7 +136,7 @@ def _format_validation(error: ValidationError) -> list[str]:
     return messages
 
 
-def inspect_version(  # noqa: PLR0911, PLR0912 - one return per blocking finding
+def inspect_version(  # noqa: PLR0911, PLR0912
     root: Path,
     plugin_id: str,
     version_name: str,

@@ -115,7 +115,7 @@ class TestManifest:
 
 
 class TestBuild:
-    SECRETS = {"api_key": "s3cret"}  # noqa: S105 - a test value
+    SECRETS = {"api_key": "s3cret"}  # noqa: S105
 
     def test_arguments_and_secrets_go_where_the_template_says(self):
         call = build_call(make_proxy(), {"symbol": "BRK/B", "period": "week"}, self.SECRETS)
@@ -181,7 +181,7 @@ class TestEgress:
             "192.168.1.1",
             "100.64.0.1",
             "169.254.169.254",
-            "0.0.0.0",  # noqa: S104 - an address the guard refuses, not one bound to
+            "0.0.0.0",  # noqa: S104
             "224.0.0.1",
             "255.255.255.255",
             "::1",
@@ -245,7 +245,7 @@ def certificates(tmp_path):
 
 
 class TestCall:
-    SECRETS = {"api_key": "s3cret"}  # noqa: S105 - a test value
+    SECRETS = {"api_key": "s3cret"}  # noqa: S105
 
     def proxy(self, port: int, **changes) -> Proxy:
         return make_proxy(url=f"https://localhost:{port}/quotes/${{arg:symbol}}", **changes)

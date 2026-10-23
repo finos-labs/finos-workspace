@@ -1,5 +1,4 @@
 {
-  "$comment": "Cases for the widget plugin CSP and server network validators. Read by frontend/tests/unit/plugins/csp.test.ts and backend-api/backend/tests/test_widget_plugin_rules.py, so the TypeScript and Python validators cannot drift (docs/widget-plugins/SECURITY.md 4.3, SERVER-SIDE.md 6).",
   "author": [
     { "name": "nothing", "policy": {}, "ok": true },
     {
