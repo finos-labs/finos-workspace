@@ -10,6 +10,10 @@ name: finos-node
 # A new Node version is a change to agent/Dockerfile and build 1 of that version. A new build of the
 # same Node (-2, -3, ...) is for a fix in what Chimera supplies (musl, libc++, OpenSSL, ICU, the time
 # zones) or a change to the stage. finos-node-check.yml says every week whether one is due.
+#
+# The attestations, and the storage records that tie them to the image (artifact metadata), are
+# written by the finos-node-bot GitHub App (variable NODE_APP_ID, secret NODE_APP_PRIVATE_KEY);
+# this workflow's own token pushes the image, signs (OIDC) and publishes the release.
 on:
   push:
     tags:
@@ -19,7 +23,6 @@ permissions:
   contents: write
   packages: write
   id-token: write
-  attestations: write
 
 jobs:
   release:
@@ -100,22 +103,35 @@ jobs:
           SYFT_FILE_METADATA_SELECTION: none
         run: syft scan "docker:$IMAGE:$RELEASE" --quiet --select-catalogers +sbom-cataloger --output "cyclonedx-json=$SBOM"
 
+      # Asked for after the build: an App's token lasts an hour, and compiling Node takes longer.
+      - name: Get the App's token for the attestations
+        id: token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.NODE_APP_ID }}
+          private-key: ${{ secrets.NODE_APP_PRIVATE_KEY }}
+          permission-attestations: write
+          permission-artifact-metadata: write
+
       - uses: actions/attest@v4
         with:
           subject-name: ${{ steps.release.outputs.image }}
           subject-digest: ${{ steps.push.outputs.digest }}
           sbom-path: ${{ steps.release.outputs.sbom }}
           push-to-registry: true
+          github-token: ${{ steps.token.outputs.token }}
 
       - uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ steps.release.outputs.image }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
+          github-token: ${{ steps.token.outputs.token }}
 
       - uses: actions/attest-build-provenance@v4
         with:
           subject-path: ${{ steps.release.outputs.tarball }}
+          github-token: ${{ steps.token.outputs.token }}
 
       - name: Publish the release
         env:
