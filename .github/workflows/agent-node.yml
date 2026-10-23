@@ -7,9 +7,13 @@ name: Agent Node
 # in place of the stage (docker build --build-context node=agent-node), so no other job compiles Node.
 #
 # The cache key is the text of the node-build stage and the runner's platform: a change to that stage
-# (Node's version, a configure flag, the files it collects) builds it again; nothing else does. A
-# branch reads its own caches and its base branch's, so a pull request that leaves node-build alone
-# uses the one develop built.
+# (Node's version, a configure flag, the files it collects) builds it again; nothing else does.
+#
+# Who reads a build depends on where it was kept. A run of a pull request reads the caches of
+# develop, of its base branch and of its own branch, but what it keeps goes under its merge ref
+# (refs/pull/<n>/merge), which only that pull request reads. So a push that changes the stage builds
+# it as well, under the pushed branch: the branch's own pull request reads it, as do pull requests
+# based on the branch (a stacked one), and on develop every pull request does.
 
 on:
   workflow_call:
@@ -17,6 +21,11 @@ on:
       key:
         description: The cache key of the stage `node`, saved from the directory agent-node.
         value: ${{ jobs.node.outputs.key }}
+  # Branches only: a tag push would run it whatever it changes, since paths do not apply to tags
+  push:
+    branches: ["**"]
+    paths:
+      - agent/Dockerfile
 
 permissions:
   contents: read
