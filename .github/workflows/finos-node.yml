@@ -143,6 +143,7 @@ jobs:
           subject-path: ${{ steps.release.outputs.tarball }}
           github-token: ${{ steps.token.outputs.token }}
 
+      # The notes say what the image is for and what it holds, with the versions from the SBOM it carries.
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -152,11 +153,82 @@ jobs:
           TARBALL: ${{ steps.release.outputs.tarball }}
           SBOM: ${{ steps.release.outputs.sbom }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "$TARBALL" SHA256SUMS "$SBOM" --title "finos-node $RELEASE" --notes "$(cat <<EOF
-          Node ${RELEASE%-*} for the agent's images, build ${RELEASE##*-}: the stage \`node\` of agent/Dockerfile at $GITHUB_SHA, for linux/amd64.
+          python3 - finos-node/usr/share/sbom/runtime.cdx.json > notes.md <<'EOF'
+          import json, os, sys
+          components = json.load(open(sys.argv[1]))["components"]
+          version = {c["name"]: c.get("version") for c in components}
+          licence = lambda c: " AND ".join(l["expression"] for l in c["licenses"])
+          compiled = [c for c in components
+                      if any(p["name"] == "compiled-into" and p["value"].startswith("node ") for p in c.get("properties", []))]
+          image, release, digest = os.environ["IMAGE"], os.environ["RELEASE"], os.environ["DIGEST"]
+          node, build = release.rsplit("-", 1)
+          tarball, sbom, owner = os.environ["TARBALL"], os.environ["SBOM"], os.environ["GITHUB_REPOSITORY_OWNER"]
+          rows = "\n".join(f"| {c['name']} | {c.get('version') or '-'} | {licence(c)} |" for c in compiled)
+          print(f"""**Node.js {node} that passes FINOS's licence review**, the runtime of the Workspace's agent (Ines) and its MCP server.
 
-          Image: \`$IMAGE:$RELEASE@$DIGEST\`
+          Node's official images, and the distroless, hardened and Alpine ones, link GCC's C++ runtime (libstdc++ and libgcc_s), and most of them run on glibc: FINOS counts both as Category X, so none of them can ship. This is Node compiled from its source with clang, against musl and LLVM's libc++, in an image built `FROM scratch`. It holds Node, the libraries Node links and the time zones, each under a licence FINOS accepts (Category A or B). It has no shell, package manager, npm or compiler, and the build fails if a GCC runtime library gets in.
 
-          $TARBALL is the image's filesystem (SHA256SUMS). $SBOM is its SBOM, also attested with its build provenance (\`gh attestation verify oci://$IMAGE:$RELEASE --owner $GITHUB_REPOSITORY_OWNER\`).
+          ```
+          {image}:{release}@{digest}
+          ```
+
+          ### What it is for
+
+          `agent/Dockerfile` builds the `ines` and `ines-mcp` images on it: it installs the agent's npm packages with this Node (npm stays in the build) and adds the agent's code. CI takes this release in place of the Dockerfile's `node` stage, so no job compiles Node, which takes hours; a local build compiles the stage itself.
+
+          ### What it holds
+
+          | Component | Version | Licence |
+          | --- | --- | --- |
+          | Node.js | {version["node"]} | MIT |
+          | V8 and {len(compiled) - 1} more libraries compiled into Node (below) | - | {", ".join(sorted({licence(c) for c in compiled}))} |
+          | musl, with mimalloc | {version["musl"]} | MIT |
+          | LLVM libc++, libc++abi and libunwind | {version["libcxx"]} | Apache-2.0 WITH LLVM-exception AND NCSA |
+          | OpenSSL | {version["openssl3-libs"]} | Apache-2.0 |
+          | ICU, with its data | {version["icu-libs"]} | ICU |
+          | Time zones (tzdb) | {version["tzdb"]} | Public domain |
+
+          <details><summary>Compiled into Node</summary>
+
+          | Component | Version | Licence |
+          | --- | --- | --- |
+          {rows}
+
+          </details>
+
+          `{sbom}` is the SBOM of the whole image; the image carries this list in `/usr/share/sbom/runtime.cdx.json`.
+
+          ### Hardening
+
+          `node` is position-independent, has full RELRO (`BIND_NOW`), a stack that does not execute, the strong stack protector and stack clash protection. The build checks the binary for the first four and fails without them.
+
+          ### Use
+
+          ```dockerfile
+          FROM scratch
+          COPY --from={image}:{release}@{digest} / /
+          ```
+
+          Or in place of `agent/Dockerfile`'s `node` stage, as CI does:
+
+          ```sh
+          docker build --build-context node=docker-image://{image}:{release}@{digest} agent
+          ```
+
+          ### Verify
+
+          ```sh
+          gh attestation verify oci://{image}:{release} --owner {owner}
+          gh attestation verify {tarball} --owner {owner}
+          sha256sum -c SHA256SUMS
+          ```
+
+          ### Files
+
+          - `{tarball}`: the image's filesystem, to build without the registry.
+          - `SHA256SUMS`: its checksum.
+          - `{sbom}`: the image's CycloneDX SBOM, also attested on the image with its build provenance.
+
+          Built from `agent/Dockerfile` (stages `node-build` and `node`) at {os.environ["GITHUB_SHA"]}, for linux/amd64. This is build {build} of Node {node}. A later build of the same Node takes fixes in musl, libc++, OpenSSL, ICU or the time zones, which `finos-node-check.yml` looks for every week.""")
           EOF
-          )"
+          gh release create "$GITHUB_REF_NAME" "$TARBALL" SHA256SUMS "$SBOM" --title "finos-node $RELEASE" --notes-file notes.md
