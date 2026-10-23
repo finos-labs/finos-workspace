@@ -1,13 +1,3 @@
-"""A Workspace backend that serves widgets of the plotly type, to try the plugin with.
-
-    examples/.venv/bin/python examples/backend.py [port] [the Workspace web app's origin]
-
-Add it in Workspace as a data connector at http://localhost:<port>. Each widget's
-endpoint returns a figure made with plotly.py, as `fig.to_json()` writes it. Workspace
-sends `theme=dark` or `theme=light`, the site's mode; this backend answers with
-plotly.py's dark or white template, and any backend may answer with the look it wants.
-"""
-
 import json
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -19,7 +9,6 @@ import plotly.graph_objects as go
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 7798
 ORIGIN = sys.argv[2] if len(sys.argv) > 2 else "http://localhost:3000"  # noqa: PLR2004
 
-# This backend's look for each mode of the site
 TEMPLATES = {"dark": "plotly_dark", "light": "plotly_white"}
 
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -37,6 +26,7 @@ WIDGETS = {
         "type": "plotly",
         "endpoint": "/sales",
         "gridData": {"w": 20, "h": 12},
+        "raw": True,
     },
     "plotly_trend": {
         "name": "Sales trend",
@@ -98,6 +88,8 @@ def correlation(template: str) -> go.Figure:
 
 FIGURES = {"/sales": sales, "/trend": trend, "/signal": signal, "/correlation": correlation}
 
+ROWS = {"/sales": [{"month": month, **{region: values[i] for region, values in REGIONS.items()}} for i, month in enumerate(MONTHS)]}
+
 
 class Handler(BaseHTTPRequestHandler):
     def _send(self, status: int, body: bytes = b"") -> None:
@@ -111,7 +103,6 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_OPTIONS(self):
-        # A preflight, or Workspace's route check: 204 for a route, 404 for anything else
         path = urlsplit(self.path).path
         self._send(204 if path == "/widgets.json" or path in FIGURES else 404)
 
@@ -119,6 +110,8 @@ class Handler(BaseHTTPRequestHandler):
         url = urlsplit(self.path)
         if url.path == "/widgets.json":
             self._send(200, json.dumps(WIDGETS).encode())
+        elif url.path in ROWS and parse_qs(url.query).get("raw", [""])[0] == "true":
+            self._send(200, json.dumps(ROWS[url.path]).encode())
         elif url.path in FIGURES:
             theme = parse_qs(url.query).get("theme", [""])[0]
             figure = FIGURES[url.path](TEMPLATES.get(theme, "plotly"))

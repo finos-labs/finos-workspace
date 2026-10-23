@@ -1,18 +1,3 @@
-// Builds the plugin package for a Workspace plugins directory:
-//
-//   dist/<plugin id>/<version>/plugin.json, entry.js, entry.css, assets/icon.svg
-//
-// entry.js is src/entry.js with plotly.js inlined, because a plugin frame receives one
-// module and its styles, nothing else. The bundle is plotly.js's strict one: every trace
-// type, built without function constructors, which the frame's policy refuses.
-// plugin.json gets the version from package.json and the checksum Workspace verifies: the
-// SHA-256, unpadded base64url, of the sorted lines "<path>\0<sha256 hex>\n" of every file
-// except plugin.json. The version digest printed at the end covers plugin.json too; a
-// deployer pins it.
-//
-// Node's standard library only. The bundle is read from node_modules, or from
-// PLOTLY_BUNDLE when set.
-
 import { createHash } from "node:crypto";
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -23,10 +8,13 @@ const root = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const manifest = JSON.parse(readFileSync(join(root, "src/plugin.json"), "utf8"));
 
-const bundle =
-  process.env.PLOTLY_BUNDLE ??
-  createRequire(import.meta.url).resolve("plotly.js-strict-dist-min/plotly-strict.min.js");
-const plotly = readFileSync(bundle, "utf8");
+const require = createRequire(import.meta.url);
+const bundle = process.env.PLOTLY_BUNDLE ?? require.resolve("plotly.js-strict-dist-min/plotly-strict.min.js");
+const packageDir = (name) => dirname(require.resolve(`${name}/package.json`));
+const WORKER_EXPORT = /export\{[\w$]+ as default\};/g;
+const exports = readFileSync(bundle, "utf8").match(WORKER_EXPORT) ?? [];
+if (exports.length !== 1) throw new Error(`expected MapLibre's worker export once in plotly.js, found ${exports.length}`);
+const plotly = readFileSync(bundle, "utf8").replace(WORKER_EXPORT, "");
 
 const placeholder = '"__PLOTLY_SOURCE__"';
 const entry = readFileSync(join(root, "src/entry.js"), "utf8");
@@ -35,10 +23,24 @@ if (entry.split(placeholder).length !== 2) throw new Error("src/entry.js needs o
 const out = join(root, "dist", manifest.id, pkg.version);
 rmSync(out, { recursive: true, force: true });
 mkdirSync(join(out, "assets"), { recursive: true });
-// A function, so "$&" and the like in the bundle are not read as replacement patterns
 writeFileSync(join(out, "entry.js"), entry.replace(placeholder, () => JSON.stringify(plotly)));
 copyFileSync(join(root, "src/entry.css"), join(out, "entry.css"));
 copyFileSync(join(root, "src/assets/icon.svg"), join(out, "assets/icon.svg"));
+const outlines = join(packageDir("sane-topojson"), "dist");
+for (const name of readdirSync(outlines).filter((n) => n.endsWith(".json")))
+  copyFileSync(join(outlines, name), join(out, "assets", `topojson-${name}`));
+copyFileSync(join(packageDir("mathjax"), "tex-svg.js"), join(out, "assets/mathjax-tex-svg.js"));
+
+const notices = [
+  ["plotly.js-strict-dist-min", "plotly.js"],
+  ["mathjax", "MathJax, with its font @mathjax/mathjax-newcm-font"],
+  ["sane-topojson", "the map outlines, from Natural Earth"],
+].map(([name, what]) => {
+  const meta = JSON.parse(readFileSync(join(packageDir(name), "package.json"), "utf8"));
+  const license = readFileSync(join(packageDir(name), "LICENSE"), "utf8").trim();
+  return `${name} ${meta.version} (${meta.license}): ${what}\n\n${license}\n`;
+});
+writeFileSync(join(out, "assets/THIRD-PARTY-LICENSES.txt"), notices.join(`\n${"-".repeat(78)}\n\n`));
 
 function files(directory) {
   return readdirSync(directory).flatMap((name) => {

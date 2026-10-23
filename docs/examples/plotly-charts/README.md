@@ -43,29 +43,82 @@ def sales(theme: str = "dark"):
     return Response(figure.to_json(), media_type="application/json")
 ```
 
-A response that is not a figure shows "The endpoint did not return a Plotly figure."
+A response that is not a figure shows "The endpoint did not return a Plotly figure.", and a
+figure plotly.js cannot draw shows why on the card.
+
+### The rows: `raw`
+
+A widget can give the rows its chart is made from ([WIDGETS-JSON.md 4.11](../../widget-plugins/WIDGETS-JSON.md)).
+With `"raw": true`, Workspace asks the endpoint again with the widget's params and
+`raw=true`, and reads the rows at `data.rawDataKey`, else the answer's `results`, else the
+whole answer. The AI agent and MCP clients get those rows instead of the figure, and the
+card's database button shows them: drawn by this plugin as a table, or by the plugin of
+`data.rawType` when the user may use that type.
+
+```json
+{
+  "sales": {
+    "name": "Sales by region",
+    "type": "plotly",
+    "endpoint": "/sales",
+    "raw": true
+  }
+}
+```
+
+```python
+ROWS = [{"month": "Jan", "sales": 100}, {"month": "Feb", "sales": 114}]
+
+@app.get("/sales")
+def sales(theme: str = "dark", raw: bool = False):
+    if raw:
+        return ROWS
+    figure = go.Figure(go.Bar(x=[r["month"] for r in ROWS], y=[r["sales"] for r in ROWS]))
+    figure.update_layout(template=TEMPLATES.get(theme, "plotly"))
+    return Response(figure.to_json(), media_type="application/json")
+```
+
+An endpoint that answers both in one shape, `{"results": {"chart": <figure>, "records":
+[...]}}`, sets `"data": {"dataKey": "results.chart", "rawDataKey": "results.records"}`.
 
 ## What it gives the Workspace
 
 - **Exports.** The export dialog lists what the figure holds:
-  - *Data (CSV)*, when a trace has x/y or label/value pairs (a trace with `z` is a grid,
-    and has none). Traces that share their x values give one row per x and a column per
-    trace; traces that do not give one row per point: trace, x, y. Columns are named by
-    the axis titles.
+  - *Data (CSV)*, when a trace has x/y, label/value or open/high/low/close values (a
+    trace with `z` is a grid, and has none). Traces that share their x values give one
+    row per x and a column per trace (per trace and field for open/high/low/close);
+    traces that do not give one row per point: trace, x, y. Columns are named by the axis
+    titles.
   - *Figure (Plotly JSON)*, the figure as the endpoint returned it.
   - *Chart (SVG)*, once the chart is drawn: as drawn, at the card's size.
-- **Agent context.** The title and, per trace, its name, type, number of points, and
-  minimum and maximum (of z for a grid). The values themselves stay out.
+  - With the rows shown: *Rows (CSV)*, *Rows (JSON)* and *Table (SVG)*.
+- **Agent context.** With `raw`, the AI agent gets the rows. Without it, the figure, and
+  the title and, per trace, its name, type, number of points, and minimum and maximum
+  (of z for a grid, of low and high for open/high/low/close).
+- **Maps.** Geo traces (`scattergeo`, `choropleth`) are drawn with the outlines of
+  [sane-topojson](https://github.com/plotly/sane-topojson), which plotly.js would fetch
+  and which come with the package instead: the world, the USA, Europe, Asia, Africa,
+  North and South America, at 1:110m and 1:50m. A figure's outlines are read the first
+  time it needs them. Tile maps (`scattermap`, `densitymap`, `choroplethmap`) are drawn
+  with the figure's own base map when the frame can reach it: the hosts its style names
+  (by default `basemaps.cartocdn.com`), which a superuser allows in the plugin's CSP
+  override ([SECURITY.md](../../widget-plugins/SECURITY.md)); the plugin's Blocked
+  requests list names them. Otherwise they are drawn over a base map made from the same
+  outlines, at 1:50m: water, land, lakes, country borders and coastlines, in the site's
+  light or dark mode. Labels on it are drawn with the browser's own fonts, so nothing is
+  fetched; `"white-bg"` is drawn the same way.
+- **LaTeX.** Text plotly.js reads as LaTeX, `$...$`, is typeset with MathJax 4, read
+  from the package the first time a figure has some.
 
 It asks for `core:data:read`, `core:export:provide` and `core:copilot:context`. It
 declares no network access, proxies or backend: everything it draws comes from the
-widget's own endpoint through Workspace.
+widget's own endpoint through Workspace, and the outlines and MathJax from its package.
 
 ## Build
 
-Node 20 or later. The only dependency is `plotly.js-strict-dist-min`, plotly.js's
-strict bundle: every trace type, built without function constructors, which a plugin
-frame's policy refuses.
+Node 20 or later. The dependencies are `plotly.js-strict-dist-min`, plotly.js's strict
+bundle: every trace type, built without function constructors, which a plugin frame's
+policy refuses; `sane-topojson`, the map outlines; and `mathjax`, for LaTeX.
 
 ```bash
 npm install
@@ -79,8 +132,17 @@ The build writes `dist/plotly-charts/<version>/`, with the version from `package
 
 - `entry.js`: `src/entry.js` with the bundle inlined. A plugin frame loads one module and
   its styles, nothing else. plotly.js is loaded as a classic script from a Blob URL,
-  because its bundle expects a sloppy-mode script.
+  because its bundle expects a sloppy-mode script. The bundle's MapLibre worker, which
+  draws tile maps, ends with an `export` that makes it a module; Chromium does not start
+  a module worker from a Blob URL in the frame's opaque origin, so the build takes that
+  one `export` out and the worker starts as a classic script. The build stops if the
+  bundle does not have it exactly once.
 - `entry.css`, `assets/icon.svg`.
+- `assets/topojson-<scope>_<resolution>m.json`, the outlines, and
+  `assets/mathjax-tex-svg.js`, MathJax with its font: files the module reads from the
+  host (`core:asset:read`) when a figure needs them.
+- `assets/THIRD-PARTY-LICENSES.txt`: the license of plotly.js, MathJax and
+  sane-topojson, which the package redistributes.
 - `plugin.json`: `src/plugin.json` with the version and the checksum.
 
 It prints the checksum and the version digest. `PLOTLY_BUNDLE=<path>` builds from another
@@ -90,8 +152,9 @@ copy of `plotly-strict.min.js`.
 npm test
 ```
 
-The tests run the exports and the agent context in Node, typed arrays included. Drawing
-needs a browser; check it on a dashboard, below.
+The tests run the exports, the agent context, the rows, and which outlines and whether
+MathJax a figure needs, in Node, typed arrays included. Drawing needs a browser; check it
+on a dashboard, below.
 
 ## Deploy
 
@@ -104,7 +167,8 @@ On a Workspace deployment (`local/LOCAL_SETUP.md`, "Widget plugins", for your ow
 3. Where versions must be pinned, add the printed digest to `WIDGET_PLUGINS_PINS` as
    `"plotly-charts@<version>": "<digest>"`.
 4. Admin, Widgets, Deployment: Rescan, review what the version asks for, approve it,
-   and enable it for the organization. Then choose who may use it.
+   and enable it for the organization. Then, under Roles, grant it to the roles that may
+   use it: a role is the only way to a plugin.
 
 Every change is a new version: raise `version` in `package.json` and build again.
 Workspace blocks an approved version whose files change.
@@ -131,13 +195,13 @@ npm run demo-backend
 It listens on `http://localhost:7798` and allows the Workspace web app at
 `http://localhost:3000`; `examples/.venv/bin/python examples/backend.py <port> <web app
 origin>` changes either. Connect it as a backend under Connections, then add *Sales by
-region*, *Sales trend*, *Signal and noise* and *Correlation* to a dashboard.
+region*, *Sales trend*, *Signal and noise* and *Correlation* to a dashboard. *Sales by
+region* has `raw`: its database button shows its rows, and the AI agent reads them.
 
 ## Notes
 
 - A dashboard places its cards after their frames start, so the widget can render before
   it has a size. Plotly measures text when it draws and keeps the measurements, so the
   widget draws once it has a size and redraws when it gets one.
-- Map traces (`scattermap`, `choroplethmap`, `densitymap`) need map tiles from the
-  network. The plugin declares no network access, so its frame cannot fetch them.
-- `entry.js` is about 5 MB. The browser caches it per version.
+- `entry.js` is about 5 MB. The browser caches it per version. The outlines (3.7 MB) and
+  MathJax (1.8 MB) are read only by a figure that needs them.

@@ -150,8 +150,8 @@ postgres:18.6`). Without it they are skipped.
    hosts if it is one. Set the `postgres_url` secret, for a role that may only read (or
    mount it as `WIDGET_PLUGIN_SECRETS_DIR/sql-explorer/postgres_url`). Check the backend:
    it should run the approved version.
-6. Enable the plugin for the organization and choose who may use it. The widget is in Add
-   widget, under Data.
+6. Enable the plugin for the organization and grant it to the roles that may use it. The
+   widget is in Add widget, under Data.
 
 A deployment without Postgres leaves the secret unset: the Files source works, and
 Postgres says it is not set up. Without files, the Files source has no tables.
