@@ -12,7 +12,7 @@ name: finos-node
 # zones) or a change to the stage. finos-node-check.yml says every week whether one is due.
 #
 # The attestations, and the storage records that tie them to the image (artifact metadata), are
-# written by the finos-node-bot GitHub App (variable NODE_APP_ID, secret NODE_APP_PRIVATE_KEY);
+# written by the finos-node-bot GitHub App (secrets NODE_APP_ID and NODE_APP_PRIVATE_KEY);
 # this workflow's own token pushes the image, signs (OIDC) and publishes the release.
 on:
   push:
@@ -57,7 +57,7 @@ jobs:
       - name: Check that the App gives a token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ vars.NODE_APP_ID }}
+          app-id: ${{ secrets.NODE_APP_ID }}
           private-key: ${{ secrets.NODE_APP_PRIVATE_KEY }}
           permission-attestations: write
           permission-artifact-metadata: write
@@ -118,7 +118,7 @@ jobs:
         id: token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ vars.NODE_APP_ID }}
+          app-id: ${{ secrets.NODE_APP_ID }}
           private-key: ${{ secrets.NODE_APP_PRIVATE_KEY }}
           permission-attestations: write
           permission-artifact-metadata: write
