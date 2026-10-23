@@ -11,15 +11,15 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { buildDb, tableNotFoundMessage } from "./db";
-import { availableTablesHint } from "./error-hints";
-import { rejectUnsafeSql, rejectUnsafeTableName } from "./safety";
-import { messageArtifact } from "../../../protocol/events";
-import { htmlTableArtifact } from "../../../protocol/html-table";
-import type { SSEEvent } from "../../../protocol/types";
-import { getLogger } from "../../../lib/logger";
-import { displaySummarySchema } from "../progress";
-import { runSqlIsolated } from "./isolated";
+import { buildDb, tableNotFoundMessage } from "./db.ts";
+import { availableTablesHint } from "./error-hints.ts";
+import { rejectUnsafeSql, rejectUnsafeTableName } from "./safety.ts";
+import { messageArtifact } from "../../../protocol/events.ts";
+import { htmlTableArtifact } from "../../../protocol/html-table.ts";
+import type { SSEEvent } from "../../../protocol/types.ts";
+import { getLogger } from "../../../lib/logger.ts";
+import { displaySummarySchema } from "../progress.ts";
+import { runSqlIsolated } from "./isolated.ts";
 
 const logger = getLogger(["app", "tools", "sql", "create_artifact"]);
 
@@ -136,7 +136,7 @@ export function runCreateArtifact(
         // classifies create_artifact failures by it.
         return `Error: ${tableNotFoundMessage(fromTableId, loaded)}`;
       }
-      rows = db.query(`SELECT * FROM "${fromTableId}"`).all() as Record<
+      rows = db.prepare(`SELECT * FROM "${fromTableId}"`).all() as Record<
         string,
         unknown
       >[];
@@ -148,7 +148,7 @@ export function runCreateArtifact(
     if (denyMsg) return denyMsg;
     const { db, loaded } = buildDb(ctx.pendingTables);
     try {
-      rows = db.query(sql).all() as Record<string, unknown>[];
+      rows = db.prepare(sql).all() as Record<string, unknown>[];
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       db.close();

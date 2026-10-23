@@ -1,10 +1,10 @@
 import type { ModelMessage } from "ai";
-import type { CopilotArtifact, SSEEvent, ToolMessage } from "../protocol/types";
-import { messageArtifact } from "../protocol/events";
-import { analyzeTable, type TableInfo } from "../sql/loader";
-import { rememberRows } from "../agent/row-cache";
-import { getLogger } from "../lib/logger";
-import { clipForModel, MAX_TOOL_RESULT_CHARS } from "../agent/clip";
+import type { CopilotArtifact, SSEEvent, ToolMessage } from "../protocol/types.ts";
+import { messageArtifact } from "../protocol/events.ts";
+import { analyzeTable, type TableInfo } from "../sql/loader.ts";
+import { rememberRows } from "../agent/row-cache.ts";
+import { getLogger } from "../lib/logger.ts";
+import { clipForModel, MAX_TOOL_RESULT_CHARS } from "../agent/clip.ts";
 
 const logger = getLogger(["app", "mcp", "results"]);
 

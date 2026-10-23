@@ -18,7 +18,7 @@
  *  - Anything else → text block
  */
 
-import { getLogger } from "../lib/logger";
+import { getLogger } from "../lib/logger.ts";
 
 const logger = getLogger(["app", "agent", "context"]);
 

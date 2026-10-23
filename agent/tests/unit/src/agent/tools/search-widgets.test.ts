@@ -1,7 +1,8 @@
-import { describe, it, expect } from "bun:test";
-import { makeSearchWidgetsTool, searchWidgetsSchema } from "../../../../../src/agent/tools/search-widgets";
-import type { TieredWidget, WidgetTier } from "../../../../../src/widgets/tiers";
-import type { Widget } from "../../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { makeSearchWidgetsTool, searchWidgetsSchema } from "../../../../../src/agent/tools/search-widgets.ts";
+import type { TieredWidget, WidgetTier } from "../../../../../src/widgets/tiers.ts";
+import type { Widget } from "../../../../../src/protocol/types.ts";
 
 function w(overrides: Partial<Widget> = {}): Widget {
   return {

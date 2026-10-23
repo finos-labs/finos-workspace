@@ -8,10 +8,10 @@
  * write a cheaper query.
  */
 
-import type { SSEEvent } from "../../../protocol/types";
-import { IsolationError, runInChild } from "../../../lib/isolate";
-import { getLogger } from "../../../lib/logger";
-import type { SqlChildInput, SqlChildOutput, SqlOp } from "./child";
+import type { SSEEvent } from "../../../protocol/types.ts";
+import { IsolationError, runInChild } from "../../../lib/isolate.ts";
+import { getLogger } from "../../../lib/logger.ts";
+import type { SqlChildInput, SqlChildOutput, SqlOp } from "./child.ts";
 
 const logger = getLogger(["app", "tools", "sql", "isolated"]);
 

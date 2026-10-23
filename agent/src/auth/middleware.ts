@@ -8,12 +8,12 @@
 
 import { createHash } from "node:crypto";
 import type { MiddlewareHandler } from "hono";
-import { getLogger, withContext } from "../lib/logger";
-import { metrics } from "../lib/metrics";
-import type { ServerConfig } from "../lib/config";
-import type { Limits } from "./limits";
-import type { Store } from "../lib/store";
-import type { WorkspaceClient } from "./workspace-client";
+import { getLogger, withContext } from "../lib/logger.ts";
+import { metrics } from "../lib/metrics.ts";
+import type { ServerConfig } from "../lib/config.ts";
+import type { Limits } from "./limits.ts";
+import type { Store } from "../lib/store.ts";
+import type { WorkspaceClient } from "./workspace-client.ts";
 
 const audit = getLogger(["audit"]);
 

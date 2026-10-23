@@ -14,7 +14,7 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { messageArtifact } from "../../protocol/events";
+import { messageArtifact } from "../../protocol/events.ts";
 import type {
   AppArtifact,
   AppArtifactWidgetRef,
@@ -23,9 +23,9 @@ import type {
   AppsJsonTab,
   SSEEvent,
   Widget,
-} from "../../protocol/types";
-import { getLogger } from "../../lib/logger";
-import { displaySummarySchema } from "./progress";
+} from "../../protocol/types.ts";
+import { getLogger } from "../../lib/logger.ts";
+import { displaySummarySchema } from "./progress.ts";
 
 const logger = getLogger(["app", "tools", "create_app"]);
 

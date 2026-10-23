@@ -15,7 +15,7 @@ import type {
   ToolMessage,
   Widget,
   WorkspaceState,
-} from "../protocol/types";
+} from "../protocol/types.ts";
 import {
   citationCollection,
   executeAgentTool,
@@ -28,56 +28,56 @@ import {
   streamingMessageChunk,
   stripPlaceholderTags,
   workspaceCommand,
-} from "../protocol/events";
-import { makeTextSink, mergeMessageChunks } from "./text-sink";
-import { buildAllCitations, pagesNamedIn, type CitedWidget } from "../protocol/citations";
+} from "../protocol/events.ts";
+import { makeTextSink, mergeMessageChunks } from "./text-sink.ts";
+import { buildAllCitations, pagesNamedIn, type CitedWidget } from "../protocol/citations.ts";
 import {
   activeToolNames,
   buildToolCatalog,
   groupsOfCalledTools,
   makeLoadToolsTool,
   type ToolCatalog,
-} from "./tool-groups";
-import { buildSystemPrompt } from "./prompt";
-import { applyParamOverrides, type TieredWidget } from "../widgets/tiers";
-import { extractWidgetItems, type WidgetItem } from "../widgets/parse";
-import { analyzeTable, sanitizeName, type TableInfo } from "../sql/loader";
-import { linkedToolName, makeMcpTools, type McpToolsResult } from "../mcp/factory";
-import { type McpCitation } from "../mcp/results";
-import { readExtraState } from "../protocol/extra-state";
-import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server";
-import { buildMessages } from "./messages";
-import { injectFromReboot, injectSkill, injectWidgetData, type RoundTripContext } from "./round-trip";
-import { getCachedRows, getKeptWidgetData, keepWidgetData } from "./row-cache";
+} from "./tool-groups.ts";
+import { buildSystemPrompt } from "./prompt.ts";
+import { applyParamOverrides, type TieredWidget } from "../widgets/tiers.ts";
+import { extractWidgetItems, type WidgetItem } from "../widgets/parse.ts";
+import { analyzeTable, sanitizeName, type TableInfo } from "../sql/loader.ts";
+import { linkedToolName, makeMcpTools, type McpToolsResult } from "../mcp/factory.ts";
+import { type McpCitation } from "../mcp/results.ts";
+import { readExtraState } from "../protocol/extra-state.ts";
+import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server.ts";
+import { buildMessages } from "./messages.ts";
+import { injectFromReboot, injectSkill, injectWidgetData, type RoundTripContext } from "./round-trip.ts";
+import { getCachedRows, getKeptWidgetData, keepWidgetData } from "./row-cache.ts";
 import {
   formatToolInputRejectedStatus,
   formatToolResultStatus,
   formatToolStartStatus,
   formatWidgetDataLoadedStatuses,
   formatWidgetDataRequestStatuses,
-} from "./tool-status";
-import { loadUploadedDocuments, buildDocumentsDecoration, type PendingDocument } from "./documents";
-import { prefetchUrls, urlCitationId } from "./url-prefetch";
-import { splitContext } from "./context";
-import { earlierEntries } from "./history";
-import { makeRecallConversationTool } from "./tools/recall-conversation";
-import { makeSearchWidgetsTool } from "./tools/search-widgets";
+} from "./tool-status.ts";
+import { loadUploadedDocuments, buildDocumentsDecoration, type PendingDocument } from "./documents.ts";
+import { prefetchUrls, urlCitationId } from "./url-prefetch.ts";
+import { splitContext } from "./context.ts";
+import { earlierEntries } from "./history.ts";
+import { makeRecallConversationTool } from "./tools/recall-conversation.ts";
+import { makeSearchWidgetsTool } from "./tools/search-widgets.ts";
 import {
   makeWidgetDataTool,
   widgetDataSchema,
   type WidgetRequest,
-} from "./tools/widget-data";
-import { makeGetSkillContentTool, getSkillContentSchema } from "./tools/skills";
-import { inesSkillContent, isInesSkill } from "../skills";
-import { makeWorkspaceTools } from "./tools/workspace";
+} from "./tools/widget-data.ts";
+import { makeGetSkillContentTool, getSkillContentSchema } from "./tools/skills.ts";
+import { inesSkillContent, isInesSkill } from "../skills/index.ts";
+import { makeWorkspaceTools } from "./tools/workspace.ts";
 import {
   normalizeBridgeArgs,
   SSE_BRIDGE_COMMANDS,
-} from "../protocol/bridge-emit";
-import { makeSqlTools } from "./tools/sql";
-import { makeNativeTools } from "./tools/native";
-import { makeSuggestionsTool } from "./tools/suggestions";
-import { makeCreateAppTool } from "./tools/app-artifact";
+} from "../protocol/bridge-emit.ts";
+import { makeSqlTools } from "./tools/sql/index.ts";
+import { makeNativeTools } from "./tools/native.ts";
+import { makeSuggestionsTool } from "./tools/suggestions.ts";
+import { makeCreateAppTool } from "./tools/app-artifact.ts";
 import {
   flattenUsage,
   accumulateUsage,
@@ -86,14 +86,14 @@ import {
   ZERO_TURN_USAGE,
   ZERO_USAGE_COUNTS,
   type UsageCounts,
-} from "../lib/token-usage";
-import { signScope, signUrl } from "../lib/scope";
-import { addressesGiven, isFetchTool, isGivenAddress } from "./known-urls";
-import { metrics } from "../lib/metrics";
-import { redactString } from "../lib/redact";
-import { liveDebugLevel } from "../lib/debug-traces";
-import { getLogger } from "../lib/logger";
-import { providerOptionsFor } from "../lib/providers";
+} from "../lib/token-usage.ts";
+import { signScope, signUrl } from "../lib/scope.ts";
+import { addressesGiven, isFetchTool, isGivenAddress } from "./known-urls.ts";
+import { metrics } from "../lib/metrics.ts";
+import { redactString } from "../lib/redact.ts";
+import { liveDebugLevel } from "../lib/debug-traces.ts";
+import { getLogger } from "../lib/logger.ts";
+import { providerOptionsFor } from "../lib/providers.ts";
 import {
   getTracer,
   parseTraceparent,
@@ -101,7 +101,7 @@ import {
   formatTraceparent,
   traceIdForLogs,
   aiTelemetry,
-} from "../lib/telemetry";
+} from "../lib/telemetry.ts";
 import { context as otelContext, trace as otelTrace, SpanStatusCode, type Span } from "@opentelemetry/api";
 import { ATTR_SESSION_ID } from "@opentelemetry/semantic-conventions/incubating";
 

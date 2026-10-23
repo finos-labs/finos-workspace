@@ -3,8 +3,8 @@
  * they take and how often they fail.
  */
 
-import { metrics } from "../../../src/lib/metrics";
-import { getLogger } from "./logger";
+import { metrics } from "../../../src/lib/metrics.ts";
+import { getLogger } from "./logger.ts";
 
 const logger = getLogger(["mcp", "tools"]);
 

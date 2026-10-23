@@ -1,4 +1,5 @@
-import { describe, expect, it } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   formatToolInputRejectedStatus,
   formatToolResultStatus,
@@ -7,9 +8,9 @@ import {
   formatWidgetDataLoadedStatus,
   formatWidgetDataRequestStatus,
   formatWidgetDataRequestStatuses,
-} from "../../../../src/agent/tool-status";
-import type { TableInfo } from "../../../../src/sql/loader";
-import { asCells, tableRows } from "../../../helpers/html-table";
+} from "../../../../src/agent/tool-status.ts";
+import type { TableInfo } from "../../../../src/sql/loader.ts";
+import { asCells, tableRows } from "../../../helpers/html-table.ts";
 
 describe("tool status formatting", () => {
   it("uses direct progress summaries and keeps code details renderable", () => {

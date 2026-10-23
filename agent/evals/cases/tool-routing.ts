@@ -6,13 +6,13 @@
  * (simulated via prior tool message).
  */
 
-import type { EvalCase } from "../runner";
-import type { ToolMessage } from "../../src/protocol/types";
+import type { EvalCase } from "../runner.ts";
+import type { ToolMessage } from "../../src/protocol/types.ts";
 import {
   argContains,
   noBadState,
   toolCalled,
-} from "../graders";
+} from "../graders/index.ts";
 
 // Prior tool message uses `$ines_kind: sqlite_table` so the rows land
 // in `pendingTables` instead of inline message JSON. The model sees a

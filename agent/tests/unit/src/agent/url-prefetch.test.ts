@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { prefetchUrls, urlCitationId } from "../../../../src/agent/url-prefetch";
-import { logicalUrl } from "../../../helpers/logical-url";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import { expect } from "expect";
+import { prefetchUrls, urlCitationId } from "../../../../src/agent/url-prefetch.ts";
+import { logicalUrl } from "../../../helpers/logical-url.ts";
 
 const originalFetch = globalThis.fetch;
 
@@ -17,7 +18,8 @@ function mockFetch(handler: (url: string) => { status?: number; body?: string })
     const url = logicalUrl(input, init);
     const { status = 200, body = "<html><head><title>OK</title></head><body><p>hi</p></body></html>" } =
       handler(url);
-    return new Response(body, { status, statusText: status === 200 ? "OK" : "ERR" });
+    // Labelled as a server labels a page: a Response of a string is text/plain.
+    return new Response(body, { status, statusText: status === 200 ? "OK" : "ERR", headers: { "content-type": "text/html; charset=utf-8" } });
   }) as unknown as typeof fetch;
 }
 
@@ -103,7 +105,7 @@ describe("prefetchUrls — a page the user's link leads to that is built to caus
     expect(await prefetchUrls(["https://x.com/big"])).toEqual([]);
   });
 
-  it("does not stop the agent while it is read: the reading is in a process of its own", async () => {
+  it("does not stop the agent while it is read: the reading is in a process of its own", { timeout: 40_000 }, async () => {
     // A hundred thousand levels deep to read, and a run of unclosed titles, in one page.
     const deep = `<html><head>${"<title".repeat(200_000)}</head><body>${"<div>".repeat(100_000)}text${"</div>".repeat(100_000)}</body></html>`;
     mockFetch(() => ({ body: deep }));
@@ -118,7 +120,7 @@ describe("prefetchUrls — a page the user's link leads to that is built to caus
     mockFetch(() => ({ body: "<html><head><title>Ok</title></head><body><p>fine</p></body></html>" }));
     const next = await prefetchUrls(["https://x.com/ok"]);
     expect(next[0].overview).toContain("fine");
-  }, 40_000);
+  });
 });
 
 describe("urlCitationId", () => {

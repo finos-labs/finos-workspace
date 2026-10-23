@@ -7,16 +7,17 @@
  * and must NOT emit a `copilotFunctionCall`.
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { QueryRequest, SSEEvent, ToolMessage, Widget } from "../../../src/protocol/types";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { QueryRequest, SSEEvent, ToolMessage, Widget } from "../../../src/protocol/types.ts";
 import {
   llmCallsTool,
   llmEmitsText,
   makeSequencedMockLlm,
-} from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+} from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => clearAllModuleState());
 

@@ -1,10 +1,10 @@
 import { Hono } from "hono";
-import type { AppEnv } from "../../auth/middleware";
-import { chatTitleRouter } from "./chat-title";
-import { enhancePromptRouter } from "./enhance-prompt";
-import { dashboardTitleRouter } from "./dashboard-title";
-import { widgetInfoRouter } from "./widget-info";
-import { codeRouter } from "./code";
+import type { AppEnv } from "../../auth/middleware.ts";
+import { chatTitleRouter } from "./chat-title.ts";
+import { enhancePromptRouter } from "./enhance-prompt.ts";
+import { dashboardTitleRouter } from "./dashboard-title.ts";
+import { widgetInfoRouter } from "./widget-info.ts";
+import { codeRouter } from "./code.ts";
 
 export const generateRouter = new Hono<AppEnv>();
 

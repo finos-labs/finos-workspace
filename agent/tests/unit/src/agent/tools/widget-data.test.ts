@@ -1,8 +1,9 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   makeWidgetDataTool,
   widgetDataSchema,
-} from "../../../../../src/agent/tools/widget-data";
+} from "../../../../../src/agent/tools/widget-data.ts";
 
 describe("widgetDataSchema", () => {
   it("validates widgets array with widget_uuid and optional input_args", () => {

@@ -1,14 +1,14 @@
 import { Hono, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
-import { honoLogger, withContext } from "./lib/logger";
-import { metrics } from "./lib/metrics";
-import { ANONYMOUS, authMiddleware, createAuthCache, servicesMiddleware, type AppEnv, type Services } from "./auth/middleware";
-import { agentsRouter } from "./routes/agents";
-import { createStatusRouter } from "./routes/status";
-import { queryRouter } from "./routes/query";
-import { generateRouter } from "./routes/generate";
-import { MAX_AUDIO_BYTES, transcribeRouter } from "./routes/transcribe";
+import { honoLogger, withContext } from "./lib/logger.ts";
+import { metrics } from "./lib/metrics.ts";
+import { ANONYMOUS, authMiddleware, createAuthCache, servicesMiddleware, type AppEnv, type Services } from "./auth/middleware.ts";
+import { agentsRouter } from "./routes/agents.ts";
+import { createStatusRouter } from "./routes/status.ts";
+import { queryRouter } from "./routes/query.ts";
+import { generateRouter } from "./routes/generate/index.ts";
+import { MAX_AUDIO_BYTES, transcribeRouter } from "./routes/transcribe.ts";
 
 /** The helpers (a title, a rewritten prompt) take a few lines of text: what they are sent is far less than a question is. */
 const HELPER_BODY_BYTES = 8 * 1024 * 1024;

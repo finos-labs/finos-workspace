@@ -1,4 +1,5 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   flattenUsage,
   accumulateUsage,
@@ -9,7 +10,7 @@ import {
   readTurnUsage,
   ZERO_TURN_USAGE,
   ZERO_USAGE_COUNTS,
-} from "../../../../src/lib/token-usage";
+} from "../../../../src/lib/token-usage.ts";
 import type { LanguageModelUsage } from "ai";
 
 describe("flattenUsage", () => {
@@ -184,7 +185,7 @@ describe("readTurnUsage", () => {
 
   // extra_state round-trips through the browser — every one of these is
   // reachable from the wire, and a throw here would kill the whole turn.
-  it.each([
+  for (const [label, input] of [
     ["null", null],
     ["a string", "12"],
     ["an array", [1, 2, 3]],
@@ -195,9 +196,11 @@ describe("readTurnUsage", () => {
     ["Infinity", { inputTokens: Infinity, outputTokens: 0, totalTokens: 0, postCount: 1 }],
     ["a missing field", { inputTokens: 1, outputTokens: 2 }],
     ["string-typed numbers", { inputTokens: "1", outputTokens: "2", totalTokens: "3", postCount: "1" }],
-  ])("falls back to zeros for %s", (_label, input) => {
-    expect(readTurnUsage(input)).toEqual(ZERO_TURN_USAGE);
-  });
+  ]) {
+    it(`falls back to zeros for ${label}`, () => {
+      expect(readTurnUsage(input)).toEqual(ZERO_TURN_USAGE);
+    });
+  }
 
   it("never returns the same object twice (callers mutate their copy)", () => {
     expect(readTurnUsage(undefined)).not.toBe(readTurnUsage(undefined));

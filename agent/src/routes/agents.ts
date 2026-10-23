@@ -1,8 +1,8 @@
 import { Hono } from "hono";
-import { configuredModels } from "../lib/config";
-import { getLogger } from "../lib/logger";
-import { transcribeModel } from "../lib/transcribe";
-import { inesSkills } from "../skills";
+import { configuredModels } from "../lib/config.ts";
+import { getLogger } from "../lib/logger.ts";
+import { transcribeModel } from "../lib/transcribe.ts";
+import { inesSkills } from "../skills/index.ts";
 
 const logger = getLogger(["app", "routes", "agents"]);
 

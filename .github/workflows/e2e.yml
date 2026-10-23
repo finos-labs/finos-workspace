@@ -19,10 +19,16 @@ permissions:
   contents: read
 
 jobs:
+  # Node for the agent's images, built once and kept in the Actions cache (agent-node.yml).
+  node:
+    uses: ./.github/workflows/agent-node.yml
+
   playwright:
     name: Playwright against the compose stack
+    needs: node
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # A run that finds the backend's stages missing from the Actions cache compiles its dependencies.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -74,9 +80,28 @@ jobs:
 
       # docker-compose.e2e.yml adds the TLS front and the stubbed model and points Ines at it, so the
       # tests can ask the Copilot a question without a provider key (a pull request from a fork gets
-      # no secrets).
-      - name: Build and start the stack
-        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" up -d --build
+      # no secrets). The backend's images compile their dependencies from source: they are built with
+      # their stages kept in the Actions cache (the scopes the image workflows use). The agent's images
+      # take Node from the node job. Then the stack is started.
+      - uses: actions/cache/restore@v6
+        with:
+          path: agent-node
+          key: ${{ needs.node.outputs.key }}
+          fail-on-cache-miss: true
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
+      - name: Build the stack's images
+        run: >-
+          docker buildx bake -f docker-compose.yml -f docker-compose.e2e.yml --load
+          --set init.cache-from=type=gha,scope=fastapi.Dockerfile
+          --set init.cache-to=type=gha,mode=max,scope=fastapi.Dockerfile
+          --set worker.cache-from=type=gha,scope=rqworker.Dockerfile
+          --set worker.cache-to=type=gha,mode=max,scope=rqworker.Dockerfile
+          --set "ines.contexts.node=$GITHUB_WORKSPACE/agent-node"
+          --set "ines-mcp.contexts.node=$GITHUB_WORKSPACE/agent-node"
+
+      - name: Start the stack
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" up -d
 
       # Ines is in this stack and no test here asks her a question, so without this a run where she
       # never started would still be green. /status is hers; the MCP server publishes no port, so the
@@ -100,19 +125,21 @@ jobs:
           printf '%s\n' "$PASSWORD" | docker compose run --rm -T init python -m scripts.init_users --new-password "$E2E_USER_EMAIL"
           echo "E2E_USER_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
 
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
 
       - name: Install dependencies
         working-directory: frontend
         run: |
-          bun install --frozen-lockfile
-          bunx playwright install --with-deps chromium firefox webkit
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium firefox webkit
 
       # Every spec in Chromium; the widget plugin specs in Firefox and WebKit as well, since a
       # plugin's frame, policy and workers are where the engines differ (playwright.config.ts)
       - name: Playwright tests
         working-directory: frontend
-        run: bunx playwright test --project=chromium --project=firefox --project=webkit
+        run: npx playwright test --project=chromium --project=firefox --project=webkit
 
       - name: Upload the report
         if: always()

@@ -32,7 +32,7 @@
  *   INES_METRICS_PORT            Port of the /metrics listener (default 9464, 0 turns it off).
  */
 
-import { transcribeModelProblem } from "./transcribe";
+import { transcribeModelProblem } from "./transcribe.ts";
 
 export type AuthConfig =
   | { mode: "none" }

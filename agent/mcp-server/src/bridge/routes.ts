@@ -9,34 +9,24 @@
  * `/bridge/ws` upgrade frames — paths are independent in Hono's router.
  */
 
+import { upgradeWebSocket } from "@hono/node-server";
 import type { Hono } from "hono";
-import { createBunWebSocket } from "hono/bun";
-import type { ServerWebSocket } from "bun";
 
-import { getLogger } from "../lib/logger";
+import { getLogger } from "../lib/logger.ts";
 import {
   BrowserSessionStartRequestSchema,
   type BrowserSessionStartResponse,
-} from "./types";
+} from "./types.ts";
 import {
   BrowserUnavailableError,
   type BridgeSessionManager,
   type BridgeSocket,
-} from "./state";
+} from "./state.ts";
 
 const logger = getLogger(["mcp", "bridge", "routes"]);
 
-export interface MountBridgeResult {
-  /** Bun.serve websocket handler — must be included in the default export. */
-  websocket: ReturnType<typeof createBunWebSocket<ServerWebSocket>>["websocket"];
-}
-
-export function mountBridgeRoutes(
-  app: Hono,
-  manager: BridgeSessionManager,
-): MountBridgeResult {
-  const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
-
+/** The WebSocket upgrades are served by the server's WebSocketServer (mcp-server/src/server.ts). */
+export function mountBridgeRoutes(app: Hono, manager: BridgeSessionManager): void {
   app.post("/bridge/session/start", async (c) => {
     let body: unknown = {};
     try {
@@ -137,6 +127,4 @@ export function mountBridgeRoutes(
   );
 
   app.get("/bridge/health", (c) => c.json(manager.health()));
-
-  return { websocket };
 }

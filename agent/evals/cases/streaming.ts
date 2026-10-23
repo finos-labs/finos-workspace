@@ -14,9 +14,9 @@
  *    tool call, understating the rate.
  */
 
-import type { EvalCase } from "../runner";
-import { techWorkspace } from "../fixtures/workspaces";
-import { noPreambleLeak, noBadState, toolCalled } from "../graders";
+import type { EvalCase } from "../runner.ts";
+import { techWorkspace } from "../fixtures/workspaces.ts";
+import { noPreambleLeak, noBadState, toolCalled } from "../graders/index.ts";
 
 export const streamingCases: EvalCase[] = [
   {

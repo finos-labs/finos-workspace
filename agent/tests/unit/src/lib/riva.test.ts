@@ -1,6 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { after as afterAll, before as beforeAll, describe, it } from "node:test";
+import { expect } from "expect";
 import * as grpc from "@grpc/grpc-js";
-import { decodeTranscript, encodeRecognizeRequest, nvidiaFunctionId, recognize } from "../../../../src/lib/riva";
+import { decodeTranscript, encodeRecognizeRequest, nvidiaFunctionId, recognize } from "../../../../src/lib/riva.ts";
 
 // A minimal protobuf writer and reader for the test's own side of the wire.
 const varint = (n: number): number[] => {

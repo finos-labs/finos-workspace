@@ -6,17 +6,17 @@
  */
 
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
-import { invalidRequestItem, hasLayoutUiArgs } from "../../bridge/validators";
-import { parseJsonObject, JsonArgumentError } from "../../bridge/json-args";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
+import { invalidRequestItem, hasLayoutUiArgs } from "../../bridge/validators.ts";
+import { parseJsonObject, JsonArgumentError } from "../../bridge/json-args.ts";
 import {
   describeTool,
   WIDGET_INSTANCE_GUIDANCE,
   LAYOUT_GUIDANCE,
   DASHBOARD_TARGETING_GUIDANCE,
-} from "../../bridge/instructions";
+} from "../../bridge/instructions.ts";
 
 export const updateWidgetSchema = {
   widget_uuid: z.string().optional().describe(

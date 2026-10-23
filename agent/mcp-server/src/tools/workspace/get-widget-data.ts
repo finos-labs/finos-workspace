@@ -7,12 +7,12 @@
  */
 
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
-import { parseJsonObject, JsonArgumentError } from "../../bridge/json-args";
-import { dataSourcePayloads } from "../../bridge/translate";
-import { describeTool, DATA_SOURCE_SHAPE } from "../../bridge/instructions";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
+import { parseJsonObject, JsonArgumentError } from "../../bridge/json-args.ts";
+import { dataSourcePayloads } from "../../bridge/translate.ts";
+import { describeTool, DATA_SOURCE_SHAPE } from "../../bridge/instructions.ts";
 
 export const getWidgetDataSchema = {
   origin: z.string().describe(

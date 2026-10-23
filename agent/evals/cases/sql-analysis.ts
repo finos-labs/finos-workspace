@@ -13,9 +13,9 @@
  * content. Mirrors how production data lands.
  */
 
-import type { EvalCase } from "../runner";
-import type { ToolMessage } from "../../src/protocol/types";
-import { toolCalled, argContains, noBadState } from "../graders";
+import type { EvalCase } from "../runner.ts";
+import type { ToolMessage } from "../../src/protocol/types.ts";
+import { toolCalled, argContains, noBadState } from "../graders/index.ts";
 
 // Synthetic close values — deliberately unrelated to real-world AAPL /
 // NVDA / MSFT prices so a model that hallucinates from training-data

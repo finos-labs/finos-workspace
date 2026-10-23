@@ -9,14 +9,14 @@ x-backend: &backend
   build:
     context: ../backend-api/backend
     dockerfile: fastapi.Dockerfile
-    args:
-      PLATFORM: ${PLATFORM:-linux/amd64}
+  # The images are built from scratch, so they are built for, and run on, this platform.
+  platform: ${PLATFORM:-linux/amd64}
   env_file: ../backend-api/backend/envs/.env
   # These take priority over envs/.env: the containers' hosts, and the address of
   # the Vite dev server in links the backend builds.
   environment:
     DB_HOST: mysql
-    REDIS_HOST: redis
+    REDIS_HOST: valkey
     FOLDER_STORAGE_PATH: /opt/code/local_storage
     FRONTENDURL: http://localhost:1420
     APPURL: http://localhost:1420
@@ -45,12 +45,12 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
 
-  redis:
-    image: redis:alpine
+  valkey:
+    image: valkey/valkey:9.1.2-alpine
     ports:
       - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -62,14 +62,19 @@ services:
   # it keeps what exists.
   init:
     <<: *backend
+    # The image has no shell: Python starts user_create.json empty, then runs the migrations and init_users.
     command:
-      - sh
+      - python
       - -c
-      - echo '{}' > user_create.json && python -m alembic upgrade head && python -m scripts.init_users
+      - |
+        import pathlib, subprocess, sys
+        pathlib.Path("user_create.json").write_text("{}")
+        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+        subprocess.run([sys.executable, "-m", "scripts.init_users"], check=True)
     depends_on:
       mysql:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
 
   backend:
@@ -101,23 +106,20 @@ services:
     build:
       context: ../backend-api/backend
       dockerfile: rqworker.Dockerfile
-      args:
-        PLATFORM: ${PLATFORM:-linux/amd64}
     depends_on:
       init:
         condition: service_completed_successfully
 
   frontend:
-    # Same Node and Bun versions as frontend/Dockerfile. node-gyp is installed
-    # up front because some packages (bufferutil) have no prebuilt binary for
-    # Linux on ARM and compile during `bun install` on Apple Silicon.
+    # Same Node as frontend/Dockerfile. The packages' own install scripts are
+    # not run, as in the image: the app needs none of them.
     image: node:22
     working_dir: /app
     command:
       [
         "sh",
         "-c",
-        "npm install --global --silent bun@1.4.2 node-gyp && bun install --frozen-lockfile && exec bun run dev",
+        "npm install --ignore-scripts --no-audit --no-fund && exec npm run dev",
       ]
     # These take priority over the values in frontend/.env. The browser calls
     # the URLs, so they are host addresses.

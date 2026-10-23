@@ -1,6 +1,8 @@
-import "./lib/logger";
-import { honoLogger, getLogger } from "./lib/logger";
+import "./lib/logger.ts";
+import { honoLogger, getLogger } from "./lib/logger.ts";
+import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import { WebSocketServer } from "ws";
 import { cors } from "hono/cors";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPTransport } from "@hono/mcp";
@@ -8,127 +10,127 @@ import {
   webSearchSchema,
   webSearchHandler,
   webSearchDescription,
-} from "./tools/backend/web-search";
+} from "./tools/backend/web-search.ts";
 import {
   fetchWebpageSchema,
   fetchWebpageHandler,
   fetchWebpageDescription,
-} from "./tools/backend/fetch-webpage";
+} from "./tools/backend/fetch-webpage.ts";
 import {
   inspectWebpageSchema,
   inspectWebpageHandler,
   inspectWebpageDescription,
-} from "./tools/backend/inspect-webpage";
+} from "./tools/backend/inspect-webpage.ts";
 import {
   queryDocumentsSchema,
   queryDocumentsHandler,
   queryDocumentsDescription,
-} from "./tools/backend/documents/query-documents";
+} from "./tools/backend/documents/query-documents.ts";
 import {
   listDocumentsSchema,
   listDocumentsHandler,
   listDocumentsDescription,
-} from "./tools/backend/documents/list-documents";
-import { embeddingProblem } from "./tools/backend/documents/retrieve";
-import { observed } from "./lib/observe";
-import { requireScope, scopeSecretProblem } from "./lib/scope-check";
-import { renderMetrics } from "../../src/lib/metrics";
-import { configureFetchPolicy } from "../../src/lib/safe-fetch";
-import { mountBridgeRoutes } from "./bridge/routes";
-import { bridgeManager } from "./bridge/singleton";
-import { registerWorkspacePrompts } from "./prompts/workspace";
-import { registerAppBuilderResources } from "./resources/app-builder";
-import { registerWidgetsSchemaResource } from "./resources/widgets-schema";
+} from "./tools/backend/documents/list-documents.ts";
+import { embeddingProblem } from "./tools/backend/documents/retrieve.ts";
+import { observed } from "./lib/observe.ts";
+import { requireScope, scopeSecretProblem } from "./lib/scope-check.ts";
+import { renderMetrics } from "../../src/lib/metrics.ts";
+import { configureFetchPolicy } from "../../src/lib/safe-fetch.ts";
+import { mountBridgeRoutes } from "./bridge/routes.ts";
+import { bridgeManager } from "./bridge/singleton.ts";
+import { registerWorkspacePrompts } from "./prompts/workspace.ts";
+import { registerAppBuilderResources } from "./resources/app-builder.ts";
+import { registerWidgetsSchemaResource } from "./resources/widgets-schema.ts";
 import {
   getWorkspaceSnapshotSchema,
   getWorkspaceSnapshotHandler,
   getWorkspaceSnapshotDescription,
-} from "./tools/workspace/get-workspace-snapshot";
+} from "./tools/workspace/get-workspace-snapshot.ts";
 import {
   listAvailableWidgetsSchema,
   listAvailableWidgetsHandler,
   listAvailableWidgetsDescription,
-} from "./tools/workspace/list-available-widgets";
+} from "./tools/workspace/list-available-widgets.ts";
 import {
   getWidgetSchemaSchema,
   getWidgetSchemaHandler,
   getWidgetSchemaDescription,
-} from "./tools/workspace/get-widget-schema";
+} from "./tools/workspace/get-widget-schema.ts";
 import {
   readWidgetSchema,
   readWidgetHandler,
   readWidgetDescription,
-} from "./tools/workspace/read-widget";
+} from "./tools/workspace/read-widget.ts";
 import {
   deleteWidgetSchema,
   deleteWidgetHandler,
   deleteWidgetDescription,
-} from "./tools/workspace/delete-widget";
+} from "./tools/workspace/delete-widget.ts";
 import {
   manageDashboardSchema,
   manageDashboardHandler,
   manageDashboardDescription,
-} from "./tools/workspace/manage-dashboard";
+} from "./tools/workspace/manage-dashboard.ts";
 import {
   navigateWorkspaceSchema,
   navigateWorkspaceHandler,
   navigateWorkspaceDescription,
-} from "./tools/workspace/navigate-workspace";
+} from "./tools/workspace/navigate-workspace.ts";
 import {
   manageNavigationBarSchema,
   manageNavigationBarHandler,
   manageNavigationBarDescription,
-} from "./tools/workspace/manage-navigation-bar";
+} from "./tools/workspace/manage-navigation-bar.ts";
 import {
   createWidgetSchema,
   createWidgetHandler,
   createWidgetDescription,
-} from "./tools/workspace/create-widget";
+} from "./tools/workspace/create-widget.ts";
 import {
   updateWidgetSchema,
   updateWidgetHandler,
   updateWidgetDescription,
-} from "./tools/workspace/update-widget";
+} from "./tools/workspace/update-widget.ts";
 import {
   updateWidgetLayoutSchema,
   updateWidgetLayoutHandler,
   updateWidgetLayoutDescription,
-} from "./tools/workspace/update-widget-layout";
+} from "./tools/workspace/update-widget-layout.ts";
 import {
   addGenerativeWidgetSchema,
   addGenerativeWidgetHandler,
   addGenerativeWidgetDescription,
-} from "./tools/workspace/add-generative-widget";
+} from "./tools/workspace/add-generative-widget.ts";
 import {
   getWidgetDataSchema,
   getWidgetDataHandler,
   getWidgetDataDescription,
-} from "./tools/workspace/get-widget-data";
+} from "./tools/workspace/get-widget-data.ts";
 import {
   getParamsOptionsSchema,
   getParamsOptionsHandler,
   getParamsOptionsDescription,
-} from "./tools/workspace/get-params-options";
+} from "./tools/workspace/get-params-options.ts";
 import {
   assignTasksToAgentsSchema,
   assignTasksToAgentsHandler,
   assignTasksToAgentsDescription,
-} from "./tools/workspace/assign-tasks-to-agents";
+} from "./tools/workspace/assign-tasks-to-agents.ts";
 import {
   getSkillContentSchema,
   getSkillContentHandler,
   getSkillContentDescription,
-} from "./tools/workspace/get-skill-content";
+} from "./tools/workspace/get-skill-content.ts";
 import {
   manageBackendsSchema,
   manageBackendsHandler,
   manageBackendsDescription,
-} from "./tools/workspace/manage-backends";
+} from "./tools/workspace/manage-backends.ts";
 import {
   manageAppsSchema,
   manageAppsHandler,
   manageAppsDescription,
-} from "./tools/workspace/manage-apps";
+} from "./tools/workspace/manage-apps.ts";
 
 const logger = getLogger(["mcp", "server"]);
 
@@ -383,7 +385,7 @@ app.on(["GET", "DELETE"], "/mcp", (c) =>
   c.json({ jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed." }, id: null }, 405),
 );
 
-const { websocket } = mountBridgeRoutes(app, bridgeManager);
+mountBridgeRoutes(app, bridgeManager);
 
 app.get("/", (c) =>
   c.json({
@@ -441,7 +443,7 @@ const PORT = Number(process.env.MCP_PORT ?? 8787);
 // not published: the metrics are for the operator. Only when this file is the program that runs.
 const METRICS_PORT = Number(process.env.MCP_METRICS_PORT ?? 9465);
 if (import.meta.main && METRICS_PORT > 0) {
-  Bun.serve({
+  serve({
     port: METRICS_PORT,
     fetch(request) {
       return new URL(request.url).pathname === "/metrics"
@@ -452,13 +454,12 @@ if (import.meta.main && METRICS_PORT > 0) {
   logger.info("Metrics on port {port}", { port: METRICS_PORT });
 }
 
-export default {
-  fetch: app.fetch,
-  port: PORT,
-  idleTimeout: 255,
-  websocket,
-};
+// Served only when this file is the program that runs; a test imports it for its `fetch`.
+if (import.meta.main) {
+  serve({ fetch: app.fetch, port: PORT, websocket: { server: new WebSocketServer({ noServer: true }) } });
+  logger.info(
+    `MCP server starting port=${PORT} docRagEnabled=${docRagEnabled} companionToolsEnabled=${companionToolsEnabled} bridgeMounted=true`,
+  );
+}
 
-logger.info(
-  `MCP server starting port=${PORT} docRagEnabled=${docRagEnabled} companionToolsEnabled=${companionToolsEnabled} bridgeMounted=true`,
-);
+export default { fetch: app.fetch };

@@ -101,25 +101,25 @@ src/api/auth.api.ts
 
 ```bash
 # Run all unit tests
-bun run test:unit
+npm run test:unit
 
 # Run in watch mode (development)
-bunx vitest tests/unit
+npx vitest tests/unit
 
 # Run specific test file
-bunx vitest run tests/unit/components/General/Avatar.test.tsx
+npx vitest run tests/unit/components/General/Avatar.test.tsx
 
 # Run tests matching pattern
-bunx vitest run -t "Avatar"
+npx vitest run -t "Avatar"
 
 # Run with coverage report
-bun run test:unit -- --coverage
+npm run test:unit -- --coverage
 ```
 
 ### Integration Tests
 
 ```bash
-bun run test:integration
+npm run test:integration
 ```
 
 ### E2E Tests
@@ -145,16 +145,16 @@ export NODE_EXTRA_CA_CERTS="$PWD/frontend/tests/e2e/tls/certs/ca.pem"
 # E2E_BASE_URL defaults to https://localhost:3000, E2E_API_URL to https://localhost:8000
 
 # Run all E2E tests
-bun run test:e2e
+npm run test:e2e
 
 # Run with UI (interactive mode)
-bunx playwright test tests/e2e --ui
+npx playwright test tests/e2e --ui
 
 # Run specific test file
-bunx playwright test tests/e2e/auth.spec.ts
+npx playwright test tests/e2e/auth.spec.ts
 
 # Generate test code
-bunx playwright codegen tests/e2e
+npx playwright codegen tests/e2e
 ```
 
 The `setup` project signs in once and keeps the session in `playwright/.auth/user.json`; the
@@ -163,7 +163,7 @@ stack of its own, over HTTPS, with an administrator whose password the run sets.
 
 Every spec runs in the `chromium` project; the widget plugin specs (`plugin*.spec.ts`) also run
 in `firefox` and `webkit`, since a plugin's frame, policy and workers are where the engines
-differ (`bunx playwright install chromium firefox webkit`), and so does
+differ (`npx playwright install chromium firefox webkit`), and so does
 `dashboard-persistence.spec.ts`, since WebKit cancels a request made as the page goes away. The
 plugin specs need the plugins directory the
 API reads, named on this machine by `E2E_PLUGINS_DIR` (see `.github/workflows/e2e.yml` for the
@@ -177,13 +177,13 @@ We use `@storybook/test-runner` and `axe-playwright` to run accessibility (WCAG)
 
 ```bash
 # 1. Build the static Storybook (requires significant memory, hence NODE_OPTIONS)
-bun run build-storybook
+npm run build-storybook
 
 # 2. Start a local server for the static build
-bunx http-server storybook-static -p 6006 -s &
+npx http-server storybook-static -p 6006 -s &
 
 # 3. Run the accessibility tests
-bunx test-storybook --url http://127.0.0.1:6006
+npx test-storybook --url http://127.0.0.1:6006
 ```
 
 ---

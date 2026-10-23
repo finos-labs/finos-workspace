@@ -10,13 +10,13 @@
  *       and expects the terminal `citationCollection` SSE to carry it.
  */
 
-import type { EvalCase } from "../runner";
-import type { ToolMessage } from "../../src/protocol/types";
-import { techWorkspace } from "../fixtures/workspaces";
+import type { EvalCase } from "../runner.ts";
+import type { ToolMessage } from "../../src/protocol/types.ts";
+import { techWorkspace } from "../fixtures/workspaces.ts";
 import {
   intermediateCitationContains,
   noBadState,
-} from "../graders";
+} from "../graders/index.ts";
 
 const STASH_ID = "stashed-eval-citation";
 

@@ -10,9 +10,9 @@
  */
 
 import { z } from "zod";
-import { verifyUrl } from "../../../src/lib/scope";
-import { getLogger } from "./logger";
-import { scopeSecretProblem } from "./scope-check";
+import { verifyUrl } from "../../../src/lib/scope.ts";
+import { getLogger } from "./logger.ts";
+import { scopeSecretProblem } from "./scope-check.ts";
 
 const logger = getLogger(["mcp", "url-check"]);
 

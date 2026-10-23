@@ -19,7 +19,7 @@
  * replica waits for the queries it is itself serving, not for another replica's.
  */
 
-import type { Store } from "../lib/store";
+import type { Store } from "../lib/store.ts";
 
 export type Admission = { ok: true; release: () => void } | { ok: false; reason: "user" | "server" };
 

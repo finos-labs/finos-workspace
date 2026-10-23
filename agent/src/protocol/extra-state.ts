@@ -1,7 +1,7 @@
 import { z } from "zod";
-import type { Citation, ToolMessage } from "./types";
-import type { DocumentCitation } from "../mcp/results";
-import type { TurnUsage } from "../lib/token-usage";
+import type { Citation, ToolMessage } from "./types.ts";
+import type { DocumentCitation } from "../mcp/results.ts";
+import type { TurnUsage } from "../lib/token-usage.ts";
 
 export interface ExtraState {
   copilot_function_call_arguments?: Record<string, unknown>;

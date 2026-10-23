@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { chunkDocument } from "../../../../../../mcp-server/src/tools/backend/documents/chunk";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { chunkDocument } from "../../../../../../mcp-server/src/tools/backend/documents/chunk.ts";
 
 const SHORT_PAGE = {
   text: "Hello world. This is a short doc. Only three sentences total.",

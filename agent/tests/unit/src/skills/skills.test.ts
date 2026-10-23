@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { inesSkillContent, inesSkills, isInesSkill, skillsCatalog } from "../../../../src/skills";
-import type { QueryRequest } from "../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { inesSkillContent, inesSkills, isInesSkill, skillsCatalog } from "../../../../src/skills/index.ts";
+import type { QueryRequest } from "../../../../src/protocol/types.ts";
 
 const request = (skills_catalog?: QueryRequest["skills_catalog"]): QueryRequest =>
   ({ messages: [{ role: "human", content: "hi" }], skills_catalog }) as QueryRequest;

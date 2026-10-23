@@ -1,17 +1,17 @@
-Copilot agent for the Workspace. Hono + Bun + Vercel AI SDK + MCP.
+Copilot agent for the Workspace. Hono + Node + Vercel AI SDK + MCP. Node runs the TypeScript as it is (type stripping): no build step.
 
 For architecture, tool inventory, file layout, env vars, request flow, the MCP and citation protocols, and the test strategy, read [README.md](./README.md). This file is rules, conventions, and gotchas only.
 
 ## Commands
 
 ```bash
-bun run dev:agent     # agent on :7777
-bun run dev:mcp       # MCP server on :8787
-bun run typecheck     # bunx tsc --noEmit — must be zero errors
-bun run test          # bun test tests/ mcp-server/test — must be all green before merge
+npm run dev:agent     # agent on :7777
+npm run dev:mcp       # MCP server on :8787
+npm run typecheck     # tsc --noEmit — must be zero errors
+npm test              # node --test over tests/ and mcp-server/test — must be all green before merge
 ```
 
-Prefer `bun`
+Node is the runtime and npm the package manager.
 
 ## Hard rules — thin harness
 
@@ -36,6 +36,7 @@ The only acceptable harness branching is `lastMessage.role === "tool"` dispatche
 ## TypeScript
 
 - `strict: true`, zero errors at all times. CI gates on this.
+- Node strips the types and runs the file, so: a relative import names the file with its extension (`./loop.ts`), a type is imported with `import type` (`verbatimModuleSyntax`), and only syntax that erases is used: no `enum`, no `namespace` with code, no constructor parameter properties (`erasableSyntaxOnly`). `tsc` says so when one slips in.
 - No `any` unless unavoidable, and justify with a comment. Prefer `unknown` + type guards.
 - `interface` for object shapes, `type` for unions/intersections.
 - Wire types live in `src/protocol/types.ts`; MCP-result types in `src/mcp/results.ts`; ContentItem helpers in `mcp-server/src/lib/typed.ts`.

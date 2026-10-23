@@ -5,8 +5,9 @@
  * ATTACH/DETACH, etc).
  */
 
-import { describe, it, expect } from "bun:test";
-import { rejectUnsafeSql, rejectUnsafeTableName } from "../../../../../../src/agent/tools/sql/safety";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { rejectUnsafeSql, rejectUnsafeTableName } from "../../../../../../src/agent/tools/sql/safety.ts";
 
 describe("rejectUnsafeSql — prefix check", () => {
   const allowed = [

@@ -8,12 +8,12 @@
  * (deferred — see plan unresolved questions).
  */
 
-import { errorItem, textItem, type ContentItem } from "../lib/typed";
+import { errorItem, textItem, type ContentItem } from "../lib/typed.ts";
 import {
   BrowserUnavailableError,
   type BridgeSessionManager,
-} from "./state";
-import type { WorkspaceCommand, WorkspaceCommandResult } from "./wire";
+} from "./state.ts";
+import type { WorkspaceCommand, WorkspaceCommandResult } from "./wire.ts";
 
 export interface ExecuteBridgeOpts {
   sessionId?: string;

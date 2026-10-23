@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { scopeKey, signScope, verifyScope } from "../../../../src/lib/scope";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { scopeKey, signScope, verifyScope } from "../../../../src/lib/scope.ts";
 
 const SECRET = "0123456789abcdef0123";
 

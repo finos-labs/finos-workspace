@@ -17,6 +17,14 @@ OTHER_KEY = base64.urlsafe_b64encode(b"o" * 32).decode().rstrip("=")
 CONTEXT = "api_source.endpointHeaders"
 
 
+def _flip_last_byte(token: str) -> str:
+    """Changes the tag's last byte. The token's last base64url character also carries padding
+    bits that decoding ignores, so changing that character can leave the bytes as they were."""
+    raw = base64.urlsafe_b64decode(token[3:] + "=" * (-len(token[3:]) % 4))
+    tampered = raw[:-1] + bytes([raw[-1] ^ 1])
+    return token[:3] + base64.urlsafe_b64encode(tampered).decode().rstrip("=")
+
+
 class TestCipher:
     def test_round_trip(self):
         cipher = crypto.AtRestCipher(KEY)
@@ -48,7 +56,7 @@ class TestCipher:
     @pytest.mark.parametrize(
         "tamper",
         [
-            lambda t: t[:-1] + ("A" if t[-1] != "A" else "B"),  # tag
+            _flip_last_byte,  # tag
             lambda t: t[:3] + ("A" if t[3] != "A" else "B") + t[4:],  # nonce
             lambda t: t[:20] + ("A" if t[20] != "A" else "B") + t[21:],  # ciphertext
             lambda t: t[:-8],  # truncated

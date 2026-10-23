@@ -4,24 +4,25 @@
  * crash (500), never a hang, and nothing unhandled is left in the process.
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
-import { llmEmitsText, makeMockLlm } from "../../helpers/mock-llm";
-import { below, seeded } from "../../helpers/rng";
+import { describe, it, beforeEach, afterEach, mock } from "node:test";
+import { expect } from "expect";
+import { llmEmitsText, makeMockLlm } from "../../helpers/mock-llm.ts";
+import { below, seeded } from "../../helpers/rng.ts";
 
-const realProviders = await import("../../../src/lib/providers");
-mock.module("../../../src/lib/providers", () => ({
+const realProviders = await import("../../../src/lib/providers.ts");
+mock.module("../../../src/lib/providers.ts", { exports: {
   ...realProviders,
   resolveModel: () => makeMockLlm(llmEmitsText("ok")),
-}));
+} });
 
-const { createApp } = await import("../../../src/app");
-const { loadConfig } = await import("../../../src/lib/config");
-const { createLimits } = await import("../../../src/auth/limits");
-const { createLocalStore } = await import("../../../src/lib/store");
+const { createApp } = await import("../../../src/app.ts");
+const { loadConfig } = await import("../../../src/lib/config.ts");
+const { createLimits } = await import("../../../src/auth/limits.ts");
+const { createLocalStore } = await import("../../../src/lib/store.ts");
 const store = createLocalStore();
-const { renderMetrics } = await import("../../../src/lib/metrics");
-const { clearAllModuleState } = await import("../../helpers/clear-state");
-import type { WorkspaceClient } from "../../../src/auth/workspace-client";
+const { renderMetrics } = await import("../../../src/lib/metrics.ts");
+const { clearAllModuleState } = await import("../../helpers/clear-state.ts");
+import type { WorkspaceClient } from "../../../src/auth/workspace-client.ts";
 
 const workspace: WorkspaceClient = {
   async getUser(token) {
@@ -143,7 +144,7 @@ afterEach(() => {
 });
 
 describe("questions that are made to be wrong", () => {
-  it("are refused or answered, never a crash, never a hang, whatever is wrong in them", async () => {
+  it("are refused or answered, never a crash, never a hang, whatever is wrong in them", { timeout: 600_000 }, async () => {
     // FUZZ_SEED and FUZZ_ITERATIONS run it longer, with other numbers, by hand.
     const random = seeded(Number(process.env.FUZZ_SEED ?? 2026));
     const iterations = Number(process.env.FUZZ_ITERATIONS ?? 400);
@@ -165,7 +166,7 @@ describe("questions that are made to be wrong", () => {
     expect(statuses.get(200) ?? 0).toBeGreaterThan(10);
     expect(statuses.get(400) ?? 0).toBeGreaterThan(10);
     expect(unhandledCount()).toBe(unhandledBefore);
-  }, 600_000);
+  });
 
   it("are refused when they are not JSON at all, in any way a client can make them", async () => {
     const random = seeded(7);

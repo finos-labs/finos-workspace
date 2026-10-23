@@ -23,9 +23,9 @@
  */
 
 import { randomUUID } from "node:crypto";
-import Redis from "ioredis";
-import { getLogger } from "./logger";
-import { metrics } from "./metrics";
+import { Redis } from "ioredis";
+import { getLogger } from "./logger.ts";
+import { metrics } from "./metrics.ts";
 
 const logger = getLogger(["app", "store"]);
 

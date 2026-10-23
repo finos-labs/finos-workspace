@@ -43,8 +43,8 @@ must remove root causes, not build deterministic crutches around the model.
 5. **Verify**
    - Run the focused failing test/eval until green.
    - Run nearby tests affected by the changed contract.
-   - Run `bun run typecheck`.
-   - Run `LIVE_DEBUG_TRACES=0 bun run test` before handing off a merge-ready fix.
+   - Run `npm run typecheck`.
+   - Run `LIVE_DEBUG_TRACES=0 npm test` before handing off a merge-ready fix.
 
 ## Harness Boundary Rules
 
@@ -258,7 +258,7 @@ Ask these before finalizing:
 - Did I keep schema validation as validation, not normalization?
 - Did I leave unrelated user changes alone?
 - Did I update tests/evals to guard the actual contract?
-- Did I run `bun run typecheck` and the relevant Bun tests?
+- Did I run `npm run typecheck` and the relevant tests?
 
 ## When To Stop And Re-Plan
 

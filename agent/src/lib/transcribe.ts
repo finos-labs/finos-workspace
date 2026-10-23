@@ -15,7 +15,7 @@
 import { createGroq } from "@ai-sdk/groq";
 import { createOpenAI } from "@ai-sdk/openai";
 import { experimental_transcribe as transcribeAudio } from "ai";
-import { recognize } from "./riva";
+import { recognize } from "./riva.ts";
 
 type Env = Record<string, string | undefined>;
 

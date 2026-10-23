@@ -1,7 +1,7 @@
-import { analyzeTable, type TableInfo } from "../sql/loader";
-import type { CopilotArtifact, Widget } from "../protocol/types";
-import { htmlTableArtifact } from "../protocol/html-table";
-import type { WidgetItem } from "../widgets/parse";
+import { analyzeTable, type TableInfo } from "../sql/loader.ts";
+import type { CopilotArtifact, Widget } from "../protocol/types.ts";
+import { htmlTableArtifact } from "../protocol/html-table.ts";
+import type { WidgetItem } from "../widgets/parse.ts";
 
 export interface ToolProgressStatus {
   message: string;

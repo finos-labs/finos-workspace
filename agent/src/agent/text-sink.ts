@@ -21,7 +21,7 @@
  * (events.ts) so the streaming path and the bulk path can never diverge.
  */
 
-import type { SSEEvent } from "../protocol/types";
+import type { SSEEvent } from "../protocol/types.ts";
 import {
   PAIRED_PIPE_PLACEHOLDER_NAMES,
   PLACEHOLDER_TAG_NAMES,
@@ -30,7 +30,7 @@ import {
   parseSuggestions,
   streamingMessageChunk,
   stripPlaceholderTags,
-} from "../protocol/events";
+} from "../protocol/events.ts";
 
 export interface TextSinkContext {
   /**

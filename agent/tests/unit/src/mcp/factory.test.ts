@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { linkedToolName, makeMcpTools } from "../../../../src/mcp/factory";
-import type { AgentTool } from "../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { linkedToolName, makeMcpTools } from "../../../../src/mcp/factory.ts";
+import type { AgentTool } from "../../../../src/protocol/types.ts";
 
 function tool(overrides: Partial<AgentTool>): AgentTool {
   return {

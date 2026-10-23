@@ -10,10 +10,10 @@
  * reads another's.
  */
 
-import { getLogger } from "../lib/logger";
-import type { Store } from "../lib/store";
-import type { Widget } from "../protocol/types";
-import type { WidgetItem } from "../widgets/parse";
+import { getLogger } from "../lib/logger.ts";
+import type { Store } from "../lib/store.ts";
+import type { Widget } from "../protocol/types.ts";
+import type { WidgetItem } from "../widgets/parse.ts";
 
 const logger = getLogger(["app", "agent", "row-cache"]);
 

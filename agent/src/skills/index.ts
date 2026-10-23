@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { QueryRequest, SkillCatalogEntry } from "../protocol/types";
+import type { QueryRequest, SkillCatalogEntry } from "../protocol/types.ts";
 
 export type CatalogSkill = Pick<SkillCatalogEntry, "slug" | "description">;
 
@@ -47,7 +47,7 @@ export function inesSkills(): CatalogSkill[] {
 }
 
 /** The instructions of each of Ines's skills, read once: they are part of the agent, and small. */
-const CONTENT = new Map(INES_SKILLS.map(({ slug }) => [slug, readFileSync(join(import.meta.dir, `${slug}.md`), "utf8")]));
+const CONTENT = new Map(INES_SKILLS.map(({ slug }) => [slug, readFileSync(join(import.meta.dirname, `${slug}.md`), "utf8")]));
 
 /** The instructions of one of Ines's skills. */
 export function inesSkillContent(slug: string): string {

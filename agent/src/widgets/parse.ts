@@ -1,10 +1,10 @@
 import type { ImagePart, FilePart } from "ai";
-import type { Widget, ToolMessage } from "../protocol/types";
-import { getLogger } from "../lib/logger";
-import { runInChild } from "../lib/isolate";
-import { fetchClientUrl } from "../lib/safe-fetch";
-import { assertSafeZip } from "../lib/zip-guard";
-import type { XlsxChildInput } from "./xlsx-child";
+import type { Widget, ToolMessage } from "../protocol/types.ts";
+import { getLogger } from "../lib/logger.ts";
+import { runInChild } from "../lib/isolate.ts";
+import { fetchClientUrl } from "../lib/safe-fetch.ts";
+import { assertSafeZip } from "../lib/zip-guard.ts";
+import type { XlsxChildInput } from "./xlsx-child.ts";
 
 const logger = getLogger(["app", "widgets"]);
 

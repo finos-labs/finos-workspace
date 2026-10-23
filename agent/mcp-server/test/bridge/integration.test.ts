@@ -7,14 +7,17 @@
  * MCP transport layer and avoids module-scope side-effect ordering issues.
  */
 
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { describe, test, before as beforeAll, after as afterAll } from "node:test";
+import { expect } from "expect";
+import { serve, type ServerType } from "@hono/node-server";
 import { Hono } from "hono";
-import { makeBridgeSessionManager } from "../../src/bridge/state";
-import { mountBridgeRoutes } from "../../src/bridge/routes";
-import { executeBridgeCommand } from "../../src/bridge/execute";
-import { startMockBrowser, type MockBrowser } from "./mock-browser";
+import { WebSocketServer } from "ws";
+import { makeBridgeSessionManager } from "../../src/bridge/state.ts";
+import { mountBridgeRoutes } from "../../src/bridge/routes.ts";
+import { executeBridgeCommand } from "../../src/bridge/execute.ts";
+import { startMockBrowser, type MockBrowser } from "./mock-browser.ts";
 
-let server: ReturnType<typeof Bun.serve>;
+let server: ServerType;
 let manager: ReturnType<typeof makeBridgeSessionManager>;
 let baseUrl: string;
 let mock: MockBrowser;
@@ -26,16 +29,21 @@ beforeAll(async () => {
     websocketPath: "/bridge/ws",
     commandTimeoutMs: 2_000,
   });
-  const { websocket } = mountBridgeRoutes(app, manager);
-  server = Bun.serve({ fetch: app.fetch, port: 0, websocket });
-  baseUrl = `http://127.0.0.1:${server.port}`;
+  mountBridgeRoutes(app, manager);
+  const port = await new Promise<number>((resolve) => {
+    server = serve(
+      { fetch: app.fetch, port: 0, hostname: "127.0.0.1", websocket: { server: new WebSocketServer({ noServer: true }) } },
+      (info) => resolve(info.port),
+    );
+  });
+  baseUrl = `http://127.0.0.1:${port}`;
   mock = await startMockBrowser({ baseUrl, clientName: "integration-test" });
   await mock.waitReady();
 });
 
 afterAll(() => {
   mock?.close();
-  server?.stop();
+  server?.close();
 });
 
 describe("bridge integration — 5 PoC workspace commands", () => {

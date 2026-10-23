@@ -15,13 +15,13 @@
  * `_resetDocStoreState()` test hook clears everything.
  */
 
-import type { DocChunk } from "./chunk";
-import type { UploadedDocumentFormat } from "../../../../../src/protocol/types";
-import { createBoundedCache } from "../../../../../src/lib/bounded-cache";
-import { userOfScope } from "../../../../../src/lib/scope";
-import { getLogger } from "../../../lib/logger";
-import { getRedisClient } from "../../../lib/redis";
-import { MAX_CHUNKS_PER_DOC } from "./limits";
+import type { DocChunk } from "./chunk.ts";
+import type { UploadedDocumentFormat } from "../../../../../src/protocol/types.ts";
+import { createBoundedCache } from "../../../../../src/lib/bounded-cache.ts";
+import { userOfScope } from "../../../../../src/lib/scope.ts";
+import { getLogger } from "../../../lib/logger.ts";
+import { getRedisClient } from "../../../lib/redis.ts";
+import { MAX_CHUNKS_PER_DOC } from "./limits.ts";
 
 const logger = getLogger(["mcp", "documents", "store"]);
 

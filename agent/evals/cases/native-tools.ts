@@ -10,12 +10,12 @@
  * No mock LLM here — uses the real eval model, single-shot.
  */
 
-import type { EvalCase } from "../runner";
-import type { ToolMessage } from "../../src/protocol/types";
+import type { EvalCase } from "../runner.ts";
+import type { ToolMessage } from "../../src/protocol/types.ts";
 import {
   noBadState,
   toolCalled,
-} from "../graders";
+} from "../graders/index.ts";
 
 const TICKERS_TABLE_LOADED: ToolMessage = {
   role: "tool",

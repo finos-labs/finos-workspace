@@ -18,7 +18,7 @@
  * a few bits per fetch, not the user's data.
  */
 
-import type { Message, ToolMessage } from "../protocol/types";
+import type { Message, ToolMessage } from "../protocol/types.ts";
 
 /** The most addresses kept for a call: a page of links does not need more, and the set stays small. */
 const MAX_KEYS = 20_000;

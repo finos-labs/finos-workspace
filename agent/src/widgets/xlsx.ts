@@ -4,8 +4,8 @@
  */
 
 import ExcelJS from "exceljs";
-import { getLogger } from "../lib/logger";
-import { assertSafeZip } from "../lib/zip-guard";
+import { getLogger } from "../lib/logger.ts";
+import { assertSafeZip } from "../lib/zip-guard.ts";
 
 const logger = getLogger(["app", "widgets", "xlsx"]);
 
@@ -35,7 +35,7 @@ export async function xlsxToJsonText(buf: Buffer): Promise<string> {
   // Checked again here: this is the one place that unpacks it.
   assertSafeZip(buf);
   const workbook = new ExcelJS.Workbook();
-  // (ExcelJS types its input as the Buffer of Node's typings, which Bun's Buffer is not assignable to.)
+  // (ExcelJS declares a Buffer type of its own, which Node's Buffer is not assignable to.)
   await workbook.xlsx.load(buf as unknown as Parameters<typeof workbook.xlsx.load>[0]);
   const sheet = workbook.worksheets[0];
   if (!sheet || sheet.rowCount < 1) return "[]";

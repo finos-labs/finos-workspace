@@ -1,16 +1,16 @@
 import type { ModelMessage } from "ai";
-import type { QueryRequest, ToolMessage, WorkspaceState } from "../protocol/types";
-import { buildSystemPrompt, type PromptOptions } from "./prompt";
-import { renderToolResultForHistory } from "../mcp/results";
-import { inesSkillContent, isInesSkill } from "../skills";
-import { WORKSPACE_BRIDGE_COMMAND_NAMES } from "../protocol/bridge-commands";
-import { isWidgetDataMcpResult } from "./workspace-widget-data";
+import type { QueryRequest, ToolMessage, WorkspaceState } from "../protocol/types.ts";
+import { buildSystemPrompt, type PromptOptions } from "./prompt.ts";
+import { renderToolResultForHistory } from "../mcp/results.ts";
+import { inesSkillContent, isInesSkill } from "../skills/index.ts";
+import { WORKSPACE_BRIDGE_COMMAND_NAMES } from "../protocol/bridge-commands.ts";
+import { isWidgetDataMcpResult } from "./workspace-widget-data.ts";
 import {
   conversationNote,
   currentTurnStart,
   earlierEntries,
   sanitizeAssistantContent,
-} from "./history";
+} from "./history.ts";
 
 // No single message is worth more than this to the model; the rest of a longer one is cut off and said to be.
 const MAX_MESSAGE_CHARS = 60_000;

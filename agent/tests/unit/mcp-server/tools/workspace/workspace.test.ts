@@ -1,13 +1,14 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, beforeEach, mock } from "node:test";
+import { expect } from "expect";
 
 let lastCommand: Record<string, unknown> | null = null;
 let nextResponse: { ok: boolean; payload?: Record<string, unknown> } = { ok: true };
 
-mock.module("../../../../../mcp-server/src/bridge/singleton", () => ({
+mock.module("../../../../../mcp-server/src/bridge/singleton.ts", { exports: {
   bridgeManager: {},
-}));
+} });
 
-mock.module("../../../../../mcp-server/src/bridge/execute", () => ({
+mock.module("../../../../../mcp-server/src/bridge/execute.ts", { exports: {
   executeBridgeCommand: async (_mgr: unknown, cmd: Record<string, unknown>) => {
     lastCommand = cmd;
     if (!nextResponse.ok) {
@@ -21,7 +22,7 @@ mock.module("../../../../../mcp-server/src/bridge/execute", () => ({
       result: { ok: true, payload: nextResponse.payload },
     };
   },
-}));
+} });
 
 const TOOLS = "../../../../../mcp-server/src/tools/workspace";
 const {
@@ -78,24 +79,24 @@ const {
     addGen,
     assign,
   ] = await Promise.all([
-    import(`${TOOLS}/get-workspace-snapshot`),
-    import(`${TOOLS}/get-skill-content`),
-    import(`${TOOLS}/list-available-widgets`),
-    import(`${TOOLS}/get-widget-schema`),
-    import(`${TOOLS}/get-widget-data`),
-    import(`${TOOLS}/get-params-options`),
-    import(`${TOOLS}/read-widget`),
-    import(`${TOOLS}/delete-widget`),
-    import(`${TOOLS}/update-widget`),
-    import(`${TOOLS}/update-widget-layout`),
-    import(`${TOOLS}/create-widget`),
-    import(`${TOOLS}/manage-dashboard`),
-    import(`${TOOLS}/manage-navigation-bar`),
-    import(`${TOOLS}/manage-backends`),
-    import(`${TOOLS}/manage-apps`),
-    import(`${TOOLS}/navigate-workspace`),
-    import(`${TOOLS}/add-generative-widget`),
-    import(`${TOOLS}/assign-tasks-to-agents`),
+    import(`${TOOLS}/get-workspace-snapshot.ts`),
+    import(`${TOOLS}/get-skill-content.ts`),
+    import(`${TOOLS}/list-available-widgets.ts`),
+    import(`${TOOLS}/get-widget-schema.ts`),
+    import(`${TOOLS}/get-widget-data.ts`),
+    import(`${TOOLS}/get-params-options.ts`),
+    import(`${TOOLS}/read-widget.ts`),
+    import(`${TOOLS}/delete-widget.ts`),
+    import(`${TOOLS}/update-widget.ts`),
+    import(`${TOOLS}/update-widget-layout.ts`),
+    import(`${TOOLS}/create-widget.ts`),
+    import(`${TOOLS}/manage-dashboard.ts`),
+    import(`${TOOLS}/manage-navigation-bar.ts`),
+    import(`${TOOLS}/manage-backends.ts`),
+    import(`${TOOLS}/manage-apps.ts`),
+    import(`${TOOLS}/navigate-workspace.ts`),
+    import(`${TOOLS}/add-generative-widget.ts`),
+    import(`${TOOLS}/assign-tasks-to-agents.ts`),
   ]);
   return {
     getWorkspaceSnapshotHandler: snapshot.getWorkspaceSnapshotHandler,

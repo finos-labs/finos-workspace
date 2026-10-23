@@ -1,4 +1,4 @@
-import type { CitationCollection, CopilotArtifact, SSEEvent, Widget } from "./types";
+import type { CitationCollection, CopilotArtifact, SSEEvent, Widget } from "./types.ts";
 
 // Defensive strip of placeholder-tag patterns the model could hallucinate
 // from training data. Ines's protocol does not use inline artifact tags

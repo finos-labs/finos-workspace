@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { sanitizeName, analyzeTable } from "../../../../src/sql/loader";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { sanitizeName, analyzeTable } from "../../../../src/sql/loader.ts";
 
 describe("sanitizeName", () => {
   it("lowercases the input", () => {

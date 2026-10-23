@@ -5,8 +5,9 @@
  * (string "47" must not collide with number 47).
  */
 
-import { describe, it, expect } from "bun:test";
-import { _widgetCacheKey } from "../../../../src/agent/loop";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { _widgetCacheKey } from "../../../../src/agent/loop.ts";
 
 describe("_widgetCacheKey — determinism", () => {
   it("regression: same uuid + same args → same key", () => {

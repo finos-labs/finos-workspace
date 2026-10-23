@@ -1,9 +1,9 @@
 import { tool } from "ai";
 import { z } from "zod";
-import type { Widget } from "../../protocol/types";
-import { searchWidgets, type TieredWidget, type WidgetTier } from "../../widgets/tiers";
-import { getLogger } from "../../lib/logger";
-import { displaySummarySchema } from "./progress";
+import type { Widget } from "../../protocol/types.ts";
+import { searchWidgets, type TieredWidget, type WidgetTier } from "../../widgets/tiers.ts";
+import { getLogger } from "../../lib/logger.ts";
+import { displaySummarySchema } from "./progress.ts";
 
 const logger = getLogger(["app", "tools", "search_widgets"]);
 

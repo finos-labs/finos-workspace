@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { peekTableDescription, runPeekTable } from "../../../../../../src/agent/tools/sql/peek-table";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { peekTableDescription, runPeekTable } from "../../../../../../src/agent/tools/sql/peek-table.ts";
 
 const prices = [
   { symbol: "NVDA", close: 100 },
@@ -83,7 +84,7 @@ describe("runPeekTable — security + correctness regressions", () => {
 
   it("regression: dedupes columns that sanitize to the same name in the SQLite load path", () => {
     // Mirror of loader.ts dedup, but for the `loadOne` path that actually
-    // runs CREATE TABLE inside bun:sqlite. Without the dedup, duplicate
+    // runs CREATE TABLE inside node:sqlite. Without the dedup, duplicate
     // column defs would either raise or silently collapse one column.
     const rows = [{ a: 1, A: 2, "foo bar": 3, "foo-bar": 4 }];
     const text = runPeekTable({}, ctx({ data: rows }));

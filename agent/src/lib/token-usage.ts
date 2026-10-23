@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { LanguageModelUsage } from "ai";
-import type { SSEEvent } from "../protocol/types";
+import type { SSEEvent } from "../protocol/types.ts";
 
 /**
  * Token counts for one or more model calls.

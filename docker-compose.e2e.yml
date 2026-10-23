@@ -21,7 +21,7 @@
 
 services:
   tls:
-    image: nginx:1.31.7-alpine
+    image: nginx:1.31.8-alpine
     restart: unless-stopped
     volumes:
       - ./frontend/tests/e2e/tls/nginx.conf:/etc/nginx/nginx.conf:ro

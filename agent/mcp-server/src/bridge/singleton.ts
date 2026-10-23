@@ -4,7 +4,7 @@
  * pending command map). Workspace tool handlers import this directly.
  */
 
-import { makeBridgeSessionManager } from "./state";
+import { makeBridgeSessionManager } from "./state.ts";
 
 const PORT = Number(process.env.MCP_PORT ?? 8787);
 const BASE_URL =

@@ -1,14 +1,14 @@
 import { tool, type ToolSet, type StopCondition } from "ai";
-import type { AgentTool, WidgetMcpLink } from "../protocol/types";
-import { sanitizeMcpToolName, buildToolInputSchema } from "./schema";
+import type { AgentTool, WidgetMcpLink } from "../protocol/types.ts";
+import { sanitizeMcpToolName, buildToolInputSchema } from "./schema.ts";
 import {
   WORKSPACE_BRIDGE_COMMAND_NAMES,
   BRIDGE_MOUNT_EXTRA_NAMES,
-} from "../protocol/bridge-commands";
-import { SQL_TOOL_NAME_SET } from "../agent/tools/sql";
-import { NATIVE_TOOL_NAME_SET } from "../agent/tools/native";
-import { isWidgetDataToolName, WIDGET_DATA_TOOL } from "../agent/workspace-widget-data";
-import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server";
+} from "../protocol/bridge-commands.ts";
+import { SQL_TOOL_NAME_SET } from "../agent/tools/sql/index.ts";
+import { NATIVE_TOOL_NAME_SET } from "../agent/tools/native.ts";
+import { isWidgetDataToolName, WIDGET_DATA_TOOL } from "../agent/workspace-widget-data.ts";
+import { WORKSPACE_SERVER_ID } from "../protocol/workspace-server.ts";
 
 export interface McpToolEntry {
   serverId: string;

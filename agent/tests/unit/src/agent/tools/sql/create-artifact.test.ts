@@ -1,10 +1,11 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   createArtifactDescription,
   createArtifactSchema,
   runCreateArtifact,
-} from "../../../../../../src/agent/tools/sql/create-artifact";
-import type { SSEEvent } from "../../../../../../src/protocol/types";
+} from "../../../../../../src/agent/tools/sql/create-artifact.ts";
+import type { SSEEvent } from "../../../../../../src/protocol/types.ts";
 
 const prices = [
   { symbol: "NVDA", close: 100 },

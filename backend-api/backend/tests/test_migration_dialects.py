@@ -220,7 +220,7 @@ class TestMySQLMigrations:
                 password="test_password",
                 dbname="test_db",
             ).with_env("MYSQL_ROOT_HOST", "%") as mysql,
-            RedisContainer("redis:alpine") as redis,
+            RedisContainer("valkey/valkey:9.1.2-alpine") as redis,
         ):
             mysql_host = mysql.get_container_host_ip()
             mysql_port = int(mysql.get_exposed_port(3306))
@@ -280,7 +280,7 @@ class TestPostgreSQLMigrations:
                 password="test_password",
                 dbname="test_db",
             ) as pg,
-            RedisContainer("redis:alpine") as redis,
+            RedisContainer("valkey/valkey:9.1.2-alpine") as redis,
         ):
             pg_host = pg.get_container_host_ip()
             pg_port = int(pg.get_exposed_port(5432))

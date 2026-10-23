@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { PROVIDER_OPTIONS, promptCacheKey, providerOptionsFor } from "../../../../src/lib/providers";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { PROVIDER_OPTIONS, promptCacheKey, providerOptionsFor } from "../../../../src/lib/providers.ts";
 
 describe("providerOptionsFor", () => {
   // OpenAI routes requests to machines holding a matching prefix; without a

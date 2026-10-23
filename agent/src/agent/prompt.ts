@@ -4,9 +4,9 @@ import type {
   Widget,
   WidgetParam,
   WorkspaceState,
-} from "../protocol/types";
-import { type CatalogSkill, skillsCatalog } from "../skills";
-import { renderToolCatalog, renderToolNotes, type ToolCatalog } from "./tool-groups";
+} from "../protocol/types.ts";
+import { type CatalogSkill, skillsCatalog } from "../skills/index.ts";
+import { renderToolCatalog, renderToolNotes, type ToolCatalog } from "./tool-groups.ts";
 
 const BASE_PROMPT =
   "You are Ines, an open-source, model-agnostic financial agent for the Workspace. Answer clearly and concisely. " +

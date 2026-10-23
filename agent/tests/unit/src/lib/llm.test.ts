@@ -1,5 +1,6 @@
-import { describe, it, expect, afterEach } from "bun:test";
-import { parseJsonResponse, truncate } from "../../../../src/lib/llm";
+import { describe, it, afterEach } from "node:test";
+import { expect } from "expect";
+import { parseJsonResponse, truncate } from "../../../../src/lib/llm.ts";
 
 describe("singleShotLlm model choice", () => {
   // No model id is baked in: with no caller model and no DEFAULT_MODEL it fails
@@ -12,7 +13,7 @@ describe("singleShotLlm model choice", () => {
 
   it("fails with a clear message when no model is configured", async () => {
     delete process.env.DEFAULT_MODEL;
-    const real = await import(`../../../../src/lib/llm?real=${crypto.randomUUID()}`);
+    const real = await import(`../../../../src/lib/llm.ts?real=${crypto.randomUUID()}`);
     await expect(real.singleShotLlm("hi")).rejects.toThrow("No model configured");
   });
 });

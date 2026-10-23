@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { clipForModel } from "../../../../src/agent/clip";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { clipForModel } from "../../../../src/agent/clip.ts";
 
 describe("clipForModel", () => {
   it("leaves a text that fits as it is", () => {

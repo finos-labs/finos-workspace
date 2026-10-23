@@ -15,8 +15,8 @@
  */
 
 import { encode } from "gpt-tokenizer";
-import type { ExtractedPage } from "./extract";
-import { MAX_CHUNK_CHARS } from "./limits";
+import type { ExtractedPage } from "./extract.ts";
+import { MAX_CHUNK_CHARS } from "./limits.ts";
 
 export interface DocChunk {
   /** Stable id within the doc — `"<docId>:<chunkIdx>"`. */

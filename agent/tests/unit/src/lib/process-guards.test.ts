@@ -1,8 +1,9 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import { EventEmitter } from "node:events";
 import type { Logger } from "@logtape/logtape";
-import { installErrorGuards, installShutdown } from "../../../../src/lib/process-guards";
-import { liveDebugIgnored, liveDebugLevel } from "../../../../src/lib/debug-traces";
+import { installErrorGuards, installShutdown } from "../../../../src/lib/process-guards.ts";
+import { liveDebugIgnored, liveDebugLevel } from "../../../../src/lib/debug-traces.ts";
 
 function fakeLogger() {
   const lines: string[] = [];

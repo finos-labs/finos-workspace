@@ -8,13 +8,14 @@
  * or PDF report from `get_widget_data`.
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
-import { makeXlsx } from "../../helpers/make-xlsx";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { QueryRequest, ToolMessage, Widget } from "../../../src/protocol/types";
-import { llmEmitsText, makeSpyMockLlm } from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { makeXlsx } from "../../helpers/make-xlsx.ts";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { QueryRequest, ToolMessage, Widget } from "../../../src/protocol/types.ts";
+import { llmEmitsText, makeSpyMockLlm } from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => clearAllModuleState());
 

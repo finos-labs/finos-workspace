@@ -23,14 +23,14 @@ import {
   documentCitationItem,
   errorItem,
   type ContentItem,
-} from "../../../lib/typed";
-import { readAndChunkIsolated } from "./ingest";
-import { embedChunks } from "./retrieve";
-import { retrieve } from "./retrieve";
-import { assertRoom, chargeIngest, ensureHydrated, hasDocument, listDocuments, upsertDocument } from "./store";
-import { getLogger } from "../../../lib/logger";
-import { scopeSigSchema } from "../../../lib/scope-check";
-import { documentBytes, shippedDocumentSchema, type ShippedDocument } from "./payload";
+} from "../../../lib/typed.ts";
+import { readAndChunkIsolated } from "./ingest.ts";
+import { embedChunks } from "./retrieve.ts";
+import { retrieve } from "./retrieve.ts";
+import { assertRoom, chargeIngest, ensureHydrated, hasDocument, listDocuments, upsertDocument } from "./store.ts";
+import { getLogger } from "../../../lib/logger.ts";
+import { scopeSigSchema } from "../../../lib/scope-check.ts";
+import { documentBytes, shippedDocumentSchema, type ShippedDocument } from "./payload.ts";
 
 const logger = getLogger(["mcp", "documents", "query"]);
 

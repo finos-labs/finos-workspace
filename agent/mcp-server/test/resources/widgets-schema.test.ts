@@ -2,11 +2,12 @@
  * workspace://specs/widgets-json-schema: read from the connected browser when it is asked for.
  */
 
-import { describe, expect, test } from "bun:test";
+import { describe, test } from "node:test";
+import { expect } from "expect";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import type { WorkspaceCommand, WorkspaceCommandResult } from "../../src/bridge/wire";
-import { registerWidgetsSchemaResource, WIDGETS_JSON_SCHEMA_URI } from "../../src/resources/widgets-schema";
+import type { WorkspaceCommand, WorkspaceCommandResult } from "../../src/bridge/wire.ts";
+import { registerWidgetsSchemaResource, WIDGETS_JSON_SCHEMA_URI } from "../../src/resources/widgets-schema.ts";
 
 type Read = () => Promise<{ contents: { uri: string; mimeType: string; text: string }[] }>;
 

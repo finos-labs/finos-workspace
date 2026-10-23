@@ -2,7 +2,7 @@
  * Runtime Configuration
  *
  * Provides app-wide configuration that can be swapped at deploy time without
- * rebuilding. A runtime build (`bun run build:runtime`) writes `dist/config.js`, which sets
+ * rebuilding. A runtime build (`npm run build:runtime`) writes `dist/config.js`, which sets
  * `window.__APP_CONFIG__` before the bundle loads (synchronous <script> tag). Without it,
  * as in local dev, the same values are read from the `VITE_*` env vars.
  *

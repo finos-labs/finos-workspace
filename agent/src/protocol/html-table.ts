@@ -1,4 +1,4 @@
-import type { HtmlArtifact } from "./types";
+import type { HtmlArtifact } from "./types.ts";
 
 /**
  * The Workspace has no table artifact: it renders `text`, `html` and `app`

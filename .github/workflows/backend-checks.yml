@@ -35,7 +35,7 @@ jobs:
     defaults:
       run:
         working-directory: backend-api/backend
-    # MySQL, PostgreSQL and Redis come from testcontainers, which uses the runner's Docker.
+    # MySQL, PostgreSQL and Valkey come from testcontainers, which uses the runner's Docker.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

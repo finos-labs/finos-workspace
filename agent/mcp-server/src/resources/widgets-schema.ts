@@ -7,8 +7,8 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { bridgeManager } from "../bridge/singleton";
-import type { BridgeSessionManager } from "../bridge/state";
+import { bridgeManager } from "../bridge/singleton.ts";
+import type { BridgeSessionManager } from "../bridge/state.ts";
 
 export const WIDGETS_JSON_SCHEMA_URI = "workspace://specs/widgets-json-schema";
 const MIME_TYPE = "application/schema+json";

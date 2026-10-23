@@ -1,7 +1,7 @@
 name: Frontend Docker Image (ECR)
 
 # Pull requests build the image to check it. A tag like frontend-v1.1.0 builds it
-# and pushes it to ECR as 1.1.0.
+# and pushes it to ECR as 1.1.0, with an SBOM attestation (.github/actions/image-sbom).
 on:
   pull_request:
     branches:
@@ -17,6 +17,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  attestations: write
 
 concurrency:
   group: frontend-image-${{ github.event.pull_request.number || github.ref }}
@@ -91,3 +92,12 @@ jobs:
         run: |
           docker tag "$ECR_REPOSITORY:$IMAGE_TAG" "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      # The image holds the bundle, which names no packages: they come from
+      # frontend/'s lockfile.
+      - name: SBOM of the image
+        if: github.ref_type == 'tag'
+        uses: ./.github/actions/image-sbom
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          project: frontend

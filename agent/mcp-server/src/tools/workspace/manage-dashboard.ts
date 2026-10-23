@@ -6,11 +6,11 @@
  */
 
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
-import { invalidRequestItem } from "../../bridge/validators";
-import { describeTool } from "../../bridge/instructions";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
+import { invalidRequestItem } from "../../bridge/validators.ts";
+import { describeTool } from "../../bridge/instructions.ts";
 
 export const manageDashboardSchema = {
   operation: z

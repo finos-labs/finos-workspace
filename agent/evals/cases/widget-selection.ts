@@ -3,9 +3,9 @@
  * widget(s) from a workspace before fetching data.
  */
 
-import type { EvalCase } from "../runner";
-import { techWorkspace, macroWorkspace } from "../fixtures/workspaces";
-import { widgetIdInTopN, noBadState } from "../graders";
+import type { EvalCase } from "../runner.ts";
+import { techWorkspace, macroWorkspace } from "../fixtures/workspaces.ts";
+import { widgetIdInTopN, noBadState } from "../graders/index.ts";
 
 // All cases here use widgets in the PRIMARY tier — already in the system
 // prompt. Model is not expected to call search_widgets first; it should

@@ -9,10 +9,10 @@
  * what the model picked first, not the eventual answer.
  */
 
-import type { EvalCase } from "../runner";
-import type { SkillCatalogEntry } from "../../src/protocol/types";
-import { techWorkspace } from "../fixtures/workspaces";
-import { toolCalled, toolNeverCalled, argContains, noBadState } from "../graders";
+import type { EvalCase } from "../runner.ts";
+import type { SkillCatalogEntry } from "../../src/protocol/types.ts";
+import { techWorkspace } from "../fixtures/workspaces.ts";
+import { toolCalled, toolNeverCalled, argContains, noBadState } from "../graders/index.ts";
 
 const OPTIONS_SKILL: SkillCatalogEntry = {
   slug: "options-trading",

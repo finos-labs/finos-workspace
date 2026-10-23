@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import { expect } from "expect";
+import { fn } from "jest-mock";
 import {
   parseSearchResults,
   webSearchHandler,
-} from "../../../../../mcp-server/src/tools/backend/web-search";
+} from "../../../../../mcp-server/src/tools/backend/web-search.ts";
 
 const realFetch = globalThis.fetch;
 
@@ -33,7 +35,7 @@ const PAGE = `<html><body><div id="links" class="results">
 </div></body></html>`;
 
 function mockFetch(impl: (url: string, init?: RequestInit) => Response | Promise<Response>) {
-  globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
+  globalThis.fetch = fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input.toString();
     return impl(url, init);
   }) as unknown as typeof fetch;
@@ -145,7 +147,7 @@ describe("webSearchHandler — failure paths", () => {
   });
 
   it("returns a timeout text item when the request times out", async () => {
-    globalThis.fetch = mock(() => {
+    globalThis.fetch = fn(() => {
       const err = new Error("timed out");
       err.name = "TimeoutError";
       return Promise.reject(err);
@@ -155,7 +157,7 @@ describe("webSearchHandler — failure paths", () => {
   });
 
   it("returns a timeout text item when AbortError is raised", async () => {
-    globalThis.fetch = mock(() => {
+    globalThis.fetch = fn(() => {
       const err = new Error("aborted");
       err.name = "AbortError";
       return Promise.reject(err);
@@ -165,7 +167,7 @@ describe("webSearchHandler — failure paths", () => {
   });
 
   it("rethrows other errors so the MCP runtime can surface them", async () => {
-    globalThis.fetch = mock(() => Promise.reject(new Error("boom"))) as unknown as typeof fetch;
+    globalThis.fetch = fn(() => Promise.reject(new Error("boom"))) as unknown as typeof fetch;
     await expect(webSearchHandler({ query: "x" })).rejects.toThrow("boom");
   });
 });

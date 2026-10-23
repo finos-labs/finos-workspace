@@ -5,24 +5,24 @@ import type {
   SSEEvent,
   ToolMessage,
   Widget,
-} from "../protocol/types";
-import { extractWidgetItems, type WidgetItem } from "../widgets/parse";
-import { asWidgetDataMessage } from "./workspace-widget-data";
-import { readParseAs, routeForParseAs } from "../widgets/parse-as";
-import { analyzeTable, sanitizeName, type TableInfo } from "../sql/loader";
-import { processMcpResult, type McpCitation, type McpResultSummary } from "../mcp/results";
-import type { CitedWidget } from "../protocol/citations";
-import { readExtraState } from "../protocol/extra-state";
-import { reasoningStep } from "../protocol/events";
-import { htmlTableArtifact } from "../protocol/html-table";
-import { WORKSPACE_BRIDGE_COMMAND_NAMES } from "../protocol/bridge-commands";
-import { forgetRows, rememberRows } from "./row-cache";
-import { formatWidgetDataLoadedStatuses } from "./tool-status";
-import { mcpDisplayName } from "./mcp-display";
-import type { PendingDocument } from "./documents";
-import { extractFileTierDocs } from "./file-docs";
-import { getLogger } from "../lib/logger";
-import { clipForModel, MAX_INLINE_TEXT_CHARS } from "./clip";
+} from "../protocol/types.ts";
+import { extractWidgetItems, type WidgetItem } from "../widgets/parse.ts";
+import { asWidgetDataMessage } from "./workspace-widget-data.ts";
+import { readParseAs, routeForParseAs } from "../widgets/parse-as.ts";
+import { analyzeTable, sanitizeName, type TableInfo } from "../sql/loader.ts";
+import { processMcpResult, type McpCitation, type McpResultSummary } from "../mcp/results.ts";
+import type { CitedWidget } from "../protocol/citations.ts";
+import { readExtraState } from "../protocol/extra-state.ts";
+import { reasoningStep } from "../protocol/events.ts";
+import { htmlTableArtifact } from "../protocol/html-table.ts";
+import { WORKSPACE_BRIDGE_COMMAND_NAMES } from "../protocol/bridge-commands.ts";
+import { forgetRows, rememberRows } from "./row-cache.ts";
+import { formatWidgetDataLoadedStatuses } from "./tool-status.ts";
+import { mcpDisplayName } from "./mcp-display.ts";
+import type { PendingDocument } from "./documents.ts";
+import { extractFileTierDocs } from "./file-docs.ts";
+import { getLogger } from "../lib/logger.ts";
+import { clipForModel, MAX_INLINE_TEXT_CHARS } from "./clip.ts";
 
 const logger = getLogger(["app", "round-trip"]);
 

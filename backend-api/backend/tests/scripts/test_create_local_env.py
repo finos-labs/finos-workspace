@@ -93,7 +93,7 @@ def test_the_settings_point_at_the_compose_services():
     values = local_env.settings("a-secret", "0123456789abcdef", "storage")
 
     assert values["DB_HOST"] == "mysql"
-    assert values["REDIS_HOST"] == "redis"
+    assert values["REDIS_HOST"] == "valkey"
     assert values["STORAGE_PROVIDER"] == "folder"
     assert values["FRONTENDURL"] == "http://localhost:3000"
     assert values["SELFURL"] == "http://localhost:8000"
