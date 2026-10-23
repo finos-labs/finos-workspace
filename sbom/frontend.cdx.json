@@ -11740,6 +11740,43 @@
       ]
     },
     {
+      "bom-ref": "pkg:npm/%40emnapi/core@1.11.0?package-id=c8a00cdf1e2d7db2",
+      "type": "library",
+      "name": "@emnapi/core",
+      "version": "1.11.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:\\@emnapi\\/core:\\@emnapi\\/core:1.11.0:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40emnapi/core@1.11.0",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "javascript-lock-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "javascript"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "npm"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "javascript-npm-package-lock-entry"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/package-lock.json"
+        }
+      ]
+    },
+    {
       "bom-ref": "pkg:npm/%40emnapi/core@1.4.3?package-id=57cf84d80da3a3af",
       "type": "library",
       "name": "@emnapi/core",
@@ -11827,6 +11864,43 @@
       ],
       "cpe": "cpe:2.3:a:\\@emnapi\\/runtime:\\@emnapi\\/runtime:1.10.0:*:*:*:*:*:*:*",
       "purl": "pkg:npm/%40emnapi/runtime@1.10.0",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "javascript-lock-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "javascript"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "npm"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "javascript-npm-package-lock-entry"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/package-lock.json"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:npm/%40emnapi/runtime@1.11.0?package-id=9d2e91c1cb261cd2",
+      "type": "library",
+      "name": "@emnapi/runtime",
+      "version": "1.11.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:\\@emnapi\\/runtime:\\@emnapi\\/runtime:1.11.0:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40emnapi/runtime@1.11.0",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -12031,6 +12105,63 @@
         {
           "name": "syft:cpe23",
           "value": "cpe:2.3:a:\\@emnapi\\/wasi:\\@emnapi\\/wasi_threads:1.2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/package-lock.json"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:npm/%40emnapi/wasi-threads@1.2.2?package-id=a7b8a3549b177182",
+      "type": "library",
+      "name": "@emnapi/wasi-threads",
+      "version": "1.2.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:\\@emnapi\\/wasi-threads:\\@emnapi\\/wasi-threads:1.2.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40emnapi/wasi-threads@1.2.2",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "javascript-lock-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "javascript"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "npm"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "javascript-npm-package-lock-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:\\@emnapi\\/wasi-threads:\\@emnapi\\/wasi_threads:1.2.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:\\@emnapi\\/wasi_threads:\\@emnapi\\/wasi-threads:1.2.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:\\@emnapi\\/wasi_threads:\\@emnapi\\/wasi_threads:1.2.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:\\@emnapi\\/wasi:\\@emnapi\\/wasi-threads:1.2.2:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:\\@emnapi\\/wasi:\\@emnapi\\/wasi_threads:1.2.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -16122,10 +16253,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40jridgewell/sourcemap-codec@1.5.5?package-id=fd6c0135a4136263",
+      "bom-ref": "pkg:npm/%40jridgewell/sourcemap-codec@1.6.0?package-id=fd6fb9f185eaf277",
       "type": "library",
       "name": "@jridgewell/sourcemap-codec",
-      "version": "1.5.5",
+      "version": "1.6.0",
       "licenses": [
         {
           "license": {
@@ -16133,8 +16264,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@jridgewell\\/sourcemap-codec:\\@jridgewell\\/sourcemap-codec:1.5.5:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40jridgewell/sourcemap-codec@1.5.5",
+      "cpe": "cpe:2.3:a:\\@jridgewell\\/sourcemap-codec:\\@jridgewell\\/sourcemap-codec:1.6.0:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40jridgewell/sourcemap-codec@1.6.0",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -16154,23 +16285,23 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jridgewell\\/sourcemap-codec:\\@jridgewell\\/sourcemap_codec:1.5.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@jridgewell\\/sourcemap-codec:\\@jridgewell\\/sourcemap_codec:1.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jridgewell\\/sourcemap_codec:\\@jridgewell\\/sourcemap-codec:1.5.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@jridgewell\\/sourcemap_codec:\\@jridgewell\\/sourcemap-codec:1.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jridgewell\\/sourcemap_codec:\\@jridgewell\\/sourcemap_codec:1.5.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@jridgewell\\/sourcemap_codec:\\@jridgewell\\/sourcemap_codec:1.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jridgewell\\/sourcemap:\\@jridgewell\\/sourcemap-codec:1.5.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@jridgewell\\/sourcemap:\\@jridgewell\\/sourcemap-codec:1.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@jridgewell\\/sourcemap:\\@jridgewell\\/sourcemap_codec:1.5.5:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@jridgewell\\/sourcemap:\\@jridgewell\\/sourcemap_codec:1.6.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -20007,10 +20138,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-android-arm-eabi@11.20.0?package-id=4491a031dcff5cc3",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-android-arm-eabi@11.21.2?package-id=60cbc5620e851ba7",
       "type": "library",
       "name": "@oxc-resolver/binding-android-arm-eabi",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -20018,8 +20149,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-android-arm-eabi:\\@oxc-resolver\\/binding-android-arm-eabi:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-android-arm-eabi@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-android-arm-eabi:\\@oxc-resolver\\/binding-android-arm-eabi:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-android-arm-eabi@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -20039,71 +20170,71 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android-arm-eabi:\\@oxc_resolver\\/binding_android_arm_eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android-arm-eabi:\\@oxc_resolver\\/binding_android_arm_eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android_arm_eabi:\\@oxc-resolver\\/binding-android-arm-eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android_arm_eabi:\\@oxc-resolver\\/binding-android-arm-eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android_arm_eabi:\\@oxc_resolver\\/binding_android_arm_eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android_arm_eabi:\\@oxc_resolver\\/binding_android_arm_eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android-arm:\\@oxc-resolver\\/binding-android-arm-eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android-arm:\\@oxc-resolver\\/binding-android-arm-eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android-arm:\\@oxc_resolver\\/binding_android_arm_eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android-arm:\\@oxc_resolver\\/binding_android_arm_eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android_arm:\\@oxc-resolver\\/binding-android-arm-eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android_arm:\\@oxc-resolver\\/binding-android-arm-eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android_arm:\\@oxc_resolver\\/binding_android_arm_eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android_arm:\\@oxc_resolver\\/binding_android_arm_eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android:\\@oxc-resolver\\/binding-android-arm-eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android:\\@oxc-resolver\\/binding-android-arm-eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android:\\@oxc_resolver\\/binding_android_arm_eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android:\\@oxc_resolver\\/binding_android_arm_eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android:\\@oxc-resolver\\/binding-android-arm-eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android:\\@oxc-resolver\\/binding-android-arm-eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android:\\@oxc_resolver\\/binding_android_arm_eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android:\\@oxc_resolver\\/binding_android_arm_eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-android-arm-eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-android-arm-eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_android_arm_eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_android_arm_eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-android-arm-eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-android-arm-eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_android_arm_eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_android_arm_eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-android-arm-eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-android-arm-eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_android_arm_eabi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_android_arm_eabi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -20112,10 +20243,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-android-arm64@11.20.0?package-id=93b448cf260cf218",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-android-arm64@11.21.2?package-id=83652019b6bd397f",
       "type": "library",
       "name": "@oxc-resolver/binding-android-arm64",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -20123,8 +20254,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-android-arm64:\\@oxc-resolver\\/binding-android-arm64:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-android-arm64@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-android-arm64:\\@oxc-resolver\\/binding-android-arm64:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-android-arm64@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -20144,55 +20275,55 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android-arm64:\\@oxc_resolver\\/binding_android_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android-arm64:\\@oxc_resolver\\/binding_android_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android_arm64:\\@oxc-resolver\\/binding-android-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android_arm64:\\@oxc-resolver\\/binding-android-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android_arm64:\\@oxc_resolver\\/binding_android_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android_arm64:\\@oxc_resolver\\/binding_android_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android:\\@oxc-resolver\\/binding-android-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android:\\@oxc-resolver\\/binding-android-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android:\\@oxc_resolver\\/binding_android_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-android:\\@oxc_resolver\\/binding_android_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android:\\@oxc-resolver\\/binding-android-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android:\\@oxc-resolver\\/binding-android-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android:\\@oxc_resolver\\/binding_android_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_android:\\@oxc_resolver\\/binding_android_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-android-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-android-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_android_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_android_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-android-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-android-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_android_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_android_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-android-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-android-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_android_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_android_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -20201,10 +20332,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-darwin-arm64@11.20.0?package-id=bc8b446cfc3b4967",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-darwin-arm64@11.21.2?package-id=e1326883fe2404ce",
       "type": "library",
       "name": "@oxc-resolver/binding-darwin-arm64",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -20212,8 +20343,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin-arm64:\\@oxc-resolver\\/binding-darwin-arm64:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-darwin-arm64@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin-arm64:\\@oxc-resolver\\/binding-darwin-arm64:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-darwin-arm64@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -20233,55 +20364,55 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin-arm64:\\@oxc_resolver\\/binding_darwin_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin-arm64:\\@oxc_resolver\\/binding_darwin_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin_arm64:\\@oxc-resolver\\/binding-darwin-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin_arm64:\\@oxc-resolver\\/binding-darwin-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin_arm64:\\@oxc_resolver\\/binding_darwin_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin_arm64:\\@oxc_resolver\\/binding_darwin_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin:\\@oxc-resolver\\/binding-darwin-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin:\\@oxc-resolver\\/binding-darwin-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin:\\@oxc_resolver\\/binding_darwin_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin:\\@oxc_resolver\\/binding_darwin_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin:\\@oxc-resolver\\/binding-darwin-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin:\\@oxc-resolver\\/binding-darwin-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin:\\@oxc_resolver\\/binding_darwin_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin:\\@oxc_resolver\\/binding_darwin_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-darwin-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-darwin-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_darwin_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_darwin_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-darwin-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-darwin-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_darwin_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_darwin_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-darwin-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-darwin-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_darwin_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_darwin_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -20290,10 +20421,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-darwin-x64@11.20.0?package-id=07acf9bba85c90ef",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-darwin-x64@11.21.2?package-id=3d97543e7d367ccd",
       "type": "library",
       "name": "@oxc-resolver/binding-darwin-x64",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -20301,8 +20432,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin-x64:\\@oxc-resolver\\/binding-darwin-x64:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-darwin-x64@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin-x64:\\@oxc-resolver\\/binding-darwin-x64:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-darwin-x64@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -20322,55 +20453,55 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin-x64:\\@oxc_resolver\\/binding_darwin_x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin-x64:\\@oxc_resolver\\/binding_darwin_x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin_x64:\\@oxc-resolver\\/binding-darwin-x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin_x64:\\@oxc-resolver\\/binding-darwin-x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin_x64:\\@oxc_resolver\\/binding_darwin_x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin_x64:\\@oxc_resolver\\/binding_darwin_x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin:\\@oxc-resolver\\/binding-darwin-x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin:\\@oxc-resolver\\/binding-darwin-x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin:\\@oxc_resolver\\/binding_darwin_x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-darwin:\\@oxc_resolver\\/binding_darwin_x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin:\\@oxc-resolver\\/binding-darwin-x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin:\\@oxc-resolver\\/binding-darwin-x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin:\\@oxc_resolver\\/binding_darwin_x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_darwin:\\@oxc_resolver\\/binding_darwin_x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-darwin-x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-darwin-x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_darwin_x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_darwin_x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-darwin-x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-darwin-x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_darwin_x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_darwin_x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-darwin-x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-darwin-x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_darwin_x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_darwin_x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -20379,10 +20510,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-freebsd-x64@11.20.0?package-id=fe046e79f78e6f97",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-freebsd-x64@11.21.2?package-id=765c2951196862f3",
       "type": "library",
       "name": "@oxc-resolver/binding-freebsd-x64",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -20390,8 +20521,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-freebsd-x64:\\@oxc-resolver\\/binding-freebsd-x64:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-freebsd-x64@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-freebsd-x64:\\@oxc-resolver\\/binding-freebsd-x64:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-freebsd-x64@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -20411,55 +20542,55 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-freebsd-x64:\\@oxc_resolver\\/binding_freebsd_x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-freebsd-x64:\\@oxc_resolver\\/binding_freebsd_x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_freebsd_x64:\\@oxc-resolver\\/binding-freebsd-x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_freebsd_x64:\\@oxc-resolver\\/binding-freebsd-x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_freebsd_x64:\\@oxc_resolver\\/binding_freebsd_x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_freebsd_x64:\\@oxc_resolver\\/binding_freebsd_x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-freebsd:\\@oxc-resolver\\/binding-freebsd-x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-freebsd:\\@oxc-resolver\\/binding-freebsd-x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-freebsd:\\@oxc_resolver\\/binding_freebsd_x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-freebsd:\\@oxc_resolver\\/binding_freebsd_x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_freebsd:\\@oxc-resolver\\/binding-freebsd-x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_freebsd:\\@oxc-resolver\\/binding-freebsd-x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_freebsd:\\@oxc_resolver\\/binding_freebsd_x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_freebsd:\\@oxc_resolver\\/binding_freebsd_x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-freebsd-x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-freebsd-x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_freebsd_x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_freebsd_x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-freebsd-x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-freebsd-x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_freebsd_x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_freebsd_x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-freebsd-x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-freebsd-x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_freebsd_x64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_freebsd_x64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -20468,10 +20599,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-arm-gnueabihf@11.20.0?package-id=c4db0128caf17d89",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-arm-gnueabihf@11.21.2?package-id=2ab39f877bd2177f",
       "type": "library",
       "name": "@oxc-resolver/binding-linux-arm-gnueabihf",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -20479,8 +20610,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-linux-arm-gnueabihf@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-linux-arm-gnueabihf@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -20500,71 +20631,71 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-arm-gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_arm_gnueabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -20573,10 +20704,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-arm-musleabihf@11.20.0?package-id=48a4039051d4bf82",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-arm-musleabihf@11.21.2?package-id=c59214bf64b1c057",
       "type": "library",
       "name": "@oxc-resolver/binding-linux-arm-musleabihf",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -20584,8 +20715,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm-musleabihf:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-linux-arm-musleabihf@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm-musleabihf:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-linux-arm-musleabihf@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -20605,71 +20736,71 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm-musleabihf:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm-musleabihf:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm_musleabihf:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm_musleabihf:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm_musleabihf:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm_musleabihf:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-arm-musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_arm_musleabihf:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -20678,10 +20809,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-arm64-gnu@11.20.0?package-id=a06fe9592a9278f4",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-arm64-gnu@11.21.2?package-id=2f186558323ba7c2",
       "type": "library",
       "name": "@oxc-resolver/binding-linux-arm64-gnu",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -20689,8 +20820,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64-gnu:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-linux-arm64-gnu@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64-gnu:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-linux-arm64-gnu@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -20710,71 +20841,71 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64-gnu:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64-gnu:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64_gnu:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64_gnu:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64_gnu:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64_gnu:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-arm64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_arm64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -20783,10 +20914,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-arm64-musl@11.20.0?package-id=9f818e256ffcc48d",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-arm64-musl@11.21.2?package-id=62ddc9a27c2ece61",
       "type": "library",
       "name": "@oxc-resolver/binding-linux-arm64-musl",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -20794,8 +20925,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64-musl:\\@oxc-resolver\\/binding-linux-arm64-musl:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-linux-arm64-musl@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64-musl:\\@oxc-resolver\\/binding-linux-arm64-musl:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-linux-arm64-musl@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -20815,71 +20946,71 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64-musl:\\@oxc_resolver\\/binding_linux_arm64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64-musl:\\@oxc_resolver\\/binding_linux_arm64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64_musl:\\@oxc-resolver\\/binding-linux-arm64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64_musl:\\@oxc-resolver\\/binding-linux-arm64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64_musl:\\@oxc_resolver\\/binding_linux_arm64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64_musl:\\@oxc_resolver\\/binding_linux_arm64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64:\\@oxc-resolver\\/binding-linux-arm64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64:\\@oxc-resolver\\/binding-linux-arm64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64:\\@oxc_resolver\\/binding_linux_arm64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-arm64:\\@oxc_resolver\\/binding_linux_arm64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64:\\@oxc-resolver\\/binding-linux-arm64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64:\\@oxc-resolver\\/binding-linux-arm64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64:\\@oxc_resolver\\/binding_linux_arm64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_arm64:\\@oxc_resolver\\/binding_linux_arm64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-arm64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-arm64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_arm64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_arm64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-arm64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-arm64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_arm64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_arm64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-arm64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_arm64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-arm64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-arm64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_arm64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_arm64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -20888,10 +21019,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-ppc64-gnu@11.20.0?package-id=cc33f2ffa6e489cb",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-ppc64-gnu@11.21.2?package-id=b2b3374d9aa3de2f",
       "type": "library",
       "name": "@oxc-resolver/binding-linux-ppc64-gnu",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -20899,8 +21030,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-ppc64-gnu:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-linux-ppc64-gnu@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-ppc64-gnu:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-linux-ppc64-gnu@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -20920,71 +21051,71 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-ppc64-gnu:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-ppc64-gnu:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_ppc64_gnu:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_ppc64_gnu:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_ppc64_gnu:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_ppc64_gnu:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-ppc64:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-ppc64:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-ppc64:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-ppc64:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_ppc64:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_ppc64:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_ppc64:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_ppc64:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-ppc64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_ppc64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -20993,10 +21124,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-riscv64-gnu@11.20.0?package-id=ac7ae3616c0d4444",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-riscv64-gnu@11.21.2?package-id=cc5741f9e3c05ae3",
       "type": "library",
       "name": "@oxc-resolver/binding-linux-riscv64-gnu",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -21004,8 +21135,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64-gnu:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-linux-riscv64-gnu@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64-gnu:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-linux-riscv64-gnu@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -21025,71 +21156,71 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64-gnu:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64-gnu:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64_gnu:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64_gnu:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64_gnu:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64_gnu:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-riscv64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_riscv64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -21098,10 +21229,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-riscv64-musl@11.20.0?package-id=ee724a5a61de02ef",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-riscv64-musl@11.21.2?package-id=42fac87329955b21",
       "type": "library",
       "name": "@oxc-resolver/binding-linux-riscv64-musl",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -21109,8 +21240,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64-musl:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-linux-riscv64-musl@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64-musl:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-linux-riscv64-musl@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -21130,71 +21261,71 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64-musl:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64-musl:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64_musl:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64_musl:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64_musl:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64_musl:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-riscv64:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_riscv64:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-riscv64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_riscv64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -21203,10 +21334,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-s390x-gnu@11.20.0?package-id=d409765b1c014357",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-s390x-gnu@11.21.2?package-id=1ce2fa48920bf513",
       "type": "library",
       "name": "@oxc-resolver/binding-linux-s390x-gnu",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -21214,8 +21345,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-s390x-gnu:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-linux-s390x-gnu@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-s390x-gnu:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-linux-s390x-gnu@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -21235,71 +21366,71 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-s390x-gnu:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-s390x-gnu:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_s390x_gnu:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_s390x_gnu:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_s390x_gnu:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_s390x_gnu:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-s390x:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-s390x:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-s390x:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-s390x:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_s390x:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_s390x:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_s390x:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_s390x:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-s390x-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_s390x_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -21308,10 +21439,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-x64-gnu@11.20.0?package-id=f105f37828a44b26",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-x64-gnu@11.21.2?package-id=325c0e78032b39e4",
       "type": "library",
       "name": "@oxc-resolver/binding-linux-x64-gnu",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -21319,8 +21450,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64-gnu:\\@oxc-resolver\\/binding-linux-x64-gnu:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-linux-x64-gnu@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64-gnu:\\@oxc-resolver\\/binding-linux-x64-gnu:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-linux-x64-gnu@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -21340,71 +21471,71 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64-gnu:\\@oxc_resolver\\/binding_linux_x64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64-gnu:\\@oxc_resolver\\/binding_linux_x64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64_gnu:\\@oxc-resolver\\/binding-linux-x64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64_gnu:\\@oxc-resolver\\/binding-linux-x64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64_gnu:\\@oxc_resolver\\/binding_linux_x64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64_gnu:\\@oxc_resolver\\/binding_linux_x64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64:\\@oxc-resolver\\/binding-linux-x64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64:\\@oxc-resolver\\/binding-linux-x64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64:\\@oxc_resolver\\/binding_linux_x64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64:\\@oxc_resolver\\/binding_linux_x64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64:\\@oxc-resolver\\/binding-linux-x64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64:\\@oxc-resolver\\/binding-linux-x64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64:\\@oxc_resolver\\/binding_linux_x64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64:\\@oxc_resolver\\/binding_linux_x64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-x64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-x64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_x64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_x64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-x64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-x64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_x64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_x64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-x64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-x64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_x64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_x64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-x64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-x64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_x64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_x64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-x64-gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-x64-gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_x64_gnu:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_x64_gnu:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -21413,10 +21544,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-x64-musl@11.20.0?package-id=60209ad78c88640a",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-linux-x64-musl@11.21.2?package-id=fecf3479d791e06b",
       "type": "library",
       "name": "@oxc-resolver/binding-linux-x64-musl",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -21424,8 +21555,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64-musl:\\@oxc-resolver\\/binding-linux-x64-musl:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-linux-x64-musl@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64-musl:\\@oxc-resolver\\/binding-linux-x64-musl:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-linux-x64-musl@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -21445,71 +21576,71 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64-musl:\\@oxc_resolver\\/binding_linux_x64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64-musl:\\@oxc_resolver\\/binding_linux_x64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64_musl:\\@oxc-resolver\\/binding-linux-x64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64_musl:\\@oxc-resolver\\/binding-linux-x64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64_musl:\\@oxc_resolver\\/binding_linux_x64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64_musl:\\@oxc_resolver\\/binding_linux_x64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64:\\@oxc-resolver\\/binding-linux-x64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64:\\@oxc-resolver\\/binding-linux-x64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64:\\@oxc_resolver\\/binding_linux_x64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux-x64:\\@oxc_resolver\\/binding_linux_x64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64:\\@oxc-resolver\\/binding-linux-x64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64:\\@oxc-resolver\\/binding-linux-x64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64:\\@oxc_resolver\\/binding_linux_x64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux_x64:\\@oxc_resolver\\/binding_linux_x64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-x64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc-resolver\\/binding-linux-x64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_x64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-linux:\\@oxc_resolver\\/binding_linux_x64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-x64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc-resolver\\/binding-linux-x64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_x64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_linux:\\@oxc_resolver\\/binding_linux_x64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-x64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-linux-x64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_x64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_linux_x64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-x64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-linux-x64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_x64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_linux_x64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-x64-musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-linux-x64-musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_x64_musl:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_linux_x64_musl:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -21518,10 +21649,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-openharmony-arm64@11.20.0?package-id=9a85260141f9ee68",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-openharmony-arm64@11.21.2?package-id=6999080d0b3a3ee8",
       "type": "library",
       "name": "@oxc-resolver/binding-openharmony-arm64",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -21529,8 +21660,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-openharmony-arm64:\\@oxc-resolver\\/binding-openharmony-arm64:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-openharmony-arm64@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-openharmony-arm64:\\@oxc-resolver\\/binding-openharmony-arm64:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-openharmony-arm64@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -21550,55 +21681,55 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-openharmony-arm64:\\@oxc_resolver\\/binding_openharmony_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-openharmony-arm64:\\@oxc_resolver\\/binding_openharmony_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_openharmony_arm64:\\@oxc-resolver\\/binding-openharmony-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_openharmony_arm64:\\@oxc-resolver\\/binding-openharmony-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_openharmony_arm64:\\@oxc_resolver\\/binding_openharmony_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_openharmony_arm64:\\@oxc_resolver\\/binding_openharmony_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-openharmony:\\@oxc-resolver\\/binding-openharmony-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-openharmony:\\@oxc-resolver\\/binding-openharmony-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-openharmony:\\@oxc_resolver\\/binding_openharmony_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-openharmony:\\@oxc_resolver\\/binding_openharmony_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_openharmony:\\@oxc-resolver\\/binding-openharmony-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_openharmony:\\@oxc-resolver\\/binding-openharmony-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_openharmony:\\@oxc_resolver\\/binding_openharmony_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_openharmony:\\@oxc_resolver\\/binding_openharmony_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-openharmony-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-openharmony-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_openharmony_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_openharmony_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-openharmony-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-openharmony-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_openharmony_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_openharmony_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-openharmony-arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-openharmony-arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_openharmony_arm64:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_openharmony_arm64:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -21607,10 +21738,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-wasm32-wasi@11.20.0?package-id=76ca143e23b71fb1",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-wasm32-wasi@11.21.2?package-id=1a4430b60e91d4ad",
       "type": "library",
       "name": "@oxc-resolver/binding-wasm32-wasi",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -21618,8 +21749,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-wasm32-wasi:\\@oxc-resolver\\/binding-wasm32-wasi:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-wasm32-wasi@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-wasm32-wasi:\\@oxc-resolver\\/binding-wasm32-wasi:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-wasm32-wasi@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -21639,55 +21770,55 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-wasm32-wasi:\\@oxc_resolver\\/binding_wasm32_wasi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-wasm32-wasi:\\@oxc_resolver\\/binding_wasm32_wasi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_wasm32_wasi:\\@oxc-resolver\\/binding-wasm32-wasi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_wasm32_wasi:\\@oxc-resolver\\/binding-wasm32-wasi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_wasm32_wasi:\\@oxc_resolver\\/binding_wasm32_wasi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_wasm32_wasi:\\@oxc_resolver\\/binding_wasm32_wasi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-wasm32:\\@oxc-resolver\\/binding-wasm32-wasi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-wasm32:\\@oxc-resolver\\/binding-wasm32-wasi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-wasm32:\\@oxc_resolver\\/binding_wasm32_wasi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-wasm32:\\@oxc_resolver\\/binding_wasm32_wasi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_wasm32:\\@oxc-resolver\\/binding-wasm32-wasi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_wasm32:\\@oxc-resolver\\/binding-wasm32-wasi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_wasm32:\\@oxc_resolver\\/binding_wasm32_wasi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_wasm32:\\@oxc_resolver\\/binding_wasm32_wasi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-wasm32-wasi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-wasm32-wasi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_wasm32_wasi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_wasm32_wasi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-wasm32-wasi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-wasm32-wasi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_wasm32_wasi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_wasm32_wasi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-wasm32-wasi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-wasm32-wasi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_wasm32_wasi:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_wasm32_wasi:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -21696,10 +21827,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-win32-arm64-msvc@11.20.0?package-id=7af4ade65f189572",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-win32-arm64-msvc@11.21.2?package-id=924b4716c96450da",
       "type": "library",
       "name": "@oxc-resolver/binding-win32-arm64-msvc",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -21707,8 +21838,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-arm64-msvc:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-win32-arm64-msvc@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-arm64-msvc:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-win32-arm64-msvc@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -21728,71 +21859,71 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-arm64-msvc:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-arm64-msvc:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_arm64_msvc:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_arm64_msvc:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_arm64_msvc:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_arm64_msvc:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-arm64:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-arm64:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-arm64:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-arm64:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_arm64:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_arm64:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_arm64:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_arm64:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-win32-arm64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_win32_arm64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -21801,10 +21932,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40oxc-resolver/binding-win32-x64-msvc@11.20.0?package-id=e296c0f7ce2c5b97",
+      "bom-ref": "pkg:npm/%40oxc-resolver/binding-win32-x64-msvc@11.21.2?package-id=7ab11abd08f96dc2",
       "type": "library",
       "name": "@oxc-resolver/binding-win32-x64-msvc",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -21812,8 +21943,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-x64-msvc:\\@oxc-resolver\\/binding-win32-x64-msvc:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40oxc-resolver/binding-win32-x64-msvc@11.20.0",
+      "cpe": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-x64-msvc:\\@oxc-resolver\\/binding-win32-x64-msvc:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40oxc-resolver/binding-win32-x64-msvc@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -21833,71 +21964,71 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-x64-msvc:\\@oxc_resolver\\/binding_win32_x64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-x64-msvc:\\@oxc_resolver\\/binding_win32_x64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_x64_msvc:\\@oxc-resolver\\/binding-win32-x64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_x64_msvc:\\@oxc-resolver\\/binding-win32-x64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_x64_msvc:\\@oxc_resolver\\/binding_win32_x64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_x64_msvc:\\@oxc_resolver\\/binding_win32_x64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-x64:\\@oxc-resolver\\/binding-win32-x64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-x64:\\@oxc-resolver\\/binding-win32-x64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-x64:\\@oxc_resolver\\/binding_win32_x64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32-x64:\\@oxc_resolver\\/binding_win32_x64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_x64:\\@oxc-resolver\\/binding-win32-x64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_x64:\\@oxc-resolver\\/binding-win32-x64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_x64:\\@oxc_resolver\\/binding_win32_x64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32_x64:\\@oxc_resolver\\/binding_win32_x64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32:\\@oxc-resolver\\/binding-win32-x64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32:\\@oxc-resolver\\/binding-win32-x64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32:\\@oxc_resolver\\/binding_win32_x64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding-win32:\\@oxc_resolver\\/binding_win32_x64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32:\\@oxc-resolver\\/binding-win32-x64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32:\\@oxc-resolver\\/binding-win32-x64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32:\\@oxc_resolver\\/binding_win32_x64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding_win32:\\@oxc_resolver\\/binding_win32_x64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-win32-x64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc-resolver\\/binding-win32-x64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_win32_x64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc-resolver\\/binding:\\@oxc_resolver\\/binding_win32_x64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-win32-x64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc-resolver\\/binding-win32-x64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_win32_x64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc_resolver\\/binding:\\@oxc_resolver\\/binding_win32_x64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-win32-x64-msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc-resolver\\/binding-win32-x64-msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_win32_x64_msvc:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@oxc:\\@oxc_resolver\\/binding_win32_x64_msvc:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -27456,10 +27587,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40storybook/addon-a11y@10.5.9?package-id=cbc24198b83691c0",
+      "bom-ref": "pkg:npm/%40storybook/addon-a11y@10.6.3?package-id=5cafbe03f609d37f",
       "type": "library",
       "name": "@storybook/addon-a11y",
-      "version": "10.5.9",
+      "version": "10.6.3",
       "licenses": [
         {
           "license": {
@@ -27467,8 +27598,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@storybook\\/addon-a11y:\\@storybook\\/addon-a11y:10.5.9:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40storybook/addon-a11y@10.5.9",
+      "cpe": "cpe:2.3:a:\\@storybook\\/addon-a11y:\\@storybook\\/addon-a11y:10.6.3:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40storybook/addon-a11y@10.6.3",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -27488,23 +27619,23 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon-a11y:\\@storybook\\/addon_a11y:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon-a11y:\\@storybook\\/addon_a11y:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon_a11y:\\@storybook\\/addon-a11y:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon_a11y:\\@storybook\\/addon-a11y:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon_a11y:\\@storybook\\/addon_a11y:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon_a11y:\\@storybook\\/addon_a11y:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon:\\@storybook\\/addon-a11y:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon:\\@storybook\\/addon-a11y:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon:\\@storybook\\/addon_a11y:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon:\\@storybook\\/addon_a11y:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -27513,10 +27644,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40storybook/addon-docs@10.5.9?package-id=b8a9178b42861b84",
+      "bom-ref": "pkg:npm/%40storybook/addon-docs@10.6.3?package-id=9fc18cd440bf4e50",
       "type": "library",
       "name": "@storybook/addon-docs",
-      "version": "10.5.9",
+      "version": "10.6.3",
       "licenses": [
         {
           "license": {
@@ -27524,8 +27655,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@storybook\\/addon-docs:\\@storybook\\/addon-docs:10.5.9:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40storybook/addon-docs@10.5.9",
+      "cpe": "cpe:2.3:a:\\@storybook\\/addon-docs:\\@storybook\\/addon-docs:10.6.3:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40storybook/addon-docs@10.6.3",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -27545,23 +27676,23 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon-docs:\\@storybook\\/addon_docs:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon-docs:\\@storybook\\/addon_docs:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon_docs:\\@storybook\\/addon-docs:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon_docs:\\@storybook\\/addon-docs:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon_docs:\\@storybook\\/addon_docs:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon_docs:\\@storybook\\/addon_docs:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon:\\@storybook\\/addon-docs:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon:\\@storybook\\/addon-docs:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon:\\@storybook\\/addon_docs:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon:\\@storybook\\/addon_docs:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -27570,10 +27701,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40storybook/addon-themes@10.5.9?package-id=baaf6581399176d0",
+      "bom-ref": "pkg:npm/%40storybook/addon-themes@10.6.3?package-id=78bc0a34d3f8defc",
       "type": "library",
       "name": "@storybook/addon-themes",
-      "version": "10.5.9",
+      "version": "10.6.3",
       "licenses": [
         {
           "license": {
@@ -27581,8 +27712,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@storybook\\/addon-themes:\\@storybook\\/addon-themes:10.5.9:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40storybook/addon-themes@10.5.9",
+      "cpe": "cpe:2.3:a:\\@storybook\\/addon-themes:\\@storybook\\/addon-themes:10.6.3:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40storybook/addon-themes@10.6.3",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -27602,23 +27733,23 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon-themes:\\@storybook\\/addon_themes:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon-themes:\\@storybook\\/addon_themes:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon_themes:\\@storybook\\/addon-themes:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon_themes:\\@storybook\\/addon-themes:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon_themes:\\@storybook\\/addon_themes:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon_themes:\\@storybook\\/addon_themes:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon:\\@storybook\\/addon-themes:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon:\\@storybook\\/addon-themes:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/addon:\\@storybook\\/addon_themes:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/addon:\\@storybook\\/addon_themes:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -27627,10 +27758,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40storybook/builder-vite@10.5.9?package-id=d92054ae11e7f201",
+      "bom-ref": "pkg:npm/%40storybook/builder-vite@10.6.3?package-id=69a43105a4eb3e31",
       "type": "library",
       "name": "@storybook/builder-vite",
-      "version": "10.5.9",
+      "version": "10.6.3",
       "licenses": [
         {
           "license": {
@@ -27638,8 +27769,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@storybook\\/builder-vite:\\@storybook\\/builder-vite:10.5.9:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40storybook/builder-vite@10.5.9",
+      "cpe": "cpe:2.3:a:\\@storybook\\/builder-vite:\\@storybook\\/builder-vite:10.6.3:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40storybook/builder-vite@10.6.3",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -27659,80 +27790,23 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/builder-vite:\\@storybook\\/builder_vite:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/builder-vite:\\@storybook\\/builder_vite:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/builder_vite:\\@storybook\\/builder-vite:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/builder_vite:\\@storybook\\/builder-vite:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/builder_vite:\\@storybook\\/builder_vite:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/builder_vite:\\@storybook\\/builder_vite:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/builder:\\@storybook\\/builder-vite:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/builder:\\@storybook\\/builder-vite:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/builder:\\@storybook\\/builder_vite:10.5.9:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:location:0:path",
-          "value": "/package-lock.json"
-        }
-      ]
-    },
-    {
-      "bom-ref": "pkg:npm/%40storybook/csf-plugin@10.5.9?package-id=7cc9ecc2fe914a31",
-      "type": "library",
-      "name": "@storybook/csf-plugin",
-      "version": "10.5.9",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "cpe": "cpe:2.3:a:\\@storybook\\/csf-plugin:\\@storybook\\/csf-plugin:10.5.9:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40storybook/csf-plugin@10.5.9",
-      "properties": [
-        {
-          "name": "syft:package:foundBy",
-          "value": "javascript-lock-cataloger"
-        },
-        {
-          "name": "syft:package:language",
-          "value": "javascript"
-        },
-        {
-          "name": "syft:package:type",
-          "value": "npm"
-        },
-        {
-          "name": "syft:package:metadataType",
-          "value": "javascript-npm-package-lock-entry"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/csf-plugin:\\@storybook\\/csf_plugin:10.5.9:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/csf_plugin:\\@storybook\\/csf-plugin:10.5.9:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/csf_plugin:\\@storybook\\/csf_plugin:10.5.9:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/csf:\\@storybook\\/csf-plugin:10.5.9:*:*:*:*:*:*:*"
-        },
-        {
-          "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/csf:\\@storybook\\/csf_plugin:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/builder:\\@storybook\\/builder_vite:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -27815,10 +27889,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40storybook/react@10.5.9?package-id=253fbca5d8943a53",
+      "bom-ref": "pkg:npm/%40storybook/react@10.6.3?package-id=3d217fda97ace872",
       "type": "library",
       "name": "@storybook/react",
-      "version": "10.5.9",
+      "version": "10.6.3",
       "licenses": [
         {
           "license": {
@@ -27826,8 +27900,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@storybook\\/react:\\@storybook\\/react:10.5.9:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40storybook/react@10.5.9",
+      "cpe": "cpe:2.3:a:\\@storybook\\/react:\\@storybook\\/react:10.6.3:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40storybook/react@10.6.3",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -27852,10 +27926,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40storybook/react-dom-shim@10.5.9?package-id=de0f23007b806425",
+      "bom-ref": "pkg:npm/%40storybook/react-dom-shim@10.6.3?package-id=93d4f001dfe1c1c8",
       "type": "library",
       "name": "@storybook/react-dom-shim",
-      "version": "10.5.9",
+      "version": "10.6.3",
       "licenses": [
         {
           "license": {
@@ -27863,8 +27937,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@storybook\\/react-dom-shim:\\@storybook\\/react-dom-shim:10.5.9:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40storybook/react-dom-shim@10.5.9",
+      "cpe": "cpe:2.3:a:\\@storybook\\/react-dom-shim:\\@storybook\\/react-dom-shim:10.6.3:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40storybook/react-dom-shim@10.6.3",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -27884,39 +27958,39 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/react-dom-shim:\\@storybook\\/react_dom_shim:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/react-dom-shim:\\@storybook\\/react_dom_shim:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/react_dom_shim:\\@storybook\\/react-dom-shim:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/react_dom_shim:\\@storybook\\/react-dom-shim:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/react_dom_shim:\\@storybook\\/react_dom_shim:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/react_dom_shim:\\@storybook\\/react_dom_shim:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/react-dom:\\@storybook\\/react-dom-shim:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/react-dom:\\@storybook\\/react-dom-shim:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/react-dom:\\@storybook\\/react_dom_shim:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/react-dom:\\@storybook\\/react_dom_shim:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/react_dom:\\@storybook\\/react-dom-shim:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/react_dom:\\@storybook\\/react-dom-shim:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/react_dom:\\@storybook\\/react_dom_shim:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/react_dom:\\@storybook\\/react_dom_shim:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/react:\\@storybook\\/react-dom-shim:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/react:\\@storybook\\/react-dom-shim:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/react:\\@storybook\\/react_dom_shim:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/react:\\@storybook\\/react_dom_shim:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -27925,10 +27999,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40storybook/react-vite@10.5.9?package-id=573e27e5f2cb629b",
+      "bom-ref": "pkg:npm/%40storybook/react-vite@10.6.3?package-id=908abb4f002da12b",
       "type": "library",
       "name": "@storybook/react-vite",
-      "version": "10.5.9",
+      "version": "10.6.3",
       "licenses": [
         {
           "license": {
@@ -27936,8 +28010,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@storybook\\/react-vite:\\@storybook\\/react-vite:10.5.9:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40storybook/react-vite@10.5.9",
+      "cpe": "cpe:2.3:a:\\@storybook\\/react-vite:\\@storybook\\/react-vite:10.6.3:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40storybook/react-vite@10.6.3",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -27957,23 +28031,23 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/react-vite:\\@storybook\\/react_vite:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/react-vite:\\@storybook\\/react_vite:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/react_vite:\\@storybook\\/react-vite:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/react_vite:\\@storybook\\/react-vite:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/react_vite:\\@storybook\\/react_vite:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/react_vite:\\@storybook\\/react_vite:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/react:\\@storybook\\/react-vite:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/react:\\@storybook\\/react-vite:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@storybook\\/react:\\@storybook\\/react_vite:10.5.9:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@storybook\\/react:\\@storybook\\/react_vite:10.6.3:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -30756,10 +30830,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/%40testing-library/user-event@14.6.1?package-id=0264e0e244ea1a12",
+      "bom-ref": "pkg:npm/%40testing-library/user-event@14.6.8?package-id=2c33e08808c3e0e4",
       "type": "library",
       "name": "@testing-library/user-event",
-      "version": "14.6.1",
+      "version": "14.6.8",
       "licenses": [
         {
           "license": {
@@ -30767,8 +30841,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:\\@testing-library\\/user-event:\\@testing-library\\/user-event:14.6.1:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/%40testing-library/user-event@14.6.1",
+      "cpe": "cpe:2.3:a:\\@testing-library\\/user-event:\\@testing-library\\/user-event:14.6.8:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/%40testing-library/user-event@14.6.8",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -30788,39 +30862,39 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@testing-library\\/user-event:\\@testing_library\\/user_event:14.6.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@testing-library\\/user-event:\\@testing_library\\/user_event:14.6.8:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@testing_library\\/user_event:\\@testing-library\\/user-event:14.6.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@testing_library\\/user_event:\\@testing-library\\/user-event:14.6.8:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@testing_library\\/user_event:\\@testing_library\\/user_event:14.6.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@testing_library\\/user_event:\\@testing_library\\/user_event:14.6.8:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@testing-library\\/user:\\@testing-library\\/user-event:14.6.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@testing-library\\/user:\\@testing-library\\/user-event:14.6.8:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@testing-library\\/user:\\@testing_library\\/user_event:14.6.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@testing-library\\/user:\\@testing_library\\/user_event:14.6.8:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@testing_library\\/user:\\@testing-library\\/user-event:14.6.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@testing_library\\/user:\\@testing-library\\/user-event:14.6.8:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@testing_library\\/user:\\@testing_library\\/user_event:14.6.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@testing_library\\/user:\\@testing_library\\/user_event:14.6.8:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@testing:\\@testing-library\\/user-event:14.6.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@testing:\\@testing-library\\/user-event:14.6.8:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:\\@testing:\\@testing_library\\/user_event:14.6.1:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:\\@testing:\\@testing_library\\/user_event:14.6.8:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -45771,17 +45845,17 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/dompurify@3.4.16?package-id=a49323bbe3d63cbd",
+      "bom-ref": "pkg:npm/dompurify@3.4.17?package-id=05878eb010533042",
       "type": "library",
       "name": "dompurify",
-      "version": "3.4.16",
+      "version": "3.4.17",
       "licenses": [
         {
           "expression": "MPL-2.0 OR Apache-2.0"
         }
       ],
-      "cpe": "cpe:2.3:a:dompurify:dompurify:3.4.16:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/dompurify@3.4.16",
+      "cpe": "cpe:2.3:a:dompurify:dompurify:3.4.17:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/dompurify@3.4.17",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -49535,7 +49609,7 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/finos-workspace@1.0.0?package-id=a47fe9772979c778",
+      "bom-ref": "pkg:npm/finos-workspace@1.0.0?package-id=a7be472d74a478e3",
       "type": "library",
       "name": "finos-workspace",
       "version": "1.0.0",
@@ -63787,6 +63861,63 @@
       ]
     },
     {
+      "bom-ref": "pkg:npm/magic-string@1.4.3?package-id=6786e0e896c0fc55",
+      "type": "library",
+      "name": "magic-string",
+      "version": "1.4.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "cpe": "cpe:2.3:a:magic-string:magic-string:1.4.3:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/magic-string@1.4.3",
+      "properties": [
+        {
+          "name": "syft:package:foundBy",
+          "value": "javascript-lock-cataloger"
+        },
+        {
+          "name": "syft:package:language",
+          "value": "javascript"
+        },
+        {
+          "name": "syft:package:type",
+          "value": "npm"
+        },
+        {
+          "name": "syft:package:metadataType",
+          "value": "javascript-npm-package-lock-entry"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:magic-string:magic_string:1.4.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:magic_string:magic-string:1.4.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:magic_string:magic_string:1.4.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:magic:magic-string:1.4.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:cpe23",
+          "value": "cpe:2.3:a:magic:magic_string:1.4.3:*:*:*:*:*:*:*"
+        },
+        {
+          "name": "syft:location:0:path",
+          "value": "/package-lock.json"
+        }
+      ]
+    },
+    {
       "bom-ref": "pkg:npm/magicast@0.5.3?package-id=23e96016c95a88da",
       "type": "library",
       "name": "magicast",
@@ -69157,10 +69288,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/oxc-resolver@11.20.0?package-id=52f6bcaafb6edadf",
+      "bom-ref": "pkg:npm/oxc-resolver@11.21.2?package-id=434b9325be9fc584",
       "type": "library",
       "name": "oxc-resolver",
-      "version": "11.20.0",
+      "version": "11.21.2",
       "licenses": [
         {
           "license": {
@@ -69168,8 +69299,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:oxc-resolver:oxc-resolver:11.20.0:*:*:*:*:*:*:*",
-      "purl": "pkg:npm/oxc-resolver@11.20.0",
+      "cpe": "cpe:2.3:a:oxc-resolver:oxc-resolver:11.21.2:*:*:*:*:*:*:*",
+      "purl": "pkg:npm/oxc-resolver@11.21.2",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -69189,23 +69320,23 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:oxc-resolver:oxc_resolver:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:oxc-resolver:oxc_resolver:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:oxc_resolver:oxc-resolver:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:oxc_resolver:oxc-resolver:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:oxc_resolver:oxc_resolver:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:oxc_resolver:oxc_resolver:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:oxc:oxc-resolver:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:oxc:oxc-resolver:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:oxc:oxc_resolver:11.20.0:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:oxc:oxc_resolver:11.21.2:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:location:0:path",
@@ -78328,10 +78459,10 @@
       ]
     },
     {
-      "bom-ref": "pkg:npm/storybook@10.5.9?package-id=a4f4161d56b9dd32",
+      "bom-ref": "pkg:npm/storybook@10.6.3?package-id=98ac2f61a488c2a7",
       "type": "library",
       "name": "storybook",
-      "version": "10.5.9",
+      "version": "10.6.3",
       "licenses": [
         {
           "license": {
@@ -78339,8 +78470,8 @@
           }
         }
       ],
-      "cpe": "cpe:2.3:a:storybook:storybook:10.5.9:*:*:*:*:node.js:*:*",
-      "purl": "pkg:npm/storybook@10.5.9",
+      "cpe": "cpe:2.3:a:storybook:storybook:10.6.3:*:*:*:*:node.js:*:*",
+      "purl": "pkg:npm/storybook@10.6.3",
       "properties": [
         {
           "name": "syft:package:foundBy",
@@ -89344,6 +89475,17 @@
       "dependsOn": [
         "pkg:npm/%40emnapi/wasi-threads@1.0.2?package-id=2d3724bf97792f13",
         "pkg:npm/%40emnapi/wasi-threads@1.2.1?package-id=2c65417e5e0ecaec",
+        "pkg:npm/%40emnapi/wasi-threads@1.2.2?package-id=a7b8a3549b177182",
+        "pkg:npm/tslib@2.8.0?package-id=05bc64a3a3a02195",
+        "pkg:npm/tslib@2.8.1?package-id=e8ca569ff6d9da0c"
+      ]
+    },
+    {
+      "ref": "pkg:npm/%40emnapi/core@1.11.0?package-id=c8a00cdf1e2d7db2",
+      "dependsOn": [
+        "pkg:npm/%40emnapi/wasi-threads@1.0.2?package-id=2d3724bf97792f13",
+        "pkg:npm/%40emnapi/wasi-threads@1.2.1?package-id=2c65417e5e0ecaec",
+        "pkg:npm/%40emnapi/wasi-threads@1.2.2?package-id=a7b8a3549b177182",
         "pkg:npm/tslib@2.8.0?package-id=05bc64a3a3a02195",
         "pkg:npm/tslib@2.8.1?package-id=e8ca569ff6d9da0c"
       ]
@@ -89353,6 +89495,7 @@
       "dependsOn": [
         "pkg:npm/%40emnapi/wasi-threads@1.0.2?package-id=2d3724bf97792f13",
         "pkg:npm/%40emnapi/wasi-threads@1.2.1?package-id=2c65417e5e0ecaec",
+        "pkg:npm/%40emnapi/wasi-threads@1.2.2?package-id=a7b8a3549b177182",
         "pkg:npm/tslib@2.8.0?package-id=05bc64a3a3a02195",
         "pkg:npm/tslib@2.8.1?package-id=e8ca569ff6d9da0c"
       ]
@@ -89362,12 +89505,20 @@
       "dependsOn": [
         "pkg:npm/%40emnapi/wasi-threads@1.0.2?package-id=2d3724bf97792f13",
         "pkg:npm/%40emnapi/wasi-threads@1.2.1?package-id=2c65417e5e0ecaec",
+        "pkg:npm/%40emnapi/wasi-threads@1.2.2?package-id=a7b8a3549b177182",
         "pkg:npm/tslib@2.8.0?package-id=05bc64a3a3a02195",
         "pkg:npm/tslib@2.8.1?package-id=e8ca569ff6d9da0c"
       ]
     },
     {
       "ref": "pkg:npm/%40emnapi/runtime@1.10.0?package-id=90f3b7ad1f28a06b",
+      "dependsOn": [
+        "pkg:npm/tslib@2.8.0?package-id=05bc64a3a3a02195",
+        "pkg:npm/tslib@2.8.1?package-id=e8ca569ff6d9da0c"
+      ]
+    },
+    {
+      "ref": "pkg:npm/%40emnapi/runtime@1.11.0?package-id=9d2e91c1cb261cd2",
       "dependsOn": [
         "pkg:npm/tslib@2.8.0?package-id=05bc64a3a3a02195",
         "pkg:npm/tslib@2.8.1?package-id=e8ca569ff6d9da0c"
@@ -89396,6 +89547,13 @@
     },
     {
       "ref": "pkg:npm/%40emnapi/wasi-threads@1.2.1?package-id=2c65417e5e0ecaec",
+      "dependsOn": [
+        "pkg:npm/tslib@2.8.0?package-id=05bc64a3a3a02195",
+        "pkg:npm/tslib@2.8.1?package-id=e8ca569ff6d9da0c"
+      ]
+    },
+    {
+      "ref": "pkg:npm/%40emnapi/wasi-threads@1.2.2?package-id=a7b8a3549b177182",
       "dependsOn": [
         "pkg:npm/tslib@2.8.0?package-id=05bc64a3a3a02195",
         "pkg:npm/tslib@2.8.1?package-id=e8ca569ff6d9da0c"
@@ -89808,7 +89966,7 @@
     {
       "ref": "pkg:npm/%40jridgewell/gen-mapping@0.3.12?package-id=f9a2a976be7ffa25",
       "dependsOn": [
-        "pkg:npm/%40jridgewell/sourcemap-codec@1.5.5?package-id=fd6c0135a4136263",
+        "pkg:npm/%40jridgewell/sourcemap-codec@1.6.0?package-id=fd6fb9f185eaf277",
         "pkg:npm/%40jridgewell/trace-mapping@0.3.31?package-id=8cfefdeaf05272e1"
       ]
     },
@@ -89830,7 +89988,7 @@
       "ref": "pkg:npm/%40jridgewell/trace-mapping@0.3.31?package-id=8cfefdeaf05272e1",
       "dependsOn": [
         "pkg:npm/%40jridgewell/resolve-uri@3.1.2?package-id=5a4c2fa844972127",
-        "pkg:npm/%40jridgewell/sourcemap-codec@1.5.5?package-id=fd6c0135a4136263"
+        "pkg:npm/%40jridgewell/sourcemap-codec@1.6.0?package-id=fd6fb9f185eaf277"
       ]
     },
     {
@@ -89877,9 +90035,11 @@
       "ref": "pkg:npm/%40napi-rs/wasm-runtime@0.2.11?package-id=c896b41422bc7420",
       "dependsOn": [
         "pkg:npm/%40emnapi/core@1.10.0?package-id=16f8d13d7d98b66b",
+        "pkg:npm/%40emnapi/core@1.11.0?package-id=c8a00cdf1e2d7db2",
         "pkg:npm/%40emnapi/core@1.4.3?package-id=57cf84d80da3a3af",
         "pkg:npm/%40emnapi/core@1.9.2?package-id=9cefc96b954a676d",
         "pkg:npm/%40emnapi/runtime@1.10.0?package-id=90f3b7ad1f28a06b",
+        "pkg:npm/%40emnapi/runtime@1.11.0?package-id=9d2e91c1cb261cd2",
         "pkg:npm/%40emnapi/runtime@1.4.3?package-id=c916cf1622cd8729",
         "pkg:npm/%40emnapi/runtime@1.9.2?package-id=52a3238a4656c5c3",
         "pkg:npm/%40tybys/wasm-util@0.10.4?package-id=7cf7b66ef77a1860",
@@ -89921,9 +90081,11 @@
       "ref": "pkg:npm/%40oxc-parser/binding-wasm32-wasi@0.127.0?package-id=d82acbeb32507590",
       "dependsOn": [
         "pkg:npm/%40emnapi/core@1.10.0?package-id=16f8d13d7d98b66b",
+        "pkg:npm/%40emnapi/core@1.11.0?package-id=c8a00cdf1e2d7db2",
         "pkg:npm/%40emnapi/core@1.4.3?package-id=57cf84d80da3a3af",
         "pkg:npm/%40emnapi/core@1.9.2?package-id=9cefc96b954a676d",
         "pkg:npm/%40emnapi/runtime@1.10.0?package-id=90f3b7ad1f28a06b",
+        "pkg:npm/%40emnapi/runtime@1.11.0?package-id=9d2e91c1cb261cd2",
         "pkg:npm/%40emnapi/runtime@1.4.3?package-id=c916cf1622cd8729",
         "pkg:npm/%40emnapi/runtime@1.9.2?package-id=52a3238a4656c5c3",
         "pkg:npm/%40napi-rs/wasm-runtime@0.2.11?package-id=c896b41422bc7420",
@@ -89931,12 +90093,14 @@
       ]
     },
     {
-      "ref": "pkg:npm/%40oxc-resolver/binding-wasm32-wasi@11.20.0?package-id=76ca143e23b71fb1",
+      "ref": "pkg:npm/%40oxc-resolver/binding-wasm32-wasi@11.21.2?package-id=1a4430b60e91d4ad",
       "dependsOn": [
         "pkg:npm/%40emnapi/core@1.10.0?package-id=16f8d13d7d98b66b",
+        "pkg:npm/%40emnapi/core@1.11.0?package-id=c8a00cdf1e2d7db2",
         "pkg:npm/%40emnapi/core@1.4.3?package-id=57cf84d80da3a3af",
         "pkg:npm/%40emnapi/core@1.9.2?package-id=9cefc96b954a676d",
         "pkg:npm/%40emnapi/runtime@1.10.0?package-id=90f3b7ad1f28a06b",
+        "pkg:npm/%40emnapi/runtime@1.11.0?package-id=9d2e91c1cb261cd2",
         "pkg:npm/%40emnapi/runtime@1.4.3?package-id=c916cf1622cd8729",
         "pkg:npm/%40emnapi/runtime@1.9.2?package-id=52a3238a4656c5c3",
         "pkg:npm/%40napi-rs/wasm-runtime@0.2.11?package-id=c896b41422bc7420",
@@ -90342,7 +90506,8 @@
         "pkg:npm/%40rollup/pluginutils@3.1.0?package-id=4f09a023f7d6462f",
         "pkg:npm/%40rollup/pluginutils@5.3.0?package-id=14a58fc618f856fc",
         "pkg:npm/magic-string@0.25.9?package-id=fae59fca419e2fe4",
-        "pkg:npm/magic-string@0.30.21?package-id=44b2e71880953942"
+        "pkg:npm/magic-string@0.30.21?package-id=44b2e71880953942",
+        "pkg:npm/magic-string@1.4.3?package-id=6786e0e896c0fc55"
       ]
     },
     {
@@ -90390,64 +90555,58 @@
       ]
     },
     {
-      "ref": "pkg:npm/%40storybook/addon-a11y@10.5.9?package-id=cbc24198b83691c0",
+      "ref": "pkg:npm/%40storybook/addon-a11y@10.6.3?package-id=5cafbe03f609d37f",
       "dependsOn": [
         "pkg:npm/%40storybook/global@5.0.0?package-id=c927a3dec1396941",
         "pkg:npm/axe-core@4.11.1?package-id=b5275cf0801adebe"
       ]
     },
     {
-      "ref": "pkg:npm/%40storybook/addon-docs@10.5.9?package-id=b8a9178b42861b84",
+      "ref": "pkg:npm/%40storybook/addon-docs@10.6.3?package-id=9fc18cd440bf4e50",
       "dependsOn": [
         "pkg:npm/%40mdx-js/react@3.1.1?package-id=e4b8c48ae5d99c9c",
-        "pkg:npm/%40storybook/csf-plugin@10.5.9?package-id=7cc9ecc2fe914a31",
         "pkg:npm/%40storybook/icons@2.0.2?package-id=d1ee768cb9a957c4",
-        "pkg:npm/%40storybook/react-dom-shim@10.5.9?package-id=de0f23007b806425",
+        "pkg:npm/%40storybook/react-dom-shim@10.6.3?package-id=93d4f001dfe1c1c8",
         "pkg:npm/react-dom@18.3.1?package-id=450f839966fe8f5c",
         "pkg:npm/react@18.3.1?package-id=251d0578d0ecd9e8",
-        "pkg:npm/ts-dedent@2.2.0?package-id=6daf327ac01854ca"
-      ]
-    },
-    {
-      "ref": "pkg:npm/%40storybook/addon-themes@10.5.9?package-id=baaf6581399176d0",
-      "dependsOn": [
-        "pkg:npm/ts-dedent@2.2.0?package-id=6daf327ac01854ca"
-      ]
-    },
-    {
-      "ref": "pkg:npm/%40storybook/builder-vite@10.5.9?package-id=d92054ae11e7f201",
-      "dependsOn": [
-        "pkg:npm/%40storybook/csf-plugin@10.5.9?package-id=7cc9ecc2fe914a31",
-        "pkg:npm/ts-dedent@2.2.0?package-id=6daf327ac01854ca"
-      ]
-    },
-    {
-      "ref": "pkg:npm/%40storybook/csf-plugin@10.5.9?package-id=7cc9ecc2fe914a31",
-      "dependsOn": [
+        "pkg:npm/ts-dedent@2.2.0?package-id=6daf327ac01854ca",
         "pkg:npm/unplugin@2.3.11?package-id=496c375113140e08"
       ]
     },
     {
-      "ref": "pkg:npm/%40storybook/react-vite@10.5.9?package-id=573e27e5f2cb629b",
+      "ref": "pkg:npm/%40storybook/addon-themes@10.6.3?package-id=78bc0a34d3f8defc",
+      "dependsOn": [
+        "pkg:npm/ts-dedent@2.2.0?package-id=6daf327ac01854ca"
+      ]
+    },
+    {
+      "ref": "pkg:npm/%40storybook/builder-vite@10.6.3?package-id=69a43105a4eb3e31",
+      "dependsOn": [
+        "pkg:npm/ts-dedent@2.2.0?package-id=6daf327ac01854ca"
+      ]
+    },
+    {
+      "ref": "pkg:npm/%40storybook/react-vite@10.6.3?package-id=908abb4f002da12b",
       "dependsOn": [
         "pkg:npm/%40joshwooding/vite-plugin-react-docgen-typescript@0.7.0?package-id=ee3332861d9b3052",
         "pkg:npm/%40rollup/pluginutils@3.1.0?package-id=4f09a023f7d6462f",
         "pkg:npm/%40rollup/pluginutils@5.3.0?package-id=14a58fc618f856fc",
-        "pkg:npm/%40storybook/builder-vite@10.5.9?package-id=d92054ae11e7f201",
-        "pkg:npm/%40storybook/react@10.5.9?package-id=253fbca5d8943a53",
+        "pkg:npm/%40storybook/builder-vite@10.6.3?package-id=69a43105a4eb3e31",
+        "pkg:npm/%40storybook/react@10.6.3?package-id=3d217fda97ace872",
         "pkg:npm/empathic@2.0.0?package-id=e0563e937cc1eddd",
         "pkg:npm/magic-string@0.25.9?package-id=fae59fca419e2fe4",
         "pkg:npm/magic-string@0.30.21?package-id=44b2e71880953942",
+        "pkg:npm/magic-string@1.4.3?package-id=6786e0e896c0fc55",
         "pkg:npm/react-docgen@8.0.2?package-id=96099a9921ce1456",
         "pkg:npm/resolve@1.22.11?package-id=46b132d02c72032c",
         "pkg:npm/tsconfig-paths@4.2.0?package-id=74ac32adf0e46cb7"
       ]
     },
     {
-      "ref": "pkg:npm/%40storybook/react@10.5.9?package-id=253fbca5d8943a53",
+      "ref": "pkg:npm/%40storybook/react@10.6.3?package-id=3d217fda97ace872",
       "dependsOn": [
         "pkg:npm/%40storybook/global@5.0.0?package-id=c927a3dec1396941",
-        "pkg:npm/%40storybook/react-dom-shim@10.5.9?package-id=de0f23007b806425",
+        "pkg:npm/%40storybook/react-dom-shim@10.6.3?package-id=93d4f001dfe1c1c8",
         "pkg:npm/react-docgen-typescript@2.4.0?package-id=7681c571fae76cb9",
         "pkg:npm/react-docgen@8.0.2?package-id=96099a9921ce1456"
       ]
@@ -90486,6 +90645,7 @@
         "pkg:npm/json5@2.2.3?package-id=c916aef85492d213",
         "pkg:npm/magic-string@0.25.9?package-id=fae59fca419e2fe4",
         "pkg:npm/magic-string@0.30.21?package-id=44b2e71880953942",
+        "pkg:npm/magic-string@1.4.3?package-id=6786e0e896c0fc55",
         "pkg:npm/string.prototype.matchall@4.0.12?package-id=741f6cb0347c92ce"
       ]
     },
@@ -90520,6 +90680,7 @@
         "pkg:npm/lightningcss@1.33.0?package-id=9a1f0e37c413d97d",
         "pkg:npm/magic-string@0.25.9?package-id=fae59fca419e2fe4",
         "pkg:npm/magic-string@0.30.21?package-id=44b2e71880953942",
+        "pkg:npm/magic-string@1.4.3?package-id=6786e0e896c0fc55",
         "pkg:npm/source-map-js@1.2.2?package-id=1218d2a948ad1154",
         "pkg:npm/tailwindcss@4.1.11?package-id=51c2fa308c95d387"
       ]
@@ -90528,13 +90689,16 @@
       "ref": "pkg:npm/%40tailwindcss/oxide-wasm32-wasi@4.1.11?package-id=822daa21fc54e285",
       "dependsOn": [
         "pkg:npm/%40emnapi/core@1.10.0?package-id=16f8d13d7d98b66b",
+        "pkg:npm/%40emnapi/core@1.11.0?package-id=c8a00cdf1e2d7db2",
         "pkg:npm/%40emnapi/core@1.4.3?package-id=57cf84d80da3a3af",
         "pkg:npm/%40emnapi/core@1.9.2?package-id=9cefc96b954a676d",
         "pkg:npm/%40emnapi/runtime@1.10.0?package-id=90f3b7ad1f28a06b",
+        "pkg:npm/%40emnapi/runtime@1.11.0?package-id=9d2e91c1cb261cd2",
         "pkg:npm/%40emnapi/runtime@1.4.3?package-id=c916cf1622cd8729",
         "pkg:npm/%40emnapi/runtime@1.9.2?package-id=52a3238a4656c5c3",
         "pkg:npm/%40emnapi/wasi-threads@1.0.2?package-id=2d3724bf97792f13",
         "pkg:npm/%40emnapi/wasi-threads@1.2.1?package-id=2c65417e5e0ecaec",
+        "pkg:npm/%40emnapi/wasi-threads@1.2.2?package-id=a7b8a3549b177182",
         "pkg:npm/%40napi-rs/wasm-runtime@0.2.11?package-id=c896b41422bc7420",
         "pkg:npm/%40napi-rs/wasm-runtime@1.2.5?package-id=8063193e5437af83",
         "pkg:npm/%40tybys/wasm-util@0.10.4?package-id=7cf7b66ef77a1860",
@@ -90776,9 +90940,11 @@
       "ref": "pkg:npm/%40unrs/resolver-binding-wasm32-wasi@1.12.2?package-id=36600662874f5e65",
       "dependsOn": [
         "pkg:npm/%40emnapi/core@1.10.0?package-id=16f8d13d7d98b66b",
+        "pkg:npm/%40emnapi/core@1.11.0?package-id=c8a00cdf1e2d7db2",
         "pkg:npm/%40emnapi/core@1.4.3?package-id=57cf84d80da3a3af",
         "pkg:npm/%40emnapi/core@1.9.2?package-id=9cefc96b954a676d",
         "pkg:npm/%40emnapi/runtime@1.10.0?package-id=90f3b7ad1f28a06b",
+        "pkg:npm/%40emnapi/runtime@1.11.0?package-id=9d2e91c1cb261cd2",
         "pkg:npm/%40emnapi/runtime@1.4.3?package-id=c916cf1622cd8729",
         "pkg:npm/%40emnapi/runtime@1.9.2?package-id=52a3238a4656c5c3",
         "pkg:npm/%40napi-rs/wasm-runtime@0.2.11?package-id=c896b41422bc7420",
@@ -90847,7 +91013,8 @@
         "pkg:npm/estree-walker@2.0.2?package-id=f26956fa23a26a1d",
         "pkg:npm/estree-walker@3.0.3?package-id=53b07c4a58b21988",
         "pkg:npm/magic-string@0.25.9?package-id=fae59fca419e2fe4",
-        "pkg:npm/magic-string@0.30.21?package-id=44b2e71880953942"
+        "pkg:npm/magic-string@0.30.21?package-id=44b2e71880953942",
+        "pkg:npm/magic-string@1.4.3?package-id=6786e0e896c0fc55"
       ]
     },
     {
@@ -90881,6 +91048,7 @@
         "pkg:npm/%40vitest/utils@4.1.11?package-id=bfb394b8d13cb929",
         "pkg:npm/magic-string@0.25.9?package-id=fae59fca419e2fe4",
         "pkg:npm/magic-string@0.30.21?package-id=44b2e71880953942",
+        "pkg:npm/magic-string@1.4.3?package-id=6786e0e896c0fc55",
         "pkg:npm/pathe@2.0.3?package-id=4ac9e39ea10f6adf"
       ]
     },
@@ -91982,7 +92150,7 @@
       ]
     },
     {
-      "ref": "pkg:npm/finos-workspace@1.0.0?package-id=a47fe9772979c778",
+      "ref": "pkg:npm/finos-workspace@1.0.0?package-id=a7be472d74a478e3",
       "dependsOn": [
         "pkg:npm/%40azure/msal-browser@4.18.0?package-id=2713115790e55139",
         "pkg:npm/%40azure/msal-react@3.0.16?package-id=13013f5ed726c883",
@@ -92019,7 +92187,7 @@
         "pkg:npm/cronstrue@3.14.0?package-id=4524fca4d67f61b9",
         "pkg:npm/dayjs-business-days2@1.3.0?package-id=dfebf0e9c0a7fc03",
         "pkg:npm/dayjs@1.11.13?package-id=b0c8e86ed32cda6b",
-        "pkg:npm/dompurify@3.4.16?package-id=a49323bbe3d63cbd",
+        "pkg:npm/dompurify@3.4.17?package-id=05878eb010533042",
         "pkg:npm/exceljs@4.4.0?package-id=abe7a740762c8239",
         "pkg:npm/framer-motion@11.18.2?package-id=fb5d96065d8cdc5e",
         "pkg:npm/fuse.js@7.1.0?package-id=82f8cbd473b35fc4",
@@ -93221,7 +93389,13 @@
     {
       "ref": "pkg:npm/magic-string@0.30.21?package-id=44b2e71880953942",
       "dependsOn": [
-        "pkg:npm/%40jridgewell/sourcemap-codec@1.5.5?package-id=fd6c0135a4136263"
+        "pkg:npm/%40jridgewell/sourcemap-codec@1.6.0?package-id=fd6fb9f185eaf277"
+      ]
+    },
+    {
+      "ref": "pkg:npm/magic-string@1.4.3?package-id=6786e0e896c0fc55",
+      "dependsOn": [
+        "pkg:npm/%40jridgewell/sourcemap-codec@1.6.0?package-id=fd6fb9f185eaf277"
       ]
     },
     {
@@ -94428,14 +94602,14 @@
       ]
     },
     {
-      "ref": "pkg:npm/storybook@10.5.9?package-id=a4f4161d56b9dd32",
+      "ref": "pkg:npm/storybook@10.6.3?package-id=98ac2f61a488c2a7",
       "dependsOn": [
         "pkg:npm/%40storybook/global@5.0.0?package-id=c927a3dec1396941",
         "pkg:npm/%40storybook/icons@2.0.2?package-id=d1ee768cb9a957c4",
         "pkg:npm/%40testing-library/dom@10.4.1?package-id=74b43ec5aec99666",
         "pkg:npm/%40testing-library/jest-dom@6.9.1?package-id=e7407ab507838dd3",
         "pkg:npm/%40testing-library/jest-dom@7.0.1?package-id=72917eb6d739240b",
-        "pkg:npm/%40testing-library/user-event@14.6.1?package-id=0264e0e244ea1a12",
+        "pkg:npm/%40testing-library/user-event@14.6.8?package-id=2c33e08808c3e0e4",
         "pkg:npm/%40vitest/expect@3.2.4?package-id=716e58035113e6bd",
         "pkg:npm/%40vitest/expect@4.1.11?package-id=4a56f7306891a1c8",
         "pkg:npm/%40vitest/spy@3.2.4?package-id=c1a3e88fd810f91e",
@@ -94445,7 +94619,7 @@
         "pkg:npm/jsonc-parser@3.3.1?package-id=62771553158e1d32",
         "pkg:npm/open@10.2.0?package-id=7d398267c68dd0bb",
         "pkg:npm/oxc-parser@0.127.0?package-id=1359845f579574fa",
-        "pkg:npm/oxc-resolver@11.20.0?package-id=52f6bcaafb6edadf",
+        "pkg:npm/oxc-resolver@11.21.2?package-id=434b9325be9fc584",
         "pkg:npm/recast@0.23.11?package-id=8b7dd2358eae7706",
         "pkg:npm/semver@6.3.1?package-id=49a2b5cfb395c72b",
         "pkg:npm/semver@7.7.3?package-id=11edba0dddbf582f",
@@ -94989,6 +95163,7 @@
         "pkg:npm/expect-type@1.3.0?package-id=f2199c594b25f68f",
         "pkg:npm/magic-string@0.25.9?package-id=fae59fca419e2fe4",
         "pkg:npm/magic-string@0.30.21?package-id=44b2e71880953942",
+        "pkg:npm/magic-string@1.4.3?package-id=6786e0e896c0fc55",
         "pkg:npm/obug@2.1.1?package-id=7a2731e2a63ca9e7",
         "pkg:npm/pathe@2.0.3?package-id=4ac9e39ea10f6adf",
         "pkg:npm/picomatch@2.3.2?package-id=b85f5940f206eaf1",
