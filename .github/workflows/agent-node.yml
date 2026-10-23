@@ -3,47 +3,32 @@ name: Agent Node
 on:
   workflow_call:
     outputs:
-      key:
-        description: The cache key of the stage `node`, saved from the directory agent-node.
-        value: ${{ jobs.node.outputs.key }}
+      image:
+        description: The finos-node image, by tag and digest.
+        value: ${{ jobs.node.outputs.image }}
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   node:
     name: Node for the agent's images
     runs-on: ubuntu-latest
-    timeout-minutes: 360
-    concurrency:
-      group: agent-node-${{ github.ref }}
-      cancel-in-progress: false
+    env:
+      RELEASE: "26.12.1-1@sha256:ead12e53441802ae738c130ba285e2517e7aa9a39449e9e4fd9bc9bbf03c5352"
     outputs:
-      key: ${{ steps.key.outputs.key }}
+      image: ${{ steps.image.outputs.image }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Key the stage by what it is made of
-        id: key
+      - name: Check that the release is there
+        id: image
         run: |
-          stage=$(sed -n '/ AS node-build$/,/^FROM scratch AS node$/p' agent/Dockerfile | sha256sum | cut -c1-16)
-          echo "key=agent-node-$RUNNER_OS-$RUNNER_ARCH-$stage" >> "$GITHUB_OUTPUT"
-
-      - name: Look for the stage in the cache
-        id: cache
-        uses: actions/cache/restore@v6
-        with:
-          path: agent-node
-          key: ${{ steps.key.outputs.key }}
-          lookup-only: true
-
-      - name: Build the stage
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: docker build --target node --output type=local,dest=agent-node agent
-
-      - name: Keep the stage in the cache
-        if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: agent-node
-          key: ${{ steps.key.outputs.key }}
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/finos-node:$RELEASE"
+          docker manifest inspect "$image" > /dev/null
+          echo "image=$image" >> "$GITHUB_OUTPUT"

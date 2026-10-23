@@ -17,6 +17,7 @@ concurrency:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   node:
@@ -66,22 +67,24 @@ jobs:
           frontend/tests/e2e/make-tls.sh frontend/tests/e2e/tls/certs localhost
           echo "NODE_EXTRA_CA_CERTS=$GITHUB_WORKSPACE/frontend/tests/e2e/tls/certs/ca.pem" >> "$GITHUB_ENV"
 
-      - uses: actions/cache/restore@v6
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
-          path: agent-node
-          key: ${{ needs.node.outputs.key }}
-          fail-on-cache-miss: true
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
       - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487
       - name: Build the stack's images
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
         run: >-
           docker buildx bake -f docker-compose.yml -f docker-compose.e2e.yml --load
           --set init.cache-from=type=gha,scope=fastapi.Dockerfile
           --set init.cache-to=type=gha,mode=max,scope=fastapi.Dockerfile
           --set worker.cache-from=type=gha,scope=rqworker.Dockerfile
           --set worker.cache-to=type=gha,mode=max,scope=rqworker.Dockerfile
-          --set "ines.contexts.node=$GITHUB_WORKSPACE/agent-node"
-          --set "ines-mcp.contexts.node=$GITHUB_WORKSPACE/agent-node"
+          --set "ines.contexts.node=docker-image://$NODE_IMAGE"
+          --set "ines-mcp.contexts.node=docker-image://$NODE_IMAGE"
 
       - name: Start the stack
         run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml -f "$RUNNER_TEMP/compose.plugins.yml" up -d

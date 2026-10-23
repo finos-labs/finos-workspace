@@ -16,6 +16,7 @@ concurrency:
 
 permissions:
   contents: read
+  packages: read
   id-token: write
   attestations: write
 
@@ -125,20 +126,22 @@ jobs:
 
       - uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd
 
-      - uses: actions/cache/restore@v6
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
-          path: agent-node
-          key: ${{ needs.node.outputs.key }}
-          fail-on-cache-miss: true
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push the agent and agent MCP server images
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
         run: |
           for image in agent:ines agent-mcp:ines-mcp; do
             repository="finos/${image%%:*}" target="${image#*:}"
             if output=$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="$IMAGE_TAG" 2>&1); then
               echo "$repository:$IMAGE_TAG is already in ECR."
             elif grep -q ImageNotFoundException <<< "$output"; then
-              docker build --build-context node=agent-node --target "$target" --build-arg GIT_SHA="$GITHUB_SHA" \
+              docker build --build-context "node=docker-image://$NODE_IMAGE" --target "$target" --build-arg GIT_SHA="$GITHUB_SHA" \
                 -t "$ECR_REGISTRY/$repository:$IMAGE_TAG" agent
               docker push "$ECR_REGISTRY/$repository:$IMAGE_TAG"
             else
