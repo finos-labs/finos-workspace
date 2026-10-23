@@ -52,6 +52,16 @@ jobs:
             echo "sbom=finos-node-$release.cdx.json"
           } >> "$GITHUB_OUTPUT"
 
+      # The App writes the attestations hours from now, after the build: a release it could not attest
+      # would keep its tag, so a missing variable or a key the App refuses stops the run here instead.
+      - name: Check that the App gives a token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.NODE_APP_ID }}
+          private-key: ${{ secrets.NODE_APP_PRIVATE_KEY }}
+          permission-attestations: write
+          permission-artifact-metadata: write
+
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
