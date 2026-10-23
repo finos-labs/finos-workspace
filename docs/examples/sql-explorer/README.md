@@ -140,10 +140,10 @@ postgres:18.6`). Without it they are skipped.
    `python -m scripts.plugin_check <plugins directory>/sql-explorer/<version> --digest`.
 2. Build the backend's image from the same directory:
    `docker build -f backend/Dockerfile -t sql-explorer-backend:<version> <that directory>`.
-3. Run it as Workspace's recipe A has it (`docs/widget-plugins/SERVER-SIDE.md` 5.3): no
-   privileges, a read-only root, its own network that only a gateway joins from the
-   Workspace side, the database on a second network, the data files mounted read-only at
-   `/data`. `examples/compose.yaml` does exactly this.
+3. Run it as `docs/widget-plugins/README.md` 6.5 describes: no privileges, a read-only
+   root, its own network that only a gateway joins from the Workspace side, the database
+   on a second network, the data files mounted read-only at `/data`.
+   `examples/compose.yaml` does exactly this.
 4. List it for the API: `WIDGET_PLUGIN_BACKENDS={"sql-explorer": "http://<gateway>:<port>"}`.
 5. In Admin, Widgets, Deployment: review and approve the version. Under Overrides, add the
    database's address to the server network, `tcp://<host>:<port>`, and confirm private

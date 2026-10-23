@@ -1,8 +1,8 @@
 # Writing a widget plugin
 
-Files: [README](README.md) · [DESIGN](DESIGN.md) · [GUEST-CONTRACT](GUEST-CONTRACT.md) · [WIDGETS-JSON](WIDGETS-JSON.md) · [SERVER-SIDE](SERVER-SIDE.md) · [SECURITY](SECURITY.md) · [PLAN](PLAN.md) · [SPIKE](SPIKE.md) · **AUTHORING**
+Files: [README](README.md) · **AUTHORING** · [WIDGETS-JSON](WIDGETS-JSON.md) · [SECURITY](SECURITY.md)
 
-The reference for people who build widget plugins for Workspace. It covers what this host implements today. The design documents explain why; this file says what to write.
+The reference for people who build widget plugins for Workspace. README says how a deployment runs plugins and SECURITY what the sandbox enforces; this file says what to write.
 
 ## 1. What a plugin is
 
@@ -20,7 +20,7 @@ A plugin is a package of files that adds widget types to Workspace. Its code is 
   plugin.json        the manifest (section 3)
   entry.js           the module, one bundled file
   entry.css          optional styles
-  assets/            optional files the host serves (the icon)
+  assets/            optional: the icon, and files the module reads with core:asset:read
 ```
 
 - `<plugin-id>`: 2 to 48 characters, lowercase letters, digits and `-`, starting with a letter.
@@ -72,7 +72,7 @@ The manifest is closed: an unknown key blocks the version. Strings and lists are
 | `adminSettings` | no | A settings form an organization's admin fills in (section 9). Not for secrets. |
 | `contributes.widgets` | yes | 1 to 20 widgets (below). |
 
-Not available on this host yet, and blocked when present: the permission `core:data:query`, and `signatures`.
+A manifest that asks for the permission `core:data:query` or has `signatures` is blocked: neither exists on this host.
 
 ### 3.1 Widgets
 
@@ -115,7 +115,7 @@ Not available on this host yet, and blocked when present: the permission `core:d
 
 One plugin cannot handle the same type twice. When two plugins handle a type, the organization's admin chooses which renders it.
 
-A type you handle works with any backend whose `widgets.json` declares a widget of that type and whose endpoint returns what `response` describes. Workspace adds `theme=dark` or `theme=light` to that endpoint's query, the site's mode, and asks again when the user switches it, as it does for `markdown` and `html`. What each mode looks like is the backend author's to decide; `theme` is a name the backend's widgets cannot use for a param of their own.
+A type you handle works with any backend whose `widgets.json` declares a widget of that type and whose endpoint returns what `response` describes. Workspace adds `theme=dark` or `theme=light` to that endpoint's query, the site's mode, and asks again when the user switches it, as it does for `markdown` and `html`. What each mode looks like is the backend author's to decide. `theme` and `raw` (4.2) are names the backend's widgets cannot use for query params of their own.
 
 ## 4. The module
 
@@ -123,10 +123,7 @@ A type you handle works with any backend whose `widgets.json` declares a widget 
 
 ```js
 export default {
-  async initialize({ model, signal, experimental }) {
-    // Once per frame, before render. Return nothing, a cleanup function, or an
-    // exports object (section 4.5).
-  },
+  async initialize({ model, signal, experimental }) {},
   async render({ model, el, signal, host, experimental }) {
     const draw = () => {
       el.textContent = JSON.stringify(model.get("data"));
@@ -137,6 +134,8 @@ export default {
   },
 };
 ```
+
+`initialize` runs once per frame, before `render`, and returns nothing, a cleanup function, or the exports of section 4.5.
 
 ### 4.1 Lifecycle
 
@@ -206,11 +205,9 @@ Uncaught errors and unhandled rejections are logged, not fatal. The frame has a 
 async initialize({ model }) {
   return {
     async exportOptions() {
-      // What the widget can export now; [] means nothing
       return [{ id: "rows", label: "Rows (CSV)", extension: "csv", mime: "text/csv" }];
     },
     async exportData(id, { title }) {
-      // A string, an ArrayBuffer, a typed array or a Blob; null for nothing
       return toCsv(model.get("data"));
     },
     async copilotContext() {
@@ -220,9 +217,21 @@ async initialize({ model }) {
 }
 ```
 
+- `exportOptions` returns what the widget can export now, `[]` for nothing. `exportData` returns a string, an `ArrayBuffer`, a typed array or a `Blob`, or `null` for nothing.
 - The card's Export entry appears with `core:export:provide` and both `exportOptions` and `exportData`. At most 16 options; ids are letters, digits, `_`, `.` and `-`; labels 1 to 60 characters; extensions 1 to 10 letters or digits; `mime` is `type/subtype`. The file is at most 25 MiB. `exportOptions` has 10 seconds, `exportData` 60.
 - `copilotContext` is called with `core:copilot:context` when the user asks the AI agent about the dashboard. At most 256 KiB, 10 seconds.
 - When `initialize` returns exports, do cleanup through `signal`.
+
+### 4.6 Against anywidget in Jupyter
+
+| In Jupyter | Here |
+|---|---|
+| A Python class holds the traits, and the kernel answers `model.send` | No kernel. Traits are bound to host state (4.2). A round trip to server code is a proxy (section 7) or a backend route (section 8). |
+| `_esm` and `_css`, which may be URLs | `entry.js` and `entry.css` from the package, bundled. CSS is added as a `<style>` element. |
+| `host.getWidget`, `host.getModel`, `model.widget_manager` | Reject with `not_available`: a widget reaches no other widget. |
+| Views of one model share its `initialize` | Every frame runs its own `initialize`, a fullscreen view included. |
+| `experimental.invoke` calls Python | It calls a host command (4.3). |
+| The page's storage, cookies, popups and network | None. Storage and cookies are unavailable in the frame's opaque origin, popups, alerts and navigation are blocked, and the network is what the frame's policy allows (section 6). |
 
 ## 5. Permissions
 
@@ -349,7 +358,7 @@ The backend answers three requests, over HTTP on its internal address:
 - **Network.** `server.network` names what the backend contacts: https origins, and `tcp://host:port` for anything else, such as a database. The deployment enforces it around the backend. A host that belongs to the deployment rather than your package, such as its database, is added by a superuser's override; name it in your `purpose` texts and README.
 - **Arguments** are checked by the API against the route's `args` before the call (the types of section 7). A route's string may have a `maxLength` up to 32,768, since it travels in the call's JSON body; a proxy's stays at 2,048.
 - **The caller** is `{}`, or `{ "id": "<pseudonymous id>" }` when the admin approved `identity: "pseudonymous"`: stable for a user within your plugin, different in every other plugin, and never the user's name, email or Workspace id.
-- **Data of the user.** To read a data source you declare, send the call's token to the broker: `POST <API>/internal/plugin-broker/data/<data-source-id>` with `X-Workspace-Call: <token>`, `Origin: <WORKSPACE_ORIGIN>` (the web app's origin, which the deployment gives your backend; the API refuses a request from an origin it does not allow) and `{ "path": "/<path under the backend's URL>", "method": "GET", "query": {...}, "body": ... }`. It answers `{ "status", "content_type", "body" }`. The organization chooses which of its backends serves each data source, the user's own access applies, and the backend's credentials are added by the API; you never hold them. The token lasts 60 seconds and cannot be read or changed.
+- **Data of the user.** To read a data source you declare, send the call's token to the broker: `POST <API>/internal/plugin-broker/data/<data-source-id>` with `X-Workspace-Call: <token>`, `Origin: <the web app's origin>` (the deployment gives your backend that value; the API refuses a request from an origin it does not allow) and `{ "path": "/<path under the backend's URL>", "method": "GET", "query": {...}, "body": ... }`. It answers `{ "status", "content_type", "body" }`. The organization chooses which of its backends serves each data source, the user's own access applies, and the backend's credentials are added by the API; you never hold them. The token lasts 60 seconds and cannot be read or changed.
 - **Limits.** A route's `maxBytes` is at most 5 MiB (default 1 MiB) and `timeoutMs` at most 30 seconds (default 10); the deployment caps both. Calls are rate limited and at most 8 of a plugin run at once. After repeated failures (time-outs, errors, a 5xx) the API pauses calls to the backend for a short time. A 4xx you return is passed on as a refusal and does not count.
 - **In the frame,** a refused call rejects with `out_of_scope` for a route the widget does not list, `invalid_args`, `not_granted`, `rate_limited`, `timeout`, `too_large`, and otherwise `unavailable` (not registered, another version, paused, a secret not set, your error).
 - **The admin reviews** that code runs on the server, each route and the secrets it sends, each data source and the pseudonymous id.
