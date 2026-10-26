@@ -1,3 +1,5 @@
+[![badge-labs](https://user-images.githubusercontent.com/327285/230928932-7c75f8ed-e57b-41db-9fb7-a292a13a1e58.svg)](https://community.finos.org/docs/governance/lifecycle-stages/labs)
+
 # Workspace
 
 Source code for Workspace and the components that build and run it.
@@ -236,4 +238,11 @@ it does not answer.
   defaults in its code; the values the dev environment sets differently are in the infrastructure repository. Each deployment file's header lists the repository variables and
   secrets it reads. The `.github/workflows/` files left inside `frontend/` are kept for reference; GitHub Actions only
   executes workflows from a repository's root `.github/` directory, so none of them run here as-is.
-- Licensed under Apache-2.0 (see [LICENSE](LICENSE)). Individual components may carry additional notices in their own directories.
+
+## License
+
+Copyright 2026 FINOS
+
+Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+
+SPDX-License-Identifier: [Apache-2.0](https://spdx.org/licenses/Apache-2.0)
