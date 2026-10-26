@@ -2,9 +2,9 @@
  * Entity plugin enablement: which installed plugins an entity administrator turned on
  * for their organization. A super administrator installs a plugin (approvals.ts); only
  * then can an entity administrator enable it, and only an installed plugin that is
- * enabled for the user's entity reaches that entity's users and dashboards. The POC
- * keeps enablements in this browser's localStorage, keyed by entity; a backend
- * implementation of EntityPluginService can replace it without UI changes.
+ * enabled for the user's entity reaches that entity's users and dashboards. Workspace
+ * keeps enablements in the API (backend.ts); the localStorage implementation here,
+ * keyed by entity, serves tests and tools that run without one.
  */
 import { z } from "zod";
 

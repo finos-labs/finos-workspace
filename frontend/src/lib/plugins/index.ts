@@ -9,6 +9,7 @@ export {
   type PluginApproval,
   type PluginApprovalService,
 } from "./approvals";
+export { apiEntityPlugins, apiPluginApprovals } from "./backend";
 export { allowAllEntitlements, type EntitlementService } from "./entitlements";
 export {
   createLocalEntityPlugins,

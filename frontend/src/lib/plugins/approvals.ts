@@ -2,9 +2,9 @@
  * Plugin approvals: which version of each plugin an administrator enabled, pinned by
  * the release digest. An approval is global (one per plugin, for every user and
  * dashboard) and keeps a snapshot of the approved release, so a later version can be
- * reviewed against it and a changed release is detected. The POC keeps approvals in
- * this browser's localStorage; a backend implementation of PluginApprovalService can
- * replace it without UI changes.
+ * reviewed against it and a changed release is detected. Workspace keeps approvals in
+ * the API (backend.ts); the localStorage implementation here serves tests and tools
+ * that run without one.
  */
 import { z } from "zod";
 import { PluginRequestsSchema } from "./registry";

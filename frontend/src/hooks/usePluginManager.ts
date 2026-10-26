@@ -14,10 +14,10 @@ import { useNavigate } from "react-router-dom";
 import type { WidgetJsonT } from "~/components/types";
 import {
   allowAllEntitlements,
-  createLocalEntityPlugins,
+  apiEntityPlugins,
+  apiPluginApprovals,
   createPluginManager,
   isPluginHostUrl,
-  localPluginApprovals,
   type OpenOptions,
   type PluginManager,
   type PluginRelease,
@@ -40,18 +40,14 @@ const APPROVAL_DEPENDENT_KEYS = [
   ["plugin-frame"],
 ];
 
-/** The signed-in user's entity, which plugin enablements belong to. */
-const currentEntity = () => useAuthStore.getState().user?.entity_name;
-const localEntityPlugins = createLocalEntityPlugins(currentEntity);
-
 function createWorkspacePluginManager(
   open: (pluginId: string, options?: OpenOptions) => void,
 ) {
   return createPluginManager({
     pluginHostUrl: getConfig().urls.pluginHost,
     entitlements: allowAllEntitlements,
-    approvals: localPluginApprovals,
-    entityPlugins: localEntityPlugins,
+    approvals: apiPluginApprovals,
+    entityPlugins: apiEntityPlugins,
     open,
   });
 }
@@ -107,7 +103,10 @@ function approvalsQueryOptions(manager: PluginManager) {
   };
 }
 
-/** Keyed by entity, so switching accounts never shows another entity's choices. */
+/**
+ * The API answers with the signed-in user's entity; the key names the entity so that
+ * switching accounts never shows another entity's choices from the cache.
+ */
 function entityPluginsQueryOptions(manager: PluginManager, entity: string | null) {
   return {
     queryKey: [...ENTITY_PLUGINS_KEY, entity],

@@ -1,5 +1,5 @@
 // Tests the Admin Portal Plugins page and the plugin runtime page against a mocked
-// plugin host (MSW): the super administrator's catalog (install, uninstall, review),
+// plugin host and the Workspace API's plugin routes (MSW): the super administrator's catalog (install, uninstall, review),
 // an entity administrator's installed plugins (enable/disable for the organization),
 // previewing, the old /app/plugins redirect, empty/error states, unknown, inactive,
 // not installed or disabled plugins, and enabled plugins appearing in (and leaving)
@@ -15,11 +15,7 @@ import {
   useEnabledPluginWidgets,
   usePluginFrameStatus,
 } from "~/hooks/usePluginManager";
-import {
-  ENTITY_PLUGINS_STORAGE_KEY,
-  PLUGIN_APPROVALS_STORAGE_KEY,
-  type PluginRelease,
-} from "~/lib/plugins";
+import type { PluginRelease } from "~/lib/plugins";
 import { useAuthStore } from "~/lib/state/auth";
 import AdminPluginsPage from "~/routes/admin/plugins";
 import PluginRuntimePage from "~/routes/pluginRuntime";
@@ -27,6 +23,8 @@ import { HttpResponse, http, server, setupMSW } from "../../../mocks/msw-utils";
 import { fakeSha, makeRelease } from "../../lib/plugins/releaseFixtures";
 
 const HOST = "http://localhost:5173";
+// The Workspace API in tests (VITE_BACKEND_URL)
+const API = "https://backend.test";
 const ENTITY = "Acme";
 
 vi.mock("~/hooks/useEntityAdmin", () => ({ useIsEntityAdmin: vi.fn() }));
@@ -40,13 +38,23 @@ function signInAs(role: "super-admin" | "entity-admin") {
 }
 const pluginHost = vi.hoisted(() => ({ value: "http://localhost:5173" }));
 
+// The real API client, so the plugin routes go through MSW like a browser's requests
+vi.unmock("~/api/api");
+
 vi.mock("~/lib/runtimeConfig", async (importOriginal) => {
   const actual = await importOriginal<typeof import("~/lib/runtimeConfig")>();
   return {
     ...actual,
     getConfig: () => {
       const config = actual.getConfig();
-      return { ...config, urls: { ...config.urls, pluginHost: pluginHost.value } };
+      return {
+        ...config,
+        urls: {
+          ...config.urls,
+          backend: "https://backend.test",
+          pluginHost: pluginHost.value,
+        },
+      };
     },
   };
 });
@@ -102,31 +110,40 @@ const v2 = makeRelease({
 /** Releases the mocked plugin host publishes; tests replace it as needed. */
 let releases: PluginRelease[] = [v1];
 
-/** Stores approvals as a super administrator's Install would have, for each release. */
+/** What the mocked Workspace API (backend routers/plugins.py) keeps. */
+interface StoredInstallation {
+  pluginId: string;
+  version: string;
+  digest: string;
+  files: PluginRelease["files"];
+  requests: PluginRelease["requests"];
+  releaseNotes: PluginRelease["releaseNotes"];
+  source: PluginRelease["source"];
+  approvedAt: string;
+}
+let installations: StoredInstallation[] = [];
+/** Plugin ids each organization enabled. */
+let enablements: Record<string, string[]> = {};
+
+const installation = (release: PluginRelease): StoredInstallation => ({
+  pluginId: release.id,
+  version: release.version,
+  digest: release.digest,
+  files: release.files,
+  requests: release.requests,
+  releaseNotes: release.releaseNotes,
+  source: release.source,
+  approvedAt: "2026-10-15T00:00:00.000Z",
+});
+
+/** Installs each release, as a super administrator's Install would have. */
 function setInstalled(approved: PluginRelease[]) {
-  localStorage.setItem(
-    PLUGIN_APPROVALS_STORAGE_KEY,
-    JSON.stringify(
-      approved.map((release) => ({
-        pluginId: release.id,
-        version: release.version,
-        digest: release.digest,
-        files: release.files,
-        requests: release.requests,
-        releaseNotes: release.releaseNotes,
-        source: release.source,
-        approvedAt: "2026-10-15T00:00:00.000Z",
-      })),
-    ),
-  );
+  installations = approved.map(installation);
 }
 
-/** Stores the plugins an entity administrator enabled for their organization. */
+/** Sets the plugins an entity administrator enabled for their organization. */
 function setEnabled(pluginIds: string[], entity = ENTITY) {
-  localStorage.setItem(
-    ENTITY_PLUGINS_STORAGE_KEY,
-    JSON.stringify({ [entity]: pluginIds }),
-  );
+  enablements = { ...enablements, [entity]: pluginIds };
 }
 
 /** Installs each release and enables it for the signed-in user's organization. */
@@ -135,18 +152,67 @@ function setAvailable(releases: PluginRelease[]) {
   setEnabled(releases.map((release) => release.id));
 }
 
-const storedEnablements = () =>
-  JSON.parse(localStorage.getItem(ENTITY_PLUGINS_STORAGE_KEY) ?? "{}") as Record<
-    string,
-    string[]
-  >;
+const storedEnablements = () => enablements;
+const storedApprovals = () => installations;
 
-const storedApprovals = () =>
-  JSON.parse(localStorage.getItem(PLUGIN_APPROVALS_STORAGE_KEY) ?? "[]") as {
-    pluginId: string;
-    version: string;
-    digest: string;
-  }[];
+const isInstalled = (pluginId: string) =>
+  installations.some((item) => item.pluginId === pluginId);
+
+/**
+ * The plugin routes of the Workspace API, answering as the signed-in user of ENTITY:
+ * uninstalling cascades to every organization, and only an installed plugin is enabled.
+ */
+const pluginApi = [
+  http.get(`${API}/plugins/installations`, () => HttpResponse.json(installations)),
+  http.put<{ pluginId: string }, Omit<StoredInstallation, "pluginId" | "approvedAt">>(
+    `${API}/plugins/installations/:pluginId`,
+    async ({ params, request }) => {
+      const item = {
+        ...(await request.json()),
+        pluginId: params.pluginId,
+        approvedAt: "2026-10-23T00:00:00.000Z",
+      };
+      installations = [
+        ...installations.filter((other) => other.pluginId !== params.pluginId),
+        item,
+      ];
+      return HttpResponse.json(item);
+    },
+  ),
+  http.delete<{ pluginId: string }>(
+    `${API}/plugins/installations/:pluginId`,
+    ({ params }) => {
+      installations = installations.filter((item) => item.pluginId !== params.pluginId);
+      enablements = Object.fromEntries(
+        Object.entries(enablements).map(([entity, ids]) => [
+          entity,
+          ids.filter((id) => id !== params.pluginId),
+        ]),
+      );
+      return HttpResponse.json({ success: true });
+    },
+  ),
+  http.get(`${API}/plugins/entity`, () =>
+    HttpResponse.json({
+      pluginIds: (enablements[ENTITY] ?? []).filter(isInstalled),
+    }),
+  ),
+  http.put<{ pluginId: string }>(`${API}/plugins/entity/:pluginId`, ({ params }) => {
+    if (!isInstalled(params.pluginId)) {
+      return HttpResponse.json(
+        { detail: "The plugin is not installed. A superuser must install it first." },
+        { status: 404 },
+      );
+    }
+    const ids = enablements[ENTITY] ?? [];
+    if (!ids.includes(params.pluginId)) setEnabled([...ids, params.pluginId]);
+    return HttpResponse.json({ success: true });
+  }),
+  http.delete<{ pluginId: string }>(`${API}/plugins/entity/:pluginId`, ({ params }) => {
+    setEnabled((enablements[ENTITY] ?? []).filter((id) => id !== params.pluginId));
+    return HttpResponse.json({ success: true });
+  }),
+];
 
 function renderAt(path: string) {
   const queryClient = new QueryClient({
@@ -177,8 +243,8 @@ describe("Plugins", () => {
 
   beforeEach(() => {
     pluginHost.value = HOST;
-    localStorage.removeItem(PLUGIN_APPROVALS_STORAGE_KEY);
-    localStorage.removeItem(ENTITY_PLUGINS_STORAGE_KEY);
+    installations = [];
+    enablements = {};
     useAuthStore.setState({
       user: { uuid: "u-1", email: "admin@acme.test", entity_name: ENTITY, role: null },
     });
@@ -187,6 +253,7 @@ describe("Plugins", () => {
     server.use(
       http.get(`${HOST}/registry/plugins.json`, () => HttpResponse.json(registry)),
       http.get(`${HOST}/registry/releases.json`, () => HttpResponse.json(releases)),
+      ...pluginApi,
     );
   });
 
@@ -260,10 +327,7 @@ describe("Plugins", () => {
 
       it("uninstalling disables the plugin for every organization", async () => {
         setInstalled([v1]);
-        localStorage.setItem(
-          ENTITY_PLUGINS_STORAGE_KEY,
-          JSON.stringify({ [ENTITY]: [v1.id], Globex: [v1.id] }),
-        );
+        enablements = { [ENTITY]: [v1.id], Globex: [v1.id] };
         renderAt("/admin/plugins");
         await userEvent.click(button(await card("BQ Advanced Grouping"), "Uninstall"));
         await waitFor(() =>
