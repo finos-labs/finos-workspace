@@ -233,6 +233,8 @@ it does not answer.
   (`frontend-checks.yml`, `backend-checks.yml`, `pr-description.yml`), the end-to-end tests (`e2e.yml`), the Docker images and build check (`backend-image.yml`,
   `frontend-image.yml`, `pr-build-check.yml`) and the deployment to the dev environment (`deploy-dev.yml`, which builds
   the images and deploys them). The app's settings are
-  defaults in its code; the values the dev environment sets differently are in the infrastructure repository. Each deployment file's header lists the repository variables and
-  secrets it reads.
+  defaults in its code; the values the dev environment sets differently are in the infrastructure repository. The image
+  workflows and `deploy-dev.yml` read the repository variables `AWS_REGION` and `AWS_IMAGE_PUSH_ROLE_ARN`;
+  `deploy-dev.yml` also reads `ECR_REGISTRY`, `INFRA_APP_ID`, `INFRA_REPO` and `DEV_VALUES_FILE`, and the secret
+  `INFRA_APP_PRIVATE_KEY`.
 - Licensed under Apache-2.0 (see [LICENSE](LICENSE)). Individual components may carry additional notices in their own directories.
