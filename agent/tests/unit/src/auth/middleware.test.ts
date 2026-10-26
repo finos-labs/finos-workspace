@@ -1,4 +1,5 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import { Hono } from "hono";
 import {
   ANONYMOUS,
@@ -8,10 +9,10 @@ import {
   servicesMiddleware,
   type AppEnv,
   type Services,
-} from "../../../../src/auth/middleware";
-import { createLimits } from "../../../../src/auth/limits";
-import { createLocalStore } from "../../../../src/lib/store";
-import type { Result, WorkspaceClient } from "../../../../src/auth/workspace-client";
+} from "../../../../src/auth/middleware.ts";
+import { createLimits } from "../../../../src/auth/limits.ts";
+import { createLocalStore } from "../../../../src/lib/store.ts";
+import type { Result, WorkspaceClient } from "../../../../src/auth/workspace-client.ts";
 
 function workspaceStub(users: Record<string, Result<{ userId: string }>>) {
   const asked: string[] = [];

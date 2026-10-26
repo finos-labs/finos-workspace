@@ -1,4 +1,5 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   applyParamOverrides,
   getAllWidgets,
@@ -6,8 +7,8 @@ import {
   searchWidgets,
   type TieredWidget,
   type WidgetTier,
-} from "../../../../src/widgets/tiers";
-import type { Widget, QueryRequest } from "../../../../src/protocol/types";
+} from "../../../../src/widgets/tiers.ts";
+import type { Widget, QueryRequest } from "../../../../src/protocol/types.ts";
 
 function tier(widget: Widget, t: WidgetTier): TieredWidget {
   return { widget, tier: t };

@@ -127,7 +127,7 @@ export type RuntimeConfig = z.infer<typeof RuntimeConfigSchema>;
 /**
  * The environment variable that sets each setting: `VITE_*` in the browser during
  * development and in the build that writes `config.js`; the nginx image takes the same
- * names without the `VITE_` prefix (`render-frontend-config.sh`, checked by
+ * names without the `VITE_` prefix (`app-config.js`, checked by
  * `scripts/check-runtime-config.ts`).
  * Typed so that a setting without a variable does not compile.
  */

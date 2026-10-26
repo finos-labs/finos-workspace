@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { redactRecord, redactString, redactValue } from "../../../../src/lib/redact";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { redactRecord, redactString, redactValue } from "../../../../src/lib/redact.ts";
 
 describe("redactString", () => {
   it("hides bearer tokens, JWTs and provider keys", () => {

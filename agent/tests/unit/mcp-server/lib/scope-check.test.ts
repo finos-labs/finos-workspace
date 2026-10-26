@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { requireScope, scopeProblem, scopeSecretProblem } from "../../../../mcp-server/src/lib/scope-check";
-import { signScope } from "../../../../src/lib/scope";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import { expect } from "expect";
+import { requireScope, scopeProblem, scopeSecretProblem } from "../../../../mcp-server/src/lib/scope-check.ts";
+import { signScope } from "../../../../src/lib/scope.ts";
 
 const SECRET = "0123456789abcdef0123";
 const saved = process.env.INES_SCOPE_SECRET;

@@ -24,7 +24,7 @@ import type {
   LanguageModelV3StreamPart,
 } from "@ai-sdk/provider";
 import { wrapLanguageModel } from "ai";
-import { getLogger } from "./logger";
+import { getLogger } from "./logger.ts";
 
 const logger = getLogger(["app", "inline-tool-calls"]);
 

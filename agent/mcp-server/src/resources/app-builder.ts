@@ -10,10 +10,11 @@
  * IO unless we someday move to dynamic content.
  */
 
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { getLogger } from "../lib/logger";
+import { getLogger } from "../lib/logger.ts";
 
 const logger = getLogger(["mcp", "resources", "app-builder"]);
 
@@ -160,7 +161,7 @@ const RESOURCES: readonly AppBuilderResource[] = [
   },
 ];
 
-const RESOURCE_DIR = join(import.meta.dir, "app-builder");
+const RESOURCE_DIR = join(import.meta.dirname, "app-builder");
 
 interface CachedResource extends AppBuilderResource {
   body: string;
@@ -173,7 +174,7 @@ async function loadAll(): Promise<CachedResource[]> {
   const loaded: CachedResource[] = [];
   for (const r of RESOURCES) {
     const path = join(RESOURCE_DIR, r.relativePath);
-    const body = await Bun.file(path).text();
+    const body = await readFile(path, "utf8");
     loaded.push({ ...r, body });
   }
   cache = loaded;

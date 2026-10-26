@@ -6,9 +6,10 @@
  * request. These tests pin that lean dispatch contract.
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
-import { cacheWidgetItemsFromReboot, runAgentLoop } from "../../../src/agent/loop";
-import type { QueryRequest, SSEEvent, ToolMessage, Widget } from "../../../src/protocol/types";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { cacheWidgetItemsFromReboot, runAgentLoop } from "../../../src/agent/loop.ts";
+import type { QueryRequest, SSEEvent, ToolMessage, Widget } from "../../../src/protocol/types.ts";
 import {
   llmCallsTool,
   llmCallsToolWithText,
@@ -17,11 +18,11 @@ import {
   makeSequencedMockLlm,
   makeSequencedSpyMockLlm,
   makeSpyMockLlm,
-} from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
-import { getCachedRows, rememberRows } from "../../../src/agent/row-cache";
-import { getTieredWidgets } from "../../../src/widgets/tiers";
+} from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
+import { getCachedRows, rememberRows } from "../../../src/agent/row-cache.ts";
+import { getTieredWidgets } from "../../../src/widgets/tiers.ts";
 
 beforeEach(() => clearAllModuleState());
 

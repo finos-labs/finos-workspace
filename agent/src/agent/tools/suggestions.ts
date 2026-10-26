@@ -17,7 +17,7 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { getLogger } from "../../lib/logger";
+import { getLogger } from "../../lib/logger.ts";
 
 const logger = getLogger(["app", "tools", "suggest_followups"]);
 

@@ -10,23 +10,24 @@
  *  - Unrelated MCP tools do NOT receive the documents decoration.
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
 import type {
   AgentTool,
   QueryRequest,
   SSEEvent,
   ToolMessage,
   UploadedDocument,
-} from "../../../src/protocol/types";
+} from "../../../src/protocol/types.ts";
 import {
   llmCallsTool,
   llmEmitsText,
   makeMockLlm,
   makeSpyMockLlm,
-} from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+} from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => {
   clearAllModuleState();

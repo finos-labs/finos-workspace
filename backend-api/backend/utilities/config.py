@@ -341,7 +341,7 @@ class DatabaseSettings(BaseModel):
 
 
 class RedisSettings(BaseModel):
-    REDIS_HOST: str = "redis"
+    REDIS_HOST: str = "valkey"
     REDIS_USER: str | None = ""
     REDIS_PASS: str
     REDIS_PORT: int = 6379

@@ -17,10 +17,10 @@ import type {
   ToolMessage,
   UploadedDocumentFormat,
   Widget,
-} from "../protocol/types";
-import type { PendingDocument } from "./documents";
-import { MAX_DOC_BYTES } from "./documents";
-import { getLogger } from "../lib/logger";
+} from "../protocol/types.ts";
+import type { PendingDocument } from "./documents.ts";
+import { MAX_DOC_BYTES } from "./documents.ts";
+import { getLogger } from "../lib/logger.ts";
 
 const logger = getLogger(["app", "agent", "file-docs"]);
 

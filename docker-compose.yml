@@ -11,14 +11,18 @@
 #   docker compose run --rm init python -m scripts.init_users --new-password <email>
 #
 # On Apple silicon build for the host's architecture: PLATFORM=linux/arm64 docker compose up --build
+# The first build compiles Node for Ines and the MCP server (agent/Dockerfile): about 20 minutes
+# on a fast machine, and hours under emulation. Later builds take it from Docker's cache.
 name: workspace
 
 x-backend: &backend
   env_file:
     - ./backend-api/backend/envs/.env
+  # The images are built from scratch, so they are built for, and run on, this platform.
+  platform: ${PLATFORM:-linux/amd64}
   environment:
     DB_HOST: mysql
-    REDIS_HOST: redis
+    REDIS_HOST: valkey
     FOLDER_STORAGE_PATH: /opt/code/local_storage
     # Every user has the agent's tools, enabled. The web app reaches them through the API's MCP proxy.
     DEFAULT_MCP_SERVERS: '[{"id": "ines-tools", "name": "Ines Tools", "url": "http://ines-mcp:8787/mcp"}]'
@@ -54,17 +58,17 @@ services:
     networks:
       - workspace
 
-  redis:
-    image: redis:alpine
+  valkey:
+    image: valkey/valkey:9.1.2-alpine
     restart: unless-stopped
-    command: redis-server --save 20 1 --loglevel warning
+    command: valkey-server --save 20 1 --loglevel warning
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 20
     volumes:
-      - redis:/data
+      - valkey:/data
     networks:
       - workspace
 
@@ -75,17 +79,20 @@ services:
     build:
       context: ./backend-api/backend
       dockerfile: fastapi.Dockerfile
-      args:
-        PLATFORM: ${PLATFORM:-linux/amd64}
     image: workspace-api:local
     # Runs as root because user_create.json, mounted below, belongs to whoever checked the
     # repository out (uid 1001 on a GitHub runner), and the image's own user, uid 1000, cannot
     # write it.
     user: root
+    # The image has no shell: Python starts user_create.json empty, then runs the migrations and init_users.
     command:
-      - sh
+      - python
       - -c
-      - echo '{}' > user_create.json && alembic upgrade head && python -m scripts.init_users
+      - |
+        import pathlib, subprocess, sys
+        pathlib.Path("user_create.json").write_text("{}")
+        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+        subprocess.run([sys.executable, "-m", "scripts.init_users"], check=True)
     restart: "no"
     volumes:
       - ./backend-api/backend/user_create.json:/opt/code/user_create.json
@@ -93,7 +100,7 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
 
   api:
@@ -128,8 +135,6 @@ services:
     build:
       context: ./backend-api/backend
       dockerfile: rqworker.Dockerfile
-      args:
-        PLATFORM: ${PLATFORM:-linux/amd64}
     image: workspace-worker:local
     restart: unless-stopped
     volumes:
@@ -139,12 +144,12 @@ services:
       init:
         condition: service_completed_successfully
 
-  # One image for every environment: the container writes config.js from these variables at start.
+  # One image for every environment: nginx renders config.js from these variables.
   web:
     build:
       context: ./frontend
-      args:
-        PLATFORM: ${PLATFORM:-linux/amd64}
+    # The image is built from scratch, so it is built for, and runs on, this platform.
+    platform: ${PLATFORM:-linux/amd64}
     image: workspace-web:local
     restart: unless-stopped
     environment:
@@ -198,11 +203,11 @@ services:
       # The address the browser uses for the API: the Workspace's links to its users' files are on it.
       WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
       # Where what Ines keeps between the requests of a turn lives: who is signed in, how much of their
-      # share is left, which turn is under way, and a chat's rows. In Redis they are shared, so the
+      # share is left, which turn is under way, and a chat's rows. In Valkey they are shared, so the
       # answers are the same whichever replica a request reaches and a user has one share in all. Without
       # it each replica keeps its own, so run one, and a chat's rows are not kept at all: they are only
-      # ever in Redis, never in a process's memory.
-      REDIS_URL: redis://redis:6379
+      # ever in Valkey, never in a process's memory.
+      REDIS_URL: redis://valkey:6379
       # The origin of the web app: the browser calls Ines directly, so this has to name the address the
       # web app was loaded from, whatever that is — localhost, 127.0.0.1, the machine's address on the
       # network, a tunnel. A developer stack cannot know which, and an origin it does not name is a
@@ -217,7 +222,7 @@ services:
     depends_on:
       api:
         condition: service_healthy
-      redis:
+      valkey:
         condition: service_healthy
     networks:
       - workspace
@@ -252,9 +257,9 @@ services:
       WORKSPACE_ORIGIN: ${WEB_URL:-http://localhost:3000}
       WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
       # The documents of a chat, shared between replicas of this server as Ines shares what she keeps.
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://valkey:6379
     depends_on:
-      redis:
+      valkey:
         condition: service_healthy
     networks:
       - workspace
@@ -264,5 +269,5 @@ networks:
 
 volumes:
   db:
-  redis:
+  valkey:
   storage:

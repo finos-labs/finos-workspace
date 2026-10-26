@@ -3,7 +3,8 @@ name: Backend Docker Images (ECR)
 # Builds the API and worker images when backend-api changes. Pull requests build
 # them to check the Dockerfiles; a tag like backend-v1.1.0 pushes them to ECR as
 # 1.1.0. Deploying a pushed image is a change to the environment's values file in
-# the infrastructure repository.
+# the infrastructure repository. A pushed image gets an SBOM attestation, pushed
+# to ECR with it (.github/actions/image-sbom).
 on:
   pull_request:
     branches:
@@ -19,6 +20,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  attestations: write
 
 jobs:
   image:
@@ -89,9 +91,19 @@ jobs:
             exit 1
           fi
 
+      # The image compiles its dependencies from source: the stages are kept in the Actions cache,
+      # and only a change to a stage builds it again.
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: steps.existing.outputs.exists != 'true'
+      - uses: crazy-max/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4.0.0
+        if: steps.existing.outputs.exists != 'true'
+
       - name: Build image
         if: steps.existing.outputs.exists != 'true'
-        run: docker build -f "backend-api/backend/${{ matrix.dockerfile }}" -t "$ECR_REPOSITORY:$IMAGE_TAG" backend-api/backend
+        run: >-
+          docker buildx build -f "backend-api/backend/${{ matrix.dockerfile }}"
+          --cache-from "type=gha,scope=${{ matrix.dockerfile }}" --cache-to "type=gha,mode=max,scope=${{ matrix.dockerfile }}"
+          --load -t "$ECR_REPOSITORY:$IMAGE_TAG" backend-api/backend
 
       - name: Push image
         if: github.ref_type == 'tag' && steps.existing.outputs.exists != 'true'
@@ -100,3 +112,9 @@ jobs:
         run: |
           docker tag "$ECR_REPOSITORY:$IMAGE_TAG" "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: SBOM of the image
+        if: github.ref_type == 'tag'
+        uses: ./.github/actions/image-sbom
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}

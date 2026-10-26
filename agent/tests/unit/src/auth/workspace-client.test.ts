@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { createWorkspaceClient } from "../../../../src/auth/workspace-client";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { createWorkspaceClient } from "../../../../src/auth/workspace-client.ts";
 
 interface Seen {
   url: string;

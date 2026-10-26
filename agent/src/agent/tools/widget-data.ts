@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { displaySummarySchema } from "./progress";
+import { displaySummarySchema } from "./progress.ts";
 
 const widgetRequestSchema = z.object({
   widget_uuid: z.string().describe(

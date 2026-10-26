@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import type { AppEnv } from "../../auth/middleware";
-import { parseJsonResponse, truncate } from "../../lib/llm";
-import { getLogger } from "../../lib/logger";
-import { helperLlm, invalidJson, readJson } from "./helper";
+import type { AppEnv } from "../../auth/middleware.ts";
+import { parseJsonResponse, truncate } from "../../lib/llm.ts";
+import { getLogger } from "../../lib/logger.ts";
+import { helperLlm, invalidJson, readJson } from "./helper.ts";
 
 const logger = getLogger(["app", "generate", "widget-info"]);
 

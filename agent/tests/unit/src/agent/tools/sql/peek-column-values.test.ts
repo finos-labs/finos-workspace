@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { runPeekColumnValues } from "../../../../../../src/agent/tools/sql/peek-column-values";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { runPeekColumnValues } from "../../../../../../src/agent/tools/sql/peek-column-values.ts";
 
 const prices = [
   { symbol: "NVDA", close: 100 },

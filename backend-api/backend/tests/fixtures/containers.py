@@ -21,7 +21,7 @@ def db_containers():
             password="test_password",  # noqa: S106
             dbname="test_db",
         ).with_env("MYSQL_ROOT_HOST", "%")
-        redis_container = RedisContainer("redis:alpine")
+        redis_container = RedisContainer("valkey/valkey:9.1.2-alpine")
     except DockerException as exc:
         skip(f"Unable to initialize Docker client: {exc}")
 

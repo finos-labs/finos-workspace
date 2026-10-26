@@ -1,6 +1,6 @@
-import { keepChatDataIn } from "../src/agent/row-cache";
-import { configureFetchPolicy } from "../src/lib/safe-fetch";
-import { createLocalStore } from "../src/lib/store";
+import { keepChatDataIn } from "../src/agent/row-cache.ts";
+import { configureFetchPolicy } from "../src/lib/safe-fetch.ts";
+import { createLocalStore } from "../src/lib/store.ts";
 
 /**
  * Tests that mock `fetch` use made-up host names. The guard that every fetch of a client's URL goes

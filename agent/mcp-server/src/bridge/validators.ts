@@ -5,7 +5,7 @@
  * message when it is not. Callers wrap the message in an errorItem.
  */
 
-import { errorItem, type ContentItem } from "../lib/typed";
+import { errorItem, type ContentItem } from "../lib/typed.ts";
 
 export function invalidRequestItem(message: string): ContentItem {
   return errorItem({

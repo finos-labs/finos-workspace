@@ -1,10 +1,12 @@
-import { describe, it, expect, afterEach, mock } from "bun:test";
-import { logicalUrl } from "../../helpers/logical-url";
+import { describe, it, afterEach } from "node:test";
+import { expect } from "expect";
+import { fn } from "jest-mock";
+import { logicalUrl } from "../../helpers/logical-url.ts";
 // This is about answering several clients at once, with fetch_webpage as the vehicle. A server with
 // no users fetches any address (see lib/url-check.ts), which keeps the subject of the test the
 // concurrency and not the guards.
 process.env.INES_AUTH = "none";
-const { default: server } = await import("../../../mcp-server/src/server");
+const { default: server } = await import("../../../mcp-server/src/server.ts");
 
 const realFetch = globalThis.fetch;
 
@@ -31,7 +33,7 @@ describe("MCP server — clients that run at the same time", () => {
   it("answers each client with its own result even though they all count their requests from 1", async () => {
     // Pages that take different times to answer, so that they finish in another order than they began.
     const delays: Record<string, number> = { a: 60, b: 5, c: 35, d: 20, e: 1 };
-    globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
+    globalThis.fetch = fn(async (input: string | URL | Request, init?: RequestInit) => {
       const name = new URL(logicalUrl(input, init)).hostname.split(".")[0];
       await new Promise((resolve) => setTimeout(resolve, delays[name]));
       return new Response(`<html><head><title>Page ${name}</title></head><body><p>content of ${name}</p></body></html>`);

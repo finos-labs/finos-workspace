@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /**
  * Tier 3 eval runner.
  *
@@ -6,10 +6,10 @@
  * applies graders, and writes per-trial traces + a summary report.
  *
  * Usage:
- *   bun run evals                           # run all cases
- *   bun run evals -- --filter=widget        # filter case ids
- *   bun run evals -- --group=widget-selection
- *   EVAL_MODEL=<provider>:<model> bun run evals
+ *   npm run evals                           # run all cases
+ *   npm run evals -- --filter=widget        # filter case ids
+ *   npm run evals -- --group=widget-selection
+ *   EVAL_MODEL=<provider>:<model> npm run evals
  *
  * Env:
  *   EVAL_MODEL        — model id passed to resolveModel (default: DEFAULT_MODEL)
@@ -22,7 +22,7 @@
 
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
-import { resolveModel } from "../src/lib/providers";
+import { resolveModel } from "../src/lib/providers.ts";
 import type {
   Widget,
   ChatMessage,
@@ -32,12 +32,12 @@ import type {
   SkillCatalogEntry,
   SkillPayload,
   UploadedDocument,
-} from "../src/protocol/types";
+} from "../src/protocol/types.ts";
 import type { LanguageModel } from "ai";
-import { runEvalCase, type Trace } from "./trace";
-import type { GraderSpec, GradeResult } from "./graders";
-import { ALL_CASES, CASE_GROUPS } from "./cases";
-import { renderReport, type CaseReport, type TrialReport } from "./report";
+import { runEvalCase, type Trace } from "./trace.ts";
+import type { GraderSpec, GradeResult } from "./graders/index.ts";
+import { ALL_CASES, CASE_GROUPS } from "./cases/index.ts";
+import { renderReport, type CaseReport, type TrialReport } from "./report.ts";
 
 export interface EvalCase {
   id: string;

@@ -11,18 +11,18 @@
  * asyncio.Lock to guard mutations between awaits; we get this for free).
  */
 
-import { getLogger } from "../lib/logger";
+import { getLogger } from "../lib/logger.ts";
 import {
   BrowserMessageSchema,
   type BrowserSession,
   type BrowserSessionContext,
-} from "./types";
+} from "./types.ts";
 import {
   WorkspaceCommandResultSchema,
   WorkspaceSnapshotSchema,
   type WorkspaceCommand,
   type WorkspaceCommandResult,
-} from "./wire";
+} from "./wire.ts";
 
 const logger = getLogger(["mcp", "bridge", "state"]);
 

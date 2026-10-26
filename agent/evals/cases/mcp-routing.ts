@@ -5,13 +5,13 @@
  * graders inspect tool choice + args, not the (would-be) MCP response.
  */
 
-import type { EvalCase } from "../runner";
+import type { EvalCase } from "../runner.ts";
 import {
   argContains,
   noBadState,
   toolCalled,
   toolNeverCalled,
-} from "../graders";
+} from "../graders/index.ts";
 
 const FETCH_WEBPAGE_TOOL = {
   name: "fetch_webpage",

@@ -10,11 +10,12 @@
  * lines and used by the routes).
  */
 
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, beforeEach, mock } from "node:test";
+import { expect } from "expect";
 
 let nextLlm: () => Promise<string> = async () => "default";
 
-mock.module("../../../src/lib/llm", () => ({
+mock.module("../../../src/lib/llm.ts", { exports: {
   singleShotLlm: async () => nextLlm(),
   parseJsonResponse: <T>(raw: string, fallback: T): T => {
     const cleaned = raw.replace(/^```json\n?/, "").replace(/\n?```$/, "");
@@ -25,14 +26,14 @@ mock.module("../../../src/lib/llm", () => ({
     }
   },
   truncate: (s: string, max: number) => (s.length > max ? s.slice(0, max) + "..." : s),
-}));
+} });
 
 const { Hono } = await import("hono");
-const { chatTitleRouter } = await import("../../../src/routes/generate/chat-title");
-const { dashboardTitleRouter } = await import("../../../src/routes/generate/dashboard-title");
-const { enhancePromptRouter } = await import("../../../src/routes/generate/enhance-prompt");
-const { widgetInfoRouter } = await import("../../../src/routes/generate/widget-info");
-const { codeRouter } = await import("../../../src/routes/generate/code");
+const { chatTitleRouter } = await import("../../../src/routes/generate/chat-title.ts");
+const { dashboardTitleRouter } = await import("../../../src/routes/generate/dashboard-title.ts");
+const { enhancePromptRouter } = await import("../../../src/routes/generate/enhance-prompt.ts");
+const { widgetInfoRouter } = await import("../../../src/routes/generate/widget-info.ts");
+const { codeRouter } = await import("../../../src/routes/generate/code.ts");
 
 function app() {
   const a = new Hono();

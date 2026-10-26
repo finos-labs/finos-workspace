@@ -4,7 +4,7 @@
 
 The **MCP server** (in [`mcp-server/`](./mcp-server)) holds the tools she uses beyond the widgets: web search, web-page fetch and document search. In the repository's `docker-compose.yml` it runs with the agent and every user has it. The agent itself (widget search, data, SQL, dashboards, skills) does not need it.
 
-Built on Bun + Hono + the Vercel AI SDK + the Model Context Protocol.
+Built on Node + Hono + the Vercel AI SDK + the Model Context Protocol. Node runs the TypeScript as it is: there is no build step.
 
 > **Who this is for:** developers who want to run, fork, or study a small, production-shaped financial copilot. You need the Workspace plus one LLM provider key (or a local Ollama) to run the agent. The MCP server is independent — it also works on its own with any MCP client, such as Claude Desktop.
 
@@ -25,7 +25,7 @@ Built on Bun + Hono + the Vercel AI SDK + the Model Context Protocol.
 
 ### Prerequisites
 
-- [Bun](https://bun.sh) v1.x
+- [Node.js](https://nodejs.org) 26, with the npm it ships
 - The Workspace — needed to use the agent from its UI (the repository's `docker-compose.yml` runs both)
 - At least one LLM provider key: `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `GROQ_API_KEY`, or `NVIDIA_API_KEY` — or a local [Ollama](https://ollama.com) endpoint via `OLLAMA_BASE_URL`
 - Optional, for some of the MCP server's tools: `INES_EMBED_MODEL` as `<provider>:<model>` with that provider's key (document search). Web search uses DuckDuckGo and needs no key
@@ -33,20 +33,20 @@ Built on Bun + Hono + the Vercel AI SDK + the Model Context Protocol.
 ### Run it
 
 ```bash
-bun install
+npm install
 cp .env.example .env          # set DEFAULT_MODEL and that provider's key, and INES_AUTH=none (see below)
 
-bun run dev:agent             # agent only, on :7777
-bun run dev:all               # agent and MCP server, prefixed/colored logs, --kill-others
-bun run dev:mcp               # MCP server only, on :8787
+npm run dev:agent             # agent only, on :7777
+npm run dev:all               # agent and MCP server, prefixed/colored logs, --kill-others
+npm run dev:mcp               # MCP server only, on :8787
 
-bun run typecheck             # bunx tsc --noEmit — must be zero errors
-bun run test                  # bun test tests/ mcp-server/test
+npm run typecheck             # tsc --noEmit — must be zero errors
+npm test                      # node --test, over tests/ and mcp-server/test
 ```
 
 Outside the repository's compose stack there is usually no Workspace API to sign users in with, so on a development machine set `INES_AUTH=none` in `.env`: every request is then anonymous and nothing is counted (Ines logs a warning). Without it she expects the settings of a deployment with users and says which are missing when she starts.
 
-`bun run dev:agent` alone is enough for widget search, data fetching, SQL analysis, dashboard editing, and skills; the MCP server adds the rest.
+`npm run dev:agent` alone is enough for widget search, data fetching, SQL analysis, dashboard editing, and skills; the MCP server adds the rest.
 
 ### Connect it to the Workspace
 
@@ -60,6 +60,8 @@ If you only want the MCP server with a different client (Claude Desktop, say), s
 ### Run it in a container
 
 The Dockerfile has two targets: `ines` runs the agent (`src/server.ts`) on port `7777`, and `ines-mcp` runs the MCP server on `8787`. The agent's logs are JSON and her metrics are on `9464` (the MCP server's on `9465`); neither port needs publishing.
+
+Both run on a Node that the Dockerfile compiles from source (with clang and LLVM's libc++: Node's own builds link GCC's libstdc++, which is GPL). The first build compiles it, which takes about 20 minutes on a fast machine; later builds take it from Docker's cache. Build for your machine's architecture (`--platform linux/arm64` on Apple silicon): under emulation the compile takes hours. CI does not compile it: the stage is released as the image `ghcr.io/<owner>/finos-node` (`.github/workflows/finos-node.yml`), and CI builds the images with the release `.github/workflows/agent-node.yml` names (`--build-context node=docker-image://<image>`). For linux/amd64 a local build can take the release the same way instead of compiling.
 
 ```bash
 docker build --target ines -t ines .
@@ -117,7 +119,7 @@ This is the agent's irreducible scope — all of it runs without the MCP server:
 - `get_widget_data` round-trip
 - Widget data parsing (CSV / JSON / images → table schema; PDF/DOCX → a pointer to the document search)
 - **Skills**: the catalog in the system prompt (the user's skills, which the Workspace lists, and Ines's own in `src/skills/`: `html-report`, `html-table`, `html-chart`) and `get_skill_content`, which reads Ines's own and round-trips to the Workspace for the user's. `/agents.json` lists Ines's own under `skills` (slug and description), so the Workspace shows them, read-only, in its Skills tab and `/` menu; a user who picks one sends only its slug, and Ines adds its instructions
-- **SQL family** (`execute_sql`, `peek_table`, `peek_column_values`, `create_artifact`) — in-process `bun:sqlite`, a closure over `pendingTables`
+- **SQL family** (`execute_sql`, `peek_table`, `peek_column_values`, `create_artifact`) — in-process `node:sqlite`, a closure over `pendingTables`
 - **Tool groups** (`load_tools`, the catalog in the system prompt, the instructions that go with a loaded group) — the model is given the few tools every question can need and a one-line catalog of the agent's own others. The tools that the Workspace supplies (the connected servers' and its own) are never deferred: they are given in full, with their descriptions and parameters, so the model reads how to use them before it acts; see `src/agent/tool-groups.ts`
 - **Native helpers** (`enhance_prompt`, `_llm_think`, `create_table_from_text`, `create_html_artifact`, `create_app`) — local and state-bound to `artifactQueue` / `pendingTables`. `create_app` validates each `(origin, widget_id)` against the live widget catalog and emits an `app` artifact (an apps.json template) the Workspace renders with open-as-dashboard / save-to-apps actions
 - **Workspace bridge tools** — the agent's own function calls for the Workspace (`update_widget_in_dashboard`, `add_widget_to_dashboard`, `get_params_options`, `manage_navigation_bar`, `add_generative_widget`, `assign_tasks_to_agents`; the vendored bridge contract declares more, which only the WebSocket companion has), emitted as native `copilotFunctionCall` SSE. They are only for a request that does not carry the Workspace's own tools (see [The Workspace's own tools](#the-workspaces-own-tools))
@@ -211,13 +213,14 @@ evals/                         # Tier 3 (nightly, real LLM)
 
 | Layer | Choice |
 |---|---|
-| Runtime | Bun |
-| Package manager | bun |
+| Runtime | Node |
+| Package manager | npm |
+| Tests | Node's test runner (`node:test`), with `expect` and `jest-mock` |
 | HTTP | Hono |
 | AI SDK | Vercel AI SDK v6 (OpenAI, OpenRouter, Groq, Ollama) |
 | MCP SDK (server) | `@modelcontextprotocol/sdk` + `@hono/mcp` |
 | Validation | Zod (everywhere) |
-| In-process SQL | `bun:sqlite` (per-call, on the agent) |
+| In-process SQL | `node:sqlite` (per-call, on the agent) |
 | HTML → Markdown | Turndown |
 | Logging | LogTape |
 
@@ -343,7 +346,7 @@ Endpoint semantics follow the OTLP spec: `OTEL_EXPORTER_OTLP_ENDPOINT` is a **ba
 
 What maps across without extra work: `session.id` on the turn span groups a chat's turns into one Langfuse session, and the AI SDK's `gen_ai.*` attributes make each model call a generation with model and token usage attached. Langfuse also reads `user.id` if you ever want per-user attribution — the Workspace sends the user's id in an `X-User-Id` header (Ines does not use it: a client could put anything in it, so she asks the API whose token it is), but exporting it to a tracing backend is a privacy decision, so nothing emits it today.
 
-Two known gaps: MCP-server spans orphan (the browser calls that server, not the agent — closing it means adding an `x-ines-traceparent` decoration), and browser-side execution time is only visible as the gap between requests. Auto-instrumentation is deliberately absent: `@opentelemetry/instrumentation-*` patches Node's module registry and will not see `Bun.serve` or `fetch`.
+Two known gaps: MCP-server spans orphan (the browser calls that server, not the agent — closing it means adding an `x-ines-traceparent` decoration), and browser-side execution time is only visible as the gap between requests. Auto-instrumentation is deliberately absent: no `@opentelemetry/instrumentation-*` package patches the server or `fetch`, and the spans are made by hand.
 
 ### The Workspace's tools: three surfaces
 
@@ -417,9 +420,9 @@ Three tiers. The first two run on every PR with a mocked LLM and are fully deter
 | 3 — Evals | Drives the real agent loop against a live LLM, scored by deterministic graders + LLM-as-judge | Nightly + pre-release | real |
 
 ```bash
-bun run test        # Tiers 1 + 2 — gates every PR
-bun run typecheck   # bunx tsc --noEmit — zero errors required
-bun run evals       # Tier 3 — nightly + manual
+npm test            # Tiers 1 + 2 — gates every PR
+npm run typecheck   # tsc --noEmit — zero errors required
+npm run evals       # Tier 3 — nightly + manual
 ```
 
 The guiding rule is **test the result, not the reasoning.** Modern models reach the same outcome by different paths, so we assert on outputs — function returns, mutated context, the SSE events the Workspace receives, the terminal citation collection — never on which tool fired first or in what order. Behavioral questions ("does the model pick the right widget?") live in `evals/` with pass-rate thresholds across N trials; `tests/` pins contracts that hold regardless of which model runs. The mock LLM is a fixture to drive the loop into an observable state, never the system under test.
@@ -530,7 +533,7 @@ The model is resolved as **Workspace settings-wheel picker → `DEFAULT_MODEL`**
 The picked model is bound to the chat. Change it in the settings wheel, then **start a new chat** — existing chats keep the model they were created with. The Workspace also caches its agent config, so if it stays stuck, hard-refresh the browser tab.
 
 **I edited `DEFAULT_MODEL` in `.env` but nothing changed.**
-`bun run dev:agent` runs with `--hot`, which reloads **code, not environment variables**. Restart the server after editing `.env`. (And remember the Workspace picker still wins over `DEFAULT_MODEL` — see above.)
+`npm run dev:agent` runs `node --watch`, which restarts the server when its code or `.env` changes; a server started some other way reads `.env` only when it starts. (And remember the Workspace picker still wins over `DEFAULT_MODEL` — see above.)
 
 **Ollama works locally but not from the Docker container (connection refused).**
 Inside a container, `localhost` is the container itself, not your host machine. Point `OLLAMA_BASE_URL` at `http://host.docker.internal:11434/api` instead of `http://localhost:11434/api`.
@@ -539,7 +542,7 @@ Inside a container, `localhost` is the container itself, not your host machine. 
 The tag after `ollama:` in `DEFAULT_MODEL` must be a model you've **actually pulled**, matching exactly. If it isn't, Ollama 404s the chat request and the agent surfaces a `Model error`. Check what's installed with `ollama list` and pull the one you want (`ollama pull <model>`).
 
 **Do I need the MCP server?**
-The repository's compose stack runs it, and the tools in it are how the agent searches the web and your documents. The agent itself is standalone — widget search, data, SQL, dashboards, and skills all work with `bun run dev:agent` alone. The MCP server adds web search, fetch, diagrams, and document search.
+The repository's compose stack runs it, and the tools in it are how the agent searches the web and your documents. The agent itself is standalone — widget search, data, SQL, dashboards, and skills all work with `npm run dev:agent` alone. The MCP server adds web search, fetch, diagrams, and document search.
 
 **Ines will not start and lists what is missing.**
 With the default `INES_AUTH=workspace` she needs `WORKSPACE_API_URL`, `WORKSPACE_ORIGIN`, `INES_METERING_TOKEN`, `INES_SCOPE_SECRET` and `INES_CORS_ORIGINS`, and she stops at start if any is missing instead of running without users. In the compose stack `create_local_env` and `docker-compose.yml` set them. On a development machine with no Workspace API, set `INES_AUTH=none`.

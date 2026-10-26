@@ -8,9 +8,9 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { metrics } from "../../lib/metrics";
-import type { TranscriptEntry } from "../history";
-import { displaySummarySchema } from "./progress";
+import { metrics } from "../../lib/metrics.ts";
+import type { TranscriptEntry } from "../history.ts";
+import { displaySummarySchema } from "./progress.ts";
 
 const MAX_LAST = 10;
 const MAX_RESULTS = 6;

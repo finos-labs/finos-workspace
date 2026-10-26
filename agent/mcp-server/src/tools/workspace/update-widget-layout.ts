@@ -7,15 +7,15 @@
  */
 
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
 import {
   describeTool,
   LAYOUT_GUIDANCE,
   WIDGET_INSTANCE_GUIDANCE,
   DASHBOARD_TARGETING_GUIDANCE,
-} from "../../bridge/instructions";
+} from "../../bridge/instructions.ts";
 
 export const updateWidgetLayoutSchema = {
   x: z.number().describe("Grid column position (0-based)."),

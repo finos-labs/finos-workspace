@@ -1,5 +1,5 @@
-import type { Trace } from "../trace";
-import type { GraderSpec } from "./index";
+import type { Trace } from "../trace.ts";
+import type { GraderSpec } from "./index.ts";
 
 /**
  * Pass if a tool call to `name` has parameters whose stringified payload

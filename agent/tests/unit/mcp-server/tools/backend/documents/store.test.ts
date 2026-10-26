@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import type Redis from "ioredis";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import { expect } from "expect";
+import type { Redis } from "ioredis";
 import {
   upsertDocument,
   listDocuments,
@@ -9,8 +10,8 @@ import {
   _resetDocStoreState,
   MAX_DOCS_PER_CHAT,
   type StoredDocument,
-} from "../../../../../../mcp-server/src/tools/backend/documents/store";
-import { _setRedisClientForTest } from "../../../../../../mcp-server/src/lib/redis";
+} from "../../../../../../mcp-server/src/tools/backend/documents/store.ts";
+import { _setRedisClientForTest } from "../../../../../../mcp-server/src/lib/redis.ts";
 
 function makeDoc(id: string, chunks: number): StoredDocument {
   return {

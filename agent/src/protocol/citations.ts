@@ -1,5 +1,5 @@
-import type { Citation, Widget } from "./types";
-import type { DocumentCitation, McpCitation } from "../mcp/results";
+import type { Citation, Widget } from "./types.ts";
+import type { DocumentCitation, McpCitation } from "../mcp/results.ts";
 
 export interface CitedWidget {
   widget: Widget;

@@ -11,9 +11,9 @@
 
 import { tool } from "ai";
 import { z } from "zod";
-import { planningStep } from "../../protocol/events";
-import type { SSEEvent } from "../../protocol/types";
-import { getLogger } from "../../lib/logger";
+import { planningStep } from "../../protocol/events.ts";
+import type { SSEEvent } from "../../protocol/types.ts";
+import { getLogger } from "../../lib/logger.ts";
 
 const logger = getLogger(["app", "tools", "llm_think"]);
 

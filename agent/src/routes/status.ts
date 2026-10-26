@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { Store } from "../lib/store";
+import type { Store } from "../lib/store.ts";
 
 /**
  * `/status` says the process is up, and whether what it keeps between the requests of a turn is

@@ -10,7 +10,7 @@ import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from "@opentelemetry/semantic-conventions";
 import type { TelemetrySettings } from "ai";
-import { getLogger } from "./logger";
+import { getLogger } from "./logger.ts";
 
 const logger = getLogger(["app", "telemetry"]);
 
@@ -76,10 +76,8 @@ let provider: NodeTracerProvider | undefined;
 /**
  * Idempotent. Safe to call from both server entrypoints; the first call wins.
  *
- * Note for anyone adding auto-instrumentation later: this runs under Bun, and
- * `@opentelemetry/instrumentation-*` packages patch Node's module registry —
- * they will NOT capture `Bun.serve` or `fetch`. Everything here is manual
- * span creation on purpose.
+ * Spans are created by hand, on purpose: no `@opentelemetry/instrumentation-*`
+ * package patches the server or `fetch`.
  */
 export function initTelemetry(): void {
   if (provider) return;

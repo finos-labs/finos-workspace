@@ -11,8 +11,8 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { bridgeManager } from "../bridge/singleton";
-import { SERVER_INSTRUCTIONS } from "../bridge/instructions";
+import { bridgeManager } from "../bridge/singleton.ts";
+import { SERVER_INSTRUCTIONS } from "../bridge/instructions.ts";
 
 function sessionContextPromptContent(): string {
   const sessionId = bridgeManager.getFirstConnectedSessionId();

@@ -17,9 +17,9 @@ import { embed, embedMany, cosineSimilarity, type EmbeddingModel } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { createOllama } from "ollama-ai-provider-v2";
-import type { DocChunk } from "./chunk";
-import { iterChunks, type StoredDocument } from "./store";
-import { getLogger } from "../../../lib/logger";
+import type { DocChunk } from "./chunk.ts";
+import { iterChunks, type StoredDocument } from "./store.ts";
+import { getLogger } from "../../../lib/logger.ts";
 
 const logger = getLogger(["mcp", "documents", "retrieve"]);
 

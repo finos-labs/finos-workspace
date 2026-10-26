@@ -10,18 +10,18 @@
 
 import { readFileSync } from "fs";
 import { join } from "path";
-import type { EvalCase } from "../runner";
-import type { ToolMessage, Widget } from "../../src/protocol/types";
-import { llmJudge, noBadState, toolCalled, toolNeverCalled } from "../graders";
+import type { EvalCase } from "../runner.ts";
+import type { ToolMessage, Widget } from "../../src/protocol/types.ts";
+import { llmJudge, noBadState, toolCalled, toolNeverCalled } from "../graders/index.ts";
 // Use the REAL MCP tool descriptions so the routing decision the model faces
 // matches production. If someone reverts the description to one that forbids
 // get_widget_data, the cold-pdf case below goes red.
-import { queryDocumentsDescription } from "../../mcp-server/src/tools/backend/documents/query-documents";
-import { listDocumentsDescription } from "../../mcp-server/src/tools/backend/documents/list-documents";
+import { queryDocumentsDescription } from "../../mcp-server/src/tools/backend/documents/query-documents.ts";
+import { listDocumentsDescription } from "../../mcp-server/src/tools/backend/documents/list-documents.ts";
 
 // Tesla revenue-table image. Real
 // content the vision model can recognize as a financial table.
-const IMAGE_PATH = join(__dirname, "..", "fixtures", "files", "table.png");
+const IMAGE_PATH = join(import.meta.dirname, "..", "fixtures", "files", "table.png");
 const TABLE_PNG_B64 = readFileSync(IMAGE_PATH).toString("base64");
 
 const chartWidget: Widget = {

@@ -8,14 +8,15 @@
  *   - Schemas reject obvious shape errors
  */
 
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   WORKSPACE_BRIDGE_COMMANDS,
   WORKSPACE_BRIDGE_COMMAND_NAMES,
   createWidgetInputSchema,
   listAvailableWidgetsInputSchema,
   isWorkspaceBridgeCommand,
-} from "../../../../src/protocol/bridge-commands";
+} from "../../../../src/protocol/bridge-commands.ts";
 
 const EXPECTED_NAMES = [
   "get_workspace_snapshot",

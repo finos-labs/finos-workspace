@@ -1,4 +1,5 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import {
   messageChunk,
   reasoningStep,
@@ -14,9 +15,9 @@ import {
   PLACEHOLDER_TAG_NAMES,
   PAIRED_PIPE_PLACEHOLDER_NAMES,
   workspaceCommand,
-} from "../../../../src/protocol/events";
-import type { CopilotArtifact, Widget } from "../../../../src/protocol/types";
-import { below, seeded } from "../../../helpers/rng";
+} from "../../../../src/protocol/events.ts";
+import type { CopilotArtifact, Widget } from "../../../../src/protocol/types.ts";
+import { below, seeded } from "../../../helpers/rng.ts";
 
 describe("messageChunk", () => {
   it("wraps delta in copilotMessageChunk", () => {
@@ -266,21 +267,23 @@ describe("getWidgetData", () => {
 });
 
 describe("workspaceCommand", () => {
-  it.each([
+  for (const fnName of [
     "add_generative_widget",
     "manage_dashboard",
     "create_widget",
     "update_dashboard_layout",
     "manage_navigation_bar",
-  ])("emits copilotFunctionCall with mirrored extra_state for %s", (fnName) => {
-    const args = { foo: "bar" };
-    const e = workspaceCommand(fnName, args);
-    expect(e.event).toBe("copilotFunctionCall");
-    const data = e.data as Record<string, unknown>;
-    expect(data.function).toBe(fnName);
-    expect(data.input_arguments).toEqual(args);
-    expect(data.extra_state).toEqual({ copilot_function_call_arguments: args });
-  });
+  ]) {
+    it(`emits copilotFunctionCall with mirrored extra_state for ${fnName}`, () => {
+      const args = { foo: "bar" };
+      const e = workspaceCommand(fnName, args);
+      expect(e.event).toBe("copilotFunctionCall");
+      const data = e.data as Record<string, unknown>;
+      expect(data.function).toBe(fnName);
+      expect(data.input_arguments).toEqual(args);
+      expect(data.extra_state).toEqual({ copilot_function_call_arguments: args });
+    });
+  }
 
   it("emits update_widget verbatim with the native bridge config shape (no legacy remap)", () => {
     // The frontend's useWorkspaceBridgeCommandHandler consumes the bridge

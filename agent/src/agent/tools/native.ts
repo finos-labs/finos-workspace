@@ -7,12 +7,12 @@
  */
 
 import type { ToolSet } from "ai";
-import type { SSEEvent } from "../../protocol/types";
-import type { TableInfo } from "../../sql/loader";
-import { makeEnhancePromptTool } from "./enhance-prompt";
-import { makeLlmThinkTool } from "./think";
-import { makeTableFromTextTool } from "./table-from-text";
-import { makeHtmlArtifactTool } from "./html-artifact";
+import type { SSEEvent } from "../../protocol/types.ts";
+import type { TableInfo } from "../../sql/loader.ts";
+import { makeEnhancePromptTool } from "./enhance-prompt.ts";
+import { makeLlmThinkTool } from "./think.ts";
+import { makeTableFromTextTool } from "./table-from-text.ts";
+import { makeHtmlArtifactTool } from "./html-artifact.ts";
 
 export const NATIVE_TOOL_NAMES = [
   "enhance_prompt",

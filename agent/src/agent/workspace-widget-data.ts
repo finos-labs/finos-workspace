@@ -9,8 +9,8 @@
  * message of a `get_widget_data` round trip, whose data is turned into queryable tables.
  */
 
-import type { ToolMessage, Widget } from "../protocol/types";
-import { getLogger } from "../lib/logger";
+import type { ToolMessage, Widget } from "../protocol/types.ts";
+import { getLogger } from "../lib/logger.ts";
 
 const logger = getLogger(["app", "agent", "workspace-widget-data"]);
 

@@ -102,7 +102,7 @@ def settings(
     return {
         "DB_HOST": "mysql",
         "DB_NAME": "workspace",
-        "REDIS_HOST": "redis",
+        "REDIS_HOST": "valkey",
         "STORAGE_PROVIDER": "folder",
         "MODE": "production",
         "FRONTENDURL": WEB_URL,

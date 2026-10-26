@@ -7,24 +7,24 @@
  */
 
 import { z } from "zod";
-import type { ContentItem } from "../../lib/typed";
-import { bridgeManager } from "../../bridge/singleton";
-import { executeBridgeCommand } from "../../bridge/execute";
+import type { ContentItem } from "../../lib/typed.ts";
+import { bridgeManager } from "../../bridge/singleton.ts";
+import { executeBridgeCommand } from "../../bridge/execute.ts";
 import {
   invalidRequestItem,
   validateNavigationTabs,
-} from "../../bridge/validators";
+} from "../../bridge/validators.ts";
 import {
   parseJsonList,
   parseJsonObject,
   JsonArgumentError,
-} from "../../bridge/json-args";
+} from "../../bridge/json-args.ts";
 import {
   describeTool,
   DASHBOARD_TARGETING_GUIDANCE,
   EXISTING_DASHBOARD_GUIDANCE,
   NAVIGATION_BAR_GUIDANCE,
-} from "../../bridge/instructions";
+} from "../../bridge/instructions.ts";
 
 export const manageNavigationBarSchema = {
   operation: z

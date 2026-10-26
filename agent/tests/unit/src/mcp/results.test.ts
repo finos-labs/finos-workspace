@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
 import {
   processMcpResult,
   type McpResultContext,
-} from "../../../../src/mcp/results";
-import type { ToolMessage } from "../../../../src/protocol/types";
-import { clearAllModuleState } from "../../../helpers/clear-state";
+} from "../../../../src/mcp/results.ts";
+import type { ToolMessage } from "../../../../src/protocol/types.ts";
+import { clearAllModuleState } from "../../../helpers/clear-state.ts";
 
 function freshCtx(conversationId = "conv-test"): McpResultContext {
   return {

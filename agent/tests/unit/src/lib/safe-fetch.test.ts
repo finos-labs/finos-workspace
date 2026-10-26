@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
-import { configureFetchPolicy, fetchClientUrl, isBlockedAddress } from "../../../../src/lib/safe-fetch";
-import { TEST_FETCH_POLICY } from "../../../setup";
-import { logicalUrl } from "../../../helpers/logical-url";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import { expect } from "expect";
+import { fn } from "jest-mock";
+import { configureFetchPolicy, fetchClientUrl, isBlockedAddress } from "../../../../src/lib/safe-fetch.ts";
+import { TEST_FETCH_POLICY } from "../../../setup.ts";
+import { logicalUrl } from "../../../helpers/logical-url.ts";
 
 const realFetch = globalThis.fetch;
 const PUBLIC_IP = "93.184.216.34";
@@ -9,7 +11,7 @@ const PUBLIC_IP = "93.184.216.34";
 /** What the stub network answers, by URL; everything fetched is recorded. */
 function network(routes: Record<string, () => Response>) {
   const fetched: string[] = [];
-  globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
+  globalThis.fetch = fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = logicalUrl(input, init);
     fetched.push(url);
     const route = routes[url];
@@ -170,7 +172,7 @@ describe("fetchClientUrl — what it fetches", () => {
 
   it("passes the request options on (the timeout signal)", async () => {
     let signal: AbortSignal | null | undefined;
-    globalThis.fetch = mock(async (_input: string | URL | Request, init?: RequestInit) => {
+    globalThis.fetch = fn(async (_input: string | URL | Request, init?: RequestInit) => {
       signal = init?.signal;
       return new Response("ok");
     }) as unknown as typeof fetch;
@@ -184,7 +186,7 @@ describe("fetchClientUrl — what it fetches", () => {
 
   it("gives every request a time limit of its own when the caller sets none", async () => {
     let signal: AbortSignal | null | undefined;
-    globalThis.fetch = mock(async (_input: string | URL | Request, init?: RequestInit) => {
+    globalThis.fetch = fn(async (_input: string | URL | Request, init?: RequestInit) => {
       signal = init?.signal;
       return new Response("ok");
     }) as unknown as typeof fetch;
@@ -228,7 +230,7 @@ describe("fetchClientUrl — the Workspace's own files", () => {
 
   it("fetches them with WORKSPACE_ORIGIN as their Origin, and nothing else with it", async () => {
     const origins: Record<string, string | null> = {};
-    globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
+    globalThis.fetch = fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = logicalUrl(input, init);
       origins[url] = new Headers(init?.headers).get("origin");
       return url.startsWith("http://api:8000/")
@@ -286,7 +288,7 @@ describe("fetchClientUrl — size", () => {
 describe("fetchClientUrl — the address that was checked is the address that is connected to", () => {
   it("connects to the address it looked up, as the name it was asked for, and checks the certificate for the name", async () => {
     let seen: { url: string; host: string | null; serverName?: string } | null = null;
-    globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit & { tls?: { serverName?: string } }) => {
+    globalThis.fetch = fn(async (input: string | URL | Request, init?: RequestInit & { tls?: { serverName?: string } }) => {
       seen = { url: String(input), host: new Headers(init?.headers).get("host"), serverName: init?.tls?.serverName };
       return new Response("ok");
     }) as unknown as typeof fetch;
@@ -298,7 +300,7 @@ describe("fetchClientUrl — the address that was checked is the address that is
     let lookups = 0;
     configureFetchPolicy({ resolve: async () => (++lookups === 1 ? [PUBLIC_IP] : ["169.254.169.254"]) });
     const connectedTo: string[] = [];
-    globalThis.fetch = mock(async (input: string | URL | Request) => {
+    globalThis.fetch = fn(async (input: string | URL | Request) => {
       connectedTo.push(new URL(String(input)).hostname);
       return new Response("ok");
     }) as unknown as typeof fetch;
@@ -312,7 +314,7 @@ describe("fetchClientUrl — the address that was checked is the address that is
     const answers: Record<string, string> = { "a.example.org": "93.184.216.34", "b.example.org": "93.184.216.35" };
     configureFetchPolicy({ resolve: async (name) => [answers[name]] });
     const connected: string[] = [];
-    globalThis.fetch = mock(async (input: string | URL | Request) => {
+    globalThis.fetch = fn(async (input: string | URL | Request) => {
       const host = new URL(String(input)).hostname;
       connected.push(host);
       return host === "93.184.216.34" ? new Response(null, { status: 302, headers: { location: "https://b.example.org/next" } }) : new Response("done");
@@ -324,7 +326,7 @@ describe("fetchClientUrl — the address that was checked is the address that is
   it("tries the next address of a name when it cannot connect to the first", async () => {
     configureFetchPolicy({ resolve: async () => ["93.184.216.34", "93.184.216.35"] });
     const tried: string[] = [];
-    globalThis.fetch = mock(async (input: string | URL | Request) => {
+    globalThis.fetch = fn(async (input: string | URL | Request) => {
       const host = new URL(String(input)).hostname;
       tried.push(host);
       if (host === "93.184.216.34") throw new Error("connection refused");
@@ -337,7 +339,7 @@ describe("fetchClientUrl — the address that was checked is the address that is
   it("brackets an IPv6 address", async () => {
     configureFetchPolicy({ resolve: async () => ["2606:2800:220:1:248:1893:25c8:1946"] });
     let url = "";
-    globalThis.fetch = mock(async (input: string | URL | Request) => {
+    globalThis.fetch = fn(async (input: string | URL | Request) => {
       url = String(input);
       return new Response("ok");
     }) as unknown as typeof fetch;
@@ -347,7 +349,7 @@ describe("fetchClientUrl — the address that was checked is the address that is
 
   it("does not pin an address it was given as an address", async () => {
     let seen: { url: string; host: string | null } | null = null;
-    globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
+    globalThis.fetch = fn(async (input: string | URL | Request, init?: RequestInit) => {
       seen = { url: String(input), host: new Headers(init?.headers).get("host") };
       return new Response("ok");
     }) as unknown as typeof fetch;
@@ -357,7 +359,7 @@ describe("fetchClientUrl — the address that was checked is the address that is
 
   it("fails when every address fails, with the last error", async () => {
     configureFetchPolicy({ resolve: async () => ["93.184.216.34", "93.184.216.35"] });
-    globalThis.fetch = mock(async () => {
+    globalThis.fetch = fn(async () => {
       throw new Error("nobody answers");
     }) as unknown as typeof fetch;
     await expect(fetchClientUrl("https://dead.example.org/")).rejects.toThrow("nobody answers");

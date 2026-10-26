@@ -37,7 +37,7 @@ registrable domain (for example `api.<your-domain>` beside `app.<your-domain>`),
 Chromium and Firefox accept this secure cookie.
 
 `docker-compose-local-dev.yml` overrides `DB_HOST` and `REDIS_HOST` inside the
-API and RQ worker containers to use Docker networking (`mysql`, `redis`), so the
+API and RQ worker containers to use Docker networking (`mysql`, `valkey`), so the
 same `.env` file works for both host tooling and containers.
 
 The SQLite compose file (`docker-compose-local-dev-sqlite.yml`) reads
@@ -63,7 +63,7 @@ All commands run from the repository root unless noted otherwise.
 docker compose -f docker-compose-local-dev.yml up --build --watch
 ```
 
-This starts MySQL (port 3306), Redis (port 6379), the FastAPI backend on
+This starts MySQL (port 3306), Valkey (port 6379), the FastAPI backend on
 `http://localhost:8000`, and the RQ worker. The API container runs migrations on
 startup and starts Uvicorn with `--reload`, so backend edits are picked up
 automatically. The worker container uses Compose watch to restart on backend
@@ -169,8 +169,8 @@ cd backend
 ## Troubleshooting
 
 - **Migration hangs / "Another migration in progress":**
-  A previous migration failed and left a Redis lock. Clear it:
-  `docker exec redis redis-cli flushall`
+  A previous migration failed and left a lock in Valkey. Clear it:
+  `docker exec valkey valkey-cli flushall`
 
 - **Port 8000 already in use:**
   Stop the existing stack or free the port before starting compose.
@@ -188,8 +188,8 @@ cd backend
   If Compose watch is unavailable, restart `rq_worker` manually after worker-code
   changes.
 
-- **rq_worker can't connect to MySQL/Redis:**
-  The worker runs inside Docker and must use container names (`mysql`, `redis`), not
+- **rq_worker can't connect to MySQL/Valkey:**
+  The worker runs inside Docker and must use container names (`mysql`, `valkey`), not
   `localhost`. The compose file handles this via `environment:` overrides. If you see
   connection errors, verify the overrides are present in `docker-compose-local-dev.yml`.
 

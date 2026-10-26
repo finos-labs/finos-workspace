@@ -1,5 +1,5 @@
-import type { Trace } from "../trace";
-import type { GraderSpec } from "./index";
+import type { Trace } from "../trace.ts";
+import type { GraderSpec } from "./index.ts";
 
 /**
  * For evals that surface widgets through a search-then-fetch flow, this

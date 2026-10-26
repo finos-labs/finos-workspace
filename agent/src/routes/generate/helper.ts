@@ -7,11 +7,11 @@
  */
 
 import type { Context } from "hono";
-import { ANONYMOUS, type AppEnv } from "../../auth/middleware";
-import { singleShotLlm } from "../../lib/llm";
-import { getLogger } from "../../lib/logger";
-import { metrics } from "../../lib/metrics";
-import { AGENT_ID } from "../agents";
+import { ANONYMOUS, type AppEnv } from "../../auth/middleware.ts";
+import { singleShotLlm } from "../../lib/llm.ts";
+import { getLogger } from "../../lib/logger.ts";
+import { metrics } from "../../lib/metrics.ts";
+import { AGENT_ID } from "../agents.ts";
 
 const audit = getLogger(["audit"]);
 

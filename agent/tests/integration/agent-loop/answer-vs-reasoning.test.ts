@@ -10,14 +10,15 @@
  * treatment: the marker becomes a tool call, the text around it is reasoning, and no marker is shown.
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import { withInlineToolCalls } from "../../../src/lib/inline-tool-calls";
-import type { QueryRequest, SSEEvent, Widget } from "../../../src/protocol/types";
-import { llmCallsToolWithText, llmEmitsText, llmEmitsTextInDeltas, makeSequencedMockLlm } from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
-import { rememberRows } from "../../../src/agent/row-cache";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import { withInlineToolCalls } from "../../../src/lib/inline-tool-calls.ts";
+import type { QueryRequest, SSEEvent, Widget } from "../../../src/protocol/types.ts";
+import { llmCallsToolWithText, llmEmitsText, llmEmitsTextInDeltas, makeSequencedMockLlm } from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
+import { rememberRows } from "../../../src/agent/row-cache.ts";
 
 beforeEach(() => clearAllModuleState());
 

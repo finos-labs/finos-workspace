@@ -11,8 +11,8 @@
  * call carries WORKSPACE_ORIGIN as its Origin: the API refuses the calls of an origin it does not allow.
  */
 
-import { getLogger } from "../lib/logger";
-import { metrics } from "../lib/metrics";
+import { getLogger } from "../lib/logger.ts";
+import { metrics } from "../lib/metrics.ts";
 
 const logger = getLogger(["app", "auth", "workspace"]);
 

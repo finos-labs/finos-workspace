@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { asWidgetDataMessage, isWidgetDataMcpResult, isWidgetDataToolName } from "../../../../src/agent/workspace-widget-data";
-import type { ToolMessage, Widget } from "../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { asWidgetDataMessage, isWidgetDataMcpResult, isWidgetDataToolName } from "../../../../src/agent/workspace-widget-data.ts";
+import type { ToolMessage, Widget } from "../../../../src/protocol/types.ts";
 
 const widget = (overrides: Partial<Widget> = {}): Widget =>
   ({ uuid: "w-1", origin: "ODP", widget_id: "asset_info", name: "Asset Info", description: "", params: [], ...overrides }) as Widget;

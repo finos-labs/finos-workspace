@@ -1,0 +1,90 @@
+name: Image SBOM and provenance
+description: >
+  Attests a CycloneDX SBOM of an image pushed to ECR, and its build provenance
+  (SLSA), and pushes the attestations to ECR with the image, unless the image
+  has them already. Syft reads the image: its OS packages, the packages
+  installed in it, its runtimes and the SBOM files it carries. Needs the image's
+  ECR credentials and the job permissions id-token: write and attestations:
+  write. The attestations can be read with `gh attestation verify
+  oci://<image> --owner <owner>`, with `--predicate-type
+  https://cyclonedx.org/bom` for the SBOM.
+inputs:
+  image:
+    description: The pushed image, as <registry>/<repository>:<tag>.
+    required: true
+  project:
+    description: >
+      A directory whose package SBOM goes into the image's, generated from the
+      lockfile as sbom.yml does it but without the dev dependencies, which no
+      image ships. For an image whose packages a scan cannot see: the
+      frontend's are bundled into static files that name none.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    # A rerun finds the image pushed by an earlier run, which may have stopped
+    # before it attested it.
+    - name: Find the image's digest and its attestations
+      id: image
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        name="${IMAGE%:*}" tag="${IMAGE##*:}"
+        repository="${name#*/}"
+        digest=$(aws ecr describe-images --repository-name "$repository" --image-ids imageTag="$tag" \
+          --query 'imageDetails[0].imageDigest' --output text)
+        # GitHub answers 404 for a digest with no attestations.
+        sboms=$(gh api "repos/$GITHUB_REPOSITORY/attestations/$digest?predicate_type=sbom" --jq '.attestations | length' 2>/dev/null) || sboms=0
+        provenances=$(gh api "repos/$GITHUB_REPOSITORY/attestations/$digest?predicate_type=provenance" --jq '.attestations | length' 2>/dev/null) || provenances=0
+        {
+          echo "name=$name"
+          echo "digest=$digest"
+          echo "attested=$([ "$sboms" -gt 0 ] && echo true || echo false)"
+          echo "provenance=$([ "$provenances" -gt 0 ] && echo true || echo false)"
+          echo "sbom=$RUNNER_TEMP/image-sbom/${repository//\//-}.cdx.json"
+        } >> "$GITHUB_OUTPUT"
+
+    - if: steps.image.outputs.attested != 'true'
+      uses: ./.github/actions/install-syft
+
+    - name: Generate the SBOM
+      if: steps.image.outputs.attested != 'true'
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        PROJECT: ${{ inputs.project }}
+        SBOM: ${{ steps.image.outputs.sbom }}
+        SYFT_CHECK_FOR_APP_UPDATE: "false"
+        SYFT_FILE_METADATA_SELECTION: none
+      run: |
+        mkdir -p "$(dirname "$SBOM")"
+        docker image inspect "$IMAGE" > /dev/null 2>&1 || docker pull --quiet "$IMAGE"
+        # Keep syft's serialNumber: actions/attest takes a CycloneDX file as an SBOM only with one.
+        # The SBOM files an image carries go in too: the frontend's names what its static nginx is built from.
+        syft scan "docker:$IMAGE" --quiet --select-catalogers +sbom-cataloger --output "cyclonedx-json=$SBOM"
+        if [ -n "$PROJECT" ]; then
+          SYFT_ENRICH=javascript,python SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES=false \
+            syft scan "dir:$PROJECT" --quiet --select-catalogers javascript,python --output "cyclonedx-json=$SBOM.project"
+          jq -s -f "$GITHUB_ACTION_PATH/merge.jq" "$SBOM" "$SBOM.project" > "$SBOM.merged"
+          mv "$SBOM.merged" "$SBOM"
+        fi
+
+    - name: Attest the SBOM and push it to ECR
+      if: steps.image.outputs.attested != 'true'
+      uses: actions/attest@v4
+      with:
+        subject-name: ${{ steps.image.outputs.name }}
+        subject-digest: ${{ steps.image.outputs.digest }}
+        sbom-path: ${{ steps.image.outputs.sbom }}
+        push-to-registry: true
+
+    - name: Attest the build provenance and push it to ECR
+      if: steps.image.outputs.provenance != 'true'
+      uses: actions/attest-build-provenance@v4
+      with:
+        subject-name: ${{ steps.image.outputs.name }}
+        subject-digest: ${{ steps.image.outputs.digest }}
+        push-to-registry: true

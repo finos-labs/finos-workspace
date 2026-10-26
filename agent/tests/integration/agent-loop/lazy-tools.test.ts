@@ -5,13 +5,14 @@
  * its tool list, and the catalog and instructions in its system prompt.
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { AgentTool, Message, QueryRequest, SSEEvent, Widget, WorkspaceState } from "../../../src/protocol/types";
-import { llmCallsTool, llmEmitsText, makeSequencedSpyMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
-import { catalogToolNamesOf, systemPromptOf, toolNamesOf } from "../../helpers/offered-tools";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { AgentTool, Message, QueryRequest, SSEEvent, Widget, WorkspaceState } from "../../../src/protocol/types.ts";
+import { llmCallsTool, llmEmitsText, makeSequencedSpyMockLlm, makeSpyMockLlm } from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
+import { catalogToolNamesOf, systemPromptOf, toolNamesOf } from "../../helpers/offered-tools.ts";
 
 beforeEach(() => clearAllModuleState());
 

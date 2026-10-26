@@ -1,5 +1,6 @@
-import { describe, it, expect } from "bun:test";
-import { loadConfig } from "../../../../src/lib/config";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { loadConfig } from "../../../../src/lib/config.ts";
 
 const WORKSPACE_ENV = {
   WORKSPACE_API_URL: "http://api:8000/",

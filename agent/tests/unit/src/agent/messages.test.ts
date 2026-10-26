@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { buildMessages } from "../../../../src/agent/messages";
-import type { QueryRequest } from "../../../../src/protocol/types";
+import { describe, it } from "node:test";
+import { expect } from "expect";
+import { buildMessages } from "../../../../src/agent/messages.ts";
+import type { QueryRequest } from "../../../../src/protocol/types.ts";
 
 function req(overrides: Partial<QueryRequest> = {}): QueryRequest {
   return { messages: [], ...overrides };

@@ -1,16 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import { expect } from "expect";
 import { MockEmbeddingModelV3 } from "ai/test";
 import {
   embedChunks,
   retrieve,
   _resetEmbeddingModel,
   _setEmbeddingModelForTest,
-} from "../../../../../../mcp-server/src/tools/backend/documents/retrieve";
+} from "../../../../../../mcp-server/src/tools/backend/documents/retrieve.ts";
 import {
   upsertDocument,
   _resetDocStoreState,
   type StoredDocument,
-} from "../../../../../../mcp-server/src/tools/backend/documents/store";
+} from "../../../../../../mcp-server/src/tools/backend/documents/store.ts";
 
 /**
  * Build a mock embedding model that maps text → fixed vector via a lookup

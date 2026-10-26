@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import type { AppEnv } from "../auth/middleware";
-import { getLogger } from "../lib/logger";
-import { readWav, transcribe, transcribeModel } from "../lib/transcribe";
+import type { AppEnv } from "../auth/middleware.ts";
+import { getLogger } from "../lib/logger.ts";
+import { readWav, transcribe, transcribeModel } from "../lib/transcribe.ts";
 
 const logger = getLogger(["app", "transcribe"]);
 

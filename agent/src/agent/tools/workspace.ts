@@ -16,7 +16,7 @@ import {
   WORKSPACE_BRIDGE_COMMANDS,
   WORKSPACE_BRIDGE_COMMAND_NAMES,
   type WorkspaceBridgeCommandSpec,
-} from "../../protocol/bridge-commands";
+} from "../../protocol/bridge-commands.ts";
 
 function buildTool(spec: WorkspaceBridgeCommandSpec): Tool {
   return tool({

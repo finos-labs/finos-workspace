@@ -7,16 +7,17 @@
  * - Citations forwarded across round-trips (commit 63272c8)
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { Citation, QueryRequest, ToolMessage, Widget } from "../../../src/protocol/types";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { Citation, QueryRequest, ToolMessage, Widget } from "../../../src/protocol/types.ts";
 import {
   llmCallsTool,
   llmEmitsText,
   makeMockLlm,
-} from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+} from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => clearAllModuleState());
 

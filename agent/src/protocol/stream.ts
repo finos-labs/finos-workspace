@@ -1,6 +1,6 @@
-import type { SSEEvent } from "./types";
-import { liveDebugLevel } from "../lib/debug-traces";
-import { getLogger } from "../lib/logger";
+import type { SSEEvent } from "./types.ts";
+import { liveDebugLevel } from "../lib/debug-traces.ts";
+import { getLogger } from "../lib/logger.ts";
 
 const logger = getLogger(["app", "sse"]);
 const encoder = new TextEncoder();

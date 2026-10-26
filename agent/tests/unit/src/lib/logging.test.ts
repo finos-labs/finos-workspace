@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 import type { LogRecord } from "@logtape/logtape";
-import { parseLogFormat, parseLogLevel, redactingSink } from "../../../../src/lib/logging";
+import { parseLogFormat, parseLogLevel, redactingSink } from "../../../../src/lib/logging.ts";
 
 describe("parseLogLevel", () => {
   it("defaults to info in production and debug otherwise", () => {

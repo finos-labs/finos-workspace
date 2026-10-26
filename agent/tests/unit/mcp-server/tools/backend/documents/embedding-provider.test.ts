@@ -1,15 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import { expect } from "expect";
+import { fn } from "jest-mock";
 import {
   embedChunks,
   embeddingProblem,
   getEmbeddingModel,
   retrieve,
   _resetEmbeddingModel,
-} from "../../../../../../mcp-server/src/tools/backend/documents/retrieve";
+} from "../../../../../../mcp-server/src/tools/backend/documents/retrieve.ts";
 import {
   upsertDocument,
   _resetDocStoreState,
-} from "../../../../../../mcp-server/src/tools/backend/documents/store";
+} from "../../../../../../mcp-server/src/tools/backend/documents/store.ts";
 
 const realFetch = globalThis.fetch;
 const KEYS = ["INES_EMBED_MODEL", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "NVIDIA_API_KEY", "OLLAMA_BASE_URL"];
@@ -24,7 +26,7 @@ interface Request {
 /** Answers every embeddings request with one 3-number vector per input, and records it. */
 function recordRequests(): Request[] {
   const seen: Request[] = [];
-  globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
+  globalThis.fetch = fn(async (input: string | URL | Request, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body));
     seen.push({
       url: String(input),

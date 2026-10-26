@@ -3,11 +3,11 @@
  * file, or one that is just very large, cannot stop the tool server or exhaust its memory.
  */
 
-import { serveOnce } from "../../../../../src/lib/isolate-child";
-import { chunkDocument, type DocChunk } from "./chunk";
-import { extractDocument } from "./extract";
-import { MAX_CHUNKS_PER_DOC } from "./limits";
-import type { UploadedDocumentFormat } from "../../../../../src/protocol/types";
+import { serveOnce } from "../../../../../src/lib/isolate-child.ts";
+import { chunkDocument, type DocChunk } from "./chunk.ts";
+import { extractDocument } from "./extract.ts";
+import { MAX_CHUNKS_PER_DOC } from "./limits.ts";
+import type { UploadedDocumentFormat } from "../../../../../src/protocol/types.ts";
 
 export interface IngestChildInput {
   id: string;

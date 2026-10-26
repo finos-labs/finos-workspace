@@ -9,17 +9,18 @@
  *     in streaming-progress).
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
-import { runAgentLoop } from "../../../src/agent/loop";
-import type { QueryRequest, SSEEvent } from "../../../src/protocol/types";
+import { describe, it, beforeEach } from "node:test";
+import { expect } from "expect";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import type { QueryRequest, SSEEvent } from "../../../src/protocol/types.ts";
 import {
   llmCallsTool,
   llmEmitsText,
   makeSequencedMockLlm,
-} from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
-import { rememberRows } from "../../../src/agent/row-cache";
+} from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
+import { rememberRows } from "../../../src/agent/row-cache.ts";
 
 beforeEach(() => clearAllModuleState());
 

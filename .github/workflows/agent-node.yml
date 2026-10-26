@@ -1,0 +1,39 @@
+name: Agent Node
+
+# The Node the agent's images run on: the finos-node release (finos-node.yml) that every job building
+# those images, or running the agent's tests, uses in place of the stage `node` of agent/Dockerfile
+# (docker build --build-context node=docker-image://<image>). No job compiles Node. A new release is
+# used by changing RELEASE below, by tag and digest.
+
+on:
+  workflow_call:
+    outputs:
+      image:
+        description: The finos-node image, by tag and digest.
+        value: ${{ jobs.node.outputs.image }}
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  node:
+    name: Node for the agent's images
+    runs-on: ubuntu-latest
+    env:
+      RELEASE: "26.12.1-1@sha256:ead12e53441802ae738c130ba285e2517e7aa9a39449e9e4fd9bc9bbf03c5352"
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check that the release is there
+        id: image
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/finos-node:$RELEASE"
+          docker manifest inspect "$image" > /dev/null
+          echo "image=$image" >> "$GITHUB_OUTPUT"

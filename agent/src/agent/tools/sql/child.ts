@@ -3,12 +3,12 @@
  * one tool, and answers with the text for the model and the events the tool queued.
  */
 
-import { serveOnce } from "../../../lib/isolate-child";
-import type { SSEEvent } from "../../../protocol/types";
-import { runCreateArtifact, type CreateArtifactArgs } from "./create-artifact";
-import { runExecuteSql } from "./execute-sql";
-import { runPeekColumnValues } from "./peek-column-values";
-import { runPeekTable } from "./peek-table";
+import { serveOnce } from "../../../lib/isolate-child.ts";
+import type { SSEEvent } from "../../../protocol/types.ts";
+import { runCreateArtifact, type CreateArtifactArgs } from "./create-artifact.ts";
+import { runExecuteSql } from "./execute-sql.ts";
+import { runPeekColumnValues } from "./peek-column-values.ts";
+import { runPeekTable } from "./peek-table.ts";
 
 export type SqlOp = "execute_sql" | "peek_table" | "peek_column_values" | "create_artifact";
 

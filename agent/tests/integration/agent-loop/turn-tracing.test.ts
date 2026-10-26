@@ -7,26 +7,27 @@
  * and the token total that would otherwise die with each generator.
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from "bun:test";
+import { describe, it, before as beforeAll, beforeEach, after as afterAll } from "node:test";
+import { expect } from "expect";
 import { trace } from "@opentelemetry/api";
 import {
   BasicTracerProvider,
   InMemorySpanExporter,
   SimpleSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
-import { runAgentLoop } from "../../../src/agent/loop";
-import { parseTraceparent } from "../../../src/lib/telemetry";
-import type { TurnUsage } from "../../../src/lib/token-usage";
-import type { QueryRequest, SSEEvent, ToolMessage } from "../../../src/protocol/types";
+import { runAgentLoop } from "../../../src/agent/loop.ts";
+import { parseTraceparent } from "../../../src/lib/telemetry.ts";
+import type { TurnUsage } from "../../../src/lib/token-usage.ts";
+import type { QueryRequest, SSEEvent, ToolMessage } from "../../../src/protocol/types.ts";
 import {
   llmCallsTool,
   llmEmitsText,
   makeMockLlm,
   makeSpyMockLlm,
   type SpyMockLlm,
-} from "../../helpers/mock-llm";
-import { collectGenerator } from "../../helpers/sse-reader";
-import { clearAllModuleState } from "../../helpers/clear-state";
+} from "../../helpers/mock-llm.ts";
+import { collectGenerator } from "../../helpers/sse-reader.ts";
+import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 const exporter = new InMemorySpanExporter();
 let provider: BasicTracerProvider | undefined;
@@ -42,9 +43,7 @@ beforeAll(() => {
 
 afterAll(async () => {
   await provider?.shutdown();
-  // Restore the no-op global. bun runs test files in one process, and leaving
-  // a recording provider registered would put a `traceparent` into extra_state
-  // for every later test file — including the ones that pin its verbatim shape.
+  // Restore the no-op global.
   trace.disable();
 });
 
@@ -253,20 +252,22 @@ describe("turn tracing — untrusted echoed state", () => {
     });
   });
 
-  it.each([
+  for (const [label, bad] of [
     ["a malformed traceparent", "not-a-traceparent"],
     ["an all-zero trace id", "00-00000000000000000000000000000000-00f067aa0ba902b7-01"],
     ["a non-string", 42],
     ["a header-injection attempt", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\r\nX: 1"],
-  ])("starts a fresh trace (and does not throw) given %s", async (_label, bad) => {
-    const events = await collectGenerator(
-      rePost("t-bad", { traceparent: bad as unknown as string }),
-    );
-    expect(events.length).toBeGreaterThan(0);
-    const span = turnSpans()[0];
-    expect(span).toBeDefined();
-    expect(span.parentSpanContext).toBeUndefined();
-  });
+  ]) {
+    it(`starts a fresh trace (and does not throw) given ${label}`, async () => {
+      const events = await collectGenerator(
+        rePost("t-bad", { traceparent: bad as unknown as string }),
+      );
+      expect(events.length).toBeGreaterThan(0);
+      const span = turnSpans()[0];
+      expect(span).toBeDefined();
+      expect(span.parentSpanContext).toBeUndefined();
+    });
+  }
 
   it("does not propagate a traceparent it refused to parse", async () => {
     // Otherwise the two derivations of "what is the turn root" disagree: the

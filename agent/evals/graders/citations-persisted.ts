@@ -8,9 +8,9 @@
  * the next emit instead of dropping silently.
  */
 
-import type { Trace } from "../trace";
-import type { GraderSpec } from "./index";
-import type { SSEEvent } from "../../src/protocol/types";
+import type { Trace } from "../trace.ts";
+import type { GraderSpec } from "./index.ts";
+import type { SSEEvent } from "../../src/protocol/types.ts";
 
 interface ExtraStateShape {
   intermediate_citations?: Array<{ id?: string }>;

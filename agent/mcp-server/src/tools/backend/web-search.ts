@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import { z } from "zod";
-import { textItem, webCitationItem, type ContentItem } from "../../lib/typed";
+import { textItem, webCitationItem, type ContentItem } from "../../lib/typed.ts";
 
 // DuckDuckGo's HTML endpoint needs no account or key. It answers a GET with the
 // results page; a POST gets an anti-bot challenge.

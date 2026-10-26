@@ -16,7 +16,7 @@
 
 import { createRequire } from "node:module";
 import TurndownService from "turndown";
-import { collapseSpace, cut } from "./page-text";
+import { collapseSpace, cut } from "./page-text.ts";
 
 // The part of the DOM that is read. domino's own typings declare a module under another name, and the DOM
 // types are not in this project's libs.

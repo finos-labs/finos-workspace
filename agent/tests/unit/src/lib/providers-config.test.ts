@@ -1,4 +1,5 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it } from "node:test";
+import { expect } from "expect";
 
 // No model id is written in providers.ts, so these tests use made-up ids: the
 // code must not care what a model is called. providers.ts reads its environment
@@ -8,7 +9,7 @@ const KEYS = ["OPENAI_API_KEY", "NVIDIA_API_KEY"] as const;
 
 async function withProviders<T>(
   env: Partial<Record<(typeof KEYS)[number], string>>,
-  fn: (mod: typeof import("../../../../src/lib/providers")) => T,
+  fn: (mod: typeof import("../../../../src/lib/providers.ts")) => T,
 ): Promise<T> {
   const saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
   for (const k of KEYS) {
@@ -16,7 +17,7 @@ async function withProviders<T>(
     else process.env[k] = env[k];
   }
   try {
-    return fn(await import(`../../../../src/lib/providers?config=${crypto.randomUUID()}`));
+    return fn(await import(`../../../../src/lib/providers.ts?config=${crypto.randomUUID()}`));
   } finally {
     for (const k of KEYS) {
       if (saved[k] === undefined) delete process.env[k];

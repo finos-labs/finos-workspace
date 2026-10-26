@@ -7,8 +7,8 @@
  * Test hook `_setRedisClientForTest` lets unit tests inject a mock or null.
  */
 
-import Redis from "ioredis";
-import { getLogger } from "./logger";
+import { Redis } from "ioredis";
+import { getLogger } from "./logger.ts";
 
 const logger = getLogger(["mcp", "redis"]);
 

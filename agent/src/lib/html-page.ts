@@ -4,9 +4,9 @@
  */
 
 import type { Logger } from "@logtape/logtape";
-import { runInChild } from "./isolate";
-import { fetchClientUrl } from "./safe-fetch";
-import type { ChildInput, PageOverview, PageRequest, PageViewResult } from "./page-view";
+import { runInChild } from "./isolate.ts";
+import { fetchClientUrl } from "./safe-fetch.ts";
+import type { ChildInput, PageOverview, PageRequest, PageViewResult } from "./page-view.ts";
 
 export type { PageOverview, PageRequest, PageViewResult };
 
