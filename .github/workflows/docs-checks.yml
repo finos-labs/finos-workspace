@@ -1,0 +1,39 @@
+name: Docs checks
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "backend-api/backend/tests/fixtures/**"
+      - "backend-api/backend/envs/.env.example"
+      - "frontend/src/**"
+      - "frontend/app-config.js"
+      - "frontend/apps-schema.json"
+      - "agent/src/**"
+      - "agent/mcp-server/src/**"
+      - "agent/.env.example"
+      - ".github/workflows/docs-checks.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Types and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm run build

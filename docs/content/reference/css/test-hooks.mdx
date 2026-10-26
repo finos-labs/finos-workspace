@@ -1,0 +1,26 @@
+---
+title: Test hooks
+sidebar_position: 12
+---
+
+import { DataAttributes, HooksTable } from "@site/src/components/Reference/css";
+
+# Test hooks
+
+Attributes and ids that the web app's components set as literals, found by scanning `frontend/src` without its tests and stories. The end-to-end tests select elements with `data-testid`. A value built at run time is not listed.
+
+The tables are generated from the source.
+
+## data-testid
+
+<HooksTable kind="testIds" />
+
+## id
+
+<HooksTable kind="ids" />
+
+## Other data attributes
+
+The number of places in the source that set each attribute.
+
+<DataAttributes />

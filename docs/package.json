@@ -1,0 +1,35 @@
+{
+  "name": "finos-workspace-docs",
+  "private": true,
+  "license": "Apache-2.0",
+  "version": "1.0.0",
+  "scripts": {
+    "generate": "node --disable-warning=ExperimentalWarning scripts/generate.mts",
+    "prestart": "npm run generate",
+    "start": "docusaurus start",
+    "prebuild": "npm run generate",
+    "build": "docusaurus build",
+    "serve": "docusaurus serve",
+    "typecheck": "npm run generate && tsc --noEmit"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.2",
+    "@docusaurus/plugin-content-docs": "3.10.2",
+    "@docusaurus/theme-classic": "3.10.2",
+    "@docusaurus/theme-common": "3.10.2",
+    "@easyops-cn/docusaurus-search-local": "0.55.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "3.10.2",
+    "@docusaurus/types": "3.10.2",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "postcss": "8.5.31",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=24.0"
+  }
+}

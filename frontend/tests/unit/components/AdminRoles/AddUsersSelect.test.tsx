@@ -52,7 +52,7 @@ vi.mock("@radix-ui/react-dropdown-menu", () => {
     },
     Portal: ({ children }: { children?: ReactNode }) => {
       const { open } = React.useContext(DropdownContext);
-      return open ? <>{children}</> : null;
+      return open ? children : null;
     },
     Content: ({
       children,

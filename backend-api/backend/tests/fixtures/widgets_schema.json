@@ -1,0 +1,3710 @@
+{
+  "$id": "urn:workspace:widgets-json:offline",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": {
+    "$ref": "#/definitions/Widget"
+  },
+  "definitions": {
+    "Data_html": {
+      "additionalProperties": false,
+      "description": "`dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines",
+      "properties": {
+        "dataKey": {
+          "description": "The path of the widget's data in a JSON response, such as `result.items`",
+          "maxLength": 256,
+          "type": "string"
+        },
+        "rawDataKey": {
+          "description": "The path of the rows in the `raw=true` response, such as `results.records`; without it, `results`, or the whole response",
+          "maxLength": 256,
+          "type": "string"
+        },
+        "rawType": {
+          "description": "A plugin's type that shows the rows when the user switches the widget to them; without it, or when the user may not use that type, an html widget shows them in a table and a plugin's widget with its own plugin",
+          "pattern": "^[a-z][a-z0-9_-]{1,31}$",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Data_iframe": {
+      "additionalProperties": false,
+      "description": "`dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines",
+      "properties": {
+        "dataKey": {
+          "description": "The path of the widget's data in a JSON response, such as `result.items`",
+          "maxLength": 256,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Data_markdown": {
+      "additionalProperties": false,
+      "description": "`dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines",
+      "properties": {
+        "dataKey": {
+          "description": "The path of the widget's data in a JSON response, such as `result.items`",
+          "maxLength": 256,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Data_newsfeed": {
+      "additionalProperties": false,
+      "description": "`dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines",
+      "properties": {
+        "dataKey": {
+          "description": "The path of the widget's data in a JSON response, such as `result.items`",
+          "maxLength": 256,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Data_pdf": {
+      "additionalProperties": false,
+      "description": "`dataKey`, `rawDataKey` and `rawType` where the type has `raw`, and for a plugin's type the configuration its plugin defines",
+      "properties": {
+        "dataKey": {
+          "description": "The path of the widget's data in a JSON response, such as `result.items`",
+          "maxLength": 256,
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "McpTool": {
+      "additionalProperties": false,
+      "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool",
+      "properties": {
+        "args": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "maxProperties": 32,
+          "propertyNames": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "mcp_server": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "tool_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "mcp_server",
+        "tool_id"
+      ],
+      "type": "object"
+    },
+    "ParamDef": {
+      "allOf": [
+        {
+          "discriminator": {
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "description": "Help shown on hover, which the AI Agent also reads",
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "in": {
+                  "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none",
+                  "enum": [
+                    "query",
+                    "header",
+                    "body"
+                  ],
+                  "type": "string"
+                },
+                "label": {
+                  "description": "The control's label; the paramName by default",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "language": {
+                  "description": "The value is code in this language, edited in a code editor",
+                  "enum": [
+                    "sql",
+                    "javascript",
+                    "python",
+                    "json",
+                    "html",
+                    "css",
+                    "markdown",
+                    "xml",
+                    "text"
+                  ],
+                  "type": "string"
+                },
+                "multiSelect": {
+                  "description": "Several values can be chosen; sent joined with commas, or as a list in a body",
+                  "type": "boolean"
+                },
+                "multiple": {
+                  "description": "Several values can be entered, sent like multiSelect",
+                  "type": "boolean"
+                },
+                "options": {
+                  "description": "The choices of a dropdown, as `{ label, value }`",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "maxLength": 200,
+                        "type": "string"
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "maxLength": 4096,
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "label"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1000,
+                  "type": "array"
+                },
+                "paramName": {
+                  "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "placeholder": {
+                  "description": "Shown in the control while it is empty",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "roles": {
+                  "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget",
+                  "items": {
+                    "const": "fileSelector",
+                    "type": "string"
+                  },
+                  "maxItems": 1,
+                  "type": "array"
+                },
+                "row": {
+                  "description": "The row of the parameter bar the control is placed in",
+                  "maximum": 31,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "show": {
+                  "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                  "type": "boolean"
+                },
+                "style": {
+                  "additionalProperties": false,
+                  "description": "`popupWidth`: the width of a dropdown's list, in pixels",
+                  "properties": {
+                    "popupWidth": {
+                      "maximum": 1000,
+                      "minimum": 100,
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": {
+                  "const": "text",
+                  "type": "string"
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "description": "The default value",
+                      "maxLength": 4096,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "paramName",
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "description": "Help shown on hover, which the AI Agent also reads",
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "in": {
+                  "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none",
+                  "enum": [
+                    "query",
+                    "header",
+                    "body"
+                  ],
+                  "type": "string"
+                },
+                "label": {
+                  "description": "The control's label; the paramName by default",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "multiSelect": {
+                  "description": "Several values can be chosen; sent joined with commas, or as a list in a body",
+                  "type": "boolean"
+                },
+                "options": {
+                  "description": "The choices of a dropdown, as `{ label, value }`",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "maxLength": 200,
+                        "type": "string"
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "maxLength": 4096,
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "label"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1000,
+                  "type": "array"
+                },
+                "paramName": {
+                  "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "placeholder": {
+                  "description": "Shown in the control while it is empty",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "roles": {
+                  "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget",
+                  "items": {
+                    "const": "fileSelector",
+                    "type": "string"
+                  },
+                  "maxItems": 1,
+                  "type": "array"
+                },
+                "row": {
+                  "description": "The row of the parameter bar the control is placed in",
+                  "maximum": 31,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "show": {
+                  "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                  "type": "boolean"
+                },
+                "style": {
+                  "additionalProperties": false,
+                  "description": "`popupWidth`: the width of a dropdown's list, in pixels",
+                  "properties": {
+                    "popupWidth": {
+                      "maximum": 1000,
+                      "minimum": 100,
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": {
+                  "const": "tabs",
+                  "type": "string"
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "description": "The default value",
+                      "maxLength": 4096,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "paramName",
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "description": "Help shown on hover, which the AI Agent also reads",
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "in": {
+                  "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none",
+                  "enum": [
+                    "query",
+                    "header",
+                    "body"
+                  ],
+                  "type": "string"
+                },
+                "label": {
+                  "description": "The control's label; the paramName by default",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "multiSelect": {
+                  "description": "Several values can be chosen; sent joined with commas, or as a list in a body",
+                  "type": "boolean"
+                },
+                "options": {
+                  "description": "The choices of a dropdown, as `{ label, value }`",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "maxLength": 200,
+                        "type": "string"
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "maxLength": 4096,
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "label"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1000,
+                  "type": "array"
+                },
+                "paramName": {
+                  "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "placeholder": {
+                  "description": "Shown in the control while it is empty",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "roles": {
+                  "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget",
+                  "items": {
+                    "const": "fileSelector",
+                    "type": "string"
+                  },
+                  "maxItems": 1,
+                  "type": "array"
+                },
+                "row": {
+                  "description": "The row of the parameter bar the control is placed in",
+                  "maximum": 31,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "show": {
+                  "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                  "type": "boolean"
+                },
+                "style": {
+                  "additionalProperties": false,
+                  "description": "`popupWidth`: the width of a dropdown's list, in pixels",
+                  "properties": {
+                    "popupWidth": {
+                      "maximum": 1000,
+                      "minimum": 100,
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": {
+                  "const": "ticker",
+                  "type": "string"
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "description": "The default value",
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "paramName",
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "description": "Help shown on hover, which the AI Agent also reads",
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "in": {
+                  "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none",
+                  "enum": [
+                    "query",
+                    "header",
+                    "body"
+                  ],
+                  "type": "string"
+                },
+                "label": {
+                  "description": "The control's label; the paramName by default",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "multiSelect": {
+                  "description": "Several values can be chosen; sent joined with commas, or as a list in a body",
+                  "type": "boolean"
+                },
+                "options": {
+                  "description": "The choices of a dropdown, as `{ label, value }`",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "maxLength": 200,
+                        "type": "string"
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "maxLength": 4096,
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "label"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1000,
+                  "type": "array"
+                },
+                "paramName": {
+                  "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "placeholder": {
+                  "description": "Shown in the control while it is empty",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "roles": {
+                  "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget",
+                  "items": {
+                    "const": "fileSelector",
+                    "type": "string"
+                  },
+                  "maxItems": 1,
+                  "type": "array"
+                },
+                "row": {
+                  "description": "The row of the parameter bar the control is placed in",
+                  "maximum": 31,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "show": {
+                  "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                  "type": "boolean"
+                },
+                "style": {
+                  "additionalProperties": false,
+                  "description": "`popupWidth`: the width of a dropdown's list, in pixels",
+                  "properties": {
+                    "popupWidth": {
+                      "maximum": 1000,
+                      "minimum": 100,
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": {
+                  "const": "date",
+                  "type": "string"
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "description": "The default: a date, `YYYY-MM-DD`, or `$currentDate` with a modifier such as `$currentDate-1M`",
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "paramName",
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "description": "Help shown on hover, which the AI Agent also reads",
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "in": {
+                  "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none",
+                  "enum": [
+                    "query",
+                    "header",
+                    "body"
+                  ],
+                  "type": "string"
+                },
+                "label": {
+                  "description": "The control's label; the paramName by default",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "multiSelect": {
+                  "description": "Several values can be chosen; sent joined with commas, or as a list in a body",
+                  "type": "boolean"
+                },
+                "options": {
+                  "description": "The choices of a dropdown, as `{ label, value }`",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "maxLength": 200,
+                        "type": "string"
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "maxLength": 4096,
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "label"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1000,
+                  "type": "array"
+                },
+                "paramName": {
+                  "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "placeholder": {
+                  "description": "Shown in the control while it is empty",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "roles": {
+                  "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget",
+                  "items": {
+                    "const": "fileSelector",
+                    "type": "string"
+                  },
+                  "maxItems": 1,
+                  "type": "array"
+                },
+                "row": {
+                  "description": "The row of the parameter bar the control is placed in",
+                  "maximum": 31,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "show": {
+                  "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                  "type": "boolean"
+                },
+                "style": {
+                  "additionalProperties": false,
+                  "description": "`popupWidth`: the width of a dropdown's list, in pixels",
+                  "properties": {
+                    "popupWidth": {
+                      "maximum": 1000,
+                      "minimum": 100,
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": {
+                  "const": "number",
+                  "type": "string"
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "maxLength": 64,
+                          "pattern": "^-?\\d*\\.?\\d*$",
+                          "type": "string"
+                        }
+                      ],
+                      "description": "The default: a number, or a string of digits"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "paramName",
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "description": "Help shown on hover, which the AI Agent also reads",
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "in": {
+                  "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none",
+                  "enum": [
+                    "query",
+                    "header",
+                    "body"
+                  ],
+                  "type": "string"
+                },
+                "label": {
+                  "description": "The control's label; the paramName by default",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "multiSelect": {
+                  "description": "Several values can be chosen; sent joined with commas, or as a list in a body",
+                  "type": "boolean"
+                },
+                "options": {
+                  "description": "The choices of a dropdown, as `{ label, value }`",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "maxLength": 200,
+                        "type": "string"
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "maxLength": 4096,
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "label"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1000,
+                  "type": "array"
+                },
+                "paramName": {
+                  "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "placeholder": {
+                  "description": "Shown in the control while it is empty",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "roles": {
+                  "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget",
+                  "items": {
+                    "const": "fileSelector",
+                    "type": "string"
+                  },
+                  "maxItems": 1,
+                  "type": "array"
+                },
+                "row": {
+                  "description": "The row of the parameter bar the control is placed in",
+                  "maximum": 31,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "show": {
+                  "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                  "type": "boolean"
+                },
+                "style": {
+                  "additionalProperties": false,
+                  "description": "`popupWidth`: the width of a dropdown's list, in pixels",
+                  "properties": {
+                    "popupWidth": {
+                      "maximum": 1000,
+                      "minimum": 100,
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": {
+                  "const": "boolean",
+                  "type": "string"
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "description": "The default value",
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "paramName",
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "description": "Help shown on hover, which the AI Agent also reads",
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "in": {
+                  "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none",
+                  "enum": [
+                    "query",
+                    "header",
+                    "body"
+                  ],
+                  "type": "string"
+                },
+                "label": {
+                  "description": "The control's label; the paramName by default",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "multiSelect": {
+                  "description": "Several values can be chosen; sent joined with commas, or as a list in a body",
+                  "type": "boolean"
+                },
+                "options": {
+                  "description": "The choices of a dropdown, as `{ label, value }`",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "maxLength": 200,
+                        "type": "string"
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "maxLength": 4096,
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "label"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1000,
+                  "type": "array"
+                },
+                "paramName": {
+                  "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "placeholder": {
+                  "description": "Shown in the control while it is empty",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "roles": {
+                  "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget",
+                  "items": {
+                    "const": "fileSelector",
+                    "type": "string"
+                  },
+                  "maxItems": 1,
+                  "type": "array"
+                },
+                "row": {
+                  "description": "The row of the parameter bar the control is placed in",
+                  "maximum": 31,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "show": {
+                  "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                  "type": "boolean"
+                },
+                "style": {
+                  "additionalProperties": false,
+                  "description": "`popupWidth`: the width of a dropdown's list, in pixels",
+                  "properties": {
+                    "popupWidth": {
+                      "maximum": 1000,
+                      "minimum": 100,
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": {
+                  "const": "button",
+                  "type": "string"
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "maxLength": 4096,
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The default value"
+                }
+              },
+              "required": [
+                "paramName",
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "description": "Help shown on hover, which the AI Agent also reads",
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "in": {
+                  "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none",
+                  "enum": [
+                    "query",
+                    "header",
+                    "body"
+                  ],
+                  "type": "string"
+                },
+                "label": {
+                  "description": "The control's label; the paramName by default",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "multiSelect": {
+                  "description": "Several values can be chosen; sent joined with commas, or as a list in a body",
+                  "type": "boolean"
+                },
+                "options": {
+                  "description": "The choices of a dropdown, as `{ label, value }`",
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "maxLength": 200,
+                        "type": "string"
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "maxLength": 4096,
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "label"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1000,
+                  "type": "array"
+                },
+                "optionsEndpoint": {
+                  "description": "a path or an absolute URL with no `?` and no `#`, which answers with the choices as a list of strings or `{ label, value }`",
+                  "maxLength": 2048,
+                  "minLength": 1,
+                  "pattern": "^[^?#]+$",
+                  "type": "string"
+                },
+                "optionsMethod": {
+                  "description": "How the options are requested: GET (the default) or POST",
+                  "enum": [
+                    "GET",
+                    "POST"
+                  ],
+                  "type": "string"
+                },
+                "optionsParams": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "maxLength": 4096,
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  },
+                  "description": "Values for the options request: a `{name}` placeholder of optionsEndpoint takes one, the rest go in the query (GET) or a JSON body (POST). `$name` is the current value of the param `name`",
+                  "maxProperties": 32,
+                  "propertyNames": {
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "paramName": {
+                  "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "placeholder": {
+                  "description": "Shown in the control while it is empty",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "roles": {
+                  "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget",
+                  "items": {
+                    "const": "fileSelector",
+                    "type": "string"
+                  },
+                  "maxItems": 1,
+                  "type": "array"
+                },
+                "row": {
+                  "description": "The row of the parameter bar the control is placed in",
+                  "maximum": 31,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "show": {
+                  "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                  "type": "boolean"
+                },
+                "style": {
+                  "additionalProperties": false,
+                  "description": "`popupWidth`: the width of a dropdown's list, in pixels",
+                  "properties": {
+                    "popupWidth": {
+                      "maximum": 1000,
+                      "minimum": 100,
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "type": {
+                  "const": "endpoint",
+                  "type": "string"
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "anyOf": [
+                        {
+                          "maxLength": 4096,
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    {
+                      "items": {
+                        "anyOf": [
+                          {
+                            "maxLength": 4096,
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          }
+                        ]
+                      },
+                      "maxItems": 1000,
+                      "type": "array"
+                    }
+                  ],
+                  "description": "The default: an option's value, or a list of them for multiSelect (or a comma-separated string)"
+                }
+              },
+              "required": [
+                "paramName",
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "description": "Help shown on hover, which the AI Agent also reads",
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "endpoint": {
+                  "description": "a path or an absolute URL with no `?` and no `#`, which receives the form's inputs as a JSON body; `{name}` takes an input's or a param's value",
+                  "maxLength": 2048,
+                  "minLength": 1,
+                  "pattern": "^[^?#]+$",
+                  "type": "string"
+                },
+                "inputParams": {
+                  "description": "The form's fields, each like a param, with no `in`",
+                  "items": {
+                    "discriminator": {
+                      "propertyName": "type"
+                    },
+                    "oneOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "description": "Help shown on hover, which the AI Agent also reads",
+                            "maxLength": 4000,
+                            "type": "string"
+                          },
+                          "label": {
+                            "description": "The control's label; the paramName by default",
+                            "maxLength": 200,
+                            "type": "string"
+                          },
+                          "multiSelect": {
+                            "description": "Several values can be chosen; sent joined with commas, or as a list in a body",
+                            "type": "boolean"
+                          },
+                          "options": {
+                            "description": "The choices of a dropdown, as `{ label, value }`",
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "label": {
+                                  "maxLength": 200,
+                                  "type": "string"
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "maxLength": 4096,
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "label"
+                              ],
+                              "type": "object"
+                            },
+                            "maxItems": 1000,
+                            "type": "array"
+                          },
+                          "paramName": {
+                            "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead",
+                            "maxLength": 128,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "placeholder": {
+                            "description": "Shown in the control while it is empty",
+                            "maxLength": 200,
+                            "type": "string"
+                          },
+                          "roles": {
+                            "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget",
+                            "items": {
+                              "const": "fileSelector",
+                              "type": "string"
+                            },
+                            "maxItems": 1,
+                            "type": "array"
+                          },
+                          "row": {
+                            "description": "The row of the parameter bar the control is placed in",
+                            "maximum": 31,
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "show": {
+                            "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                            "type": "boolean"
+                          },
+                          "style": {
+                            "additionalProperties": false,
+                            "description": "`popupWidth`: the width of a dropdown's list, in pixels",
+                            "properties": {
+                              "popupWidth": {
+                                "maximum": 1000,
+                                "minimum": 100,
+                                "type": "number"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": {
+                            "const": "text",
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "maxLength": 4096,
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "paramName",
+                          "type"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "description": "Help shown on hover, which the AI Agent also reads",
+                            "maxLength": 4000,
+                            "type": "string"
+                          },
+                          "label": {
+                            "description": "The control's label; the paramName by default",
+                            "maxLength": 200,
+                            "type": "string"
+                          },
+                          "multiSelect": {
+                            "description": "Several values can be chosen; sent joined with commas, or as a list in a body",
+                            "type": "boolean"
+                          },
+                          "options": {
+                            "description": "The choices of a dropdown, as `{ label, value }`",
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "label": {
+                                  "maxLength": 200,
+                                  "type": "string"
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "maxLength": 4096,
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "label"
+                              ],
+                              "type": "object"
+                            },
+                            "maxItems": 1000,
+                            "type": "array"
+                          },
+                          "paramName": {
+                            "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead",
+                            "maxLength": 128,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "placeholder": {
+                            "description": "Shown in the control while it is empty",
+                            "maxLength": 200,
+                            "type": "string"
+                          },
+                          "roles": {
+                            "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget",
+                            "items": {
+                              "const": "fileSelector",
+                              "type": "string"
+                            },
+                            "maxItems": 1,
+                            "type": "array"
+                          },
+                          "row": {
+                            "description": "The row of the parameter bar the control is placed in",
+                            "maximum": 31,
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "show": {
+                            "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                            "type": "boolean"
+                          },
+                          "style": {
+                            "additionalProperties": false,
+                            "description": "`popupWidth`: the width of a dropdown's list, in pixels",
+                            "properties": {
+                              "popupWidth": {
+                                "maximum": 1000,
+                                "minimum": 100,
+                                "type": "number"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": {
+                            "const": "date",
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "maxLength": 64,
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "paramName",
+                          "type"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "description": "Help shown on hover, which the AI Agent also reads",
+                            "maxLength": 4000,
+                            "type": "string"
+                          },
+                          "label": {
+                            "description": "The control's label; the paramName by default",
+                            "maxLength": 200,
+                            "type": "string"
+                          },
+                          "multiSelect": {
+                            "description": "Several values can be chosen; sent joined with commas, or as a list in a body",
+                            "type": "boolean"
+                          },
+                          "options": {
+                            "description": "The choices of a dropdown, as `{ label, value }`",
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "label": {
+                                  "maxLength": 200,
+                                  "type": "string"
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "maxLength": 4096,
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "label"
+                              ],
+                              "type": "object"
+                            },
+                            "maxItems": 1000,
+                            "type": "array"
+                          },
+                          "paramName": {
+                            "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead",
+                            "maxLength": 128,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "placeholder": {
+                            "description": "Shown in the control while it is empty",
+                            "maxLength": 200,
+                            "type": "string"
+                          },
+                          "roles": {
+                            "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget",
+                            "items": {
+                              "const": "fileSelector",
+                              "type": "string"
+                            },
+                            "maxItems": 1,
+                            "type": "array"
+                          },
+                          "row": {
+                            "description": "The row of the parameter bar the control is placed in",
+                            "maximum": 31,
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "show": {
+                            "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                            "type": "boolean"
+                          },
+                          "style": {
+                            "additionalProperties": false,
+                            "description": "`popupWidth`: the width of a dropdown's list, in pixels",
+                            "properties": {
+                              "popupWidth": {
+                                "maximum": 1000,
+                                "minimum": 100,
+                                "type": "number"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": {
+                            "const": "number",
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "maxLength": 64,
+                                    "pattern": "^-?\\d*\\.?\\d*$",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "paramName",
+                          "type"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "description": "Help shown on hover, which the AI Agent also reads",
+                            "maxLength": 4000,
+                            "type": "string"
+                          },
+                          "label": {
+                            "description": "The control's label; the paramName by default",
+                            "maxLength": 200,
+                            "type": "string"
+                          },
+                          "multiSelect": {
+                            "description": "Several values can be chosen; sent joined with commas, or as a list in a body",
+                            "type": "boolean"
+                          },
+                          "options": {
+                            "description": "The choices of a dropdown, as `{ label, value }`",
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "label": {
+                                  "maxLength": 200,
+                                  "type": "string"
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "maxLength": 4096,
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "label"
+                              ],
+                              "type": "object"
+                            },
+                            "maxItems": 1000,
+                            "type": "array"
+                          },
+                          "paramName": {
+                            "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead",
+                            "maxLength": 128,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "placeholder": {
+                            "description": "Shown in the control while it is empty",
+                            "maxLength": 200,
+                            "type": "string"
+                          },
+                          "roles": {
+                            "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget",
+                            "items": {
+                              "const": "fileSelector",
+                              "type": "string"
+                            },
+                            "maxItems": 1,
+                            "type": "array"
+                          },
+                          "row": {
+                            "description": "The row of the parameter bar the control is placed in",
+                            "maximum": 31,
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "show": {
+                            "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                            "type": "boolean"
+                          },
+                          "style": {
+                            "additionalProperties": false,
+                            "description": "`popupWidth`: the width of a dropdown's list, in pixels",
+                            "properties": {
+                              "popupWidth": {
+                                "maximum": 1000,
+                                "minimum": 100,
+                                "type": "number"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": {
+                            "const": "boolean",
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "paramName",
+                          "type"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "description": "Help shown on hover, which the AI Agent also reads",
+                            "maxLength": 4000,
+                            "type": "string"
+                          },
+                          "label": {
+                            "description": "The control's label; the paramName by default",
+                            "maxLength": 200,
+                            "type": "string"
+                          },
+                          "multiSelect": {
+                            "description": "Several values can be chosen; sent joined with commas, or as a list in a body",
+                            "type": "boolean"
+                          },
+                          "options": {
+                            "description": "The choices of a dropdown, as `{ label, value }`",
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "label": {
+                                  "maxLength": 200,
+                                  "type": "string"
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "maxLength": 4096,
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "label"
+                              ],
+                              "type": "object"
+                            },
+                            "maxItems": 1000,
+                            "type": "array"
+                          },
+                          "paramName": {
+                            "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead",
+                            "maxLength": 128,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "placeholder": {
+                            "description": "Shown in the control while it is empty",
+                            "maxLength": 200,
+                            "type": "string"
+                          },
+                          "roles": {
+                            "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget",
+                            "items": {
+                              "const": "fileSelector",
+                              "type": "string"
+                            },
+                            "maxItems": 1,
+                            "type": "array"
+                          },
+                          "row": {
+                            "description": "The row of the parameter bar the control is placed in",
+                            "maximum": 31,
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "show": {
+                            "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                            "type": "boolean"
+                          },
+                          "style": {
+                            "additionalProperties": false,
+                            "description": "`popupWidth`: the width of a dropdown's list, in pixels",
+                            "properties": {
+                              "popupWidth": {
+                                "maximum": 1000,
+                                "minimum": 100,
+                                "type": "number"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": {
+                            "const": "button",
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "maxLength": 4096,
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "paramName",
+                          "type"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "description": {
+                            "description": "Help shown on hover, which the AI Agent also reads",
+                            "maxLength": 4000,
+                            "type": "string"
+                          },
+                          "label": {
+                            "description": "The control's label; the paramName by default",
+                            "maxLength": 200,
+                            "type": "string"
+                          },
+                          "multiSelect": {
+                            "description": "Several values can be chosen; sent joined with commas, or as a list in a body",
+                            "type": "boolean"
+                          },
+                          "options": {
+                            "description": "The choices of a dropdown, as `{ label, value }`",
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "label": {
+                                  "maxLength": 200,
+                                  "type": "string"
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "maxLength": 4096,
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "label"
+                              ],
+                              "type": "object"
+                            },
+                            "maxItems": 1000,
+                            "type": "array"
+                          },
+                          "optionsEndpoint": {
+                            "description": "a path or an absolute URL with no `?` and no `#`, which answers with the choices as a list of strings or `{ label, value }`",
+                            "maxLength": 2048,
+                            "minLength": 1,
+                            "pattern": "^[^?#]+$",
+                            "type": "string"
+                          },
+                          "optionsMethod": {
+                            "description": "How the options are requested: GET (the default) or POST",
+                            "enum": [
+                              "GET",
+                              "POST"
+                            ],
+                            "type": "string"
+                          },
+                          "optionsParams": {
+                            "additionalProperties": {
+                              "anyOf": [
+                                {
+                                  "maxLength": 4096,
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "boolean"
+                                }
+                              ]
+                            },
+                            "description": "Values for the options request: a `{name}` placeholder of optionsEndpoint takes one, the rest go in the query (GET) or a JSON body (POST). `$name` is the current value of the param `name`",
+                            "maxProperties": 32,
+                            "propertyNames": {
+                              "maxLength": 128,
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "paramName": {
+                            "description": "The name the value is sent under: a query name, a header name or a body key. Unique in the widget; a `{paramName}` placeholder in the endpoint takes the value instead",
+                            "maxLength": 128,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "placeholder": {
+                            "description": "Shown in the control while it is empty",
+                            "maxLength": 200,
+                            "type": "string"
+                          },
+                          "roles": {
+                            "description": "`fileSelector`: the param picks the file the widget shows, at most one per widget",
+                            "items": {
+                              "const": "fileSelector",
+                              "type": "string"
+                            },
+                            "maxItems": 1,
+                            "type": "array"
+                          },
+                          "row": {
+                            "description": "The row of the parameter bar the control is placed in",
+                            "maximum": 31,
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "show": {
+                            "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                            "type": "boolean"
+                          },
+                          "style": {
+                            "additionalProperties": false,
+                            "description": "`popupWidth`: the width of a dropdown's list, in pixels",
+                            "properties": {
+                              "popupWidth": {
+                                "maximum": 1000,
+                                "minimum": 100,
+                                "type": "number"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": {
+                            "const": "endpoint",
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "maxLength": 4096,
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "paramName",
+                          "type"
+                        ],
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "maxItems": 32,
+                  "type": "array"
+                },
+                "label": {
+                  "description": "The control's label; the paramName by default",
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "method": {
+                  "description": "How the form is sent: POST (the default) or PUT",
+                  "enum": [
+                    "POST",
+                    "PUT"
+                  ],
+                  "type": "string"
+                },
+                "paramName": {
+                  "description": "A name for the form; it is not sent",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "row": {
+                  "description": "The row of the parameter bar the control is placed in",
+                  "maximum": 31,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "show": {
+                  "description": "false hides the control; the value is still sent, as when a parameter group or another widget supplies it",
+                  "type": "boolean"
+                },
+                "type": {
+                  "const": "form",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "endpoint",
+                "inputParams"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        {
+          "description": "A header param's paramName is the header name: an HTTP token that a browser lets page script set and that the Workspace does not set itself; its value is printable ASCII",
+          "if": {
+            "properties": {
+              "in": {
+                "const": "header"
+              }
+            },
+            "required": [
+              "in"
+            ]
+          },
+          "then": {
+            "properties": {
+              "paramName": {
+                "not": {
+                  "pattern": "^(?:[aA][cC][cC][eE][pP][tT]$|[aA][cC][cC][eE][pP][tT]-[cC][hH][aA][rR][sS][eE][tT]$|[aA][cC][cC][eE][pP][tT]-[eE][nN][cC][oO][dD][iI][nN][gG]$|[aA][cC][cC][eE][sS][sS]-[cC][oO][nN][tT][rR][oO][lL]-[rR][eE][qQ][uU][eE][sS][tT]-[hH][eE][aA][dD][eE][rR][sS]$|[aA][cC][cC][eE][sS][sS]-[cC][oO][nN][tT][rR][oO][lL]-[rR][eE][qQ][uU][eE][sS][tT]-[mM][eE][tT][hH][oO][dD]$|[aA][uU][tT][hH][oO][rR][iI][zZ][aA][tT][iI][oO][nN]$|[cC][oO][nN][nN][eE][cC][tT][iI][oO][nN]$|[cC][oO][nN][tT][eE][nN][tT]-[lL][eE][nN][gG][tT][hH]$|[cC][oO][nN][tT][eE][nN][tT]-[tT][yY][pP][eE]$|[cC][oO][oO][kK][iI][eE]$|[dD][aA][tT][eE]$|[dD][nN][tT]$|[eE][xX][pP][eE][cC][tT]$|[hH][oO][sS][tT]$|[kK][eE][eE][pP]-[aA][lL][iI][vV][eE]$|[oO][rR][iI][gG][iI][nN]$|[rR][eE][fF][eE][rR][eE][rR]$|[sS][eE][tT]-[cC][oO][oO][kK][iI][eE]$|[tT][eE]$|[tT][rR][aA][iI][lL][eE][rR]$|[tT][rR][aA][nN][sS][fF][eE][rR]-[eE][nN][cC][oO][dD][iI][nN][gG]$|[uU][pP][gG][rR][aA][dD][eE]$|[vV][iI][aA]$|[xX]-[mM][iI][cC][rR][oO][sS][oO][fF][tT]-[iI][dD]-[tT][oO][kK][eE][nN]$|[xX]-[oO][kK][tT][aA]-[iI][dD]-[tT][oO][kK][eE][nN]$|[xX]-[wW][oO][rR][kK][sS][pP][aA][cC][eE]-[uU][sS][eE][rR]$|[pP][rR][oO][xX][yY]-|[sS][eE][cC]-)"
+                },
+                "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,64}$",
+                "type": "string"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "pattern": "^[\\x20-\\x7E]{0,1024}$",
+                    "type": "string"
+                  },
+                  {
+                    "not": {
+                      "type": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Widget": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/Widget_markdown"
+        },
+        {
+          "$ref": "#/definitions/Widget_html"
+        },
+        {
+          "$ref": "#/definitions/Widget_newsfeed"
+        },
+        {
+          "$ref": "#/definitions/Widget_pdf"
+        },
+        {
+          "$ref": "#/definitions/Widget_iframe"
+        }
+      ]
+    },
+    "Widget_html": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "description": "Body params are sent only with \"method\": \"POST\"",
+          "if": {
+            "properties": {
+              "params": {
+                "contains": {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "in": {
+                          "const": "body"
+                        }
+                      },
+                      "required": [
+                        "in"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "contains": {
+                        "properties": {
+                          "in": {
+                            "const": "body"
+                          }
+                        },
+                        "required": [
+                          "in"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "params"
+            ]
+          },
+          "then": {
+            "properties": {
+              "method": {
+                "const": "POST"
+              }
+            },
+            "required": [
+              "method"
+            ]
+          }
+        },
+        {
+          "description": "A widget kept from the Copilot (disableRetrievalForCopilot) cannot opt in to an MCP tool",
+          "if": {
+            "properties": {
+              "disableRetrievalForCopilot": {
+                "const": true
+              }
+            },
+            "required": [
+              "disableRetrievalForCopilot"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "mcp_tool"
+              ]
+            }
+          }
+        },
+        {
+          "description": "theme and raw: query params the Workspace adds to this type's requests",
+          "not": {
+            "properties": {
+              "params": {
+                "contains": {
+                  "anyOf": [
+                    {
+                      "not": {
+                        "properties": {
+                          "in": {
+                            "enum": [
+                              "header",
+                              "body"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "in"
+                        ]
+                      },
+                      "properties": {
+                        "paramName": {
+                          "enum": [
+                            "theme",
+                            "raw"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "paramName"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "contains": {
+                        "not": {
+                          "properties": {
+                            "in": {
+                              "enum": [
+                                "header",
+                                "body"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "in"
+                          ]
+                        },
+                        "properties": {
+                          "paramName": {
+                            "enum": [
+                              "theme",
+                              "raw"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "paramName"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "params"
+            ]
+          }
+        },
+        {
+          "description": "data.rawDataKey and data.rawType describe the rows of raw=true: they need \"raw\": true",
+          "if": {
+            "properties": {
+              "data": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "rawDataKey"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "rawType"
+                    ]
+                  }
+                ]
+              }
+            },
+            "required": [
+              "data"
+            ]
+          },
+          "then": {
+            "properties": {
+              "raw": {
+                "const": true
+              }
+            },
+            "required": [
+              "raw"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "category": {
+          "description": "The group the catalog lists the widget under",
+          "maxLength": 100,
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/Data_html"
+        },
+        "dataUpdateDisplay": {
+          "description": "When the data changes, as a 5-field cron expression shown to the user",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "description": "What the widget shows; the catalog shows it, and the AI Agent finds widgets by it",
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "disableRetrievalForCopilot": {
+          "description": "Keeps the widget's data from the AI Agent; such a widget has no `mcp_tool`",
+          "type": "boolean"
+        },
+        "endpoint": {
+          "description": "a path or an absolute URL with no `?` and no `#` (a static query value is a param with show: false)",
+          "maxLength": 2048,
+          "minLength": 1,
+          "pattern": "^[^?#]+$",
+          "type": "string"
+        },
+        "exportable": {
+          "description": "false removes Export from the widget's menu",
+          "type": "boolean"
+        },
+        "gridData": {
+          "additionalProperties": false,
+          "description": "The default size on a dashboard, in grid units: `w` of 40 columns, and `h` rows",
+          "properties": {
+            "h": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "w": {
+              "maximum": 40,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "w",
+            "h"
+          ],
+          "type": "object"
+        },
+        "mcp_tool": {
+          "$ref": "#/definitions/McpTool",
+          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
+        },
+        "method": {
+          "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "description": "The title the widget shows",
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "params": {
+          "description": "The widget's parameters; an item that is a list of params is one row of the parameter bar",
+          "items": {
+            "else": {
+              "$ref": "#/definitions/ParamDef"
+            },
+            "if": {
+              "type": "array"
+            },
+            "then": {
+              "items": {
+                "$ref": "#/definitions/ParamDef"
+              },
+              "maxItems": 16,
+              "type": "array"
+            }
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        "raw": {
+          "description": "The endpoint also answers `raw=true` with the rows the widget shows, as JSON: the AI Agent and MCP get those rows, and the widget's rows button shows them",
+          "type": "boolean"
+        },
+        "refetchInterval": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "maximum": 10000000000,
+                  "minimum": 1000,
+                  "type": "number"
+                },
+                {
+                  "const": false,
+                  "type": "boolean"
+                },
+                {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              ],
+              "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runButton": {
+          "description": "The widget fetches only when the user clicks Run",
+          "type": "boolean"
+        },
+        "showTitle": {
+          "description": "false leaves the title off the widget",
+          "type": "boolean"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "items": {
+                "maxLength": 100,
+                "type": "string"
+              },
+              "maxItems": 16,
+              "type": "array"
+            }
+          ],
+          "description": "Where the data comes from: a label, or a list of labels"
+        },
+        "staleTime": {
+          "anyOf": [
+            {
+              "maximum": 10000000000,
+              "minimum": 1000,
+              "type": "number"
+            },
+            {
+              "const": false,
+              "type": "boolean"
+            }
+          ],
+          "description": "Milliseconds a response is reused before it is fetched again; false fetches every time"
+        },
+        "subCategory": {
+          "description": "The subgroup within the category",
+          "maxLength": 100,
+          "type": "string"
+        },
+        "type": {
+          "const": "html",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "endpoint",
+        "type"
+      ],
+      "type": "object"
+    },
+    "Widget_iframe": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "description": "Body params are sent only with \"method\": \"POST\"",
+          "if": {
+            "properties": {
+              "params": {
+                "contains": {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "in": {
+                          "const": "body"
+                        }
+                      },
+                      "required": [
+                        "in"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "contains": {
+                        "properties": {
+                          "in": {
+                            "const": "body"
+                          }
+                        },
+                        "required": [
+                          "in"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "params"
+            ]
+          },
+          "then": {
+            "properties": {
+              "method": {
+                "const": "POST"
+              }
+            },
+            "required": [
+              "method"
+            ]
+          }
+        },
+        {
+          "description": "A widget kept from the Copilot (disableRetrievalForCopilot) cannot opt in to an MCP tool",
+          "if": {
+            "properties": {
+              "disableRetrievalForCopilot": {
+                "const": true
+              }
+            },
+            "required": [
+              "disableRetrievalForCopilot"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "mcp_tool"
+              ]
+            }
+          }
+        },
+        {
+          "description": "This type's params go in the query, not the body or header",
+          "not": {
+            "properties": {
+              "params": {
+                "contains": {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "in": {
+                          "enum": [
+                            "body",
+                            "header"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "in"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "contains": {
+                        "properties": {
+                          "in": {
+                            "enum": [
+                              "body",
+                              "header"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "in"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "params"
+            ]
+          }
+        },
+        {
+          "description": "theme: query params the Workspace adds to this type's requests",
+          "not": {
+            "properties": {
+              "params": {
+                "contains": {
+                  "anyOf": [
+                    {
+                      "not": {
+                        "properties": {
+                          "in": {
+                            "enum": [
+                              "header",
+                              "body"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "in"
+                        ]
+                      },
+                      "properties": {
+                        "paramName": {
+                          "enum": [
+                            "theme"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "paramName"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "contains": {
+                        "not": {
+                          "properties": {
+                            "in": {
+                              "enum": [
+                                "header",
+                                "body"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "in"
+                          ]
+                        },
+                        "properties": {
+                          "paramName": {
+                            "enum": [
+                              "theme"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "paramName"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "params"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "category": {
+          "description": "The group the catalog lists the widget under",
+          "maxLength": 100,
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/Data_iframe"
+        },
+        "dataUpdateDisplay": {
+          "description": "When the data changes, as a 5-field cron expression shown to the user",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "description": "What the widget shows; the catalog shows it, and the AI Agent finds widgets by it",
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "disableRetrievalForCopilot": {
+          "description": "Keeps the widget's data from the AI Agent; such a widget has no `mcp_tool`",
+          "type": "boolean"
+        },
+        "endpoint": {
+          "description": "a path or an absolute URL with no `?` and no `#` (a static query value is a param with show: false)",
+          "maxLength": 2048,
+          "minLength": 1,
+          "pattern": "^[^?#]+$",
+          "type": "string"
+        },
+        "exportable": {
+          "description": "false removes Export from the widget's menu",
+          "type": "boolean"
+        },
+        "gridData": {
+          "additionalProperties": false,
+          "description": "The default size on a dashboard, in grid units: `w` of 40 columns, and `h` rows",
+          "properties": {
+            "h": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "w": {
+              "maximum": 40,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "w",
+            "h"
+          ],
+          "type": "object"
+        },
+        "mcp_tool": {
+          "$ref": "#/definitions/McpTool",
+          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
+        },
+        "method": {
+          "enum": [
+            "GET"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "description": "The title the widget shows",
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "params": {
+          "description": "The widget's parameters; an item that is a list of params is one row of the parameter bar",
+          "items": {
+            "else": {
+              "$ref": "#/definitions/ParamDef"
+            },
+            "if": {
+              "type": "array"
+            },
+            "then": {
+              "items": {
+                "$ref": "#/definitions/ParamDef"
+              },
+              "maxItems": 16,
+              "type": "array"
+            }
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        "refetchInterval": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "maximum": 10000000000,
+                  "minimum": 1000,
+                  "type": "number"
+                },
+                {
+                  "const": false,
+                  "type": "boolean"
+                },
+                {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              ],
+              "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runButton": {
+          "description": "The widget fetches only when the user clicks Run",
+          "type": "boolean"
+        },
+        "showTitle": {
+          "description": "false leaves the title off the widget",
+          "type": "boolean"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "items": {
+                "maxLength": 100,
+                "type": "string"
+              },
+              "maxItems": 16,
+              "type": "array"
+            }
+          ],
+          "description": "Where the data comes from: a label, or a list of labels"
+        },
+        "staleTime": {
+          "anyOf": [
+            {
+              "maximum": 10000000000,
+              "minimum": 1000,
+              "type": "number"
+            },
+            {
+              "const": false,
+              "type": "boolean"
+            }
+          ],
+          "description": "Milliseconds a response is reused before it is fetched again; false fetches every time"
+        },
+        "storage": {
+          "additionalProperties": false,
+          "description": "`mcpUrl`: an MCP server of the page's own, connected for the widget without the backend's credentials",
+          "properties": {
+            "mcpUrl": {
+              "description": "an http or https URL",
+              "maxLength": 2048,
+              "pattern": "^https?:\\/\\/\\S+$",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "subCategory": {
+          "description": "The subgroup within the category",
+          "maxLength": 100,
+          "type": "string"
+        },
+        "type": {
+          "const": "iframe",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "endpoint",
+        "type"
+      ],
+      "type": "object"
+    },
+    "Widget_markdown": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "description": "Body params are sent only with \"method\": \"POST\"",
+          "if": {
+            "properties": {
+              "params": {
+                "contains": {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "in": {
+                          "const": "body"
+                        }
+                      },
+                      "required": [
+                        "in"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "contains": {
+                        "properties": {
+                          "in": {
+                            "const": "body"
+                          }
+                        },
+                        "required": [
+                          "in"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "params"
+            ]
+          },
+          "then": {
+            "properties": {
+              "method": {
+                "const": "POST"
+              }
+            },
+            "required": [
+              "method"
+            ]
+          }
+        },
+        {
+          "description": "A widget kept from the Copilot (disableRetrievalForCopilot) cannot opt in to an MCP tool",
+          "if": {
+            "properties": {
+              "disableRetrievalForCopilot": {
+                "const": true
+              }
+            },
+            "required": [
+              "disableRetrievalForCopilot"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "mcp_tool"
+              ]
+            }
+          }
+        },
+        {
+          "description": "theme: query params the Workspace adds to this type's requests",
+          "not": {
+            "properties": {
+              "params": {
+                "contains": {
+                  "anyOf": [
+                    {
+                      "not": {
+                        "properties": {
+                          "in": {
+                            "enum": [
+                              "header",
+                              "body"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "in"
+                        ]
+                      },
+                      "properties": {
+                        "paramName": {
+                          "enum": [
+                            "theme"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "paramName"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "contains": {
+                        "not": {
+                          "properties": {
+                            "in": {
+                              "enum": [
+                                "header",
+                                "body"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "in"
+                          ]
+                        },
+                        "properties": {
+                          "paramName": {
+                            "enum": [
+                              "theme"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "paramName"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "params"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "category": {
+          "description": "The group the catalog lists the widget under",
+          "maxLength": 100,
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/Data_markdown"
+        },
+        "dataUpdateDisplay": {
+          "description": "When the data changes, as a 5-field cron expression shown to the user",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "description": "What the widget shows; the catalog shows it, and the AI Agent finds widgets by it",
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "disableRetrievalForCopilot": {
+          "description": "Keeps the widget's data from the AI Agent; such a widget has no `mcp_tool`",
+          "type": "boolean"
+        },
+        "endpoint": {
+          "description": "a path or an absolute URL with no `?` and no `#` (a static query value is a param with show: false)",
+          "maxLength": 2048,
+          "minLength": 1,
+          "pattern": "^[^?#]+$",
+          "type": "string"
+        },
+        "exportable": {
+          "description": "false removes Export from the widget's menu",
+          "type": "boolean"
+        },
+        "gridData": {
+          "additionalProperties": false,
+          "description": "The default size on a dashboard, in grid units: `w` of 40 columns, and `h` rows",
+          "properties": {
+            "h": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "w": {
+              "maximum": 40,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "w",
+            "h"
+          ],
+          "type": "object"
+        },
+        "mcp_tool": {
+          "$ref": "#/definitions/McpTool",
+          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
+        },
+        "method": {
+          "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "description": "The title the widget shows",
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "params": {
+          "description": "The widget's parameters; an item that is a list of params is one row of the parameter bar",
+          "items": {
+            "else": {
+              "$ref": "#/definitions/ParamDef"
+            },
+            "if": {
+              "type": "array"
+            },
+            "then": {
+              "items": {
+                "$ref": "#/definitions/ParamDef"
+              },
+              "maxItems": 16,
+              "type": "array"
+            }
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        "refetchInterval": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "maximum": 10000000000,
+                  "minimum": 1000,
+                  "type": "number"
+                },
+                {
+                  "const": false,
+                  "type": "boolean"
+                },
+                {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              ],
+              "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runButton": {
+          "description": "The widget fetches only when the user clicks Run",
+          "type": "boolean"
+        },
+        "showTitle": {
+          "description": "false leaves the title off the widget",
+          "type": "boolean"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "items": {
+                "maxLength": 100,
+                "type": "string"
+              },
+              "maxItems": 16,
+              "type": "array"
+            }
+          ],
+          "description": "Where the data comes from: a label, or a list of labels"
+        },
+        "staleTime": {
+          "anyOf": [
+            {
+              "maximum": 10000000000,
+              "minimum": 1000,
+              "type": "number"
+            },
+            {
+              "const": false,
+              "type": "boolean"
+            }
+          ],
+          "description": "Milliseconds a response is reused before it is fetched again; false fetches every time"
+        },
+        "subCategory": {
+          "description": "The subgroup within the category",
+          "maxLength": 100,
+          "type": "string"
+        },
+        "type": {
+          "const": "markdown",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "endpoint",
+        "type"
+      ],
+      "type": "object"
+    },
+    "Widget_newsfeed": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "description": "Body params are sent only with \"method\": \"POST\"",
+          "if": {
+            "properties": {
+              "params": {
+                "contains": {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "in": {
+                          "const": "body"
+                        }
+                      },
+                      "required": [
+                        "in"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "contains": {
+                        "properties": {
+                          "in": {
+                            "const": "body"
+                          }
+                        },
+                        "required": [
+                          "in"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "params"
+            ]
+          },
+          "then": {
+            "properties": {
+              "method": {
+                "const": "POST"
+              }
+            },
+            "required": [
+              "method"
+            ]
+          }
+        },
+        {
+          "description": "A widget kept from the Copilot (disableRetrievalForCopilot) cannot opt in to an MCP tool",
+          "if": {
+            "properties": {
+              "disableRetrievalForCopilot": {
+                "const": true
+              }
+            },
+            "required": [
+              "disableRetrievalForCopilot"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "mcp_tool"
+              ]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "category": {
+          "description": "The group the catalog lists the widget under",
+          "maxLength": 100,
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/Data_newsfeed"
+        },
+        "dataUpdateDisplay": {
+          "description": "When the data changes, as a 5-field cron expression shown to the user",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "description": "What the widget shows; the catalog shows it, and the AI Agent finds widgets by it",
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "disableRetrievalForCopilot": {
+          "description": "Keeps the widget's data from the AI Agent; such a widget has no `mcp_tool`",
+          "type": "boolean"
+        },
+        "endpoint": {
+          "description": "a path or an absolute URL with no `?` and no `#` (a static query value is a param with show: false)",
+          "maxLength": 2048,
+          "minLength": 1,
+          "pattern": "^[^?#]+$",
+          "type": "string"
+        },
+        "exportable": {
+          "description": "false removes Export from the widget's menu",
+          "type": "boolean"
+        },
+        "gridData": {
+          "additionalProperties": false,
+          "description": "The default size on a dashboard, in grid units: `w` of 40 columns, and `h` rows",
+          "properties": {
+            "h": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "w": {
+              "maximum": 40,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "w",
+            "h"
+          ],
+          "type": "object"
+        },
+        "mcp_tool": {
+          "$ref": "#/definitions/McpTool",
+          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
+        },
+        "method": {
+          "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "description": "The title the widget shows",
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "params": {
+          "description": "The widget's parameters; an item that is a list of params is one row of the parameter bar",
+          "items": {
+            "else": {
+              "$ref": "#/definitions/ParamDef"
+            },
+            "if": {
+              "type": "array"
+            },
+            "then": {
+              "items": {
+                "$ref": "#/definitions/ParamDef"
+              },
+              "maxItems": 16,
+              "type": "array"
+            }
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        "refetchInterval": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "maximum": 10000000000,
+                  "minimum": 1000,
+                  "type": "number"
+                },
+                {
+                  "const": false,
+                  "type": "boolean"
+                },
+                {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              ],
+              "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runButton": {
+          "description": "The widget fetches only when the user clicks Run",
+          "type": "boolean"
+        },
+        "showTitle": {
+          "description": "false leaves the title off the widget",
+          "type": "boolean"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "items": {
+                "maxLength": 100,
+                "type": "string"
+              },
+              "maxItems": 16,
+              "type": "array"
+            }
+          ],
+          "description": "Where the data comes from: a label, or a list of labels"
+        },
+        "staleTime": {
+          "anyOf": [
+            {
+              "maximum": 10000000000,
+              "minimum": 1000,
+              "type": "number"
+            },
+            {
+              "const": false,
+              "type": "boolean"
+            }
+          ],
+          "description": "Milliseconds a response is reused before it is fetched again; false fetches every time"
+        },
+        "subCategory": {
+          "description": "The subgroup within the category",
+          "maxLength": 100,
+          "type": "string"
+        },
+        "type": {
+          "const": "newsfeed",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "endpoint",
+        "type"
+      ],
+      "type": "object"
+    },
+    "Widget_pdf": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "description": "Body params are sent only with \"method\": \"POST\"",
+          "if": {
+            "properties": {
+              "params": {
+                "contains": {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "in": {
+                          "const": "body"
+                        }
+                      },
+                      "required": [
+                        "in"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "contains": {
+                        "properties": {
+                          "in": {
+                            "const": "body"
+                          }
+                        },
+                        "required": [
+                          "in"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "params"
+            ]
+          },
+          "then": {
+            "properties": {
+              "method": {
+                "const": "POST"
+              }
+            },
+            "required": [
+              "method"
+            ]
+          }
+        },
+        {
+          "description": "A widget kept from the Copilot (disableRetrievalForCopilot) cannot opt in to an MCP tool",
+          "if": {
+            "properties": {
+              "disableRetrievalForCopilot": {
+                "const": true
+              }
+            },
+            "required": [
+              "disableRetrievalForCopilot"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "mcp_tool"
+              ]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "category": {
+          "description": "The group the catalog lists the widget under",
+          "maxLength": 100,
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/Data_pdf"
+        },
+        "dataUpdateDisplay": {
+          "description": "When the data changes, as a 5-field cron expression shown to the user",
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "description": {
+          "description": "What the widget shows; the catalog shows it, and the AI Agent finds widgets by it",
+          "maxLength": 4000,
+          "type": "string"
+        },
+        "disableRetrievalForCopilot": {
+          "description": "Keeps the widget's data from the AI Agent; such a widget has no `mcp_tool`",
+          "type": "boolean"
+        },
+        "endpoint": {
+          "description": "a path or an absolute URL with no `?` and no `#` (a static query value is a param with show: false)",
+          "maxLength": 2048,
+          "minLength": 1,
+          "pattern": "^[^?#]+$",
+          "type": "string"
+        },
+        "exportable": {
+          "description": "false removes Export from the widget's menu",
+          "type": "boolean"
+        },
+        "gridData": {
+          "additionalProperties": false,
+          "description": "The default size on a dashboard, in grid units: `w` of 40 columns, and `h` rows",
+          "properties": {
+            "h": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "w": {
+              "maximum": 40,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "w",
+            "h"
+          ],
+          "type": "object"
+        },
+        "mcp_tool": {
+          "$ref": "#/definitions/McpTool",
+          "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
+        },
+        "method": {
+          "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "description": "The title the widget shows",
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "params": {
+          "description": "The widget's parameters; an item that is a list of params is one row of the parameter bar",
+          "items": {
+            "else": {
+              "$ref": "#/definitions/ParamDef"
+            },
+            "if": {
+              "type": "array"
+            },
+            "then": {
+              "items": {
+                "$ref": "#/definitions/ParamDef"
+              },
+              "maxItems": 16,
+              "type": "array"
+            }
+          },
+          "maxItems": 64,
+          "type": "array"
+        },
+        "refetchInterval": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "maximum": 10000000000,
+                  "minimum": 1000,
+                  "type": "number"
+                },
+                {
+                  "const": false,
+                  "type": "boolean"
+                },
+                {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              ],
+              "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runButton": {
+          "description": "The widget fetches only when the user clicks Run",
+          "type": "boolean"
+        },
+        "showTitle": {
+          "description": "false leaves the title off the widget",
+          "type": "boolean"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "items": {
+                "maxLength": 100,
+                "type": "string"
+              },
+              "maxItems": 16,
+              "type": "array"
+            }
+          ],
+          "description": "Where the data comes from: a label, or a list of labels"
+        },
+        "staleTime": {
+          "anyOf": [
+            {
+              "maximum": 10000000000,
+              "minimum": 1000,
+              "type": "number"
+            },
+            {
+              "const": false,
+              "type": "boolean"
+            }
+          ],
+          "description": "Milliseconds a response is reused before it is fetched again; false fetches every time"
+        },
+        "subCategory": {
+          "description": "The subgroup within the category",
+          "maxLength": 100,
+          "type": "string"
+        },
+        "type": {
+          "const": "pdf",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "endpoint",
+        "type"
+      ],
+      "type": "object"
+    }
+  },
+  "properties": {
+    "$id": {
+      "maxLength": 2048,
+      "type": "string"
+    },
+    "$schema": {
+      "maxLength": 2048,
+      "type": "string"
+    }
+  },
+  "propertyNames": {
+    "maxLength": 128,
+    "type": "string"
+  },
+  "title": "widgets.json",
+  "type": "object",
+  "x-types": [
+    "markdown",
+    "html",
+    "newsfeed",
+    "pdf",
+    "iframe"
+  ]
+}

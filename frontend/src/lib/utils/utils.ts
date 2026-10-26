@@ -15,7 +15,6 @@ import { useCallback, useEffect } from "react";
 import { v4 as uuidLibv4 } from "uuid";
 import type { CreateWidgetParams } from "~/components/AI/hooks/useCreateWidgetFromArtifact";
 import type { NewWidgetT, StoredParamValue } from "~/components/types";
-import { getConfig } from "~/lib/runtimeConfig";
 import { isDate } from "~/lib/utils/format";
 import { areTruthy } from "~/lib/utils/values";
 import { butterflyTypes, MAX_SKILL_SLUG_LENGTH } from "../constants";
@@ -596,7 +595,7 @@ export function parseValue(value: string | number): number | string {
 }
 
 function exportCanvasFont(size: number, weight?: "bold") {
-  const family = `${getConfig().whiteLabel.fontFamily}, sans-serif`;
+  const family = `${getComputedStyle(document.documentElement).getPropertyValue("--font-family").trim()}, sans-serif`;
   return weight ? `${weight} ${size}px ${family}` : `${size}px ${family}`;
 }
 

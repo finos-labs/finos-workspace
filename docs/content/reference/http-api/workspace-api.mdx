@@ -1,0 +1,84 @@
+---
+title: Workspace API
+sidebar_position: 1
+---
+
+import { ApiTag } from "@site/src/components/Reference/api";
+
+# Workspace API
+
+The routes of the API, grouped by the tag that the router gives them. The API serves no interactive documentation: it sets `docs_url`, `redoc_url` and `openapi_url` to `None`. The summary of a route is derived from the name of its function. Request and response types link to [Workspace API schemas](workspace-api-schemas.mdx).
+
+The page is generated from `backend-api/backend/tests/fixtures/openapi.json`, which a test keeps equal to the document that `app.openapi()` builds, without `/metrics`. That route exists only when the `PROMETHEUS` setting is on, and it serves the Prometheus metrics.
+
+## admin
+
+Routes under `/admin`.
+
+<ApiTag tag="admin" schemaPage="/reference/http-api/workspace-api-schemas" />
+
+## app
+
+Routes under `/app` that carry no other tag.
+
+<ApiTag tag="app" schemaPage="/reference/http-api/workspace-api-schemas" />
+
+## app-dash
+
+Routes under `/app/dash`.
+
+<ApiTag tag="app-dash" schemaPage="/reference/http-api/workspace-api-schemas" />
+
+## app-data-connectors
+
+Routes under `/app/data-connectors`.
+
+<ApiTag tag="app-data-connectors" schemaPage="/reference/http-api/workspace-api-schemas" />
+
+## app-file-storage
+
+Routes under `/app/files`.
+
+<ApiTag tag="app-file-storage" schemaPage="/reference/http-api/workspace-api-schemas" />
+
+## app-user-apps
+
+Routes under `/app/user-apps`.
+
+<ApiTag tag="app-user-apps" schemaPage="/reference/http-api/workspace-api-schemas" />
+
+## auth
+
+Authentication routes.
+
+<ApiTag tag="auth" schemaPage="/reference/http-api/workspace-api-schemas" />
+
+## entity
+
+Routes under `/entity`.
+
+<ApiTag tag="entity" schemaPage="/reference/http-api/workspace-api-schemas" />
+
+## widget-plugins
+
+The plugin routes: superuser routes under `/plugins`, organization admin routes under `/admin/plugins`, member routes under `/app/widget-plugins`, and the backends' data route under `/internal/plugin-broker`.
+
+<ApiTag tag="widget-plugins" schemaPage="/reference/http-api/workspace-api-schemas" />
+
+## workspace-mcp
+
+The personal access tokens and the bridge session of the Workspace MCP server.
+
+<ApiTag tag="workspace-mcp" schemaPage="/reference/http-api/workspace-api-schemas" />
+
+## workspace-tools
+
+The Workspace's own tools for the embedded agent.
+
+<ApiTag tag="workspace-tools" schemaPage="/reference/http-api/workspace-api-schemas" />
+
+## service
+
+Routes that carry no tag: the root, the health checks and the metrics.
+
+<ApiTag tag="service" schemaPage="/reference/http-api/workspace-api-schemas" />

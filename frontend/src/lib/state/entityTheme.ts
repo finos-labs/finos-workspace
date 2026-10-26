@@ -6,6 +6,7 @@ import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
 import { updateEntityThemeSettings } from "~/api/admin.api";
 import { getEntityThemeSettings } from "~/api/auth.api";
+import { applySavedTheme, type ThemeVariants } from "~/lib/theme/sheet";
 import type { Selector } from "./app";
 
 type AppTheme = {
@@ -21,6 +22,7 @@ export type ThemeSettings = {
 export interface EntityThemeSettings {
   light: ThemeSettings | null;
   dark: ThemeSettings | null;
+  properties?: ThemeVariants | null;
 }
 
 interface EntityThemeState extends EntityThemeSettings {
@@ -37,15 +39,16 @@ export const useEntityThemeStore = createWithEqualityFn<EntityThemeState>()(
     light: getDefault(),
     dark: getDefault(),
     updateThemeSettings: async (settings) => {
-      if (settings) return set(settings);
-
-      settings = await getEntityThemeSettings();
-      for (const mode of ["light", "dark"] as const) {
-        if (settings[mode] === null) {
-          settings[mode] = getDefault();
+      if (!settings) {
+        settings = await getEntityThemeSettings();
+        for (const mode of ["light", "dark"] as const) {
+          if (settings[mode] === null) {
+            settings[mode] = getDefault();
+          }
         }
       }
       set(settings);
+      applySavedTheme(settings.properties ?? null);
     },
     saveThemeSettings: async (settings) => {
       const changedSettings = await getEntityThemeSettings();

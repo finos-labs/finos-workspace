@@ -1,0 +1,50 @@
+---
+title: Web app
+sidebar_position: 1
+---
+
+import { WebConfigTable } from "@site/src/components/Reference/config";
+
+# Web app configuration
+
+The web app reads its configuration from a `config.js` that sets `window.__APP_CONFIG__`. The web container renders that file from its environment each time it starts, with `frontend/app-config.js` running in nginx. `npm run build:runtime` writes the same file from the `VITE_` variables, and `npm run dev` reads them.
+
+Every setting has a container variable and a build variable. A container variable that is not set is left out of `config.js`, and the setting then takes its default from `frontend/src/lib/runtimeConfigSchema.ts`. A variable that is set is passed on as it is: a string setting may be empty, a boolean variable must be exactly `true` or `false`, and an enum variable must be one of its values. A list variable is comma-separated: items are trimmed and lowercased, and empty items are dropped. A value that does not fit makes `/config.js` and `/healthz` answer 500, with an error that names the variable.
+
+The tables are generated from `app-config.js` and the schema.
+
+## urls
+
+<WebConfigTable group="urls" />
+
+## authentication
+
+<WebConfigTable group="authentication" />
+
+## authProviders
+
+<WebConfigTable group="authProviders" />
+
+## copilot
+
+<WebConfigTable group="copilot" />
+
+## ui
+
+<WebConfigTable group="ui" />
+
+## data
+
+<WebConfigTable group="data" />
+
+## links
+
+<WebConfigTable group="links" />
+
+## contact
+
+<WebConfigTable group="contact" />
+
+## whiteLabel
+
+<WebConfigTable group="whiteLabel" />

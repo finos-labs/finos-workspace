@@ -1,0 +1,64 @@
+---
+title: Colour palette
+sidebar_position: 4
+---
+
+import { PaletteGroup } from "@site/src/components/Reference/theme";
+
+# Colour palette
+
+`frontend/src/styles/tokens.css` declares the palette as custom properties named `--color-<ramp>-<step>`. The Tailwind configuration reads the same file and defines the classes `bg-<ramp>-<step>`, `text-<ramp>-<step>`, `border-<ramp>-<step>` and the other colour utilities from it, each reading its property, so the file is the only place that holds a palette value. The semantic properties of the other pages refer to the palette with `var()`.
+
+A palette step is declared once, on `:root`. The dark theme changes which step a semantic property refers to, not the value of a step.
+
+"Used" lists the classes that read the property and the places that use them, and counts the properties of the token files whose value contains `var()` of this one. The tables are generated from the stylesheet and the frontend source.
+
+## Base
+
+White and the near-black navy that the dark theme uses for the page.
+
+<PaletteGroup group="--color-base-" />
+
+## Main
+
+The brand ramp, with the colours that FINOS supplies: `--color-main-100` is FINOS Dark Blue, the brand colour, and `--color-main-50` is FINOS Light Blue. `--color-main-200` is the darker step. The steps are independent values (see [Brand colour, font and text size](brand-font-size.mdx)).
+
+<PaletteGroup group="--color-main-" />
+
+## Dark
+
+The navy ramp that the dark theme draws its surfaces, borders and muted text from. Step 900 is the dark theme's panel and header colour.
+
+<PaletteGroup group="--color-dark-" />
+
+## Light
+
+The blue-grey ramp of the light theme's surfaces, borders and text, and of the lightest text in the dark theme. Step 50 is the lightest and 900 the darkest.
+
+<PaletteGroup group="--color-light-" />
+
+## Status colours
+
+Each status ramp has a pale tint (50), a mid tone (100) and a deep tone (200).
+
+### Error
+
+<PaletteGroup group="--color-error-" />
+
+### Success
+
+<PaletteGroup group="--color-success-" />
+
+### Warning
+
+<PaletteGroup group="--color-warning-" />
+
+### Informative
+
+<PaletteGroup group="--color-informative-" />
+
+## Accent colours
+
+Eleven hues with the same three steps. The `--tag-*` properties draw on them.
+
+<PaletteGroup group="--color-extra-" />

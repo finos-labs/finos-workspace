@@ -1,0 +1,35 @@
+---
+title: Theme scopes and cascade
+sidebar_position: 2
+---
+
+import { ForceLightList } from "@site/src/components/Reference/theme";
+
+# Theme scopes and cascade
+
+## The light and dark themes
+
+The app has a light and a dark theme. The user picks one in the settings, and `UI_DEFAULT_THEME` sets the default (see [Web app configuration](../configuration/web-app.mdx)).
+
+| Mechanism | What it does |
+|---|---|
+| `dark` class on `<html>` | Present in the dark theme and absent in the light theme. |
+| `darkMode: "class"` in `frontend/tailwind.config.ts` | Makes the `dark:` variant of a Tailwind utility follow that class. |
+| `<meta name="color-scheme">` | Its content is `dark` or `light`, matching the theme. |
+| `:root` | Declares the light value of a custom property. |
+| `.dark` | Declares the dark value. A property that `.dark` does not declare keeps its `:root` value in the dark theme. |
+| `data-font-size` on `<html>` | `medium` or `large`, from the user's Font size setting. `:root[data-font-size="large"]` sets `--text-scale`. |
+| `.force-light` | Redeclares a subset of the properties for the elements inside it, so that they stay light in either theme. The login form and the select menus use it. |
+
+`.force-light` redeclares these properties:
+
+<ForceLightList />
+
+## How the cascade resolves a property
+
+`:root` and `.dark` have the same specificity, so the declaration that comes later in the cascade wins. In `tokens.css`, `.dark` comes after `:root`.
+
+- The theme stylesheet that `WL_STYLESHEET` names loads after the base stylesheets, so it wins at equal specificity. A rule on `:root` in it also applies in the dark theme, because it comes after the `.dark` rule of `tokens.css`. To give a property one value in each theme, declare it on `:root` and on `.dark`, in that order.
+- The applied [theme preset](theme-presets.mdx) comes after that stylesheet in the same way: its `light` values are a `:root` rule and its `dark` values are a `.dark` rule.
+- A rule on `.dark` alone changes the dark theme only.
+- A custom property that refers to another with `var()` follows it: when `--color-light-100` changes, every property whose value is `var(--color-light-100)` changes with it, and so does every class that names the step, such as `bg-light-100`.

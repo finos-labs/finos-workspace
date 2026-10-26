@@ -141,7 +141,9 @@ describe("the tools of the agent request", () => {
   });
 
   it("have the Workspace's tools for a user who connected no server", async () => {
-    useCopilotAccessStore.getState().setAccess(grants([{ server_url: URL, tool_name: "*" }]));
+    useCopilotAccessStore
+      .getState()
+      .setAccess(grants([{ server_url: URL, tool_name: "*" }]));
     const tools = await useMcpToolsStore.getState().getEnabledToolsForAgent();
     expect(tools.map((t) => t.name)).toEqual([
       "Workspace_get_widget_data",

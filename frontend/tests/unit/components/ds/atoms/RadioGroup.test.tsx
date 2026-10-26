@@ -91,11 +91,16 @@ vi.mock("@radix-ui/react-radio-group", () => {
       className?: string;
       disabled?: boolean;
     }) => {
-      const { onValueChange, disabled: rootDisabled } = React.useContext(RadioContext);
+      const {
+        value: selected,
+        onValueChange,
+        disabled: rootDisabled,
+      } = React.useContext(RadioContext);
       const disabled = rootDisabled || itemDisabled;
       return (
         <button
           role="radio"
+          aria-checked={selected === value}
           id={id}
           className={className}
           disabled={disabled}

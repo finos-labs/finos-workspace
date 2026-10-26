@@ -25,11 +25,8 @@ import { getEnabledIdentityProviders } from "./lib/identityProviders";
 import { removeRetiredBrowserSecrets } from "./lib/retiredBrowserSecrets";
 import { getConfig } from "./lib/runtimeConfig";
 import { useShallowThemeStore } from "./lib/state/theme";
-import {
-  applyBrandColors,
-  applyFontFamily,
-  applyWhiteLabelMeta,
-} from "./utils/colorUtils";
+import { applyWhiteLabelMeta } from "./utils/colorUtils";
+import { loadStylesheet } from "./utils/stylesheet";
 
 const LazyMsalProvider = lazy(() => import("./providers/MsalProviderWrapper"));
 const LazyOktaProvider = lazy(() => import("./providers/OktaProviderWrapper"));
@@ -323,18 +320,12 @@ if ("serviceWorker" in navigator) {
   registerSW({ immediate: true });
 }
 
-function bootstrap() {
+async function bootstrap() {
   removeRetiredBrowserSecrets();
   const config = getConfig();
 
-  if (config.whiteLabel.mainColor) {
-    applyBrandColors(config.whiteLabel.mainColor);
-  }
-  if (config.whiteLabel.fontFamily) {
-    applyFontFamily(config.whiteLabel.fontFamily);
-  }
-
   applyWhiteLabelMeta(config.whiteLabel);
+  if (config.whiteLabel.stylesheet) await loadStylesheet(config.whiteLabel.stylesheet);
 
   const root = createRoot(document.getElementById("root") as HTMLElement);
   root.render(

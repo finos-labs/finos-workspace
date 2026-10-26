@@ -43,7 +43,6 @@ vi.mock("react", async (importOriginal) => {
   };
 });
 
-// biome-ignore lint/correctness/useHookAtTopLevel: This is a Vitest utility, not a React hook
 vi.useFakeTimers();
 
 describe("CopilotDropzone Component", () => {

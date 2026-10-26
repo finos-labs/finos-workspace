@@ -2,7 +2,7 @@ import tailwindTypography from "@tailwindcss/typography";
 import type { Config } from "tailwindcss";
 import animatePlugin from "tailwindcss-animate";
 import radixPlugin from "tailwindcss-radix";
-import { colors } from "./src/components/ds/colors";
+import { palette } from "./scripts/palette";
 import { strokeWidthPlugin } from "./src/components/ds/plugins/stroke";
 import { typographyPlugin } from "./src/components/ds/plugins/typography";
 
@@ -15,12 +15,7 @@ export default {
         'wl': ['var(--font-family)', 'Montserrat', 'system-ui', 'sans-serif'],
       },
       colors: {
-        ...colors,
-        main: {
-          50: "var(--color-main-50)",
-          100: "var(--color-main-100)",
-          200: "var(--color-main-200)",
-        },
+        ...palette,
 
         brand: {
           main: "var(--brand-main)",

@@ -860,7 +860,12 @@ describe("useGetCopilotWidgets - an iframe widget whose page has published entri
       },
     }));
     mockGetWidgetsInCurrentDashboard.mockReturnValue([
-      createWidget({ id: WIDGET_UUID, name: "TradingView Chart", widgetId: "tv", type: "iframe" }),
+      createWidget({
+        id: WIDGET_UUID,
+        name: "TradingView Chart",
+        widgetId: "tv",
+        type: "iframe",
+      }),
     ]);
     mockGetDashboardWidgetsData.mockReturnValue({
       [WIDGET_UUID]: { metadata: {}, title: "TradingView Chart" },
@@ -875,12 +880,17 @@ describe("useGetCopilotWidgets - an iframe widget whose page has published entri
     registerIframeWidget(WIDGET_UUID, {
       requestWidgetData: vi.fn(),
       sendRefresh: vi.fn(),
-      manifest: [{ widgetId: "tvc_made_up_by_the_page", name: "Chart", dataType: "table" }],
+      manifest: [
+        { widgetId: "tvc_made_up_by_the_page", name: "Chart", dataType: "table" },
+      ],
     });
 
     renderHook(() => useGetCopilotWidgets());
 
-    const toAgent = (sent()?.allDashboardWidgets ?? []) as { uuid: string; widget_type?: string }[];
+    const toAgent = (sent()?.allDashboardWidgets ?? []) as {
+      uuid: string;
+      widget_type?: string;
+    }[];
     expect(toAgent.find((w) => w.uuid === WIDGET_UUID)).toMatchObject({
       uuid: WIDGET_UUID,
       widget_type: "iframe",
@@ -893,7 +903,10 @@ describe("useGetCopilotWidgets - an iframe widget whose page has published entri
   it("sends the same widget before the page has published anything", () => {
     renderHook(() => useGetCopilotWidgets());
 
-    const toAgent = (sent()?.allDashboardWidgets ?? []) as { uuid: string; widget_type?: string }[];
+    const toAgent = (sent()?.allDashboardWidgets ?? []) as {
+      uuid: string;
+      widget_type?: string;
+    }[];
     expect(toAgent.map((w) => w.uuid)).toEqual([WIDGET_UUID]);
     expect(toAgent[0].widget_type).toBe("iframe");
   });
@@ -902,12 +915,16 @@ describe("useGetCopilotWidgets - an iframe widget whose page has published entri
     registerIframeWidget(WIDGET_UUID, {
       requestWidgetData: vi.fn(),
       sendRefresh: vi.fn(),
-      manifest: [{ widgetId: "tvc_made_up_by_the_page", name: "Chart", dataType: "table" }],
+      manifest: [
+        { widgetId: "tvc_made_up_by_the_page", name: "Chart", dataType: "table" },
+      ],
     });
 
     renderHook(() => useGetCopilotWidgets());
 
-    const slice = ((sent()?.dashboardWidgets ?? []) as { uuid: string }[]).map((w) => w.uuid);
+    const slice = ((sent()?.dashboardWidgets ?? []) as { uuid: string }[]).map(
+      (w) => w.uuid,
+    );
     expect(slice).toEqual([`${WIDGET_UUID}::iframe::tvc_made_up_by_the_page`]);
   });
 });

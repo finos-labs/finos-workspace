@@ -1,0 +1,30 @@
+---
+title: Selectors
+sidebar_position: 8
+---
+
+import { AtRules, SelectorTable } from "@site/src/components/Reference/css";
+
+# Selectors
+
+The rules of the web app's global stylesheets, other than the custom properties listed under [Semantic properties](semantic-properties.mdx) and the utility classes listed under [Component classes](component-classes.mdx). A rule inside an at-rule shows it under "Inside". `@apply` lines are Tailwind's: they name the utility classes that the rule applies.
+
+Many rules reach elements that a library creates:
+
+| Selectors | Library | Element |
+|---|---|---|
+| `.react-grid-item`, `.react-grid-placeholder`, `.react-resizable-handler` | react-grid-layout | The cards of a dashboard and their resize handles. |
+| `.TooltipContent`, `.DialogOverlay`, `.DialogContent` | The app | Classes that components set on tooltips and dialogs. |
+| `.rct-tree-root` | react-complex-tree | The tree of dashboard tabs. |
+| `.ws-admin-table` with `.ag-*` | AG Grid | The tables of the admin pages (`admin.css`). |
+| `.pl-*` | Syntax highlighting | The highlighted code in the Copilot's markdown (`tritanopia-dark.css`). |
+
+The tables are generated from the stylesheets named in each heading.
+
+## Rules
+
+<SelectorTable files={["index.css", "admin.css", "tritanopia-dark.css"]} />
+
+## At-rules
+
+<AtRules />

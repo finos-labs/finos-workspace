@@ -1,0 +1,14 @@
+---
+title: Database tables
+sidebar_position: 4
+---
+
+import { DatabaseTables } from "@site/src/components/Reference/schemas";
+
+# Database tables
+
+The tables that the SQLAlchemy models in `backend-api/backend/api/models` declare. Alembic migrations in `backend-api/backend/alembic/versions` create and change them. Column types are those of the SQLAlchemy types, as the models name them.
+
+The page is generated from `backend-api/backend/tests/fixtures/database_schema.json`, which a test keeps equal to the models.
+
+<DatabaseTables />

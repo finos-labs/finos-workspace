@@ -230,17 +230,44 @@ async def get_user_questions_history(db: AsyncSession, user_uuid: UUID) -> list[
     return (await db.execute(query)).scalars().all()
 
 
-async def get_entity_theme_settings(db: AsyncSession, entity_uuid: UUID):
+async def get_stored_theme_settings(
+    db: AsyncSession, entity_uuid: UUID
+) -> models.EntityThemeSettings | None:
     query = (
-        select(models.EntityThemeSettings.settings)
+        select(models.EntityThemeSettings)
         .where(models.EntityThemeSettings.entity_uuid == entity_uuid)
         .limit(1)
     )
-    result = (await db.execute(query)).scalar_one_or_none()
+    return (await db.execute(query)).scalar_one_or_none()
+
+
+async def get_entity_theme_settings(db: AsyncSession, entity_uuid: UUID):
+    stored = await get_stored_theme_settings(db, entity_uuid)
+    result = stored.settings if stored else None
     if not result:
         return schemas.EntityThemeSettings()
 
-    return schemas.EntityThemeSettings.model_validate(result)
+    settings = schemas.EntityThemeSettings.model_validate(result)
+    active = str(result.get("active_preset") or "")
+    for preset in result.get("presets", []):
+        if str(preset.get("uuid")) == active:
+            settings.properties = schemas.ThemeVariants.model_validate(
+                {"light": preset["light"], "dark": preset["dark"]}
+            )
+    return settings
+
+
+async def save_stored_theme_settings(
+    db: AsyncSession,
+    entity_uuid: UUID,
+    stored: models.EntityThemeSettings | None,
+    settings: dict,
+) -> None:
+    if stored:
+        stored.settings = settings
+    else:
+        db.add(models.EntityThemeSettings(entity_uuid=entity_uuid, settings=settings))
+    await db.commit()
 
 
 async def user_app_task(

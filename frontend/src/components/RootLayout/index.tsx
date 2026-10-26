@@ -4,7 +4,6 @@ import { Outlet } from "react-router-dom";
 import { Toaster } from "sonner";
 import { useGlobalTitleManager } from "~/hooks/useTitle";
 import { useThemeStore } from "~/lib/state/theme";
-import FloatingThemePreview from "../FloatingThemePreview";
 import CloseCircleIcon from "../Icons/CloseCircle";
 import WarningIcon from "../Icons/Warning";
 
@@ -14,7 +13,6 @@ export function RootLayout() {
   return useMemo(
     () => (
       <>
-        <FloatingThemePreview />
         <Toaster
           position="top-right"
           closeButton={true}

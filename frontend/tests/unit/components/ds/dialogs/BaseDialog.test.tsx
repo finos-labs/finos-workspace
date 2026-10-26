@@ -58,15 +58,7 @@ vi.mock("./Dialog", () => {
         </DialogContext.Provider>
       );
     },
-    DialogTrigger: ({
-      children,
-      asChild,
-      onClick,
-    }: {
-      children?: ReactNode;
-      asChild?: boolean;
-      onClick: () => void;
-    }) => {
+    DialogTrigger: ({ children }: { children?: ReactNode }) => {
       const { onOpenChange } = React.useContext(DialogContext);
       return <div onClick={() => onOpenChange(true)}>{children}</div>;
     },

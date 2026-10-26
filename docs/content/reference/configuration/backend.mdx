@@ -1,0 +1,56 @@
+---
+title: Backend
+sidebar_position: 2
+---
+
+import { SettingsTable } from "@site/src/components/Reference/config";
+
+# Backend settings
+
+The API, the worker and the init job read their settings from the environment and from `backend-api/backend/envs/.env`. The `Settings` class in `backend-api/backend/utilities/config.py` declares them, in groups. A variable name is the setting's name, matched without regard to case, with no prefix. A setting without a default is required: the process does not start without it.
+
+The tables are generated from the `Settings` class. A description comes from the comment above the variable in `backend-api/backend/envs/.env.example`, and a setting that has no comment there says so. The data is `backend-api/backend/tests/fixtures/settings.json`, which a test keeps equal to the class.
+
+## Access (`AccessSettings`)
+
+<SettingsTable group="AccessSettings" />
+
+## Application (`AppSettings`)
+
+<SettingsTable group="AppSettings" />
+
+## General (`GeneralSettings`)
+
+<SettingsTable group="GeneralSettings" />
+
+## Database (`DatabaseSettings`)
+
+<SettingsTable group="DatabaseSettings" />
+
+## Redis (`RedisSettings`)
+
+<SettingsTable group="RedisSettings" />
+
+## Local storage (`LocalStorageSettings`)
+
+<SettingsTable group="LocalStorageSettings" />
+
+## AWS (`AWSSettings`)
+
+<SettingsTable group="AWSSettings" />
+
+## Azure (`AzureSettings`)
+
+<SettingsTable group="AzureSettings" />
+
+## Prometheus (`PrometheusSettings`)
+
+<SettingsTable group="PrometheusSettings" />
+
+## Notifications (`NotificationSettings`)
+
+<SettingsTable group="NotificationSettings" />
+
+## Widget plugins (`WidgetPluginSettings`)
+
+<SettingsTable group="WidgetPluginSettings" />

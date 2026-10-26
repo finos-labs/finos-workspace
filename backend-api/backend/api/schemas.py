@@ -1387,10 +1387,56 @@ class ThemeSettings(BaseModel):
     appTheme: dict | None = None
 
 
+THEME_PROPERTY_NAME = re.compile(r"^--[a-z][a-z0-9-]{0,80}$")
+THEME_PROPERTY_VALUE = re.compile(r"^[A-Za-z0-9 #%.,()/_+*\"'-]{1,200}$")
+THEME_MAX_PROPERTIES = 400
+THEME_MAX_PRESETS = 50
+
+
+def check_theme_declarations(declarations: dict[str, str]) -> dict[str, str]:
+    if len(declarations) > THEME_MAX_PROPERTIES:
+        raise ValueError(f"A theme holds at most {THEME_MAX_PROPERTIES} properties")
+    for name, value in declarations.items():
+        if not THEME_PROPERTY_NAME.match(name):
+            raise ValueError(f"{name!r} is not a custom property name")
+        if not THEME_PROPERTY_VALUE.match(value) or "url(" in value.lower():
+            raise ValueError(f"The value of {name} is not allowed")
+    return declarations
+
+
+ThemeDeclarations = Annotated[dict[str, str], AfterValidator(check_theme_declarations)]
+
+
+class ThemeVariants(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    light: ThemeDeclarations = Field(default_factory=dict)
+    dark: ThemeDeclarations = Field(default_factory=dict)
+
+
+class ThemePresetBody(ThemeVariants):
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
+
+
+class ThemePreset(ThemePresetBody):
+    uuid: UUID
+
+
+class ThemePresets(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    presets: list[ThemePreset] = Field(default_factory=list, max_length=THEME_MAX_PRESETS)
+    active_preset: UUID | None = None
+
+
+class ThemeActivePreset(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    uuid: UUID | None
+
+
 class EntityThemeSettings(BaseModel):
     model_config = ConfigDict(extra="ignore", from_attributes=True)
     light: ThemeSettings | None = None
     dark: ThemeSettings | None = None
+    properties: ThemeVariants | None = None
 
 
 class AppToken(BaseModel, extra="ignore"):  # type: ignore[call-arg]

@@ -1,0 +1,820 @@
+{
+  "fields": [
+    {
+      "default": "",
+      "group": "AWSSettings",
+      "has_default_factory": false,
+      "name": "S3_ACCESS_KEY",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "default": null,
+      "group": "AWSSettings",
+      "has_default_factory": false,
+      "name": "S3_BUCKET_NAME",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "AWSSettings",
+      "has_default_factory": false,
+      "name": "S3_ENDPOINT_URL",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "AWSSettings",
+      "has_default_factory": false,
+      "name": "S3_FILE_BUCKET",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "AWSSettings",
+      "has_default_factory": false,
+      "name": "S3_REGION",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": "",
+      "group": "AWSSettings",
+      "has_default_factory": false,
+      "name": "S3_SECRET_KEY",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "default": "s3v4",
+      "group": "AWSSettings",
+      "has_default_factory": false,
+      "name": "S3_SIGNATURE_VERSION",
+      "required": false,
+      "type": "Literal['s3v4', 'v4']"
+    },
+    {
+      "default": null,
+      "group": "AWSSettings",
+      "has_default_factory": false,
+      "name": "S3_VERIFY_SSL",
+      "required": false,
+      "type": "bool | None"
+    },
+    {
+      "default": null,
+      "group": "AccessSettings",
+      "has_default_factory": false,
+      "name": "WORKSPACE_AES_KEY",
+      "required": true,
+      "type": "str"
+    },
+    {
+      "default": null,
+      "group": "AppSettings",
+      "has_default_factory": false,
+      "name": "APPURL",
+      "required": true,
+      "type": "str"
+    },
+    {
+      "default": null,
+      "group": "AppSettings",
+      "has_default_factory": false,
+      "name": "DEFAULT_USER_MAPPING",
+      "required": false,
+      "type": "uuid.UUID | None"
+    },
+    {
+      "default": "364 days, 0:00:00",
+      "group": "AppSettings",
+      "has_default_factory": false,
+      "name": "INVITE_EXPIRATION",
+      "required": false,
+      "type": "timedelta"
+    },
+    {
+      "default": null,
+      "group": "AzureSettings",
+      "has_default_factory": false,
+      "name": "AZURE_CONNECTION_STRING",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "AzureSettings",
+      "has_default_factory": false,
+      "name": "AZURE_STORAGE_ACCOUNT",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "AzureSettings",
+      "has_default_factory": false,
+      "name": "AZURE_STORAGE_CONTAINER",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "AzureSettings",
+      "has_default_factory": false,
+      "name": "AZURE_USE_CLI_AUTH",
+      "required": false,
+      "type": "bool | None"
+    },
+    {
+      "default": "mysql",
+      "group": "DatabaseSettings",
+      "has_default_factory": false,
+      "name": "DATABASE_TYPE",
+      "required": false,
+      "type": "Literal['mysql', 'postgresql', 'sqlite']"
+    },
+    {
+      "default": null,
+      "group": "DatabaseSettings",
+      "has_default_factory": false,
+      "name": "DB_HOST",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "DatabaseSettings",
+      "has_default_factory": false,
+      "name": "DB_NAME",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": "local.db",
+      "group": "DatabaseSettings",
+      "has_default_factory": false,
+      "name": "DB_PATH",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "default": null,
+      "group": "DatabaseSettings",
+      "has_default_factory": false,
+      "name": "DB_PORT",
+      "required": false,
+      "type": "int | None"
+    },
+    {
+      "default": null,
+      "group": "DatabaseSettings",
+      "has_default_factory": false,
+      "name": "READ_DB_PASSWORD",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "DatabaseSettings",
+      "has_default_factory": false,
+      "name": "READ_DB_USER",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "DatabaseSettings",
+      "has_default_factory": false,
+      "name": "SSL_CA",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "DatabaseSettings",
+      "has_default_factory": false,
+      "name": "SSL_CERT",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "DatabaseSettings",
+      "has_default_factory": false,
+      "name": "SSL_KEY",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "DatabaseSettings",
+      "has_default_factory": false,
+      "name": "WRITE_DB_PASSWORD",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "DatabaseSettings",
+      "has_default_factory": false,
+      "name": "WRITE_DB_USER",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": true,
+      "name": "ALLOWED_MCP_HOSTNAMES",
+      "required": false,
+      "type": "list[str]"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "AZURE_CLIENT_ID",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "AZURE_TENANT_ID",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "BACKEND_CORS_ORIGINS",
+      "required": true,
+      "type": "list[str] | str"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "BACKEND_CORS_ORIGIN_REGEX",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": "2024-10-07",
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "CLEAR_UNCONFIRMED_FILES_DATE",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": true,
+      "name": "DEFAULT_MCP_SERVERS",
+      "required": false,
+      "type": "list[utilities.config.DefaultMCPServer]"
+    },
+    {
+      "default": false,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "DISABLE_REGISTRATION",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "FRONTENDURL",
+      "required": true,
+      "type": "str"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "GCP_STORAGE_BUCKET",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "GOOGLE_OAUTH_CLIENT_ID",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": false,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "IS_WORKER_CONTAINER",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "default": false,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "JSON_LOGS",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "JWT_SECRET",
+      "required": true,
+      "type": "str"
+    },
+    {
+      "default": true,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "LOGURU_COLORIZE",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "default": "INFO",
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "LOG_LEVEL",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "default": 100000,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "MAX_DICT_LEN",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "MODE",
+      "required": true,
+      "type": "Literal['production', 'local', 'test']"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "OKTA_CLIENT_ID",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "OKTA_DOMAIN",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": 8000,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "PORT",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": false,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "RATE_LIMIT_EXEMPT_ENABLED",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "default": 10,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "RQ_TIMEOUT",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "SELFURL",
+      "required": true,
+      "type": "str"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": true,
+      "name": "SPECIAL_EMAILS",
+      "required": false,
+      "type": "set[pydantic.networks.EmailStr]"
+    },
+    {
+      "default": "folder",
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "STORAGE_PROVIDER",
+      "required": false,
+      "type": "Literal['aws', 'azure', 'gcp', 'folder']"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": true,
+      "name": "SUPPRESSED_API_ROUTERS",
+      "required": false,
+      "type": "list[str] | None"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": true,
+      "name": "SUPPRESSED_API_ROUTES",
+      "required": false,
+      "type": "list[str] | None"
+    },
+    {
+      "default": "{'?'}",
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "UNUSABLE_JSON_CHARACTERS",
+      "required": false,
+      "type": "set[str]"
+    },
+    {
+      "default": 3,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "WORKERS",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "WORKER_ADDRESS_SPACE_LIMIT_GB",
+      "required": false,
+      "type": "float | None"
+    },
+    {
+      "default": null,
+      "group": "GeneralSettings",
+      "has_default_factory": false,
+      "name": "WORKSPACE_AUTH_TOKEN",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": "local_storage",
+      "group": "LocalStorageSettings",
+      "has_default_factory": false,
+      "name": "FOLDER_STORAGE_PATH",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "default": null,
+      "group": "LocalStorageSettings",
+      "has_default_factory": false,
+      "name": "LOCAL_STORAGE_SECRET_KEY",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": "api.notifications:WebhookNotifier",
+      "group": "NotificationSettings",
+      "has_default_factory": false,
+      "name": "ADMIN_NOTIFIER",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "default": null,
+      "group": "NotificationSettings",
+      "has_default_factory": false,
+      "name": "ADMIN_NOTIFY_RECIPIENT",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "NotificationSettings",
+      "has_default_factory": false,
+      "name": "ADMIN_NOTIFY_SENDER",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "NotificationSettings",
+      "has_default_factory": false,
+      "name": "ADMIN_NOTIFY_WEBHOOK_SECRET",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "NotificationSettings",
+      "has_default_factory": false,
+      "name": "ADMIN_NOTIFY_WEBHOOK_URL",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": false,
+      "group": "PrometheusSettings",
+      "has_default_factory": false,
+      "name": "PROMETHEUS",
+      "required": false,
+      "type": "bool | None"
+    },
+    {
+      "default": false,
+      "group": "RedisSettings",
+      "has_default_factory": false,
+      "name": "REDIS_CLUSTER_MODE",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "default": 1,
+      "group": "RedisSettings",
+      "has_default_factory": false,
+      "name": "REDIS_DB_APP",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": 0,
+      "group": "RedisSettings",
+      "has_default_factory": false,
+      "name": "REDIS_DB_BOT",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": "valkey",
+      "group": "RedisSettings",
+      "has_default_factory": false,
+      "name": "REDIS_HOST",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "default": null,
+      "group": "RedisSettings",
+      "has_default_factory": false,
+      "name": "REDIS_PASS",
+      "required": true,
+      "type": "str"
+    },
+    {
+      "default": 6379,
+      "group": "RedisSettings",
+      "has_default_factory": false,
+      "name": "REDIS_PORT",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": false,
+      "group": "RedisSettings",
+      "has_default_factory": false,
+      "name": "REDIS_RQ_HASH_TAGS",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "default": null,
+      "group": "RedisSettings",
+      "has_default_factory": false,
+      "name": "REDIS_SSL_CA",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "RedisSettings",
+      "has_default_factory": false,
+      "name": "REDIS_SSL_CERT",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "RedisSettings",
+      "has_default_factory": false,
+      "name": "REDIS_SSL_CERT_REQ",
+      "required": false,
+      "type": "Optional[Literal['none', 'optional', 'required']]"
+    },
+    {
+      "default": null,
+      "group": "RedisSettings",
+      "has_default_factory": false,
+      "name": "REDIS_SSL_KEY",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": 6380,
+      "group": "RedisSettings",
+      "has_default_factory": false,
+      "name": "REDIS_SSL_PORT",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": "",
+      "group": "RedisSettings",
+      "has_default_factory": false,
+      "name": "REDIS_USER",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": null,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGINS_DIR",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": 200,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGINS_MAX_FILES",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": 67108864,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGINS_MAX_UNPACKED_BYTES",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": null,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": true,
+      "name": "WIDGET_PLUGINS_PINS",
+      "required": false,
+      "type": "dict[str, str]"
+    },
+    {
+      "default": false,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGINS_REQUIRE_PINS",
+      "required": false,
+      "type": "bool"
+    },
+    {
+      "default": null,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": true,
+      "name": "WIDGET_PLUGIN_BACKENDS",
+      "required": false,
+      "type": "dict[str, str]"
+    },
+    {
+      "default": 5,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_BACKEND_BREAKER_FAILURES",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": 30,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_BACKEND_BREAKER_SECONDS",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": 8,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_BACKEND_CONCURRENCY",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": 60,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_BACKEND_IDENTITY_SECONDS",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": 5242880,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_BACKEND_MAX_BYTES",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": "600/minute",
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_BACKEND_RATE_PER_PLUGIN",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "default": "60/minute",
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_BACKEND_RATE_PER_USER",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "default": 30000,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_BACKEND_TIMEOUT_MS",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": null,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_PROXY_CA_FILE",
+      "required": false,
+      "type": "str | None"
+    },
+    {
+      "default": 8,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_PROXY_CONCURRENCY",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": 5242880,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_PROXY_MAX_BYTES",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": "600/minute",
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_PROXY_RATE_PER_PLUGIN",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "default": "60/minute",
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_PROXY_RATE_PER_USER",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "default": 30000,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_PROXY_TIMEOUT_MS",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "default": null,
+      "group": "WidgetPluginSettings",
+      "has_default_factory": false,
+      "name": "WIDGET_PLUGIN_SECRETS_DIR",
+      "required": false,
+      "type": "str | None"
+    }
+  ]
+}

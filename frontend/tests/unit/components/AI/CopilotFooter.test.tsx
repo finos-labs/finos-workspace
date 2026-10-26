@@ -167,14 +167,18 @@ describe("CopilotFooter", () => {
       withSpeechToText();
       render(<CopilotFooter />);
 
-      expect(screen.getByRole("button", { name: "Start voice input" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Start voice input" }),
+      ).toBeInTheDocument();
       expect(screen.getByTestId("prompt-suggestions")).toBeInTheDocument();
     });
 
     it("shows no microphone when the agent does not transcribe", () => {
       render(<CopilotFooter />);
 
-      expect(screen.queryByRole("button", { name: "Start voice input" })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Start voice input" }),
+      ).not.toBeInTheDocument();
       expect(screen.getByTestId("prompt-suggestions")).toBeInTheDocument();
     });
 

@@ -40,9 +40,7 @@ const FIELDS = [
   ["whiteLabel", "favicon", "WL_FAVICON", "string"],
   ["whiteLabel", "description", "WL_DESCRIPTION", "string"],
   ["whiteLabel", "keywords", "WL_KEYWORDS", "string"],
-  ["whiteLabel", "mainColor", "WL_MAIN_COLOR", "string"],
-  ["whiteLabel", "fontFamily", "WL_FONT_FAMILY", "string"],
-  ["whiteLabel", "showFloatingThemePreview", "WL_SHOW_FLOATING_THEME_PREVIEW", "bool"],
+  ["whiteLabel", "stylesheet", "WL_STYLESHEET", "string"],
 ];
 
 function valueOf(variable, type, raw) {

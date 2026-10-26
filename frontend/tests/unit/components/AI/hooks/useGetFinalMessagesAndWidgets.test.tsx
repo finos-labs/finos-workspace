@@ -166,11 +166,24 @@ describe("useGetFinalMessagesAndWidgets", () => {
     const answers = ["18", "true", "null", '"yes"', "[1, 2]", '{"total": 3}'];
     mockGetCurrentChat.mockReturnValue({
       messages: [
-        { role: "human", content: "what is 9 plus 9?", copilotId: "ines", timestamp: 1 },
-        ...answers.map((content, i) => ({ role: "ai", content, copilotId: "ines", timestamp: 10 + i })),
+        {
+          role: "human",
+          content: "what is 9 plus 9?",
+          copilotId: "ines",
+          timestamp: 1,
+        },
+        ...answers.map((content, i) => ({
+          role: "ai",
+          content,
+          copilotId: "ines",
+          timestamp: 10 + i,
+        })),
         {
           role: "ai",
-          content: JSON.stringify({ function: "no_such_function", input_arguments: {} }),
+          content: JSON.stringify({
+            function: "no_such_function",
+            input_arguments: {},
+          }),
           copilotId: "ines",
           timestamp: 99,
         },

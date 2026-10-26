@@ -1,0 +1,96 @@
+---
+title: Semantic properties
+sidebar_position: 5
+---
+
+import { TokenGroup, UnreadProperties } from "@site/src/components/Reference/theme";
+
+# Semantic properties
+
+The properties that components read. Each one is declared on `:root` for the light theme and on `.dark` for the dark theme in `frontend/src/styles/tokens.css`, and its value is usually a `var()` of a [palette](colour-palette.mdx) property. The tables are generated from that file and from the frontend source.
+
+- **Class names** are the Tailwind utilities that read the property. Tailwind maps a utility name to a property in `frontend/tailwind.config.ts`, so `bg-btn-primary-bg` paints with `--btn-primary-bg`. The list shows the forms that the source uses, with the most used first.
+- **Used by** names the files that use the property most, the number of uses, and the rules or scripts that read it without a utility.
+- A property that nothing reads is listed at the end of the page. Changing it has no effect.
+
+The theme and cascade rules are on [Theme scopes and cascade](theme-scopes.mdx).
+
+## General
+
+Backgrounds, borders and label text of panels, dialogs and form controls, with hover and disabled variants where a control has them.
+
+<TokenGroup file="tokens.css" group="--general-" />
+
+## Alerts
+
+The colours of status messages and indicators.
+
+<TokenGroup file="tokens.css" group="--alert-" />
+
+## Surfaces
+
+Page-level colours: the page, the header, dividers, the translucent layer behind dialogs, and cards. `hr` elements take their colour from `--surface-divider`.
+
+<TokenGroup file="tokens.css" group="--surface-" />
+
+## Buttons
+
+The variants of the `Button` component: primary, secondary, outlined, ghost, destructive and warning. A variant has background, label and border colours with hover and disabled states.
+
+<TokenGroup file="tokens.css" group="--btn-" />
+
+## Links
+
+<TokenGroup file="tokens.css" group="--link-" />
+
+## Dropdowns
+
+Menus and popovers.
+
+<TokenGroup file="tokens.css" group="--dropdown-" />
+
+## Inputs
+
+<TokenGroup file="tokens.css" group="--input-" />
+
+## Scrollbars
+
+Read by the `::-webkit-scrollbar` rules of `index.css`, so they apply in browsers that support those pseudo-elements.
+
+<TokenGroup file="tokens.css" group="--scrollbar-" />
+
+## Tabs
+
+<TokenGroup file="tokens.css" group="--tab-" />
+
+## Tags
+
+A background and a label colour for each of twelve tag colours.
+
+<TokenGroup file="tokens.css" group="--tag-" />
+
+## Tables
+
+<TokenGroup file="tokens.css" group="--table-" />
+
+## Tooltips, toggles and the widget search
+
+<TokenGroup file="tokens.css" group={["--tooltip-", "--toggle-", "--search-"]} />
+
+## Text
+
+Text colours for headings, subtitles, body text, captions and support text.
+
+<TokenGroup file="tokens.css" group="--text-" />
+
+## Copilot
+
+The colours of mentions in Copilot text, and the background of the cards that show artifacts.
+
+<TokenGroup file="tokens.css" group={["--copilot-", "--components-"]} />
+
+## Declared and not read
+
+Nothing in the frontend source reads these properties, through a class, a rule, a script or another property.
+
+<UnreadProperties />

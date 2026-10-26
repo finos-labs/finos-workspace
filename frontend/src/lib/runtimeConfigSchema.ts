@@ -99,9 +99,7 @@ export const RuntimeConfigSchema = z.object({
       .default(
         "FINOS Workspace, open source financial analytics, self-hosted analytics, financial data workspace, AI agents",
       ),
-    mainColor: z.string().default("#0086BF"),
-    fontFamily: z.string().default("Montserrat"),
-    showFloatingThemePreview: boolField(false),
+    stylesheet: z.string().default(""),
   }),
 });
 
@@ -166,9 +164,7 @@ export const ENV_NAMES = {
     favicon: "VITE_WL_FAVICON",
     description: "VITE_WL_DESCRIPTION",
     keywords: "VITE_WL_KEYWORDS",
-    mainColor: "VITE_WL_MAIN_COLOR",
-    fontFamily: "VITE_WL_FONT_FAMILY",
-    showFloatingThemePreview: "VITE_WL_SHOW_FLOATING_THEME_PREVIEW",
+    stylesheet: "VITE_WL_STYLESHEET",
   },
 } as const satisfies {
   [G in keyof RuntimeConfig]: { [F in keyof RuntimeConfig[G]]: string };

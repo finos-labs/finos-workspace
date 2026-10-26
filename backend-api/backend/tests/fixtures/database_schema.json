@@ -1,0 +1,5237 @@
+{
+  "tables": [
+    {
+      "columns": [
+        {
+          "indexed": false,
+          "name": "name",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(200)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "url",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "user_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "endpointHeaders",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "entity_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "entity.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "entity_uuid"
+          ],
+          "name": "ix_api_source_entity_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "user_uuid"
+          ],
+          "name": "ix_api_source_user_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "entity_uuid",
+            "name",
+            "user_uuid"
+          ],
+          "name": "ix_user_entity_name_api_source",
+          "unique": false
+        }
+      ],
+      "name": "api_source",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "entity_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "entity.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "role_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "role.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "action",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "resource_type",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "resource_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "performed_by_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "details",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "MEDIUMBLOB",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "entity_uuid"
+          ],
+          "name": "ix_audit_entity_roles_permissions_entity_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "performed_by_uuid"
+          ],
+          "name": "ix_audit_entity_roles_permissions_performed_by_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "resource_uuid"
+          ],
+          "name": "ix_audit_entity_roles_permissions_resource_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "role_uuid"
+          ],
+          "name": "ix_audit_entity_roles_permissions_role_uuid",
+          "unique": false
+        }
+      ],
+      "name": "audit_entity_roles_permissions",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "content",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "MEDIUMBLOB",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "artifacts",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "LONGBLOB",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "label",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "last_opened",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "label"
+          ],
+          "name": "ix_copilot_chat_search",
+          "unique": false
+        },
+        {
+          "columns": [
+            "user_uuid"
+          ],
+          "name": "ix_copilot_chat_user_uuid",
+          "unique": false
+        }
+      ],
+      "name": "copilot_chat",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": false,
+          "name": "user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "chat_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "copilot_chat.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "content",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "MEDIUMBLOB",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "searchable_content",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "role",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(7)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "chat_uuid",
+            "user_uuid"
+          ],
+          "name": "ix_user_chat_message",
+          "unique": false
+        },
+        {
+          "columns": [
+            "chat_uuid",
+            "role",
+            "user_uuid"
+          ],
+          "name": "ix_user_searchable_content",
+          "unique": false
+        },
+        {
+          "columns": [
+            "searchable_content"
+          ],
+          "name": "ix_user_searchable_content_fulltext",
+          "unique": false
+        }
+      ],
+      "name": "copilot_messages",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "url",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(200)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "headers",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "copilots",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "user_uuid"
+          ],
+          "name": "ix_custom_copilot_user_uuid",
+          "unique": false
+        }
+      ],
+      "name": "custom_copilot",
+      "unique_constraints": [
+        {
+          "columns": [
+            "url",
+            "user_uuid"
+          ],
+          "name": "uix_user_url_custom_copilot"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "creator_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "owner_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "entity_share",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "entity_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "entity.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "content",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "LONGBLOB",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "is_shared",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "creator_uuid"
+          ],
+          "name": "ix_dashboard_item_creator_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "entity_share"
+          ],
+          "name": "ix_dashboard_item_entity_share",
+          "unique": false
+        },
+        {
+          "columns": [
+            "entity_uuid"
+          ],
+          "name": "ix_dashboard_item_entity_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "is_shared"
+          ],
+          "name": "ix_dashboard_item_is_shared",
+          "unique": false
+        },
+        {
+          "columns": [
+            "owner_uuid"
+          ],
+          "name": "ix_dashboard_item_owner_uuid",
+          "unique": false
+        }
+      ],
+      "name": "dashboard_item",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "dashboard_item_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "dashboard_item.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "content",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "MEDIUMBLOB",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "dashboard_item_uuid"
+          ],
+          "name": "ix_dashboard_save_dashboard_item_uuid",
+          "unique": false
+        }
+      ],
+      "name": "dashboard_save",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "dashboard_item_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "dashboard_item.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "shared_user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "active",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "permissions",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(7)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "viewed",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "active"
+          ],
+          "name": "ix_dashboard_share_active",
+          "unique": false
+        },
+        {
+          "columns": [
+            "dashboard_item_uuid"
+          ],
+          "name": "ix_dashboard_share_dashboard_item_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "shared_user_uuid"
+          ],
+          "name": "ix_dashboard_share_shared_user_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "viewed"
+          ],
+          "name": "ix_dashboard_share_viewed",
+          "unique": false
+        }
+      ],
+      "name": "dashboard_share",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": false,
+          "name": "name",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": true
+        },
+        {
+          "indexed": false,
+          "name": "require_authenticator",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "sharing_enabled",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": "true",
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [],
+      "name": "entity",
+      "unique_constraints": [
+        {
+          "columns": [
+            "name"
+          ],
+          "name": null
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "parent_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "entity.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "child_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "entity.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "supreme_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "entity.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "child_uuid"
+          ],
+          "name": "ix_entity_relationship_child_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "parent_uuid"
+          ],
+          "name": "ix_entity_relationship_parent_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "supreme_uuid"
+          ],
+          "name": "ix_entity_relationship_supreme_uuid",
+          "unique": false
+        }
+      ],
+      "name": "entity_relationship",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "entity_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "entity.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "settings",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "MEDIUMBLOB",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "entity_uuid"
+          ],
+          "name": "ix_entity_theme_settings_entity_uuid",
+          "unique": false
+        }
+      ],
+      "name": "entity_theme_settings",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "entity_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "entity.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "viz_type",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(32)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "plugin_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "widget_plugin.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "widget_id",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(48)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "entity_uuid"
+          ],
+          "name": "ix_entity_viz_handler_entity_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "plugin_uuid"
+          ],
+          "name": "ix_entity_viz_handler_plugin_uuid",
+          "unique": false
+        }
+      ],
+      "name": "entity_viz_handler",
+      "unique_constraints": [
+        {
+          "columns": [
+            "entity_uuid",
+            "viz_type"
+          ],
+          "name": "uix_entity_viz_handler"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "entity_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "entity.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "plugin_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "widget_plugin.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "enabled",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "settings",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "JSON",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "narrowed_permissions",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "JSON",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "csp_narrow",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "JSON",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "server_network_narrow",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "JSON",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "data_sources",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "JSON",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "entity_uuid"
+          ],
+          "name": "ix_entity_widget_plugin_entity_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "plugin_uuid"
+          ],
+          "name": "ix_entity_widget_plugin_plugin_uuid",
+          "unique": false
+        }
+      ],
+      "name": "entity_widget_plugin",
+      "unique_constraints": [
+        {
+          "columns": [
+            "entity_uuid",
+            "plugin_uuid"
+          ],
+          "name": "uix_entity_widget_plugin"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "url",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "name",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "extension",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "original_file_name",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "data_key",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "description",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "category",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "sub_category",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "source",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "user_uuid"
+          ],
+          "name": "ix_file_widget_user_uuid",
+          "unique": false
+        }
+      ],
+      "name": "file_widget",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": false,
+          "name": "request",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "error",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "status_code",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "INTEGER",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "method",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [],
+      "name": "log",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "user_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "source",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(20)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "user_uuid"
+          ],
+          "name": "ix_login_user_uuid",
+          "unique": false
+        }
+      ],
+      "name": "login",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": false,
+          "name": "user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "server_hash",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(64)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "credentials",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [],
+      "name": "mcp_oauth_grant",
+      "unique_constraints": [
+        {
+          "columns": [
+            "server_hash",
+            "user_uuid"
+          ],
+          "name": "uix_mcp_oauth_grant_server"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "servers",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "headers",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "user_uuid"
+          ],
+          "name": "ix_mcp_servers_user_uuid",
+          "unique": false
+        }
+      ],
+      "name": "mcp_servers",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "entity_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "entity.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "name",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "entity_uuid"
+          ],
+          "name": "ix_permissions_entity_map_entity_uuid",
+          "unique": false
+        }
+      ],
+      "name": "permissions_entity_map",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "name",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "token_type",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(50)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "token_hash",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(128)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "token_prefix",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(20)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "revoked_at",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "last_used_at",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "token_prefix"
+          ],
+          "name": "ix_personal_access_token_token_prefix",
+          "unique": false
+        },
+        {
+          "columns": [
+            "token_type"
+          ],
+          "name": "ix_personal_access_token_token_type",
+          "unique": false
+        },
+        {
+          "columns": [
+            "user_uuid"
+          ],
+          "name": "ix_personal_access_token_user_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "token_type",
+            "user_uuid"
+          ],
+          "name": "ix_personal_access_token_user_uuid_token_type",
+          "unique": false
+        }
+      ],
+      "name": "personal_access_token",
+      "unique_constraints": [
+        {
+          "columns": [
+            "token_hash"
+          ],
+          "name": "uq_personal_access_token_token_hash"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": false,
+          "name": "name",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "description",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "sharing",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": "none",
+          "type": "VARCHAR(10)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "copilot_calls_day",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "INTEGER",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "copilot_tokens_day",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BIGINT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "upload_size_gb",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "INTEGER",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "search_web",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": "true",
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "fetch_from_web",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": "true",
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "entity_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "entity.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "deleted_at",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "entity_uuid"
+          ],
+          "name": "ix_role_entity_uuid",
+          "unique": false
+        }
+      ],
+      "name": "role",
+      "unique_constraints": [
+        {
+          "columns": [
+            "deleted_at",
+            "entity_uuid",
+            "name"
+          ],
+          "name": "uix_role_entity_name_deleted_at"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "role_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "role.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "backend_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "api_source.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "access",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "widgets",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "MEDIUMBLOB",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "templates",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "MEDIUMBLOB",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "backend_uuid"
+          ],
+          "name": "ix_role_backend_backend_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "role_uuid"
+          ],
+          "name": "ix_role_backend_role_uuid",
+          "unique": false
+        }
+      ],
+      "name": "role_backend",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "role_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "role.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "agent_id",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(255)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "model_id",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(255)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "role_uuid"
+          ],
+          "name": "ix_role_copilot_model_role_uuid",
+          "unique": false
+        }
+      ],
+      "name": "role_copilot_model",
+      "unique_constraints": [
+        {
+          "columns": [
+            "agent_id",
+            "model_id",
+            "role_uuid"
+          ],
+          "name": "uix_role_copilot_model"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "role_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "role.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "file_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "file_widget.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "access",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "file_uuid"
+          ],
+          "name": "ix_role_file_file_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "role_uuid"
+          ],
+          "name": "ix_role_file_role_uuid",
+          "unique": false
+        }
+      ],
+      "name": "role_file",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "role_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "role.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "server_url",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(400)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "tool_name",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(200)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "role_uuid"
+          ],
+          "name": "ix_role_mcp_access_role_uuid",
+          "unique": false
+        }
+      ],
+      "name": "role_mcp_access",
+      "unique_constraints": [
+        {
+          "columns": [
+            "role_uuid",
+            "server_url",
+            "tool_name"
+          ],
+          "name": "uix_role_mcp_access"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "role_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "role.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "prompt_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user_prompts.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "access",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "prompt_uuid"
+          ],
+          "name": "ix_role_prompt_prompt_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "role_uuid"
+          ],
+          "name": "ix_role_prompt_role_uuid",
+          "unique": false
+        }
+      ],
+      "name": "role_prompt",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "role_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "role.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "plugin_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "widget_plugin.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "widget_id",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(48)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "plugin_uuid"
+          ],
+          "name": "ix_role_widget_plugin_plugin_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "role_uuid"
+          ],
+          "name": "ix_role_widget_plugin_role_uuid",
+          "unique": false
+        }
+      ],
+      "name": "role_widget_plugin",
+      "unique_constraints": [
+        {
+          "columns": [
+            "plugin_uuid",
+            "role_uuid",
+            "widget_id"
+          ],
+          "name": "uix_role_widget_plugin"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "token_hash",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(64)",
+          "unique": true
+        },
+        {
+          "indexed": true,
+          "name": "user_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "expiration_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "app_session",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "source",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(20)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "token_hash"
+          ],
+          "name": "ix_session_token_hash",
+          "unique": true
+        },
+        {
+          "columns": [
+            "user_uuid"
+          ],
+          "name": "ix_session_user_uuid",
+          "unique": false
+        }
+      ],
+      "name": "session",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "requester_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "dashboard_item_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "dashboard_item.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "user_app_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user_app.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "recipient_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "permissions",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(10)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "dashboard_item_uuid"
+          ],
+          "name": "ix_share_request_dashboard_item_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "recipient_uuid"
+          ],
+          "name": "ix_share_request_recipient_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "requester_uuid"
+          ],
+          "name": "ix_share_request_requester_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "user_app_uuid"
+          ],
+          "name": "ix_share_request_user_app_uuid",
+          "unique": false
+        }
+      ],
+      "name": "share_request",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "creater_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "file_widget_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "file_widget.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "s3_file_name",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "bucket",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "extension",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "original_file_name",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "size",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "INTEGER",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "is_global",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "is_entity_shared",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "creater_uuid"
+          ],
+          "name": "ix_stored_file_creater_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "file_widget_uuid"
+          ],
+          "name": "ix_stored_file_file_widget_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "is_entity_shared"
+          ],
+          "name": "ix_stored_file_is_entity_shared",
+          "unique": false
+        },
+        {
+          "columns": [
+            "is_global"
+          ],
+          "name": "ix_stored_file_is_global",
+          "unique": false
+        }
+      ],
+      "name": "stored_file",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "dashboard_item_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "dashboard_item.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "user_app_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user_app.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "creater_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "shared_user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "stored_file_uuids",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "entity_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "entity.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "creater_uuid"
+          ],
+          "name": "ix_stored_file_share_creater_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "dashboard_item_uuid"
+          ],
+          "name": "ix_stored_file_share_dashboard_item_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "entity_uuid"
+          ],
+          "name": "ix_stored_file_share_entity_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "shared_user_uuid"
+          ],
+          "name": "ix_stored_file_share_shared_user_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "user_app_uuid"
+          ],
+          "name": "ix_stored_file_share_user_app_uuid",
+          "unique": false
+        }
+      ],
+      "name": "stored_file_share",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": false,
+          "name": "microsoft_id",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "first_name",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "last_name",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "email",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(255)",
+          "unique": true
+        },
+        {
+          "indexed": false,
+          "name": "clean_email",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(255)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "username",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(50)",
+          "unique": true
+        },
+        {
+          "indexed": false,
+          "name": "password",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(128)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "totp_secret",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "totp_last_step",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BIGINT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "totp_active",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "two_factor_auth",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "temporary_password",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "openai_api_key",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "perplexity_api_key",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "display_settings",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "JSON",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "referred_by",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "referred_by_sent",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "referral_code",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": true
+        },
+        {
+          "indexed": false,
+          "name": "total_referrals",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "INTEGER",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "deleted",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "confirmed",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "is_superuser",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "permissions_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "permissions_entity_map.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "app_start",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "latest_version",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "permissions_uuid"
+          ],
+          "name": "ix_user_permissions_uuid",
+          "unique": false
+        }
+      ],
+      "name": "user",
+      "unique_constraints": [
+        {
+          "columns": [
+            "email"
+          ],
+          "name": null
+        },
+        {
+          "columns": [
+            "referral_code"
+          ],
+          "name": null
+        },
+        {
+          "columns": [
+            "username"
+          ],
+          "name": null
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "content",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "LONGBLOB",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "is_shared",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "is_shared"
+          ],
+          "name": "ix_user_app_is_shared",
+          "unique": false
+        },
+        {
+          "columns": [
+            "user_uuid"
+          ],
+          "name": "ix_user_app_user_uuid",
+          "unique": false
+        }
+      ],
+      "name": "user_app",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "user_app_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user_app.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "shared_user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "active",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "permissions",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(7)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "viewed",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "active"
+          ],
+          "name": "ix_user_app_share_active",
+          "unique": false
+        },
+        {
+          "columns": [
+            "shared_user_uuid"
+          ],
+          "name": "ix_user_app_share_shared_user_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "user_app_uuid"
+          ],
+          "name": "ix_user_app_share_user_app_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "viewed"
+          ],
+          "name": "ix_user_app_share_viewed",
+          "unique": false
+        }
+      ],
+      "name": "user_app_share",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "inviting_user_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "used",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BOOLEAN",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "email",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(255)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "permissions_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "permissions_entity_map.uuid",
+              "on_delete": "SET NULL"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "data",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "JSON",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "inviting_user_uuid"
+          ],
+          "name": "ix_user_invite_inviting_user_uuid",
+          "unique": false
+        }
+      ],
+      "name": "user_invite",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "prompt",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "MEDIUMBLOB",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "user_uuid"
+          ],
+          "name": "ix_user_prompts_user_uuid",
+          "unique": false
+        }
+      ],
+      "name": "user_prompts",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "role_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "role.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "role_uuid"
+          ],
+          "name": "ix_user_role_role_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "user_uuid"
+          ],
+          "name": "ix_user_role_user_uuid",
+          "unique": false
+        }
+      ],
+      "name": "user_role",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "slug",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(50)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "description",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "content",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "MEDIUMBLOB",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "user_uuid"
+          ],
+          "name": "ix_user_skills_user_uuid",
+          "unique": false
+        }
+      ],
+      "name": "user_skills",
+      "unique_constraints": [
+        {
+          "columns": [
+            "slug",
+            "user_uuid"
+          ],
+          "name": "uq_user_skills_user_uuid_slug"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": true
+        },
+        {
+          "indexed": false,
+          "name": "number_copilot_calls_day_count",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "INTEGER",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "number_copilot_tokens_day_count",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BIGINT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "total_file_upload_size_gb_count",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "FLOAT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "user_uuid"
+          ],
+          "name": "ix_user_usage_user_uuid",
+          "unique": true
+        }
+      ],
+      "name": "user_usage",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": false,
+          "name": "user_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "user.uuid",
+              "on_delete": null
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "name",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(50)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "description",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "source",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(50)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "category",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(50)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "sub_category",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(50)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "widget_type",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(50)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "storage",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "MEDIUMBLOB",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "widget_config",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "MEDIUMBLOB",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "widget_id",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": true
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "name",
+            "user_uuid",
+            "widget_type"
+          ],
+          "name": "ix_user_name_type",
+          "unique": false
+        }
+      ],
+      "name": "widget_metadata",
+      "unique_constraints": [
+        {
+          "columns": [
+            "widget_id"
+          ],
+          "name": null
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": false,
+          "name": "plugin_id",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(48)",
+          "unique": true
+        },
+        {
+          "indexed": false,
+          "name": "name",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(100)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "status",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "active_version",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(32)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "overrides",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "JSON",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [],
+      "name": "widget_plugin",
+      "unique_constraints": [
+        {
+          "columns": [
+            "plugin_id"
+          ],
+          "name": null
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "plugin_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "widget_plugin.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "version",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(32)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "entity_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "entity.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "directive",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(32)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "blocked_origin",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(255)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "count",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "INTEGER",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "first_seen",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "last_seen",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "entity_uuid"
+          ],
+          "name": "ix_widget_plugin_csp_report_entity_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "plugin_uuid"
+          ],
+          "name": "ix_widget_plugin_csp_report_plugin_uuid",
+          "unique": false
+        }
+      ],
+      "name": "widget_plugin_csp_report",
+      "unique_constraints": [
+        {
+          "columns": [
+            "blocked_origin",
+            "directive",
+            "entity_uuid",
+            "plugin_uuid"
+          ],
+          "name": "uix_widget_plugin_csp_report"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "plugin_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "widget_plugin.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "version",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(32)",
+          "unique": false
+        },
+        {
+          "indexed": true,
+          "name": "entity_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "actor_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "action",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(48)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "details",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "JSON",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "entity_uuid"
+          ],
+          "name": "ix_widget_plugin_event_entity_uuid",
+          "unique": false
+        },
+        {
+          "columns": [
+            "plugin_uuid"
+          ],
+          "name": "ix_widget_plugin_event_plugin_uuid",
+          "unique": false
+        }
+      ],
+      "name": "widget_plugin_event",
+      "unique_constraints": []
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "plugin_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "widget_plugin.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "name",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(64)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "value",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "set_by_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "plugin_uuid"
+          ],
+          "name": "ix_widget_plugin_secret_plugin_uuid",
+          "unique": false
+        }
+      ],
+      "name": "widget_plugin_secret",
+      "unique_constraints": [
+        {
+          "columns": [
+            "name",
+            "plugin_uuid"
+          ],
+          "name": "uix_widget_plugin_secret"
+        }
+      ]
+    },
+    {
+      "columns": [
+        {
+          "indexed": true,
+          "name": "plugin_uuid",
+          "nullable": false,
+          "primary_key": false,
+          "references": [
+            {
+              "column": "widget_plugin.uuid",
+              "on_delete": "CASCADE"
+            }
+          ],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "version",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(32)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "digest",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(80)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "declared_checksum",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(80)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "pin_status",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "manifest",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "MEDIUMBLOB",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "files",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "JSON",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "path",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(120)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "state",
+          "nullable": false,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "VARCHAR(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "blocked_reason",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "TEXT",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "findings",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "JSON",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "discovered_at",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "approved",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "JSON",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "approved_by_uuid",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "approved_at",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "references": [],
+          "server_default": null,
+          "type": "BINARY(16)",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "created_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        },
+        {
+          "indexed": false,
+          "name": "updated_date",
+          "nullable": true,
+          "primary_key": false,
+          "references": [],
+          "server_default": null,
+          "type": "DATETIME",
+          "unique": false
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "plugin_uuid"
+          ],
+          "name": "ix_widget_plugin_version_plugin_uuid",
+          "unique": false
+        }
+      ],
+      "name": "widget_plugin_version",
+      "unique_constraints": [
+        {
+          "columns": [
+            "plugin_uuid",
+            "version"
+          ],
+          "name": "uix_widget_plugin_version"
+        }
+      ]
+    }
+  ]
+}

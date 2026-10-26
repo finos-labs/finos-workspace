@@ -1,0 +1,1510 @@
+{
+  "arguments": [],
+  "commands": [
+    {
+      "arguments": [],
+      "commands": [
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--config",
+                "-c"
+              ],
+              "help": "Path to JSON config file with entity details",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Create a new entity",
+          "name": "create",
+          "prog": "python -m scripts.workspace_admin entity create"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": 1,
+              "flags": [
+                "--page"
+              ],
+              "help": "Page number (default: 1)",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": 100,
+              "flags": [
+                "--size"
+              ],
+              "help": "Items per page (default: 100)",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "List all entities",
+          "name": "list",
+          "prog": "python -m scripts.workspace_admin entity list"
+        },
+        {
+          "arguments": [],
+          "commands": [],
+          "description": null,
+          "help": "Print a sample entity config",
+          "name": "sample",
+          "prog": "python -m scripts.workspace_admin entity sample"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "entity_uuid"
+              ],
+              "help": "UUID of the entity",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Show details of a specific entity",
+          "name": "show",
+          "prog": "python -m scripts.workspace_admin entity show"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "entity_uuid"
+              ],
+              "help": "UUID of the entity",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--config",
+                "-c"
+              ],
+              "help": "Path to JSON file containing fields to update",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--data",
+                "-d"
+              ],
+              "help": "JSON string with fields to update (e.g. '{\"sharing_enabled\": true}')",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Update an existing entity",
+          "name": "update",
+          "prog": "python -m scripts.workspace_admin entity update"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "entity_uuid"
+              ],
+              "help": "UUID of the entity",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Delete an entity that has no users",
+          "name": "delete",
+          "prog": "python -m scripts.workspace_admin entity delete"
+        }
+      ],
+      "description": null,
+      "help": "Manage organization entities",
+      "name": "entity",
+      "prog": "python -m scripts.workspace_admin entity"
+    },
+    {
+      "arguments": [],
+      "commands": [
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "entity_uuid"
+              ],
+              "help": "UUID of the target entity",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--email"
+              ],
+              "help": "User's email address",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--first-name"
+              ],
+              "help": "User's first name",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--last-name"
+              ],
+              "help": "User's last name",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": true
+            },
+            {
+              "choices": [
+                "admin",
+                "developer",
+                "user"
+              ],
+              "default": "user",
+              "flags": [
+                "--role"
+              ],
+              "help": "User type (default: user)",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Create a user in an entity and print the link that sets their password",
+          "name": "create",
+          "prog": "python -m scripts.workspace_admin user create"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": 1,
+              "flags": [
+                "--page"
+              ],
+              "help": "Page number (default: 1)",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": 100,
+              "flags": [
+                "--size"
+              ],
+              "help": "Items per page (default: 100)",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--email"
+              ],
+              "help": "Only users whose email contains this",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "List users (globally or filtered)",
+          "name": "list",
+          "prog": "python -m scripts.workspace_admin user list"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "email"
+              ],
+              "help": "Email address of the user to remove",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Remove a user from their entity",
+          "name": "delete",
+          "prog": "python -m scripts.workspace_admin user delete"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "email"
+              ],
+              "help": "Email address of the user",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Reset a user's password and print the link that sets a new one",
+          "name": "reset-password",
+          "prog": "python -m scripts.workspace_admin user reset-password"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--entity-uuid"
+              ],
+              "help": "UUID of the target entity",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--email"
+              ],
+              "help": "Email address of the user to move",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": true
+            },
+            {
+              "choices": [
+                "admin",
+                "developer",
+                "user"
+              ],
+              "default": "user",
+              "flags": [
+                "--role"
+              ],
+              "help": "User type in the new entity (default: user)",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Move a user to another entity",
+          "name": "move",
+          "prog": "python -m scripts.workspace_admin user move"
+        }
+      ],
+      "description": null,
+      "help": "Manage users within entities",
+      "name": "user",
+      "prog": "python -m scripts.workspace_admin user"
+    },
+    {
+      "arguments": [],
+      "commands": [
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "entity_uuid"
+              ],
+              "help": "UUID of the target entity",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--name"
+              ],
+              "help": "Name of the data backend",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--url"
+              ],
+              "help": "URL of the data backend",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--header"
+              ],
+              "help": "Endpoint header as key:value or key:value:location (repeatable)",
+              "metavar": null,
+              "multiple": true,
+              "positional": false,
+              "required": false
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Add a data backend to an entity",
+          "name": "add",
+          "prog": "python -m scripts.workspace_admin data-backend add"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "entity_uuid"
+              ],
+              "help": "UUID of the target entity",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--name"
+              ],
+              "help": "Name of the data backend to remove",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Remove a data backend from an entity",
+          "name": "delete",
+          "prog": "python -m scripts.workspace_admin data-backend delete"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "entity_uuid"
+              ],
+              "help": "UUID of the target entity",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "List data backends for an entity",
+          "name": "list",
+          "prog": "python -m scripts.workspace_admin data-backend list"
+        }
+      ],
+      "description": null,
+      "help": "Manage entity data backends",
+      "name": "data-backend",
+      "prog": "python -m scripts.workspace_admin data-backend"
+    },
+    {
+      "arguments": [],
+      "commands": [
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--config",
+                "-c"
+              ],
+              "help": "Path to JSON config file",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Validate a provisioning config file",
+          "name": "check",
+          "prog": "python -m scripts.workspace_admin provision check"
+        },
+        {
+          "arguments": [],
+          "commands": [],
+          "description": null,
+          "help": "Print a sample provisioning config",
+          "name": "sample",
+          "prog": "python -m scripts.workspace_admin provision sample"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--config",
+                "-c"
+              ],
+              "help": "Path to JSON defining entity and users",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Create the entity, admins and users of a config",
+          "name": "apply",
+          "prog": "python -m scripts.workspace_admin provision apply"
+        }
+      ],
+      "description": null,
+      "help": "Bulk provisioning",
+      "name": "provision",
+      "prog": "python -m scripts.workspace_admin provision"
+    },
+    {
+      "arguments": [],
+      "commands": [
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "List discovered plugins and versions",
+          "name": "list",
+          "prog": "python -m scripts.workspace_admin plugin list"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Read the plugins directory again",
+          "name": "rescan",
+          "prog": "python -m scripts.workspace_admin plugin rescan"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "plugin_id"
+              ],
+              "help": "The plugin's id",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Show a plugin: versions, what approving accepts, policy, organizations, events",
+          "name": "show",
+          "prog": "python -m scripts.workspace_admin plugin show"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "plugin_id"
+              ],
+              "help": "The plugin's id",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "version"
+              ],
+              "help": "The version to approve",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--acknowledge"
+              ],
+              "help": "Accept every added request the review lists (without it, only the review is shown)",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--digest"
+              ],
+              "help": "The version digest you checked with plugin_check; approval stops if the server's differs",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Review a version and make it the active one",
+          "name": "approve",
+          "prog": "python -m scripts.workspace_admin plugin approve"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "plugin_id"
+              ],
+              "help": "The plugin's id",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Stop a plugin everywhere (kill switch)",
+          "name": "revoke",
+          "prog": "python -m scripts.workspace_admin plugin revoke"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "plugin_id"
+              ],
+              "help": "The plugin's id",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Undo a revoke",
+          "name": "restore",
+          "prog": "python -m scripts.workspace_admin plugin restore"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "plugin_id"
+              ],
+              "help": "The plugin's id",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--entity"
+              ],
+              "help": "UUID of the organization (entity)",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--all"
+              ],
+              "help": "Every organization",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Enable the plugin for an organization, or for all",
+          "name": "enable",
+          "prog": "python -m scripts.workspace_admin plugin enable"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "plugin_id"
+              ],
+              "help": "The plugin's id",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--entity"
+              ],
+              "help": "UUID of the organization (entity)",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--all"
+              ],
+              "help": "Every organization",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Disable the plugin for an organization, or for all",
+          "name": "disable",
+          "prog": "python -m scripts.workspace_admin plugin disable"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "plugin_id"
+              ],
+              "help": "The plugin's id",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--role"
+              ],
+              "help": "UUID of the role",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": "*",
+              "flags": [
+                "--widget"
+              ],
+              "help": "One widget id (default: every widget)",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Grant a role a plugin's widgets: roles are the only way to a plugin",
+          "name": "grant",
+          "prog": "python -m scripts.workspace_admin plugin grant"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "plugin_id"
+              ],
+              "help": "The plugin's id",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--role"
+              ],
+              "help": "UUID of the role",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": "*",
+              "flags": [
+                "--widget"
+              ],
+              "help": "One widget id (default: every widget)",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Take a grant away from a role",
+          "name": "ungrant",
+          "prog": "python -m scripts.workspace_admin plugin ungrant"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "plugin_id"
+              ],
+              "help": "The plugin's id",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--csp-file"
+              ],
+              "help": "JSON file of directive to sources, e.g. {\"connect-src\": [\"https://<host>\"]}",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "--server-network"
+              ],
+              "help": "An https origin the server may call for the plugin's proxies, replacing the hosts it declares (repeatable)",
+              "metavar": null,
+              "multiple": true,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--clear"
+              ],
+              "help": "Remove the overrides",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": [
+                "insecure-scheme",
+                "private-host",
+                "remote-script"
+              ],
+              "default": null,
+              "flags": [
+                "--confirm"
+              ],
+              "help": "Confirm a dangerous source the overrides add (repeatable); private-host with --server-network also lets those hosts resolve to private addresses",
+              "metavar": null,
+              "multiple": true,
+              "positional": false,
+              "required": false
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Replace the superuser's overrides: the CSP by directive and the server network",
+          "name": "override",
+          "prog": "python -m scripts.workspace_admin plugin override"
+        },
+        {
+          "arguments": [],
+          "commands": [
+            {
+              "arguments": [
+                {
+                  "choices": null,
+                  "default": false,
+                  "flags": [
+                    "--json"
+                  ],
+                  "help": "Print the outcome as JSON",
+                  "metavar": null,
+                  "multiple": false,
+                  "positional": false,
+                  "required": false
+                },
+                {
+                  "choices": null,
+                  "default": null,
+                  "flags": [
+                    "plugin_id"
+                  ],
+                  "help": "The plugin's id",
+                  "metavar": null,
+                  "multiple": false,
+                  "positional": true,
+                  "required": true
+                },
+                {
+                  "choices": null,
+                  "default": null,
+                  "flags": [
+                    "name"
+                  ],
+                  "help": "The secret's name, as the plugin declares it",
+                  "metavar": null,
+                  "multiple": false,
+                  "positional": true,
+                  "required": true
+                }
+              ],
+              "commands": [],
+              "description": null,
+              "help": "Set the value: read without echo, or from standard input, never an argument",
+              "name": "set",
+              "prog": "python -m scripts.workspace_admin plugin secret set"
+            },
+            {
+              "arguments": [
+                {
+                  "choices": null,
+                  "default": false,
+                  "flags": [
+                    "--json"
+                  ],
+                  "help": "Print the outcome as JSON",
+                  "metavar": null,
+                  "multiple": false,
+                  "positional": false,
+                  "required": false
+                },
+                {
+                  "choices": null,
+                  "default": null,
+                  "flags": [
+                    "plugin_id"
+                  ],
+                  "help": "The plugin's id",
+                  "metavar": null,
+                  "multiple": false,
+                  "positional": true,
+                  "required": true
+                },
+                {
+                  "choices": null,
+                  "default": null,
+                  "flags": [
+                    "name"
+                  ],
+                  "help": "The secret's name, as the plugin declares it",
+                  "metavar": null,
+                  "multiple": false,
+                  "positional": true,
+                  "required": true
+                }
+              ],
+              "commands": [],
+              "description": null,
+              "help": "Remove the value a superuser set",
+              "name": "clear",
+              "prog": "python -m scripts.workspace_admin plugin secret clear"
+            }
+          ],
+          "description": null,
+          "help": "Set or clear the value of a secret the plugin declares",
+          "name": "secret",
+          "prog": "python -m scripts.workspace_admin plugin secret"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "plugin_id"
+              ],
+              "help": "The plugin's id",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Ask the plugin's backend for its identity now (the deployer runs and lists it)",
+          "name": "check-backend",
+          "prog": "python -m scripts.workspace_admin plugin check-backend"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "plugin_id"
+              ],
+              "help": "The plugin's id",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "List the plugin's events",
+          "name": "events",
+          "prog": "python -m scripts.workspace_admin plugin events"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "plugin_id"
+              ],
+              "help": "The plugin's id",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "List requests the plugin's policy blocked",
+          "name": "reports",
+          "prog": "python -m scripts.workspace_admin plugin reports"
+        },
+        {
+          "arguments": [
+            {
+              "choices": null,
+              "default": false,
+              "flags": [
+                "--json"
+              ],
+              "help": "Print the outcome as JSON",
+              "metavar": null,
+              "multiple": false,
+              "positional": false,
+              "required": false
+            },
+            {
+              "choices": null,
+              "default": null,
+              "flags": [
+                "plugin_id"
+              ],
+              "help": "The plugin's id",
+              "metavar": null,
+              "multiple": false,
+              "positional": true,
+              "required": true
+            }
+          ],
+          "commands": [],
+          "description": null,
+          "help": "Forget a plugin whose files are gone, with its decisions, grants and secrets",
+          "name": "forget",
+          "prog": "python -m scripts.workspace_admin plugin forget"
+        }
+      ],
+      "description": null,
+      "help": "Review and enable widget plugins (packages are placed on the server, never installed from here)",
+      "name": "plugin",
+      "prog": "python -m scripts.workspace_admin plugin"
+    }
+  ],
+  "description": "Manage entities, users, data backends and widget plugins, from inside the API container.",
+  "prog": "python -m scripts.workspace_admin"
+}

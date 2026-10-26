@@ -58,7 +58,7 @@ vi.mock("vaul", () => {
       },
       Portal: ({ children }: { children?: ReactNode }) => {
         const { open } = React.useContext(DrawerContext);
-        return open ? <>{children}</> : null;
+        return open ? children : null;
       },
       Overlay: () => <div data-testid="drawer-overlay" />,
       Content: ({

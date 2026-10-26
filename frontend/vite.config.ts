@@ -6,8 +6,8 @@ import { Mode, plugin as mdPlugin } from "vite-plugin-markdown";
 import { VitePWA } from "vite-plugin-pwa";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import { defineConfig } from "vitest/config";
-import { dark } from "./src/components/ds/colors.ts";
 import { configFromEnv } from "./src/lib/runtimeConfigSchema.ts";
+import { paletteValue } from "./scripts/palette.ts";
 
 const fullReloadAlways: PluginOption = {
   name: "full-reload-always",
@@ -93,6 +93,7 @@ export default defineConfig(({ mode }) => {
       globals: true,
       environment: "jsdom",
       setupFiles: "./vitest.setup.ts",
+      css: { include: [/\.css\?raw$/] },
       exclude: ["**/node_modules/**", "**/dist/**", "**/tests/e2e/**"],
       coverage: {
         provider: "v8",
@@ -134,8 +135,8 @@ export default defineConfig(({ mode }) => {
           name: APP_NAME,
           short_name: APP_SHORT_NAME,
           description: APP_DESCRIPTION,
-          theme_color: dark[900],
-          background_color: dark[900],
+          theme_color: paletteValue("dark", "900"),
+          background_color: paletteValue("dark", "900"),
           display: "fullscreen",
           orientation: "portrait",
           start_url: "/",

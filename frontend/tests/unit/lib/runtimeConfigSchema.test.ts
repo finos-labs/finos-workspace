@@ -112,10 +112,10 @@ describe("ENV_NAMES", () => {
 
   it("reads each setting from its variable", () => {
     const env = Object.fromEntries(
-      Object.entries(ENV_NAMES.whiteLabel)
-        .filter(([field]) => field !== "showFloatingThemePreview")
-        .filter(([field]) => field !== "mainColor")
-        .map(([field, name]) => [name, `value of ${field}`]),
+      Object.entries(ENV_NAMES.whiteLabel).map(([field, name]) => [
+        name,
+        `value of ${field}`,
+      ]),
     );
 
     const cfg = configFromEnv(env);

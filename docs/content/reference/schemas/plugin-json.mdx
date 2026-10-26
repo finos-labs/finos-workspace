@@ -1,0 +1,14 @@
+---
+title: plugin.json
+sidebar_position: 3
+---
+
+import { SchemaDocs } from "@site/src/components/Reference/schemas";
+
+# plugin.json
+
+The manifest of a widget plugin. The `Manifest` model in `backend-api/backend/api/widget_plugins/manifest.py` defines it, and the page lists the JSON Schema that the model produces. The definitions are the models it refers to.
+
+The page is generated from `backend-api/backend/tests/fixtures/plugin_manifest_schema.json`, which a test keeps equal to the model.
+
+<SchemaDocs set="manifest" />

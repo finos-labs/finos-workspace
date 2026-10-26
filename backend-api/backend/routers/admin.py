@@ -959,25 +959,90 @@ async def patch_theme_settings(
     admin: User = Depends(auth_helpers.get_current_admin),
 ):
     entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
-    existing = (
-        await db.execute(
-            select(models.EntityThemeSettings).where(
-                models.EntityThemeSettings.entity_uuid == entity_uuid
-            )
-        )
-    ).scalar_one_or_none()
-
-    adjusted_settings = settings.model_dump(exclude_unset=True)
-    if existing:
-        setattr(existing, "settings", adjusted_settings)
-    else:
-        new_settings = models.EntityThemeSettings(
-            entity_uuid=entity_uuid, settings=adjusted_settings
-        )
-        db.add(new_settings)
-
-    await db.commit()
+    existing = await app_helpers.get_stored_theme_settings(db, entity_uuid)
+    adjusted_settings = settings.model_dump(exclude_unset=True, exclude={"properties"})
+    merged = {**(existing.settings if existing else {}), **adjusted_settings}
+    await app_helpers.save_stored_theme_settings(db, entity_uuid, existing, merged)
     return schemas.SuccessReturn.success_instance()
+
+
+async def load_theme_presets(
+    db: AsyncSession, admin: Row
+) -> tuple[UUID, models.EntityThemeSettings | None, dict]:
+    entity_uuid = await app_helpers.get_entity_uuid(db, admin.uuid)
+    stored = await app_helpers.get_stored_theme_settings(db, entity_uuid)
+    return entity_uuid, stored, dict(stored.settings) if stored else {}
+
+
+@router.get("/theme-presets", response_model=schemas.ThemePresets)
+async def get_theme_presets(
+    db: AsyncSession = Depends(aget_read_db),
+    admin: User = Depends(auth_helpers.get_current_admin),
+):
+    _, _, settings = await load_theme_presets(db, admin)
+    return schemas.ThemePresets.model_validate(settings)
+
+
+@router.put("/theme-presets/active", response_model=schemas.ThemePresets)
+async def put_active_theme_preset(
+    body: schemas.ThemeActivePreset,
+    db: AsyncSession = Depends(aget_write_db),
+    admin: User = Depends(auth_helpers.get_current_admin),
+):
+    entity_uuid, stored, settings = await load_theme_presets(db, admin)
+    presets = schemas.ThemePresets.model_validate(settings)
+    if body.uuid is not None and all(p.uuid != body.uuid for p in presets.presets):
+        raise HTTPException(404, detail="Theme preset not found")
+    settings["active_preset"] = str(body.uuid) if body.uuid else None
+    await app_helpers.save_stored_theme_settings(db, entity_uuid, stored, settings)
+    return schemas.ThemePresets.model_validate(settings)
+
+
+@router.put("/theme-presets/{preset_uuid}", response_model=schemas.ThemePreset)
+async def put_theme_preset(
+    preset_uuid: UUID,
+    body: schemas.ThemePresetBody,
+    db: AsyncSession = Depends(aget_write_db),
+    admin: User = Depends(auth_helpers.get_current_admin),
+):
+    entity_uuid, stored, settings = await load_theme_presets(db, admin)
+    presets = schemas.ThemePresets.model_validate(settings).presets
+    if any(
+        p.uuid != preset_uuid and p.name.casefold() == body.name.casefold()
+        for p in presets
+    ):
+        raise HTTPException(409, detail="A theme preset with this name already exists")
+    preset = schemas.ThemePreset(uuid=preset_uuid, **body.model_dump())
+    if any(p.uuid == preset_uuid for p in presets):
+        presets = [preset if p.uuid == preset_uuid else p for p in presets]
+    elif len(presets) >= schemas.THEME_MAX_PRESETS:
+        raise HTTPException(
+            422, detail=f"At most {schemas.THEME_MAX_PRESETS} theme presets are allowed"
+        )
+    else:
+        presets = [*presets, preset]
+    settings["presets"] = [p.model_dump(mode="json") for p in presets]
+    await app_helpers.save_stored_theme_settings(db, entity_uuid, stored, settings)
+    return preset
+
+
+@router.delete("/theme-presets/{preset_uuid}", response_model=schemas.ThemePresets)
+async def delete_theme_preset(
+    preset_uuid: UUID,
+    db: AsyncSession = Depends(aget_write_db),
+    admin: User = Depends(auth_helpers.get_current_admin),
+):
+    entity_uuid, stored, settings = await load_theme_presets(db, admin)
+    presets = schemas.ThemePresets.model_validate(settings)
+    if all(p.uuid != preset_uuid for p in presets.presets):
+        raise HTTPException(404, detail="Theme preset not found")
+    settings["presets"] = [
+        p.model_dump(mode="json") for p in presets.presets if p.uuid != preset_uuid
+    ]
+    if presets.active_preset == preset_uuid:
+        settings["active_preset"] = None
+    await app_helpers.save_stored_theme_settings(db, entity_uuid, stored, settings)
+    return schemas.ThemePresets.model_validate(settings)
 
 
 async def get_admin_share_request(

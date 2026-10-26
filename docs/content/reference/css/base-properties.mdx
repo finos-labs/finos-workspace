@@ -1,0 +1,26 @@
+---
+title: Base properties
+sidebar_position: 6
+---
+
+import { TokenGroup } from "@site/src/components/Reference/theme";
+
+# Base properties
+
+`frontend/src/index.css` declares a second set of properties, in the `base` layer, on `:root` and `.dark`. They follow the naming of the shadcn/ui components that the app's design system is built on, and Tailwind maps them to utilities such as `bg-background`, `text-foreground`, `border-border` and `ring-ring`. The tables are generated from the stylesheet and from the frontend source.
+
+Because these declarations are in a layer, a stylesheet that is not in a layer overrides them whatever its position.
+
+The brand, font and scale properties of the same file are on [Brand colour, font and text size](brand-font-size.mdx).
+
+## Page and text
+
+<TokenGroup file="index.css" group={["--background-", "--foreground-"]} />
+
+## Components
+
+<TokenGroup file="index.css" group={["--card-", "--popover-", "--primary-", "--secondary-", "--tertiary-", "--muted-", "--destructive-", "--accent-"]} />
+
+## Lines and focus
+
+<TokenGroup file="index.css" group={["--border-", "--input-", "--ring-"]} />

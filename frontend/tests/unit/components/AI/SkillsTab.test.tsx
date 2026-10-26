@@ -21,7 +21,6 @@ const {
   mockDeleteUserSkills: vi.fn(),
 }));
 
-
 vi.mock("sonner", () => ({
   toast: { success: mockToastSuccess, error: mockToastError },
 }));
@@ -35,7 +34,10 @@ vi.mock("~/lib/state/skillsLibrary", () => ({
 }));
 
 const agentState = vi.hoisted(() => ({
-  agent: null as null | { name: string; skills: { slug: string; description: string }[] },
+  agent: null as null | {
+    name: string;
+    skills: { slug: string; description: string }[];
+  },
 }));
 
 vi.mock("~/lib/state/copilot", () => ({
@@ -65,7 +67,6 @@ vi.mock("framer-motion", () => ({
     ),
   },
 }));
-
 
 vi.mock("~/components/General/SearchResultsNotFound", () => ({
   default: () => <div data-testid="results-not-found">No results found</div>,
@@ -198,7 +199,6 @@ vi.mock("markdown-to-jsx", () => ({
   ),
 }));
 
-
 const createMockSkill = (
   overrides: Partial<{
     id: string;
@@ -238,7 +238,6 @@ const mockSkills = [
   }),
 ];
 
-
 function setupMocks(skillsOverride: typeof mockSkills = mockSkills) {
   mockDeleteUserSkills.mockResolvedValue(skillsOverride);
   mockUseShallowSkillsLibraryStore.mockImplementation(
@@ -258,7 +257,6 @@ function renderSkillsTab() {
 function getSkillHeader(slug: string) {
   return screen.getByRole("button", { name: new RegExp(slug, "i") });
 }
-
 
 describe("SkillsTab", () => {
   beforeEach(() => {
@@ -772,7 +770,10 @@ describe("SkillsTab", () => {
     });
 
     it("give way to a user's skill with the same slug", () => {
-      agentState.agent = { name: "Ines", skills: [{ slug: "data-viz", description: "The agent's charts" }] };
+      agentState.agent = {
+        name: "Ines",
+        skills: [{ slug: "data-viz", description: "The agent's charts" }],
+      };
       renderSkillsTab();
 
       expect(screen.getAllByText("data-viz")).toHaveLength(1);

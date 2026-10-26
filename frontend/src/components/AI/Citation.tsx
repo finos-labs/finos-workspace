@@ -4,7 +4,6 @@ import { forwardRef, memo, useCallback, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
-import { getConfig } from "~/lib/runtimeConfig";
 import { useShallowAppStore } from "~/lib/state/app";
 import {
   type Citation as CitationT,
@@ -963,15 +962,14 @@ const highlightElement = (element: HTMLElement | null) => {
   element.classList.add("outline-2", "outline-brand-main");
 
   if (!document.getElementById("citation-highlight-styles")) {
-    const mainColor = getConfig().whiteLabel.mainColor ?? "#0086BF";
     const style = document.createElement("style");
     style.id = "citation-highlight-styles";
     style.textContent = `
         @keyframes outline-fade-out {
-          0% { outline-color: ${mainColor}; }
-          30% { outline-color: ${mainColor}b3; }
-          60% { outline-color: ${mainColor}66; }
-          85% { outline-color: ${mainColor}1a; }
+          0% { outline-color: var(--color-main-100); }
+          30% { outline-color: color-mix(in srgb, var(--color-main-100) 70%, transparent); }
+          60% { outline-color: color-mix(in srgb, var(--color-main-100) 40%, transparent); }
+          85% { outline-color: color-mix(in srgb, var(--color-main-100) 10%, transparent); }
           100% { outline-color: transparent; }
         }
       `;

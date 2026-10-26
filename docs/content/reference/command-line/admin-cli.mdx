@@ -1,0 +1,32 @@
+---
+title: Admin CLI
+sidebar_position: 1
+---
+
+import { CliCommands } from "@site/src/components/Reference/tools";
+
+# Admin CLI
+
+`python -m scripts.workspace_admin`, in `backend-api/backend/scripts/workspace_admin.py`, manages entities, users, data backends and widget plugins. It runs inside the API container and works on the database itself: it sends no request to the API. `--json` prints the outcome of a command as JSON, and a refused action prints why and exits with 1.
+
+The page is generated from the parser that the script builds, through `backend-api/backend/tests/fixtures/admin_cli.json`, which a test keeps equal to it.
+
+## entity
+
+<CliCommands noun="entity" />
+
+## user
+
+<CliCommands noun="user" />
+
+## data-backend
+
+<CliCommands noun="data-backend" />
+
+## provision
+
+<CliCommands noun="provision" />
+
+## plugin
+
+<CliCommands noun="plugin" />

@@ -1,0 +1,22 @@
+---
+title: Ines and its MCP server
+sidebar_position: 3
+---
+
+import { ProcessEnvTable, UnreadEnvExample } from "@site/src/components/Reference/config";
+
+# Ines and its MCP server
+
+The agent and its MCP server read their settings from the environment and from `agent/.env`. Compose passes the file to both services.
+
+## Variables read by name
+
+The variables that the code under `agent/src` and `agent/mcp-server/src` reads as `process.env.NAME`. A description comes from the comment above the variable in `agent/.env.example`.
+
+<ProcessEnvTable />
+
+## In `.env.example` and not read by name
+
+Variables that `agent/.env.example` lists and that the code does not read as `process.env.NAME`.
+
+<UnreadEnvExample />

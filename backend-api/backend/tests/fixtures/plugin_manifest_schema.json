@@ -1,0 +1,1038 @@
+{
+  "$defs": {
+    "Backend": {
+      "additionalProperties": false,
+      "properties": {
+        "protocol": {
+          "const": 1,
+          "title": "Protocol",
+          "type": "integer"
+        },
+        "routes": {
+          "items": {
+            "$ref": "#/$defs/Route"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Routes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "protocol",
+        "routes"
+      ],
+      "title": "Backend",
+      "type": "object"
+    },
+    "Contributes": {
+      "additionalProperties": false,
+      "properties": {
+        "widgets": {
+          "items": {
+            "$ref": "#/$defs/Widget"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Widgets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "widgets"
+      ],
+      "title": "Contributes",
+      "type": "object"
+    },
+    "DataSource": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "purpose": {
+          "maxLength": 300,
+          "title": "Purpose",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "purpose"
+      ],
+      "title": "DataSource",
+      "type": "object"
+    },
+    "Entry": {
+      "additionalProperties": false,
+      "properties": {
+        "module": {
+          "title": "Module",
+          "type": "string"
+        },
+        "styles": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Styles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "module"
+      ],
+      "title": "Entry",
+      "type": "object"
+    },
+    "Grid": {
+      "additionalProperties": false,
+      "properties": {
+        "h": {
+          "default": 12,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "H",
+          "type": "integer"
+        },
+        "minH": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minh"
+        },
+        "minW": {
+          "anyOf": [
+            {
+              "maximum": 40,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minw"
+        },
+        "w": {
+          "default": 20,
+          "maximum": 40,
+          "minimum": 1,
+          "title": "W",
+          "type": "integer"
+        }
+      },
+      "title": "Grid",
+      "type": "object"
+    },
+    "Handle": {
+      "additionalProperties": false,
+      "properties": {
+        "definition": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Definition"
+        },
+        "response": {
+          "$ref": "#/$defs/Response"
+        },
+        "type": {
+          "pattern": "^[a-z][a-z0-9_-]{1,31}$",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "Handle",
+      "type": "object"
+    },
+    "HostTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "afm": {
+          "maxLength": 16,
+          "title": "Afm",
+          "type": "string"
+        },
+        "api": {
+          "title": "Api",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "api",
+        "afm"
+      ],
+      "title": "HostTarget",
+      "type": "object"
+    },
+    "ModelSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "traits": {
+          "maxProperties": 64,
+          "patternProperties": {
+            "^[A-Za-z_][A-Za-z0-9_]{0,63}$": {
+              "$ref": "#/$defs/TraitBinding"
+            }
+          },
+          "title": "Traits",
+          "type": "object"
+        }
+      },
+      "title": "ModelSpec",
+      "type": "object"
+    },
+    "Proxy": {
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "maxProperties": 32,
+          "patternProperties": {
+            "^[a-z][a-z0-9_]{0,63}$": {
+              "$ref": "#/$defs/ProxyArg"
+            }
+          },
+          "title": "Args",
+          "type": "object"
+        },
+        "body": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "maxProperties": 32,
+              "propertyNames": {
+                "maxLength": 128,
+                "minLength": 1
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Body"
+        },
+        "headers": {
+          "additionalProperties": {
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "maxProperties": 16,
+          "title": "Headers",
+          "type": "object"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "method": {
+          "default": "GET",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "query": {
+          "additionalProperties": {
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "maxProperties": 32,
+          "propertyNames": {
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "title": "Query",
+          "type": "object"
+        },
+        "response": {
+          "$ref": "#/$defs/ProxyResponse"
+        },
+        "url": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url"
+      ],
+      "title": "Proxy",
+      "type": "object"
+    },
+    "ProxyArg": {
+      "additionalProperties": false,
+      "properties": {
+        "maxLength": {
+          "default": 256,
+          "maximum": 2048,
+          "minimum": 1,
+          "title": "Maxlength",
+          "type": "integer"
+        },
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maximum"
+        },
+        "minimum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minimum"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "number",
+            "boolean",
+            "enum"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Values"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "ProxyArg",
+      "type": "object"
+    },
+    "ProxyResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "accepts": {
+          "items": {
+            "enum": [
+              "application/json",
+              "text/plain",
+              "text/csv",
+              "text/markdown",
+              "text/html",
+              "application/xml"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Accepts",
+          "type": "array"
+        },
+        "maxBytes": {
+          "default": 1048576,
+          "maximum": 26214400,
+          "minimum": 1,
+          "title": "Maxbytes",
+          "type": "integer"
+        },
+        "timeoutMs": {
+          "default": 10000,
+          "maximum": 30000,
+          "minimum": 100,
+          "title": "Timeoutms",
+          "type": "integer"
+        }
+      },
+      "title": "ProxyResponse",
+      "type": "object"
+    },
+    "Publisher": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "pattern": "^https://[^\\s]{1,200}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Publisher",
+      "type": "object"
+    },
+    "Response": {
+      "additionalProperties": false,
+      "properties": {
+        "accepts": {
+          "const": "json",
+          "default": "json",
+          "title": "Accepts",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Description",
+          "type": "string"
+        },
+        "schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Schema"
+        }
+      },
+      "title": "Response",
+      "type": "object"
+    },
+    "Route": {
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "maxProperties": 32,
+          "patternProperties": {
+            "^[a-z][a-z0-9_]{0,63}$": {
+              "$ref": "#/$defs/RouteArg"
+            }
+          },
+          "title": "Args",
+          "type": "object"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "response": {
+          "$ref": "#/$defs/RouteResponse"
+        },
+        "secrets": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Secrets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Route",
+      "type": "object"
+    },
+    "RouteArg": {
+      "additionalProperties": false,
+      "properties": {
+        "maxLength": {
+          "default": 256,
+          "maximum": 32768,
+          "minimum": 1,
+          "title": "Maxlength",
+          "type": "integer"
+        },
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maximum"
+        },
+        "minimum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minimum"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "enum": [
+            "string",
+            "number",
+            "boolean",
+            "enum"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "values": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Values"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "RouteArg",
+      "type": "object"
+    },
+    "RouteResponse": {
+      "additionalProperties": false,
+      "properties": {
+        "maxBytes": {
+          "default": 1048576,
+          "maximum": 5242880,
+          "minimum": 1,
+          "title": "Maxbytes",
+          "type": "integer"
+        },
+        "timeoutMs": {
+          "default": 10000,
+          "maximum": 30000,
+          "minimum": 100,
+          "title": "Timeoutms",
+          "type": "integer"
+        }
+      },
+      "title": "RouteResponse",
+      "type": "object"
+    },
+    "Secret": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "purpose": {
+          "maxLength": 300,
+          "title": "Purpose",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "purpose"
+      ],
+      "title": "Secret",
+      "type": "object"
+    },
+    "Server": {
+      "additionalProperties": false,
+      "properties": {
+        "backend": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Backend"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "network": {
+          "items": {
+            "maxLength": 255,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Network",
+          "type": "array"
+        },
+        "proxies": {
+          "items": {
+            "$ref": "#/$defs/Proxy"
+          },
+          "maxItems": 32,
+          "title": "Proxies",
+          "type": "array"
+        }
+      },
+      "title": "Server",
+      "type": "object"
+    },
+    "SettingsSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "defaults": {
+          "additionalProperties": true,
+          "title": "Defaults",
+          "type": "object"
+        },
+        "schema": {
+          "additionalProperties": true,
+          "title": "Schema",
+          "type": "object"
+        }
+      },
+      "title": "SettingsSpec",
+      "type": "object"
+    },
+    "TraitBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "access": {
+          "default": "read",
+          "enum": [
+            "read",
+            "readwrite"
+          ],
+          "title": "Access",
+          "type": "string"
+        },
+        "bind": {
+          "maxLength": 80,
+          "title": "Bind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "bind"
+      ],
+      "title": "TraitBinding",
+      "type": "object"
+    },
+    "Widget": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "anyOf": [
+            {
+              "maxLength": 60,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Description",
+          "type": "string"
+        },
+        "grid": {
+          "$ref": "#/$defs/Grid"
+        },
+        "handles": {
+          "items": {
+            "$ref": "#/$defs/Handle"
+          },
+          "maxItems": 8,
+          "title": "Handles",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^[a-z][a-z0-9_-]{0,47}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "params": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "maxItems": 32,
+          "title": "Params",
+          "type": "array"
+        },
+        "permissions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Permissions",
+          "type": "array"
+        },
+        "server": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WidgetServer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "settings": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SettingsSpec"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "standalone": {
+          "default": false,
+          "title": "Standalone",
+          "type": "boolean"
+        },
+        "subCategory": {
+          "anyOf": [
+            {
+              "maxLength": 60,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subcategory"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "Widget",
+      "type": "object"
+    },
+    "WidgetServer": {
+      "additionalProperties": false,
+      "properties": {
+        "proxies": {
+          "items": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Proxies",
+          "type": "array"
+        },
+        "routes": {
+          "items": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Routes",
+          "type": "array"
+        }
+      },
+      "title": "WidgetServer",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "adminSettings": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SettingsSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "checksum": {
+      "pattern": "^sha256-[A-Za-z0-9_-]{43}$",
+      "title": "Checksum",
+      "type": "string"
+    },
+    "contributes": {
+      "$ref": "#/$defs/Contributes"
+    },
+    "csp": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Csp"
+    },
+    "cspNotes": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "maxLength": 300,
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cspnotes"
+    },
+    "dataSources": {
+      "items": {
+        "$ref": "#/$defs/DataSource"
+      },
+      "maxItems": 16,
+      "title": "Datasources",
+      "type": "array"
+    },
+    "description": {
+      "default": "",
+      "maxLength": 300,
+      "title": "Description",
+      "type": "string"
+    },
+    "entry": {
+      "$ref": "#/$defs/Entry"
+    },
+    "host": {
+      "$ref": "#/$defs/HostTarget"
+    },
+    "icon": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Icon"
+    },
+    "id": {
+      "pattern": "^[a-z][a-z0-9-]{1,47}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "identity": {
+      "default": "none",
+      "enum": [
+        "none",
+        "pseudonymous"
+      ],
+      "title": "Identity",
+      "type": "string"
+    },
+    "manifestVersion": {
+      "const": 1,
+      "title": "Manifestversion",
+      "type": "integer"
+    },
+    "name": {
+      "maxLength": 80,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "publisher": {
+      "$ref": "#/$defs/Publisher"
+    },
+    "secrets": {
+      "items": {
+        "$ref": "#/$defs/Secret"
+      },
+      "maxItems": 16,
+      "title": "Secrets",
+      "type": "array"
+    },
+    "server": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Server"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "signatures": {
+      "default": null,
+      "title": "Signatures",
+      "type": "null"
+    },
+    "version": {
+      "pattern": "^(0|[1-9]\\d{0,5})\\.(0|[1-9]\\d{0,5})\\.(0|[1-9]\\d{0,5})$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "manifestVersion",
+    "id",
+    "version",
+    "name",
+    "publisher",
+    "host",
+    "checksum",
+    "entry",
+    "contributes"
+  ],
+  "title": "Manifest",
+  "type": "object"
+}

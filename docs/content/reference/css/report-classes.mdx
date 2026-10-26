@@ -1,0 +1,36 @@
+---
+title: Report classes
+sidebar_position: 11
+---
+
+import { ReportColours, ReportComponents } from "@site/src/components/Reference/theme";
+import { SelectorTable } from "@site/src/components/Reference/css";
+
+# Report classes
+
+The Copilot's HTML report skill, `agent/src/skills/html-report.md`, gives the model one stylesheet and a library of components for building a report. A report is a single HTML document that the Copilot shows as an artifact (see [HTML widgets and artifacts](html-documents.mdx)). The other two HTML skills, `html-table.md` and `html-chart.md`, contain no stylesheet.
+
+The skill instructs the model to produce a document that:
+
+- is self-contained, with inline CSS, inline SVG charts and no external dependencies, and loads no font or image from the network;
+- uses the font family `Montserrat, -apple-system, "Segoe UI", sans-serif`, although the stylesheet's `body` rule sets `Montserrat, sans-serif`;
+- sizes the page for A4 with `@page { size: A4 portrait; margin: 15mm 15mm 25mm 20mm }` and breaks pages with the `.page-break` class;
+- prints with `print-color-adjust: exact` under `@media print`.
+
+A `.page` is 170 mm wide. The body text is 9.5 pt with a line height of 1.35, black on white.
+
+The tables on this page are generated from the skill file.
+
+## Components
+
+<ReportComponents />
+
+## Colours
+
+The skill's colour reference. The same values appear as literals in the stylesheet.
+
+<ReportColours />
+
+## Rules of the stylesheet
+
+<SelectorTable source="report" />

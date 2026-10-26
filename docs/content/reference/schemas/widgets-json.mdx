@@ -1,0 +1,16 @@
+---
+title: widgets.json
+sidebar_position: 1
+---
+
+import { SchemaDocs } from "@site/src/components/Reference/schemas";
+
+# widgets.json
+
+The JSON Schema (draft-07) that validates the `widgets.json` of a backend. The file is an object keyed by widget id, and each value is one of the `Widget_*` definitions, chosen by its `type`.
+
+The Workspace composes one schema per organization from the built-in types and the types of the widget plugins that the organization has enabled, and serves it to signed-in users at `GET /app/widget-plugins/widgets-schema`. This page lists the schema for the built-in types only: `markdown`, `html`, `newsfeed`, `pdf` and `iframe`. `backend-api/backend/api/widget_plugins/widgets_schema.py` composes it from `widgets_schema_kit.json`.
+
+The page is generated from `backend-api/backend/tests/fixtures/widgets_schema.json`, which a test keeps equal to the composed schema.
+
+<SchemaDocs set="widgets" />
