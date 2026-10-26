@@ -231,9 +231,8 @@ it does not answer.
 
 - The workflows in the root `.github/workflows/` are the ones GitHub Actions runs: the checks on pull requests
   (`frontend-checks.yml`, `backend-checks.yml`, `pr-description.yml`), the end-to-end tests (`e2e.yml`), the Docker images and build check (`backend-image.yml`,
-  `frontend-image.yml`, `pr-build-check.yml`), the deployment to the dev environment (`deploy-dev.yml`, which builds
-  the images and deploys them) and the production frontend deployment (`prod-deploy.yml`). The app's settings are
+  `frontend-image.yml`, `pr-build-check.yml`) and the deployment to the dev environment (`deploy-dev.yml`, which builds
+  the images and deploys them). The app's settings are
   defaults in its code; the values the dev environment sets differently are in the infrastructure repository. Each deployment file's header lists the repository variables and
-  secrets it reads. The `.github/workflows/` files left inside `frontend/` are kept for reference; GitHub Actions only
-  executes workflows from a repository's root `.github/` directory, so none of them run here as-is.
+  secrets it reads.
 - Licensed under Apache-2.0 (see [LICENSE](LICENSE)). Individual components may carry additional notices in their own directories.
