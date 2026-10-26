@@ -1570,3 +1570,49 @@ class AppSession(BaseModel):
     usage: UsageGet | None = None
     copilot_keys: CopilotKeysStatus
     user: SessionUser
+
+
+# --- Plugins ---------------------------------------------------------------------------
+
+# The plugin host's registry ids: lowercase kebab-case (frontend lib/plugins/registry.ts)
+PLUGIN_ID_PATTERN = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+PLUGIN_ID_LENGTH = 100
+
+
+class PluginReleaseFile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    bytes: int = Field(ge=0)
+
+
+class PluginReleaseSource(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    commit: str = Field(max_length=100)
+
+
+class PluginInstallationPut(BaseModel):
+    """The released version a superuser installs (approves), as the plugin host's release
+    index describes it: what the web app reviewed is what gets pinned."""
+
+    model_config = get_camel_config(extra="forbid")
+    version: str = Field(pattern=r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$", max_length=64)
+    digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    files: dict[str, PluginReleaseFile] = Field(max_length=5000)
+    # What the plugin asks for (network origins, storage, downloads, popups); the web app
+    # validates its shape against the registry's
+    requests: dict[str, Any] | None = None
+    release_notes: str | None = Field(None, max_length=20000)
+    source: PluginReleaseSource | None = None
+
+
+class PluginInstallationReturn(PluginInstallationPut):
+    model_config = get_camel_config(extra="ignore")
+    plugin_id: str
+    approved_at: datetime
+
+
+class EntityPluginsReturn(BaseModel):
+    """The installed plugins enabled for the user's organization."""
+
+    model_config = get_camel_config()
+    plugin_ids: list[str]

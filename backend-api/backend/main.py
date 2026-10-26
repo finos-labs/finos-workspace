@@ -23,6 +23,7 @@ from routers import (
     admin,
     auth,
     entity,
+    plugins,
 )
 from routers.app import (
     dash,
@@ -105,6 +106,7 @@ routers = [
     workspace_tools.router,
     entity.router,
     admin.router,
+    plugins.router,
 ]
 
 

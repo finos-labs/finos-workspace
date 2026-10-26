@@ -22,6 +22,7 @@ from .entity_models import (
     entity_get_supreme,
 )
 from .general_models import Log
+from .plugin_models import EntityPlugin, PluginInstallation
 from .user_models import (
     Login,
     PersonalAccessToken,
