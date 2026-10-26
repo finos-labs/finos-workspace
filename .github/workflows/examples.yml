@@ -1,0 +1,61 @@
+name: Example plugins
+
+on:
+  pull_request:
+    paths:
+      - "docs/examples/**"
+      - ".github/workflows/examples.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  plotly-charts:
+    name: Plotly charts
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs/examples/plotly-charts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npm test
+
+  sql-explorer:
+    name: SQL explorer
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: docs/examples/sql-explorer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: |
+          python -m venv .venv
+          .venv/bin/pip install -r backend/requirements.txt pytest==9.1.1 httpx2==2.13.1
+      - name: Start a Postgres to test against
+        run: |
+          password="$(openssl rand -hex 24)"
+          echo "::add-mask::$password"
+          docker run -d --name explorer-test-postgres -p 127.0.0.1:55432:5432 -e POSTGRES_PASSWORD="$password" postgres:18.6
+          echo "postgresql://postgres:$password@127.0.0.1:55432/postgres" > "$RUNNER_TEMP/postgres_url"
+          echo "SQL_EXPLORER_TEST_POSTGRES_FILE=$RUNNER_TEMP/postgres_url" >> "$GITHUB_ENV"
+          until docker exec explorer-test-postgres pg_isready -q -h 127.0.0.1 -U postgres; do sleep 1; done
+      - run: npm test

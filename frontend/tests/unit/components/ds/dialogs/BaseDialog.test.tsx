@@ -60,8 +60,6 @@ vi.mock("./Dialog", () => {
     },
     DialogTrigger: ({
       children,
-      asChild,
-      onClick,
     }: {
       children?: ReactNode;
       asChild?: boolean;

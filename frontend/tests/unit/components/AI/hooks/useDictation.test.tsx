@@ -82,7 +82,10 @@ beforeEach(() => {
   sent = [];
   answer = () => Response.json({ text: " Show me the revenue of Apple. " });
   getUserMedia = vi.fn(async () => ({ getTracks: () => [{ stop: stopTrack }] }));
-  Object.defineProperty(navigator, "mediaDevices", { value: { getUserMedia }, configurable: true });
+  Object.defineProperty(navigator, "mediaDevices", {
+    value: { getUserMedia },
+    configurable: true,
+  });
   vi.stubGlobal("MediaRecorder", FakeRecorder);
   vi.stubGlobal("AudioContext", FakeAudioContext);
   vi.stubGlobal("OfflineAudioContext", FakeOfflineAudioContext);
@@ -143,7 +146,9 @@ describe("useDictation", () => {
     await act(() => result.current.start());
 
     expect(result.current.state).toBe("idle");
-    expect(toast.error).toHaveBeenCalledWith("Allow the microphone in your browser to use voice input.");
+    expect(toast.error).toHaveBeenCalledWith(
+      "Allow the microphone in your browser to use voice input.",
+    );
     expect(sent).toHaveLength(0);
   });
 
@@ -165,7 +170,8 @@ describe("useDictation", () => {
   });
 
   it("says when the agent could not transcribe", async () => {
-    answer = () => Response.json({ error: "Speech to text failed. Try again." }, { status: 502 });
+    answer = () =>
+      Response.json({ error: "Speech to text failed. Try again." }, { status: 502 });
     const onText = await dictate();
 
     expect(onText).not.toHaveBeenCalled();

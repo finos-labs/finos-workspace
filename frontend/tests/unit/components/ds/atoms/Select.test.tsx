@@ -108,7 +108,7 @@ vi.mock("@radix-ui/react-select", () => {
     },
     Portal: ({ children }: { children?: ReactNode }) => {
       const { open } = React.useContext(SelectContext);
-      return open ? <>{children}</> : null;
+      return open ? children : null;
     },
     Content: ({
       children,

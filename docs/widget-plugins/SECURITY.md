@@ -146,18 +146,20 @@ The Playwright specs generate their packages into a temporary plugins directory 
 | An ungranted or unknown command, `core:mcp:call`, reading the widget's `mcp_tool`, a `javascript:` link, markup in a notice, prototype pollution | Authority, host-only link, plain text, separate realm | `plugins.spec.ts`, plugin-cannot-leave-its-frame |
 | Forged violation events; requests to 250 origins | `isTrusted`; caps; text only | `plugin-admin-journey.spec.ts` |
 | Messages outside the protocol; protocol violations | Schema; three in ten seconds end the frame | `frame.test.ts`, `authority.test.ts` |
+| Another window announcing itself as the frame; a frame asking again for a port; a message on another frame's port or through `window.postMessage` | One port, handed once to the frame's own window; the caller is its port | `PluginFrame.test.tsx` |
+| A frame that navigates itself | A second `load` ends it | `PluginFrame.test.tsx`, `plugins.spec.ts`, a-frame-that-navigates-itself-is-ended |
+| A frame that stops answering | Three missed pings end it; a hidden frame is not pinged | `PluginFrame.test.tsx` |
 | A frame document with more than the shell, or without its policy first | The document's shape; the canary | `frame.test.ts`, `shell.conformance.test.ts` |
 | Symbolic links, odd names, too many or too large files, an id or version unlike its directory, a wrong checksum or pin, a served path outside the version, `backend/` served | Discovery and file delivery | `test_widget_plugin_rules.py` |
 | Policy sources that are too broad, private or insecure, with and without confirmations | The validator | `csp-cases.json`, in `csp.test.ts` and `test_widget_plugin_rules.py` |
 | An organization admin approves or sets a secret; a role of another organization grants access | Authorization | `test_widget_plugins_api.py`, `test_widget_plugin_server_side.py` |
-| A file edited after approval; a new version; a version whose files changed before approval; an old digest | The API re-hashes a file whose size or modification time changed, and the browser checks every file against the approved digest; explicit approval bound to the reviewed digest | `test_widget_plugins_api.py`, `plugin-admin-journey.spec.ts` |
+| A file edited after approval; a new version; a version whose files changed before approval; an old digest | The API re-hashes a file whose size or modification time changed, and the browser checks every file against the approved digest; explicit approval bound to the reviewed digest | `test_widget_plugins_api.py`, `plugin-admin-journey.spec.ts`, `bundle.test.ts`, `plugins.spec.ts`, the-host-refuses-files-that-differ-from-the-approved-version |
 | A route that uploads or writes plugin files | None exists | `test_widget_plugins_api.py` |
 | A proxy aimed at a private or metadata address, a name that resolves to several addresses or changes, a bad certificate; arguments or secrets outside their places | Template rules and the outbound guard | `test_widget_plugin_proxies.py` |
 | Reading a secret from the frame or the page; calls after narrowing or revoking; calls by users without access | Server-side secrets; availability on every call | `test_widget_plugin_server_side.py`, `plugin-proxies.spec.ts` |
 | A backend reading data the user may not read, with a forged, changed or expired token, or after a version change | Token, broker and identity check | `test_widget_plugin_backends.py`, `plugin-backends.spec.ts` |
 | A widget citing another backend's MCP server as its own | The link resolves against its own backend | `backendConnector.invalidItems.test.ts`, `mcpLink.test.ts` |
-
-Not covered by an automated test: a frame navigating itself, the watchdog ending a frozen frame, two frames claiming each other's port, the host refusing bytes whose digest differs (the server's refusal is tested), and a backend container's isolation, which the deployer provides.
+| A backend reaching the Workspace API or the internet, writing its image or data, or running privileged | In the SQL explorer example's deployment: internal networks, a gateway that forwards only the API's calls, a read-only container without capabilities or root | `docs/examples/sql-explorer/tests/test_isolation.py`, run by `examples.yml` |
 
 ## 9. Why a frame, and the install path
 

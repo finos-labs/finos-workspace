@@ -57,13 +57,13 @@ vi.mock("@radix-ui/react-popover", () => {
         </PopoverContext.Provider>
       );
     },
-    Trigger: ({ children, asChild }: { children?: ReactNode; asChild?: boolean }) => {
+    Trigger: ({ children }: { children?: ReactNode; asChild?: boolean }) => {
       const { setOpen } = React.useContext(PopoverContext);
       return <div onClick={() => setOpen(true)}>{children}</div>;
     },
     Portal: ({ children }: { children?: ReactNode }) => {
       const { open } = React.useContext(PopoverContext);
-      return open ? <>{children}</> : null;
+      return open ? children : null;
     },
     Content: React.forwardRef(
       (

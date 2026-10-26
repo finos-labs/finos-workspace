@@ -161,9 +161,7 @@ describe("CopilotContext", () => {
   it("renders the copilot settings button", () => {
     render(<CopilotContext />);
 
-    expect(
-      screen.getByRole("button", { name: "Agent settings" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Agent settings" })).toBeInTheDocument();
   });
 
   describe("an agent that offers its models through its model setting", () => {

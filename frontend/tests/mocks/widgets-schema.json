@@ -20,14 +20,7 @@
   "additionalProperties": {
     "$ref": "#/definitions/Widget"
   },
-  "x-types": [
-    "markdown",
-    "html",
-    "newsfeed",
-    "pdf",
-    "iframe",
-    "test_chart"
-  ],
+  "x-types": ["markdown", "html", "newsfeed", "pdf", "iframe", "test_chart"],
   "definitions": {
     "ParamDef": {
       "allOf": [
@@ -119,9 +112,7 @@
                         ]
                       }
                     },
-                    "required": [
-                      "label"
-                    ],
+                    "required": ["label"],
                     "additionalProperties": false
                   },
                   "description": "The choices of a dropdown, as `{ label, value }`"
@@ -132,11 +123,7 @@
                 },
                 "in": {
                   "type": "string",
-                  "enum": [
-                    "query",
-                    "header",
-                    "body"
-                  ],
+                  "enum": ["query", "header", "body"],
                   "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none"
                 },
                 "type": {
@@ -175,10 +162,7 @@
                   "description": "The value is code in this language, edited in a code editor"
                 }
               },
-              "required": [
-                "paramName",
-                "type"
-              ],
+              "required": ["paramName", "type"],
               "additionalProperties": false
             },
             {
@@ -264,9 +248,7 @@
                         ]
                       }
                     },
-                    "required": [
-                      "label"
-                    ],
+                    "required": ["label"],
                     "additionalProperties": false
                   },
                   "description": "The choices of a dropdown, as `{ label, value }`"
@@ -277,11 +259,7 @@
                 },
                 "in": {
                   "type": "string",
-                  "enum": [
-                    "query",
-                    "header",
-                    "body"
-                  ],
+                  "enum": ["query", "header", "body"],
                   "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none"
                 },
                 "type": {
@@ -301,10 +279,7 @@
                   ]
                 }
               },
-              "required": [
-                "paramName",
-                "type"
-              ],
+              "required": ["paramName", "type"],
               "additionalProperties": false
             },
             {
@@ -390,9 +365,7 @@
                         ]
                       }
                     },
-                    "required": [
-                      "label"
-                    ],
+                    "required": ["label"],
                     "additionalProperties": false
                   },
                   "description": "The choices of a dropdown, as `{ label, value }`"
@@ -403,11 +376,7 @@
                 },
                 "in": {
                   "type": "string",
-                  "enum": [
-                    "query",
-                    "header",
-                    "body"
-                  ],
+                  "enum": ["query", "header", "body"],
                   "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none"
                 },
                 "type": {
@@ -427,10 +396,7 @@
                   ]
                 }
               },
-              "required": [
-                "paramName",
-                "type"
-              ],
+              "required": ["paramName", "type"],
               "additionalProperties": false
             },
             {
@@ -516,9 +482,7 @@
                         ]
                       }
                     },
-                    "required": [
-                      "label"
-                    ],
+                    "required": ["label"],
                     "additionalProperties": false
                   },
                   "description": "The choices of a dropdown, as `{ label, value }`"
@@ -529,11 +493,7 @@
                 },
                 "in": {
                   "type": "string",
-                  "enum": [
-                    "query",
-                    "header",
-                    "body"
-                  ],
+                  "enum": ["query", "header", "body"],
                   "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none"
                 },
                 "type": {
@@ -553,10 +513,7 @@
                   ]
                 }
               },
-              "required": [
-                "paramName",
-                "type"
-              ],
+              "required": ["paramName", "type"],
               "additionalProperties": false
             },
             {
@@ -642,9 +599,7 @@
                         ]
                       }
                     },
-                    "required": [
-                      "label"
-                    ],
+                    "required": ["label"],
                     "additionalProperties": false
                   },
                   "description": "The choices of a dropdown, as `{ label, value }`"
@@ -655,11 +610,7 @@
                 },
                 "in": {
                   "type": "string",
-                  "enum": [
-                    "query",
-                    "header",
-                    "body"
-                  ],
+                  "enum": ["query", "header", "body"],
                   "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none"
                 },
                 "type": {
@@ -687,10 +638,7 @@
                   ]
                 }
               },
-              "required": [
-                "paramName",
-                "type"
-              ],
+              "required": ["paramName", "type"],
               "additionalProperties": false
             },
             {
@@ -776,9 +724,7 @@
                         ]
                       }
                     },
-                    "required": [
-                      "label"
-                    ],
+                    "required": ["label"],
                     "additionalProperties": false
                   },
                   "description": "The choices of a dropdown, as `{ label, value }`"
@@ -789,11 +735,7 @@
                 },
                 "in": {
                   "type": "string",
-                  "enum": [
-                    "query",
-                    "header",
-                    "body"
-                  ],
+                  "enum": ["query", "header", "body"],
                   "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none"
                 },
                 "type": {
@@ -812,10 +754,7 @@
                   ]
                 }
               },
-              "required": [
-                "paramName",
-                "type"
-              ],
+              "required": ["paramName", "type"],
               "additionalProperties": false
             },
             {
@@ -901,9 +840,7 @@
                         ]
                       }
                     },
-                    "required": [
-                      "label"
-                    ],
+                    "required": ["label"],
                     "additionalProperties": false
                   },
                   "description": "The choices of a dropdown, as `{ label, value }`"
@@ -914,11 +851,7 @@
                 },
                 "in": {
                   "type": "string",
-                  "enum": [
-                    "query",
-                    "header",
-                    "body"
-                  ],
+                  "enum": ["query", "header", "body"],
                   "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none"
                 },
                 "type": {
@@ -944,10 +877,7 @@
                   "description": "The default value"
                 }
               },
-              "required": [
-                "paramName",
-                "type"
-              ],
+              "required": ["paramName", "type"],
               "additionalProperties": false
             },
             {
@@ -1033,9 +963,7 @@
                         ]
                       }
                     },
-                    "required": [
-                      "label"
-                    ],
+                    "required": ["label"],
                     "additionalProperties": false
                   },
                   "description": "The choices of a dropdown, as `{ label, value }`"
@@ -1046,11 +974,7 @@
                 },
                 "in": {
                   "type": "string",
-                  "enum": [
-                    "query",
-                    "header",
-                    "body"
-                  ],
+                  "enum": ["query", "header", "body"],
                   "description": "Where the value goes: `query` (the default), `header` or `body` (which needs the method POST). A param in a path placeholder declares none"
                 },
                 "type": {
@@ -1106,10 +1030,7 @@
                 },
                 "optionsMethod": {
                   "type": "string",
-                  "enum": [
-                    "GET",
-                    "POST"
-                  ],
+                  "enum": ["GET", "POST"],
                   "description": "How the options are requested: GET (the default) or POST"
                 },
                 "optionsParams": {
@@ -1136,10 +1057,7 @@
                   "description": "Values for the options request: a `{name}` placeholder of optionsEndpoint takes one, the rest go in the query (GET) or a JSON body (POST). `$name` is the current value of the param `name`"
                 }
               },
-              "required": [
-                "paramName",
-                "type"
-              ],
+              "required": ["paramName", "type"],
               "additionalProperties": false
             },
             {
@@ -1184,10 +1102,7 @@
                 },
                 "method": {
                   "type": "string",
-                  "enum": [
-                    "POST",
-                    "PUT"
-                  ],
+                  "enum": ["POST", "PUT"],
                   "description": "How the form is sent: POST (the default) or PUT"
                 },
                 "inputParams": {
@@ -1281,9 +1196,7 @@
                                   ]
                                 }
                               },
-                              "required": [
-                                "label"
-                              ],
+                              "required": ["label"],
                               "additionalProperties": false
                             },
                             "description": "The choices of a dropdown, as `{ label, value }`"
@@ -1308,10 +1221,7 @@
                             ]
                           }
                         },
-                        "required": [
-                          "paramName",
-                          "type"
-                        ],
+                        "required": ["paramName", "type"],
                         "additionalProperties": false
                       },
                       {
@@ -1397,9 +1307,7 @@
                                   ]
                                 }
                               },
-                              "required": [
-                                "label"
-                              ],
+                              "required": ["label"],
                               "additionalProperties": false
                             },
                             "description": "The choices of a dropdown, as `{ label, value }`"
@@ -1424,10 +1332,7 @@
                             ]
                           }
                         },
-                        "required": [
-                          "paramName",
-                          "type"
-                        ],
+                        "required": ["paramName", "type"],
                         "additionalProperties": false
                       },
                       {
@@ -1513,9 +1418,7 @@
                                   ]
                                 }
                               },
-                              "required": [
-                                "label"
-                              ],
+                              "required": ["label"],
                               "additionalProperties": false
                             },
                             "description": "The choices of a dropdown, as `{ label, value }`"
@@ -1548,10 +1451,7 @@
                             ]
                           }
                         },
-                        "required": [
-                          "paramName",
-                          "type"
-                        ],
+                        "required": ["paramName", "type"],
                         "additionalProperties": false
                       },
                       {
@@ -1637,9 +1537,7 @@
                                   ]
                                 }
                               },
-                              "required": [
-                                "label"
-                              ],
+                              "required": ["label"],
                               "additionalProperties": false
                             },
                             "description": "The choices of a dropdown, as `{ label, value }`"
@@ -1663,10 +1561,7 @@
                             ]
                           }
                         },
-                        "required": [
-                          "paramName",
-                          "type"
-                        ],
+                        "required": ["paramName", "type"],
                         "additionalProperties": false
                       },
                       {
@@ -1752,9 +1647,7 @@
                                   ]
                                 }
                               },
-                              "required": [
-                                "label"
-                              ],
+                              "required": ["label"],
                               "additionalProperties": false
                             },
                             "description": "The choices of a dropdown, as `{ label, value }`"
@@ -1785,10 +1678,7 @@
                             ]
                           }
                         },
-                        "required": [
-                          "paramName",
-                          "type"
-                        ],
+                        "required": ["paramName", "type"],
                         "additionalProperties": false
                       },
                       {
@@ -1874,9 +1764,7 @@
                                   ]
                                 }
                               },
-                              "required": [
-                                "label"
-                              ],
+                              "required": ["label"],
                               "additionalProperties": false
                             },
                             "description": "The choices of a dropdown, as `{ label, value }`"
@@ -1915,10 +1803,7 @@
                           },
                           "optionsMethod": {
                             "type": "string",
-                            "enum": [
-                              "GET",
-                              "POST"
-                            ],
+                            "enum": ["GET", "POST"],
                             "description": "How the options are requested: GET (the default) or POST"
                           },
                           "optionsParams": {
@@ -1945,10 +1830,7 @@
                             "description": "Values for the options request: a `{name}` placeholder of optionsEndpoint takes one, the rest go in the query (GET) or a JSON body (POST). `$name` is the current value of the param `name`"
                           }
                         },
-                        "required": [
-                          "paramName",
-                          "type"
-                        ],
+                        "required": ["paramName", "type"],
                         "additionalProperties": false
                       }
                     ]
@@ -1956,11 +1838,7 @@
                   "description": "The form's fields, each like a param, with no `in`"
                 }
               },
-              "required": [
-                "type",
-                "endpoint",
-                "inputParams"
-              ],
+              "required": ["type", "endpoint", "inputParams"],
               "additionalProperties": false
             }
           ]
@@ -1968,9 +1846,7 @@
         {
           "description": "A header param's paramName is the header name: an HTTP token that a browser lets page script set and that the Workspace does not set itself; its value is printable ASCII",
           "if": {
-            "required": [
-              "in"
-            ],
+            "required": ["in"],
             "properties": {
               "in": {
                 "const": "header"
@@ -2040,10 +1916,7 @@
           "maxProperties": 32
         }
       },
-      "required": [
-        "mcp_server",
-        "tool_id"
-      ],
+      "required": ["mcp_server", "tool_id"],
       "additionalProperties": false,
       "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
     },
@@ -2062,12 +1935,7 @@
     "Widget_markdown": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "name",
-        "description",
-        "endpoint",
-        "type"
-      ],
+      "required": ["name", "description", "endpoint", "type"],
       "properties": {
         "name": {
           "type": "string",
@@ -2089,10 +1957,7 @@
         },
         "method": {
           "type": "string",
-          "enum": [
-            "GET",
-            "POST"
-          ],
+          "enum": ["GET", "POST"],
           "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
         },
         "category": {
@@ -2160,10 +2025,7 @@
               "maximum": 100
             }
           },
-          "required": [
-            "w",
-            "h"
-          ],
+          "required": ["w", "h"],
           "additionalProperties": false,
           "description": "The default size on a dashboard, in grid units: `w` of 40 columns, and `h` rows"
         },
@@ -2241,18 +2103,14 @@
         {
           "description": "Body params are sent only with \"method\": \"POST\"",
           "if": {
-            "required": [
-              "params"
-            ],
+            "required": ["params"],
             "properties": {
               "params": {
                 "contains": {
                   "anyOf": [
                     {
                       "type": "object",
-                      "required": [
-                        "in"
-                      ],
+                      "required": ["in"],
                       "properties": {
                         "in": {
                           "const": "body"
@@ -2263,9 +2121,7 @@
                       "type": "array",
                       "contains": {
                         "type": "object",
-                        "required": [
-                          "in"
-                        ],
+                        "required": ["in"],
                         "properties": {
                           "in": {
                             "const": "body"
@@ -2279,9 +2135,7 @@
             }
           },
           "then": {
-            "required": [
-              "method"
-            ],
+            "required": ["method"],
             "properties": {
               "method": {
                 "const": "POST"
@@ -2292,9 +2146,7 @@
         {
           "description": "A widget kept from the Copilot (disableRetrievalForCopilot) cannot opt in to an MCP tool",
           "if": {
-            "required": [
-              "disableRetrievalForCopilot"
-            ],
+            "required": ["disableRetrievalForCopilot"],
             "properties": {
               "disableRetrievalForCopilot": {
                 "const": true
@@ -2303,44 +2155,31 @@
           },
           "then": {
             "not": {
-              "required": [
-                "mcp_tool"
-              ]
+              "required": ["mcp_tool"]
             }
           }
         },
         {
           "description": "theme: query params the Workspace adds to this type's requests",
           "not": {
-            "required": [
-              "params"
-            ],
+            "required": ["params"],
             "properties": {
               "params": {
                 "contains": {
                   "anyOf": [
                     {
                       "type": "object",
-                      "required": [
-                        "paramName"
-                      ],
+                      "required": ["paramName"],
                       "properties": {
                         "paramName": {
-                          "enum": [
-                            "theme"
-                          ]
+                          "enum": ["theme"]
                         }
                       },
                       "not": {
-                        "required": [
-                          "in"
-                        ],
+                        "required": ["in"],
                         "properties": {
                           "in": {
-                            "enum": [
-                              "header",
-                              "body"
-                            ]
+                            "enum": ["header", "body"]
                           }
                         }
                       }
@@ -2349,26 +2188,17 @@
                       "type": "array",
                       "contains": {
                         "type": "object",
-                        "required": [
-                          "paramName"
-                        ],
+                        "required": ["paramName"],
                         "properties": {
                           "paramName": {
-                            "enum": [
-                              "theme"
-                            ]
+                            "enum": ["theme"]
                           }
                         },
                         "not": {
-                          "required": [
-                            "in"
-                          ],
+                          "required": ["in"],
                           "properties": {
                             "in": {
-                              "enum": [
-                                "header",
-                                "body"
-                              ]
+                              "enum": ["header", "body"]
                             }
                           }
                         }
@@ -2407,12 +2237,7 @@
     "Widget_html": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "name",
-        "description",
-        "endpoint",
-        "type"
-      ],
+      "required": ["name", "description", "endpoint", "type"],
       "properties": {
         "name": {
           "type": "string",
@@ -2434,10 +2259,7 @@
         },
         "method": {
           "type": "string",
-          "enum": [
-            "GET",
-            "POST"
-          ],
+          "enum": ["GET", "POST"],
           "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
         },
         "category": {
@@ -2505,10 +2327,7 @@
               "maximum": 100
             }
           },
-          "required": [
-            "w",
-            "h"
-          ],
+          "required": ["w", "h"],
           "additionalProperties": false,
           "description": "The default size on a dashboard, in grid units: `w` of 40 columns, and `h` rows"
         },
@@ -2590,18 +2409,14 @@
         {
           "description": "Body params are sent only with \"method\": \"POST\"",
           "if": {
-            "required": [
-              "params"
-            ],
+            "required": ["params"],
             "properties": {
               "params": {
                 "contains": {
                   "anyOf": [
                     {
                       "type": "object",
-                      "required": [
-                        "in"
-                      ],
+                      "required": ["in"],
                       "properties": {
                         "in": {
                           "const": "body"
@@ -2612,9 +2427,7 @@
                       "type": "array",
                       "contains": {
                         "type": "object",
-                        "required": [
-                          "in"
-                        ],
+                        "required": ["in"],
                         "properties": {
                           "in": {
                             "const": "body"
@@ -2628,9 +2441,7 @@
             }
           },
           "then": {
-            "required": [
-              "method"
-            ],
+            "required": ["method"],
             "properties": {
               "method": {
                 "const": "POST"
@@ -2641,9 +2452,7 @@
         {
           "description": "A widget kept from the Copilot (disableRetrievalForCopilot) cannot opt in to an MCP tool",
           "if": {
-            "required": [
-              "disableRetrievalForCopilot"
-            ],
+            "required": ["disableRetrievalForCopilot"],
             "properties": {
               "disableRetrievalForCopilot": {
                 "const": true
@@ -2652,45 +2461,31 @@
           },
           "then": {
             "not": {
-              "required": [
-                "mcp_tool"
-              ]
+              "required": ["mcp_tool"]
             }
           }
         },
         {
           "description": "theme and raw: query params the Workspace adds to this type's requests",
           "not": {
-            "required": [
-              "params"
-            ],
+            "required": ["params"],
             "properties": {
               "params": {
                 "contains": {
                   "anyOf": [
                     {
                       "type": "object",
-                      "required": [
-                        "paramName"
-                      ],
+                      "required": ["paramName"],
                       "properties": {
                         "paramName": {
-                          "enum": [
-                            "theme",
-                            "raw"
-                          ]
+                          "enum": ["theme", "raw"]
                         }
                       },
                       "not": {
-                        "required": [
-                          "in"
-                        ],
+                        "required": ["in"],
                         "properties": {
                           "in": {
-                            "enum": [
-                              "header",
-                              "body"
-                            ]
+                            "enum": ["header", "body"]
                           }
                         }
                       }
@@ -2699,27 +2494,17 @@
                       "type": "array",
                       "contains": {
                         "type": "object",
-                        "required": [
-                          "paramName"
-                        ],
+                        "required": ["paramName"],
                         "properties": {
                           "paramName": {
-                            "enum": [
-                              "theme",
-                              "raw"
-                            ]
+                            "enum": ["theme", "raw"]
                           }
                         },
                         "not": {
-                          "required": [
-                            "in"
-                          ],
+                          "required": ["in"],
                           "properties": {
                             "in": {
-                              "enum": [
-                                "header",
-                                "body"
-                              ]
+                              "enum": ["header", "body"]
                             }
                           }
                         }
@@ -2734,30 +2519,22 @@
         {
           "description": "data.rawDataKey and data.rawType describe the rows of raw=true: they need \"raw\": true",
           "if": {
-            "required": [
-              "data"
-            ],
+            "required": ["data"],
             "properties": {
               "data": {
                 "anyOf": [
                   {
-                    "required": [
-                      "rawDataKey"
-                    ]
+                    "required": ["rawDataKey"]
                   },
                   {
-                    "required": [
-                      "rawType"
-                    ]
+                    "required": ["rawType"]
                   }
                 ]
               }
             }
           },
           "then": {
-            "required": [
-              "raw"
-            ],
+            "required": ["raw"],
             "properties": {
               "raw": {
                 "const": true
@@ -2782,12 +2559,7 @@
     "Widget_newsfeed": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "name",
-        "description",
-        "endpoint",
-        "type"
-      ],
+      "required": ["name", "description", "endpoint", "type"],
       "properties": {
         "name": {
           "type": "string",
@@ -2809,10 +2581,7 @@
         },
         "method": {
           "type": "string",
-          "enum": [
-            "GET",
-            "POST"
-          ],
+          "enum": ["GET", "POST"],
           "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
         },
         "category": {
@@ -2880,10 +2649,7 @@
               "maximum": 100
             }
           },
-          "required": [
-            "w",
-            "h"
-          ],
+          "required": ["w", "h"],
           "additionalProperties": false,
           "description": "The default size on a dashboard, in grid units: `w` of 40 columns, and `h` rows"
         },
@@ -2961,18 +2727,14 @@
         {
           "description": "Body params are sent only with \"method\": \"POST\"",
           "if": {
-            "required": [
-              "params"
-            ],
+            "required": ["params"],
             "properties": {
               "params": {
                 "contains": {
                   "anyOf": [
                     {
                       "type": "object",
-                      "required": [
-                        "in"
-                      ],
+                      "required": ["in"],
                       "properties": {
                         "in": {
                           "const": "body"
@@ -2983,9 +2745,7 @@
                       "type": "array",
                       "contains": {
                         "type": "object",
-                        "required": [
-                          "in"
-                        ],
+                        "required": ["in"],
                         "properties": {
                           "in": {
                             "const": "body"
@@ -2999,9 +2759,7 @@
             }
           },
           "then": {
-            "required": [
-              "method"
-            ],
+            "required": ["method"],
             "properties": {
               "method": {
                 "const": "POST"
@@ -3012,9 +2770,7 @@
         {
           "description": "A widget kept from the Copilot (disableRetrievalForCopilot) cannot opt in to an MCP tool",
           "if": {
-            "required": [
-              "disableRetrievalForCopilot"
-            ],
+            "required": ["disableRetrievalForCopilot"],
             "properties": {
               "disableRetrievalForCopilot": {
                 "const": true
@@ -3023,9 +2779,7 @@
           },
           "then": {
             "not": {
-              "required": [
-                "mcp_tool"
-              ]
+              "required": ["mcp_tool"]
             }
           }
         }
@@ -3046,12 +2800,7 @@
     "Widget_pdf": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "name",
-        "description",
-        "endpoint",
-        "type"
-      ],
+      "required": ["name", "description", "endpoint", "type"],
       "properties": {
         "name": {
           "type": "string",
@@ -3073,10 +2822,7 @@
         },
         "method": {
           "type": "string",
-          "enum": [
-            "GET",
-            "POST"
-          ],
+          "enum": ["GET", "POST"],
           "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
         },
         "category": {
@@ -3144,10 +2890,7 @@
               "maximum": 100
             }
           },
-          "required": [
-            "w",
-            "h"
-          ],
+          "required": ["w", "h"],
           "additionalProperties": false,
           "description": "The default size on a dashboard, in grid units: `w` of 40 columns, and `h` rows"
         },
@@ -3225,18 +2968,14 @@
         {
           "description": "Body params are sent only with \"method\": \"POST\"",
           "if": {
-            "required": [
-              "params"
-            ],
+            "required": ["params"],
             "properties": {
               "params": {
                 "contains": {
                   "anyOf": [
                     {
                       "type": "object",
-                      "required": [
-                        "in"
-                      ],
+                      "required": ["in"],
                       "properties": {
                         "in": {
                           "const": "body"
@@ -3247,9 +2986,7 @@
                       "type": "array",
                       "contains": {
                         "type": "object",
-                        "required": [
-                          "in"
-                        ],
+                        "required": ["in"],
                         "properties": {
                           "in": {
                             "const": "body"
@@ -3263,9 +3000,7 @@
             }
           },
           "then": {
-            "required": [
-              "method"
-            ],
+            "required": ["method"],
             "properties": {
               "method": {
                 "const": "POST"
@@ -3276,9 +3011,7 @@
         {
           "description": "A widget kept from the Copilot (disableRetrievalForCopilot) cannot opt in to an MCP tool",
           "if": {
-            "required": [
-              "disableRetrievalForCopilot"
-            ],
+            "required": ["disableRetrievalForCopilot"],
             "properties": {
               "disableRetrievalForCopilot": {
                 "const": true
@@ -3287,9 +3020,7 @@
           },
           "then": {
             "not": {
-              "required": [
-                "mcp_tool"
-              ]
+              "required": ["mcp_tool"]
             }
           }
         }
@@ -3310,12 +3041,7 @@
     "Widget_iframe": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "name",
-        "description",
-        "endpoint",
-        "type"
-      ],
+      "required": ["name", "description", "endpoint", "type"],
       "properties": {
         "name": {
           "type": "string",
@@ -3337,9 +3063,7 @@
         },
         "method": {
           "type": "string",
-          "enum": [
-            "GET"
-          ]
+          "enum": ["GET"]
         },
         "category": {
           "type": "string",
@@ -3406,10 +3130,7 @@
               "maximum": 100
             }
           },
-          "required": [
-            "w",
-            "h"
-          ],
+          "required": ["w", "h"],
           "additionalProperties": false,
           "description": "The default size on a dashboard, in grid units: `w` of 40 columns, and `h` rows"
         },
@@ -3500,18 +3221,14 @@
         {
           "description": "Body params are sent only with \"method\": \"POST\"",
           "if": {
-            "required": [
-              "params"
-            ],
+            "required": ["params"],
             "properties": {
               "params": {
                 "contains": {
                   "anyOf": [
                     {
                       "type": "object",
-                      "required": [
-                        "in"
-                      ],
+                      "required": ["in"],
                       "properties": {
                         "in": {
                           "const": "body"
@@ -3522,9 +3239,7 @@
                       "type": "array",
                       "contains": {
                         "type": "object",
-                        "required": [
-                          "in"
-                        ],
+                        "required": ["in"],
                         "properties": {
                           "in": {
                             "const": "body"
@@ -3538,9 +3253,7 @@
             }
           },
           "then": {
-            "required": [
-              "method"
-            ],
+            "required": ["method"],
             "properties": {
               "method": {
                 "const": "POST"
@@ -3551,9 +3264,7 @@
         {
           "description": "A widget kept from the Copilot (disableRetrievalForCopilot) cannot opt in to an MCP tool",
           "if": {
-            "required": [
-              "disableRetrievalForCopilot"
-            ],
+            "required": ["disableRetrievalForCopilot"],
             "properties": {
               "disableRetrievalForCopilot": {
                 "const": true
@@ -3562,33 +3273,24 @@
           },
           "then": {
             "not": {
-              "required": [
-                "mcp_tool"
-              ]
+              "required": ["mcp_tool"]
             }
           }
         },
         {
           "description": "This type's params go in the query, not the body or header",
           "not": {
-            "required": [
-              "params"
-            ],
+            "required": ["params"],
             "properties": {
               "params": {
                 "contains": {
                   "anyOf": [
                     {
                       "type": "object",
-                      "required": [
-                        "in"
-                      ],
+                      "required": ["in"],
                       "properties": {
                         "in": {
-                          "enum": [
-                            "body",
-                            "header"
-                          ]
+                          "enum": ["body", "header"]
                         }
                       }
                     },
@@ -3596,15 +3298,10 @@
                       "type": "array",
                       "contains": {
                         "type": "object",
-                        "required": [
-                          "in"
-                        ],
+                        "required": ["in"],
                         "properties": {
                           "in": {
-                            "enum": [
-                              "body",
-                              "header"
-                            ]
+                            "enum": ["body", "header"]
                           }
                         }
                       }
@@ -3618,35 +3315,24 @@
         {
           "description": "theme: query params the Workspace adds to this type's requests",
           "not": {
-            "required": [
-              "params"
-            ],
+            "required": ["params"],
             "properties": {
               "params": {
                 "contains": {
                   "anyOf": [
                     {
                       "type": "object",
-                      "required": [
-                        "paramName"
-                      ],
+                      "required": ["paramName"],
                       "properties": {
                         "paramName": {
-                          "enum": [
-                            "theme"
-                          ]
+                          "enum": ["theme"]
                         }
                       },
                       "not": {
-                        "required": [
-                          "in"
-                        ],
+                        "required": ["in"],
                         "properties": {
                           "in": {
-                            "enum": [
-                              "header",
-                              "body"
-                            ]
+                            "enum": ["header", "body"]
                           }
                         }
                       }
@@ -3655,26 +3341,17 @@
                       "type": "array",
                       "contains": {
                         "type": "object",
-                        "required": [
-                          "paramName"
-                        ],
+                        "required": ["paramName"],
                         "properties": {
                           "paramName": {
-                            "enum": [
-                              "theme"
-                            ]
+                            "enum": ["theme"]
                           }
                         },
                         "not": {
-                          "required": [
-                            "in"
-                          ],
+                          "required": ["in"],
                           "properties": {
                             "in": {
-                              "enum": [
-                                "header",
-                                "body"
-                              ]
+                              "enum": ["header", "body"]
                             }
                           }
                         }
@@ -3691,19 +3368,14 @@
     "Plugin_test_chart_series": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "field"
-      ],
+      "required": ["field"],
       "properties": {
         "field": {
           "type": "string",
           "maxLength": 64
         },
         "kind": {
-          "enum": [
-            "line",
-            "bar"
-          ]
+          "enum": ["line", "bar"]
         }
       }
     },
@@ -3749,12 +3421,7 @@
     "Widget_test_chart": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "name",
-        "description",
-        "endpoint",
-        "type"
-      ],
+      "required": ["name", "description", "endpoint", "type"],
       "properties": {
         "name": {
           "type": "string",
@@ -3776,10 +3443,7 @@
         },
         "method": {
           "type": "string",
-          "enum": [
-            "GET",
-            "POST"
-          ],
+          "enum": ["GET", "POST"],
           "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
         },
         "category": {
@@ -3847,10 +3511,7 @@
               "maximum": 100
             }
           },
-          "required": [
-            "w",
-            "h"
-          ],
+          "required": ["w", "h"],
           "additionalProperties": false,
           "description": "The default size on a dashboard, in grid units: `w` of 40 columns, and `h` rows"
         },
@@ -3932,18 +3593,14 @@
         {
           "description": "Body params are sent only with \"method\": \"POST\"",
           "if": {
-            "required": [
-              "params"
-            ],
+            "required": ["params"],
             "properties": {
               "params": {
                 "contains": {
                   "anyOf": [
                     {
                       "type": "object",
-                      "required": [
-                        "in"
-                      ],
+                      "required": ["in"],
                       "properties": {
                         "in": {
                           "const": "body"
@@ -3954,9 +3611,7 @@
                       "type": "array",
                       "contains": {
                         "type": "object",
-                        "required": [
-                          "in"
-                        ],
+                        "required": ["in"],
                         "properties": {
                           "in": {
                             "const": "body"
@@ -3970,9 +3625,7 @@
             }
           },
           "then": {
-            "required": [
-              "method"
-            ],
+            "required": ["method"],
             "properties": {
               "method": {
                 "const": "POST"
@@ -3983,9 +3636,7 @@
         {
           "description": "A widget kept from the Copilot (disableRetrievalForCopilot) cannot opt in to an MCP tool",
           "if": {
-            "required": [
-              "disableRetrievalForCopilot"
-            ],
+            "required": ["disableRetrievalForCopilot"],
             "properties": {
               "disableRetrievalForCopilot": {
                 "const": true
@@ -3994,45 +3645,31 @@
           },
           "then": {
             "not": {
-              "required": [
-                "mcp_tool"
-              ]
+              "required": ["mcp_tool"]
             }
           }
         },
         {
           "description": "theme and raw: query params the Workspace adds to this type's requests",
           "not": {
-            "required": [
-              "params"
-            ],
+            "required": ["params"],
             "properties": {
               "params": {
                 "contains": {
                   "anyOf": [
                     {
                       "type": "object",
-                      "required": [
-                        "paramName"
-                      ],
+                      "required": ["paramName"],
                       "properties": {
                         "paramName": {
-                          "enum": [
-                            "theme",
-                            "raw"
-                          ]
+                          "enum": ["theme", "raw"]
                         }
                       },
                       "not": {
-                        "required": [
-                          "in"
-                        ],
+                        "required": ["in"],
                         "properties": {
                           "in": {
-                            "enum": [
-                              "header",
-                              "body"
-                            ]
+                            "enum": ["header", "body"]
                           }
                         }
                       }
@@ -4041,27 +3678,17 @@
                       "type": "array",
                       "contains": {
                         "type": "object",
-                        "required": [
-                          "paramName"
-                        ],
+                        "required": ["paramName"],
                         "properties": {
                           "paramName": {
-                            "enum": [
-                              "theme",
-                              "raw"
-                            ]
+                            "enum": ["theme", "raw"]
                           }
                         },
                         "not": {
-                          "required": [
-                            "in"
-                          ],
+                          "required": ["in"],
                           "properties": {
                             "in": {
-                              "enum": [
-                                "header",
-                                "body"
-                              ]
+                              "enum": ["header", "body"]
                             }
                           }
                         }
@@ -4076,30 +3703,22 @@
         {
           "description": "data.rawDataKey and data.rawType describe the rows of raw=true: they need \"raw\": true",
           "if": {
-            "required": [
-              "data"
-            ],
+            "required": ["data"],
             "properties": {
               "data": {
                 "anyOf": [
                   {
-                    "required": [
-                      "rawDataKey"
-                    ]
+                    "required": ["rawDataKey"]
                   },
                   {
-                    "required": [
-                      "rawType"
-                    ]
+                    "required": ["rawType"]
                   }
                 ]
               }
             }
           },
           "then": {
-            "required": [
-              "raw"
-            ],
+            "required": ["raw"],
             "properties": {
               "raw": {
                 "const": true
@@ -4115,10 +3734,7 @@
       "properties": {
         "palette": {
           "type": "string",
-          "enum": [
-            "warm",
-            "cool"
-          ],
+          "enum": ["warm", "cool"],
           "title": "Palette"
         },
         "smooth": {

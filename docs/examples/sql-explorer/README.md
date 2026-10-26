@@ -131,7 +131,12 @@ downloaded), and the backend's in pytest. The Postgres tests need a
 database they may change: set `SQL_EXPLORER_TEST_POSTGRES` to an administrator's URL, or
 `SQL_EXPLORER_TEST_POSTGRES_FILE` to a file holding it, for example of a throwaway
 container (`docker run --rm -d -p 127.0.0.1:55432:5432 -e POSTGRES_PASSWORD_FILE=...
-postgres:18.6`). Without it they are skipped.
+postgres:18.6`). Without it they are skipped. With Docker and a build,
+`tests/test_isolation.py` starts `examples/compose.yaml` under a project name of its own,
+beside a stand-in for the Workspace API, and checks that the backend reaches Postgres and
+the gateway but not the API or the internet, that the gateway forwards only the API's
+calls, and that the backend runs read-only, unprivileged and without capabilities. It
+removes what it started.
 
 ## Deploy
 

@@ -9,6 +9,8 @@ import {
   startBackend,
   TABLE_ENTRY,
   tableManifest,
+  WANDERER_ENTRY,
+  wandererManifest,
   writePackage,
 } from "./plugins/fixtures";
 
@@ -108,6 +110,9 @@ test.beforeAll(async ({ browser }, testInfo) => {
     }),
     "e2e-hostile": writePackage(PLUGINS_DIR ?? "", hostileManifest(), {
       "entry.js": HOSTILE_ENTRY,
+    }),
+    "e2e-wanderer": writePackage(PLUGINS_DIR ?? "", wandererManifest(), {
+      "entry.js": WANDERER_ENTRY,
     }),
   };
   backend = await startBackend(BACKEND_PORT, new URL(baseURL).origin);
@@ -338,4 +343,38 @@ test("disabled-plugin-leaves-a-placeholder", async () => {
   await expect(tableFrame().locator("#e2e-title")).toHaveText("Sales: apac", {
     timeout: 30000,
   });
+});
+
+test("a-frame-that-navigates-itself-is-ended", async () => {
+  await addWidgets(["End-to-end wanderer"]);
+  const wanderer = card("End-to-end wanderer");
+  await wanderer.scrollIntoViewIfNeeded();
+  await expect(wanderer.getByText("the frame navigated away")).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(page.locator('iframe[title^="End-to-end wanderer"]')).toHaveCount(0);
+});
+
+test("the-host-refuses-files-that-differ-from-the-approved-version", async () => {
+  const tampered = await context.newPage();
+  let served = 0;
+  await tampered.route(
+    "**/app/widget-plugins/e2e-table/*/files/entry.js",
+    async (route) => {
+      const response = await route.fetch();
+      served += 1;
+      await route.fulfill({
+        response,
+        body: Buffer.concat([await response.body(), Buffer.from("\n")]),
+      });
+    },
+  );
+  await tampered.goto(`/app/${dashboardId}`);
+  const rows = tampered.locator("div.group\\/widget").filter({ hasText: "E2E rows" });
+  await expect(
+    rows.getByText("the plugin's files do not match the approved version"),
+  ).toBeVisible({ timeout: 30000 });
+  await expect(tampered.locator('iframe[title^="E2E rows"]')).toHaveCount(0);
+  expect(served).toBeGreaterThan(0);
+  await tampered.close();
 });

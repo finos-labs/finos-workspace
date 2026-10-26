@@ -53,7 +53,10 @@ describe("Artifact HTML JavaScript execution", () => {
 
   it("takes the height the artifact posts, capped at the maximum", async () => {
     const { container } = render(
-      <Artifact artifact={artifact("html-js-123", "HTML JS Artifact")} inAiMessage={true} />,
+      <Artifact
+        artifact={artifact("html-js-123", "HTML JS Artifact")}
+        inAiMessage={true}
+      />,
     );
     const iframe = container.querySelector("iframe") as HTMLIFrameElement;
 
