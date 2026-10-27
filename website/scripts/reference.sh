@@ -5,7 +5,8 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 (
   cd "$root/backend-api/backend"
-  env $(sed -n 's/^    \([A-Z_]*=.*\)$/\1/p' pytest.ini | xargs) python -m scripts.export_reference_data
+  while IFS= read -r setting; do declare -x "$setting"; done < <(sed -n 's/^    \([A-Z_]*=.*\)$/\1/p' pytest.ini)
+  python -m scripts.export_reference_data
 )
 
 (

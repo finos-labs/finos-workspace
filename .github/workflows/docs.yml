@@ -1,4 +1,4 @@
-name: Docs checks
+name: Docs
 
 on:
   pull_request:
@@ -9,12 +9,23 @@ on:
       - "backend-api/backend/**"
       - "frontend/**"
       - "agent/**"
-      - ".github/workflows/docs-checks.yml"
+      - ".github/workflows/docs.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "website/**"
+      - "netlify.toml"
+      - "backend-api/backend/**"
+      - "frontend/**"
+      - "agent/**"
+      - ".github/workflows/docs.yml"
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -41,7 +52,9 @@ jobs:
           poetry config virtualenvs.create false
           poetry install --only main
       - name: Write the data, which fails when the code cannot produce it
-        run: env $(sed -n 's/^    \([A-Z_]*=.*\)$/\1/p' pytest.ini | xargs) python -m scripts.export_reference_data
+        run: |
+          while IFS= read -r setting; do declare -x "$setting"; done < <(sed -n 's/^    \([A-Z_]*=.*\)$/\1/p' pytest.ini)
+          python -m scripts.export_reference_data
       - uses: actions/upload-artifact@v4
         with:
           name: backend-reference-data
@@ -132,6 +145,15 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Look up the address that Netlify serves the site at
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+        run: |
+          site=$(curl --fail --silent --show-error --header "Authorization: Bearer $NETLIFY_AUTH_TOKEN" "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID")
+          address=$(jq --raw-output 'if .custom_domain then "https://" + .custom_domain else .ssl_url end' <<< "$site")
+          echo "URL=$address" >> "$GITHUB_ENV"
       - name: Generate the reference data, which fails when a page is out of step with the code
         env:
           NODE_IMAGE: ${{ needs.node.outputs.image }}
@@ -148,7 +170,33 @@ jobs:
         env:
           NODE_IMAGE: ${{ needs.node.outputs.image }}
         run: |
-          docker run --rm -v "$PWD:/repo" -w /repo/website "$NODE_IMAGE" /usr/local/bin/node \
+          docker run --rm -e URL -v "$PWD:/repo" -w /repo/website "$NODE_IMAGE" /usr/local/bin/node \
             node_modules/@docusaurus/core/bin/docusaurus.mjs build
       - name: Check that the build wrote llms.txt
         run: test -s website/build/llms.txt
+      - name: Keep the built site for the deploy
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: website/build
+          if-no-files-found: error
+
+  deploy:
+    name: Deploy to Netlify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: site
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 26.12.1
+      - name: Publish the site that the build checked
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+        run: npx --yes netlify-cli@27.15.0 deploy --prod --no-build --dir site --message "$GITHUB_SHA"

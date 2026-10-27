@@ -69,4 +69,4 @@ npm run generate
 
 The generator stops with the command that writes the data when a file is missing. The commands `npm start`, `npm run build` and `npm run typecheck` run it first, so a changed folder needs no other step. The generator also checks that the web app and the API agree on the rules of a plugin and of the bridge, which are the permissions, the versions, the policy of a frame, the commands and the errors, and that the hand-written pages mention what the code defines, for example every command that a widget plugin can call and every kind of typed result. It stops with the list of what disagrees or is missing.
 
-Netlify and the Docs checks workflow write the data in the same way before they build the site, as [How to write and preview documentation](write-docs.md#how-the-site-is-published) describes.
+The Docs workflow writes the data in the same way before it builds the site, as [How to write and preview documentation](write-docs.md#how-the-site-is-published) describes.
