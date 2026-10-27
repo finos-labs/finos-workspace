@@ -7,11 +7,11 @@ import { SettingConstant } from "@site/src/components/Reference/config";
 
 # Give a team access to your data
 
-In this lesson you let another person work with a backend that you connected, and only with the part of it that you choose. You create a role, add a person who has it, grant the role two widgets of your backend, and sign in as that person to see what they see. When you finish, you will have seen the three parts of access in Workspace: who a person is, what their roles grant, and what that looks like from their side.
+In this lesson you let another person work with a backend that you connected, and only with the part of it that you choose. You create a role, add a person who has it, grant the role two widgets of your backend, and sign in as that person to see what they see. When you finish, you will have seen the three parts of access in FINOS Workspace: who a person is, what their roles grant, and what that looks like from their side.
 
 ## What you need
 
-You need the Workspace that [Run Workspace on your machine](run-workspace-on-your-machine.md) starts, with its administrator signed in, and the backend of [Connect a backend and build a dashboard](connect-a-backend-and-build-a-dashboard.md), connected under the name Sales demo and still running. You also need a second browser window that does not share the administrator's session, such as a private window.
+You need the FINOS Workspace that [Run FINOS Workspace on your machine](run-workspace-on-your-machine.md) starts, with its administrator signed in, and the backend of [Connect a backend and build a dashboard](connect-a-backend-and-build-a-dashboard.md), connected under the name Sales demo and still running. You also need a second browser window that does not share the administrator's session, such as a private window.
 
 ## Create a role
 
@@ -29,7 +29,7 @@ A message says "Role created", and the role appears in the table with no members
 
 Select Users in the admin sidebar and select Add users. On the tab Add a single user, fill in First name `Ana`, Last name `Analyst` and Email address `analyst@example.com`. Open Role and choose Analysts. Leave Bypass invitation selected and select Add.
 
-The dialog says "Ana Analyst has been added to the organization." and shows a link with the words "Give them this link to set their password. It works once, until" and a time <SettingConstant name="passwordResetLifetimeSeconds" unit="hours" /> from now. Workspace sends no email, so you copy the link and give it to the person yourself. Select Done. The table of users now lists Ana Analyst with the type User, and under Roles it shows Agent User and one more, which is Analysts. Every new person receives the role Agent User in addition to the one that you choose.
+The dialog says "Ana Analyst has been added to the organization." and shows a link with the words "Give them this link to set their password. It works once, until" and a time <SettingConstant name="passwordResetLifetimeSeconds" unit="hours" /> from now. FINOS Workspace sends no email, so you copy the link and give it to the person yourself. Select Done. The table of users now lists Ana Analyst with the type User, and under Roles it shows Agent User and one more, which is Analysts. Every new person receives the role Agent User in addition to the one that you choose.
 
 ## Give the role access to your backend
 
@@ -39,13 +39,13 @@ Select Roles and Access again, and select Edit permissions above the table. The 
 2. Select the arrow in front of Sales demo to open its widgets. Set Revenue by region and Sales notes to Access, and leave Revenue share and Orders at No Access.
 3. Select Save changes.
 
-Before it saves, Workspace asks you to confirm: it warns that you are about to make critical changes to the permissions of Analysts, and it counts what you changed, which is 2 widgets added and none removed. Select Yes, Continue. A message says "Role permissions updated".
+Before it saves, FINOS Workspace asks you to confirm: it warns that you are about to make critical changes to the permissions of Analysts, and it counts what you changed, which is 2 widgets added and none removed. Select Yes, Continue. A message says "Role permissions updated".
 
 ## Sign in as the person
 
 Open a private window and paste the link into it. The page Set a new password asks for a password twice and says what it needs: at least 8 characters, with a number, an uppercase letter, a lowercase letter and a special character, and no spaces. Choose one and select Set password. The page says "Your password is set. Sign in with it." Select Sign in and sign in with `analyst@example.com` and the password that you chose.
 
-Ana's Workspace looks smaller than yours. The sidebar offers Apps, Widgets and AI and her own dashboards, and it has no Connections entry, because a person of the type User cannot add backends of their own. The Apps page says "Your Apps page is empty", because the role grants no app.
+Ana's FINOS Workspace looks smaller than yours. The sidebar offers Apps, Widgets and AI and her own dashboards, and it has no Connections entry, because a person of the type User cannot add backends of their own. The Apps page says "Your Apps page is empty", because the role grants no app.
 
 ## See what the role grants
 

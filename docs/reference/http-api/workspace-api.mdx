@@ -1,14 +1,14 @@
 ---
-title: Workspace API
+title: FINOS Workspace API
 sidebar_position: 1
 ---
 
 import { ApiMetrics, ApiTag } from "@site/src/components/Reference/api";
 import { SettingConstant, SettingDefault } from "@site/src/components/Reference/config";
 
-# Workspace API
+# FINOS Workspace API
 
-The Workspace API is the FastAPI application in `backend-api/backend` that the web app, the worker, the Workspace MCP server and the admin tools talk to. This page lists its routes, grouped by the tag that each router gives them. For each route it shows the method and path, a summary, the parameters and the request and response types. The request and response types link to [Workspace API schemas](workspace-api-schemas.mdx).
+The FINOS Workspace API is the FastAPI application in `backend-api/backend` that the web app, the worker, the FINOS Workspace MCP server and the admin tools talk to. This page lists its routes, grouped by the tag that each router gives them. For each route it shows the method and path, a summary, the parameters and the request and response types. The request and response types link to [FINOS Workspace API schemas](workspace-api-schemas.mdx).
 
 The API does not serve interactive documentation. It sets `docs_url`, `redoc_url` and `openapi_url` to `None`, so this page is the reference. The summary of a route is derived from the name of its function, so it names what the route does but does not describe it in detail.
 
@@ -78,13 +78,13 @@ These are the widget plugin routes. Superuser routes are under `/plugins`, organ
 
 ## workspace-mcp
 
-These routes manage the personal access tokens and the bridge session of the Workspace MCP server, which [Workspace MCP server](../mcp/workspace-mcp.mdx) describes.
+These routes manage the personal access tokens and the bridge session of the FINOS Workspace MCP server, which [FINOS Workspace MCP server](../mcp/workspace-mcp.mdx) describes.
 
 <ApiTag tag="workspace-mcp" schemaPage="/reference/http-api/workspace-api-schemas" />
 
 ## workspace-tools
 
-These routes list the Workspace's own tools for the embedded agent and prepare a call to one of them.
+These routes list the FINOS Workspace's own tools for the embedded agent and prepare a call to one of them.
 
 <ApiTag tag="workspace-tools" schemaPage="/reference/http-api/workspace-api-schemas" />
 

@@ -5,7 +5,7 @@ sidebar_position: 1
 
 # How to run the development stack
 
-The folder `local` of the repository starts everything that you need to work on the app on your own machine: the web app's development server, the API and its worker, MySQL and Valkey. A change to the code shows up without a restart. This guide starts the stack, sets the administrator's password and says how each kind of change reaches the running services. To run the finished images instead, as a user would, follow [Run Workspace on your machine](../../tutorials/run-workspace-on-your-machine.md). The two stacks both use port 8000, so run one at a time.
+The folder `local` of the repository starts everything that you need to work on the app on your own machine: the web app's development server, the API and its worker, MySQL and Valkey. A change to the code shows up without a restart. This guide starts the stack, sets the administrator's password and says how each kind of change reaches the running services. To run the finished images instead, as a user would, follow [Run FINOS Workspace on your machine](../../tutorials/run-workspace-on-your-machine.md). The two stacks both use port 8000, so run one at a time.
 
 ## Before you start
 

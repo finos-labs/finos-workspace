@@ -5,7 +5,7 @@ sidebar_position: 10
 
 # How to set up single sign-on
 
-Single sign-on lets people sign in to Workspace with the account that they already use at Google, Microsoft or Okta, so that they need no separate password. This guide turns on one or more of the three providers, says what each needs, and explains who is allowed in. You need to be able to change the environment of the web app's container and of the API's container, and to register an application with the identity provider.
+Single sign-on lets people sign in to FINOS Workspace with the account that they already use at Google, Microsoft or Okta, so that they need no separate password. This guide turns on one or more of the three providers, says what each needs, and explains who is allowed in. You need to be able to change the environment of the web app's container and of the API's container, and to register an application with the identity provider.
 
 ## How sign-in with a provider works
 
@@ -19,7 +19,7 @@ Set `AUTHENTICATION_IDENTITY_PROVIDERS` in the web app to a comma-separated list
 
 ## Set the values of each provider
 
-Register an application with the provider first, as the provider's documentation describes, and allow your web app's address as an origin and a redirect address of the application. Then give Workspace the values that the registration produced.
+Register an application with the provider first, as the provider's documentation describes, and allow your web app's address as an origin and a redirect address of the application. Then give FINOS Workspace the values that the registration produced.
 
 | Provider | In the web app | In the API |
 |---|---|---|
@@ -31,12 +31,12 @@ The registration with Microsoft has to send the optional claims `email` and `xms
 
 ## Who may sign in
 
-Workspace trusts the identity provider to decide who may sign in. When a person signs in with a provider:
+FINOS Workspace trusts the identity provider to decide who may sign in. When a person signs in with a provider:
 
 - If an account with the verified email address exists, the person signs in to that account. A Microsoft account is then linked to the Microsoft identity, so a later change of the email address at Microsoft does not take the account over.
-- If no such account exists, Workspace creates one, with the first name and last name from the provider, in the organization and with the user type that the setting `DEFAULT_USER_MAPPING` names. The init step of a deployment writes this value into `user_create.json`. The new person receives the role Agent User, and an admin gives them more roles later.
+- If no such account exists, FINOS Workspace creates one, with the first name and last name from the provider, in the organization and with the user type that the setting `DEFAULT_USER_MAPPING` names. The init step of a deployment writes this value into `user_create.json`. The new person receives the role Agent User, and an admin gives them more roles later.
 
-So anyone whom your identity provider lets in, and whose address it has verified, gets an account in that default organization as soon as they sign in. Restrict who can reach the application in the identity provider, for example by assigning the application to a group, and not in Workspace.
+So anyone whom your identity provider lets in, and whose address it has verified, gets an account in that default organization as soon as they sign in. Restrict who can reach the application in the identity provider, for example by assigning the application to a group, and not in FINOS Workspace.
 
 To close the door instead, set `DISABLE_REGISTRATION` to `true` in the API. Existing accounts can still sign in, and every path that creates a user answers "Registration is disabled", which includes the first sign-in of a new person through a provider and the invitations of an admin. You then create the organization's people from the command line, as [How to provision an organization from a file](provision-an-organization.mdx) describes.
 
@@ -44,7 +44,7 @@ To give a person a place in a particular organization or role before their first
 
 ## Pass the provider's token to a data backend
 
-A backend may need to know who the user is. Set `AUTHENTICATION_SEND_MICROSOFT_IDTOKEN` or `AUTHENTICATION_SEND_OKTA_IDTOKEN` to `true`, and Workspace sends the signed-in user's ID token to data backends in the header `X-Microsoft-Id-Token` or `X-Okta-Id-Token`. `AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER` sends the email address in the header `X-Workspace-User`. [Widget requests](../../reference/protocols/widget-requests.mdx) describes these headers.
+A backend may need to know who the user is. Set `AUTHENTICATION_SEND_MICROSOFT_IDTOKEN` or `AUTHENTICATION_SEND_OKTA_IDTOKEN` to `true`, and FINOS Workspace sends the signed-in user's ID token to data backends in the header `X-Microsoft-Id-Token` or `X-Okta-Id-Token`. `AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER` sends the email address in the header `X-Workspace-User`. [Widget requests](../../reference/protocols/widget-requests.mdx) describes these headers.
 
 ## Check it
 

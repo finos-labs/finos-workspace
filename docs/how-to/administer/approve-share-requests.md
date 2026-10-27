@@ -15,7 +15,7 @@ When there are no requests, the page says "No share requests" and explains that 
 
 ## Approve or decline
 
-Select Approve to let the share take effect. The recipients then see the dashboard or app in their sidebar under Shared with me. Select Decline to remove the request without sharing. The person who asked is not told, because Workspace sends no messages, so tell them yourself when you decline.
+Select Approve to let the share take effect. The recipients then see the dashboard or app in their sidebar under Shared with me. Select Decline to remove the request without sharing. The person who asked is not told, because FINOS Workspace sends no messages, so tell them yourself when you decline.
 
 ## Who needs approval
 
@@ -23,4 +23,4 @@ Only Developers' shares wait for approval. An Admin or a User whose roles give t
 
 ## What happens when roles change
 
-Requests depend on the requester's right to share and on the recipient's right to receive. When a change of roles takes either right away, Workspace removes the requests that depended on it, so the list never shows a request that could not be approved.
+Requests depend on the requester's right to share and on the recipient's right to receive. When a change of roles takes either right away, FINOS Workspace removes the requests that depended on it, so the list never shows a request that could not be approved.

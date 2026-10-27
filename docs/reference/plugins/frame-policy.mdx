@@ -27,11 +27,11 @@ Four parties take part in deciding a frame's policy.
 | The plugin author | Declares `csp` and gives a reason for each directive in `cspNotes`. A declaration has no effect until a superuser approves the version. |
 | A superuser | Approves the declared policy, or overrides it for each directive, making it wider or narrower within the rules below. |
 | An organization admin | Removes sources for the organization. An organization admin can never add a source. |
-| Workspace | Owns the floor, adds the hash of the shell, validates every policy and composes the final policy. |
+| FINOS Workspace | Owns the floor, adds the hash of the shell, validates every policy and composes the final policy. |
 
 ## Directives
 
-A policy is an object that maps directives to lists of sources, and Workspace never accepts a raw policy string. A plugin may ask for these directives: <PluginValue of="csp.directives" />. The directives `default-src`, `base-uri`, `object-src`, `form-action` and every other directive belong to Workspace.
+A policy is an object that maps directives to lists of sources, and FINOS Workspace never accepts a raw policy string. A plugin may ask for these directives: <PluginValue of="csp.directives" />. The directives `default-src`, `base-uri`, `object-src`, `form-action` and every other directive belong to FINOS Workspace.
 
 ## Sources
 
@@ -67,7 +67,7 @@ The review of a version begins with every host that the frame can send its data 
 
 ## How the policy is composed
 
-Workspace combines a fixed floor with the approved sources in three steps. The result, which the notation below calls the effective policy, is what the frame enforces. The floor is this:
+FINOS Workspace combines a fixed floor with the approved sources in three steps. The result, which the notation below calls the effective policy, is what the frame enforces. The floor is this:
 
 <CspFloor />
 
@@ -87,7 +87,7 @@ The host builds the frame's document as a string and sets it as the frame's `src
 
 Three details are worth knowing:
 
-- A `srcdoc` frame also inherits the policy of the Workspace page itself. The web app sets no policy of its own, so a deployment that adds one must allow `blob:` and `data:` for frames.
+- A `srcdoc` frame also inherits the policy of the FINOS Workspace page itself. The web app sets no policy of its own, so a deployment that adds one must allow `blob:` and `data:` for frames.
 - A policy in a meta element cannot carry `report-uri` or `frame-ancestors`. Reports therefore come from violation events instead.
 - Removing the meta element at run time does not lift the policy. This was checked in Chromium, Firefox and WebKit.
 
@@ -99,4 +99,4 @@ The host sends at most <PluginValue of="limits.MAX_REPORTS_PER_FLUSH" /> reports
 
 ## Updates
 
-A policy belongs to a version. When a new version appears, Workspace compares its policy with the active version's policy for each directive, and every added source needs its own acknowledgement. The active version keeps serving until a superuser approves the new one. An override, in contrast, belongs to the plugin and applies to every version.
+A policy belongs to a version. When a new version appears, FINOS Workspace compares its policy with the active version's policy for each directive, and every added source needs its own acknowledgement. The active version keeps serving until a superuser approves the new one. An override, in contrast, belongs to the plugin and applies to every version.

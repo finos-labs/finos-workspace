@@ -5,7 +5,7 @@ sidebar_position: 9
 
 # How to manage organizations and move users between them
 
-A deployment can serve several organizations. Each organization has its own users, roles, backends and settings, and the people of one organization never see those of another. This guide is for a superuser, the account that runs the deployment: it adds an organization, changes whether it may share, and moves a user from one organization to another. An ordinary admin sees only their own organization, and the page Entities is missing from their admin area. Workspace calls an organization an entity.
+A deployment can serve several organizations. Each organization has its own users, roles, backends and settings, and the people of one organization never see those of another. This guide is for a superuser, the account that runs the deployment: it adds an organization, changes whether it may share, and moves a user from one organization to another. An ordinary admin sees only their own organization, and the page Entities is missing from their admin area. FINOS Workspace calls an organization an entity.
 
 ## Open Entity Management
 
@@ -19,13 +19,13 @@ Open the admin area and select Entities. The page is titled Entity Management an
 4. Fill in the first name, the last name and the email address of the organization's first administrator, with Admin first name, Admin last name and Admin email.
 5. Select Add entity.
 
-Messages say "Entity added" and "Administrator added". The administrator gets the type Admin, and Workspace shows the link that sets their password, which you give to them yourself, as [How to add a user](add-a-user.mdx) describes. A deployment that you start with the files of this repository already has one organization, which the first start created from `config.toml`. To create an organization and all of its people from a file, follow [How to provision an organization from a file](provision-an-organization.mdx).
+Messages say "Entity added" and "Administrator added". The administrator gets the type Admin, and FINOS Workspace shows the link that sets their password, which you give to them yourself, as [How to add a user](add-a-user.mdx) describes. A deployment that you start with the files of this repository already has one organization, which the first start created from `config.toml`. To create an organization and all of its people from a file, follow [How to provision an organization from a file](provision-an-organization.mdx).
 
 The table lists each organization with its Name and whether Sharing is Enabled. The button Edit entity at the end of a row changes the name and the sharing switch, and a message says "Entity updated".
 
 ## What the other tabs show
 
-- **Permission maps** list the user types that each organization offers. Every organization has three: Admin, Developer and User, and Workspace creates them with the organization. A user belongs to an organization through one of its permission maps, which is how a person is at the same time a member of an organization and an Admin, a Developer or a User in it. Add permission map joins an organization to a user type that it lacks.
+- **Permission maps** list the user types that each organization offers. Every organization has three: Admin, Developer and User, and FINOS Workspace creates them with the organization. A user belongs to an organization through one of its permission maps, which is how a person is at the same time a member of an organization and an Admin, a Developer or a User in it. Add permission map joins an organization to a user type that it lacks.
 - **All users** lists every user of every organization with the columns Email, Entity and User type, and its search box finds a person by email address.
 
 ## Move a user to another organization

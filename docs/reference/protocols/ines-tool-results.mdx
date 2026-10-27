@@ -11,7 +11,7 @@ An MCP tool normally returns text, and the agent shows that text to the model. A
 
 ## How a result reaches the agent
 
-The agent never connects to an MCP server. When the model calls a tool of a connected server, Ines ends its response with an `execute_agent_tool` [function call](ines-query.mdx#function-calls), the browser calls the tool through the Workspace API, which forwards the call to the server, and the browser posts the outcome back in a `tool` message. Three steps shape the result on the way.
+The agent never connects to an MCP server. When the model calls a tool of a connected server, Ines ends its response with an `execute_agent_tool` [function call](ines-query.mdx#function-calls), the browser calls the tool through the FINOS Workspace API, which forwards the call to the server, and the browser posts the outcome back in a `tool` message. Three steps shape the result on the way.
 
 1. The browser turns the MCP result into text. When the result has `content`, the browser replaces each item that has a `text` field by that text and writes the list as JSON, so that a tool which returned two text items arrives as a JSON array of two strings. When the result has `structuredContent` and its `results` field is an object, the browser writes the structured content instead. A result with `isError: true` is written whole.
 2. The browser puts the text in the message as `data: [{"items": [{"content": ...}], "extra_citations": [...]}]`. The `extra_citations` are sources that the browser itself found, for example when the tool matches a widget of the dashboard.

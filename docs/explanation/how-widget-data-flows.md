@@ -15,7 +15,7 @@ The function also adds two things that the card did not ask for. It adds `theme`
 
 ## The browser calls the backend
 
-The request goes from the browser straight to the backend. Workspace's own API is not in the path. That is why a backend has to answer the preflight requests that a header, a body or a method other than `GET` make the browser send, and why it has to allow the address of the web app: the browser refuses to hand the answer to a page that the backend did not allow. [About the architecture of Workspace](architecture.mdx) explains why the design puts the browser at the center, and the consequence here is that a connection's credentials travel from the person's browser to the backend, and the owner of a dashboard never lends theirs to the people who open it.
+The request goes from the browser straight to the backend. FINOS Workspace's own API is not in the path. That is why a backend has to answer the preflight requests that a header, a body or a method other than `GET` make the browser send, and why it has to allow the address of the web app: the browser refuses to hand the answer to a page that the backend did not allow. [About the architecture of FINOS Workspace](architecture.mdx) explains why the design puts the browser at the center, and the consequence here is that a connection's credentials travel from the person's browser to the backend, and the owner of a dashboard never lends theirs to the people who open it.
 
 When the answer arrives, the card reads it according to its type. A Markdown card draws the text, an HTML card puts the page in a frame, and a plugin's card passes the answer to the plugin as the value `data`. A card whose definition names a `dataKey` first takes the part of a JSON answer that the path names.
 

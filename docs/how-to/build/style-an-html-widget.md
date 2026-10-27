@@ -5,9 +5,9 @@ sidebar_position: 5
 
 # How to style an HTML widget for both themes
 
-An HTML widget draws the document that its endpoint returns, in a frame that shares nothing with the app. The document therefore cannot see the app's theme. Workspace tells the endpoint which theme is active through the `theme` query parameter, and the endpoint returns the styles for that theme. This guide shows how to write such an endpoint.
+An HTML widget draws the document that its endpoint returns, in a frame that shares nothing with the app. The document therefore cannot see the app's theme. FINOS Workspace tells the endpoint which theme is active through the `theme` query parameter, and the endpoint returns the styles for that theme. This guide shows how to write such an endpoint.
 
-1. Declare the widget in `widgets.json` as usual. Do not declare a parameter named `theme`, because the name is reserved and Workspace adds the parameter to every request of the type.
+1. Declare the widget in `widgets.json` as usual. Do not declare a parameter named `theme`, because the name is reserved and FINOS Workspace adds the parameter to every request of the type.
 
    ```json
    {
@@ -20,7 +20,7 @@ An HTML widget draws the document that its endpoint returns, in a frame that sha
    }
    ```
 
-2. In the endpoint, read `theme` and choose the palette. Workspace sends `dark` or `light`:
+2. In the endpoint, read `theme` and choose the palette. FINOS Workspace sends `dark` or `light`:
 
    ```python
    from fastapi import FastAPI, Query

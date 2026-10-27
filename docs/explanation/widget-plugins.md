@@ -5,7 +5,7 @@ sidebar_position: 8
 
 # About widget plugins
 
-Workspace ships with a fixed set of widget types: markdown, HTML, news feed, PDF and iframe. Widget plugins let a deployment add more types, such as charts, without changing Workspace itself. A plugin is a package that someone builds outside this repository. The person who deploys Workspace places the package on the server, a superuser reviews and approves it, and an organization's admin enables it for roles. Each widget that a plugin provides then runs in its own sandboxed frame, and it never receives the user's credentials.
+FINOS Workspace ships with a fixed set of widget types: markdown, HTML, news feed, PDF and iframe. Widget plugins let a deployment add more types, such as charts, without changing FINOS Workspace itself. A plugin is a package that someone builds outside this repository. The person who deploys FINOS Workspace places the package on the server, a superuser reviews and approves it, and an organization's admin enables it for roles. Each widget that a plugin provides then runs in its own sandboxed frame, and it never receives the user's credentials.
 
 ## What a plugin is
 
@@ -37,10 +37,10 @@ Each part of the design has a counterpart in a system that many people already k
 
 ## How it runs
 
-The diagram shows where the pieces live. The browser tab hosts the Workspace page and one sandboxed frame for each plugin widget. The API holds the reviews and the plugin files. A plugin backend, if there is one, runs as a separate process that the deployer isolates.
+The diagram shows where the pieces live. The browser tab hosts the FINOS Workspace page and one sandboxed frame for each plugin widget. The API holds the reviews and the plugin files. A plugin backend, if there is one, runs as a separate process that the deployer isolates.
 
 ```
-Browser tab (Workspace)
+Browser tab (FINOS Workspace)
   the host: PluginWidget fetches the widget's data with the user's session,
             pushes it into the frame, and checks every command against the
             widget's permissions
@@ -49,7 +49,7 @@ Browser tab (Workspace)
      the shell: the policy in a <meta> tag, a self-check (the canary),
                 then the plugin's module, checked against its digest
 
-Workspace API
+FINOS Workspace API
   reads the plugins directory (read-only), records reviews and grants,
   serves files after re-hashing them, makes proxy calls, routes backend calls,
   answers a backend's data requests for the calling user
@@ -86,7 +86,7 @@ Several designs could isolate plugin code. The table compares them with systems 
 | Use a `srcdoc` frame with `allow-same-origin`. | The HTML widget. | The frame shares the page's origin and can lift its own sandbox. |
 | Run the module in an in-page realm that proxies the DOM. | Grafana's frontend sandbox. | It isolates only in part and breaks easily with DOM-heavy libraries. |
 | Run the module in a worker and draw its UI tree from the host. | Shopify's remote rendering. | It isolates strongly, but it offers no DOM or canvas, which grids and charts need. |
-| Use an opaque-origin frame with a private port and a policy. | Figma's plugin iframes. | Workspace uses this design. |
+| Use an opaque-origin frame with a private port and a policy. | Figma's plugin iframes. | FINOS Workspace uses this design. |
 
 Code reaches a deployment only through the plugins directory, the image or the configuration, and the API mounts that directory read-only. A hijacked admin session can enable or grant a plugin that is already on the server, but only through the review and its recorded acknowledgements, and it cannot add a plugin. A pin ties the approval to a digest that was chosen outside the app.
 

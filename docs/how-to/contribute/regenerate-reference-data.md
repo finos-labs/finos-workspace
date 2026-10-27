@@ -5,9 +5,9 @@ sidebar_position: 6
 
 # How to regenerate the reference data
 
-Many reference pages are generated from the code, so that they cannot drift away from it. Each part of Workspace that the reference describes writes JSON files into a folder named `reference-data`, and the site's generator reads them. Git does not track the folders, so nothing generated is committed, and the data always comes from the code of the commit that you build. This guide shows how to write the data and what to do when the site stops for want of it.
+Many reference pages are generated from the code, so that they cannot drift away from it. Each part of FINOS Workspace that the reference describes writes JSON files into a folder named `reference-data`, and the site's generator reads them. Git does not track the folders, so nothing generated is committed, and the data always comes from the code of the commit that you build. This guide shows how to write the data and what to do when the site stops for want of it.
 
-Write the data before you generate or build the site, and write it again after a change to the API, the settings, the database models, the plugin manifest, the `widgets.json` schema, the admin CLI, the Workspace bridge, the agent or the plugin runtime of the web app.
+Write the data before you generate or build the site, and write it again after a change to the API, the settings, the database models, the plugin manifest, the `widgets.json` schema, the admin CLI, the FINOS Workspace bridge, the agent or the plugin runtime of the web app.
 
 ## Write all the data
 
@@ -31,7 +31,7 @@ The script runs `npm ci` in `agent` and in `frontend`, so it replaces their `nod
 
    The exporter writes nine files into `backend-api/backend/reference-data`: `openapi.json`, `widgets_schema.json`, `plugin_manifest_schema.json`, `database_schema.json`, `settings.json`, `admin_cli.json`, `widget_plugins.json`, `workspace_bridge.json` and `api_metrics.json`. The last one lists the metrics that the API serves, which a test compares with what the API's instrumentation registers. Pass `-o <folder>` to write them elsewhere. A test fails when a setting, a manifest field, a widgets.json property or a field of a bridge command has no description, so a new one needs its description in the code.
 
-2. The page about the Workspace MCP server is generated from a fixture that the repository does keep, `tests/fixtures/workspace_mcp_sidecar_surface.json`, because it records the contract of that server. If the tools, resources or prompts of the server changed on purpose, regenerate the fixture in the same way and commit it:
+2. The page about the FINOS Workspace MCP server is generated from a fixture that the repository does keep, `tests/fixtures/workspace_mcp_sidecar_surface.json`, because it records the contract of that server. If the tools, resources or prompts of the server changed on purpose, regenerate the fixture in the same way and commit it:
 
    ```bash
    env $(sed -n 's/^    \([A-Z_]*=.*\)$/\1/p' pytest.ini | xargs) python -m scripts.export_workspace_mcp_surface

@@ -401,7 +401,7 @@ export function ToolGroups() {
               <td>{group.summary}</td>
               <td>
                 {group.tools.length === 0 ? (
-                  <span className={styles.muted}>the tools that the Workspace supplies</span>
+                  <span className={styles.muted}>the tools that the FINOS Workspace supplies</span>
                 ) : (
                   <ul className={styles.lines}>
                     {group.tools.map((tool) => (

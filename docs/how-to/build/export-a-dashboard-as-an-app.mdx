@@ -31,7 +31,7 @@ The export is one JSON object, the description of one app. `apps.json` is an arr
 
 Check the object before you ship it:
 
-- **Give the app an id that never changes.** Roles name an app by its `templateId`, so add a `templateId`, such as `"sales-overview"`. Without one, Workspace builds the id from your backend's connection and the app's name, and renaming the app then changes the id.
+- **Give the app an id that never changes.** Roles name an app by its `templateId`, so add a `templateId`, such as `"sales-overview"`. Without one, FINOS Workspace builds the id from your backend's connection and the app's name, and renaming the app then changes the id.
 - **Check the widget ids.** Each layout item names a widget by its key in `widgets.json`, which is what the app needs. When the backend changes a key later, the app leaves that widget out.
 - **Check the images.** A relative address in `img`, `img_dark` or `img_light` is resolved against the address of the backend, so the backend can serve the picture itself.
 - **Open the app.** Refresh the connection, select the app's card on the Apps page, and check that the dashboard comes out as you arranged it. [How to review and debug a backend](review-and-debug-a-backend.md) explains the messages that a backend with a problem gives.

@@ -5,13 +5,13 @@ sidebar_position: 5
 
 # Build your first widget plugin
 
-In this lesson you add a new kind of widget to your Workspace. A widget plugin is a small package of files that teaches Workspace to draw a type of widget that it does not know. You write a plugin that draws a list of rows as a table, you put it through the review that every plugin passes, and you use it in a dashboard. When you finish, a widget of a type that you invented shows the data of your backend.
+In this lesson you add a new kind of widget to your FINOS Workspace. A widget plugin is a small package of files that teaches FINOS Workspace to draw a type of widget that it does not know. You write a plugin that draws a list of rows as a table, you put it through the review that every plugin passes, and you use it in a dashboard. When you finish, a widget of a type that you invented shows the data of your backend.
 
 ## What you need
 
-You need the Workspace that [Run Workspace on your machine](run-workspace-on-your-machine.md) starts, with its administrator signed in, and the backend of [Connect a backend and build a dashboard](connect-a-backend-and-build-a-dashboard.md), connected under the name Sales demo. You also need a text editor and a terminal that is in the folder of the repository, next to `docker-compose.yml`.
+You need the FINOS Workspace that [Run FINOS Workspace on your machine](run-workspace-on-your-machine.md) starts, with its administrator signed in, and the backend of [Connect a backend and build a dashboard](connect-a-backend-and-build-a-dashboard.md), connected under the name Sales demo. You also need a text editor and a terminal that is in the folder of the repository, next to `docker-compose.yml`.
 
-A plugin never arrives through the app. The person who runs a deployment places its files on the server, a superuser reviews them and approves them, and an administrator of an organization enables the plugin and says who may use it. Because you run your own Workspace, you do all of these parts, in that order.
+A plugin never arrives through the app. The person who runs a deployment places its files on the server, a superuser reviews them and approves them, and an administrator of an organization enables the plugin and says who may use it. Because you run your own FINOS Workspace, you do all of these parts, in that order.
 
 ## Write the package
 
@@ -57,7 +57,7 @@ export default {
 };
 ```
 
-Workspace calls `render` with two things. The `el` is the element that the widget fills, and the `model` holds the values that Workspace hands to the widget. The value `data` is what the widget's backend endpoint returned, so a list of objects that all have the same keys arrives as an array. The function draws the table, draws it again whenever `data` changes, and returns a function that stops listening when Workspace removes the widget.
+FINOS Workspace calls `render` with two things. The `el` is the element that the widget fills, and the `model` holds the values that FINOS Workspace hands to the widget. The value `data` is what the widget's backend endpoint returned, so a list of objects that all have the same keys arrives as an array. The function draws the table, draws it again whenever `data` changes, and returns a function that stops listening when FINOS Workspace removes the widget.
 
 Next to it, in `plugin.json`, put the manifest that describes the plugin:
 
@@ -185,7 +185,7 @@ Add `"/orders"` to the list in `const routes`, and add the route that answers it
 
 Stop the backend with Ctrl+C and start it again with `node backend.mjs`. Select Connections in the sidebar and select the refresh button beside Connect Backend. The row of Sales demo now shows 4 widgets.
 
-Open a dashboard, select the round button at its bottom right that opens the Widget Menu, and type Orders into the search box. Select it and add it. The card first shows nothing, because the plugin loads in a frame of its own, and a moment later it shows your table with the three orders. Workspace asked the backend's endpoint for the rows, passed them to your module as `data`, and your code drew them.
+Open a dashboard, select the round button at its bottom right that opens the Widget Menu, and type Orders into the search box. Select it and add it. The card first shows nothing, because the plugin loads in a frame of its own, and a moment later it shows your table with the three orders. FINOS Workspace asked the backend's endpoint for the rows, passed them to your module as `data`, and your code drew them.
 
 ## Where to go next
 

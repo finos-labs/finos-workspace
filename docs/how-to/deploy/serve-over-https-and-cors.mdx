@@ -1,13 +1,13 @@
 ---
-title: How to serve Workspace over HTTPS and set the addresses
+title: How to serve FINOS Workspace over HTTPS and set the addresses
 sidebar_position: 2
 ---
 
 import { EnvDefault, SettingDefault, WebPort } from "@site/src/components/Reference/config";
 
-# How to serve Workspace over HTTPS and set the addresses
+# How to serve FINOS Workspace over HTTPS and set the addresses
 
-A deployment of Workspace has three services that browsers talk to: the web app, the Workspace API and the agent. A browser reaches them over HTTPS, they have to know each other's addresses, and the API has to know which web app may call it. This guide describes what the platform must provide and which settings carry the addresses, so that sign-in, file links and the Copilot work. The local stack of the repository is a trial and does none of this: it uses plain HTTP on `localhost`.
+A deployment of FINOS Workspace has three services that browsers talk to: the web app, the FINOS Workspace API and the agent. A browser reaches them over HTTPS, they have to know each other's addresses, and the API has to know which web app may call it. This guide describes what the platform must provide and which settings carry the addresses, so that sign-in, file links and the Copilot work. The local stack of the repository is a trial and does none of this: it uses plain HTTP on `localhost`.
 
 ## What the platform provides
 
@@ -20,7 +20,7 @@ A deployment of Workspace has three services that browsers talk to: the web app,
 Set these in the environment of the API:
 
 - `APPURL` is the web app's address, such as `https://workspace.example.com`. The API uses it for sign-in redirects and for the links that an administrator hands to a person to set a password.
-- `SELFURL` is the address at which clients reach the API, such as `https://api.workspace.example.com`. It forms the links to uploaded files, and an address that starts with `https://` tells the API that the deployment uses HTTPS, so that the Workspace MCP server hands out only `https://` addresses.
+- `SELFURL` is the address at which clients reach the API, such as `https://api.workspace.example.com`. It forms the links to uploaded files, and an address that starts with `https://` tells the API that the deployment uses HTTPS, so that the FINOS Workspace MCP server hands out only `https://` addresses.
 - `FRONTENDURL` is required but the API does not read it. Set it to the web app's address as well.
 
 Set these in the environment of the web app's container, which writes them into the page's configuration each time that it starts:

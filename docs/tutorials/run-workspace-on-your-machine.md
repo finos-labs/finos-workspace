@@ -1,11 +1,11 @@
 ---
-title: Run Workspace on your machine
+title: Run FINOS Workspace on your machine
 sidebar_position: 1
 ---
 
-# Run Workspace on your machine
+# Run FINOS Workspace on your machine
 
-In this lesson you start a complete Workspace on your own computer, set a password for its first administrator, and sign in. The stack that you start here is for trying Workspace and for development. It is not how you deploy Workspace: a deployment runs the same images on your own platform and sets the same variables through that platform's configuration.
+In this lesson you start a complete FINOS Workspace on your own computer, set a password for its first administrator, and sign in. The stack that you start here is for trying FINOS Workspace and for development. It is not how you deploy FINOS Workspace: a deployment runs the same images on your own platform and sets the same variables through that platform's configuration.
 
 When you finish, you will have the web app, the API, the background worker, the database and the AI agent running, and you will be signed in as an administrator.
 
@@ -28,7 +28,7 @@ echo <token> | docker login ghcr.io -u <github-username> --password-stdin
 
 ## Create the configuration
 
-Workspace needs secrets and addresses before it can start. A script writes all of them for you. Run it from the `backend-api/backend` directory of your clone, and give it the email address that the first administrator will use:
+FINOS Workspace needs secrets and addresses before it can start. A script writes all of them for you. Run it from the `backend-api/backend` directory of your clone, and give it the email address that the first administrator will use:
 
 ```bash
 cd backend-api/backend
@@ -80,4 +80,4 @@ Press `Ctrl+C` in the terminal that runs Compose, or run `docker compose down` i
 
 ## Where to go next
 
-You now have a working Workspace to experiment with. [Web app configuration](../reference/configuration/web-app.mdx), [Backend settings](../reference/configuration/backend.mdx) and [Ines and its MCP server](../reference/configuration/agent.mdx) list every setting that you can change. To make the app look like your own, follow [How to design and apply a theme in the admin area](../how-to/customize/design-a-theme-in-the-admin-area.mdx).
+You now have a working FINOS Workspace to experiment with. [Web app configuration](../reference/configuration/web-app.mdx), [Backend settings](../reference/configuration/backend.mdx) and [Ines and its MCP server](../reference/configuration/agent.mdx) list every setting that you can change. To make the app look like your own, follow [How to design and apply a theme in the admin area](../how-to/customize/design-a-theme-in-the-admin-area.mdx).

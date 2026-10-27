@@ -8,13 +8,13 @@ import { MetricName } from "@site/src/components/Reference/api";
 
 # How to ship logs and metrics
 
-Three processes of a deployment write logs and serve metrics: the Workspace API, the agent Ines and the Ines MCP server. This guide says what each of them writes, which settings change it, and where to point a log collector and a Prometheus server. [Backend settings](../../reference/configuration/backend.mdx) and [Ines and its MCP server](../../reference/configuration/agent.mdx) describe every setting, and the metrics themselves are listed in the [Workspace API](../../reference/http-api/workspace-api.mdx#metrics) and [Ines HTTP API](../../reference/http-api/ines-api.mdx#metrics) references.
+Three processes of a deployment write logs and serve metrics: the FINOS Workspace API, the agent Ines and the Ines MCP server. This guide says what each of them writes, which settings change it, and where to point a log collector and a Prometheus server. [Backend settings](../../reference/configuration/backend.mdx) and [Ines and its MCP server](../../reference/configuration/agent.mdx) describe every setting, and the metrics themselves are listed in the [FINOS Workspace API](../../reference/http-api/workspace-api.mdx#metrics) and [Ines HTTP API](../../reference/http-api/ines-api.mdx#metrics) references.
 
 ## Collect the logs
 
 All three processes write their logs to standard output and write no log files, so the log collector of your platform reads the output of the containers.
 
-### The Workspace API
+### The FINOS Workspace API
 
 Three settings change the log of the API.
 
@@ -28,7 +28,7 @@ Three settings change the log of the API.
 
 The API logs every request except `OPTIONS`, at level `INFO`, so the health checks of the platform appear in the log too. Filter them on the field `path` when they are too many.
 
-The API hides secrets before it writes a line. It replaces the value of each of its settings that is longer than five characters with `********`, except for the settings that hold no secret, which are `FRONTENDURL`, `MODE`, `DB_PORT`, `REDIS_PORT`, `REDIS_DB_BOT`, `REDIS_DB_APP`, `REDIS_SSL_CERT_REQ`, `WORKERS`, `LOG_LEVEL`, `JSON_LOGS`, `LOGURU_COLORIZE` and `MAX_DICT_LEN`. It does the same with the credentials of a Bearer, Basic or Digest authorization, with the tokens of the Workspace MCP server, with the session cookie and with the value of a field whose name contains `authorization`, `cookie`, `token`, `secret`, `password`, `key` or `signature`. A setting whose value is an ordinary word hides that word everywhere in the log. When a setting has the value `workspace`, for example, the router tag `workspace-mcp` appears as `********-mcp` in the log.
+The API hides secrets before it writes a line. It replaces the value of each of its settings that is longer than five characters with `********`, except for the settings that hold no secret, which are `FRONTENDURL`, `MODE`, `DB_PORT`, `REDIS_PORT`, `REDIS_DB_BOT`, `REDIS_DB_APP`, `REDIS_SSL_CERT_REQ`, `WORKERS`, `LOG_LEVEL`, `JSON_LOGS`, `LOGURU_COLORIZE` and `MAX_DICT_LEN`. It does the same with the credentials of a Bearer, Basic or Digest authorization, with the tokens of the FINOS Workspace MCP server, with the session cookie and with the value of a field whose name contains `authorization`, `cookie`, `token`, `secret`, `password`, `key` or `signature`. A setting whose value is an ordinary word hides that word everywhere in the log. When a setting has the value `workspace`, for example, the router tag `workspace-mcp` appears as `********-mcp` in the log.
 
 ### Ines and the MCP server
 
@@ -51,7 +51,7 @@ Prometheus can scrape three endpoints. The API and the two Ines processes each s
 
 | Process | Controlled by | Port | Path |
 |---|---|---|---|
-| Workspace API | `PROMETHEUS` turns the metrics on and off. | <SettingConstant name="prometheusListenerPort" unit="raw" />, which is fixed | `/metrics` |
+| FINOS Workspace API | `PROMETHEUS` turns the metrics on and off. | <SettingConstant name="prometheusListenerPort" unit="raw" />, which is fixed | `/metrics` |
 | Ines | `INES_METRICS_PORT` chooses the port. | <EnvDefault name="INES_METRICS_PORT" /> by default | `/metrics` |
 | Ines MCP server | `MCP_METRICS_PORT` chooses the port. | <EnvDefault name="MCP_METRICS_PORT" /> by default | `/metrics` |
 
@@ -75,7 +75,7 @@ scrape_configs:
 Three things about these endpoints matter to an operator.
 
 - **None of them asks for a credential.** Keep the metrics ports inside your network and do not publish them. The local stack of the repository does not publish them either.
-- **The API's metrics port shows all the workers.** The API runs several workers, and each keeps its own counters. The web server's main process serves the port and adds the counters of every worker together, so the totals of the requests are those of the whole API, and a worker that the web server replaces leaves its counts in the totals. The gauges of the event loop, the thread pool and the database pools have one series for each live worker, which the label `pid` tells apart. [Workspace API](../../reference/http-api/workspace-api.mdx#metrics) describes both addresses of the API. The route `/metrics` on the API's own port shows the same metrics, but it refuses a request that carries no allowed `Origin` header, so a scraper uses the metrics port.
+- **The API's metrics port shows all the workers.** The API runs several workers, and each keeps its own counters. The web server's main process serves the port and adds the counters of every worker together, so the totals of the requests are those of the whole API, and a worker that the web server replaces leaves its counts in the totals. The gauges of the event loop, the thread pool and the database pools have one series for each live worker, which the label `pid` tells apart. [FINOS Workspace API](../../reference/http-api/workspace-api.mdx#metrics) describes both addresses of the API. The route `/metrics` on the API's own port shows the same metrics, but it refuses a request that carries no allowed `Origin` header, so a scraper uses the metrics port.
 - **Each replica needs its own target.** The counters of Ines and of the MCP server live in their process. Scrape every replica and add the series together in your queries.
 
 ## What to watch

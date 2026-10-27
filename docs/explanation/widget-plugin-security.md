@@ -9,7 +9,7 @@ This page explains what the plugin runtime defends, how it does so, and what it 
 
 ## What the runtime protects
 
-The most important asset is the user's session. It lives in an HttpOnly cookie that page script cannot read, and the browser attaches it only to the host's own requests. The runtime also protects the integrity of the Workspace page and the data of every widget other than the one being rendered.
+The most important asset is the user's session. It lives in an HttpOnly cookie that page script cannot read, and the browser attaches it only to the host's own requests. The runtime also protects the integrity of the FINOS Workspace page and the data of every widget other than the one being rendered.
 
 Beyond the page, the runtime protects the user's browser and its network position, because a browser can often reach an intranet that the server cannot. It protects the API, which a plugin must never be able to call as the user. It protects the plugin secrets. Finally, it protects the deployment's own files and network, including its database, cache, storage and other services.
 
@@ -19,7 +19,7 @@ The first adversary is a plugin's code. That code may be malicious from the star
 
 ## What lies outside the model
 
-Four things lie outside this model. Bugs in the browser engine, the container runtime and the kernel are not covered. A compromised Workspace web app or API is not covered either. The deployer is trusted, because the deployer chooses what goes on the server. An admin who approves everything defeats the review, and the closed defaults, the risk ratings and the event log can only reduce that risk.
+Four things lie outside this model. Bugs in the browser engine, the container runtime and the kernel are not covered. A compromised FINOS Workspace web app or API is not covered either. The deployer is trusted, because the deployer chooses what goes on the server. An admin who approves everything defeats the review, and the closed defaults, the risk ratings and the event log can only reduce that risk.
 
 ## The boundary of the sandbox
 
@@ -51,6 +51,6 @@ Some risks remain even with all of these measures.
 
 ## Responsibility
 
-Workspace limits what a plugin can reach and shows the admin what the plugin asks for. It does not make a plugin safe, and nothing in the product says that a plugin is safe or verified. The `publisher` field is the package's own claim.
+FINOS Workspace limits what a plugin can reach and shows the admin what the plugin asks for. It does not make a plugin safe, and nothing in the product says that a plugin is safe or verified. The `publisher` field is the package's own claim.
 
 Admins should therefore read the requests before they approve a plugin. They should prefer plugins that ask for little: a plugin without server-side code is better than one with proxies, and a plugin with proxies is better than one with a backend. In production they should pin digests, grant a plugin only to the roles that need it, and watch its blocked requests.

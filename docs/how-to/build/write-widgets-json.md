@@ -5,7 +5,7 @@ sidebar_position: 1
 
 # How to write the widgets.json of a backend
 
-A backend tells Workspace which widgets it offers in a file named `widgets.json`. This guide builds that file step by step: one widget, then its type, its parameters, its size and its refresh, and then it shows how to turn an endpoint that you already have into a widget. It assumes that your backend is a web server that Workspace can reach, as [Connect a backend and build a dashboard](../../tutorials/connect-a-backend-and-build-a-dashboard.md) shows. [widgets.json](../../reference/schemas/widgets-json.mdx) lists every key that a definition may contain, and [Widget requests](../../reference/protocols/widget-requests.mdx) describes the request that Workspace sends for each definition.
+A backend tells FINOS Workspace which widgets it offers in a file named `widgets.json`. This guide builds that file step by step: one widget, then its type, its parameters, its size and its refresh, and then it shows how to turn an endpoint that you already have into a widget. It assumes that your backend is a web server that FINOS Workspace can reach, as [Connect a backend and build a dashboard](../../tutorials/connect-a-backend-and-build-a-dashboard.md) shows. [widgets.json](../../reference/schemas/widgets-json.mdx) lists every key that a definition may contain, and [Widget requests](../../reference/protocols/widget-requests.mdx) describes the request that FINOS Workspace sends for each definition.
 
 ## Describe one widget
 
@@ -27,7 +27,7 @@ The file is a JSON object. Each key is the id of a widget, and each value is its
 - **`type`** decides how the widget is drawn.
 - **`endpoint`** is a path on your backend, or an absolute URL, that returns the widget's data. It contains neither `?` nor `#`. A value for the query is a parameter, as the next sections show.
 
-The contract is closed: a key that it does not define is an error, so a misspelled key does not pass silently. Workspace reports the problem with the path of the key when you test the backend.
+The contract is closed: a key that it does not define is an error, so a misspelled key does not pass silently. FINOS Workspace reports the problem with the path of the key when you test the backend.
 
 ## Choose the type
 
@@ -67,9 +67,9 @@ A parameter is a control in the widget's header whose value goes into the reques
 }
 ```
 
-Each parameter needs a `paramName` and a `type`. The types are `text`, `tabs`, `ticker`, `date`, `number`, `boolean`, `button`, `endpoint` and `form`. A `text` parameter takes free text, `tabs` and `endpoint` offer a choice, `date` takes a date, `number` a number and `boolean` a box to tick. `ticker` carries the symbol of the ticker that the widget shows, and widgets that show a ticker can be linked, as [How to link the parameters of widgets](../use/link-the-parameters-of-widgets.md) describes. `button` is a button whose value goes into the request, and `form` is a set of inputs that Workspace sends to its own endpoint. The other keys of a parameter set `label`, `description` for the help that appears on hover, `placeholder`, `options` for a fixed choice, `multiSelect` for a choice of several values and `value` for the default.
+Each parameter needs a `paramName` and a `type`. The types are `text`, `tabs`, `ticker`, `date`, `number`, `boolean`, `button`, `endpoint` and `form`. A `text` parameter takes free text, `tabs` and `endpoint` offer a choice, `date` takes a date, `number` a number and `boolean` a box to tick. `ticker` carries the symbol of the ticker that the widget shows, and widgets that show a ticker can be linked, as [How to link the parameters of widgets](../use/link-the-parameters-of-widgets.md) describes. `button` is a button whose value goes into the request, and `form` is a set of inputs that FINOS Workspace sends to its own endpoint. The other keys of a parameter set `label`, `description` for the help that appears on hover, `placeholder`, `options` for a fixed choice, `multiSelect` for a choice of several values and `value` for the default.
 
-Where the value goes depends on the key `in`. With the widget above, and `team` set to `platform`, Workspace sends this request:
+Where the value goes depends on the key `in`. With the widget above, and `team` set to `platform`, FINOS Workspace sends this request:
 
 ```text
 POST <backend>/teams/platform/report?period=month&theme=dark
@@ -86,9 +86,9 @@ Content-Type: application/json
 
 Three more things about parameters matter in practice.
 
-- **The theme.** For `markdown`, `html`, `iframe` and plugin types, Workspace adds `theme=dark` or `theme=light` to every request, as you see above, so a backend that draws its own colors can follow the site. You cannot use `theme` as the name of a parameter.
+- **The theme.** For `markdown`, `html`, `iframe` and plugin types, FINOS Workspace adds `theme=dark` or `theme=light` to every request, as you see above, so a backend that draws its own colors can follow the site. You cannot use `theme` as the name of a parameter.
 - **Choices from your backend.** An `endpoint` parameter loads its choices from its `optionsEndpoint`, which answers with a list of strings or of objects with `label` and `value`. With `optionsMethod` set to `POST`, the values of `optionsParams` go into a JSON body, and a value that starts with `$`, such as `"$team"`, stands for the current value of the parameter of that name.
-- **Defaults.** A date default may be a date written `YYYY-MM-DD` or `$currentDate` with a modifier, such as `$currentDate-1M` for one month ago. A default of `false` or `0` is a value like any other, and Workspace sends it. An empty default means that the parameter has no value, and Workspace leaves it out of the request. A static value for the query, such as a fixed `format=compact`, is a parameter with a default and `"show": false`, which hides the control and still sends the value.
+- **Defaults.** A date default may be a date written `YYYY-MM-DD` or `$currentDate` with a modifier, such as `$currentDate-1M` for one month ago. A default of `false` or `0` is a value like any other, and FINOS Workspace sends it. An empty default means that the parameter has no value, and FINOS Workspace leaves it out of the request. A static value for the query, such as a fixed `format=compact`, is a parameter with a default and `"show": false`, which hides the control and still sends the value.
 
 ### Arrange the parameters
 
@@ -108,14 +108,14 @@ A parameter is a control in the header, and a list of parameters in the `params`
 ]
 ```
 
-The widget shows its first control in the header and the other controls in the parameter bar below it, and a `tabs` parameter gets a row of its own, so a widget with many parameters stays readable on a narrow card. A user can change a value at any time, and Workspace remembers it with the dashboard. When the parameters of several widgets should move together, a user links them, as [How to link the parameters of widgets](../use/link-the-parameters-of-widgets.md) describes.
+The widget shows its first control in the header and the other controls in the parameter bar below it, and a `tabs` parameter gets a row of its own, so a widget with many parameters stays readable on a narrow card. A user can change a value at any time, and FINOS Workspace remembers it with the dashboard. When the parameters of several widgets should move together, a user links them, as [How to link the parameters of widgets](../use/link-the-parameters-of-widgets.md) describes.
 
 ## Size, refresh and the catalog
 
 These keys of a definition are all optional:
 
 - **`gridData`** is the default size on a dashboard, in grid units: `w` of at most 40 columns and `h` rows. `{ "w": 20, "h": 12 }` makes the widget half as wide as the dashboard.
-- **`staleTime`** is the number of milliseconds for which Workspace reuses a response before it asks again. The value `false` asks every time.
+- **`staleTime`** is the number of milliseconds for which FINOS Workspace reuses a response before it asks again. The value `false` asks every time.
 - **`refetchInterval`** makes the widget ask again every so many milliseconds, or on a five-field cron schedule. A widget with `"refetchInterval": 30000` fetches every thirty seconds.
 - **`runButton`** set to `true` makes the widget fetch only when the user selects its Run button. The widget fetches once when it is first added, and after that a change of a parameter dims the content until the user runs it. Use it for a request that is slow or costs something.
 - **`dataUpdateDisplay`** is a cron expression for the times at which the data changes, which the widget shows to the user.
@@ -151,10 +151,10 @@ The result is this definition:
 }
 ```
 
-An AI host can help with this conversion. The Workspace MCP server serves a guide for converting an endpoint into a widget among its resources, and [How to connect an outside AI host to Workspace](../use/connect-an-outside-ai-host.mdx) shows how to connect one.
+An AI host can help with this conversion. The FINOS Workspace MCP server serves a guide for converting an endpoint into a widget among its resources, and [How to connect an outside AI host to FINOS Workspace](../use/connect-an-outside-ai-host.mdx) shows how to connect one.
 
 ## Test the file
 
 1. Serve the file at `/widgets.json` on your backend, and serve `/apps.json` too, with `[]` when you have no apps.
-2. In Connections, select Connect Backend, enter the name and the address, set Validate widgets to Yes and select Test. The result says how many widgets Workspace found, and it lists the problems of every definition that breaks the contract, each with the path of the key. [How to review and debug a backend](review-and-debug-a-backend.md) explains the notices.
+2. In Connections, select Connect Backend, enter the name and the address, set Validate widgets to Yes and select Test. The result says how many widgets FINOS Workspace found, and it lists the problems of every definition that breaks the contract, each with the path of the key. [How to review and debug a backend](review-and-debug-a-backend.md) explains the notices.
 3. Add the widgets to a dashboard and open the network tool of your browser. Check that each request has the URL, the headers and the body that you expect, and that the backend answers each with the right data.

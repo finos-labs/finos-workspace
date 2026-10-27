@@ -5,11 +5,11 @@ sidebar_position: 2
 
 # Connect a backend and build a dashboard
 
-In this lesson you give Workspace some data, put it on a dashboard, change what a widget shows, and save the dashboard as an app. You write the data source yourself, a small program, so that you see exactly what Workspace asks of a backend. When you finish, you will have a dashboard with two widgets and an app that anyone in your organization can open again.
+In this lesson you give FINOS Workspace some data, put it on a dashboard, change what a widget shows, and save the dashboard as an app. You write the data source yourself, a small program, so that you see exactly what FINOS Workspace asks of a backend. When you finish, you will have a dashboard with two widgets and an app that anyone in your organization can open again.
 
 ## What you need
 
-You need a running Workspace and an account that can add connections, which means an Admin or a Developer. [Run Workspace on your machine](run-workspace-on-your-machine.md) gives you both. You also need Node.js on the same computer, to run the backend that you write. Any recent version works, because the program uses only the modules that Node includes.
+You need a running FINOS Workspace and an account that can add connections, which means an Admin or a Developer. [Run FINOS Workspace on your machine](run-workspace-on-your-machine.md) gives you both. You also need Node.js on the same computer, to run the backend that you write. Any recent version works, because the program uses only the modules that Node includes.
 
 ## Write the backend
 
@@ -78,7 +78,7 @@ createServer((request, response) => {
 }).listen(9100, () => console.log("Backend on http://localhost:9100"));
 ```
 
-The program has three parts. The object `widgets` is the contents of `widgets.json`: each key is a widget's id, and each value gives the widget a name, a description, a category for the catalog, a type, and the endpoint that serves its data. The widget `revenue_by_region` also declares one parameter, `year`, with the starting value 2025. The server answers `/widgets.json` with that object, `/apps.json` with an empty list because this backend has no apps, and the two widget endpoints with Markdown text. The line that sets `Access-Control-Allow-Origin` is what lets the web app at `http://localhost:3000` call the backend, and the `OPTIONS` branch answers the browser's checks for a route with 204 when the route exists and 404 when it does not, which Workspace uses to verify a backend's routes.
+The program has three parts. The object `widgets` is the contents of `widgets.json`: each key is a widget's id, and each value gives the widget a name, a description, a category for the catalog, a type, and the endpoint that serves its data. The widget `revenue_by_region` also declares one parameter, `year`, with the starting value 2025. The server answers `/widgets.json` with that object, `/apps.json` with an empty list because this backend has no apps, and the two widget endpoints with Markdown text. The line that sets `Access-Control-Allow-Origin` is what lets the web app at `http://localhost:3000` call the backend, and the `OPTIONS` branch answers the browser's checks for a route with 204 when the route exists and 404 when it does not, which FINOS Workspace uses to verify a backend's routes.
 
 Start the backend:
 
@@ -90,18 +90,18 @@ It prints `Backend on http://localhost:9100`. Leave it running. [widgets.json](.
 
 ## Connect the backend
 
-Sign in to Workspace and select Connections in the sidebar. The page says that no connections have been added. Select Connect Backend and fill in the dialog:
+Sign in to FINOS Workspace and select Connections in the sidebar. The page says that no connections have been added. Select Connect Backend and fill in the dialog:
 
 1. In Name, type `Sales demo`.
 2. In Endpoint URL, type `http://localhost:9100`.
 3. Leave Validate widgets at No. Setting it to Yes makes the test also check that the browser can reach every route that the widgets use.
 4. Select Test.
 
-The dialog reports "Test successful" and says that it found 2 widgets, 0 apps and 0 prompts. If the test fails, check that `backend.mjs` is still running and that `APP_ORIGIN` holds the address that you use to open Workspace, character for character. Select Add. The Connections page now lists Sales demo as an active connection with two widgets.
+The dialog reports "Test successful" and says that it found 2 widgets, 0 apps and 0 prompts. If the test fails, check that `backend.mjs` is still running and that `APP_ORIGIN` holds the address that you use to open FINOS Workspace, character for character. Select Add. The Connections page now lists Sales demo as an active connection with two widgets.
 
 ## Create a dashboard
 
-Select Create Dashboard under My Dashboards in the sidebar, or the plus sign next to the heading. Workspace creates a dashboard with a generated name, such as "Sapphire Hairstreak", and opens it. The dashboard is empty, and it offers three ways to start: add widgets, browse apps, or add your own files.
+Select Create Dashboard under My Dashboards in the sidebar, or the plus sign next to the heading. FINOS Workspace creates a dashboard with a generated name, such as "Sapphire Hairstreak", and opens it. The dashboard is empty, and it offers three ways to start: add widgets, browse apps, or add your own files.
 
 Select Add widgets. The Widget Menu opens on the Widgets Library tab. The catalog lists the built-in Iframe and Navigation Bar widgets under Others, and your two widgets under the category Sales that you named in `widgets.json`. Select the checkbox of the Sales group to choose both widgets, and then select Add widgets.
 
@@ -109,7 +109,7 @@ The dashboard now shows two widgets. Revenue by region is a table of the regions
 
 ## Change a parameter
 
-The box in the header of Revenue by region is the parameter that you declared, and Workspace labels it Year when it is empty. Change it to `2024` and press Enter. The widget asks the backend again, this time with `year=2024`, and the table shows 110, 90 and 70. You can confirm the request in the network tab of your browser.
+The box in the header of Revenue by region is the parameter that you declared, and FINOS Workspace labels it Year when it is empty. Change it to `2024` and press Enter. The widget asks the backend again, this time with `year=2024`, and the table shows 110, 90 and 70. You can confirm the request in the network tab of your browser.
 
 ## Name the dashboard
 
@@ -119,7 +119,7 @@ Right-click the dashboard in the sidebar, or select the three dots that appear n
 
 An app is a dashboard that you can reuse: it remembers which widgets are on it, how they are arranged and the values of their parameters. Open the dashboard's menu again and choose Save App. The dialog proposes the dashboard's name. Type a description, such as `Revenue by region and the sales team's notes.`, and select Save. A message says that the app was created, and the Apps page now shows a card for it with the number of widgets that it holds.
 
-Select the card. Workspace creates a new dashboard from the app, with the widgets in the same places and the year at 2024, and opens it.
+Select the card. FINOS Workspace creates a new dashboard from the app, with the widgets in the same places and the year at 2024, and opens it.
 
 ## Where to go next
 

@@ -5,7 +5,7 @@ sidebar_position: 15
 
 # How to change your settings
 
-Every user has settings that change how Workspace looks and behaves for that person only: the theme, the size of the text, the controls of the dashboards and the security of the account. This guide lists them and what each one does. Workspace saves a change as soon as you make it, and a message says "Display settings updated". The settings belong to your account, so they follow you to another computer.
+Every user has settings that change how FINOS Workspace looks and behaves for that person only: the theme, the size of the text, the controls of the dashboards and the security of the account. This guide lists them and what each one does. FINOS Workspace saves a change as soon as you make it, and a message says "Display settings updated". The settings belong to your account, so they follow you to another computer.
 
 ## Open the settings
 
@@ -34,7 +34,7 @@ Select the menu icon next to the logo at the top of the sidebar, which has the t
 The section Danger Zone deletes things for good, and neither action can be undone:
 
 - **Clear All Dashboards** deletes all your dashboards and signs you out, so you sign in again.
-- **Delete Account** deletes your account and everything in it. A dialog asks "Are you sure you want to delete this account" and the account's email address, and tells you that your access to Workspace and all API keys will be revoked. Select Yes, delete account to go on.
+- **Delete Account** deletes your account and everything in it. A dialog asks "Are you sure you want to delete this account" and the account's email address, and tells you that your access to FINOS Workspace and all API keys will be revoked. Select Yes, delete account to go on.
 
 ## Security
 

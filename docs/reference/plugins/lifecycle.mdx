@@ -60,7 +60,7 @@ In Admin, Roles and Access, a role's Widget plugins action grants either all of 
 
 The admin command line tool runs inside the API container and works on the database directly. It does everything that the superuser's pages do. You start it inside the API container, with `python -m scripts.workspace_admin plugin <action>`, using whatever your platform offers for running a command in a container, for example `kubectl exec`. [Admin CLI](../command-line/admin-cli.mdx) lists the `plugin` commands. The command `plugin approve` prints the review and approves nothing unless you add `--acknowledge`, and its `--digest` option stops the approval when the server's files are not the ones that you checked. The command `plugin secret set` reads the value without echoing it, or from standard input, and never from an argument.
 
-The routes carry the `widget-plugins` tag on [Workspace API](../http-api/workspace-api.mdx). Superuser routes are under `/plugins`, organization admin routes are under `/admin/plugins` and `/admin/role/{role_uuid}/plugin-access`, and user routes are under `/app/widget-plugins`. A backend reads data through `POST /internal/plugin-broker/data/{data_source_id}`. The route `GET /app/widget-plugins` answers with `{ enabled, etag, plugins, vizHandlers }`, which describes what the calling user may use. The API serves a plugin's files as `application/octet-stream` with `Content-Disposition: attachment`.
+The routes carry the `widget-plugins` tag on [FINOS Workspace API](../http-api/workspace-api.mdx). Superuser routes are under `/plugins`, organization admin routes are under `/admin/plugins` and `/admin/role/{role_uuid}/plugin-access`, and user routes are under `/app/widget-plugins`. A backend reads data through `POST /internal/plugin-broker/data/{data_source_id}`. The route `GET /app/widget-plugins` answers with `{ enabled, etag, plugins, vizHandlers }`, which describes what the calling user may use. The API serves a plugin's files as `application/octet-stream` with `Content-Disposition: attachment`.
 
 The settings are in the Widget plugins group of [Backend configuration](../configuration/backend.mdx).
 
@@ -76,11 +76,11 @@ The host creates a plugin widget's frame when its card comes near the viewport, 
 
 ## Watching a plugin
 
-Workspace records several kinds of information about plugins:
+FINOS Workspace records several kinds of information about plugins:
 
 - **Events** record that versions were found, changed, gone or back, and they record approvals, blocks, revocations and restores. They also record overrides, an organization's enablement and settings, secrets that were set or cleared, and backend mismatches. You can read them in a plugin's Activity section and with `plugin events`.
 - **Blocked requests** show what a frame's policy refused, by directive and origin, as [Plugin frame policy](frame-policy.mdx) describes.
-- **Metrics** appear on `/metrics` when `PROMETHEUS` is on. Workspace counts a plugin's labels only for a caller who may use that plugin.
+- **Metrics** appear on `/metrics` when `PROMETHEUS` is on. FINOS Workspace counts a plugin's labels only for a caller who may use that plugin.
 - **Logs** hold one line for each proxy, backend and broker call, with the plugin, the widget, the outcome, the number of bytes and the duration. They never contain arguments, bodies or secrets.
 
 These are the metrics:

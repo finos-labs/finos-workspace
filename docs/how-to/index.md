@@ -7,9 +7,9 @@ sidebar_position: 0
 
 # How-to guides
 
-A how-to guide is a recipe for one goal. It assumes that you know the basics, it gives the steps, and it leaves out the teaching. If you are new to Workspace, start with the [tutorials](/tutorials) instead. For exact values, see the [reference](/reference), and for the reasons behind a step, see the [explanation](/explanation).
+A how-to guide is a recipe for one goal. It assumes that you know the basics, it gives the steps, and it leaves out the teaching. If you are new to FINOS Workspace, start with the [tutorials](/tutorials) instead. For exact values, see the [reference](/reference), and for the reasons behind a step, see the [explanation](/explanation).
 
-## Use Workspace
+## Use FINOS Workspace
 
 These guides are for everyone who works with dashboards:
 
@@ -28,7 +28,7 @@ These guides are for everyone who works with dashboards:
 - [How to set up two-factor sign-in](use/set-up-two-factor-sign-in.md) protects your account with an authenticator app.
 - [How to embed a web page as a widget](use/embed-a-web-page.md) shows a page of another site on a dashboard.
 - [How to change your settings](use/change-your-settings.md) walks through the tabs of your settings.
-- [How to connect an outside AI host to Workspace](use/connect-an-outside-ai-host.mdx) lets a desktop assistant or a coding tool work with your dashboards.
+- [How to connect an outside AI host to FINOS Workspace](use/connect-an-outside-ai-host.mdx) lets a desktop assistant or a coding tool work with your dashboards.
 
 ## Administer your organization
 
@@ -50,8 +50,8 @@ These guides are for the admins of an organization:
 These guides are for the people who run a deployment:
 
 - [How to choose where files are stored](deploy/choose-file-storage.md)
-- [How to serve Workspace over HTTPS and set the addresses](deploy/serve-over-https-and-cors.mdx)
-- [How to connect Workspace to its database and cache](deploy/connect-the-database-and-cache.md)
+- [How to serve FINOS Workspace over HTTPS and set the addresses](deploy/serve-over-https-and-cors.mdx)
+- [How to connect FINOS Workspace to its database and cache](deploy/connect-the-database-and-cache.md)
 - [How to run database migrations](deploy/run-database-migrations.mdx)
 - [How to choose the Copilot's model and provider](deploy/choose-the-copilot-model.mdx)
 - [How to switch on the search of documents](deploy/enable-document-search.mdx)
@@ -68,14 +68,14 @@ These guides change how the web app looks, for a whole deployment or for one org
 - [How to create a theme for the web app](customize/create-a-theme.md) writes a stylesheet that the deployment loads.
 - [How to change the brand color and font](customize/change-brand-color-and-font.md) changes the two properties that most deployments change first.
 
-## Build for Workspace
+## Build for FINOS Workspace
 
 These guides are for the people who write backends and widgets:
 
 - [How to write the widgets.json of a backend](build/write-widgets-json.md) describes the widgets of a backend and turns an existing endpoint into one.
 - [How to make a widget readable by the Copilot](build/make-a-widget-readable-by-the-copilot.md) helps the Copilot find a widget and read its rows.
 - [How to turn a dashboard into an app of your backend](build/export-a-dashboard-as-an-app.mdx) writes the `apps.json` entry from a dashboard that you built.
-- [How to review and debug a backend](build/review-and-debug-a-backend.md) reads the notices that Workspace gives and fixes what they report.
+- [How to review and debug a backend](build/review-and-debug-a-backend.md) reads the notices that FINOS Workspace gives and fixes what they report.
 - [How to style an HTML widget for both themes](build/style-an-html-widget.md)
 - [How to style a plugin widget for both themes](build/style-a-plugin-widget.md)
 

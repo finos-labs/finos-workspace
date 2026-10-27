@@ -19,14 +19,14 @@ The tab shows your prompts in a group of their own. The list has a search box an
 ## Ask a saved prompt
 
 1. Open the Copilot and select the light bulb in the bottom row of the question box, which has the tooltip Prompt suggestions. The menu Prompts opens.
-2. Choose a prompt. Workspace puts its text in the question box and does not send it, so you can change it before you ask.
+2. Choose a prompt. FINOS Workspace puts its text in the question box and does not send it, so you can change it before you ask.
 3. Press Enter to send the question.
 
 The menu has up to three sections, which you open and close with their arrows:
 
 - **Backend Prompts** are the questions that the backend suggests for the app that the dashboard was created from. They also include the follow-up questions that the Copilot suggested in the current chat.
 - **My Prompts** are the prompts that you saved.
-- **Shared with me** are prompts that your roles give you access to. Copy one into your library from its row on the tab Prompts, and Workspace says "Prompt duplicated to your library".
+- **Shared with me** are prompts that your roles give you access to. Copy one into your library from its row on the tab Prompts, and FINOS Workspace says "Prompt duplicated to your library".
 
 When the menu has no prompt to offer, it says that no suggestions are available for this dashboard, and it links to the page where you create your own. The gear in the header of the menu opens the tab Prompts.
 

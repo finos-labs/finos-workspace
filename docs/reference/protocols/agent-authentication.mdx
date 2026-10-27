@@ -8,7 +8,7 @@ import { EnvDefault, SettingConstant, WebAppValue } from "@site/src/components/R
 
 # Agent authentication
 
-The browser holds its session in an HttpOnly cookie, which a script cannot read and which the agent, on another origin, never receives. The agent still has to know who is asking, so that it can apply the user's roles and limits and count the user's usage. Workspace solves this with a short-lived agent token. The browser asks the API for one, sends it to the agent, and the agent asks the API who the token belongs to. This page describes the token, the calls that the agent makes to the API, and what each party refuses. The code is in `backend-api/backend/api/auth_helpers.py`, `backend-api/backend/routers/app/index.py`, `frontend/src/lib/state/agentToken.ts` and `agent/src/auth/`.
+The browser holds its session in an HttpOnly cookie, which a script cannot read and which the agent, on another origin, never receives. The agent still has to know who is asking, so that it can apply the user's roles and limits and count the user's usage. FINOS Workspace solves this with a short-lived agent token. The browser asks the API for one, sends it to the agent, and the agent asks the API who the token belongs to. This page describes the token, the calls that the agent makes to the API, and what each party refuses. The code is in `backend-api/backend/api/auth_helpers.py`, `backend-api/backend/routers/app/index.py`, `frontend/src/lib/state/agentToken.ts` and `agent/src/auth/`.
 
 ## The agent token
 

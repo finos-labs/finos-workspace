@@ -13,7 +13,7 @@ One replica of the agent and of its MCP server serves many people, but a larger 
 
 A question is several requests, because the agent asks the browser to run a tool and the browser answers with a new request. Between those requests the agent has to remember who a token belongs to, how much of a user's daily share is left, which turn of the conversation is under way, and the rows of the widgets that the browser sent. The MCP server remembers the documents of a chat. With `REDIS_URL` set, all of this lives in the Valkey or Redis server that the variable names, so any replica can take the next request of a turn, and a user has one share across all replicas.
 
-Set `REDIS_URL` to an address such as `redis://valkey:6379` in the environment of the agent and of the MCP server. They may use the Valkey of the API, which [How to connect Workspace to its database and cache](connect-the-database-and-cache.md) describes. Restart them, and check each replica:
+Set `REDIS_URL` to an address such as `redis://valkey:6379` in the environment of the agent and of the MCP server. They may use the Valkey of the API, which [How to connect FINOS Workspace to its database and cache](connect-the-database-and-cache.md) describes. Restart them, and check each replica:
 
 ```bash
 curl http://<agent-address>:7777/status
@@ -27,7 +27,7 @@ A shared store that does not answer does not stop the agent. The replica falls b
 
 - **The secrets.** `INES_SCOPE_SECRET` must be the same on every replica of the agent and of the MCP server, because the agent signs the scope of a chat with it and the MCP server checks the signature. The same holds for `INES_METERING_TOKEN`, with which every replica reports usage to the API. It runs out <SettingConstant name="meteringTokenDefaultLifetimeSeconds" unit="days" /> after it was minted, and `python -m scripts.create_metering_token` in the backend mints a new one.
 - **The models and keys.** `DEFAULT_MODEL`, `INES_MODELS` and the provider keys, so that every replica offers the same models.
-- **The addresses.** `WORKSPACE_API_URL`, `WORKSPACE_ORIGIN` and `WORKSPACE_PUBLIC_URL`, as [How to serve Workspace over HTTPS](serve-over-https-and-cors.mdx) describes.
+- **The addresses.** `WORKSPACE_API_URL`, `WORKSPACE_ORIGIN` and `WORKSPACE_PUBLIC_URL`, as [How to serve FINOS Workspace over HTTPS](serve-over-https-and-cors.mdx) describes.
 
 ## What the load balancer and the platform allow
 

@@ -1,19 +1,19 @@
 ---
-title: About the architecture of Workspace
+title: About the architecture of FINOS Workspace
 sidebar_position: 1
 ---
 
 import { EnvDefault, SettingConstant } from "@site/src/components/Reference/config";
 
-# About the architecture of Workspace
+# About the architecture of FINOS Workspace
 
-Workspace is a web application that is made of a few cooperating services, and one idea explains most of how they fit together: the browser is the hub. The user's dashboards live in the browser while the user works with them, and the browser talks directly to the services that each need to hear from it. The services talk to each other far less than one might expect. This page describes the parts, what each of them is responsible for, and why the connections run the way they do.
+FINOS Workspace is a web application that is made of a few cooperating services, and one idea explains most of how they fit together: the browser is the hub. The user's dashboards live in the browser while the user works with them, and the browser talks directly to the services that each need to hear from it. The services talk to each other far less than one might expect. This page describes the parts, what each of them is responsible for, and why the connections run the way they do.
 
 ## The parts
 
 The **web app** is a single-page application written in React. A web server delivers it as static files, together with a small `config.js` that tells the app where its API and its agent are. The app holds everything that the user sees: the dashboards, the widgets and the chat with the Copilot.
 
-The **Workspace API** is a FastAPI application and the system of record. It owns the accounts, the sessions, the roles and their permissions, the saved dashboards and apps, the uploaded files, the connections to data backends and the settings of each organization. It answers the web app's requests, it checks who is allowed to do what, and, together with the worker, it is the only part that talks to the database. It also hosts the Workspace MCP server at `/mcp`, and it forwards the browser's calls to the MCP servers that users connect.
+The **FINOS Workspace API** is a FastAPI application and the system of record. It owns the accounts, the sessions, the roles and their permissions, the saved dashboards and apps, the uploaded files, the connections to data backends and the settings of each organization. It answers the web app's requests, it checks who is allowed to do what, and, together with the worker, it is the only part that talks to the database. It also hosts the FINOS Workspace MCP server at `/mcp`, and it forwards the browser's calls to the MCP servers that users connect.
 
 The **worker** runs the jobs that should not hold up a request. It tidies up old dashboard versions and uploads that no widget uses, it updates shared files after a share changes, it refreshes each user's usage totals every five minutes, and at midnight UTC it resets the daily counts of Copilot questions. The API puts the jobs on a queue in Valkey, and the worker takes them from there.
 
@@ -21,15 +21,15 @@ The **stores** are a relational database, Valkey and file storage. The database,
 
 **Ines** is the built-in agent, the service behind the Copilot. It is a separate service on Node that talks to a language model, and it has a second process, the **Ines MCP server**, that offers it tools for searching the web and the documents in a chat. Ines does not store dashboards and it cannot reach a user's data. It receives what the browser sends with each question.
 
-A **data backend** is a service that the organization or a third party runs and that serves widgets. It describes its widgets in a `widgets.json` file, and the web app asks it for each widget's data. Backends are not part of Workspace, but every dashboard depends on at least one of them. A **plugin backend** is a small restricted service that a widget plugin ships for work that cannot run in the browser, and only the API calls it.
+A **data backend** is a service that the organization or a third party runs and that serves widgets. It describes its widgets in a `widgets.json` file, and the web app asks it for each widget's data. Backends are not part of FINOS Workspace, but every dashboard depends on at least one of them. A **plugin backend** is a small restricted service that a widget plugin ships for work that cannot run in the browser, and only the API calls it.
 
 One more piece runs once and then goes away. When a deployment starts, an initialization job upgrades the database schema and creates the first organization and administrator, and only then do the API and the worker start.
 
 ## Why the browser is the hub
 
-A design in which every request went through the API would be simpler to draw, and many applications are built that way. Workspace sends data requests from the browser to the backends instead, and it sends questions from the browser to Ines. The reason is that the backends and the agent are meant to be run by other people than the team that runs the API. A bank can connect a backend that its own data team operates, behind the bank's own network rules, and the API never has to see the data. The same holds for the agent: whoever runs it needs no access to the user's dashboards, because the browser decides what each question carries.
+A design in which every request went through the API would be simpler to draw, and many applications are built that way. FINOS Workspace sends data requests from the browser to the backends instead, and it sends questions from the browser to Ines. The reason is that the backends and the agent are meant to be run by other people than the team that runs the API. A bank can connect a backend that its own data team operates, behind the bank's own network rules, and the API never has to see the data. The same holds for the agent: whoever runs it needs no access to the user's dashboards, because the browser decides what each question carries.
 
-This is the same shape as a business intelligence front end that queries its data sources directly, and as an editor whose AI assistant asks the editor to run tools. The cost is that the browser has to be trusted with what it holds, and the design pays for that with limits. The browser holds the credentials of a backend connection because it needs them to make the calls, and the API keeps them encrypted in the database. The session cookie that proves who the user is cannot be read by scripts, and the agent never receives it. The agent receives a token that expires after <SettingConstant name="agentTokenLifetimeSeconds" unit="min" /> instead, as [About sessions and tokens](sessions-and-tokens.mdx) explains. Ines never calls an MCP server or the Workspace itself, because the browser performs every such call, as [About how the Copilot answers](how-the-copilot-answers.md) explains.
+This is the same shape as a business intelligence front end that queries its data sources directly, and as an editor whose AI assistant asks the editor to run tools. The cost is that the browser has to be trusted with what it holds, and the design pays for that with limits. The browser holds the credentials of a backend connection because it needs them to make the calls, and the API keeps them encrypted in the database. The session cookie that proves who the user is cannot be read by scripts, and the agent never receives it. The agent receives a token that expires after <SettingConstant name="agentTokenLifetimeSeconds" unit="min" /> instead, as [About sessions and tokens](sessions-and-tokens.mdx) explains. Ines never calls an MCP server or the FINOS Workspace itself, because the browser performs every such call, as [About how the Copilot answers](how-the-copilot-answers.md) explains.
 
 ## What each part trusts
 

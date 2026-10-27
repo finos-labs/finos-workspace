@@ -8,7 +8,7 @@ import { InesHelperRoutes, InesLimit, InesMetrics, InesRoutes } from "@site/src/
 
 # Ines HTTP API
 
-Ines is a separate service from the Workspace API. It is a Hono application on Node that listens on port <EnvDefault name="PORT" /> by default, and the web app talks to it directly from the browser. This page lists its routes, the checks that apply to them and the metrics that it serves. The questions that users ask travel over `POST /v1/query`, which has its own page, the [agent query protocol](../protocols/ines-query.mdx). The routes are defined in `agent/src/app.ts` and `agent/src/routes/`, and the tables on this page are generated from the running application, so they list the routes that it serves.
+Ines is a separate service from the FINOS Workspace API. It is a Hono application on Node that listens on port <EnvDefault name="PORT" /> by default, and the web app talks to it directly from the browser. This page lists its routes, the checks that apply to them and the metrics that it serves. The questions that users ask travel over `POST /v1/query`, which has its own page, the [agent query protocol](../protocols/ines-query.mdx). The routes are defined in `agent/src/app.ts` and `agent/src/routes/`, and the tables on this page are generated from the running application, so they list the routes that it serves.
 
 ## Checks that apply to every route
 

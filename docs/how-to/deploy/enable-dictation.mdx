@@ -30,7 +30,7 @@ Then dictate a short question in the web app. The agent logs a line "Transcribed
 
 ## What the browser and the agent require
 
-- The web app has to be served over HTTPS, because browsers allow a page to use the microphone only on a secure page, with `localhost` as the exception. [How to serve Workspace over HTTPS](serve-over-https-and-cors.mdx) describes the setup.
+- The web app has to be served over HTTPS, because browsers allow a page to use the microphone only on a secure page, with `localhost` as the exception. [How to serve FINOS Workspace over HTTPS](serve-over-https-and-cors.mdx) describes the setup.
 - The browser sends the recording as a 16-bit PCM WAV file of at most <InesLimit name="audioBytes" />, which the browser makes from the recording at 16 kHz and in mono. That is about <WebAppValue of="maxDictationMilliseconds" unit="ms" /> of speech, and the web app stops a recording after that time by itself. A larger file gets the status 413.
 - The agent allows the browser's address in `INES_CORS_ORIGINS`, as it does for every other call.
 

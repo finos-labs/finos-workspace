@@ -13,7 +13,7 @@ Put each page in the one folder that matches its job. A page that tries to do tw
 
 | Folder | Who reads it | How the title starts | What to leave out |
 |---|---|---|---|
-| `tutorials/` | A reader who wants to learn by doing. | A short action, such as "Run Workspace on your machine". | Digressions. Link to the explanation and the reference instead. |
+| `tutorials/` | A reader who wants to learn by doing. | A short action, such as "Run FINOS Workspace on your machine". | Digressions. Link to the explanation and the reference instead. |
 | `how-to/` | A reader who has a goal. | "How to …". | Teaching and background. |
 | `reference/` | A reader who needs a fact. | A noun phrase, such as "Plugin proxies and secrets". | Instructions and opinions. |
 | `explanation/` | A reader who wants to understand. | "About …". | Steps and exhaustive lists. |

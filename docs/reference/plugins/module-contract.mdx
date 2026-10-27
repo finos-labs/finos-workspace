@@ -7,7 +7,7 @@ import { PluginList, PluginValue } from "@site/src/components/Reference/plugins"
 
 # Plugin module contract
 
-A plugin's code is one bundled ES module named `entry.js`. Its default export is the widget, or an async function that returns the widget, and Workspace uses nothing else that the module exports. The contract is the one that Anywidget defines (AFM <PluginValue of="versions.afm" plain />), so the same `render({ model, el })` function that Jupyter widgets use works here.
+A plugin's code is one bundled ES module named `entry.js`. Its default export is the widget, or an async function that returns the widget, and FINOS Workspace uses nothing else that the module exports. The contract is the one that Anywidget defines (AFM <PluginValue of="versions.afm" plain />), so the same `render({ model, el })` function that Jupyter widgets use works here.
 
 ```js
 export default {
@@ -111,7 +111,7 @@ The host logs uncaught errors and unhandled rejections, and it does not treat th
 
 ## Differences from anywidget in Jupyter
 
-| In Jupyter | In a Workspace plugin |
+| In Jupyter | In a FINOS Workspace plugin |
 |---|---|
 | A Python class holds the traits, and the kernel answers `model.send`. | There is no kernel. The traits are bound to host state, and a round trip to server code is a [proxy](proxies.mdx) or a [backend route](backends.mdx). |
 | The `_esm` and `_css` values may be URLs. | The package supplies `entry.js` and `entry.css` as bundled files, and the host adds the CSS as a `<style>` element. |

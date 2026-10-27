@@ -5,9 +5,9 @@ sidebar_position: 4
 
 # How to build and try a widget plugin
 
-Workspace has no developer mode for plugins. To try a plugin, you run your own Workspace as its administrator and put the plugin through the same review that a deployment applies. This guide shows how to build a package, check it, approve it and see its widget on a dashboard.
+FINOS Workspace has no developer mode for plugins. To try a plugin, you run your own FINOS Workspace as its administrator and put the plugin through the same review that a deployment applies. This guide shows how to build a package, check it, approve it and see its widget on a dashboard.
 
-1. Run a Workspace stack of your own. The local development stack is the simplest. Its guide, `local/LOCAL_SETUP.md`, shows in its Widget plugins section how to mount a plugins directory into the backend and how to set `WIDGET_PLUGINS_DIR`. On any other stack, the API needs the same two things, as [How to deploy a widget plugin](deploy-a-plugin.md) describes.
+1. Run a FINOS Workspace stack of your own. The local development stack is the simplest. Its guide, `local/LOCAL_SETUP.md`, shows in its Widget plugins section how to mount a plugins directory into the backend and how to set `WIDGET_PLUGINS_DIR`. On any other stack, the API needs the same two things, as [How to deploy a widget plugin](deploy-a-plugin.md) describes.
 
 2. Build your package into `<plugins directory>/<plugin-id>/<version>/`. It needs a `plugin.json`, one bundled `entry.js`, and optionally an `entry.css` and an `assets/` directory. [Plugin package and manifest](../../reference/plugins/package-and-manifest.mdx) lists the rules for the package, and [Plugin module contract](../../reference/plugins/module-contract.mdx) describes what the module must do.
 

@@ -9,7 +9,7 @@ In this lesson your backend offers a ready-made dashboard. An app is a dashboard
 
 ## What you need
 
-You need the backend of the previous lesson, the file `backend.mjs`, running and connected to your Workspace under the name Sales demo. You also need a signed-in browser. The Copilot part at the end needs an AI agent, which [Run Workspace on your machine](run-workspace-on-your-machine.md) starts, and you can skip that part without losing anything else.
+You need the backend of the previous lesson, the file `backend.mjs`, running and connected to your FINOS Workspace under the name Sales demo. You also need a signed-in browser. The Copilot part at the end needs an AI agent, which [Run FINOS Workspace on your machine](run-workspace-on-your-machine.md) starts, and you can skip that part without losing anything else.
 
 ## Describe the app
 
@@ -59,13 +59,13 @@ node backend.mjs
 
 ## Refresh the connection
 
-Workspace reads the apps of a backend when it connects the backend and when it refreshes it. Select Connections in the sidebar, and select the refresh button, which is the one with two arrows beside Connect Backend. A message says "Backends refreshed", and the row of Sales demo now shows 1 under Apps.
+FINOS Workspace reads the apps of a backend when it connects the backend and when it refreshes it. Select Connections in the sidebar, and select the refresh button, which is the one with two arrows beside Connect Backend. A message says "Backends refreshed", and the row of Sales demo now shows 1 under Apps.
 
 ## Open the app
 
 Select Apps in the sidebar. The page lists the apps of all your connections, and it has a card for Regional sales. The card shows the name of the connection, Sales demo, the name of the app and its description. Its footer shows 2, the number of widgets, and 1, the number of suggested questions.
 
-Select the card. Workspace creates a dashboard named Regional sales and opens it. It has the two widgets side by side, Revenue by region on the left and Sales notes on the right. The table of Revenue by region shows 110, 90 and 70, which are the values of 2024, because the app set the year.
+Select the card. FINOS Workspace creates a dashboard named Regional sales and opens it. It has the two widgets side by side, Revenue by region on the left and Sales notes on the right. The table of Revenue by region shows 110, 90 and 70, which are the values of 2024, because the app set the year.
 
 ## Look at the suggested question
 

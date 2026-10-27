@@ -71,7 +71,7 @@ const config: Config = {
     ],
     navbar: {
       logo: {
-        alt: "Workspace",
+        alt: "FINOS Workspace",
         src: "img/logo-horizontal-color.svg",
         srcDark: "img/logo-horizontal-white.svg",
         height: 26,

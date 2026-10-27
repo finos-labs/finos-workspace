@@ -1,5 +1,5 @@
 ---
-title: Workspace bridge protocol
+title: FINOS Workspace bridge protocol
 sidebar_position: 6
 ---
 
@@ -12,16 +12,16 @@ import {
   BridgeValue,
 } from "@site/src/components/Reference/bridge";
 
-# Workspace bridge protocol
+# FINOS Workspace bridge protocol
 
-The Workspace MCP server does not hold a user's dashboards. The dashboards live in the user's browser, so every tool of the server works by sending a command to a Workspace tab and waiting for the tab's answer. The channel between the server and the tab is the bridge. This page describes how a tab opens a bridge session, the messages that the API and the tab exchange over a WebSocket, the commands that the tab executes, and the limits that apply. The server side is `backend-api/backend/routers/app/workspace_mcp/` and `backend-api/backend/workspace_mcp/models.py`, and the browser side is `frontend/src/components/AI/WorkspaceBridgeConnectionManager.tsx` and `workspaceBridgeProtocol.ts`. The tables on this page are generated from the Python models and from the constants of the two sides, and tests keep the data equal to the code.
+The FINOS Workspace MCP server does not hold a user's dashboards. The dashboards live in the user's browser, so every tool of the server works by sending a command to a FINOS Workspace tab and waiting for the tab's answer. The channel between the server and the tab is the bridge. This page describes how a tab opens a bridge session, the messages that the API and the tab exchange over a WebSocket, the commands that the tab executes, and the limits that apply. The server side is `backend-api/backend/routers/app/workspace_mcp/` and `backend-api/backend/workspace_mcp/models.py`, and the browser side is `frontend/src/components/AI/WorkspaceBridgeConnectionManager.tsx` and `workspaceBridgeProtocol.ts`. The tables on this page are generated from the Python models and from the constants of the two sides, and tests keep the data equal to the code.
 
 ## Opening a session
 
-A tab opens a bridge session in two steps. The user must be signed in, and the tab must have the companion mode of the Workspace MCP turned on.
+A tab opens a bridge session in two steps. The user must be signed in, and the tab must have the companion mode of the FINOS Workspace MCP turned on.
 
 1. The tab sends `POST /app/workspace-mcp/bridge/session/start` with its `client_name` and, optionally, the `current_dashboard_id` and `current_tab_id` that it shows. The API answers with the new `session`, which holds a `session_id`, and with a `websocket_url` of the form `wss://<api host>/app/workspace-mcp/bridge/ws?session_id=<session id>`. The tab waits at most <BridgeValue of="limits.sessionStartTimeoutMs" unit="ms" /> for the answer.
-2. The tab opens that WebSocket. The browser sends the web session cookie with the request, and the API also requires an allowed origin, as [Workspace API](../http-api/workspace-api.mdx) describes. The API closes the socket with code <BridgeValue of="constants.closeCode" unit="raw" /> when the cookie is missing or invalid, or when the session id does not belong to the signed-in user.
+2. The tab opens that WebSocket. The browser sends the web session cookie with the request, and the API also requires an allowed origin, as [FINOS Workspace API](../http-api/workspace-api.mdx) describes. The API closes the socket with code <BridgeValue of="constants.closeCode" unit="raw" /> when the cookie is missing or invalid, or when the session id does not belong to the signed-in user.
 
 Each user has at most one active bridge session. Starting a new session replaces the old one: the API closes the old socket and fails the commands that were waiting for it with the message "<BridgeValue of="constants.sessionReplacedMessage" plain />". The API keeps a started session for <BridgeValue of="constants.sessionTtlSeconds" unit="s" />, so a tab that does not connect within that time has to start a new session.
 
@@ -45,7 +45,7 @@ A command result has these fields. When `ok` is false, `error` has a `code`, whi
 
 ## Commands
 
-The `command_request` message carries one of <BridgeValue of="counts.sent" plain /> commands. Every command has a `command` field that names it and a `request_id` that identifies the call, and the table lists the other arguments of each command. The tab accepts <BridgeValue of="counts.accepted" plain /> commands in all. The command <BridgeList of="agentOnlyCommands" /> comes only from the agent, which runs it through the same handler in the tab, and it never travels over the WebSocket. [Workspace MCP server](../mcp/workspace-mcp.mdx) lists each tool with its arguments and its description.
+The `command_request` message carries one of <BridgeValue of="counts.sent" plain /> commands. Every command has a `command` field that names it and a `request_id` that identifies the call, and the table lists the other arguments of each command. The tab accepts <BridgeValue of="counts.accepted" plain /> commands in all. The command <BridgeList of="agentOnlyCommands" /> comes only from the agent, which runs it through the same handler in the tab, and it never travels over the WebSocket. [FINOS Workspace MCP server](../mcp/workspace-mcp.mdx) lists each tool with its arguments and its description.
 
 <BridgeCommandSummary />
 

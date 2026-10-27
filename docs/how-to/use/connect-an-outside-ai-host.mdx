@@ -1,13 +1,13 @@
 ---
-title: How to connect an outside AI host to Workspace
+title: How to connect an outside AI host to FINOS Workspace
 sidebar_position: 16
 ---
 
 import { BridgeValue } from "@site/src/components/Reference/bridge";
 
-# How to connect an outside AI host to Workspace
+# How to connect an outside AI host to FINOS Workspace
 
-Workspace has an MCP server of its own, so an AI host that is not part of the app, such as a desktop assistant or a coding tool, can read and change your dashboards. The host connects to the address `/mcp` of the Workspace API with a token that you create, and each tool that it calls runs in a Workspace tab that you have open. This guide shows how to connect your tab, create a token, give the host its settings, check the connection and revoke the token. [About how outside AI hosts work with a dashboard](../../explanation/mcp-through-a-tab.mdx) explains why a tab has to be open, and the [Workspace MCP server](../../reference/mcp/workspace-mcp.mdx) lists everything that the host can call.
+FINOS Workspace has an MCP server of its own, so an AI host that is not part of the app, such as a desktop assistant or a coding tool, can read and change your dashboards. The host connects to the address `/mcp` of the FINOS Workspace API with a token that you create, and each tool that it calls runs in a FINOS Workspace tab that you have open. This guide shows how to connect your tab, create a token, give the host its settings, check the connection and revoke the token. [About how outside AI hosts work with a dashboard](../../explanation/mcp-through-a-tab.mdx) explains why a tab has to be open, and the [FINOS Workspace MCP server](../../reference/mcp/workspace-mcp.mdx) lists everything that the host can call.
 
 ## Show the MCP Companion entry
 
@@ -16,10 +16,10 @@ The entry that connects a tab is off by default. A person who runs the deploymen
 ## Connect your tab
 
 1. Open the main menu with the menu button in the header of the sidebar, and choose MCP Companion.
-2. The dialog Workspace MCP Companion shows the Endpoint, which is the address that the host connects to, and a switch with the state Not connected. Turn the switch on.
-3. The state changes to Connecting… and then to Connected, and a message says "Workspace MCP companion connected". An icon of the companion also appears in the header of the sidebar. It is green while the connection is active and pulses yellow while it connects or reconnects, and its tooltip says which.
+2. The dialog FINOS Workspace MCP Companion shows the Endpoint, which is the address that the host connects to, and a switch with the state Not connected. Turn the switch on.
+3. The state changes to Connecting… and then to Connected, and a message says "FINOS Workspace MCP companion connected". An icon of the companion also appears in the header of the sidebar. It is green while the connection is active and pulses yellow while it connects or reconnects, and its tooltip says which.
 
-The tab that you connected is the one that the host works through. Each user has at most one connected tab, so connecting a second tab replaces the first. Workspace remembers in your browser that the companion is on and connects again when you reload the page, so you do not need to turn it on again each time. Turn the switch off to disconnect, and the icon disappears.
+The tab that you connected is the one that the host works through. Each user has at most one connected tab, so connecting a second tab replaces the first. FINOS Workspace remembers in your browser that the companion is on and connects again when you reload the page, so you do not need to turn it on again each time. Turn the switch off to disconnect, and the icon disappears.
 
 ## Create a token
 
@@ -27,7 +27,7 @@ The host proves who you are with a personal access token. The button Create Toke
 
 1. Select Create Token.
 2. Type a name for the token in Token name, such as the name of the host, and select Generate Token. The name may have up to 100 characters.
-3. The dialog shows the token, which starts with `ws_mcp_`, and a field with a copy button. Copy it now. Workspace keeps only a hash of the token, so nobody can show it to you again, and the dialog warns you about this.
+3. The dialog shows the token, which starts with `ws_mcp_`, and a field with a copy button. Copy it now. FINOS Workspace keeps only a hash of the token, so nobody can show it to you again, and the dialog warns you about this.
 4. Below the token, four tabs show the settings that the host needs, filled in with your token and your addresses: a prompt that you can paste into a host that adds servers itself, a `.mcp.json` file, the command for Claude Code and the configuration for Codex. Copy the one that fits your host and select Done.
 
 A token has no expiry date. It works until you revoke it, and it gives whoever holds it the same access to your dashboards that you have, so keep it as you would keep a password. The list Active Tokens shows each of your tokens with its name, the start of its value and the date on which you created it.
@@ -36,7 +36,7 @@ A token has no expiry date. It works until you revoke it, and it gives whoever h
 
 Whatever the host is, it needs the same three things:
 
-- **The address.** The Endpoint from the dialog, which is the address of your Workspace API followed by `/mcp`. The host has to use the transport that MCP calls streamable HTTP.
+- **The address.** The Endpoint from the dialog, which is the address of your FINOS Workspace API followed by `/mcp`. The host has to use the transport that MCP calls streamable HTTP.
 - **The token.** The header `Authorization: Bearer <token>` on every request.
 - **The origin.** The header `Origin: <address of the web app>` on every request. The API accepts a request only when it carries the address of an allowed origin, and it answers a request without one, or with another one, with the status 403 and the text "Requests must come from an allowed origin". The snippets in the dialog already contain the address of the page on which you opened it.
 
@@ -57,7 +57,7 @@ A file for a host that reads `.mcp.json` looks like this:
 }
 ```
 
-When the host connects, the server sends it instructions that describe the conventions of Workspace and the order in which to call the tools. The host also finds the resources and prompts of the server, which include guides to building and debugging a backend.
+When the host connects, the server sends it instructions that describe the conventions of FINOS Workspace and the order in which to call the tools. The host also finds the resources and prompts of the server, which include guides to building and debugging a backend.
 
 ## Check the connection
 
@@ -69,11 +69,11 @@ When a call fails, the cause is one of these:
 |---|---|
 | The status 403 with "Requests must come from an allowed origin" | The request has no `Origin` header, or the origin is not one that the API allows. |
 | The status 401 | The `Authorization` header is missing, or the token is wrong or revoked. A wrong token gets the error `invalid_token` and a sentence that tells the client to clear its tokens and connect again. |
-| A tool result that says "<BridgeValue of="constants.noBrowserMessage" plain />" | No tab is connected. Open Workspace and turn the companion on. |
+| A tool result that says "<BridgeValue of="constants.noBrowserMessage" plain />" | No tab is connected. Open FINOS Workspace and turn the companion on. |
 | A tool result with the error code `timeout` | The tab did not answer within <BridgeValue of="constants.commandTimeoutSeconds" unit="s" />. The error is marked retryable. |
 
-The connection also ends when your web session ends. Signing out, or a session that expires, closes the bridge, and the host can work again once you have signed in and connected the tab. [Workspace bridge protocol](../../reference/protocols/workspace-bridge.mdx) describes the limits and the messages in full.
+The connection also ends when your web session ends. Signing out, or a session that expires, closes the bridge, and the host can work again once you have signed in and connected the tab. [FINOS Workspace bridge protocol](../../reference/protocols/workspace-bridge.mdx) describes the limits and the messages in full.
 
 ## Revoke a token
 
-Open the MCP Companion dialog and move the pointer over the token in the list Active Tokens. A trash icon appears at the end of its row. Select it, and a message says that the token can no longer access this Workspace via MCP. The change takes effect at once, and the next request that the host makes with the token receives the status 401. Revoke a token when you stop using a host, when you suspect that it leaked, and before you hand over a computer.
+Open the MCP Companion dialog and move the pointer over the token in the list Active Tokens. A trash icon appears at the end of its row. Select it, and a message says that the token can no longer access this FINOS Workspace via MCP. The change takes effect at once, and the next request that the host makes with the token receives the status 401. Revoke a token when you stop using a host, when you suspect that it leaked, and before you hand over a computer.

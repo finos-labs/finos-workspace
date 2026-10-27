@@ -9,7 +9,7 @@ import { SchemaTable } from "@site/src/components/Reference/schemas";
 
 # Plugin backends
 
-Some work cannot run in the browser and cannot be written as a request template. For that work, a package can carry server-side code in its `backend/` directory. The person who deploys Workspace builds that code, runs it as a restricted process of its own, and lists it in `WIDGET_PLUGIN_BACKENDS`, as [How to run a plugin backend](../../how-to/plugins/run-a-plugin-backend.md) explains. The API is the only caller of a backend.
+Some work cannot run in the browser and cannot be written as a request template. For that work, a package can carry server-side code in its `backend/` directory. The person who deploys FINOS Workspace builds that code, runs it as a restricted process of its own, and lists it in `WIDGET_PLUGIN_BACKENDS`, as [How to run a plugin backend](../../how-to/plugins/run-a-plugin-backend.md) explains. The API is the only caller of a backend.
 
 ## In the manifest
 
@@ -79,7 +79,7 @@ The protocol version is <PluginValue of="backend.protocol" />. The API checks a 
 
 **Arguments.** The API checks the arguments against the route's `args` before it makes the call, using the same types as [proxies](proxies.mdx). A string argument of a route may have a `maxLength` of up to <PluginValue of="proxy.maxRouteString" /> characters, because it travels in the call's JSON body. A proxy's strings are shorter, as the argument table on [Plugin proxies and secrets](proxies.mdx) shows.
 
-**The caller.** The `caller` object is empty, unless the admin approved `identity: "pseudonymous"`. In that case it is `{ "id": "<pseudonymous id>" }`. The id is an HMAC of the plugin id and the user id. It is stable for one user within one plugin and different in every other plugin, and it is never the user's name, email address or Workspace id.
+**The caller.** The `caller` object is empty, unless the admin approved `identity: "pseudonymous"`. In that case it is `{ "id": "<pseudonymous id>" }`. The id is an HMAC of the plugin id and the user id. It is stable for one user within one plugin and different in every other plugin, and it is never the user's name, email address or FINOS Workspace id.
 
 **Data of the user.** A backend reads a data source that it declares by sending the call's token to the broker. It sends `POST <API>/internal/plugin-broker/data/<data-source-id>` with the header <PluginValue of="backend.callHeader" />, the header `Origin: <the web app's origin>` and a body of the form `{ "path": "/<path under the backend's URL>", "method": "GET", "query": {...}, "body": ... }`. The deployment gives the backend its origin value, and the API refuses requests from origins that it does not allow. The broker answers with `{ "status", "content_type", "body" }`. The organization chooses which of its backends serves each data source, and the user's own access applies. The API adds the backend's credentials itself, so the plugin never holds them.
 

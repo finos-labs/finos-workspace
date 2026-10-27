@@ -1,10 +1,10 @@
-# Plotly charts for Workspace
+# Plotly charts for FINOS Workspace
 
-A Workspace widget plugin that draws the `plotly` widget type with plotly.js 4. Any
+A FINOS Workspace widget plugin that draws the `plotly` widget type with plotly.js 4. Any
 backend whose `widgets.json` declares a widget of type `plotly`, and whose endpoint returns
-a Plotly figure as JSON, is drawn by this plugin once a Workspace deployment has approved
+a Plotly figure as JSON, is drawn by this plugin once a FINOS Workspace deployment has approved
 and enabled it. It is an example in the repository's `docs/examples/`, a package of its own
-that nothing in Workspace imports, built and deployed the way any plugin is
+that nothing in FINOS Workspace imports, built and deployed the way any plugin is
 ([Plugin package and manifest](../../reference/plugins/package-and-manifest.mdx)).
 
 ## The contract
@@ -25,7 +25,7 @@ type and endpoint; there is nothing else to configure:
 ```
 
 The figure is drawn as its author made it: template, colors, fonts and size are the
-author's. Workspace adds `theme=dark` or `theme=light` to the endpoint's query, the
+author's. FINOS Workspace adds `theme=dark` or `theme=light` to the endpoint's query, the
 site's mode, and asks again when the user switches it. The endpoint answers with the
 look it wants for each:
 
@@ -49,7 +49,7 @@ figure plotly.js cannot draw shows why on the card.
 ### The rows: `raw`
 
 A widget can give the rows its chart is made from ([Widget rows](../../reference/protocols/raw-rows.md)).
-With `"raw": true`, Workspace asks the endpoint again with the widget's params and
+With `"raw": true`, FINOS Workspace asks the endpoint again with the widget's params and
 `raw=true`, and reads the rows at `data.rawDataKey`, else the answer's `results`, else the
 whole answer. The AI agent and MCP clients get those rows instead of the figure, and the
 card's database button shows them: drawn by this plugin as a table, or by the plugin of
@@ -81,7 +81,7 @@ def sales(theme: str = "dark", raw: bool = False):
 An endpoint that answers both in one shape, `{"results": {"chart": <figure>, "records":
 [...]}}`, sets `"data": {"dataKey": "results.chart", "rawDataKey": "results.records"}`.
 
-## What it gives the Workspace
+## What it gives the FINOS Workspace
 
 - **Exports.** The export dialog lists what the figure holds:
   - *Data (CSV)*, when a trace has x/y, label/value or open/high/low/close values (a
@@ -112,7 +112,7 @@ An endpoint that answers both in one shape, `{"results": {"chart": <figure>, "re
 
 It asks for `core:data:read`, `core:export:provide` and `core:copilot:context`. It
 declares no network access, proxies or backend: everything it draws comes from the
-widget's own endpoint through Workspace, and the outlines and MathJax from its package.
+widget's own endpoint through FINOS Workspace, and the outlines and MathJax from its package.
 
 ## Build
 
@@ -158,7 +158,7 @@ on a dashboard, below.
 
 ## Deploy
 
-On a Workspace deployment (`local/LOCAL_SETUP.md`, "Widget plugins", for your own stack):
+On a FINOS Workspace deployment (`local/LOCAL_SETUP.md`, "Widget plugins", for your own stack):
 
 1. Copy `dist/plotly-charts/<version>/` into the plugins directory
    (`WIDGET_PLUGINS_DIR`), as `plotly-charts/<version>/`.
@@ -171,7 +171,7 @@ On a Workspace deployment (`local/LOCAL_SETUP.md`, "Widget plugins", for your ow
    use it: a role is the only way to a plugin.
 
 Every change is a new version: raise `version` in `package.json` and build again.
-Workspace blocks an approved version whose files change.
+FINOS Workspace blocks an approved version whose files change.
 
 ## Try it
 
@@ -192,7 +192,7 @@ examples/.venv/bin/pip install -r examples/requirements.txt
 npm run demo-backend
 ```
 
-It listens on `http://localhost:7798` and allows the Workspace web app at
+It listens on `http://localhost:7798` and allows the FINOS Workspace web app at
 `http://localhost:3000`; `examples/.venv/bin/python examples/backend.py <port> <web app
 origin>` changes either. Connect it as a backend under Connections, then add *Sales by
 region*, *Sales trend*, *Signal and noise* and *Correlation* to a dashboard. *Sales by

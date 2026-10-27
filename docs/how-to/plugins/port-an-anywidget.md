@@ -19,6 +19,6 @@ A plugin's module is an anywidget front-end module, so you can re-package the Ja
 
 4. Remove every use of storage, popups, alerts and cookies, because the sandbox forbids them. Keep a widget's preferences in `state`, which requires the permission `core:state:write`.
 
-5. Check the package and try it in your own Workspace, as [How to build and try a widget plugin](build-a-plugin.md) describes. The first failures are usually attempts to use storage and remote imports.
+5. Check the package and try it in your own FINOS Workspace, as [How to build and try a widget plugin](build-a-plugin.md) describes. The first failures are usually attempts to use storage and remote imports.
 
 [Plugin module contract](../../reference/plugins/module-contract.mdx) lists all the differences from anywidget in Jupyter.

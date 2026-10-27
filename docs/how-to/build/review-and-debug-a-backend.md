@@ -5,16 +5,16 @@ sidebar_position: 4
 
 # How to review and debug a backend
 
-This guide finds out why a backend does not show what you expect: no widgets, a missing app, a widget that fails or a connection that stays inactive. Workspace checks a backend every time it connects or refreshes it, and it reports what it finds. You read those reports, fix the backend and test again.
+This guide finds out why a backend does not show what you expect: no widgets, a missing app, a widget that fails or a connection that stays inactive. FINOS Workspace checks a backend every time it connects or refreshes it, and it reports what it finds. You read those reports, fix the backend and test again.
 
 ## Test the backend
 
 1. Select Connections in the sidebar. To check a backend that you have not added yet, select Connect Backend. To check one that you have added, open it with Edit backend.
 2. Enter the Name and the Endpoint URL, and add the credential under Add Authentication when the backend needs one.
-3. Set Validate widgets to Yes when you also want Workspace to check the routes, as [Check the routes](#check-the-routes) describes.
+3. Set Validate widgets to Yes when you also want FINOS Workspace to check the routes, as [Check the routes](#check-the-routes) describes.
 4. Select Test.
 
-The result has up to three notices. A green notice titled Test successful counts what Workspace found, for example "2 Widgets found, 0 Apps found, 0 Prompts found", and it adds the number of failed widgets and of MCP servers when there are any. A yellow notice titled Warning lists things that Workspace skipped without failing the test. A red notice titled Error lists what made the test fail, and for a new connection Add stays disabled until a test succeeds. Fix the backend and select Test again, as often as you need. Workspace requests each file of the backend with a timeout of one minute.
+The result has up to three notices. A green notice titled Test successful counts what FINOS Workspace found, for example "2 Widgets found, 0 Apps found, 0 Prompts found", and it adds the number of failed widgets and of MCP servers when there are any. A yellow notice titled Warning lists things that FINOS Workspace skipped without failing the test. A red notice titled Error lists what made the test fail, and for a new connection Add stays disabled until a test succeeds. Fix the backend and select Test again, as often as you need. FINOS Workspace requests each file of the backend with a timeout of one minute.
 
 This is what the notices of a backend with several problems look like. The first widget has a key that the contract does not know and a parameter without a name, the second one has a type that no plugin renders, and the second app has no name:
 
@@ -58,13 +58,13 @@ A widget that breaks the contract makes the test fail. Once the backend is conne
 
 Two more causes make a valid widget disappear, and the Warning notice names both. A widget whose `type` no widget plugin of your organization handles is not shown, and the notice lists the types that you can use. A widget whose type a plugin handles but that no plugin available to you renders is not shown either.
 
-## Fields that Workspace does not recognize
+## Fields that FINOS Workspace does not recognize
 
-A key that the web app does not know in `apps.json` is not an error in the test. When the backend loads, Workspace shows a warning toast titled "Unrecognized fields" and the backend's name, which lists the keys and where they sit. The toast has a Copy button for the list, and a link to the reference when the deployment sets a documentation address.
+A key that the web app does not know in `apps.json` is not an error in the test. When the backend loads, FINOS Workspace shows a warning toast titled "Unrecognized fields" and the backend's name, which lists the keys and where they sit. The toast has a Copy button for the list, and a link to the reference when the deployment sets a documentation address.
 
 ## An app does not appear
 
-Workspace reads `apps.json`, and when the backend has no such file, it reads `templates.json` instead. An `apps.json` that holds a single object instead of an array counts as an array with that one object. Each element has to satisfy the schema of [apps.json](../../reference/schemas/apps-json.mdx). The Error notice lists the elements that do not under the heading "App errors", with the path of each problem, and the app does not appear. The notice also reports these problems:
+FINOS Workspace reads `apps.json`, and when the backend has no such file, it reads `templates.json` instead. An `apps.json` that holds a single object instead of an array counts as an array with that one object. Each element has to satisfy the schema of [apps.json](../../reference/schemas/apps-json.mdx). The Error notice lists the elements that do not under the heading "App errors", with the path of each problem, and the app does not appear. The notice also reports these problems:
 
 - A plugin widget whose configuration in `state.storage.plugin.config` the plugin's settings refuse, or a built-in widget that sets such a configuration.
 - An MCP server whose name another app of the backend uses for a different address.
@@ -74,16 +74,16 @@ The Warning notice reports a layout item whose widget `widgets.json` does not de
 
 ## Check the routes
 
-Setting Validate widgets to Yes makes Workspace send an `OPTIONS` request to every route that the widgets use: the endpoint of each widget, the option lookups of its parameters and the endpoint of each form. Workspace checks the routes only when the widgets themselves are valid, so fix the problems above first.
+Setting Validate widgets to Yes makes FINOS Workspace send an `OPTIONS` request to every route that the widgets use: the endpoint of each widget, the option lookups of its parameters and the endpoint of each form. FINOS Workspace checks the routes only when the widgets themselves are valid, so fix the problems above first.
 
-First Workspace asks for a path that cannot exist. The check goes on only when the backend answers that request with 404, because a backend that answers every `OPTIONS` request would pass every route. Otherwise the Warning notice says "Routes not checked" and gives the reason, which is either that the backend did not answer `OPTIONS` at all, usually because its CORS settings do not allow it, or that it answers for paths that do not exist.
+First FINOS Workspace asks for a path that cannot exist. The check goes on only when the backend answers that request with 404, because a backend that answers every `OPTIONS` request would pass every route. Otherwise the Warning notice says "Routes not checked" and gives the reason, which is either that the backend did not answer `OPTIONS` at all, usually because its CORS settings do not allow it, or that it answers for paths that do not exist.
 
 After that, each route that answers 404 is listed as "no such route (404)", and each route that gives no response is listed as "no response". Both make the test fail, with the widget and the path of the route. Routes that the widgets do not use, such as the one that serves a picture, are not checked.
 
 ## A widget loads but shows an error
 
-The routes can be right while a request still fails. A widget that cannot build its request shows the problem in its place, and it names the parameter, for example that `team` needs a value. A request that the backend rejects shows the backend's answer. Open the network tab of your browser to see the exact request, and compare it with [Widget requests](../../reference/protocols/widget-requests.mdx), which lists how Workspace builds the URL, the headers and the body.
+The routes can be right while a request still fails. A widget that cannot build its request shows the problem in its place, and it names the parameter, for example that `team` needs a value. A request that the backend rejects shows the backend's answer. Open the network tab of your browser to see the exact request, and compare it with [Widget requests](../../reference/protocols/widget-requests.mdx), which lists how FINOS Workspace builds the URL, the headers and the body.
 
 ## The connection is inactive
 
-A connection turns inactive when its test fails. The Connections page then lists it under Inactive, and Workspace says "Backend marked as inactive". Edit the connection, fix the cause as above, test it, and save it. When it works again, the message says "Backend activated successfully".
+A connection turns inactive when its test fails. The Connections page then lists it under Inactive, and FINOS Workspace says "Backend marked as inactive". Edit the connection, fix the cause as above, test it, and save it. When it works again, the message says "Backend activated successfully".

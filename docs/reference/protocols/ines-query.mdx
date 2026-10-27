@@ -20,7 +20,7 @@ import {
 
 The web app asks its agent questions through one HTTP endpoint. It posts the question together with everything the agent may need to know about the user's dashboard, and the agent answers with a stream of server-sent events. When the agent needs something that only the browser has, such as the data of a widget or the result of a tool on one of the user's MCP servers, it ends the stream with a request for that thing. The browser fetches it and posts again, this time with the result appended to the conversation. One question can therefore take several requests, and this page describes all of them.
 
-Ines, the agent that ships with Workspace, implements this protocol in `agent/src/routes/query.ts` and `agent/src/protocol/`. Any other agent can be connected if its [descriptor](../schemas/agents-json.mdx) names an endpoint that speaks it. The browser side is `frontend/src/components/AI/hooks/useStreamResponse.tsx` and `useAiFetchRequestInit.tsx`.
+Ines, the agent that ships with FINOS Workspace, implements this protocol in `agent/src/routes/query.ts` and `agent/src/protocol/`. Any other agent can be connected if its [descriptor](../schemas/agents-json.mdx) names an endpoint that speaks it. The browser side is `frontend/src/components/AI/hooks/useStreamResponse.tsx` and `useAiFetchRequestInit.tsx`.
 
 ## Sending a question
 
@@ -275,20 +275,20 @@ The function names are these:
 | `function` | What the browser does | Fields of `input_arguments` | Content of `data` |
 |---|---|---|---|
 | `get_widget_data` | Fetches the data of widgets. | `data_sources`, a list of `widget_uuid`, `origin`, `id` and `input_args`. | One entry for each data source, in order. Each entry has `items`, and each item has `content`, a string, or `url`, and a `data_format` with the `data_type` and for files the `filename`, or the entry is an error with an `error_type` and a `content`. [Widget data for the agent](ines-widget-data.mdx) describes them. |
-| `execute_agent_tool` | Runs a tool of an MCP server. For the server `workspace` it runs a [Workspace tool](../mcp/workspace-mcp.mdx) in the tab. | `server_id`, `tool_name`, which is the `name` that the tool has in the request's `tools`, and `parameters`. | The result of the tool, in the form [Tool results](ines-tool-results.mdx) describes. |
+| `execute_agent_tool` | Runs a tool of an MCP server. For the server `workspace` it runs a [FINOS Workspace tool](../mcp/workspace-mcp.mdx) in the tab. | `server_id`, `tool_name`, which is the `name` that the tool has in the request's `tools`, and `parameters`. | The result of the tool, in the form [Tool results](ines-tool-results.mdx) describes. |
 | `get_skill_content` | Looks up a skill in the user's library. | `slug` and optionally `reason`. | A list with one object. It is `{"status": "success", "data": {"skill": {...}}}` with the skill's `slug`, `description` and `contentMarkdown`, or `{"status": "error", "message": ...}` when the library has no such skill. |
 
-The agent's own commands for working with the Workspace are the other functions, and they are listed after this section. Each has a list of results in `data`, each with a `status` and a `message`.
+The agent's own commands for working with the FINOS Workspace are the other functions, and they are listed after this section. Each has a list of results in `data`, each with a `status` and a `message`.
 
 When the browser cannot do what a call asks for, it puts an object in `data` in place of the result, with an `error_type`, which is `not_found`, `gateway_error` or `unexpected_error`, and a `content` that holds the message. For a call that has several data sources or parameter queries, the error replaces only the entry of the source that failed.
 
-The agent's own commands for changing a dashboard, listed below, are offered to the model only when the request carries none of the Workspace's tools. When the request has the tools of the server `workspace`, the model changes the dashboard with those tools instead, and Ines sends them as `execute_agent_tool` calls. The web app adds the Workspace tools to `tools`, under the names `Workspace_` and the tool's name, whenever the agent has the feature `mcp-tools` and the user's roles allow them. The roles that a new organization starts with do not allow them, so in a fresh deployment `tools` holds only the tools of Ines's own MCP server.
+The agent's own commands for changing a dashboard, listed below, are offered to the model only when the request carries none of the FINOS Workspace's tools. When the request has the tools of the server `workspace`, the model changes the dashboard with those tools instead, and Ines sends them as `execute_agent_tool` calls. The web app adds the FINOS Workspace tools to `tools`, under the names `Workspace_` and the tool's name, whenever the agent has the feature `mcp-tools` and the user's roles allow them. The roles that a new organization starts with do not allow them, so in a fresh deployment `tools` holds only the tools of Ines's own MCP server.
 
 For a `get_widget_data` result Ines reads `content` as text, fetches a `url` itself, and decides what an item is from `data_format.data_type`. [Widget data for the agent](ines-widget-data.mdx) describes the whole read, from the model's tool call to the events that the user sees.
 
 ### Several calls in one step
 
-The browser runs one function call at a time and posts again after each. When the model calls several of the Workspace's tools or dashboard commands in one step, Ines emits the first and records the others in `extra_state`, in `pending_workspace_calls` or `pending_bridge_calls`. On the next request it emits the next call straight away, without asking the model, so one tool result never leaves the others behind. The final request, which carries the last result, goes to the model.
+The browser runs one function call at a time and posts again after each. When the model calls several of the FINOS Workspace's tools or dashboard commands in one step, Ines emits the first and records the others in `extra_state`, in `pending_workspace_calls` or `pending_bridge_calls`. On the next request it emits the next call straight away, without asking the model, so one tool result never leaves the others behind. The final request, which carries the last result, goes to the model.
 
 ### Extra state
 
@@ -310,7 +310,7 @@ These are the functions that the agent emits for itself, one for each command in
 
 ## How a turn is counted
 
-A question and its function calls make a turn. A request whose last message is a tool result continues a turn only when Ines knows that a turn of that chat is under way, which it remembers for <AgentLimit name="turnSeconds" unit="s" />. Every other request is a new question, and Ines reports it to the Workspace API as one use of the user's daily limit. A turn may take at most `INES_MAX_TURN_REQUESTS` requests, which is <EnvDefault name="INES_MAX_TURN_REQUESTS" /> by default. Past that limit Ines answers with a notice and stops. Ines reports the tokens that a request used to the Workspace API when the request ends.
+A question and its function calls make a turn. A request whose last message is a tool result continues a turn only when Ines knows that a turn of that chat is under way, which it remembers for <AgentLimit name="turnSeconds" unit="s" />. Every other request is a new question, and Ines reports it to the FINOS Workspace API as one use of the user's daily limit. A turn may take at most `INES_MAX_TURN_REQUESTS` requests, which is <EnvDefault name="INES_MAX_TURN_REQUESTS" /> by default. Past that limit Ines answers with a notice and stops. Ines reports the tokens that a request used to the FINOS Workspace API when the request ends.
 
 ## Refusals and errors
 
@@ -324,7 +324,7 @@ Before the stream starts, Ines can refuse a request with an ordinary HTTP status
 | 429 | `Too many invalid requests. Try again in a minute.` | The user sent more than `INES_INVALID_REQUESTS_PER_MINUTE` requests that were not questions. The response has `Retry-After: 60`. |
 | 429 | `Too many of your queries are running. Wait for one to finish.` | The user already has `INES_MAX_CONCURRENT_QUERIES` queries in progress. |
 | 503 | `The agent is busy. Try again in a moment.` | The agent already runs `INES_MAX_TOTAL_QUERIES` queries. The response has `Retry-After: 5`. |
-| 503 | `The Workspace API is not available` | Ines needs the API to check the user and cannot reach it. |
+| 503 | `The FINOS Workspace API is not available` | Ines needs the API to check the user and cannot reach it. |
 | 503 | `The agent is busy signing users in. Try again in a moment.` | Too many sign-in checks are waiting for the API. The response has `Retry-After: 1`. |
 
 Some refusals depend on the user's rights and are therefore sent as an ordinary answer, with the status 200 and one `copilotMessageChunk`, so that the user reads them in the chat. They are the message of the API when the user has reached the usage limit, `The model ... is not available here.` when `workspace_options.model` names a model that this deployment does not offer, `Your role does not allow the model ...` when a role forbids it, and a notice that the question needed more steps than a question may take. When no model is configured at all, the response holds a `copilotStatusUpdate` of type `ERROR` and a `copilotMessageChunk` with the same message. A failure after the stream has started is reported as a `copilotStatusUpdate` of type `ERROR`, and the stream then ends.

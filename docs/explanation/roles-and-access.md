@@ -5,7 +5,7 @@ sidebar_position: 6
 
 # About roles and access
 
-Who may do what in Workspace is decided by two things that work together. A user's type says what kind of participant the person is, and the roles that an admin assigns to the person say what the person is granted. The design follows one rule: nothing is allowed unless a role grants it. This page explains the pieces, how several roles combine, and why the system is shaped this way. The steps for an admin are in the how-to guides, and the exact fields are in the [Workspace API reference](../reference/http-api/workspace-api.mdx).
+Who may do what in FINOS Workspace is decided by two things that work together. A user's type says what kind of participant the person is, and the roles that an admin assigns to the person say what the person is granted. The design follows one rule: nothing is allowed unless a role grants it. This page explains the pieces, how several roles combine, and why the system is shaped this way. The steps for an admin are in the how-to guides, and the exact fields are in the [FINOS Workspace API reference](../reference/http-api/workspace-api.mdx).
 
 ## Organizations, user types and roles
 

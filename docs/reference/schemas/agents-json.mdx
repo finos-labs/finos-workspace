@@ -23,10 +23,10 @@ The file is a JSON object. Each key is an agent's id, and each value describes o
 {
   "default_agent": {
     "name": "Ines",
-    "description": "An open-source, model-agnostic agent for the Workspace",
+    "description": "An open-source, model-agnostic agent for the FINOS Workspace",
     "endpoints": { "query": "/v1/query" },
     "skills": [
-      { "slug": "html-table", "description": "When creating or styling a table widget for Workspace, follow these rules." }
+      { "slug": "html-table", "description": "When creating or styling a table widget for FINOS Workspace, follow these rules." }
     ],
     "features": {
       "streaming": true,
@@ -76,7 +76,7 @@ Each endpoint is a URL. A relative address is resolved against the address of `a
 | Endpoint | Meaning |
 |---|---|
 | `query` | Where the web app sends questions, as the [agent query protocol](../protocols/ines-query.mdx) describes. |
-| `upload_docs` | Where the web app sends documents that the user attaches to a chat with this agent, as a multipart form with the files in the field `files`, in batches of at most <WebAppValue of="uploadBatchBytes" unit="bytes" />. An agent without it does not accept documents. The default agent receives its files through the Workspace API instead. |
+| `upload_docs` | Where the web app sends documents that the user attaches to a chat with this agent, as a multipart form with the files in the field `files`, in batches of at most <WebAppValue of="uploadBatchBytes" unit="bytes" />. An agent without it does not accept documents. The default agent receives its files through the FINOS Workspace API instead. |
 | `feedback` | Where the web app posts a thumbs up or down on an answer, when the agent has the feature `feedback`. The body has `vote`, which is `thumbs_up` or `thumbs_down`, `tags`, `user_comment`, `ai_response`, `user_prompt` and `trace_id`. |
 
 ### Features
@@ -89,7 +89,7 @@ Each key of `features` is either `true`, which switches a feature on, or an obje
 | `widget-dashboard-select` | The widgets and tabs of the current dashboard can be mentioned in a question, every widget has a button that adds it to the chat, and the dashboard's widgets are sent to the agent as context. |
 | `widget-dashboard-search` | Any widget of the catalog can be mentioned in a question, not only the widgets of the dashboard. |
 | `widget-global-search` | The web app also sends the rest of the widget catalog in the `extra` tier of the request, so the agent can find widgets that are not on the dashboard. |
-| `mcp-tools` | The web app sends the tools of the user's MCP servers and of the Workspace in the request's `tools`. |
+| `mcp-tools` | The web app sends the tools of the user's MCP servers and of the FINOS Workspace in the request's `tools`. |
 | `agent-orchestration` | The user can let the agent hand work to other connected agents. |
 | `file-upload` | The user can attach files with the extensions `.pdf`, `.txt`, `.docx`, `.md` and `.html`. |
 | `speech-to-text` | The chat shows a microphone button. |

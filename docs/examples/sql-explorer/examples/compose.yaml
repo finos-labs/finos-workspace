@@ -60,4 +60,4 @@ networks:
     internal: true
   workspace:
     external: true
-    name: ${WORKSPACE_NETWORK:?set WORKSPACE_NETWORK to the Workspace stack's network}
+    name: ${WORKSPACE_NETWORK:?set WORKSPACE_NETWORK to the FINOS Workspace stack's network}

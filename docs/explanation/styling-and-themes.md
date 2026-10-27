@@ -5,7 +5,7 @@ sidebar_position: 10
 
 # About styling and themes
 
-The web app has to look right in a light and a dark theme, and every deployment wants to make it look like its own. This page explains how the colors are organized so that both are possible, why a theme can be a single stylesheet or a preset that an admin saves in the app, and why the widgets that draw in frames are styled by their authors and not by Workspace.
+The web app has to look right in a light and a dark theme, and every deployment wants to make it look like its own. This page explains how the colors are organized so that both are possible, why a theme can be a single stylesheet or a preset that an admin saves in the app, and why the widgets that draw in frames are styled by their authors and not by FINOS Workspace.
 
 ## Roles and colors
 
@@ -29,4 +29,4 @@ The preset is stored with the organization in the database, so it survives resta
 
 An HTML widget, an iframe widget, a plugin and a Copilot artifact each draw in a frame of their own. Figma's plugin iframes use the same arrangement. It keeps code from outside away from the page, so that the code cannot read the session or restyle the app. A side effect is that the frame inherits nothing, including the custom properties.
 
-The theme therefore reaches such a frame as a message, either the `theme` query parameter or the `theme` trait, and the author decides what the light and dark versions look like. Workspace does not restyle what an author draws. The author owns the appearance of the widget, and the app owns the card around it.
+The theme therefore reaches such a frame as a message, either the `theme` query parameter or the `theme` trait, and the author decides what the light and dark versions look like. FINOS Workspace does not restyle what an author draws. The author owns the appearance of the widget, and the app owns the card around it.

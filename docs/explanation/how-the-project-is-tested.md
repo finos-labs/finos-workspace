@@ -5,7 +5,7 @@ sidebar_position: 12
 
 # About how the project is tested
 
-Workspace has four kinds of code that fail in different ways: an API that guards data, a web app that people look at, an agent that talks to a language model, and documentation that must match all of them. Each kind is tested in the way that catches its own failures, and a few checks cut across all of them. This page explains the choices, so that a contributor knows what a failing check is protecting and where to add a test. [How to run the tests](../how-to/contribute/run-the-tests.md) gives the commands.
+FINOS Workspace has four kinds of code that fail in different ways: an API that guards data, a web app that people look at, an agent that talks to a language model, and documentation that must match all of them. Each kind is tested in the way that catches its own failures, and a few checks cut across all of them. This page explains the choices, so that a contributor knows what a failing check is protecting and where to add a test. [How to run the tests](../how-to/contribute/run-the-tests.md) gives the commands.
 
 ## Tests that use the real thing where it matters
 
@@ -25,7 +25,7 @@ A pattern that reads text from outside, such as a regular expression over a web 
 
 A number of checks exist to stop two things from drifting apart, and most of them concern the documentation. The reference pages are generated from the code: the settings and their descriptions, the routes of the API, the tables of the database, the metrics, the messages of the plugin protocol and the limits of the web app. A test fails when a setting, a manifest field, a widget property or a command has no description, so that a new one cannot ship without being documented. A test compares the list of the API's request metrics with what its instrumentation registers, and another fails when the agent reads an environment variable that its description file does not mention. The documentation site's generator also checks that the pages that people write by hand mention what the code defines, and its build fails on a broken link. A page that went stale therefore turns into a failed build, and nobody has to remember to look.
 
-The same idea covers the schemas that other systems depend on. The schema of `widgets.json` is generated from the web app's contract, and a test fails when the committed copy differs from the generated one. A fixture records the tools of the Workspace MCP server, so that a change to the tools shows up as a change to a file in the pull request.
+The same idea covers the schemas that other systems depend on. The schema of `widgets.json` is generated from the web app's contract, and a test fails when the committed copy differs from the generated one. A fixture records the tools of the FINOS Workspace MCP server, so that a change to the tools shows up as a change to a file in the pull request.
 
 ## Bugs get a test first
 

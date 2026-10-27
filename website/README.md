@@ -1,4 +1,4 @@
-# Workspace documentation site
+# FINOS Workspace documentation site
 
 This website was created with Docusaurus 3, and it renders the pages in `docs/`.
 

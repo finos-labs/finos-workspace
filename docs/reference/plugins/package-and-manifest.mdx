@@ -8,7 +8,7 @@ import { SchemaTable } from "@site/src/components/Reference/schemas";
 
 # Plugin package and manifest
 
-A plugin is a package of files that adds widget types to Workspace. This page describes how a package is laid out and what each part of its manifest means. The JSON Schema of the manifest is on [plugin.json](../schemas/plugin-json.mdx).
+A plugin is a package of files that adds widget types to FINOS Workspace. This page describes how a package is laid out and what each part of its manifest means. The JSON Schema of the manifest is on [plugin.json](../schemas/plugin-json.mdx).
 
 ## The package
 
@@ -99,13 +99,13 @@ An entry of `handles` has these properties:
 
 The id of a widget matches <PluginValue of="patterns.widgetId" />, and a viz type matches <PluginValue of="patterns.vizType" />. A viz type cannot be one of the built-in types <PluginList of="builtInTypes" />. One plugin cannot handle the same type twice. When two plugins handle a type, the organization's admin chooses which of them renders it.
 
-A type that a plugin handles works with any backend whose `widgets.json` declares a widget of that type and whose endpoint returns what `response` describes. Workspace adds `theme=dark` or `theme=light` to the endpoint's query, which carries the site's mode, and it asks again when the user switches the mode, exactly as it does for `markdown` and `html` widgets. The backend's author decides what each mode looks like. The names `theme` and `raw` are reserved, so a backend's widgets cannot use them as query parameters of their own. [Widget requests](../protocols/widget-requests.mdx) and [Widget rows](../protocols/raw-rows.md) explain both names.
+A type that a plugin handles works with any backend whose `widgets.json` declares a widget of that type and whose endpoint returns what `response` describes. FINOS Workspace adds `theme=dark` or `theme=light` to the endpoint's query, which carries the site's mode, and it asks again when the user switches the mode, exactly as it does for `markdown` and `html` widgets. The backend's author decides what each mode looks like. The names `theme` and `raw` are reserved, so a backend's widgets cannot use them as query parameters of their own. [Widget requests](../protocols/widget-requests.mdx) and [Widget rows](../protocols/raw-rows.md) explain both names.
 
 The permissions that a widget asks for are listed on [Plugin permissions and commands](commands-and-permissions.mdx), and the traits that `model.traits` binds are described on [Plugin module contract](module-contract.mdx).
 
 ## Schemas
 
-The `definition` of a handled type describes the `data.<type>` object that a backend writes for that type. It is a closed and bounded JSON Schema of at most <PluginValue of="schemaLint.maxFragmentBytes" unit="bytes" /> and <PluginValue of="schemaLint.maxDepth" /> levels of nesting. Every object has `additionalProperties: false`, or a value schema when the object is a map. Every array has `maxItems` and `items`, and every string has `maxLength`, `enum`, `const` or `pattern`. An enum has at most <PluginValue of="schemaLint.maxEnumValues" /> values, and a pattern has at most <PluginValue of="schemaLint.maxPatternLength" /> characters and no backreferences. The allowed keywords are <PluginValue of="schemaLint.fragmentKeywords" />. Workspace checks backends' widgets against the definition, and the AI agent reads it when it builds widgets of the type.
+The `definition` of a handled type describes the `data.<type>` object that a backend writes for that type. It is a closed and bounded JSON Schema of at most <PluginValue of="schemaLint.maxFragmentBytes" unit="bytes" /> and <PluginValue of="schemaLint.maxDepth" /> levels of nesting. Every object has `additionalProperties: false`, or a value schema when the object is a map. Every array has `maxItems` and `items`, and every string has `maxLength`, `enum`, `const` or `pattern`. An enum has at most <PluginValue of="schemaLint.maxEnumValues" /> values, and a pattern has at most <PluginValue of="schemaLint.maxPatternLength" /> characters and no backreferences. The allowed keywords are <PluginValue of="schemaLint.fragmentKeywords" />. FINOS Workspace checks backends' widgets against the definition, and the AI agent reads it when it builds widgets of the type.
 
 The `settings` and `adminSettings` entries describe forms that the host renders. A form is a flat object of at most <PluginValue of="schemaLint.maxSettingsProperties" /> properties, and each property name consists of letters, digits and underscores. Each property has one of the types <PluginValue of="schemaLint.settingsTypes" />, and it may use the keywords <PluginValue of="schemaLint.settingsKeywords" />. The form can mark properties as `required`. The `defaults` must satisfy the schema, and the settings of one instance may not exceed <PluginValue of="limits.maxConfigBytes" unit="bytes" />.
 

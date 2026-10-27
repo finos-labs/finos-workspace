@@ -11,9 +11,9 @@ This guide gives the Copilot a document, a spreadsheet or a picture to work with
 
 ## What you need
 
-You need an account that may upload files, which is an Admin or a Developer account, when you use the default agent, and an agent that accepts files. Workspace switches attaching off while your daily limit of questions is used up, and the agent has to be one that offers file upload, which Ines does. The Copilot's file types are <WebAppValue of="copilotAttachmentExtensions" />.
+You need an account that may upload files, which is an Admin or a Developer account, when you use the default agent, and an agent that accepts files. FINOS Workspace switches attaching off while your daily limit of questions is used up, and the agent has to be one that offers file upload, which Ines does. The Copilot's file types are <WebAppValue of="copilotAttachmentExtensions" />.
 
-A file may be at most <WebAppValue of="maxFileBytes" unit="bytes" /> large. Workspace uploads the files in groups of at most <WebAppValue of="uploadBatchBytes" unit="bytes" />.
+A file may be at most <WebAppValue of="maxFileBytes" unit="bytes" /> large. FINOS Workspace uploads the files in groups of at most <WebAppValue of="uploadBatchBytes" unit="bytes" />.
 
 ## Attach the files
 
@@ -22,7 +22,7 @@ You can attach a file in either of two ways:
 - Select the paper clip in the bottom row of the question box, which has the tooltip Attach files, and choose one or more files.
 - Drag the files from your computer onto the Copilot panel.
 
-Each file shows as a chip with a paper clip at the bottom of the question box while it uploads, and it stays there until you send the question. Workspace changes the file's name to lower case and replaces spaces and other unusual characters with underscores, so `Deal Counts 2026.csv` becomes `deal_counts_2026.csv`. You can then ask your question, and the Copilot treats the attached files as part of the question.
+Each file shows as a chip with a paper clip at the bottom of the question box while it uploads, and it stays there until you send the question. FINOS Workspace changes the file's name to lower case and replaces spaces and other unusual characters with underscores, so `Deal Counts 2026.csv` becomes `deal_counts_2026.csv`. You can then ask your question, and the Copilot treats the attached files as part of the question.
 
 A file that is too large gives the message "Upload limit exceeded" and says that individual files must be less than 25MB and which file was not uploaded. A file of another kind is ignored when you drop it or choose it.
 
@@ -41,6 +41,6 @@ How the Copilot reads a file depends on its type:
 
 ## Where the file goes
 
-For the default agent, Workspace stores the file with your other uploaded files, so it counts toward the upload limit of your roles. For another agent, Workspace sends the file to the upload address that the agent publishes.
+For the default agent, FINOS Workspace stores the file with your other uploaded files, so it counts toward the upload limit of your roles. For another agent, FINOS Workspace sends the file to the upload address that the agent publishes.
 
 A file that you attach to a question is not a widget, and your library of widgets does not list it. To keep a file next to your other widgets, add it to the dashboard, as [How to add files to a dashboard](add-files-to-a-dashboard.mdx) describes.

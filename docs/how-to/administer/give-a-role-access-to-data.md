@@ -16,7 +16,7 @@ A backend reaches the other people of your organization only through a role. Thi
 5. Set the backend to Access. Setting it to No Access instead resets all of its widgets to No Access and disables their menus. Select the arrow in front of the backend to open its widgets, and set each widget that the role may use to Access, because the backend's own setting does not grant any widget by itself.
 6. Select Save changes.
 
-Before it saves, Workspace shows Confirm Permission Changes. The dialog warns that you are about to make critical changes to the permissions of the role, and it counts what you changed: how many widgets and prompts you added and how many you removed. Select Yes, Continue. A message says that the role permissions were updated.
+Before it saves, FINOS Workspace shows Confirm Permission Changes. The dialog warns that you are about to make critical changes to the permissions of the role, and it counts what you changed: how many widgets and prompts you added and how many you removed. Select Yes, Continue. A message says that the role permissions were updated.
 
 The search box at the top filters the lists by name. The tab Apps lists the apps that the backends offer, with the prompts that belong to them, and the tab Prompt Library lists the prompts that people saved. Each has the same menus. A tab says "No items found" when its backends offer none.
 

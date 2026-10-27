@@ -5,7 +5,7 @@ sidebar_position: 3
 
 # How to connect a backend
 
-This guide adds a data backend to your own Workspace account, gives it a credential if it needs one, and refreshes, edits or removes it later. A backend is a web server that describes its widgets in `widgets.json`. To write one, follow the [first tutorial](../../tutorials/connect-a-backend-and-build-a-dashboard.md). To make a backend available to a whole organization, an admin follows [How to add a data backend for your organization](../administer/add-a-data-backend-for-your-organization.md).
+This guide adds a data backend to your own FINOS Workspace account, gives it a credential if it needs one, and refreshes, edits or removes it later. A backend is a web server that describes its widgets in `widgets.json`. To write one, follow the [first tutorial](../../tutorials/connect-a-backend-and-build-a-dashboard.md). To make a backend available to a whole organization, an admin follows [How to add a data backend for your organization](../administer/add-a-data-backend-for-your-organization.md).
 
 ## What you need
 
@@ -15,7 +15,7 @@ You need an account of type Admin or Developer, because a User cannot add connec
 
 1. Select Connections in the sidebar, and then Connect Backend. The dialog Connect backend opens.
 2. In Name, type the name that the connection will have. People see it as the origin of the backend's widgets.
-3. In Endpoint URL, type the base address of the backend, for example `http://localhost:9100`. Workspace removes any slashes from the end.
+3. In Endpoint URL, type the base address of the backend, for example `http://localhost:9100`. FINOS Workspace removes any slashes from the end.
 4. Leave Validate widgets at No, or choose Yes to make the test also send a plain `OPTIONS` request to every route that the widgets use, as [Widget requests](../../reference/protocols/widget-requests.mdx#other-requests) describes.
 5. If the backend needs a credential, select Add Authentication, as the next section describes.
 6. Select Test. Add stays disabled until a test has succeeded.
@@ -27,7 +27,7 @@ A failed test shows an Error notice. A backend that cannot be reached gives "Ser
 
 ## Give the backend a credential
 
-Select Add Authentication and fill the row. Key and Value are the name and the value of the credential, and Location says where Workspace puts it, either Header or Query Parameter. Select Add Authentication again for another row, and the cross at the end of a row removes it. The credential belongs to the connection, and Workspace sends it only with the requests that go to the backend's own address. It is not part of a widget's parameters, so a dashboard that you share never contains it. [How to share a dashboard](share-a-dashboard.md) explains what a recipient's requests carry instead.
+Select Add Authentication and fill the row. Key and Value are the name and the value of the credential, and Location says where FINOS Workspace puts it, either Header or Query Parameter. Select Add Authentication again for another row, and the cross at the end of a row removes it. The credential belongs to the connection, and FINOS Workspace sends it only with the requests that go to the backend's own address. It is not part of a widget's parameters, so a dashboard that you share never contains it. [How to share a dashboard](share-a-dashboard.md) explains what a recipient's requests carry instead.
 
 ## Refresh, edit or remove a connection
 
@@ -38,4 +38,4 @@ The Connections page lists each connection with the number of its widgets, apps,
 - **Delete connection** asks for confirmation and removes the connection. You can also tick one or more rows and select Delete connection at the top of the list. A message says that the connection was deleted successfully.
 - The copy button next to a connection's name copies its address.
 
-When you open an active connection, select Test, and the test fails, closing the dialog marks the connection inactive. Workspace then says "Backend marked as inactive" and that the connection test failed.
+When you open an active connection, select Test, and the test fails, closing the dialog marks the connection inactive. FINOS Workspace then says "Backend marked as inactive" and that the connection test failed.

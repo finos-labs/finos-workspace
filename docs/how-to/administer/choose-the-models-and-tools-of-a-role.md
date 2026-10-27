@@ -27,7 +27,7 @@ A role that grants no model of an agent does not let its members use that agent.
 
 The section MCP servers and tools lists the MCP servers that you know in your own workspace, such as the servers every user has by default. For each server you can select All tools, or select tools one by one.
 
-A tool that no role grants is not offered to the Copilot, and the Workspace refuses a call to it. If the section says to add an MCP server to your own workspace to choose its tools here, the server has to be connected in your account before its tools appear in the list.
+A tool that no role grants is not offered to the Copilot, and the FINOS Workspace refuses a call to it. If the section says to add an MCP server to your own workspace to choose its tools here, the server has to be connected in your account before its tools appear in the list.
 
 ## Save
 

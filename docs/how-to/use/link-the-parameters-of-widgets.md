@@ -18,7 +18,7 @@ You can change the value in a widget of a shared dashboard, but you cannot add o
 1. In the header of a widget, select the link icon in front of the parameter. The menu Groups opens. It says "No Active Groups" while the dashboard has none for this parameter.
 2. Select the plus sign, which has the tooltip "Create a group".
 
-Workspace creates a group named Group 1, or the next free number, and gives it the next color of the palette. The group takes the value that the parameter has now, and the widget joins it at once. The link icon in the widget's header turns into a small colored badge with the number of the group.
+FINOS Workspace creates a group named Group 1, or the next free number, and gives it the next color of the palette. The group takes the value that the parameter has now, and the widget joins it at once. The link icon in the widget's header turns into a small colored badge with the number of the group.
 
 ## Add widgets to the group
 
@@ -27,7 +27,7 @@ Workspace creates a group named Group 1, or the next free number, and gives it t
 
 The widget adopts the group's value and loads its data again. Untick the checkbox to take the widget out of the group, and the widget keeps the value that it had. From now on, a change of the parameter in any widget of the group changes it in all of them.
 
-A group that is linked to a ticker works in the same way for widgets that show a ticker. Such a group links only widgets of the same asset class, and Workspace explains with the message "Widget from a different asset class" when a widget does not fit. A group of an endpoint parameter links the widgets that share that endpoint parameter.
+A group that is linked to a ticker works in the same way for widgets that show a ticker. Such a group links only widgets of the same asset class, and FINOS Workspace explains with the message "Widget from a different asset class" when a widget does not fit. A group of an endpoint parameter links the widgets that share that endpoint parameter.
 
 ## Change the color of a group
 
@@ -43,7 +43,7 @@ The toolbar shows only while the setting Quick add toolbar is ticked, as [How to
 
 ## Delete a group
 
-Point at a group in either menu and select the trash icon. Workspace deletes an empty group at once. When widgets still belong to the group, it asks "Group not empty" and explains that deleting the group unlinks all of its widgets. The widgets stay on the dashboard, and each keeps the value that it has.
+Point at a group in either menu and select the trash icon. FINOS Workspace deletes an empty group at once. When widgets still belong to the group, it asks "Group not empty" and explains that deleting the group unlinks all of its widgets. The widgets stay on the dashboard, and each keeps the value that it has.
 
 ## Keep the groups in an app
 

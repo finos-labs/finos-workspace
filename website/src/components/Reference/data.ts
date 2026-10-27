@@ -49,5 +49,5 @@ export const schemaSets = {
   widgets: widgetsSchemaData,
   apps: appsSchemaData,
   manifest: manifestSchemaData,
-  api: { source: "openapi.json", title: "Workspace API", definitions: apiData.schemas } as SchemaSet,
+  api: { source: "openapi.json", title: "FINOS Workspace API", definitions: apiData.schemas } as SchemaSet,
 };

@@ -7,7 +7,7 @@ import { SchemaDocs } from "@site/src/components/Reference/schemas";
 
 # widgets.json
 
-A backend describes its widgets in a file named `widgets.json`. The file is an object whose keys are widget ids and whose values are widget definitions. This page explains what a definition may contain and how Workspace builds the schema that defines every accepted key and value. [Widget requests](../protocols/widget-requests.mdx) describes the requests that the web app makes from a definition.
+A backend describes its widgets in a file named `widgets.json`. The file is an object whose keys are widget ids and whose values are widget definitions. This page explains what a definition may contain and how FINOS Workspace builds the schema that defines every accepted key and value. [Widget requests](../protocols/widget-requests.mdx) describes the requests that the web app makes from a definition.
 
 ## A definition
 
@@ -27,11 +27,11 @@ The `type` of a definition decides which component renders the widget and which 
 
 A plugin type exists for an organization when the organization has enabled a plugin that handles it. When two enabled plugins handle the same type, the organization admin's choice decides which of them renders it, and without a choice the plugin with the lowest id wins. A widget whose type nobody handles for the user does not appear in that user's catalog.
 
-A plugin type keeps its own configuration in `data.<type>`. For a type named `plotly`, that is the object at `data.plotly`. The plugin declares the schema of this object as its `definition`, as [Plugin package and manifest](../plugins/package-and-manifest.mdx) describes, and the plugin reads the object as the `definition` trait. When a source refreshes, Workspace copies the object, together with `dataKey`, `rawDataKey` and `rawType`, onto the widgets that are already on dashboards.
+A plugin type keeps its own configuration in `data.<type>`. For a type named `plotly`, that is the object at `data.plotly`. The plugin declares the schema of this object as its `definition`, as [Plugin package and manifest](../plugins/package-and-manifest.mdx) describes, and the plugin reads the object as the `definition` trait. When a source refreshes, FINOS Workspace copies the object, together with `dataKey`, `rawDataKey` and `rawType`, onto the widgets that are already on dashboards.
 
 ## One schema for each organization
 
-The API composes one JSON Schema (draft-07) for each organization. It starts from the kit, which contains the base keys, the rules of each built-in type and the rules for plugin types, and which Workspace generates from the web app's Zod contract. It then adds the `definition` of every plugin type that the organization has enabled.
+The API composes one JSON Schema (draft-07) for each organization. It starts from the kit, which contains the base keys, the rules of each built-in type and the rules for plugin types, and which FINOS Workspace generates from the web app's Zod contract. It then adds the `definition` of every plugin type that the organization has enabled.
 
 ```jsonc
 {
@@ -70,22 +70,22 @@ JSON Schema cannot express every rule of the contract. The function `contractPro
 
 ## Instance-level schemas
 
-An MCP client creates or changes a widget through the Workspace MCP, and each of these calls takes two argument objects. The tool `get_widget_schema` returns a closed schema for each of them:
+An MCP client creates or changes a widget through the FINOS Workspace MCP, and each of these calls takes two argument objects. The tool `get_widget_schema` returns a closed schema for each of them:
 
-- The schema `data_args_schema` has one property for each declared parameter. A parameter with static options takes an enum of those options. A number also accepts a numeric string. A date accepts `YYYY-MM-DD` or `$currentDate` with a modifier. A `multiSelect` or `multiple` parameter accepts a list or a comma-separated string. Workspace ignores a value that the schema refuses and issues a warning that names the key.
+- The schema `data_args_schema` has one property for each declared parameter. A parameter with static options takes an enum of those options. A number also accepts a numeric string. A date accepts `YYYY-MM-DD` or `$currentDate` with a modifier. A `multiSelect` or `multiple` parameter accepts a list or a comma-separated string. FINOS Workspace ignores a value that the schema refuses and issues a warning that names the key.
 - The schema `ui_args_schema` has the keys `name`, `description` and `source`, plus `innerTab` and `gridData` for `create_widget`. It also has the keys of the component that renders the widget: `text` for markdown, `html` for HTML, and `config` for a plugin widget. The `config` object follows the plugin's settings and is stored in `storage.plugin.config`. An undefined key or a wrong value refuses the whole call with `invalid_request` and names each path, and a dry run returns `valid: false` together with the problems.
 
 Every parameter row also carries `in`, whose value is `path`, `query`, `header` or `body`, and `get_widget_schema` returns the widget's `method` and `mcp_tool` as well.
 
 ## apps.json templates
 
-A layout item of an `apps.json` template can set a plugin widget's configuration in `state.storage.plugin.config`. When a backend loads, Workspace reports an app and leaves it out if one of its layout items sets this configuration for a widget of a built-in type, or sets a value that the plugin's settings refuse (`PluginConfig_<type>`). The report names the path of each problem. When a user opens an app, Workspace merges the template's state into the widget's storage, and the plugin widget reads the configuration from there.
+A layout item of an `apps.json` template can set a plugin widget's configuration in `state.storage.plugin.config`. When a backend loads, FINOS Workspace reports an app and leaves it out if one of its layout items sets this configuration for a widget of a built-in type, or sets a value that the plugin's settings refuse (`PluginConfig_<type>`). The report names the path of each problem. When a user opens an app, FINOS Workspace merges the template's state into the widget's storage, and the plugin widget reads the configuration from there.
 
 ## Where the schema is built
 
 The file `frontend/src/lib/types/widgetsContract.ts` holds the strict Zod objects, the header tables, each type's methods and parameter locations, and the reserved query names. The file `widgetsSchemaKit.ts` turns the contract into the kit. The command `node scripts/generate-widgets-schema.ts`, which you run from `frontend/`, writes the kit to `backend-api/backend/api/widget_plugins/widgets_schema_kit.json`, and a Vitest test fails when the committed kit is out of date. The module `backend-api/backend/api/widget_plugins/widgets_schema.py` composes the schema, and `python -m scripts.compose_widgets_schema` prints a composition offline. A pytest test fails when the web app's fixture `frontend/tests/mocks/widgets-schema.json` is not the composer's output.
 
-The script `backend-api/backend/scripts/generate_app_builder_specs.py` generates the pages that the app-builder resources of the MCP servers serve. These pages hold the type catalog, the response of each type, the widget fields, and the parameter fields and header-name rules. The script writes them from the kit between `<!-- generated:<name> -->` markers, and a pytest test fails when a page is out of date. The pages list only the built-in types, because the plugin types differ between organizations. They point to `workspace://specs/widgets-json-schema` instead, which the user's Workspace tab answers over the bridge with the organization's composed schema.
+The script `backend-api/backend/scripts/generate_app_builder_specs.py` generates the pages that the app-builder resources of the MCP servers serve. These pages hold the type catalog, the response of each type, the widget fields, and the parameter fields and header-name rules. The script writes them from the kit between `<!-- generated:<name> -->` markers, and a pytest test fails when a page is out of date. The pages list only the built-in types, because the plugin types differ between organizations. They point to `workspace://specs/widgets-json-schema` instead, which the user's FINOS Workspace tab answers over the bridge with the organization's composed schema.
 
 ## The built-in schema
 

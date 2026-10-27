@@ -1,9 +1,9 @@
 ---
-title: How to connect Workspace to its database and cache
+title: How to connect FINOS Workspace to its database and cache
 sidebar_position: 3
 ---
 
-# How to connect Workspace to its database and cache
+# How to connect FINOS Workspace to its database and cache
 
 The API keeps its data in a relational database, and it keeps what is short-lived, such as tokens, rate limits and job queues, in Valkey or Redis. This guide chooses the database engine, sets the connection of the API and its worker to both, and lists what must be shared when you run several replicas. [Backend settings](../../reference/configuration/backend.mdx) lists every setting with its description.
 
@@ -25,7 +25,7 @@ Set `SSL_CA`, `SSL_CERT` or `SSL_KEY` to make the connection to the database use
 
 ## Connect Valkey or Redis
 
-Workspace uses Valkey, and any Redis-compatible server works. Set `REDIS_HOST` and `REDIS_PORT`, which is 6379. Set `REDIS_PASS` as well, and leave it empty when the server has no password: the variable has to exist. `REDIS_USER` names the user when the server has users.
+FINOS Workspace uses Valkey, and any Redis-compatible server works. Set `REDIS_HOST` and `REDIS_PORT`, which is 6379. Set `REDIS_PASS` as well, and leave it empty when the server has no password: the variable has to exist. `REDIS_USER` names the user when the server has users.
 
 The API keeps two kinds of data in two databases of the server:
 

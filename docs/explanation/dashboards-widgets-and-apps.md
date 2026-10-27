@@ -5,19 +5,19 @@ sidebar_position: 2
 
 # About dashboards, widgets and apps
 
-Three nouns carry most of what people see in Workspace: a widget, a dashboard and an app. They look like three layers of one thing, but they live in different places and they have different owners, and that is why sharing, access and data behave the way they do. This page says what each noun is, where it lives and how the three relate.
+Three nouns carry most of what people see in FINOS Workspace: a widget, a dashboard and an app. They look like three layers of one thing, but they live in different places and they have different owners, and that is why sharing, access and data behave the way they do. This page says what each noun is, where it lives and how the three relate.
 
 ## A widget is a view of one source
 
-A widget shows what one source returns. The source is usually an endpoint of a data backend, and it can also be a file that a person uploaded or something that Workspace provides itself, such as a page embedded in an iframe. The widget's definition says where the data comes from, what the person may change, and how it is drawn. The things that a person may change are the widget's parameters, such as a year or a team, and how it is drawn is its type, such as a table of Markdown, an HTML page or a chart that a plugin draws.
+A widget shows what one source returns. The source is usually an endpoint of a data backend, and it can also be a file that a person uploaded or something that FINOS Workspace provides itself, such as a page embedded in an iframe. The widget's definition says where the data comes from, what the person may change, and how it is drawn. The things that a person may change are the widget's parameters, such as a year or a team, and how it is drawn is its type, such as a table of Markdown, an HTML page or a chart that a plugin draws.
 
-The definition belongs to the backend, which lists it in its `widgets.json`. Until somebody places it on a dashboard, a widget is only an entry in a catalog. The Widget Menu lists those entries, grouped by the category that the backend gave them, and the Copilot searches the same entries by their names and descriptions. This is why a backend's author decides how a widget is described and what it can be asked, and why Workspace itself needs to know nothing about the data.
+The definition belongs to the backend, which lists it in its `widgets.json`. Until somebody places it on a dashboard, a widget is only an entry in a catalog. The Widget Menu lists those entries, grouped by the category that the backend gave them, and the Copilot searches the same entries by their names and descriptions. This is why a backend's author decides how a widget is described and what it can be asked, and why FINOS Workspace itself needs to know nothing about the data.
 
 ## A dashboard is an arrangement of widgets
 
 When a person adds a widget to a dashboard, it becomes a card with state of its own: its size and place on the grid, the values of its parameters, and any settings that its type keeps. The same catalog entry can appear on many dashboards, or on one dashboard several times, and each card keeps its own values. A dashboard arranges its cards on a grid that is 40 columns wide, in one or more tabs, and it can link parameters of different cards so that a change in one moves the others.
 
-A dashboard stores no data from the backends. It stores the arrangement and the values, and each time somebody opens it, the browser asks the backends again. That keeps a dashboard small and always current, and it means that a dashboard is never wrong about what the data was, only about whether the person who opens it may reach the data. A dashboard belongs to one person. The Workspace API keeps it, and keeps older versions of it for a while, and the browser holds the live copy while the person works.
+A dashboard stores no data from the backends. It stores the arrangement and the values, and each time somebody opens it, the browser asks the backends again. That keeps a dashboard small and always current, and it means that a dashboard is never wrong about what the data was, only about whether the person who opens it may reach the data. A dashboard belongs to one person. The FINOS Workspace API keeps it, and keeps older versions of it for a while, and the browser holds the live copy while the person works.
 
 ## An app is a dashboard that can be opened again
 

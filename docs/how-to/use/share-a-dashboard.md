@@ -14,7 +14,7 @@ Your roles have to give you the sharing level Can share, and each person you sha
 ## Share the dashboard
 
 1. Right-click the dashboard in the sidebar, or select the three dots that appear next to it, and choose Share.
-2. If the dashboard has widgets that come from a connected backend or from files that you uploaded, Workspace first asks "Widgets uploaded may contain sensitive data". Check that the dashboard holds nothing that the recipients should not see, and select Continue. When the address of one of those widgets contains a word such as `secret`, `api`, `key`, `token` or `auth`, the question adds a warning that Workspace found a high probability of sensitive keys, so check those widgets before you continue.
+2. If the dashboard has widgets that come from a connected backend or from files that you uploaded, FINOS Workspace first asks "Widgets uploaded may contain sensitive data". Check that the dashboard holds nothing that the recipients should not see, and select Continue. When the address of one of those widgets contains a word such as `secret`, `api`, `key`, `token` or `auth`, the question adds a warning that FINOS Workspace found a high probability of sensitive keys, so check those widgets before you continue.
 3. In the dialog Share dashboard with, find the person. The list, which is headed Users from your organization, holds the people of your organization whose roles let them receive shares, and you can narrow it by typing part of an email address in the Email box.
 4. Change the person's menu from No Access to View.
 5. Select Save.
@@ -35,7 +35,7 @@ A share by a person whose type is Developer waits for an admin. After Save, the 
 
 ## Stop sharing
 
-Open the Share dialog again, change the person's menu to No Access and select Save. Workspace deletes the share, so the person no longer has access to the dashboard.
+Open the Share dialog again, change the person's menu to No Access and select Save. FINOS Workspace deletes the share, so the person no longer has access to the dashboard.
 
 ## Share an app
 

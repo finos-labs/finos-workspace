@@ -9,7 +9,7 @@ A widget can name one MCP tool of its own backend. The AI agent uses that tool t
 
 ## Servers
 
-A backend declares its MCP servers on the templates of its `apps.json`, in the `mcpServers` list. Each server has a `name`, a `description`, a `url` and an `authType`. When a user connects the backend, Workspace registers each declared server once. It uses the backend's header credentials as the server's headers, and it records the server's declared name together with the backend's id. The declared name cannot be edited, unlike the server's display name.
+A backend declares its MCP servers on the templates of its `apps.json`, in the `mcpServers` list. Each server has a `name`, a `description`, a `url` and an `authType`. When a user connects the backend, FINOS Workspace registers each declared server once. It uses the backend's header credentials as the server's headers, and it records the server's declared name together with the backend's id. The declared name cannot be edited, unlike the server's display name.
 
 The agent's tools are the enabled tools of the connected servers that the user's roles grant, and the browser sends them when the agent has MCP tools turned on. The browser makes each call through `/app/mcp-proxy`, which checks the roles again for every `tools/call` request.
 
@@ -32,10 +32,10 @@ The agent's tools are the enabled tools of the connected servers that the user's
 ## Rules
 
 1. **The link is opt-in.** A widget without `mcp_tool` has no linked tool. The link also adds nothing to the agent's tool list, because the server's tools are already there once the server is registered, enabled and granted.
-2. **The server must belong to the same backend.** When a widget's `mcp_server` names no server in its own backend's `apps.json`, Workspace reports the widget with `[mcp_tool/mcp_server]` and leaves it out. This check runs only when `apps.json` loaded without an invalid app. A backend that has no `apps.json` declares no server. When two servers with different URLs share one name in a backend, the later app becomes invalid.
-3. **A call is attributed by identity.** Workspace attributes a call to a widget only when the server was registered for the widget's backend, the server's declared name equals `mcp_server`, and the tool equals `tool_id`.
+2. **The server must belong to the same backend.** When a widget's `mcp_server` names no server in its own backend's `apps.json`, FINOS Workspace reports the widget with `[mcp_tool/mcp_server]` and leaves it out. This check runs only when `apps.json` loaded without an invalid app. A backend that has no `apps.json` declares no server. When two servers with different URLs share one name in a backend, the later app becomes invalid.
+3. **A call is attributed by identity.** FINOS Workspace attributes a call to a widget only when the server was registered for the widget's backend, the server's declared name equals `mcp_server`, and the tool equals `tool_id`.
 4. **The link is active only when the tool is available.** The link is active when the tool appears in the request's tool list. That requires a connected and enabled server, a tool that is turned on and granted by the user's roles, and MCP tools turned on for the agent. In every other case the widget behaves as if it had no link.
-5. **Several widgets can share one tool.** Workspace cites a call to the widget whose literal `args` all equal the call's arguments. When several widgets match, the one with the most literal arguments wins, and then the first one that the backend declares.
+5. **Several widgets can share one tool.** FINOS Workspace cites a call to the widget whose literal `args` all equal the call's arguments. When several widgets match, the one with the most literal arguments wins, and then the first one that the backend declares.
 6. **It does not combine with `disableRetrievalForCopilot: true`**, because that setting keeps the widget away from the agent.
 7. **Only the host uses the link.** A plugin's frame receives no trait for the link, and it has no command or permission to call the tool.
 8. **An `iframe` widget has a separate mechanism.** The key `storage.mcpUrl` binds a server of the iframe's own to the instance, without the backend's credentials. It neither uses nor conflicts with `mcp_tool`.
@@ -47,7 +47,7 @@ Four parts of the system use the link:
 1. **The agent is told about the link.** The web app assembles the request in `frontend/src/lib/utils/mcpLink.ts`. When the request's tools include the linked tool, the widget's row gains `mcp_tool: { server_id, tool_name, args }`. The values of `server_id` and `tool_name` come from the tool list and never from the strings in the widget.
 2. **Ines shows the link to the model.** Her `search_widgets` rows carry `mcp_tool: { tool, args }`, with the tool named as the model calls it, and her prompt tags the widget in its lists with `[query tool: <name>]`. Ines does not route anything by this information, and the model chooses what to call.
 3. **A call cites the widget.** The function `citeMcpCall` considers only widgets of the server's own backend that name the server's declared name and the tool. It builds the `input_args` by applying the mapping in reverse, and it puts arguments that map to no parameter into the citation's `details`.
-4. **The Workspace MCP returns the link** in the answers of `list_available_widgets` and `get_widget_schema`.
+4. **The FINOS Workspace MCP returns the link** in the answers of `list_available_widgets` and `get_widget_schema`.
 
 ## Security
 

@@ -52,7 +52,7 @@ The tool prints "Configuration is valid" when the file is complete. Otherwise it
 python -m scripts.workspace_admin provision apply --config provision.json
 ```
 
-The tool creates the organization and then each administrator and user, and it prints a line for each. Every account gets a link that sets its password. The tool prints the link once: copy it and give it to the person, because Workspace sends no email. The link works once and expires after <SettingConstant name="passwordResetLifetimeSeconds" unit="hours" />, and the line shows the exact time. When the person opens it, they choose their own password, so you never learn it.
+The tool creates the organization and then each administrator and user, and it prints a line for each. Every account gets a link that sets its password. The tool prints the link once: copy it and give it to the person, because FINOS Workspace sends no email. The link works once and expires after <SettingConstant name="passwordResetLifetimeSeconds" unit="hours" />, and the line shows the exact time. When the person opens it, they choose their own password, so you never learn it.
 
 Each new account starts with the role Agent User of its organization, which grants the Copilot's default models and tools, and administrators have the type Admin and everyone else the type User. To change a person's type or role afterwards, use the admin area, as [How to add a user](add-a-user.mdx) and [How to create a role](create-a-role.md) describe.
 

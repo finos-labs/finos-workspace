@@ -7,29 +7,29 @@ import { EnvDefault, SettingConstant, SettingDefault, WebPort } from "@site/src/
 
 # Transports
 
-A Workspace deployment is several processes, and they talk to each other over a small number of channels. This page lists each channel once. It says what carries the messages, how a message is framed, what authenticates the caller and where the format of the messages is described. It is meant for the person who has to open ports, place a proxy or write a network policy, and for the person who wants to know which page to read for a given connection.
+A FINOS Workspace deployment is several processes, and they talk to each other over a small number of channels. This page lists each channel once. It says what carries the messages, how a message is framed, what authenticates the caller and where the format of the messages is described. It is meant for the person who has to open ports, place a proxy or write a network policy, and for the person who wants to know which page to read for a given connection.
 
 ## Channels that the browser uses
 
 | Channel | Carried by | Authentication | Messages |
 |---|---|---|---|
 | Static files and `config.js` | HTTP from the web container. | None. | [Web app configuration](configuration/web-app.mdx) |
-| Application requests | HTTPS from the browser to the Workspace API. The bodies are JSON, and the file routes use multipart forms. | The session cookie `__Host-ws_session`, the header `X-Workspace-Client: web` and an allowed `Origin`. | [Workspace API](http-api/workspace-api.mdx) |
+| Application requests | HTTPS from the browser to the FINOS Workspace API. The bodies are JSON, and the file routes use multipart forms. | The session cookie `__Host-ws_session`, the header `X-Workspace-Client: web` and an allowed `Origin`. | [FINOS Workspace API](http-api/workspace-api.mdx) |
 | Questions to the agent | HTTPS `POST` from the browser to Ines. The request body is JSON, and the response is a stream of server-sent events. The browser makes a further request for each tool call. | The [agent token](protocols/agent-authentication.mdx) in the `Authorization` header. | [Agent query protocol](protocols/ines-query.mdx) |
 | Helper calls | HTTPS from the browser to Ines, with JSON or multipart bodies. | The agent token. | [Ines HTTP API](http-api/ines-api.mdx) |
 | Tools of connected MCP servers | HTTPS `POST /app/mcp-proxy` from the browser to the API. The body names the server and holds the MCP request, and the API streams the server's answer back. | The session cookie. | [Tool results](protocols/ines-tool-results.mdx) |
-| Tools of the Workspace | The browser asks the API to prepare a command with `POST /app/workspace-tools/prepare` and runs the command in the tab. | The session cookie. | [Workspace bridge](protocols/workspace-bridge.mdx#commands) |
+| Tools of the FINOS Workspace | The browser asks the API to prepare a command with `POST /app/workspace-tools/prepare` and runs the command in the tab. | The session cookie. | [FINOS Workspace bridge](protocols/workspace-bridge.mdx#commands) |
 | Data of a widget | HTTPS from the browser to the backend that serves the widget, at the endpoint that `widgets.json` names. | Whatever headers the backend's connection holds. | [widgets.json](schemas/widgets-json.mdx) |
-| Pages inside iframe widgets | `window.postMessage` between the page and Workspace. | The origin and the window of the sender. | [Iframe widget protocol](protocols/iframe-widget.mdx) |
-| Plugin widgets | `postMessage` for the handshake, then a `MessageChannel` between the sandboxed frame and Workspace. | The channel's port. Workspace ignores messages that reach it through `postMessage` after the handshake. | [Plugin frame protocol](protocols/plugin-frame.mdx) |
+| Pages inside iframe widgets | `window.postMessage` between the page and FINOS Workspace. | The origin and the window of the sender. | [Iframe widget protocol](protocols/iframe-widget.mdx) |
+| Plugin widgets | `postMessage` for the handshake, then a `MessageChannel` between the sandboxed frame and FINOS Workspace. | The channel's port. FINOS Workspace ignores messages that reach it through `postMessage` after the handshake. | [Plugin frame protocol](protocols/plugin-frame.mdx) |
 
 ## Channels between the services
 
 | Channel | Carried by | Authentication | Messages |
 |---|---|---|---|
-| Ines to the Workspace API | HTTP with JSON bodies, to `/app/user`, `/app/copilot/authorize` and `/app/usage`. | The agent token, the metering token in `X-Metering-Authorization` and the agent's `Origin`. | [Agent authentication](protocols/agent-authentication.mdx) |
-| Outside AI hosts to the Workspace MCP server | MCP over streamable HTTP, stateless, at `/mcp` on the API. | A personal access token. | [Workspace MCP server](mcp/workspace-mcp.mdx) |
-| The Workspace MCP server to a browser tab | A WebSocket at `/app/workspace-mcp/bridge/ws`, with a JSON message in each frame. When the tab's socket is on another API process, the call is forwarded through Valkey. | The session cookie and an allowed origin. | [Workspace bridge](protocols/workspace-bridge.mdx) |
+| Ines to the FINOS Workspace API | HTTP with JSON bodies, to `/app/user`, `/app/copilot/authorize` and `/app/usage`. | The agent token, the metering token in `X-Metering-Authorization` and the agent's `Origin`. | [Agent authentication](protocols/agent-authentication.mdx) |
+| Outside AI hosts to the FINOS Workspace MCP server | MCP over streamable HTTP, stateless, at `/mcp` on the API. | A personal access token. | [FINOS Workspace MCP server](mcp/workspace-mcp.mdx) |
+| The FINOS Workspace MCP server to a browser tab | A WebSocket at `/app/workspace-mcp/bridge/ws`, with a JSON message in each frame. When the tab's socket is on another API process, the call is forwarded through Valkey. | The session cookie and an allowed origin. | [FINOS Workspace bridge](protocols/workspace-bridge.mdx) |
 | The API to a connected MCP server | MCP over streamable HTTP. The API refuses a server on a private address unless the host is in `ALLOWED_MCP_HOSTNAMES` or is a default server from `DEFAULT_MCP_SERVERS`. | The headers or the OAuth token that are stored for the server. The browser never holds them. | [Ines MCP server](mcp/ines-mcp.mdx) |
 | The API to a plugin backend | HTTP to the internal address that `WIDGET_PLUGIN_BACKENDS` lists. | The call token in `X-Workspace-Call` and one header for each secret. | [Plugin backends](plugins/backends.mdx) |
 | The API to an external service for a plugin proxy | HTTPS to the address in the proxy's template. | The headers that the template builds from the plugin's secrets. | [Plugin proxies and secrets](plugins/proxies.mdx) |
@@ -50,7 +50,7 @@ Ines keeps its shared state in the instance that `REDIS_URL` names: who is signe
 |---|---|---|
 | Ines metrics | A Prometheus scrape of `/metrics` on port <EnvDefault name="INES_METRICS_PORT" />, or `INES_METRICS_PORT`. | [Ines HTTP API](http-api/ines-api.mdx#metrics) |
 | Ines MCP server metrics | A scrape of `/metrics` on port <EnvDefault name="MCP_METRICS_PORT" />, or `MCP_METRICS_PORT`. | [Ines HTTP API](http-api/ines-api.mdx#metrics) |
-| API metrics | When the `PROMETHEUS` setting is on, a scrape of `/metrics` on the API's own port, which refuses a request without an allowed origin, and a second listener on port <SettingConstant name="prometheusListenerPort" unit="raw" /> that the web server's main process runs and that checks no origin. Both show all the workers together. | [Workspace API](http-api/workspace-api.mdx#metrics) |
+| API metrics | When the `PROMETHEUS` setting is on, a scrape of `/metrics` on the API's own port, which refuses a request without an allowed origin, and a second listener on port <SettingConstant name="prometheusListenerPort" unit="raw" /> that the web server's main process runs and that checks no origin. Both show all the workers together. | [FINOS Workspace API](http-api/workspace-api.mdx#metrics) |
 | Ines traces | OTLP over HTTP to `OTEL_EXPORTER_OTLP_ENDPOINT`. | [Ines and its MCP server](configuration/agent.mdx) |
 
 ## Default ports
@@ -58,7 +58,7 @@ Ines keeps its shared state in the instance that `REDIS_URL` names: who is signe
 | Process | Port |
 |---|---|
 | Web container | <WebPort /> |
-| Workspace API | <SettingDefault name="PORT" unit="raw" />, or `PORT` |
+| FINOS Workspace API | <SettingDefault name="PORT" unit="raw" />, or `PORT` |
 | Ines | <EnvDefault name="PORT" />, or `PORT` |
 | Ines MCP server | <EnvDefault name="MCP_PORT" />, or `MCP_PORT` |
 | Ines metrics, MCP server metrics | <EnvDefault name="INES_METRICS_PORT" /> and <EnvDefault name="MCP_METRICS_PORT" /> |

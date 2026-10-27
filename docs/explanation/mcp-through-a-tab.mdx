@@ -7,7 +7,7 @@ import { BridgeValue } from "@site/src/components/Reference/bridge";
 
 # About how outside AI hosts work with a dashboard
 
-Workspace can be driven from an AI host that is not part of the app, such as a desktop assistant or a coding tool. The host connects to the Workspace MCP server and calls tools that read and change the user's dashboards. The design choice that surprises people is that none of these tools touches the dashboards directly. Each tool call is carried to a Workspace tab that the user has open, and the tab does the work. This page explains why, and what follows from it. The [Workspace MCP server](../reference/mcp/workspace-mcp.mdx) page lists the tools, and the [Workspace bridge protocol](../reference/protocols/workspace-bridge.mdx) gives the messages.
+FINOS Workspace can be driven from an AI host that is not part of the app, such as a desktop assistant or a coding tool. The host connects to the FINOS Workspace MCP server and calls tools that read and change the user's dashboards. The design choice that surprises people is that none of these tools touches the dashboards directly. Each tool call is carried to a FINOS Workspace tab that the user has open, and the tab does the work. This page explains why, and what follows from it. The [FINOS Workspace MCP server](../reference/mcp/workspace-mcp.mdx) page lists the tools, and the [FINOS Workspace bridge protocol](../reference/protocols/workspace-bridge.mdx) gives the messages.
 
 ## Why the tab does the work
 

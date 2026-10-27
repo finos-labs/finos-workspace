@@ -16,9 +16,9 @@ This guide saves what a dashboard shows as a PDF file or as PNG images, for a re
 5. When the dashboard has more than one tab, choose the Export scope: Current tab, or All tabs with the number of tabs in brackets. A dashboard has several tabs when it holds a Navigation Bar widget with more than one tab.
 6. Select Export.
 
-Workspace waits until every widget has finished loading its data, and then it draws the dashboard. When you export all tabs, a progress bar shows the tab that it is on, with the text "Exporting tab" and the tab's name. A message says "Report generated successfully" and tells you that the file is in your downloads folder. The picture follows the theme that you are using, so a dark dashboard gives a dark PDF.
+FINOS Workspace waits until every widget has finished loading its data, and then it draws the dashboard. When you export all tabs, a progress bar shows the tab that it is on, with the text "Exporting tab" and the tab's name. A message says "Report generated successfully" and tells you that the file is in your downloads folder. The picture follows the theme that you are using, so a dark dashboard gives a dark PDF.
 
-A dashboard without widgets cannot be exported. Workspace says "No widgets to export" and asks you to add some widgets first. If drawing fails, the message says "Error generating report", with the reason when there is one.
+A dashboard without widgets cannot be exported. FINOS Workspace says "No widgets to export" and asks you to add some widgets first. If drawing fails, the message says "Error generating report", with the reason when there is one.
 
 ## Export the dashboards of a folder
 
