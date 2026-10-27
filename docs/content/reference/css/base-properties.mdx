@@ -7,20 +7,24 @@ import { TokenGroup } from "@site/src/components/Reference/theme";
 
 # Base properties
 
-`frontend/src/index.css` declares a second set of properties, in the `base` layer, on `:root` and `.dark`. They follow the naming of the shadcn/ui components that the app's design system is built on, and Tailwind maps them to utilities such as `bg-background`, `text-foreground`, `border-border` and `ring-ring`. The tables are generated from the stylesheet and from the frontend source.
+Besides the semantic properties, the file `frontend/src/index.css` declares a second set of properties in the `base` layer, on `:root` and on `.dark`. They follow the naming of the shadcn/ui components on which the app's design system is built, and Tailwind maps them to utilities such as `bg-background`, `text-foreground`, `border-border` and `ring-ring`. Most of them refer to palette steps with `var()`, so changing a palette step moves them as well.
 
-Because these declarations are in a layer, a stylesheet that is not in a layer overrides them whatever its position.
-
-The brand, font and scale properties of the same file are on [Brand colour, font and text size](brand-font-size.mdx).
+Because these declarations are in a layer, a stylesheet that is not in a layer overrides them, whatever its position. A theme stylesheet is not in a layer, so it always wins over them. The tables are generated from the stylesheet and from the frontend source, and [Semantic properties](semantic-properties.mdx) explains how to read their columns. The brand, font and scale properties of the same file are on [Brand color, font and text size](brand-font-size.mdx).
 
 ## Page and text
+
+These properties hold the background and the text color of the page.
 
 <TokenGroup file="index.css" group={["--background-", "--foreground-"]} />
 
 ## Components
 
+These properties hold the backgrounds and text colors of cards, popovers and the primary, secondary, tertiary, muted, destructive and accent variants of the design system's components.
+
 <TokenGroup file="index.css" group={["--card-", "--popover-", "--primary-", "--secondary-", "--tertiary-", "--muted-", "--destructive-", "--accent-"]} />
 
 ## Lines and focus
+
+These properties hold the colors of borders, input outlines and focus rings.
 
 <TokenGroup file="index.css" group={["--border-", "--input-", "--ring-"]} />

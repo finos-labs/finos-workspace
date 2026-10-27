@@ -203,14 +203,14 @@ export function ReportComponents() {
   );
 }
 
-export function ReportColours() {
+export function ReportColors() {
   return (
     <TableWrap>
       <table>
         <thead>
           <tr>
             <th>Element</th>
-            <th>Colour</th>
+            <th>Color</th>
             <th>Value</th>
           </tr>
         </thead>

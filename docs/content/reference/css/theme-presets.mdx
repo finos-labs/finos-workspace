@@ -5,76 +5,76 @@ sidebar_position: 2.5
 
 # Theme presets
 
-A theme preset is a named set of custom property values that an admin designs on Admin → Theme → Presets ([How to design and apply a theme in the admin area](../../how-to/customize/design-a-theme-in-the-admin-area.md)). The organization keeps its presets, and at most one of them is applied to its users.
+A theme preset is a named set of custom property values that an admin designs on Admin → Theme → Presets, as [How to design and apply a theme in the admin area](../../how-to/customize/design-a-theme-in-the-admin-area.md) describes. An organization keeps any number of presets, and at most one of them is applied to its users at a time. This page describes how a preset is stored, what the API accepts, how the app applies a theme and which properties the editor lists.
 
 ## What is stored
 
-The `entity_theme_settings` row of the organization holds the presets in its `settings` document, next to the grouping colours:
+The API stores the presets of an organization in the `settings` document of its `entity_theme_settings` row, next to the grouping colors. The document has two keys for presets:
 
 | Key | Value |
 |---|---|
-| `presets` | A list of presets. |
-| `active_preset` | The `uuid` of the applied preset, or `null` for the FINOS theme. |
+| `presets` | The list of the organization's presets. |
+| `active_preset` | The `uuid` of the applied preset, or `null` when the FINOS theme applies. |
 
-A preset has these fields:
+Each preset has four fields:
 
 | Field | Value |
 |---|---|
-| `uuid` | The identifier, a UUID. |
-| `name` | 1 to 60 characters after trimming. Unique in the organization without regard to case. |
-| `light` | An object of custom property declarations, applied on `:root`. |
-| `dark` | An object of custom property declarations, applied on `.dark`. |
+| `uuid` | The preset's identifier, which is a UUID. |
+| `name` | The preset's name, between 1 and 60 characters after trimming. It is unique within the organization, without regard to case. |
+| `light` | An object of custom property declarations that the app applies on `:root`. |
+| `dark` | An object of custom property declarations that the app applies on `.dark`. |
 
-A key of `light` or `dark` is a property name, and its value is the CSS value. A rule on `:root` also applies in the dark theme, so a property that `dark` does not hold keeps its `light` value there (see [Theme scopes and cascade](theme-scopes.mdx)).
+In `light` and in `dark`, each key is a property name and each value is a CSS value. A rule on `:root` also applies in the dark theme, so a property that `dark` does not hold keeps its `light` value there, as [Theme scopes and cascade](theme-scopes.mdx) describes.
 
 ## What the server accepts
 
-The API refuses anything else with 422.
+The API refuses a preset that breaks one of these rules with the status 422:
 
 | Rule | Limit |
 |---|---|
-| Name of a property | `^--[a-z][a-z0-9-]{0,80}$`. |
-| Value | 1 to 200 characters taken from letters, digits, the space and `# % . , ( ) / _ + * " ' -`. The text `url(` is refused in any case. |
-| Declarations in `light` or in `dark` | At most 400. |
-| Presets in an organization | At most 50. |
+| The name of a property | It must match `^--[a-z][a-z0-9-]{0,80}$`. |
+| The value of a property | It has 1 to 200 characters, taken from letters, digits, the space and the characters `# % . , ( ) / _ + * " ' -`. The text `url(` is refused in any letter case. |
+| The declarations in `light` or in `dark` | There may be at most 400 of them. |
+| The presets of an organization | There may be at most 50 of them. |
 
 ## Routes
 
-Every route under `/admin` needs a user of type Admin. The request and response types are on [Workspace API schemas](../http-api/workspace-api-schemas.mdx), and the other routes on [Workspace API](../http-api/workspace-api.mdx).
+Every route under `/admin` needs a user of type Admin. [Workspace API](../http-api/workspace-api.mdx) lists the other routes, and [Workspace API schemas](../http-api/workspace-api-schemas.mdx) lists the request and response types.
 
 | Route | What it does |
 |---|---|
-| `GET /admin/theme-presets` | Returns `presets` and `active_preset`. |
-| `PUT /admin/theme-presets/{preset_uuid}` | Creates the preset or replaces it. Answers 409 when another preset has the name. |
-| `DELETE /admin/theme-presets/{preset_uuid}` | Deletes the preset, and sets `active_preset` to `null` when it was applied. Answers 404 for an unknown preset. |
-| `PUT /admin/theme-presets/active` | Applies the preset named by `{"uuid": ...}`, or the FINOS theme for `null`. Answers 404 for an unknown preset. |
-| `PATCH /admin/theme-settings` | Stores the grouping colours. It leaves `presets` and `active_preset` as they are. |
-| `GET /app/theme-settings` | Returns the grouping colours and `properties`, the `light` and `dark` declarations of the applied preset, or `null`. Any signed-in user may call it. |
+| `GET /admin/theme-presets` | It returns `presets` and `active_preset`. |
+| `PUT /admin/theme-presets/{preset_uuid}` | It creates the preset or replaces it, and it answers 409 when another preset already has the name. |
+| `DELETE /admin/theme-presets/{preset_uuid}` | It deletes the preset, and it sets `active_preset` to `null` when the deleted preset was applied. It answers 404 for an unknown preset. |
+| `PUT /admin/theme-presets/active` | It applies the preset that `{"uuid": ...}` names, or the FINOS theme when the value is `null`. It answers 404 for an unknown preset. |
+| `PATCH /admin/theme-settings` | It stores the grouping colors, and it leaves `presets` and `active_preset` as they are. |
+| `GET /app/theme-settings` | It returns the grouping colors and `properties`, which holds the `light` and `dark` declarations of the applied preset, or `null` when none applies. Any signed-in user may call it. |
 
 The sign-in response and the dashboard sync carry the same `properties` in their `entity_theme_settings`, so the app applies the theme without a request of its own.
 
 ## How the app applies a theme
 
-The app adds two `style` elements to `head`, `style[data-theme="saved"]` and `style[data-theme="preview"]`, each with a `:root` rule and a `.dark` rule. It sets the declarations through the CSS object model, one property at a time, so a value never becomes stylesheet text.
+The app adds two `style` elements to `head`, which are `style[data-theme="saved"]` and `style[data-theme="preview"]`. Each of them has a `:root` rule and a `.dark` rule. The app sets the declarations through the CSS object model, one property at a time, so that a value never becomes stylesheet text.
 
-The layers come in this order, and a later one wins at equal specificity:
+Four layers decide what a user sees, and a later layer wins over an earlier one at equal specificity:
 
-1. The base stylesheets, `tokens.css` and `index.css`.
-2. The theme stylesheet that `WL_STYLESHEET` names.
-3. `style[data-theme="saved"]`: the applied preset. It is filled when the app loads and signs in, and again after an admin applies or changes a preset.
-4. `style[data-theme="preview"]`: the values in the editor. It holds values only while the Presets tab is open. While it holds values the saved layer is empty, so a preset that you choose in the editor stands alone and does not inherit from the applied one.
+1. The base stylesheets, `tokens.css` and `index.css`, come first.
+2. The theme stylesheet that `WL_STYLESHEET` names comes second.
+3. The element `style[data-theme="saved"]` holds the applied preset. The app fills it when it loads and when a user signs in, and again after an admin applies or changes a preset.
+4. The element `style[data-theme="preview"]` holds the values that are in the editor. It holds values only while the Presets tab is open. While it does, the saved layer is empty, so that a preset chosen in the editor stands alone and does not inherit from the applied one.
 
-The sign-in page loads before any organization is known, so it shows layers 1 and 2 only.
+The sign-in page loads before the app knows any organization, so it shows only the first two layers.
 
 ## What the editor lists
 
-The editor lists every custom property that `tokens.css` and `index.css` declare on `:root` or `.dark`, except `--text-scale`, which the font size setting drives.
+The editor lists every custom property that `tokens.css` and `index.css` declare on `:root` or on `.dark`, except `--text-scale`, which the font size setting drives. It arranges them in groups:
 
-| Group | Properties |
+| Group | What it holds |
 |---|---|
 | Brand | The `--color-main-*` steps, `--font-family` and `--radius`. |
-| Palette: _ramp_ | The steps of one ramp of the [colour palette](colour-palette.mdx). |
-| One group for each prefix | The [semantic properties](semantic-properties.mdx), for example `btn` or `tab`. |
+| Palette: _ramp_ | The steps of one ramp of the [color palette](color-palette.mdx). |
+| One group for each prefix | The [semantic properties](semantic-properties.mdx) that share a prefix, such as `btn` or `tab`. |
 | Base | The [base properties](base-properties.mdx) of `index.css`. |
 
-In the dark mode the editor shows a property's value as the dark theme gets it: the preset's `dark` value, else its `light` value, else the dark declaration of the base stylesheets, else the light one.
+In dark mode, the editor shows a property's value as the dark theme gets it. That is the preset's `dark` value if there is one, otherwise the preset's `light` value, otherwise the dark declaration of the base stylesheets, and otherwise the light declaration of the base stylesheets.

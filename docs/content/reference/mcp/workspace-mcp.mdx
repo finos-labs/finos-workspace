@@ -7,7 +7,9 @@ import { McpReference } from "@site/src/components/Reference/tools";
 
 # Workspace MCP server
 
-The MCP server in `backend-api/backend/workspace_mcp` is mounted on the API at `/mcp`. This page lists its instructions, tools, resources and prompts.
+Workspace includes an MCP server, so that an AI host outside the app can work with a user's dashboards. The server exposes the user's active Workspace browser session as MCP tools, which means that every tool acts through a running Workspace tab that the user has connected. The server lives in `backend-api/backend/workspace_mcp` and is mounted on the API at `/mcp`. A client signs in with a personal access token that the user creates in the app.
+
+This page lists what the server offers. The instructions are the text that the server gives to every client when it connects, and they describe the conventions and the recommended order of the calls. The tools, resources and prompts follow, each with its arguments and description.
 
 The page is generated from `backend-api/backend/tests/fixtures/workspace_mcp_sidecar_surface.json`, which a test keeps equal to the server.
 

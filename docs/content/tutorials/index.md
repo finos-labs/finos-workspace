@@ -7,6 +7,12 @@ sidebar_position: 0
 
 # Tutorials
 
-A tutorial is a lesson. It takes you from a clean start to a working result, so you learn by doing. Follow it in order and expect every step to work as written.
+A tutorial is a lesson. It takes you from a clean start to a working result, so that you learn by doing. Follow a tutorial in order, because each step builds on the one before it, and expect every step to work as written. A tutorial explains as little as it can. When you want to know why something works the way it does, it links to the [explanation](/explanation), and when you want exact values, it links to the [reference](/reference).
 
-A tutorial explains as little as it can. Where you want the reasons, it links to the [explanation](/explanation); where you want exact values, it links to the [reference](/reference). If you already know what you want to do, use the [how-to guides](/how-to) instead.
+The lessons build on each other:
+
+1. [Run Workspace on your machine](run-workspace-on-your-machine.md) starts a complete Workspace on your computer and ends with you signed in as an administrator.
+2. [Connect a backend and build a dashboard](connect-a-backend-and-build-a-dashboard.md) has you write a small data source, put its widgets on a dashboard and save the dashboard as an app.
+3. [Ask the Copilot about a dashboard](ask-the-copilot-about-a-dashboard.md) asks the AI agent a question about the data on that dashboard and follows how it answers.
+
+If you already know what you want to do, the [how-to guides](/how-to) are shorter, because they assume that you know the basics.

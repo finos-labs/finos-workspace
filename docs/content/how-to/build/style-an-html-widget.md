@@ -4,9 +4,9 @@ title: How to style an HTML widget for both themes
 
 # How to style an HTML widget for both themes
 
-An HTML widget draws the document that its endpoint returns, in a frame that shares nothing with the app. Workspace tells the endpoint which theme is active with the `theme` query parameter, so the endpoint returns the styles for that theme.
+An HTML widget draws the document that its endpoint returns, in a frame that shares nothing with the app. The document therefore cannot see the app's theme. Workspace tells the endpoint which theme is active through the `theme` query parameter, and the endpoint returns the styles for that theme. This guide shows how to write such an endpoint.
 
-1. Declare the widget in `widgets.json` as usual. Do not declare a parameter named `theme`: the name is reserved, and Workspace adds the parameter to every request of the type.
+1. Declare the widget in `widgets.json` as usual. Do not declare a parameter named `theme`, because the name is reserved and Workspace adds the parameter to every request of the type.
 
    ```json
    {
@@ -35,7 +35,7 @@ An HTML widget draws the document that its endpoint returns, in a frame that sha
 
    @app.get("/report", response_class=HTMLResponse)
    def report(theme: str = Query("dark")) -> str:
-       colours = PALETTES.get(theme, PALETTES["dark"])
+       colors = PALETTES.get(theme, PALETTES["dark"])
        return f"""<!doctype html>
    <html>
    <head>
@@ -44,13 +44,13 @@ An HTML widget draws the document that its endpoint returns, in a frame that sha
      body {{
        margin: 0;
        padding: 16px;
-       background: {colours["background"]};
-       color: {colours["text"]};
+       background: {colors["background"]};
+       color: {colors["text"]};
        font: 14px/1.5 system-ui, sans-serif;
      }}
      table {{ border-collapse: collapse; width: 100%; }}
-     th, td {{ border: 1px solid {colours["border"]}; padding: 4px 8px; text-align: left; }}
-     a {{ color: {colours["accent"]}; }}
+     th, td {{ border: 1px solid {colors["border"]}; padding: 4px 8px; text-align: left; }}
+     a {{ color: {colors["accent"]}; }}
    </style>
    </head>
    <body>
@@ -59,6 +59,6 @@ An HTML widget draws the document that its endpoint returns, in a frame that sha
    </html>"""
    ```
 
-3. Use the values of the app for the colours you want to match. [Semantic properties](../../reference/css/semantic-properties.mdx) lists them for both themes. `background`, `text` and `border` above are the values of `--general-bg-primary`, `--foreground` and `--border`. The accent colours are chosen for contrast on those backgrounds: the app's own link colour, `--link-color`, comes from the brand colour.
+3. Use the values of the app for the colors that you want to match. [Semantic properties](../../reference/css/semantic-properties.mdx) lists them for both themes. In the example, `background`, `text` and `border` are the values of `--general-bg-primary`, `--foreground` and `--border`. The accent colors are chosen for contrast on those backgrounds, and the app's own link color, `--link-color`, comes from the brand color.
 
-The document cannot read the parameter, because it arrives through `srcdoc`, and it cannot read the app's custom properties. What the frame does and does not add is on [HTML widgets and artifacts](../../reference/css/html-documents.mdx).
+The document cannot read the theme parameter itself, because the document arrives through `srcdoc`, and it cannot read the app's custom properties. [HTML widgets and artifacts](../../reference/css/html-documents.mdx) lists what the frame does and does not add.

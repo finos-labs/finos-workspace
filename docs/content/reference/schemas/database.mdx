@@ -7,8 +7,8 @@ import { DatabaseTables } from "@site/src/components/Reference/schemas";
 
 # Database tables
 
-The tables that the SQLAlchemy models in `backend-api/backend/api/models` declare. Alembic migrations in `backend-api/backend/alembic/versions` create and change them. Column types are those of the SQLAlchemy types, as the models name them.
+The API stores its data in a relational database, which can be MySQL, PostgreSQL or SQLite. This page lists every table. For each table it lists the columns with their type, whether they may be null, their key, the column that they reference and their server default, followed by the table's indexes and constraints.
 
-The page is generated from `backend-api/backend/tests/fixtures/database_schema.json`, which a test keeps equal to the models.
+The SQLAlchemy models in `backend-api/backend/api/models` declare the tables, and Alembic migrations in `backend-api/backend/alembic/versions` create and change them. The column types are those of the SQLAlchemy types, as the models name them. The page is generated from `backend-api/backend/tests/fixtures/database_schema.json`, which a test keeps equal to the models.
 
 <DatabaseTables />

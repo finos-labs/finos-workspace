@@ -4,15 +4,15 @@ title: How to style a plugin widget for both themes
 
 # How to style a plugin widget for both themes
 
-A plugin draws in a frame with its own stylesheets. The host tells the module the active theme through the `theme` trait and pushes a `change:theme` event when it changes, so the module marks its root with the mode and the stylesheet does the rest.
+A plugin draws in a sandboxed frame that has its own stylesheets and shares nothing with the app. The host tells the module which theme is active through the `theme` trait, and it pushes a `change:theme` event whenever the theme changes. This guide shows how a plugin uses that information to look right in the light and in the dark theme. The module marks its root element with the mode, and the stylesheet does the rest.
 
-1. List the stylesheet in the manifest. Each file of `entry.styles` is added to the frame as a `style` element:
+1. List the stylesheet in the manifest. The host adds each file of `entry.styles` to the frame as a `style` element:
 
    ```json
    "entry": { "module": "entry.js", "styles": ["entry.css"] }
    ```
 
-2. In `entry.css`, declare the colours once for each mode and use them through custom properties of your own:
+2. In `entry.css`, declare the colors once for each mode, and use them through custom properties of your own:
 
    ```css
    .widget[data-mode="dark"] {
@@ -37,7 +37,7 @@ A plugin draws in a frame with its own stylesheets. The host tells the module th
    }
    ```
 
-3. In `entry.js`, set the mode on the root element and follow changes:
+3. In `entry.js`, set the mode on the root element and follow the changes:
 
    ```js
    export default {
@@ -57,13 +57,13 @@ A plugin draws in a frame with its own stylesheets. The host tells the module th
    };
    ```
 
-4. To match the app's colours exactly, copy values from the `theme.tokens` object instead of fixing them in the stylesheet:
+4. To match the app's colors exactly, copy values from the `theme.tokens` object instead of fixing them in the stylesheet:
 
    ```js
    const tokens = model.get("theme")?.tokens ?? {};
    root.style.setProperty("--bg", tokens.background ?? "#0b2432");
    ```
 
-   The tokens and their values are on [Plugin theme](../../reference/css/plugin-theme.mdx). Call this again from `applyTheme`, so that the values follow the theme.
+   [Plugin theme](../../reference/css/plugin-theme.mdx) lists the tokens and their values. Call this code again from `applyTheme`, so that the values follow the theme.
 
-The frame defines no custom properties of its own, so everything above is yours to name. The plugin's frame size, sandbox and the other parts of the manifest are described in [plugin.json](../../reference/schemas/plugin-json.mdx).
+The frame defines no custom properties of its own, so you can name the properties in these examples as you like. [Plugin package and manifest](../../reference/plugins/package-and-manifest.md) describes the other parts of the manifest.

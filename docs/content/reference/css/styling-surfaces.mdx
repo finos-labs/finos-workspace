@@ -7,20 +7,20 @@ import { Stat } from "@site/src/components/Reference/theme";
 
 # Styling surfaces
 
-Workspace draws five kinds of surface, and each takes its styling from a different place. A stylesheet that you write reaches only some of them.
+Workspace draws five kinds of surface, and each kind takes its styling from a different place. This matters to anyone who writes a stylesheet or a widget, because a stylesheet reaches only some of the surfaces. The table says where the styling of each surface comes from and what you can control.
 
-| Surface | Styled by | What you control |
+| Surface | Where its styling comes from | What you can control |
 |---|---|---|
-| The web app | Tailwind utility classes and the custom properties of `frontend/src/styles/tokens.css` and `frontend/src/index.css` | Every colour, the font and the text scale are custom properties. The base stylesheets are built in. A theme is a stylesheet that `WL_STYLESHEET` names, loaded after them, or a preset that an admin applies in the admin area ([Theme presets](theme-presets.mdx)), so a change needs no rebuild. The other white-label settings cover the name, the logos, the favicon, the description and the keywords. See [Brand colour, font and text size](brand-font-size.mdx) and [Semantic properties](semantic-properties.mdx). |
-| HTML widgets | The HTML document that the backend returns, drawn in a sandboxed `iframe` | All of it. The frame inherits nothing from the app, and Workspace adds the `theme` query parameter to the request. See [HTML widgets and artifacts](html-documents.mdx). |
-| iframe widgets | The page that the widget embeds | The page's own CSS. Workspace adds `theme` to the request in the same way. |
-| Plugin widgets | The plugin's `entry.css`, drawn in a sandboxed frame | All of it. The plugin receives a `theme` trait with the mode and the values of 14 tokens. See [Plugin theme](plugin-theme.mdx). |
-| Copilot HTML artifacts | The HTML that the model writes, sanitized and drawn in a sandboxed `iframe`, with one `style` element that Workspace adds | The document's own CSS. The built-in report skill gives the model a stylesheet to use. See [Report classes](report-classes.mdx). |
+| The web app | Tailwind utility classes, together with the custom properties in `frontend/src/styles/tokens.css` and `frontend/src/index.css`. | Every color, the font and the text scale are custom properties, so a stylesheet can change all of them. The base stylesheets are built into the app. A theme is either a stylesheet that `WL_STYLESHEET` names, which loads after the base stylesheets, or a preset that an admin applies in the admin area ([Theme presets](theme-presets.mdx)), so a change needs no rebuild. The other white-label settings cover the name, the logos, the favicon, the description and the keywords. See [Brand color, font and text size](brand-font-size.mdx) and [Semantic properties](semantic-properties.mdx). |
+| HTML widgets | The HTML document that the backend returns, drawn in a sandboxed `iframe`. | You control all of it. The frame inherits nothing from the app, and Workspace adds the `theme` query parameter to the request. See [HTML widgets and artifacts](html-documents.mdx). |
+| iframe widgets | The page that the widget embeds. | You control the page's own CSS. Workspace adds `theme` to the request in the same way. |
+| Plugin widgets | The plugin's `entry.css`, drawn in a sandboxed frame. | You control all of it. The plugin receives a `theme` trait with the mode and the values of 14 tokens. See [Plugin theme](plugin-theme.mdx). |
+| Copilot HTML artifacts | The HTML that the model writes, which Workspace sanitizes and draws in a sandboxed `iframe`, together with one `style` element that Workspace adds. | You control the document's own CSS. The built-in report skill gives the model a stylesheet to use. See [Report classes](report-classes.mdx). |
 
 ## What a custom property reaches in the web app
 
-The web app styles colour through Tailwind utility classes such as `bg-btn-primary-bg` and `bg-light-100`. Each colour utility that the Tailwind configuration defines reads a custom property: <Stat of="variableUtilities" /> utilities, used <Stat of="variableUses" /> times in <Stat of="variableFiles" /> files. The palette utilities read the `--color-*` properties of `tokens.css`, so changing a palette step changes every class that names it, and every semantic property that refers to it.
+The web app styles color through Tailwind utility classes such as `bg-btn-primary-bg` and `bg-light-100`. Every color utility that the Tailwind configuration defines reads a custom property. In total, <Stat of="variableUtilities" /> utilities read a property, and the source uses them <Stat of="variableUses" /> times in <Stat of="variableFiles" /> files. The palette utilities read the `--color-*` properties of `tokens.css`, so changing a palette step changes every class that names it, and it also changes every semantic property that refers to that step.
 
-Tailwind's own colours are not properties: `white`, `black` and the named hues such as `red-500`. Components use them <Stat of="builtInUses" /> times in <Stat of="builtInFiles" /> files.
+Tailwind's own colors are the exception. The colors `white` and `black` and the named hues such as `red-500` are not custom properties, so a theme cannot change them. Components use these colors <Stat of="builtInUses" /> times in <Stat of="builtInFiles" /> files.
 
-The counts are generated from the frontend source.
+The counts on this page are generated from the frontend source.

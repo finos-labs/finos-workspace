@@ -89,7 +89,7 @@ A new backend setting needs adding in more places than this folder: `envs/.env.e
 
 ## Widget plugins
 
-Widget plugins are packages built outside this repository (`docs/widget-plugins/`). There is no developer mode and nothing installs from the app: on your own stack you are the deployer and the administrator, and the steps are the ones a deployment takes.
+Widget plugins are packages built outside this repository (see the documentation site, How to build and try a widget plugin). There is no developer mode and nothing installs from the app: on your own stack you are the deployer and the administrator, and the steps are the ones a deployment takes.
 
 1. Pick a directory on your machine for packages. In `compose.yaml`, give the `backend` service its own `volumes`. They replace the shared ones, so keep the source mount:
 

@@ -5,31 +5,37 @@ sidebar_position: 1
 
 # How to design and apply a theme in the admin area
 
-An admin designs a theme as a preset on Admin → Theme → Presets. A preset is saved with the organization, so it survives restarts, and one preset at a time is applied to everyone in it.
+An admin can design the look of the whole web app without leaving the app. The theme editor lets you change every color and the font, shows each change at once in the real interface, and saves the result as a named preset. A preset belongs to your organization, so it survives restarts, and you can apply one preset at a time to everyone in the organization. This guide walks through the editor from the first change to applying the result.
 
-1. Open Admin → Theme and stay on the Presets tab. The Preset menu starts on the preset that is applied, or on FINOS (default) when none is.
+## Edit a preset
 
-2. Choose Light Mode or Dark Mode. The app switches to that mode, so what you edit is what you see. The left column lists the custom properties in groups: Brand first, then the palette ramps, the groups of semantic properties, and Base last. Search by property name to find one. A property that you changed shows in bold, with a button that resets it.
+1. Open Admin → Theme and stay on the Presets tab. The Preset menu at the top of the left column starts on the preset that is currently applied, or on FINOS (default) when none is.
 
-3. Change values. Type a colour, such as `#7b2d8e`, `rgb(123 45 142)`, `color-mix(in srgb, var(--color-main-100) 70%, white)` or `var(--color-light-700)`, or open the colour picker. The font is a menu of the families the app ships. In the Brand group, "Derive from brand color" sets the two other brand shades and the text colour on brand-coloured controls from the brand colour you chose.
+2. Choose Light Mode or Dark Mode below the menu. The app switches to that mode, so what you edit is what you see. The left column lists the custom properties in groups. The Brand group comes first, followed by the palette ramps and the groups of semantic properties, and the Base group comes last. Use the search field to find a property by name. A property that you changed appears in bold with a button that resets it to its base value.
 
-   Every change shows at once in the page itself and in the specimen on the right, which draws the buttons, tabs, tags, controls, alerts and a table with the real components. Only you see an unsaved change.
+3. Change values. You can type a color, such as `#7b2d8e`, `rgb(123 45 142)`, `color-mix(in srgb, var(--color-main-100) 70%, white)` or `var(--color-light-700)`, or you can open the color picker next to the field. The font is a menu of the families that the app ships. In the Brand group, the button "Derive from brand color" sets the two other brand shades and the text color on brand-colored controls from the brand color that you chose.
 
-4. Save the changes. "Save" stores them in the selected preset. "Save as…" creates a new preset from them and asks for a name of up to 60 characters, which is unique within the organization without regard to case. FINOS (default) is not stored, so it can only be saved as a new preset.
+   Every change appears at once in the page itself and in the specimen on the right. The specimen draws buttons, tabs, tags, controls, alerts and a table with the real components, so you can see the effect of a property on each of them. Only you see an unsaved change.
 
-5. Select "Apply to everyone" to make the selected preset the theme of the organization. Users see it the next time they sign in or load the app. The button is disabled while the preset has unsaved changes.
+## Save and apply it
 
-## Go back or go to another preset
+4. Save the changes. "Save" stores them in the selected preset. "Save as…" creates a new preset from them and asks for a name of up to 60 characters, which must be unique within the organization without regard to letter case. FINOS (default) is not stored, so you can only save its changes as a new preset.
+
+5. Select "Apply to everyone" to make the selected preset the theme of the organization. Users see the theme the next time that they sign in or load the app. The button is disabled while the preset has unsaved changes, so save first.
+
+## Go back or switch to another preset
+
+You can undo and switch at any time:
 
 - "Revert" drops the unsaved changes and shows the saved values again.
-- Choosing another preset in the menu loads its values into the editor. If there are unsaved changes, the app asks whether to discard them.
+- Choosing another preset in the menu loads its values into the editor. When there are unsaved changes, the app asks whether to discard them first.
 - To undo an applied theme, choose FINOS (default) and select "Apply to everyone". Deleting the applied preset has the same effect.
-- "Rename" and "Delete" work on the selected preset.
+- "Rename" and "Delete" act on the selected preset.
 
 ## Use the result as a stylesheet
 
-"Copy CSS" and "Download theme.css" give the stylesheet for the editor's current values, with the light values on `:root` and the dark values on `.dark`. A deployment can mount that file as its theme stylesheet: [How to create a theme for the web app](create-a-theme.md). The applied preset loads after that stylesheet, so it wins where both set a property.
+The Stylesheet section in the left column shows the stylesheet for the editor's current values, with the light values on `:root` and the dark values on `.dark`. Its buttons "Copy CSS" and "Download theme.css" give you that text. A deployment can load the file as its theme stylesheet, as [How to create a theme for the web app](create-a-theme.md) describes. The applied preset loads after that stylesheet, so it wins wherever both set the same property.
 
-The sign-in page shows the deployment's stylesheet and no preset, since a preset belongs to the organization of a signed-in user.
+The sign-in page shows the deployment's stylesheet and no preset, because a preset belongs to the organization of a signed-in user.
 
-How presets are stored and applied is on [Theme presets](../../reference/css/theme-presets.mdx).
+[Theme presets](../../reference/css/theme-presets.mdx) describes how presets are stored and applied.

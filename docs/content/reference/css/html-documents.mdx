@@ -48,8 +48,8 @@ The artifact draws the HTML that the model wrote.
 
 ## What follows from this
 
-- The document draws its own background, text and fonts. The app adds no background colour and no font to it.
-- Nothing in the frame can read `--btn-primary-bg` or any other property of the app. To match the app, use the values on [Colour palette](colour-palette.mdx) and [Semantic properties](semantic-properties.mdx) in the document's own CSS.
+- The document draws its own background, text and fonts. The app adds no background color and no font to it.
+- Nothing in the frame can read `--btn-primary-bg` or any other property of the app. To match the app, use the values on [Color palette](color-palette.mdx) and [Semantic properties](semantic-properties.mdx) in the document's own CSS.
 - The theme reaches an HTML widget or an iframe widget only as the `theme` query parameter. An HTML widget's document arrives through `srcdoc`, which has no query string, so the backend that serves it chooses the light or the dark styles. An iframe widget's page receives the parameter in its URL.
 - In an artifact, styles must be inline in the document: `style-src` allows inline styles only, `img-src` and `font-src` allow `data:` URLs only, and nothing loads from the network.
 - `theme` is a reserved query parameter name for `markdown`, `html`, `iframe` and plugin widget types (see the [widgets.json schema](../schemas/widgets-json.mdx)).

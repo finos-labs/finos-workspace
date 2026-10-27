@@ -7,29 +7,27 @@ import { PluginTokens } from "@site/src/components/Reference/theme";
 
 # Plugin theme
 
-A widget plugin draws in a sandboxed frame that shares none of the app's styles. The frame has these styles of its own:
+A widget plugin draws in a sandboxed frame that shares none of the app's styles. This page describes the few styles that the frame has of its own, and the `theme` trait through which the host tells the plugin about the app's colors.
 
-- `html`, `body` and `#root` have no margin, fill the frame, and hide overflow.
-- `<meta name="color-scheme">` is `dark` or `light`, and the frame's `color-scheme` follows the app's theme when it changes.
-- Each file that the manifest's `entry.styles` names is added as a `style` element.
+The frame has three styles of its own. The elements `html`, `body` and `#root` have no margin, they fill the frame, and they hide overflow. The element `<meta name="color-scheme">` is `dark` or `light`, and the frame's `color-scheme` follows the app's theme when it changes. Each file that the manifest's `entry.styles` names is added to the frame as a `style` element.
 
 ## The theme trait
 
-The host gives the module a `theme` trait and updates it when the theme changes. Its fields are:
+The host gives the module a `theme` trait and updates it whenever the theme changes. The trait is an object with these fields:
 
 | Field | Value |
 |---|---|
-| `mode` | `"dark"` or `"light"`. |
-| `tokens` | An object of colour values, keyed by the names below, and `font-family`. A colour is a six-digit hex value, except one with transparency, which is given as the stylesheet writes it. |
+| `mode` | The current mode, which is `"dark"` or `"light"`. |
+| `tokens` | An object of color values, keyed by the token names below, together with `font-family`. A color is a six-digit hex value, except a color with transparency, which the host gives as the stylesheet writes it. |
 | `locale` | The browser's language, for example `en-US`. |
-| `decimals` | The number of decimals to show, `2`. |
+| `decimals` | The number of decimals to show, which is `2`. |
 
-The host reads each token from the computed style of the app's `body` when it builds the trait, so a value is the colour that the app shows in the current theme. A token that the app does not define is left out. `font-family` is the computed font family of the `body`.
+When the host builds the trait, it reads each token from the computed style of the app's `body`, so a value is the color that the app shows in the current theme. A token that the app does not define is left out of the object. The value of `font-family` is the computed font family of the `body`.
 
-The tokens, with the values that the stylesheets declare:
+The table lists the tokens with the values that the stylesheets declare:
 
 <PluginTokens />
 
-`brand-main`, `brand-lighter` and `brand-darker` follow `--color-main-100`, `--color-main-50` and `--color-main-200` (see [Brand colour, font and text size](brand-font-size.mdx)). The host resolves a value that is not hex, such as a `color-mix()` that a theme gives a brand step, to hex before it gives it to the module, so a stylesheet that changes the brand colour changes these tokens too.
+The tokens `brand-main`, `brand-lighter` and `brand-darker` follow `--color-main-100`, `--color-main-50` and `--color-main-200`, as [Brand color, font and text size](brand-font-size.mdx) describes. The host resolves a value that is not hexadecimal to hex before it gives it to the module. That applies, for example, to a `color-mix()` that a theme gives to a brand step, so a stylesheet that changes the brand color changes these tokens too.
 
-Nothing applies the tokens to the plugin's elements, and the frame defines no custom properties: the module reads `theme.tokens` and `theme.mode`, and its own stylesheet decides what to draw.
+Nothing applies the tokens to the plugin's elements, and the frame defines no custom properties of its own. The module reads `theme.tokens` and `theme.mode`, and its own stylesheet decides what to draw. [How to style a plugin widget for both themes](../../how-to/build/style-a-plugin-widget.md) shows one way to do that.

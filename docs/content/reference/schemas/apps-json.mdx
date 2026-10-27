@@ -7,8 +7,8 @@ import { SchemaDocs } from "@site/src/components/Reference/schemas";
 
 # apps.json
 
-The JSON Schema (draft-07) for the `apps.json` of a backend: an array of app templates. `frontend/scripts/generate-apps-schema.ts` writes it to `frontend/apps-schema.json`.
+An app is a template that a backend offers: a set of tabs of widgets with their layout, which a user can open as a dashboard. A backend lists its apps in a file named `apps.json`. The file is an array, and each element describes one app template.
 
-The page is generated from that file.
+This page lists the JSON Schema (draft-07) that the file must satisfy. The script `frontend/scripts/generate-apps-schema.ts` writes the schema to `frontend/apps-schema.json`, and the page is generated from that file. The widgets that an app places are defined in [widgets.json](widgets-json.mdx).
 
 <SchemaDocs set="apps" />

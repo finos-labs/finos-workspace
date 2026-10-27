@@ -7,16 +7,16 @@ import { ProcessEnvTable, UnreadEnvExample } from "@site/src/components/Referenc
 
 # Ines and its MCP server
 
-The agent and its MCP server read their settings from the environment and from `agent/.env`. Compose passes the file to both services.
+Ines is the built-in agent of Workspace. It runs as two processes: the agent itself, and an MCP server that offers it tools. Both read their settings from the environment. On a local stack, the file `agent/.env` supplies the settings, and a deployment supplies the same variables through its own configuration.
 
-## Variables read by name
+## Variables that the code reads
 
-The variables that the code under `agent/src` and `agent/mcp-server/src` reads as `process.env.NAME`. A description comes from the comment above the variable in `agent/.env.example`.
+This section lists the variables that the code under `agent/src` and `agent/mcp-server/src` reads as `process.env.NAME`. Each table row shows the variable, its type and its default, and the description comes from the comment above the variable in `agent/.env.example`.
 
 <ProcessEnvTable />
 
-## In `.env.example` and not read by name
+## Variables that only the example file lists
 
-Variables that `agent/.env.example` lists and that the code does not read as `process.env.NAME`.
+This section lists the variables that `agent/.env.example` contains but that the code does not read as `process.env.NAME`. The code may read them in another way, for example through a settings object.
 
 <UnreadEnvExample />

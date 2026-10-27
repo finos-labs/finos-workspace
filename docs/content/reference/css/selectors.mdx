@@ -7,24 +7,18 @@ import { AtRules, SelectorTable } from "@site/src/components/Reference/css";
 
 # Selectors
 
-The rules of the web app's global stylesheets, other than the custom properties listed under [Semantic properties](semantic-properties.mdx) and the utility classes listed under [Component classes](component-classes.mdx). A rule inside an at-rule shows it under "Inside". `@apply` lines are Tailwind's: they name the utility classes that the rule applies.
+This page lists the rules of the web app's global stylesheets, other than the custom properties, which [Semantic properties](semantic-properties.mdx) lists, and the utility classes, which [Component classes](component-classes.mdx) lists. It is the page to consult when you need to know which element a global rule reaches and which declarations it applies.
 
-Many rules reach elements that a library creates:
+Many of these rules reach elements that a library creates, such as the grid layout, the tooltips and the dialogs, and they are the only way to restyle those elements. The table below lists each rule with the at-rule that contains it, if there is one, and its declarations. A rule inside an at-rule shows that at-rule under "Inside". The `@apply` lines are Tailwind's: they name the utility classes that the rule applies.
 
-| Selectors | Library | Element |
-|---|---|---|
-| `.react-grid-item`, `.react-grid-placeholder`, `.react-resizable-handler` | react-grid-layout | The cards of a dashboard and their resize handles. |
-| `.TooltipContent`, `.DialogOverlay`, `.DialogContent` | The app | Classes that components set on tooltips and dialogs. |
-| `.rct-tree-root` | react-complex-tree | The tree of dashboard tabs. |
-| `.ws-admin-table` with `.ag-*` | AG Grid | The tables of the admin pages (`admin.css`). |
-| `.pl-*` | Syntax highlighting | The highlighted code in the Copilot's markdown (`tritanopia-dark.css`). |
-
-The tables are generated from the stylesheets named in each heading.
+The tables are generated from the stylesheets that the headings name.
 
 ## Rules
 
 <SelectorTable files={["index.css", "admin.css", "tritanopia-dark.css"]} />
 
 ## At-rules
+
+The at-rules include the `@font-face` declarations, which show the fonts that the app ships and where each font file comes from.
 
 <AtRules />

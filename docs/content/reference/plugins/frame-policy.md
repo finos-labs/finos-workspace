@@ -1,0 +1,103 @@
+---
+title: Plugin frame policy
+sidebar_position: 4
+---
+
+# Plugin frame policy
+
+A plugin widget's frame starts with no network access. Its Content Security Policy closes `connect-src` and `frame-src`, and it also closes remote images, fonts, media, styles and scripts. The frame can still use `data:` and `blob:` URLs for images, fonts and media, `blob:` URLs for scripts, styles and workers, and inline styles.
+
+When a plugin needs more, it declares the extra sources in the manifest's `csp` entry and explains each directive in `cspNotes`:
+
+```jsonc
+"csp": { "img-src": ["https://tiles.example.org"], "connect-src": ["https://api.example.org"] },
+"cspNotes": { "img-src": "Map tiles", "connect-src": "Live prices" }
+```
+
+A frame can send the data that it shows to every host that it can reach. Admins see this in the review of a version. When a call needs a key, or when its answer should not appear in the browser's network panel, the plugin should use a [proxy](proxies.md) instead.
+
+## Who decides
+
+Four parties take part in deciding a frame's policy.
+
+| Party | What it may do |
+|---|---|
+| The plugin author | Declares `csp` and gives a reason for each directive in `cspNotes`. A declaration has no effect until a superuser approves the version. |
+| A superuser | Approves the declared policy, or overrides it for each directive, making it wider or narrower within the rules below. |
+| An organization admin | Removes sources for the organization. An organization admin can never add a source. |
+| Workspace | Owns the floor, adds the hash of the shell, validates every policy and composes the final policy. |
+
+## Directives
+
+A policy is an object that maps directives to lists of sources, and Workspace never accepts a raw policy string. A plugin may ask for these directives: `connect-src`, `img-src`, `font-src`, `media-src`, `style-src`, `script-src`, `worker-src` and `frame-src`. The directives `default-src`, `base-uri`, `object-src`, `form-action` and every other directive belong to Workspace.
+
+## Sources
+
+The same validator exists in TypeScript and in Python, and both run the same test cases. They run at discovery and again at every override and every narrowing.
+
+| Source | Allowed for an author | Allowed in a superuser override |
+|---|---|---|
+| `'none'` on its own, `data:` and `blob:` | Yes. | Yes. |
+| `https://host[:port][/path]`, and `wss://` in `connect-src`. The host is a lowercase DNS name, or `*.` followed by a name of at least two labels. | Yes. | Yes. |
+| `'unsafe-eval'` and `'wasm-unsafe-eval'` in `script-src`, `'unsafe-inline'` in `style-src`, and `'sha256-'`, `'sha384-'` and `'sha512-'` hashes in `script-src` and `style-src`. | Yes. | Yes. |
+| `http://` and `ws://`. | No. | Yes, with the confirmation `insecure-scheme`. |
+| An IP address, `localhost`, a name without a dot, and a name that ends in `.local`, `.internal`, `.localhost`, `.home.arpa` or `.lan`. | No. | Yes, with the confirmation `private-host`. |
+| Any host in `script-src`. | No. | Yes, with the confirmation `remote-script`. |
+| `'self'`, `*`, a bare scheme such as `https:`, `'unsafe-inline'` in `script-src`, any other keyword or nonce, whitespace, `,`, `;`, quotes, `<`, `>`, `&`, `\` or a backtick, non-ASCII characters, more than 32 sources in a directive, and a source of more than 255 characters. | No. | No. |
+
+A confirmation is a checkbox in the override editor, and it is the `--confirm` option in the command line tool. The override's event records which confirmations were given.
+
+Remote `import` and `import()` fail unless `script-src` allows the origin, so a module should bundle everything that it imports.
+
+A module should start workers from a `blob:` URL, because `worker-src` contains `blob:`. A `data:` URL works only when `worker-src` also contains `data:`. It should use classic workers. A module worker that starts from a `blob:` URL does not start in Chromium inside an opaque-origin frame, although Firefox and WebKit do start one. The host reports what a worker's policy blocks to the admin in the same way as for the frame, in Chromium and in Firefox. WebKit refuses the same requests but raises no events in workers, so it reports nothing from them. A module may revoke the worker's URL right after it calls `new Worker(url)`.
+
+## Risk ratings
+
+The review of a version begins with every host that the frame can send its data to, in any directive, and it rates each directive:
+
+| Content of the directive | Risk |
+|---|---|
+| Nothing beyond the floor. | None. |
+| `'wasm-unsafe-eval'`. | Low. |
+| `'unsafe-eval'`, or a host in `img-src`, `font-src`, `media-src`, `style-src` or `worker-src`. | Medium. |
+| A host in `connect-src` or `frame-src`. | High. |
+| A host in `script-src`, or `http://`, `ws://` or an IP address in any directive. | Critical. |
+
+## How the policy is composed
+
+Workspace combines a fixed floor with the approved sources in three steps. The result, which the notation below calls the effective policy, is what the frame enforces.
+
+```
+floor:
+  default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'
+  script-src blob:         (the host adds the shell's sha256 hash)
+  style-src 'unsafe-inline' blob:
+  img-src data: blob:      font-src data: blob:      media-src data: blob:
+  worker-src blob:         connect-src 'none'        frame-src 'none'
+
+approved[d]  = the superuser's override for d if there is one, else the version's declared d
+narrowed[d]  = approved[d], keeping only the sources the organization allows when it narrows d
+effective[d] = floor[d] + narrowed[d]       ('none' leaves when a source is added)
+```
+
+The API composes the policy for the user's organization and returns it in the plugin list. The host does not merge policies itself.
+
+## How the policy reaches the frame
+
+The host builds the frame's document as a string and sets it as the frame's `srcdoc`. The first element of the document is `<meta http-equiv="Content-Security-Policy">`. The meta element is followed by settings that turn `x-dns-prefetch-control` off and set the `referrer` to `no-referrer`. The document contains exactly one script, which is the shell, and the policy allows that script by its hash. A `srcdoc` frame needs no URL, no server route and no change to nginx, and the policy can differ for each plugin and each organization.
+
+Three details are worth knowing:
+
+- A `srcdoc` frame also inherits the policy of the Workspace page itself. The web app sets no policy of its own, so a deployment that adds one must allow `blob:` and `data:` for frames.
+- A policy in a meta element cannot carry `report-uri` or `frame-ancestors`. Reports therefore come from violation events instead.
+- Removing the meta element at run time does not lift the policy. This was checked in Chromium, Firefox and WebKit.
+
+## Blocked requests
+
+The shell listens for the `securitypolicyviolation` events that the browser raises. It accepts only events whose `isTrusted` property is true, because plugin code can dispatch events of its own and the shell ignores those. The shell reduces each event to a directive and an origin and sends it over the port, where it counts against the message budget. Every worker that the plugin starts from a `blob:` or `data:` URL reports in the same way, and so does every worker that those workers start. WebKit raises no violation events in workers.
+
+The host sends at most 50 reports every 5 seconds to `POST /app/widget-plugins/report`. The API keeps counts for each plugin, organization, directive and origin for 30 days, and it keeps at most 200 origins of at most 255 characters for each plugin. It drops everything that is neither an origin nor one of the keywords `inline`, `eval`, `wasm-eval`, `data` and `blob`, and it shows the remaining values as plain text. The superuser's Blocked requests list offers an Allow action, which opens the override with that source already filled in.
+
+## Updates
+
+A policy belongs to a version. When a new version appears, Workspace compares its policy with the active version's policy for each directive, and every added source needs its own acknowledgement. The active version keeps serving until a superuser approves the new one. An override, in contrast, belongs to the plugin and applies to every version.
