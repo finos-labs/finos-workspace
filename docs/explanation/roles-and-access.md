@@ -15,7 +15,7 @@ A **user type** is one of three: Admin, Developer or User. The type does not gra
 
 - An **Admin** manages the organization: its users, roles, apps and settings, and the approvals that this page describes. Admins can also add connections.
 - A **Developer** can add connections: their own data backends, MCP servers, file widgets and custom agents, and they can upload files. A Developer has no usage limits, because their work is to build and test. Whatever a Developer shares waits for an admin's approval.
-- A **User** works with what the organization provides. A User cannot add connections of their own, so they see only the backends that an admin made available to the organization, and the MCP servers that every user has by default.
+- A **User** works with what the organization provides. A User cannot add connections of their own, so they see only the backends that one of their roles grants, and the MCP servers that every user has by default.
 
 A **role** is a named bundle of grants that an admin gives to some of the organization's users. A role can grant several kinds of thing:
 
@@ -31,7 +31,7 @@ A new organization comes with two roles, so that a fresh deployment works before
 
 ## How roles combine
 
-A user can have several roles, and the grants add up. A user may use a backend that another person connected, a model or a tool if any one of the user's roles allows it. The one exception is a backend that an admin added for the whole organization, which every person of the organization receives and uses completely. A user that has no role gets no shared data and no models, and the Copilot answers each question with a notice that the user's roles do not allow the model, because the Copilot's rule is the same strict one: a model and the tools of an MCP server work for a user only if a role names them. A grant of "all models" or "all tools" of a server exists for the roles that want it, but nobody gets it by default.
+A user can have several roles, and the grants add up. A user may use a backend, a model or a tool if any one of the user's roles allows it. The backend may be one that an admin connected or one that an admin added for the organization. A user that has no role gets no shared data and no models, and the Copilot answers each question with a notice that the user's roles do not allow the model, because the Copilot's rule is the same strict one: a model and the tools of an MCP server work for a user only if a role names them. A grant of "all models" or "all tools" of a server exists for the roles that want it, but nobody gets it by default.
 
 The other kinds of grant combine in the way that suits them. The highest limit wins, and a role with no limit beats any role with one, so that adding a role never takes a user's allowance away. A user with no role at all gets a limit of zero. The highest sharing level wins, in the order none, receive and share. The web capabilities are on when any role turns them on, and a deployment's administrator can therefore switch web search off for a user only by making sure that none of the user's roles allows it.
 

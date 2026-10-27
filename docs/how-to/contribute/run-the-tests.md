@@ -24,9 +24,10 @@ pytest tests/test_auth.py::TestAppLogin::test_login_valid_credentials -v
 pytest tests -k Theme
 ```
 
-The suite is large, so a full run takes several minutes. Two kinds of test need extra care:
+The suite is large, so a full run takes several minutes. Three kinds of test need extra care:
 
 - **A local stack changes the settings.** The backend reads `backend-api/backend/envs/.env` and `user_create.json` when they exist, and running the stack on the same checkout creates both. A value in them can make a test that expects the defaults fail. Move both files away for a full run and put them back afterwards.
+- **The storage tests start a fake Google Cloud Storage server.** `tests/test_gcp_storage.py` runs the Google Cloud Storage provider against the image `fsouza/fake-gcs-server`, which answers the JSON API of the real service.
 - **The migration tests start more containers.** `tests/test_migration_dialects.py` runs the whole chain of migrations on MySQL, PostgreSQL and SQLite. The SQLite part needs no Docker. [How to add a database migration](add-a-database-migration.md) describes these tests.
 
 CI also lints the backend with Ruff, in the version that `backend-checks.yml` pins:

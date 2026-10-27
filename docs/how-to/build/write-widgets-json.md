@@ -88,7 +88,7 @@ Three more things about parameters matter in practice.
 
 - **The theme.** For `markdown`, `html`, `iframe` and plugin types, Workspace adds `theme=dark` or `theme=light` to every request, as you see above, so a backend that draws its own colors can follow the site. You cannot use `theme` as the name of a parameter.
 - **Choices from your backend.** An `endpoint` parameter loads its choices from its `optionsEndpoint`, which answers with a list of strings or of objects with `label` and `value`. With `optionsMethod` set to `POST`, the values of `optionsParams` go into a JSON body, and a value that starts with `$`, such as `"$team"`, stands for the current value of the parameter of that name.
-- **Defaults.** A date default may be a date written `YYYY-MM-DD` or `$currentDate` with a modifier, such as `$currentDate-1M` for one month ago. A default that is `false`, `0` or empty counts as no default. The widget does not send that parameter until the user sets a value, so a backend should treat a missing parameter as the value that it wants for `false` or `0`. A static value for the query, such as a fixed `format=compact`, is a parameter with a default and `"show": false`, which hides the control and still sends the value.
+- **Defaults.** A date default may be a date written `YYYY-MM-DD` or `$currentDate` with a modifier, such as `$currentDate-1M` for one month ago. A default of `false` or `0` is a value like any other, and Workspace sends it. An empty default means that the parameter has no value, and Workspace leaves it out of the request. A static value for the query, such as a fixed `format=compact`, is a parameter with a default and `"show": false`, which hides the control and still sends the value.
 
 ### Arrange the parameters
 

@@ -5,14 +5,14 @@ sidebar_position: 5
 
 # How to give a role access to data
 
-A backend that someone in your organization connected reaches other people only through a role. This guide grants a role access to such a backend and its widgets, and shows what the people in the role see when you do and when you do not. You need an account of type Admin, a role, and a backend that you or another person of your organization connected from the Connections page. A backend that you add for the whole organization with the command line works differently, as [How to add a data backend for your organization](add-a-data-backend-for-your-organization.md) explains.
+A backend reaches the other people of your organization only through a role. This guide grants a role access to a backend and its widgets, and shows what the people in the role see when you do and when you do not. You need an account of type Admin, a role, and a backend that you connected from the Connections page or one that you added for the whole organization with the command line, as [How to add a data backend for your organization](add-a-data-backend-for-your-organization.md) describes.
 
 ## Grant access
 
 1. Open the admin area at `/admin` and select Roles and Access.
 2. Select Edit permissions above the table. The dialog Setup Permissions opens.
 3. Choose the role in the selector at the top left. The dialog loads what the role grants now.
-4. Open the tab Widgets. The group Backend Widgets lists every backend of your organization and every backend that your organization's people have connected. Each backend has a menu with the values Access and No Access.
+4. Open the tab Widgets. The group Backend Widgets lists the backends that you connected and the backends of your organization. Each backend has a menu with the values Access and No Access.
 5. Set the backend to Access. Setting it to No Access instead resets all of its widgets to No Access and disables their menus. Select the arrow in front of the backend to open its widgets, and set each widget that the role may use to Access, because the backend's own setting does not grant any widget by itself.
 6. Select Save changes.
 

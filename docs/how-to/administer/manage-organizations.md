@@ -9,7 +9,7 @@ A deployment can serve several organizations. Each organization has its own user
 
 ## Open Entity Management
 
-Open the admin area and select Entities. The page is titled Entity Management and says "Organizations, whether they may share, how they relate, and their users." It has four tabs: Entities, Relationships, Permission maps and All users.
+Open the admin area and select Entities. The page is titled Entity Management and says "Organizations, whether they may share, their permission maps and their users." It has three tabs: Entities, Permission maps and All users.
 
 ## Add an organization
 
@@ -26,7 +26,6 @@ The table lists each organization with its Name and whether Sharing is Enabled. 
 ## What the other tabs show
 
 - **Permission maps** list the user types that each organization offers. Every organization has three: Admin, Developer and User, and Workspace creates them with the organization. A user belongs to an organization through one of its permission maps, which is how a person is at the same time a member of an organization and an Admin, a Developer or a User in it. Add permission map joins an organization to a user type that it lacks.
-- **Relationships** records that one organization is the parent of another. The tab has the buttons Add relationship and Edit relationship, and an organization cannot be its own child. Workspace stores these relationships, and it does not use them to decide who can see or share what.
 - **All users** lists every user of every organization with the columns Email, Entity and User type, and its search box finds a person by email address.
 
 ## Move a user to another organization

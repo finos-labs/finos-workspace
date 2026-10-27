@@ -219,7 +219,9 @@ The tools are given in two ways. The tools that the Workspace supplies are alway
 
 **PDFs and other documents.** A PDF or DOCX, whether it is attached to the chat or is a PDF widget on the dashboard, is never put in front of the model and never handed to it as a file (providers refuse a request that carries one). When the model loads the file widget, the Workspace gives Ines a signed link to it; Ines passes the link to `ines-mcp`, which fetches the file from where it is kept, reads it page by page, and keeps it for the chat. The model reads it with `query_documents` (its question and the file's id): each passage it gets back says which page it is on. The answer's citations are the file at the pages the answer names, so "Go to reference" opens the file at that page. A PDF that is only pictures has no text to read, and the answer says so. The search needs `INES_EMBED_MODEL` (and its provider's key); without it the answer says that the file cannot be read.
 
-Ines holds her state (the rows of a chat's widgets, its documents) in memory and files each chat under its user. It does not
+Ines keeps what she remembers between the requests of a turn (who a token belongs to, how much of a user's share is left, which
+turn is under way, the rows of a chat's widgets, its documents) behind one store and files it under the chat's user. With `REDIS_URL`
+set, the store is shared, so any number of replicas can serve a chat. Without it Ines keeps that state in memory, where it does not
 survive a restart and is not shared between replicas, so run one replica, or send a chat's requests to the same one: a request
 that reaches another replica in the middle of a turn is counted as a new turn.
 

@@ -66,7 +66,7 @@ These routes set up two-factor authentication under `/totp`, and let a user chan
 
 ## entity
 
-The routes under `/entity` manage organizations, which the API calls entities, together with their relationships and data backends, and they register administrators.
+The routes under `/entity` manage organizations, which the API calls entities, together with their permission maps, roles and data backends, and they register administrators.
 
 <ApiTag tag="entity" schemaPage="/reference/http-api/workspace-api-schemas" />
 
@@ -96,13 +96,11 @@ These routes carry no tag. They are the root path and the two health checks, `/h
 
 ## Metrics
 
-The setting `PROMETHEUS` turns the metrics on. It is off by default, and with it off the API has no `/metrics` route and does not sample its runtime. With it on, the API serves metrics in Prometheus's text format in two places.
+The setting `PROMETHEUS` turns the metrics on. It is off by default, and with it off the API has no `/metrics` route and does not sample its runtime. With it on, the API serves metrics in Prometheus's text format in two places, and both show all its worker processes together.
 
 - **`GET /metrics` on the API's port.** The route passes through the origin check like every other route, so a request without an allowed `Origin` header receives the status 403. The API compresses the answer with gzip when the client accepts it.
-- **A second listener on port <SettingConstant name="prometheusListenerPort" unit="raw" />.** The first worker process that the API starts opens it, and it checks neither the origin nor a token. Only that worker's metrics are on it, and when the server replaces that worker, which it does when a worker dies and after a worker has served many requests, nothing listens on the port again until the container restarts.
+- **A second listener on port <SettingConstant name="prometheusListenerPort" unit="raw" />.** The main process of the web server serves it, and it checks neither the origin nor a token. A scraper uses this port.
 
-The API runs several worker processes, and each one keeps its own counters. An answer from `/metrics` therefore covers only the worker that happened to serve the request, and two consecutive scrapes may come from different workers. The metrics of the worker that serves port <SettingConstant name="prometheusListenerPort" unit="raw" /> are the only ones that are always from the same process.
-
-The API defines the metrics below. Its `/metrics` route and its listener also serve the standard metrics of the Prometheus client library about the Python process, whose names begin with `process_` and `python_`. The widget plugins add their own metrics, which [Plugin lifecycle and administration](../plugins/lifecycle.mdx) lists. The runtime metrics are sampled every `RUNTIME_METRICS_INTERVAL` seconds, <SettingDefault name="RUNTIME_METRICS_INTERVAL" unit="s" /> by default. The histogram of request durations has a few coarse buckets whose upper bounds are whole seconds, so it does not resolve requests that take less than a second.
+The API runs several worker processes, and each one writes its counters to files that the answer reads, so the counters and the histograms are the totals of the whole API, and a worker that the server replaces leaves its counts in them. The gauges of the runtime metrics describe one worker's event loop, thread pool and database pools, so they have one series for each live worker, which the label `pid` tells apart. The runtime metrics are sampled every `RUNTIME_METRICS_INTERVAL` seconds, <SettingDefault name="RUNTIME_METRICS_INTERVAL" unit="s" /> by default. The API serves the metrics below and the metrics of the widget plugins, which [Plugin lifecycle and administration](../plugins/lifecycle.mdx) lists, and no others.
 
 <ApiMetrics />

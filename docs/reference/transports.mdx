@@ -50,7 +50,7 @@ Ines keeps its shared state in the instance that `REDIS_URL` names: who is signe
 |---|---|---|
 | Ines metrics | A Prometheus scrape of `/metrics` on port <EnvDefault name="INES_METRICS_PORT" />, or `INES_METRICS_PORT`. | [Ines HTTP API](http-api/ines-api.mdx#metrics) |
 | Ines MCP server metrics | A scrape of `/metrics` on port <EnvDefault name="MCP_METRICS_PORT" />, or `MCP_METRICS_PORT`. | [Ines HTTP API](http-api/ines-api.mdx#metrics) |
-| API metrics | When the `PROMETHEUS` setting is on, a scrape of `/metrics` on the API's own port, which refuses a request without an allowed origin, and a second listener on port <SettingConstant name="prometheusListenerPort" unit="raw" /> that the first worker process starts and that checks no origin. | [Workspace API](http-api/workspace-api.mdx#metrics) |
+| API metrics | When the `PROMETHEUS` setting is on, a scrape of `/metrics` on the API's own port, which refuses a request without an allowed origin, and a second listener on port <SettingConstant name="prometheusListenerPort" unit="raw" /> that the web server's main process runs and that checks no origin. Both show all the workers together. | [Workspace API](http-api/workspace-api.mdx#metrics) |
 | Ines traces | OTLP over HTTP to `OTEL_EXPORTER_OTLP_ENDPOINT`. | [Ines and its MCP server](configuration/agent.mdx) |
 
 ## Default ports
