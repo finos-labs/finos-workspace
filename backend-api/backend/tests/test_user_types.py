@@ -218,7 +218,7 @@ class TestServingConnections:
         assert served == dict.fromkeys(served, [])
 
     @pytest.mark.asyncio
-    async def test_users_are_served_the_backends_of_their_organization(
+    async def test_users_are_not_served_the_backends_of_their_organization(
         self, organization, auth_client, db_session
     ):
         await _store_connections(db_session, MEMBER_UUID)
@@ -239,7 +239,7 @@ class TestServingConnections:
             await db_session.commit()
 
         assert response.status_code == 200
-        assert [item["id"] for item in response.json()] == [str(backend.uuid)]
+        assert response.json() == []
 
     @pytest.mark.asyncio
     async def test_a_user_without_an_organization_is_served_nobodys_backends(

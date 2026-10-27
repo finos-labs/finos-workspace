@@ -8,7 +8,7 @@ from scripts import export_reference_data as export
 BACKEND = Path(__file__).resolve().parents[1]
 ALIASES = {"S3_BUCKET"}
 NAME = r"""["']([A-Z][A-Z0-9_]*)["']"""
-ENVIRONMENT_READ = re.compile(rf"os\.(?:environ\.get|getenv)\(\s*{NAME}|os\.environ\[{NAME}\]")
+ENVIRONMENT_READ = re.compile(rf"os\.(?:environ\.get|getenv)\(\s*{NAME}|os\.environ\[{NAME}\](?!\s*=[^=])")
 
 
 @pytest.fixture(autouse=True)

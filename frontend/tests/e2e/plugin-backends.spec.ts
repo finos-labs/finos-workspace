@@ -127,6 +127,18 @@ test.beforeAll(async ({ browser }, testInfo) => {
       data: { data_sources: { sales: source?.uuid } },
     }),
   );
+  await json(
+    await api.put(`/admin/role-permissions/${roleUuid}`, {
+      data: [
+        {
+          uuid: source?.uuid,
+          type: "backend",
+          category: "data-connectors",
+          access: "access",
+        },
+      ],
+    }),
+  );
 });
 
 test.afterAll(async () => {

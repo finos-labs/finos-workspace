@@ -2,7 +2,6 @@ import platform
 from contextlib import asynccontextmanager
 from time import time
 
-import prometheus_client
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
@@ -205,12 +204,6 @@ def include_routers():
     ]
     for route in routes_to_remove:
         app.routes.remove(route)
-
-
-def start_prometheus(fork_id: int):
-    if fork_id == 1:
-        logger.info("Starting prometheus server")
-        prometheus_client.start_http_server(config.PROMETHEUS_LISTENER_PORT)
 
 
 include_routers()

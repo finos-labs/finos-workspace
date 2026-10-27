@@ -6,7 +6,7 @@ from sqlalchemy import delete, insert, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api import auth_helpers, crud, helpers, schemas
+from api import auth_helpers, crud, helpers, models, schemas
 from api.database import aget_read_db, aget_write_db
 from api.models import ApiSource, FileWidget
 from api.models.workspace_models import StoredFile
@@ -129,7 +129,11 @@ async def get_user_api_sources(
     db: AsyncSession = Depends(aget_read_db),
 ):
     filters = ()
-    if (entity_uuid := await crud.get_user_entity_uuid(db, user.permissions_uuid)) is not None:
+    if (
+        await app_helpers.get_user_type(db, user.uuid) == models.ADMIN_TYPE
+        and (entity_uuid := await crud.get_user_entity_uuid(db, user.permissions_uuid))
+        is not None
+    ):
         filters += (ApiSource.entity_uuid == entity_uuid,)
     if await app_helpers.may_add_connections(db, user.uuid):
         filters += (ApiSource.user_uuid == user.uuid,)

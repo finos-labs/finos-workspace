@@ -31,7 +31,7 @@ async def readable_backend(db: AsyncSession, user_uuid: UUID, entity_uuid: UUID,
             models.RoleBackend.access == "access",
         )
     )
-    rules = [models.ApiSource.entity_uuid == entity_uuid, models.ApiSource.uuid.in_(granted)]
+    rules = [models.ApiSource.uuid.in_(granted)]
     if await may_add_connections(db, user_uuid):
         rules.append(models.ApiSource.user_uuid == user_uuid)
     return (

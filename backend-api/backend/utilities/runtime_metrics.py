@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import time
 from collections.abc import Mapping
 from typing import Any
 
 import anyio
 from loguru import logger
-from prometheus_client import REGISTRY
-from prometheus_client.core import GaugeMetricFamily
+from prometheus_client import REGISTRY, CollectorRegistry, Gauge
 
 from utilities.config import settings
 
@@ -41,7 +39,6 @@ LABEL_VALUES = {
     "threadpool_tokens": {"state": THREADPOOL_STATES},
 }
 
-_snapshot: dict[str, Any] = {"pools": {}, "threadpool": {}, "loop_lag_seconds": 0.0}
 _started = False
 
 
@@ -82,49 +79,40 @@ def _engines() -> dict[str, Any]:
     return engines
 
 
-class RuntimeCollector:
-    def collect(self):  # noqa: PLR6301
-        pools = GaugeMetricFamily(
-            "db_pool_connections",
-            "SQLAlchemy connection pool counters",
-            labels=["engine", "state"],
+class RuntimeMetrics:
+    def __init__(self, registry: CollectorRegistry = REGISTRY) -> None:
+        options: dict[str, Any] = {"registry": registry, "multiprocess_mode": "liveall"}
+        self.pools = Gauge(
+            "db_pool_connections", "SQLAlchemy connection pool counters", ["engine", "state"], **options
         )
-        for engine_name, states in _snapshot["pools"].items():
-            for state, value in states.items():
-                pools.add_metric([engine_name, state], value)
-        yield pools
-
-        threadpool = GaugeMetricFamily(
-            "threadpool_tokens",
-            "anyio default threadpool capacity limiter (FastAPI sync routes)",
-            labels=["state"],
+        self.threadpool = Gauge(
+            "threadpool_tokens", "anyio default threadpool capacity limiter (FastAPI sync routes)", ["state"], **options
         )
-        for state, value in _snapshot["threadpool"].items():
-            threadpool.add_metric([state], value)
-        yield threadpool
-
-        lag = GaugeMetricFamily(
-            "event_loop_lag_seconds",
-            "Event loop scheduling delay (elapsed beyond the sampler's sleep)",
+        self.loop_lag = Gauge(
+            "event_loop_lag_seconds", "Event loop scheduling delay (elapsed beyond the sampler's sleep)", **options
         )
-        lag.add_metric([], float(_snapshot["loop_lag_seconds"]))
-        yield lag
+
+    def collectors(self) -> list[Gauge]:
+        return [self.pools, self.threadpool, self.loop_lag]
 
 
-async def _sampler(interval: float) -> None:
+async def _sampler(metrics: RuntimeMetrics, interval: float) -> None:
     while True:
         start = time.perf_counter()
         await asyncio.sleep(interval)
-        _snapshot["loop_lag_seconds"] = max(0.0, time.perf_counter() - start - interval)
+        metrics.loop_lag.set(max(0.0, time.perf_counter() - start - interval))
 
         try:
             limiter = anyio.to_thread.current_default_thread_limiter()
-            _snapshot["threadpool"] = {state: float(getattr(limiter, attr)) for state, attr in _THREADPOOL_COUNTERS}
+            for state, attr in _THREADPOOL_COUNTERS:
+                metrics.threadpool.labels(state).set(float(getattr(limiter, attr)))
         except Exception as exc:  # noqa: BLE001
             logger.debug(f"threadpool sample failed: {exc}")
 
         try:
-            _snapshot["pools"] = _pool_stats(_engines())
+            for engine_name, states in _pool_stats(_engines()).items():
+                for state, value in states.items():
+                    metrics.pools.labels(engine_name, state).set(value)
         except Exception as exc:  # noqa: BLE001
             logger.debug(f"pool stats sample failed: {exc}")
 
@@ -136,6 +124,4 @@ def start_runtime_metrics(interval: float | None = None) -> None:
     if _started:
         return
     _started = True
-    with contextlib.suppress(ValueError):
-        REGISTRY.register(RuntimeCollector())
-    asyncio.create_task(_sampler(interval))
+    asyncio.create_task(_sampler(RuntimeMetrics(), interval))

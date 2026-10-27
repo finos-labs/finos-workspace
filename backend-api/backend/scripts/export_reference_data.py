@@ -35,7 +35,7 @@ from scripts.workspace_admin import parser as admin_parser
 from utilities.config import PROMETHEUS_LISTENER_PORT, RQ_QUEUE_NAME, Settings
 from utilities.migration_lock import DONE_EXPIRY, LOCK_EXPIRY, POLL_SECONDS
 from utilities.request_metrics import request_metrics
-from utilities.runtime_metrics import LABEL_VALUES, RuntimeCollector
+from utilities.runtime_metrics import LABEL_VALUES, RuntimeMetrics
 from workspace_mcp.config import (
     ENV_PREFIX,
     RESULT_OFFLOAD_THRESHOLD_DEFAULT,
@@ -339,19 +339,10 @@ def collect_api_metrics() -> dict[str, Any]:
     registry = CollectorRegistry()
     request_metrics(registry)
     requests = _describe_collectors({id(item): item for item in registry._names_to_collectors.values()}.values())
-    runtime = sorted(
-        (
-            {
-                "name": family.name,
-                "type": family.type,
-                "labels": list(family._labelnames),
-                "help": family.documentation,
-                "label_values": {label: list(values) for label, values in LABEL_VALUES.get(family.name, {}).items()},
-            }
-            for family in RuntimeCollector().collect()
-        ),
-        key=lambda item: item["name"],
-    )
+    runtime = [
+        {**entry, "label_values": {label: list(values) for label, values in LABEL_VALUES.get(entry["name"], {}).items()}}
+        for entry in _describe_collectors(RuntimeMetrics(CollectorRegistry()).collectors())
+    ]
     return {"requests": requests, "runtime": runtime}
 
 

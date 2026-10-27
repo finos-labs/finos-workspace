@@ -30,11 +30,7 @@ async def set_app_user_data(user, db: AsyncSession) -> schemas.AppUserReturn:
         last_name=user.last_name,
         display_settings=user.display_settings,
         file_widgets=[x.__dict__ for x in user.FileWidget] if own_connections else [],
-        api_sources=[
-            x.__dict__
-            for x in user.ApiSource
-            if own_connections or x.entity_uuid is not None
-        ],
+        api_sources=[x.__dict__ for x in user.ApiSource] if own_connections else [],
         username=user.username,
         email=user.email,
         uuid=user.uuid,
@@ -1340,14 +1336,24 @@ async def _get_role_backend_permissions(
                     ),
                     func.concat(models.User.first_name, " ", models.User.last_name),
                 ),
-                else_=models.User.email,
+                (models.User.email.is_not(None), models.User.email),
+                else_=models.Entity.name,
             ).label("created_by"),
         )
         .select_from(models.RoleBackend)
         .join(
             models.ApiSource, models.ApiSource.uuid == models.RoleBackend.backend_uuid
         )
-        .join(models.User, models.User.uuid == models.ApiSource.user_uuid)
+        .join(
+            models.User,
+            models.User.uuid == models.ApiSource.user_uuid,
+            isouter=True,
+        )
+        .join(
+            models.Entity,
+            models.Entity.uuid == models.ApiSource.entity_uuid,
+            isouter=True,
+        )
         .where(
             models.RoleBackend.role_uuid == role_uuid,
             models.RoleBackend.access != "no-access",

@@ -4,7 +4,7 @@ from prometheus_fastapi_instrumentator import Instrumentator, metrics
 
 NAMESPACE = "payment_backend"
 SUBSYSTEM = "fastapi"
-LATENCY_BUCKETS = (1, 2, 3, 4)
+LATENCY_BUCKETS = (0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10)
 
 
 def request_metrics(registry: CollectorRegistry = REGISTRY) -> list:

@@ -749,8 +749,9 @@ class PrometheusSettings(BaseModel):
     PROMETHEUS: bool | None = Field(
         False,
         description=(
-            "With true, the API serves its Prometheus metrics at /metrics, the first worker also serves them on port "
-            f"{PROMETHEUS_LISTENER_PORT}, and the API samples its event loop, thread pool and database pools."
+            "With true, the API serves the Prometheus metrics of all its workers at /metrics and, without a check of "
+            f"the origin, on port {PROMETHEUS_LISTENER_PORT}, and each worker samples its event loop, thread pool and "
+            "database pools."
         ),
     )
     RUNTIME_METRICS_INTERVAL: float = Field(
@@ -935,8 +936,14 @@ class GeneralSettings(BaseModel):
         ),
     )
     PORT: int = Field(8000, description="The port on which the API listens, on every interface.")
-    LOGURU_COLORIZE: bool = Field(True, description="Whether the log lines use colors.")
-    JSON_LOGS: bool = Field(False, description="With true, each log line is a JSON object.")
+    LOGURU_COLORIZE: bool = Field(True, description="Whether the text log lines use colors. JSON log records have none.")
+    JSON_LOGS: bool = Field(
+        False,
+        description=(
+            "With true, the API writes each log record as one JSON object, and no text lines. Without it, the API "
+            "writes text lines."
+        ),
+    )
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
         "INFO",
         description="The least severe level that is logged, written in capitals.",
@@ -1009,7 +1016,11 @@ class GeneralSettings(BaseModel):
     )
     GCP_STORAGE_BUCKET: str | None = Field(
         None,
-        description="The Google Cloud Storage bucket that holds uploaded files. Used with STORAGE_PROVIDER gcp.",
+        description=(
+            "The Google Cloud Storage bucket that holds uploaded files, which STORAGE_PROVIDER gcp requires. The API "
+            "signs in with the Google credentials of its environment: the service account key file that "
+            "GOOGLE_APPLICATION_CREDENTIALS names, or the service account of the machine that it runs on."
+        ),
     )
     ALLOWED_MCP_HOSTNAMES: list[str] = Field(
         default_factory=list,
@@ -1222,6 +1233,12 @@ class Settings(
     def check_folder_storage_secret(self) -> "Settings":
         if self.STORAGE_PROVIDER == "folder" and self.LOCAL_STORAGE_SECRET_KEY is None:
             raise ValueError("LOCAL_STORAGE_SECRET_KEY is required when STORAGE_PROVIDER=folder")
+        return self
+
+    @model_validator(mode="after")
+    def check_gcp_bucket(self) -> "Settings":
+        if self.STORAGE_PROVIDER == "gcp" and not self.GCP_STORAGE_BUCKET:
+            raise ValueError("GCP_STORAGE_BUCKET is required when STORAGE_PROVIDER=gcp")
         return self
 
     def get_file_bucket(self) -> str | None:
