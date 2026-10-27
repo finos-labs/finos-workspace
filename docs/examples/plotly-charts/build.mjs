@@ -14,7 +14,17 @@ const packageDir = (name) => dirname(require.resolve(`${name}/package.json`));
 const WORKER_EXPORT = /export\{[\w$]+ as default\};/g;
 const exports = readFileSync(bundle, "utf8").match(WORKER_EXPORT) ?? [];
 if (exports.length !== 1) throw new Error(`expected MapLibre's worker export once in plotly.js, found ${exports.length}`);
-const plotly = readFileSync(bundle, "utf8").replace(WORKER_EXPORT, "");
+const DYNAMIC_CODE = [
+  ['new Function("return this")()', "void 0"],
+  ["globalThis.eval(r)", 'throw Error("a worker source must be a module")'],
+];
+let plotly = readFileSync(bundle, "utf8").replace(WORKER_EXPORT, "");
+for (const [code, replacement] of DYNAMIC_CODE) {
+  const found = plotly.split(code).length - 1;
+  if (found !== 1) throw new Error(`expected ${JSON.stringify(code)} once in plotly.js, found ${found}`);
+  plotly = plotly.replace(code, () => replacement);
+}
+if (/\beval\s*\(|\bnew\s+Function\s*\(/.test(plotly)) throw new Error("plotly.js still has dynamic code after the build");
 
 const placeholder = '"__PLOTLY_SOURCE__"';
 const entry = readFileSync(join(root, "src/entry.js"), "utf8");

@@ -1,0 +1,18 @@
+---
+title: Ines and its MCP server
+sidebar_position: 3
+---
+
+import { AgentEnvTable } from "@site/src/components/Reference/config";
+
+# Ines and its MCP server
+
+Ines is the built-in agent of Workspace. It runs as two processes: the agent itself, and an MCP server that offers it tools. Both read their settings from the environment. On a local stack, the file `agent/.env` supplies the settings, and a deployment supplies the same variables through its own configuration. The file `agent/.env.example` is a template of that file.
+
+## Variables
+
+The table lists every variable that the code under `agent/src` and `agent/mcp-server/src` reads, in the groups of the registry in `agent/src/lib/env-reference.ts`. Each row shows which of the two processes reads the variable, its type, its default, the condition under which it is required, and what it does. A variable that takes one of a few values lists them, and a variable that names a model lists the providers that it accepts.
+
+A test reads the source of both processes and fails when the code reads a variable that the registry lacks, when the registry lists a variable that the code does not read, or when an entry has no description. The registry is the only source of this page, so the page cannot describe a variable that does not exist or leave out one that does.
+
+<AgentEnvTable />

@@ -1,0 +1,242 @@
+---
+title: Widget data for the agent
+sidebar_position: 8
+---
+
+import { AgentLimit } from "@site/src/components/Reference/agent";
+
+# Widget data for the agent
+
+A language model can only read a widget's data after somebody has fetched it, and the agent does not fetch it from the widget's backend. The browser holds the user's connections and credentials, so it makes the request, and the agent turns what comes back into something the model can read: a table that it queries with SQL, a piece of text, an image, or a document that it searches. This page follows one read from the model's tool call to the events that the user sees, and it states the shape of every message on the way. The [agent query protocol](ines-query.mdx) describes the request and the events that surround it. The code is `agent/src/agent/loop.ts`, `agent/src/agent/round-trip.ts`, `agent/src/widgets/parse.ts` and `frontend/src/components/AI/hooks/useFunctionCall.tsx`.
+
+## The sequence
+
+A read takes two requests to the agent.
+
+1. The browser posts the question. The model calls its tool `get_widget_data`. Ines checks its cache, and for every widget that is not in it, Ines ends the response with a `copilotFunctionCall` event named `get_widget_data`.
+2. The browser fetches the data of each widget and posts the conversation again, with an `ai` message that records the call and a `tool` message that holds the data. Ines reads the data, gives it to the model, and the model answers.
+
+One call can name several widgets. Ines asks for all the widgets that are not cached in a single function call, and the browser answers with one entry for each, in the same order.
+
+## The model's tool
+
+The model sees one tool for widget data, `get_widget_data`, with two arguments.
+
+| Argument | Meaning |
+|---|---|
+| `widgets` | A list of the widgets to load. Each item has a `widget_uuid`, which is the widget's `uuid` as the widget list in the prompt or the result of `search_widgets` shows it, and optionally `input_args`, an object of parameter values that override the widget's current ones. |
+| `display_summary` | An optional short progress line that every tool of the agent accepts. For this tool the agent does not show it, because the status update names the widgets instead. |
+
+Before it makes a request, Ines applies the overrides. A name in `input_args` that the widget declares as a parameter replaces that parameter's current value. A name that the widget does not declare is kept as it is. The call that Ines emits then carries a value for every parameter of the widget, which is the current value or else the default, together with the extra names.
+
+Three things can go wrong before the call is emitted.
+
+| Situation | What Ines does |
+|---|---|
+| The arguments do not fit the schema. | Ines sends a `WARNING` status update with the message `Input rejected` and the problem in `details`, for example `widgets.0.widget_uuid: Invalid input: expected string, received number`. It then ends the answer with a text that names the problem and the shape that the tool expects: `get_widget_data arguments invalid at widgets.0.widget_uuid: ... Expected shape: { widgets: [{ widget_uuid: string, input_args?: object }] }.` |
+| No `widget_uuid` names a widget of the request. | The answer is `I couldn't find the requested widgets.` |
+| Some `widget_uuid` values name a widget and others do not. | Ines loads the widgets that it found and does not mention the others. |
+
+A widget that is on the user's dashboard has a `uuid` of its own. A widget of the catalog that is not on the dashboard has none, and Ines uses its `widget_id` in place of the `uuid`, so two backends that use the same widget id can collide. The first widget with that identifier is the one that is loaded.
+
+## The kept data
+
+Ines keeps the data that it has read, so that a question which needs the same widget again does not make the browser fetch it a second time. Widget data is kept for <AgentLimit name="widgetDataCacheSeconds" unit="min" /> under the user, the chat and the pair of the widget's `uuid` and its parameter values. The rows of every table that was loaded are kept for <AgentLimit name="rowsCacheSeconds" unit="min" />, so that a later question in the chat can query them. A cached read produces the status update `Using cached "<name>" data.` in place of `Loaded "<name>" data.`, and when every requested widget was cached, Ines tells the model that the data is already loaded and withdraws the tool for that step.
+
+Ines keeps this data in the shared store, which is Valkey or Redis, and nowhere else. A deployment that runs without `REDIS_URL` keeps nothing between requests, and every question fetches again. A request without an `X-Trace-Id` header has no chat to file the data under, so it does not use the cache either.
+
+## The function call
+
+For the widget `orders`, the response to the first request ends like this:
+
+```
+event: copilotStatusUpdate
+data: {"eventType":"INFO","message":"Loading \"Orders as rows\"","group":"reasoning","details":[{"backend":"Sales demo","name":"Orders as rows"}]}
+
+event: copilotFunctionCall
+data: {"function":"get_widget_data","input_arguments":{"data_sources":[{"widget_uuid":"891acdc9-d893-47b8-82ce-4ff573db84a2","origin":"Sales demo","id":"orders","input_args":{}}]},"extra_state":{"copilot_function_call_arguments":{"widget_queries":[{"widget_uuid":"891acdc9-d893-47b8-82ce-4ff573db84a2"}]},"turn_usage":{"inputTokens":10,"cachedInputTokens":0,"cacheWriteTokens":0,"outputTokens":5,"totalTokens":15,"postCount":1}}}
+```
+
+There is one status update for each widget, with the backend's name, the widget's name and the parameter values that will be used. The function call has one data source for each widget.
+
+| Field of a data source | Meaning |
+|---|---|
+| `widget_uuid` | The widget's `uuid`, or its `widget_id` when it has none. |
+| `origin` | The name of the backend that serves the widget. |
+| `id` | The widget's id in its backend. |
+| `input_args` | The value of every parameter, by name. |
+
+The [extra state](ines-query.mdx#extra-state) comes back unchanged in the `tool` message.
+
+## What the browser does
+
+The browser answers each data source in turn, and it never fails the whole call because one source failed. It first tries to answer from what the dashboard already holds. If that does not apply, it fetches the data according to the source's `origin`.
+
+**Data that a widget already holds.** Every widget card on the open dashboard reports the data that it has loaded. When the request names a widget of that dashboard with the same backend, widget id and parameter values, and the card holds data, the browser returns that data as the card holds it and makes no request to the backend. This applies to every origin except `the backend`. A widget that has not loaded yet, whose parameters differ, or that is not on the dashboard is fetched instead.
+
+**A widget of a connected backend.** For any origin other than `the backend` and `Workspace`, the browser looks up the widget's definition, builds the same request that the widget itself would make from its endpoint, method and parameters, and sends it with the credentials of the user's own connection to that backend, or of a backend that one of the user's roles shares, and without cookies. The request does not carry the host parameter `theme` that [Widget requests](widget-requests.md) describes. It also refuses to send a parameter that the widget does not declare, and it applies the widget's `data.dataKey` to a JSON response. A widget that sets `raw` is asked for its rows, as [Widget rows](raw-rows.md) describes. The response is read as follows.
+
+| The response | What the browser returns |
+|---|---|
+| JSON | The parsed value, after `dataKey` is applied. |
+| HTML, or any response of a widget whose type is `html` | The text, marked `parse_as: html`. |
+| Anything else that is not JSON | The text, marked `parse_as: text`. |
+
+**A file that the user uploaded.** The origin of an uploaded file is `the backend`. The browser asks the Workspace API for a link to the file that is valid for one hour and returns the link with the file's extension and name. Ines downloads the file from the link.
+
+**A widget that the Workspace provides.** The origin `Workspace` covers the widgets that the app provides itself, such as the iframe widget and the notes, tables and pages that the Copilot adds to a dashboard, and the sub-widgets of an iframe widget, whose identifier has the form `<parent uuid>::iframe::<sub-widget id>`. The browser returns what the dashboard holds for the widget, or the rows or HTML that the widget stored, or, for an iframe sub-widget, the answer of the page through the [iframe widget protocol](iframe-widget.md).
+
+The browser then puts the result in the shape that the next section describes. A widget whose identifier starts with `tab_` is a navigation tab and cannot be read.
+
+## The reply
+
+The `tool` message that the browser posts has the same `function` and `input_arguments` as the call. Its `data` holds one entry for each data source, in order, and its `extra_state` is the one that the call carried, plus the `timezone` of the turn. An entry is either an object with `items`, or an error.
+
+```json
+{
+  "role": "tool",
+  "function": "get_widget_data",
+  "input_arguments": {
+    "data_sources": [
+      { "widget_uuid": "891acdc9-d893-47b8-82ce-4ff573db84a2", "origin": "Sales demo", "id": "orders", "input_args": {} },
+      { "widget_uuid": "revenue_by_region", "origin": "Sales demo", "id": "revenue_by_region", "input_args": { "year": 2024 } }
+    ]
+  },
+  "data": [
+    { "items": [ { "content": "[{\"id\":1,\"total\":10.5,\"region\":\"East\"},{\"id\":2,\"total\":4,\"region\":\"West\"}]" } ] },
+    {
+      "items": [
+        {
+          "content": "| Region | Revenue ($M) |\n|---|---|\n| East | 110 |\n| West | 90 |\n| North | 70 |",
+          "data_format": { "data_type": "object", "parse_as": "text" }
+        }
+      ],
+      "extra_citations": []
+    }
+  ],
+  "extra_state": {
+    "copilot_function_call_arguments": { "widget_queries": [ { "widget_uuid": "891acdc9-d893-47b8-82ce-4ff573db84a2" }, { "widget_uuid": "revenue_by_region" } ] },
+    "timezone": "Europe/Paris",
+    "turn_usage": { "inputTokens": 10, "cachedInputTokens": 0, "cacheWriteTokens": 0, "outputTokens": 5, "totalTokens": 15, "postCount": 1 }
+  }
+}
+```
+
+An item has either a `content` string or a `url`, and it may have a `data_format`. The browser accepts only the combinations in this table and replaces anything else by one item whose `content` is the response as JSON text.
+
+| Item | Produced from |
+|---|---|
+| `{"content": "<JSON text>"}` | A JSON response. A list of objects, an object or a single value is written as JSON text and has no `data_format`. |
+| `{"content": "<text>", "data_format": {"data_type": "object", "parse_as": "text"}}` | A response that is not JSON. |
+| `{"content": "<HTML>", "data_format": {"data_type": "object", "parse_as": "html"}}` | An HTML response or a widget of type `html`. |
+| `{"content": "<text>", "data_format": {"data_type": "object", "parse_as": "text"}}` | A JSON object whose only field holds a string, with that string as the text, and a JSON list in which every element is such an object, with one item for each element. |
+| `{"url": "<link>", "data_format": {"data_type": "pdf", "filename": "report.pdf"}, "expiration": 1793054000000}` | A file that the user uploaded. `data_type` is the file's extension, one of `pdf`, `jpg`, `jpeg`, `png`, `csv`, `md`, `txt`, `xlsx`, `docx` and `html`. `expiration` is the time at which the link expires, in milliseconds since 1970, taken from the link's `Expires` parameter. |
+
+A JSON object whose fields are one string and a list named `extra_citations` becomes a text item, and the list moves to the entry's `extra_citations`, which are the sources that the widget names for itself. An entry that the browser built from text or HTML carries `extra_citations`, normally an empty list, and an entry that holds only JSON text carries none.
+
+The browser decides `parse_as` itself, and a backend cannot choose it. When a widget answers with an object that has the keys `content` and `data_format`, the browser does not unwrap it. It sends the whole object as JSON text, and the model reads it as text. Ines does not use `parse_as` to decide how to read the data, as the next section explains.
+
+### Errors
+
+When the browser cannot read a data source, the entry for that source is an error object in place of `items`.
+
+```json
+{ "error_type": "gateway_error", "content": "Fetching data for widget 'orders_missing' from origin 'Sales demo' hit '/nothing-here' and returned HTTP 404. Re-check the resource identifier or query arguments, and confirm this data source is available in Workspace. Response body: {\"detail\":\"not found\"}" }
+```
+
+| `error_type` | Cause |
+|---|---|
+| `gateway_error` | The backend answered with a status other than 2xx. The `content` names the endpoint path and the status, and it holds the first 300 characters of the response body. |
+| `not_found` | The widget is not in the catalog and the dashboard holds nothing for it, the widget is a navigation tab, a parameter in `input_args` is not declared by the widget, or an uploaded file has no link. A message for the last case is `input_args names no param of this widget: quarter. Its params are: year.` |
+| `unexpected_error` | Anything else, including a network failure or a backend that refused the request because of its CORS policy. The `content` is the error's message. |
+
+## How the agent reads the reply
+
+Ines reads the entries in order and turns each item into model input according to what the item is.
+
+An item with a `content` is read as it is. An item with only a `url` is downloaded by Ines through a client that refuses internal addresses, follows at most <AgentLimit name="downloadMaxRedirects" /> redirects, gives up after <AgentLimit name="downloadTimeoutMs" unit="ms" /> and refuses a download larger than <AgentLimit name="downloadMaxBytes" unit="bytes" />. The item's kind comes from `data_format.data_type`. For `docx`, `csv` and `xlsx`, the extension of the `url` also counts when there is no `data_type`.
+
+| Kind | What Ines does |
+|---|---|
+| `png`, `jpg`, `jpeg` | The image is given to the model as an image. An image whose base64 text is larger than <AgentLimit name="maxImageBase64Chars" unit="bytes" /> characters is skipped. |
+| `pdf`, `docx` | The model never reads the file. When document search is available, Ines records the file as a document that the model searches with `query_documents` and tells the model which file to search. Otherwise it tells the model that the file cannot be read. |
+| `xlsx` | The workbook, given as base64 `content` or as a `url`, is converted to JSON rows in a separate process that has <AgentLimit name="xlsxTimeoutMs" unit="ms" />, and the rows are handled as below. |
+| `csv` from a `url` | The text is converted to JSON rows, and the rows are handled as below. A number in a cell becomes a number. |
+| Anything else, including `csv` in `content` | The content is text. |
+
+Ines then looks at the text itself. Text that parses as JSON into a non-empty list of objects becomes a table, and any other text, including HTML and a JSON object, is text. Ines does not use `parse_as` or any other part of `data_format` except `data_type` for this decision. The consequence is visible in a typical read: a backend that answers with JSON rows gets a table, and a backend that answers with Markdown, HTML or an object gets text.
+
+### A table
+
+A non-empty list of objects becomes a table that the model queries with `execute_sql`, `peek_table` and `create_artifact`. The table is named after the widget: the name in lowercase with every character other than a letter, a digit and an underscore replaced by an underscore, and `col_` in front of a name that starts with a digit. When one call loads the same widget with different parameter values, each table's name also carries the values. A column gets the same treatment as a name, and a repeated column name gets a number. The columns are those of the first object. The type of a column is `INTEGER`, `REAL` or `TEXT`, taken from the first value that is not null among the first <AgentLimit name="typeSampleRows" /> rows. At most <AgentLimit name="maxSqlRows" /> rows go into the SQL tables, and Ines keeps at most <AgentLimit name="maxCachedRows" /> rows for the chat.
+
+The model is told the table's name, its columns with their types and the first five rows, in a message like this one:
+
+```
+--- Orders as rows (uuid: 891acdc9-d893-47b8-82ce-4ff573db84a2) ---
+[Structured data: 2 rows available as queryable table "orders_as_rows"]
+Queryable columns — use these exact names in SQL and artifact xKey/yKey values:
+  - "id" (INTEGER)
+  - "total" (REAL)
+  - "region" (TEXT)
+Preview with queryable column names (first 5 rows):
+[
+  {
+    "id": 1,
+    "total": 10.5,
+    "region": "East"
+  },
+  {
+    "id": 2,
+    "total": 4,
+    "region": "West"
+  }
+]
+```
+
+When the read had parameter values that are not empty, the line `Loaded with input parameters: {"year":"2024"}` follows the heading, for a table as well as for text.
+
+The user sees the table as well. The status update `Loaded "<name>" data.` carries an `html` artifact that holds the rows, styled for the light and the dark theme, with the description `Rows loaded from <name>`. It shows at most <AgentLimit name="maxStatusRows" /> rows, and a table that has more says so in its description, for example `Rows loaded from Orders as rows (showing first 1000 of 5000 rows).`.
+
+### Text and media
+
+Text, which includes HTML, goes to the model under the heading `--- <name> (uuid: <uuid>) ---`, after the line of parameter values when there are any, and Ines does not strip the markup. Ines cuts a text at <AgentLimit name="maxInlineTextChars" /> characters and appends `[… N more characters are not shown]`. A text is never shown in the chat as an artifact. Its status update carries only details of the read: the backend, the widget's name and parameters, its `uuid`, the number of characters and the number of media parts.
+
+An image goes to the model after the heading `--- <name> [media] ---`. A widget that sets `raw` answers with its rows in place of its HTML or chart, as [Widget rows](raw-rows.md) describes, so that the model reads numbers and not markup.
+
+### When nothing usable comes back
+
+An entry that has no items, or only items without content, adds nothing. When some entries add something, Ines goes on with them and does not tell the model about the others. When none of them does, Ines does not call the model again. It sends a status update of type `WARNING` with the message `get_widget_data: no usable data returned` and the text of the first error, and it ends the answer with a fixed sentence:
+
+```
+event: copilotStatusUpdate
+data: {"eventType":"WARNING","message":"get_widget_data: no usable data returned","group":"reasoning","details":["Fetching data for widget 'orders_missing' from origin 'Sales demo' hit '/nothing-here' and returned HTTP 404. ..."]}
+
+event: copilotMessageChunk
+data: {"delta":"The widget data request returned no usable data: Fetching data for widget 'orders_missing' ..."}
+```
+
+When there is no error text, the sentence is `No values were returned for the requested widget data.` Ines also forgets the kept table of every widget that was requested, so that a later question in the chat does not query rows from before the failed read.
+
+### The events that the reply produces
+
+After the model has read the data it answers, and the response carries, in this order, a status update for each widget, the answer, the citations and, when the feature is on, the suggestions. A table read produces this:
+
+```
+event: copilotStatusUpdate
+data: {"eventType":"INFO","message":"Loaded \"Orders as rows\" data.","group":"reasoning","artifacts":[{"type":"html","uuid":"5afceae0-5acb-40aa-b1d1-c4762b7b3520","name":"Orders as rows","description":"Rows loaded from Orders as rows","content":"<!doctype html>..."}]}
+
+event: copilotMessageChunk
+data: {"delta":"East is ahead. "}
+
+event: copilotCitationCollection
+data: {"citations":[{"id":"786fc173-fc5d-5d88-b518-1b9a6aba36d8","source_info":{"type":"widget","uuid":"786fc173-fc5d-5d88-b518-1b9a6aba36d8","origin":"Sales demo","widget_id":"orders","name":"Orders as rows","description":"JSON array of objects","metadata":{"input_args":{},"widget_uuid":"891acdc9-d893-47b8-82ce-4ff573db84a2"},"citable":true},"details":[{"Source type":"widget","Origin":"Sales demo","Data source":"Orders as rows"}],"signature":""}]}
+```
+
+The citation of a widget is added when its data is read, whether or not the model's answer names it. Its `id` and `source_info.uuid` are derived from the widget's `uuid` and the parameter values, so the same read always has the same id, and `metadata` holds the widget's own `uuid` and the parameters that fetched the data, which is what lets the web app scroll to the widget and show the values. Parameters whose value is null or empty are left out. Each distinct set of parameter values is a citation of its own, and every parameter that is kept appears in `details`. The citation of an uploaded file has the file's name, and its extension when known, in `details` in place of the widget's origin and name.
+
+## When the Workspace's tools are offered
+
+When the request carries the tools of the Workspace's MCP server, the model does not get the tool described above. It gets the Workspace's own tool `get_widget_data`, which takes an `origin`, a `widget_id`, the parameter values in `data_args` and optionally a `widget_uuid`. Calling it is an `execute_agent_tool` function call like any other, and the browser runs it through the [Workspace bridge](workspace-bridge.mdx), which fetches the data in the way described above. The browser's answer is the JSON text of a bridge result, `{"ok": true, "command": "get_widget_data", "request_id": null, "message": "Widget data fetched.", "data": [...]}`, where `data` holds the same entries as a reply to `get_widget_data`, with one difference. The bridge parses an item's `content` when it is JSON text, so a list of rows arrives as a list and not as a string.
+
+Ines recognizes the result by the tool's name. A tool whose name is `get_widget_data` or ends in `_get_widget_data` is the widget-data tool, and the one of the server `workspace` is preferred. Ines rewrites a result with `ok` set to `true` and a list in `data` into a `get_widget_data` message, writing any `content` that is not a string back as JSON text and looking the widget up by `widget_uuid` or else by `origin` and `widget_id`. From there it reads the message exactly as it reads the reply to its own call: the same tables, the same status updates and the same citations. A result with any other form is read as the result of an ordinary tool, as [Tool results](ines-tool-results.mdx) describes.

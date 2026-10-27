@@ -13,7 +13,7 @@ It is the counterpart of a plugin that only draws (the Plotly plugin). Here the 
 happen in the browser: the database speaks its own protocol, its password must never
 reach a browser, and the files are on a server. It is an example in the repository's
 `docs/examples/`, a package of its own that nothing in Workspace imports, built and deployed the
-way any plugin is ([Plugin backends](../../content/reference/plugins/backends.md)).
+way any plugin is ([Plugin backends](../../reference/plugins/backends.mdx)).
 
 ```
 widget (frame)  ── core:backend:call {route, args: {sql}} ──▶  Workspace API

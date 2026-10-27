@@ -1,0 +1,108 @@
+---
+title: agents.json
+sidebar_position: 5
+---
+
+# agents.json
+
+The file `agents.json` is how an agent introduces itself to the web app. It tells the app the agent's name, where to send questions, and which features and settings the agent has, so that the interface can offer only what the agent supports. Ines serves it at `/agents.json`. A user can connect any other agent by entering the address of a server that serves such a file. The web app validates the file with the schema in `frontend/src/lib/state/copilot.ts`, and the file that Ines serves is built in `agent/src/routes/agents.ts`.
+
+## Where the web app reads it
+
+The web app requests `agents.json` at the address that the user entered or, for the default agent, at the address of its `urls.ai` setting. When that request fails with an error status, the app tries `copilots.json`, the name that earlier versions used. A 401 means the agent refused the request, a 404 means that neither file exists, and a file that does not match the schema is reported as an invalid agents file. A user who connects an agent can add request headers, for example an `Authorization` header, which the app sends with every request to that agent, including the request for the file.
+
+The web app merges the entry `default_agent` of the default agent into its own definition of the default agent, so the models, skills and settings that Ines declares appear in the interface without a change to the app. The Admin → Roles dialog uses the same entry to list the models that a role can be granted.
+
+## Structure
+
+The file is a JSON object. Each key is an agent's id, and each value describes one agent. One file can describe several agents.
+
+```json
+{
+  "default_agent": {
+    "name": "Ines",
+    "description": "An open-source, model-agnostic agent for the Workspace",
+    "endpoints": { "query": "/v1/query" },
+    "skills": [
+      { "slug": "html-table", "description": "When creating or styling a table widget for Workspace, follow these rules." }
+    ],
+    "features": {
+      "streaming": true,
+      "widget-dashboard-select": true,
+      "widget-dashboard-search": true,
+      "widget-global-search": true,
+      "mcp-tools": true,
+      "file-upload": true,
+      "prompt-suggestions": {
+        "label": "Follow-up Suggestions",
+        "default": true,
+        "description": "Show follow-up prompt suggestions after each response."
+      },
+      "model": {
+        "label": "Model",
+        "type": "select",
+        "default": "<provider>:<model>",
+        "description": "Select the LLM model to use.",
+        "options": [ { "label": "<provider>:<model>", "value": "<provider>:<model>" } ]
+      }
+    }
+  }
+}
+```
+
+This is the file that a running Ines answers with, shortened to one skill. The model option lists the models that the deployment offers, which are `DEFAULT_MODEL` and `INES_MODELS`, and `speech-to-text` is present only when `INES_TRANSCRIBE_MODEL` is set.
+
+### Agent fields
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | string | The agent's id. It defaults to the key of the object. |
+| `name` | string | The name that the interface shows. Required. The web app refuses to add an agent whose name or id matches one that the user already has. |
+| `description` | string | A sentence about the agent. Required. |
+| `image` | URL | The agent's avatar. A relative address is resolved against the address of the file. |
+| `link` | URL | A page about the agent. |
+| `endpoints` | object | Where the web app sends requests, as described below. Required. |
+| `features` | object | What the agent can do and which settings it offers, as described below. |
+| `models` | list | The models that a user can pick, each with an `id` and a `name`. When it is empty or missing, the web app uses the options of a `select` setting named `model`. |
+| `skills` | list | Skills that the agent provides, each with a `slug` and a `description`. A user can invoke one with a slash command, and the web app then sends its slug and description in `selected_skills`. |
+| `headers` | object | Accepted by the schema, but the web app does not read it. The headers that it sends are the ones that the user enters when connecting the agent. |
+| `hasStreaming`, `hasFunctionCalling`, `hasDocuments` | boolean | Deprecated. The first sets the feature `streaming`, and the second sets `widget-dashboard-select`, `widget-dashboard-search` and `widget-global-search`. The third has no effect. The web app shows a warning when it sees any of the three. |
+
+### Endpoints
+
+Each endpoint is a URL. A relative address is resolved against the address of `agents.json`, so Ines can name its endpoint `/v1/query`.
+
+| Endpoint | Meaning |
+|---|---|
+| `query` | Where the web app sends questions, as the [agent query protocol](../protocols/ines-query.mdx) describes. |
+| `upload_docs` | Where the web app sends documents that the user attaches to a chat with this agent, as a multipart form with the files in the field `files`, in batches of at most about 150 MB. An agent without it does not accept documents. The default agent receives its files through the Workspace API instead. |
+| `feedback` | Where the web app posts a thumbs up or down on an answer, when the agent has the feature `feedback`. The body has `vote`, which is `thumbs_up` or `thumbs_down`, `tags`, `user_comment`, `ai_response`, `user_prompt` and `trace_id`. |
+
+### Features
+
+Each key of `features` is either `true`, which switches a feature on, or an object that describes a setting that the user can change. The web app knows these keys.
+
+| Feature | Effect in the web app |
+|---|---|
+| `streaming` | The agent answers with a stream of events. |
+| `widget-dashboard-select` | The widgets and tabs of the current dashboard can be mentioned in a question, every widget has a button that adds it to the chat, and the dashboard's widgets are sent to the agent as context. |
+| `widget-dashboard-search` | Any widget of the catalog can be mentioned in a question, not only the widgets of the dashboard. |
+| `widget-global-search` | The web app also sends the rest of the widget catalog in the `extra` tier of the request, so the agent can find widgets that are not on the dashboard. |
+| `mcp-tools` | The web app sends the tools of the user's MCP servers and of the Workspace in the request's `tools`. |
+| `agent-orchestration` | The user can let the agent hand work to other connected agents. |
+| `file-upload` | The user can attach files with the extensions `.pdf`, `.txt`, `.docx`, `.md` and `.html`. |
+| `speech-to-text` | The chat shows a microphone button. |
+| `feedback` | The chat shows thumbs up and down and posts them to the `feedback` endpoint. |
+
+Any other key whose value is an object becomes a setting in the chat's options menu. The object has these fields.
+
+| Field | Meaning |
+|---|---|
+| `label` | The name that the menu shows. Required. |
+| `type` | `toggle`, which is the default, `text` or `select`. |
+| `default` | The starting value: a boolean for a toggle and a string for the other types. A `select` without a default starts on its first option. |
+| `description` | An explanation. |
+| `placeholder` | The hint of a `text` setting. |
+| `options` | The choices of a `select`, each with a `label` and a `value`. |
+
+The web app sends the settings in the request's `workspace_options`, each under its key: the value of a `text` or `select` setting, `true` for a toggle that is on, and `true` for any other key that the file sets to `true`, apart from the built-in features. It also sends `widget-global-search` when the agent has that feature, `mcp-tools` when the user has an enabled tool, and `agent-orchestration` when the user has turned orchestration on. Ines reads two of the options: `model`, which picks the model for the request, and `prompt-suggestions`, which turns on follow-up suggestions.
