@@ -31,7 +31,8 @@ docker compose up --build        # on Apple silicon: PLATFORM=linux/arm64 docker
   (32 bytes, base64url: it encrypts the credentials stored in the database) and
   `LOCAL_STORAGE_SECRET_KEY`. It names the origins of the web app in `BACKEND_CORS_ORIGINS`.
 - `scripts/cfgs/config.toml` names the organization (`--entity-name`) and the administrator that
-  the first start creates. It holds no password.
+  the first start creates, with their password: a random one, or yours with `--admin-password`.
+  Only you can read the file.
 - `user_create.json` starts empty. Compose mounts it into the containers and the first start fills it in.
 - `agent/.env` holds Ines's model settings and her two secrets. It starts from `agent/.env.example`; the script sets
   `INES_METERING_TOKEN` (the token with which she reports usage, signed with `JWT_SECRET`) and `INES_SCOPE_SECRET`, and on
@@ -42,14 +43,12 @@ It refuses to overwrite the first two unless you pass `--force`; `--force` also 
 The web app is on <http://localhost:3000>, the API on <http://localhost:8000> and Ines on <http://localhost:7777>. The MCP server and the metrics ports publish nothing: the web app reaches the tools through the API,
 and Prometheus reaches the metrics from inside the deployment. The first start
 creates the organization and the administrator listed in
-`backend-api/backend/scripts/cfgs/config.toml`, without a password. Set it (typed twice, not shown):
-
-```bash
-docker compose run --rm init python -m scripts.init_users --new-password <your-email>
-```
-
-Then sign in with that email and password. Run the same command to set a new password; every
-session of the account ends. No password is printed, logged or kept in a file.
+`backend-api/backend/scripts/cfgs/config.toml`. Sign in with the email and password written
+there. Every start sets the administrator's password to the one in the file, so to change it,
+edit the file and run `docker compose up -d` again; when the password changes, every session of
+the account ends. An administrator who is not in the file gets a password with
+`docker compose run --rm init python -m scripts.init_users --new-password <email>`, typed twice
+and not shown.
 `docker compose down -v` removes the databases too. To edit the code with hot reload instead, see `local/`.
 
 ## Environment variables
@@ -127,10 +126,10 @@ container refuses to start.
 | Group | Variables (default) |
 |---|---|
 | Sign-in | `AUTHENTICATION_ALLOW_EMAIL_LOGIN` (`true`); `AUTHENTICATION_IDENTITY_PROVIDERS` (comma-separated, none); `GOOGLE_OAUTH_CLIENT_ID`, `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `OKTA_CLIENT_ID`, `OKTA_DOMAIN` (empty); `AUTHENTICATION_SEND_MICROSOFT_IDTOKEN`, `AUTHENTICATION_SEND_OKTA_IDTOKEN`, `AUTHENTICATION_SEND_USER_EMAIL_AS_HEADER` (`false`) |
-| Copilot | `AI_COPILOT_DEFAULT_COPILOT`, `AI_COPILOT_DOCUMENTATION_LINKS`, `AI_COPILOT_WEB_SEARCH`, `AI_COPILOT_JINA_AI`, `AI_COPILOT_AI_ENHANCEMENTS`, `AI_SHOW_CUSTOM_COPILOT_KEY` (`true`); `AI_COPILOT_SEC_FILINGS`, `AI_COPILOT_SAVE_SKILL_FROM_CHAT` (`false`) |
+| Copilot | `AI_COPILOT_DEFAULT_COPILOT`, `AI_COPILOT_DOCUMENTATION_LINKS`, `AI_COPILOT_AI_ENHANCEMENTS`, `AI_SHOW_CUSTOM_COPILOT_KEY` (`true`); `AI_COPILOT_SAVE_SKILL_FROM_CHAT` (`false`) |
 | Interface | `UI_SHOW_MINIMIZE_WIDGET`, `UI_SHOW_EXTERNAL_DOCUMENTATION_LINKS`, `UI_SHOW_HELP_DOCUMENTATION`, `UI_SHOW_CHANGELOG`, `UI_SHOW_COPILOT_SWITCHER`, `UI_SHOW_REMOVE_FROM_ORG` (`true`); `UI_SHOW_COMPANION_MCP_MODE` (`false`); `UI_DEFAULT_THEME` (`dark`; `light` or `dark`) |
 | Other | `ALLOW_HTML_JS_EXECUTION` (`false`: scripts in HTML widgets and Copilot artifacts; iframe widgets always run theirs, sandboxed); `DOCS_URL`, `SUPPORT_EMAIL` (empty: the links are hidden) |
-| White label | `WL_NAME`, `WL_SHORT_NAME`, `WL_LOGIN_IMAGE`, `WL_LOGIN_IMAGE_DARK`, `WL_LEFT_SIDEBAR_LOGO`, `WL_LEFT_SIDEBAR_LOGO_DARK`, `WL_FAVICON`, `WL_DESCRIPTION`, `WL_KEYWORDS`, `WL_STYLESHEET` |
+| White label | `WL_NAME`, `WL_LOGIN_IMAGE`, `WL_LEFT_SIDEBAR_LOGO`, `WL_LEFT_SIDEBAR_LOGO_DARK`, `WL_FAVICON`, `WL_DESCRIPTION`, `WL_KEYWORDS`, `WL_STYLESHEET` |
 
 ### Ines (`agent/.env`)
 

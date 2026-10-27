@@ -84,7 +84,7 @@ services:
         condition: service_completed_successfully
 
   frontend:
-    image: node:22
+    image: node:26.12.1
     working_dir: /app
     command:
       [

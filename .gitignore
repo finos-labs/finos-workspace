@@ -4,6 +4,6 @@ kb/
 .cursor/
 .claude/
 **/node_modules
-docs/build
-docs/.docusaurus
-docs/src/generated
+website/build
+website/.docusaurus
+website/src/generated
