@@ -89,6 +89,12 @@ export const UNIQUE_AVATAR_COLORS = [
 
 export const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
+export const MULTIPLE_FILES_CONFIRMATION_COUNT = 10;
+
+export const UPLOAD_BATCH_BYTES = 150 * 1024 * 1024;
+
+export const MIN_SKILL_SLUG_LENGTH = 2;
+
 export const MAX_STORAGE_CAPACITY = 5 * 1024 * 1024 * 1024;
 
 export const STORAGE_THRESHOLD = 0.9;

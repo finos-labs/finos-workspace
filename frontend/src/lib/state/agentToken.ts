@@ -1,7 +1,7 @@
 import { apiClient } from "~/api/api";
 import { isDefaultCopilotUrl } from "~/lib/utils/fetch";
 
-const RENEW_WHEN_LEFT_MS = 20 * 60 * 1000;
+export const RENEW_WHEN_LEFT_MS = 20 * 60 * 1000;
 
 type HeldToken = { token: string; expiresAt: number };
 

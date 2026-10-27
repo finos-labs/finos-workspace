@@ -141,12 +141,14 @@ function normalizeGenerativeWidgetArtifact(artifact: unknown): ArtifactT | null 
   return normalizedArtifact as ArtifactT;
 }
 
+export const GATEWAY_ERROR_BODY_CHARS = 300;
+
 async function readErrorBody(response: Response): Promise<string | null> {
   try {
     const body = await response.clone().text();
     if (!body) return null;
     const normalized = body.replace(/\s+/g, " ").trim();
-    return normalized ? normalized.slice(0, 300) : null;
+    return normalized ? normalized.slice(0, GATEWAY_ERROR_BODY_CHARS) : null;
   } catch {
     return null;
   }

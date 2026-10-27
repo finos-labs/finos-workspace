@@ -52,7 +52,7 @@ function assert(condition: unknown, message: string): asserts condition {
 
 const DEFAULT_RECONNECT_DELAY = 3000;
 const DEFAULT_RETRY_DELAY = 5000;
-const AUTH_TIMEOUT = 2 * 60 * 1000;
+export const MCP_AUTH_TIMEOUT_MS = 2 * 60 * 1000;
 const TOOL_CALL_TIMEOUT = 5 * 60 * 1000;
 const POPUP_FEATURES = "width=600,height=700,resizable=yes,scrollbars=yes,status=yes";
 
@@ -276,7 +276,7 @@ export function useMcp(options: UseMcpOptionsT): UseMcpResult {
 
       dispatch({ state: "authenticating" });
       if (authTimeoutRef.current) clearTimeout(authTimeoutRef.current);
-      authTimeoutRef.current = setTimeout(handleAuthTimeout, AUTH_TIMEOUT);
+      authTimeoutRef.current = setTimeout(handleAuthTimeout, MCP_AUTH_TIMEOUT_MS);
       try {
         const authUrl = await startMcpOAuth(url);
         if (!isMountedRef.current) return false;

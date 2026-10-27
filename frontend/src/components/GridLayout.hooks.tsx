@@ -17,6 +17,8 @@ import {
   ExtensionOptions,
   getFileWidgetType,
   MAX_FILE_SIZE,
+  MULTIPLE_FILES_CONFIRMATION_COUNT,
+  UPLOAD_BATCH_BYTES,
   validExtension,
 } from "~/lib/constants";
 import { useTabContext } from "~/lib/contexts/TabContext";
@@ -70,7 +72,7 @@ export function useDragAndDropFiles(locked: boolean) {
       const { splitFiles } = toUpload.reduce(
         ({ splitFiles, currentTotal }, file) => {
           currentTotal += file.size;
-          if (currentTotal > 150 * 1024 * 1024) {
+          if (currentTotal > UPLOAD_BATCH_BYTES) {
             splitFiles.push([]);
             currentTotal = file.size;
           }
@@ -344,7 +346,7 @@ export function useDragAndDropFiles(locked: boolean) {
           existingFiles.push(file.name);
           continue;
         }
-        if (file.size > 25_000_000) {
+        if (file.size > MAX_FILE_SIZE) {
           toast.error("Invalid file(s)", {
             description: `File size must be less than 25MB: ${file.name}`,
             id: "drag-and-drop-files-invalid",
@@ -445,7 +447,7 @@ export function useDragAndDropFiles(locked: boolean) {
         });
       }
 
-      if (toUpload.length > 10) {
+      if (toUpload.length > MULTIPLE_FILES_CONFIRMATION_COUNT) {
         return toast.warning("Multiple files detected", {
           id: "drag-and-drop-files-folder",
           dismissible: false,

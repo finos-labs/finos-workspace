@@ -5,7 +5,7 @@ import type { Copilot } from "~/lib/state/copilot";
 import { encodeWav } from "~/lib/utils/wav";
 import { useGetCopilotRequestHeaders } from "./useGetCopilotRequestHeaders";
 
-const MAX_RECORDING_MS = 120_000;
+export const MAX_RECORDING_MS = 120_000;
 const SAMPLE_RATE = 16_000;
 
 type DictationState = "idle" | "recording" | "transcribing";

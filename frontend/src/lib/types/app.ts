@@ -326,88 +326,241 @@ export const widgetTypesSchema = z
 
 const WidgetStateSchema = z
   .looseObject({
-    paramOrder: z.array(z.string()).optional(),
-    params: z.record(z.string(), z.unknown()).optional(),
+    paramOrder: z
+      .array(z.string())
+      .optional()
+      .describe(
+        "The names of the widget's parameters in the order in which the widget's header shows them",
+      ),
+    params: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .describe(
+        "The values of the widget's parameters by parameter name; a parameter that is missing keeps the value from widgets.json",
+      ),
     storage: z
       .looseObject({
-        text: z.string().optional(),
-        html: z.string().optional(),
+        text: z.string().optional().describe("The text of a markdown widget"),
+        html: z.string().optional().describe("The page of an HTML widget"),
         plugin: z
-          .strictObject({ config: z.record(z.string(), z.unknown()).optional() })
-          .optional(),
+          .strictObject({
+            config: z
+              .record(z.string(), z.unknown())
+              .optional()
+              .describe(
+                "The configuration of a plugin widget, which has to satisfy the settings that the plugin declares",
+              ),
+          })
+          .optional()
+          .describe("The state of a plugin widget"),
       })
-      .optional(),
+      .optional()
+      .describe(
+        "The content that the widget keeps: text, a page or a plugin's configuration",
+      ),
   })
+  .describe("What a widget starts with: the values of its parameters and its content")
   .meta({ id: "WidgetState" });
 
 const TemplateLayoutItemSchema = z
   .looseObject({
-    i: z.string(),
-    x: z.number(),
-    y: z.number(),
-    w: z.number(),
-    h: z.number(),
-    minW: z.number().optional(),
-    minH: z.number().optional(),
-    maxW: z.number().optional(),
-    maxH: z.number().optional(),
-    moved: z.boolean().optional(),
-    static: z.boolean().optional(),
-    isDraggable: z.boolean().optional(),
+    i: z
+      .string()
+      .describe(
+        "The widget that this item places: its key in the backend's widgets.json. The id navigation_bar places no widget and makes the dashboard show its tabs in a Navigation Bar widget",
+      ),
+    x: z
+      .number()
+      .describe(
+        "The column of the widget's left edge, counted from 0 on a grid of 40 columns",
+      ),
+    y: z.number().describe("The row of the widget's top edge, counted from 0"),
+    w: z.number().describe("The widget's width in columns"),
+    h: z
+      .number()
+      .describe(
+        "The widget's height in rows; a height of 1 shows the widget minimized",
+      ),
+    minW: z
+      .number()
+      .optional()
+      .describe("The smallest width in columns that a user can resize the widget to"),
+    minH: z
+      .number()
+      .optional()
+      .describe("The smallest height in rows that a user can resize the widget to"),
+    maxW: z
+      .number()
+      .optional()
+      .describe("The largest width in columns that a user can resize the widget to"),
+    maxH: z
+      .number()
+      .optional()
+      .describe("The largest height in rows that a user can resize the widget to"),
+    moved: z
+      .boolean()
+      .optional()
+      .describe(
+        "A flag of the grid library that places the widgets: the item has moved",
+      ),
+    static: z
+      .boolean()
+      .optional()
+      .describe("A flag of the grid library: a static item cannot be moved or resized"),
+    isDraggable: z
+      .boolean()
+      .optional()
+      .describe(
+        "A flag of the grid library: false stops a user from dragging the widget",
+      ),
     state: WidgetStateSchema.optional(),
-    groups: z.array(z.string()).optional(),
+    groups: z
+      .array(z.string())
+      .optional()
+      .describe(
+        "The names of the groups, from the app's groups, that the widget belongs to",
+      ),
   })
+  .describe("One widget of a tab: where it sits, how big it is and what it starts with")
   .meta({ id: "Layout" });
 
 const templateShapeDefinition = {
-  templateId: z.string().optional(),
+  templateId: z
+    .string()
+    .optional()
+    .describe(
+      "The id of the app, which roles use to grant access to it; without it the web app falls back to the generated id",
+    ),
   id: z
     .string()
     .regex(/^custom-.+/)
-    .optional(),
-  name: z.string(),
-  description: z.string().optional(),
-  selected_agent: z.string().optional(),
-  img: z.string().optional(),
-  img_dark: z.string().optional(),
-  img_light: z.string().optional(),
-  authentication: z.string().optional(),
+    .optional()
+    .describe(
+      "Another way to give the app's id when templateId is missing; it starts with custom-",
+    ),
+  name: z
+    .string()
+    .describe(
+      "The name on the app's card, which is also the name of the dashboards that users create from it",
+    ),
+  description: z
+    .string()
+    .optional()
+    .describe("The text under the name on the app's card"),
+  selected_agent: z
+    .string()
+    .optional()
+    .describe(
+      "The id or the name of an agent that the user has connected: when a user opens the app, the Copilot selects this agent and its panel opens",
+    ),
+  img: z
+    .string()
+    .optional()
+    .describe(
+      "The address of the picture on the app's card, which may be relative to the backend; the card shows it in both themes unless img_dark or img_light overrides it",
+    ),
+  img_dark: z
+    .string()
+    .optional()
+    .describe(
+      "The address of the picture that the card shows in the dark theme instead of img",
+    ),
+  img_light: z
+    .string()
+    .optional()
+    .describe(
+      "The address of the picture that the card shows in the light theme instead of img",
+    ),
+  authentication: z
+    .string()
+    .optional()
+    .describe("Accepted for compatibility; the web app does not read it"),
   tabs: z
     .record(
       z.string(),
       z.object({
-        id: z.string(),
-        name: z.string(),
-        layout: z.array(TemplateLayoutItemSchema),
+        id: z.string().describe("The id of the tab, the same as its key"),
+        name: z
+          .string()
+          .describe("The name that the tab shows in the Navigation Bar widget"),
+        layout: z.array(TemplateLayoutItemSchema).describe("The widgets of the tab"),
       }),
+    )
+    .describe(
+      "The tabs of the app by tab id. A dashboard that a user creates from the app has one tab for each entry, and it shows a Navigation Bar widget when the app has more than one",
     )
     .meta({ id: "Tabs" }),
   groups: z
     .array(
       z
         .object({
-          name: z.string(),
-          paramName: z.string().optional(),
-          type: z.string(),
-          widgetIds: z.array(z.string()).optional(),
-          defaultValue: z.unknown().nullish(),
+          name: z
+            .string()
+            .describe(
+              "The name that the groups lists of the layout items use to put a widget in the group",
+            ),
+          paramName: z
+            .string()
+            .optional()
+            .describe(
+              "The name of the parameter that the group links, for a group of the type param or endpointParam",
+            ),
+          type: z
+            .string()
+            .describe("The kind of the group: param, endpointParam or ticker"),
+          widgetIds: z
+            .array(z.string())
+            .optional()
+            .describe(
+              "The widgets that belong to the group, by their key in widgets.json, as an alternative to naming the group in each layout item",
+            ),
+          defaultValue: z
+            .unknown()
+            .nullish()
+            .describe(
+              "The value that the group starts with: the symbol of a ticker for a ticker group, and for a date the text $currentDate, optionally with a modifier, stands for today",
+            ),
         })
+        .describe("A set of widgets that share the value of one parameter")
         .meta({ id: "Group" }),
     )
     .default([])
-    .optional(),
-  prompts: z.array(z.string()).optional(),
+    .optional()
+    .describe("The groups that link a parameter across the widgets of the app"),
+  prompts: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "The questions that the Copilot suggests when somebody uses a dashboard that was created from the app",
+    ),
   mcpServers: z
     .array(
       z.object({
-        name: z.string(),
-        description: z.string().optional(),
-        url: z.url(),
-        authType: z.enum(["oauth", "token"]).optional(),
+        name: z
+          .string()
+          .describe(
+            "The name of the MCP server, which a widget's mcp_tool names in mcp_server; apps of one backend may repeat a name only for the same url",
+          ),
+        description: z.string().optional().describe("What the server offers"),
+        url: z.url().describe("The address of the server's MCP endpoint"),
+        authType: z
+          .enum(["oauth", "token"])
+          .optional()
+          .describe(
+            "How the server signs a user in: oauth, or token for a server that needs the Authorization header of the backend's connection",
+          ),
       }),
     )
-    .optional(),
-  allowCustomization: z.boolean().optional(),
+    .optional()
+    .describe(
+      "The MCP servers that the app uses. When a user connects the backend, Workspace adds each server to the user's MCP servers",
+    ),
+  allowCustomization: z
+    .boolean()
+    .optional()
+    .describe(
+      "Reported to MCP hosts that list the apps through the bridge; the web app itself does not read it",
+    ),
 };
 
 export const backendTemplateSchema = z

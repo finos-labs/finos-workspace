@@ -11,6 +11,10 @@ export const appMetadataObjectSchema = z.object(appMetadataSchema);
 
 export type AppMetadataForm = z.infer<typeof appMetadataObjectSchema>;
 
+export const MAX_APP_PROMPTS = 5;
+
+export const MAX_APP_PROMPT_LENGTH = 2000;
+
 export const PREVIEW_DESCRIPTION_FALLBACK =
   "Add a description so others know what this app is for.";
 
