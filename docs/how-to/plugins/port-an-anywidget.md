@@ -1,5 +1,6 @@
 ---
 title: How to port an anywidget to a plugin
+sidebar_position: 5
 ---
 
 # How to port an anywidget to a plugin

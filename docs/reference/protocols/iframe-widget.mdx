@@ -3,6 +3,8 @@ title: Iframe widget protocol
 sidebar_position: 5
 ---
 
+import { WebAppValue } from "@site/src/components/Reference/config";
+
 # Iframe widget protocol
 
 An iframe widget embeds a page from another server. By default the page is just shown, but a page can also talk to Workspace, and then it can offer several widgets to the dashboard and the Copilot, show parameter controls in the widget's header, and receive the backend connection's credentials. The page and Workspace talk through `window.postMessage`. This page describes the messages, the order in which they are sent and the rules that decide whether Workspace accepts a message. The host side is `frontend/src/components/Widgets/Helpers/useIframeProtocol.tsx`, and the messages are defined in `frontend/src/types/iframeProtocol.ts`.
@@ -38,7 +40,7 @@ Workspace validates each message against its schema. A message that does not mat
 
 | `type` | Fields | Meaning |
 |---|---|---|
-| `workspace-request` | `widgetId`, or `null`. | Workspace asks the page for the data of one widget. The page should answer with `workspace-data` or `workspace-error`. Workspace gives up after 10 seconds and fails the request with a time-out. |
+| `workspace-request` | `widgetId`, or `null`. | Workspace asks the page for the data of one widget. The page should answer with `workspace-data` or `workspace-error`. Workspace gives up after <WebAppValue of="iframeRequestTimeoutMs" unit="ms" /> and fails the request with a time-out. |
 | `workspace-params-update` | `params`, an object of `name: value` strings that holds every current parameter value, including `theme`, which is `light` or `dark`. | A parameter value changed, so the page should update what it shows. Workspace also sends the message after the handshake, and again when the user changes a control, when a parameter that the widget shares in a group changes, and when the site's theme changes. |
 | `workspace-auth` | `headers`, an object of header names and values. | The backend connection's header credentials, which the page can attach to its own requests. |
 

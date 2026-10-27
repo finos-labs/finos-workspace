@@ -1,5 +1,6 @@
 ---
 title: How to write and preview documentation
+sidebar_position: 5
 ---
 
 # How to write and preview documentation
@@ -23,7 +24,7 @@ Put each page in the one folder that matches its job. A page that tries to do tw
 2. Write in complete sentences. Begin with a sentence that says what the page covers and why a reader needs it, and write every paragraph, list item and section caption as a sentence of its own. That first sentence is also the page's description in `llms.txt`, as [How the site is published](#how-the-site-is-published) explains.
 3. Check every statement against the code before you write it. Name files and functions, and never line numbers.
 4. Write marked placeholders such as `<your-email>` and `<API_URL>` where the reader has to choose a value. Do not invent hosts, accounts or companies.
-5. Do not write a number, a limit, a name or a list of values that the code defines. A reference page takes it from a generated component, such as `PluginValue`, `SettingDefault`, `EnvDefault` or `BridgeValue`, and the build fails when the value does not exist. Where a page has to explain a part by hand, the generator checks that the page mentions every item of the code, as [How to regenerate the reference data](regenerate-reference-data.md) describes.
+5. Do not write a number, a limit, a name or a list of values that the code defines. A page takes it from a generated component, such as `PluginValue`, `SettingDefault`, `SettingConstant`, `EnvDefault`, `AgentLimit`, `WebAppValue`, `BridgeValue` or `MetricName`, and the build fails when the value does not exist. A component that prints a quantity takes a `unit`, which is `bytes`, `ms`, `s`, `min`, `hours`, `days` or `raw` and says how the stored value is written. Where a page has to explain a part by hand, the generator checks that the page mentions every item of the code, as [How to regenerate the reference data](regenerate-reference-data.md) describes.
 6. Link to the reference and explanation pages instead of repeating them. Put angle brackets and curly braces inside code spans, because the MDX parser reads them as markup otherwise, and write web addresses as ordinary Markdown links.
 
 ## Preview the site

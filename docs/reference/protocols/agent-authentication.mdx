@@ -4,7 +4,7 @@ sidebar_position: 10
 ---
 
 import { AgentLimit } from "@site/src/components/Reference/agent";
-import { EnvDefault } from "@site/src/components/Reference/config";
+import { EnvDefault, SettingConstant, WebAppValue } from "@site/src/components/Reference/config";
 
 # Agent authentication
 
@@ -15,12 +15,12 @@ The browser holds its session in an HttpOnly cookie, which a script cannot read 
 The browser asks for a token with `POST /app/copilot/token`. The request must carry the session cookie and the header `X-Workspace-Client: web`, which only the web app sends. The API answers with the token and its lifetime in seconds:
 
 ```json
-{ "token": "<43 characters>", "expires_in": 1800 }
+{ "token": "<the token>", "expires_in": <lifetime in seconds> }
 ```
 
-The token is 32 random bytes in URL-safe base64. It lives for 30 minutes, or for the time that is left of the session when that is shorter. The API stores only a hash of the token, together with the user and the session that it belongs to, in the shared Redis-compatible store, and it keeps a list of a session's tokens so that it can end them together.
+The token is 32 random bytes in URL-safe base64. It lives for <SettingConstant name="agentTokenLifetimeSeconds" unit="min" />, or for the time that is left of the session when that is shorter. The API stores only a hash of the token, together with the user and the session that it belongs to, in the shared Redis-compatible store, and it keeps a list of a session's tokens so that it can end them together.
 
-The web app keeps the token in memory and never writes it to browser storage. It sends the token in the header `Authorization: Bearer <token>` on its requests to the default agent, which is the agent at the address that the web app's `urls.ai` setting names. It asks for a new token when less than 20 minutes of the current one remain. When the agent answers 401, the web app mints a new token and repeats the request once.
+The web app keeps the token in memory and never writes it to browser storage. It sends the token in the header `Authorization: Bearer <token>` on its requests to the default agent, which is the agent at the address that the web app's `urls.ai` setting names. It asks for a new token when less than <WebAppValue of="agentTokenRenewSeconds" unit="min" /> of the current one remain. When the agent answers 401, the web app mints a new token and repeats the request once.
 
 A token stops working when the session that it came from ends. The API checks on every request that the session still exists and that the user is not deleted, and signing out, deleting the user and ending a session also delete the token's record at once.
 
@@ -36,7 +36,7 @@ The API accepts an agent token on three routes and nowhere else.
 
 A request that carries the header `X-Workspace-Client` is always authenticated with the cookie and never with a token, so a token that is sent to `GET /app/user` together with that header is refused. A token sent to any other route is refused as well. In both cases the answer is the status 401 with the detail "Could not validate credentials". Every request must also come from an allowed origin, so the agent sends the header `Origin` with the value of its `WORKSPACE_ORIGIN` setting, which has to be one of the API's `BACKEND_CORS_ORIGINS`.
 
-The routes `POST /app/copilot/authorize` and `PUT /app/usage` change what a user may do or has used, so they have a second check. The agent must send the header `X-Metering-Authorization: Bearer <metering token>`, where the metering token is a JWT, signed with the API's `JWT_SECRET`, that the operator creates with `python -m scripts.create_metering_token` and gives to the agent as `INES_METERING_TOKEN`. The API requires the token to expire, and it expires after a year unless `--days` says otherwise. A request without the header or with a wrong token receives the status 403, and the detail says "Usage can only be reported by the Copilot service". When the token has expired the detail says so and names the command that mints a new one. Until the token is replaced the agent cannot answer questions, because it cannot check the user.
+The routes `POST /app/copilot/authorize` and `PUT /app/usage` change what a user may do or has used, so they have a second check. The agent must send the header `X-Metering-Authorization: Bearer <metering token>`, where the metering token is a JWT, signed with the API's `JWT_SECRET`, that the operator creates with `python -m scripts.create_metering_token` and gives to the agent as `INES_METERING_TOKEN`. The API requires the token to expire, and it expires after <SettingConstant name="meteringTokenDefaultLifetimeSeconds" unit="days" /> unless `--days` says otherwise. A request without the header or with a wrong token receives the status 403, and the detail says "Usage can only be reported by the Copilot service". When the token has expired the detail says so and names the command that mints a new one. Until the token is replaced the agent cannot answer questions, because it cannot check the user.
 
 ## What the agent asks
 

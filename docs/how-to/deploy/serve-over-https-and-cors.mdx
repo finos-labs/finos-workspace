@@ -1,0 +1,51 @@
+---
+title: How to serve Workspace over HTTPS and set the addresses
+sidebar_position: 2
+---
+
+import { EnvDefault, SettingDefault, WebPort } from "@site/src/components/Reference/config";
+
+# How to serve Workspace over HTTPS and set the addresses
+
+A deployment of Workspace has three services that browsers talk to: the web app, the Workspace API and the agent. A browser reaches them over HTTPS, they have to know each other's addresses, and the API has to know which web app may call it. This guide describes what the platform must provide and which settings carry the addresses, so that sign-in, file links and the Copilot work. The local stack of the repository is a trial and does none of this: it uses plain HTTP on `localhost`.
+
+## What the platform provides
+
+- **TLS.** A load balancer, an ingress or a reverse proxy ends TLS in front of the three services. The services speak plain HTTP behind it: the web app's container listens on port <WebPort />, the API on port <SettingDefault name="PORT" unit="raw" /> and the agent on port <EnvDefault name="PORT" />.
+- **One site.** The API's session cookie carries the attributes `Secure`, `HttpOnly` and `SameSite=Strict`, so the browser sends it only over HTTPS, with `localhost` as the one exception, and only when the API is on the same site as the page. Put the web app and the API under one registrable domain, for example `workspace.example.com` and `api.workspace.example.com`. Two unrelated domains cannot work, because the browser withholds the cookie.
+- **Health checks.** The paths `/health` and `/healthz` of the API answer without any other check. Every other request has to carry an allowed origin, as the next section describes.
+
+## Tell each service its own address
+
+Set these in the environment of the API:
+
+- `APPURL` is the web app's address, such as `https://workspace.example.com`. The API uses it for sign-in redirects and for the links that an administrator hands to a person to set a password.
+- `SELFURL` is the address at which clients reach the API, such as `https://api.workspace.example.com`. It forms the links to uploaded files, and an address that starts with `https://` tells the API that the deployment uses HTTPS, so that the Workspace MCP server hands out only `https://` addresses.
+- `FRONTENDURL` is required but the API does not read it. Set it to the web app's address as well.
+
+Set these in the environment of the web app's container, which writes them into the page's configuration each time that it starts:
+
+- `BACKEND_URL` is the API's public address, the same value as `SELFURL`.
+- `AI_API_URL` is the agent's public address.
+
+Set these in the environment of the agent and of its MCP server, which call the API as the web app does:
+
+- `WORKSPACE_API_URL` is the address that the agent uses to reach the API from inside the deployment. It need not be public, and it is usually the address of the API's service.
+- `WORKSPACE_PUBLIC_URL` is the API's public address, the one that appears in the links to uploaded files. The agent rewrites such a link to `WORKSPACE_API_URL` before it fetches the file.
+- `WORKSPACE_ORIGIN` is the web app's origin, without a path, such as `https://workspace.example.com`.
+
+## Allow the web app to call the API and the agent
+
+The API accepts a request only when it carries an `Origin` header that the deployment allows. The check covers every HTTP request and every WebSocket, and a request from another origin gets the status 403 and the text "Requests must come from an allowed origin". `BACKEND_CORS_ORIGINS` lists the allowed origins, written exactly as browsers send them, with the scheme, the host and the port and without a path or `*`. It is a comma-separated list or a JSON list, and the API does not start without it. `BACKEND_CORS_ORIGIN_REGEX` lets a pattern match a whole origin instead of listing each one, and it applies to the CORS headers and to the origin check alike. The API accepts the session cookie only from these origins.
+
+The agent keeps its own list. `INES_CORS_ORIGINS` names the origins of the web app that may call the agent from a browser, as a comma-separated list. It allows every origin when it is `*`, and the agent refuses to start with users and no origins at all. The agent and its MCP server call the API too, and each call carries `WORKSPACE_ORIGIN` as its origin, so that origin must be one that `BACKEND_CORS_ORIGINS` allows.
+
+## Check it
+
+1. Open the web app's address in a browser. It loads without a certificate warning.
+2. Sign in. The sign-in works when the cookie is accepted, and a sign-in that seems to work but leaves you on the sign-in page often points to an API that is not on the same site as the web app.
+3. Open the browser's network tool and check that calls go to the API's address and the agent's address, and that none is refused with 403.
+4. Upload a file to a dashboard and open it. A link that points at the wrong address means that `SELFURL` or `WORKSPACE_PUBLIC_URL` is wrong.
+5. Ask the Copilot a question. A Copilot that fails with nothing in the interface to say why usually means that `INES_CORS_ORIGINS` does not allow the origin that you opened the web app on.
+
+[Web app configuration](../../reference/configuration/web-app.mdx), [Backend settings](../../reference/configuration/backend.mdx) and [Ines and its MCP server](../../reference/configuration/agent.mdx) list every setting with its description.

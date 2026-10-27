@@ -1,5 +1,6 @@
 ---
 title: How to review and enable a widget plugin
+sidebar_position: 3
 ---
 
 # How to review and enable a widget plugin

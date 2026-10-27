@@ -1,5 +1,6 @@
 ---
 title: How to change the brand color and font
+sidebar_position: 3
 ---
 
 # How to change the brand color and font
@@ -8,7 +9,7 @@ The brand color and the font are the two properties that most deployments change
 
 ## In the admin area
 
-Open Admin → Theme → Presets and look at the Brand group, which is first in the list. Change `--color-main-100`, which is the brand color, and then select "Derive from brand color" to set the two other shades and the text color from it. Choose a font from the menu. The whole app shows each change as you make it. Then save the result as a preset and apply it to everyone, as [How to design and apply a theme in the admin area](design-a-theme-in-the-admin-area.md) describes.
+Open Admin → Theme → Presets and look at the Brand group, which is first in the list. Change `--color-main-100`, which is the brand color, and then select "Derive from brand color" to set the two other shades and the text color from it. Choose a font from the menu. The whole app shows each change as you make it. Then save the result as a preset and apply it to everyone, as [How to design and apply a theme in the admin area](design-a-theme-in-the-admin-area.mdx) describes.
 
 ## In a stylesheet
 

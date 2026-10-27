@@ -3,6 +3,8 @@ title: Abuse cases and their tests
 sidebar_position: 8
 ---
 
+import { PluginValue } from "@site/src/components/Reference/plugins";
+
 # Abuse cases and their tests
 
 This page lists the abuse cases that the plugin runtime defends against. For each case it names the defense and the test that checks it. The Playwright specs generate their packages into a temporary plugins directory, and they run in Chromium, Firefox and WebKit. [About the widget plugin security model](../../explanation/widget-plugin-security.md) explains the reasoning behind the defenses.
@@ -14,7 +16,7 @@ This page lists the abuse cases that the plugin runtime defends against. For eac
 | Forged host messages through `window.postMessage`; a write to an undeclared param | The host ignores window messages; the authority | `plugins.spec.ts`, plugin-cannot-leave-its-frame |
 | An ungranted or unknown command, `core:mcp:call`, reading the widget's `mcp_tool`, a `javascript:` link, markup in a notice, prototype pollution | Authority, host-only link, plain text, separate realm | `plugins.spec.ts`, plugin-cannot-leave-its-frame |
 | Forged violation events; requests to 250 origins | `isTrusted`; caps; text only | `plugin-admin-journey.spec.ts` |
-| Messages outside the protocol; protocol violations | Schema; three in ten seconds end the frame | `frame.test.ts`, `authority.test.ts` |
+| Messages outside the protocol; protocol violations | Schema; <PluginValue of="limits.VIOLATION_LIMIT.count" /> in <PluginValue of="limits.VIOLATION_LIMIT.windowMs" unit="ms" /> end the frame | `frame.test.ts`, `authority.test.ts` |
 | Another window announcing itself as the frame; a frame asking again for a port; a message on another frame's port or through `window.postMessage` | One port, handed once to the frame's own window; the caller is its port | `PluginFrame.test.tsx` |
 | A frame that navigates itself | A second `load` ends the frame | `PluginFrame.test.tsx`, `plugins.spec.ts`, a-frame-that-navigates-itself-is-ended |
 | A frame that stops answering | A frame that misses its pings ends; a hidden frame is not pinged | `PluginFrame.test.tsx` |

@@ -1,5 +1,6 @@
 ---
 title: How to build and try a widget plugin
+sidebar_position: 4
 ---
 
 # How to build and try a widget plugin

@@ -1,7 +1,9 @@
 ---
 title: About how outside AI hosts work with a dashboard
-sidebar_position: 5
+sidebar_position: 7
 ---
+
+import { BridgeValue } from "@site/src/components/Reference/bridge";
 
 # About how outside AI hosts work with a dashboard
 
@@ -19,7 +21,7 @@ The Copilot uses the same tools for the same reason, as [About how the Copilot a
 
 A tab that wants to be driven opens a bridge: it asks the API for a session and then connects a WebSocket to it. The API keeps one bridge session for each user, so a tab that connects replaces the user's earlier one. When a tool call arrives from an MCP client, the API looks up the user from the client's token, finds the user's bridge, sends the command to the tab and waits for the answer. If several API processes are running, the process that received the call may not be the one that holds the tab's socket, and then the processes pass the call to each other through Valkey.
 
-The tab answers each command with a result that says whether it worked, a message, and the data. The API waits for thirty seconds. If no answer comes, the call fails with a timeout that the client may retry, and if no tab is connected the call fails at once with a message that says so. A command that is sent again with the same identifier does not run twice, because the API remembers recent results.
+The tab answers each command with a result that says whether it worked, a message, and the data. The API waits for <BridgeValue of="constants.commandTimeoutSeconds" unit="s" />. If no answer comes, the call fails with a timeout that the client may retry, and if no tab is connected the call fails at once with a message that says so. A command that is sent again with the same identifier does not run twice, because the API remembers recent results.
 
 ## What follows from the design
 
@@ -29,4 +31,4 @@ The tab answers each command with a result that says whether it worked, a messag
 
 **Tools are the same everywhere.** The commands that the tab understands are the ones the app uses for the Copilot's own tools and for the MCP server, so a behavior that a user sees through one door is the behavior through the other.
 
-**The credentials stay small.** The MCP client holds a personal access token, which the user can revoke without touching anything else, as [About sessions and tokens](sessions-and-tokens.md) explains. It never holds a session.
+**The credentials stay small.** The MCP client holds a personal access token, which the user can revoke without touching anything else, as [About sessions and tokens](sessions-and-tokens.mdx) explains. It never holds a session.

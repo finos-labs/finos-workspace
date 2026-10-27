@@ -77,7 +77,7 @@ A backend's `apps.json` declares the server:
 [{ "name": "Teams", "tabs": {}, "mcpServers": [{ "name": "Team data", "url": "https://<mcp-host>/mcp", "authType": "token" }] }]
 ```
 
-The `team_report` widget from [Widget requests](widget-requests.md) opts in to the tool:
+The `team_report` widget from [Widget requests](widget-requests.mdx) opts in to the tool:
 
 ```json
 "mcp_tool": { "mcp_server": "Team data", "tool_id": "get_team_report", "args": { "team_id": "$team", "period": "$period" } }

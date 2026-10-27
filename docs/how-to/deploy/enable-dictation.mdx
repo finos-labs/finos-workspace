@@ -1,0 +1,37 @@
+---
+title: How to switch on dictation
+sidebar_position: 8
+---
+
+import { InesLimit } from "@site/src/components/Reference/agent";
+import { WebAppValue } from "@site/src/components/Reference/config";
+
+# How to switch on dictation
+
+Dictation lets people ask the Copilot a question by speaking. The browser records the voice, the agent sends the recording to a speech model and returns the text. Dictation is off until you name a speech model, and this guide switches it on and checks it. [How to dictate a question](../use/dictate-a-question.mdx) is the guide for the people who use it.
+
+## Choose a speech model
+
+Three providers offer speech models that the agent can use: Groq, OpenAI and NVIDIA. Write the model as `<provider>:<model>` and put it in `INES_TRANSCRIBE_MODEL`, in the environment of the agent. For example:
+
+| Provider | Value | Key the agent also needs |
+|---|---|---|
+| Groq | `groq:whisper-large-v3-turbo` | `GROQ_API_KEY` |
+| OpenAI | `openai:gpt-4o-mini-transcribe` | `OPENAI_API_KEY` |
+| NVIDIA | `nvidia:openai/whisper-large-v3` | `NVIDIA_API_KEY`, for the hosted speech models that build.nvidia.com names |
+
+The provider's key is the same variable that the chat models use, so a deployment that already runs its chat on a provider can use that provider's speech model without a new key. Restart the agent after you change either variable.
+
+## Check it
+
+Open the agent's descriptor at its `/agents.json`. When dictation is on, the list of features includes `speech-to-text`, and the web app shows the microphone button in the Copilot's question box. Without `INES_TRANSCRIBE_MODEL`, the feature is missing and the button is not shown, and a request to `POST /v1/transcribe` answers 404 with "Speech to text is not set up for this agent."
+
+Then dictate a short question in the web app. The agent logs a line "Transcribed a recording" with the size of the recording, the time that the model needed and whether the text was empty. A recording that the speech model could not process gives the user "Speech to text failed. Try again.", and the agent logs the reason with a line "Transcription failed".
+
+## What the browser and the agent require
+
+- The web app has to be served over HTTPS, because browsers allow a page to use the microphone only on a secure page, with `localhost` as the exception. [How to serve Workspace over HTTPS](serve-over-https-and-cors.mdx) describes the setup.
+- The browser sends the recording as a 16-bit PCM WAV file of at most <InesLimit name="audioBytes" />, which the browser makes from the recording at 16 kHz and in mono. That is about <WebAppValue of="maxDictationMilliseconds" unit="ms" /> of speech, and the web app stops a recording after that time by itself. A larger file gets the status 413.
+- The agent allows the browser's address in `INES_CORS_ORIGINS`, as it does for every other call.
+
+[Ines HTTP API](../../reference/http-api/ines-api.mdx) lists the route with its limits and answers.

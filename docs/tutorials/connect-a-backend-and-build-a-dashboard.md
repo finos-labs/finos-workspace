@@ -86,7 +86,7 @@ Start the backend:
 node backend.mjs
 ```
 
-It prints `Backend on http://localhost:9100`. Leave it running. [widgets.json](../reference/schemas/widgets-json.mdx) lists everything that a widget definition may contain, and [Widget requests](../reference/protocols/widget-requests.md) describes the requests that the web app makes from it.
+It prints `Backend on http://localhost:9100`. Leave it running. [widgets.json](../reference/schemas/widgets-json.mdx) lists everything that a widget definition may contain, and [Widget requests](../reference/protocols/widget-requests.mdx) describes the requests that the web app makes from it.
 
 ## Connect the backend
 
@@ -105,11 +105,11 @@ Select Create Dashboard under My Dashboards in the sidebar, or the plus sign nex
 
 Select Add widgets. The Widget Menu opens on the Widgets Library tab. The catalog lists the built-in Iframe and Navigation Bar widgets under Others, and your two widgets under the category Sales that you named in `widgets.json`. Select the checkbox of the Sales group to choose both widgets, and then select Add widgets.
 
-The dashboard now shows two widgets. Revenue by region is a table of the regions with their revenue for 2025, and it has a Year box in its header. Sales notes shows the notes as formatted text.
+The dashboard now shows two widgets. Revenue by region is a table of the regions with their revenue for 2025, and it has a box in its header that holds the year. Sales notes shows the notes as formatted text.
 
 ## Change a parameter
 
-The Year box is the parameter that you declared. Change it to `2024` and press Enter. The widget asks the backend again, this time with `year=2024`, and the table shows 110, 90 and 70. You can confirm the request in the network tab of your browser.
+The box in the header of Revenue by region is the parameter that you declared, and Workspace labels it Year when it is empty. Change it to `2024` and press Enter. The widget asks the backend again, this time with `year=2024`, and the table shows 110, 90 and 70. You can confirm the request in the network tab of your browser.
 
 ## Name the dashboard
 

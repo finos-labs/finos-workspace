@@ -49,7 +49,7 @@ Select a follow-up question under the answer, or type your own. The Copilot cont
 
 ## Change the Copilot's settings
 
-Select the gear at the left of the panel's toolbar. The popover lists the settings that the agent offers. Follow-up Suggestions switches the follow-up questions on and off, and Model chooses the model that answers your questions, among the models that your roles allow. The control with the number next to the gear shows the MCP servers whose tools the Copilot may use. A fresh deployment lists one server, Ines Tools, which gives the Copilot web search and the ability to read web pages.
+Select the gear at the left of the panel's toolbar. The popover lists the settings that the agent offers. Follow-up Suggestions switches the follow-up questions on and off, and Model chooses the model that answers your questions, among the models that your roles allow. The control with the number next to the gear opens the MCP Tools list, where you switch whole MCP servers, or single tools of a server, on and off for your questions, and the number counts the tools that are on. A fresh deployment lists one server, Ines Tools, whose tools give the Copilot web search and the ability to read web pages, and, when the deployment names an embedding model, the search of the documents that you attach.
 
 ## Where to go next
 

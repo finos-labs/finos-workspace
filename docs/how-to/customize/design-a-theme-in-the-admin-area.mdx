@@ -3,6 +3,8 @@ title: How to design and apply a theme in the admin area
 sidebar_position: 1
 ---
 
+import { SettingConstant } from "@site/src/components/Reference/config";
+
 # How to design and apply a theme in the admin area
 
 An admin can design the look of the whole web app without leaving the app. The theme editor lets you change every color and the font, shows each change at once in the real interface, and saves the result as a named preset. A preset belongs to your organization, so it survives restarts, and you can apply one preset at a time to everyone in the organization. This guide walks through the editor from the first change to applying the result.
@@ -19,7 +21,7 @@ An admin can design the look of the whole web app without leaving the app. The t
 
 ## Save and apply it
 
-4. Save the changes. "Save" stores them in the selected preset. "Save as…" creates a new preset from them and asks for a name of up to 60 characters, which must be unique within the organization without regard to letter case. FINOS (default) is not stored, so you can only save its changes as a new preset.
+4. Save the changes. "Save" stores them in the selected preset. "Save as…" creates a new preset from them and asks for a name of up to <SettingConstant name="themePresetNameMaxLength" unit="raw" /> characters, which must be unique within the organization without regard to letter case. FINOS (default) is not stored, so you can only save its changes as a new preset.
 
 5. Select "Apply to everyone" to make the selected preset the theme of the organization. Users see the theme the next time that they sign in or load the app. The button is disabled while the preset has unsaved changes, so save first.
 

@@ -1,5 +1,6 @@
 ---
 title: How to call an API with a secret from a plugin
+sidebar_position: 6
 ---
 
 # How to call an API with a secret from a plugin

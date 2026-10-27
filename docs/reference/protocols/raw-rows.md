@@ -22,7 +22,7 @@ Some widgets draw a view from data, for example an HTML page or a plugin's chart
 
 ## How it works
 
-When the host needs the rows, it sends the widget's own request again, with the widget's current parameters and with `raw=true` in the query, as [Widget requests](widget-requests.md) describes. The widget's endpoint can therefore decide whether to answer with a view or with rows.
+When the host needs the rows, it sends the widget's own request again, with the widget's current parameters and with `raw=true` in the query, as [Widget requests](widget-requests.mdx) describes. The widget's endpoint can therefore decide whether to answer with a view or with rows.
 
 The host reads the rows from the path in `data.rawDataKey`, which works like `dataKey`. Without `rawDataKey`, it reads the `results` field of the response, and when there is none it uses the whole response. One endpoint can answer both requests with a single document, such as `{"results": {"chart": {...}, "records": [...]}}`.
 

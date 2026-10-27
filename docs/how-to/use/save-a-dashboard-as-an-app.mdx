@@ -3,6 +3,8 @@ title: How to save a dashboard as an app
 sidebar_position: 2
 ---
 
+import { WebAppValue } from "@site/src/components/Reference/config";
+
 # How to save a dashboard as an app
 
 An app is a dashboard that you keep as a template. It remembers which widgets are on the dashboard, how they are arranged and the values of their parameters, and it can carry suggested prompts for the Copilot. This guide saves a dashboard as an app, keeps the app up to date, gives it suggested prompts, and opens it again.
@@ -26,7 +28,7 @@ When the dashboard was itself opened from one of your apps, the dialog starts on
 
 ## Add prompts
 
-Prompts are suggestions that the Copilot shows when somebody uses a dashboard that was made from the app. In the section Prompts of the dialog, select New prompt, type the question, and select Add. The counter shows how many of the 5 allowed you have used, and a prompt can have up to 2,000 characters. Shift+Enter starts a new line inside a prompt, and the cross at the end of a prompt removes it.
+Prompts are suggestions that the Copilot shows when somebody uses a dashboard that was made from the app. In the section Prompts of the dialog, select New prompt, type the question, and select Add. The counter shows how many of the <WebAppValue of="maxAppPrompts" /> allowed you have used, and a prompt can have up to <WebAppValue of="maxAppPromptLength" /> characters. Shift+Enter starts a new line inside a prompt, and the cross at the end of a prompt removes it.
 
 When somebody opens the app and starts a chat, the Copilot panel says "Get started with these suggested prompts for this dashboard" and lists the prompts. Selecting one asks it.
 

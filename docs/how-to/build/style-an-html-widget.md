@@ -1,5 +1,6 @@
 ---
 title: How to style an HTML widget for both themes
+sidebar_position: 5
 ---
 
 # How to style an HTML widget for both themes

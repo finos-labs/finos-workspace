@@ -1,5 +1,6 @@
 ---
 title: About widget plugins
+sidebar_position: 8
 ---
 
 # About widget plugins

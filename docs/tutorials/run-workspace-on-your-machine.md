@@ -72,7 +72,7 @@ Use the same email address that you gave to the script. Nothing prints, logs or 
 
 Open [http://localhost:3000](http://localhost:3000). Enter your email address and the password, and select Login. You arrive on the Apps page, which is empty because no backend is connected yet.
 
-Look around before you continue. The sidebar on the left holds Apps, Connections, the Widgets and AI libraries, and your dashboards. Because you are an administrator, your account can also open the admin area at [http://localhost:3000/admin](http://localhost:3000/admin), which opens on the Users page. Its sidebar offers Users, Roles and Access, Entities, Widgets, Apps, Theme and Account.
+Look around before you continue. The sidebar on the left holds Apps, Connections, the Widgets and AI libraries, and your dashboards. Because you are an administrator, the main menu also offers Admin Portal, which opens the admin area at [http://localhost:3000/admin](http://localhost:3000/admin) on the Users page. Its sidebar offers Users, Roles and Access, Entities, Widgets, Apps, Theme and Account.
 
 ## Stop the stack
 
@@ -80,4 +80,4 @@ Press `Ctrl+C` in the terminal that runs Compose, or run `docker compose down` i
 
 ## Where to go next
 
-You now have a working Workspace to experiment with. [Web app configuration](../reference/configuration/web-app.mdx), [Backend settings](../reference/configuration/backend.mdx) and [Ines and its MCP server](../reference/configuration/agent.mdx) list every setting that you can change. To make the app look like your own, follow [How to design and apply a theme in the admin area](../how-to/customize/design-a-theme-in-the-admin-area.md).
+You now have a working Workspace to experiment with. [Web app configuration](../reference/configuration/web-app.mdx), [Backend settings](../reference/configuration/backend.mdx) and [Ines and its MCP server](../reference/configuration/agent.mdx) list every setting that you can change. To make the app look like your own, follow [How to design and apply a theme in the admin area](../how-to/customize/design-a-theme-in-the-admin-area.mdx).

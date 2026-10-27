@@ -1,0 +1,39 @@
+---
+title: How to dictate a question
+sidebar_position: 12
+---
+
+import { WebAppValue } from "@site/src/components/Reference/config";
+
+# How to dictate a question
+
+This guide asks the Copilot a question by speaking, and it shows what to do when the microphone does not work. Your browser records your voice, the agent turns the recording into text, and the text lands in the question box, where you can read and change it before you send it.
+
+## What you need
+
+The microphone button appears in the bottom row of the question box only when the deployment has set up speech to text for the agent, as [How to switch on dictation](../deploy/enable-dictation.mdx) describes. When there is no button, ask your admin. You also need a microphone, and the page has to be served over HTTPS, because browsers record sound only on secure pages, with `localhost` as the one exception.
+
+## Dictate
+
+1. Select the microphone button, which has the tooltip Start voice input. Your browser may ask whether the page may use the microphone. Allow it.
+2. Speak your question. The button shows a pulsing slashed microphone while Workspace records.
+3. Select the button again, which now has the tooltip Stop voice input, when you have finished. Workspace also stops by itself after <WebAppValue of="maxDictationMilliseconds" unit="ms" />.
+4. Wait while a spinner replaces the microphone. Workspace has converted the recording to a mono recording at 16 kHz in your browser and sent it to the agent, which answers with the text.
+5. Read the text in the question box. Workspace adds it after whatever is already there, separated by a space, so you can dictate a question in several parts. Change it where the transcription is wrong, and press Enter to send it.
+
+The button is off while the Copilot is answering, while the daily limit is used up, and while a recording is being turned into text.
+
+## When it does not work
+
+The messages say what happened:
+
+| Message | What to do |
+|---|---|
+| Voice input needs the page to be served over HTTPS. | Open Workspace on an HTTPS address. |
+| This browser cannot record audio. | Use a browser that can record audio. |
+| No microphone was found. | Connect a microphone, and check the input device of your computer. |
+| Allow the microphone in your browser to use voice input. | Allow the microphone for this site in the browser's address bar or its settings, and try again. |
+| No speech was heard. | Speak closer to the microphone, or louder, and record again. |
+| Speech to text failed. Try again. | Record again. When it keeps failing, ask your admin to look at the agent's log. |
+
+[Ines HTTP API](../../reference/http-api/ines-api.mdx) describes the route that receives the recording, and its limits.

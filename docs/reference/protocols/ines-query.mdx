@@ -20,7 +20,7 @@ import {
 
 The web app asks its agent questions through one HTTP endpoint. It posts the question together with everything the agent may need to know about the user's dashboard, and the agent answers with a stream of server-sent events. When the agent needs something that only the browser has, such as the data of a widget or the result of a tool on one of the user's MCP servers, it ends the stream with a request for that thing. The browser fetches it and posts again, this time with the result appended to the conversation. One question can therefore take several requests, and this page describes all of them.
 
-Ines, the agent that ships with Workspace, implements this protocol in `agent/src/routes/query.ts` and `agent/src/protocol/`. Any other agent can be connected if its [descriptor](../schemas/agents-json.md) names an endpoint that speaks it. The browser side is `frontend/src/components/AI/hooks/useStreamResponse.tsx` and `useAiFetchRequestInit.tsx`.
+Ines, the agent that ships with Workspace, implements this protocol in `agent/src/routes/query.ts` and `agent/src/protocol/`. Any other agent can be connected if its [descriptor](../schemas/agents-json.mdx) names an endpoint that speaks it. The browser side is `frontend/src/components/AI/hooks/useStreamResponse.tsx` and `useAiFetchRequestInit.tsx`.
 
 ## Sending a question
 

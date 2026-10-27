@@ -1,5 +1,6 @@
 ---
 title: How to regenerate the reference data
+sidebar_position: 6
 ---
 
 # How to regenerate the reference data
@@ -28,7 +29,7 @@ The script runs `npm ci` in `agent` and in `frontend`, so it replaces their `nod
    env $(sed -n 's/^    \([A-Z_]*=.*\)$/\1/p' pytest.ini | xargs) python -m scripts.export_reference_data
    ```
 
-   The exporter writes eight files into `backend-api/backend/reference-data`: `openapi.json`, `widgets_schema.json`, `plugin_manifest_schema.json`, `database_schema.json`, `settings.json`, `admin_cli.json`, `widget_plugins.json` and `workspace_bridge.json`. Pass `-o <folder>` to write them elsewhere. A test fails when a setting, a manifest field, a widgets.json property or a field of a bridge command has no description, so a new one needs its description in the code.
+   The exporter writes nine files into `backend-api/backend/reference-data`: `openapi.json`, `widgets_schema.json`, `plugin_manifest_schema.json`, `database_schema.json`, `settings.json`, `admin_cli.json`, `widget_plugins.json`, `workspace_bridge.json` and `api_metrics.json`. The last one lists the metrics that the API serves, which a test compares with what the API's instrumentation registers. Pass `-o <folder>` to write them elsewhere. A test fails when a setting, a manifest field, a widgets.json property or a field of a bridge command has no description, so a new one needs its description in the code.
 
 2. The page about the Workspace MCP server is generated from a fixture that the repository does keep, `tests/fixtures/workspace_mcp_sidecar_surface.json`, because it records the contract of that server. If the tools, resources or prompts of the server changed on purpose, regenerate the fixture in the same way and commit it:
 
@@ -50,7 +51,7 @@ The descriptions of the agent's environment variables are in `agent/src/lib/env-
 
 ## Write the web app's data
 
-From `frontend`, install the dependencies and run the script that runs the two tests which write the data. It writes `frontend/reference-data/plugin-reference.json`, which holds the plugin runtime's messages, limits, permissions and policy rules, and `frontend/reference-data/workspace-bridge-reference.json`, which holds the limits, the errors and the commands of the bridge in the tab.
+From `frontend`, install the dependencies and run the script that runs the three tests which write the data. It writes four files into `frontend/reference-data`. The file `plugin-reference.json` holds the plugin runtime's messages, limits, permissions and policy rules, and `workspace-bridge-reference.json` holds the limits, the errors and the commands of the bridge in the tab. The file `web-app-reference.json` holds the numbers, names and lists of the web app's interface that the how-to guides quote, such as the file types that a dashboard accepts and the longest name of a folder, and `apps-schema.json` is the JSON Schema of `apps.json`. A test fails when a field of an `apps.json` entry has no description.
 
 ```bash
 cd frontend

@@ -1,5 +1,6 @@
 ---
 title: How to deploy a widget plugin
+sidebar_position: 1
 ---
 
 # How to deploy a widget plugin

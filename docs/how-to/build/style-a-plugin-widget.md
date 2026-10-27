@@ -1,5 +1,6 @@
 ---
 title: How to style a plugin widget for both themes
+sidebar_position: 6
 ---
 
 # How to style a plugin widget for both themes

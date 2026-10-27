@@ -1,5 +1,6 @@
 ---
 title: How to run a plugin backend
+sidebar_position: 2
 ---
 
 # How to run a plugin backend

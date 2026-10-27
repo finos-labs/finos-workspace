@@ -1,10 +1,11 @@
 ---
 title: About the widget plugin security model
+sidebar_position: 9
 ---
 
 # About the widget plugin security model
 
-This page explains what the plugin runtime defends, how it does so, and what it deliberately leaves to others. The exact rules are in the reference: [Plugin frame policy](../reference/plugins/frame-policy.mdx), [Plugin frame protocol](../reference/protocols/plugin-frame.mdx) and [Abuse cases and their tests](../reference/plugins/abuse-cases.md).
+This page explains what the plugin runtime defends, how it does so, and what it deliberately leaves to others. The exact rules are in the reference: [Plugin frame policy](../reference/plugins/frame-policy.mdx), [Plugin frame protocol](../reference/protocols/plugin-frame.mdx) and [Abuse cases and their tests](../reference/plugins/abuse-cases.mdx).
 
 ## What the runtime protects
 

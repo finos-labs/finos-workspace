@@ -1,7 +1,7 @@
 # Widget plugin examples
 
 Two widget plugins, each a package of its own, built and deployed the way any plugin is
-([How to build and try a widget plugin](../content/how-to/plugins/build-a-plugin.md)). Nothing in
+([How to build and try a widget plugin](../how-to/plugins/build-a-plugin.md)). Nothing in
 Workspace imports them; they show what the plugin framework does from an author's side.
 
 | Folder | Plugin | Shows |

@@ -3,6 +3,8 @@ title: agents.json
 sidebar_position: 5
 ---
 
+import { WebAppValue } from "@site/src/components/Reference/config";
+
 # agents.json
 
 The file `agents.json` is how an agent introduces itself to the web app. It tells the app the agent's name, where to send questions, and which features and settings the agent has, so that the interface can offer only what the agent supports. Ines serves it at `/agents.json`. A user can connect any other agent by entering the address of a server that serves such a file. The web app validates the file with the schema in `frontend/src/lib/state/copilot.ts`, and the file that Ines serves is built in `agent/src/routes/agents.ts`.
@@ -75,7 +77,7 @@ Each endpoint is a URL. A relative address is resolved against the address of `a
 | Endpoint | Meaning |
 |---|---|
 | `query` | Where the web app sends questions, as the [agent query protocol](../protocols/ines-query.mdx) describes. |
-| `upload_docs` | Where the web app sends documents that the user attaches to a chat with this agent, as a multipart form with the files in the field `files`, in batches of at most about 150 MB. An agent without it does not accept documents. The default agent receives its files through the Workspace API instead. |
+| `upload_docs` | Where the web app sends documents that the user attaches to a chat with this agent, as a multipart form with the files in the field `files`, in batches of at most <WebAppValue of="uploadBatchBytes" unit="bytes" />. An agent without it does not accept documents. The default agent receives its files through the Workspace API instead. |
 | `feedback` | Where the web app posts a thumbs up or down on an answer, when the agent has the feature `feedback`. The body has `vote`, which is `thumbs_up` or `thumbs_down`, `tags`, `user_comment`, `ai_response`, `user_prompt` and `trace_id`. |
 
 ### Features

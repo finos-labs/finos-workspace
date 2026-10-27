@@ -4,6 +4,7 @@ sidebar_position: 8
 ---
 
 import { AgentLimit } from "@site/src/components/Reference/agent";
+import { SettingConstant, WebAppValue } from "@site/src/components/Reference/config";
 
 # Widget data for the agent
 
@@ -74,7 +75,7 @@ The browser answers each data source in turn, and it never fails the whole call 
 
 **Data that a widget already holds.** Every widget card on the open dashboard reports the data that it has loaded. When the request names a widget of that dashboard with the same backend, widget id and parameter values, and the card holds data, the browser returns that data as the card holds it and makes no request to the backend. This applies to every origin except `the backend`. A widget that has not loaded yet, whose parameters differ, or that is not on the dashboard is fetched instead.
 
-**A widget of a connected backend.** For any origin other than `the backend` and `Workspace`, the browser looks up the widget's definition, builds the same request that the widget itself would make from its endpoint, method and parameters, and sends it with the credentials of the user's own connection to that backend, or of a backend that one of the user's roles shares, and without cookies. The request does not carry the host parameter `theme` that [Widget requests](widget-requests.md) describes. It also refuses to send a parameter that the widget does not declare, and it applies the widget's `data.dataKey` to a JSON response. A widget that sets `raw` is asked for its rows, as [Widget rows](raw-rows.md) describes. The response is read as follows.
+**A widget of a connected backend.** For any origin other than `the backend` and `Workspace`, the browser looks up the widget's definition, builds the same request that the widget itself would make from its endpoint, method and parameters, and sends it with the credentials of the user's own connection to that backend, or of a backend that one of the user's roles shares, and without cookies. The request does not carry the host parameter `theme` that [Widget requests](widget-requests.mdx) describes. It also refuses to send a parameter that the widget does not declare, and it applies the widget's `data.dataKey` to a JSON response. A widget that sets `raw` is asked for its rows, as [Widget rows](raw-rows.md) describes. The response is read as follows.
 
 | The response | What the browser returns |
 |---|---|
@@ -82,9 +83,9 @@ The browser answers each data source in turn, and it never fails the whole call 
 | HTML, or any response of a widget whose type is `html` | The text, marked `parse_as: html`. |
 | Anything else that is not JSON | The text, marked `parse_as: text`. |
 
-**A file that the user uploaded.** The origin of an uploaded file is `the backend`. The browser asks the Workspace API for a link to the file that is valid for one hour and returns the link with the file's extension and name. Ines downloads the file from the link.
+**A file that the user uploaded.** The origin of an uploaded file is `the backend`. The browser asks the Workspace API for a link to the file that is valid for at most <SettingConstant name="presignedUrlMaxSeconds" unit="min" /> and returns the link with the file's extension and name. Ines downloads the file from the link.
 
-**A widget that the Workspace provides.** The origin `Workspace` covers the widgets that the app provides itself, such as the iframe widget and the notes, tables and pages that the Copilot adds to a dashboard, and the sub-widgets of an iframe widget, whose identifier has the form `<parent uuid>::iframe::<sub-widget id>`. The browser returns what the dashboard holds for the widget, or the rows or HTML that the widget stored, or, for an iframe sub-widget, the answer of the page through the [iframe widget protocol](iframe-widget.md).
+**A widget that the Workspace provides.** The origin `Workspace` covers the widgets that the app provides itself, such as the iframe widget and the notes, tables and pages that the Copilot adds to a dashboard, and the sub-widgets of an iframe widget, whose identifier has the form `<parent uuid>::iframe::<sub-widget id>`. The browser returns what the dashboard holds for the widget, or the rows or HTML that the widget stored, or, for an iframe sub-widget, the answer of the page through the [iframe widget protocol](iframe-widget.mdx).
 
 The browser then puts the result in the shape that the next section describes. A widget whose identifier starts with `tab_` is a navigation tab and cannot be read.
 
@@ -146,7 +147,7 @@ When the browser cannot read a data source, the entry for that source is an erro
 
 | `error_type` | Cause |
 |---|---|
-| `gateway_error` | The backend answered with a status other than 2xx. The `content` names the endpoint path and the status, and it holds the first 300 characters of the response body. |
+| `gateway_error` | The backend answered with a status other than 2xx. The `content` names the endpoint path and the status, and it holds the first <WebAppValue of="gatewayErrorBodyChars" /> characters of the response body. |
 | `not_found` | The widget is not in the catalog and the dashboard holds nothing for it, the widget is a navigation tab, a parameter in `input_args` is not declared by the widget, or an uploaded file has no link. A message for the last case is `input_args names no param of this widget: quarter. Its params are: year.` |
 | `unexpected_error` | Anything else, including a network failure or a backend that refused the request because of its CORS policy. The `content` is the error's message. |
 

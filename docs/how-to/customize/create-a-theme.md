@@ -1,5 +1,6 @@
 ---
 title: How to create a theme for the web app
+sidebar_position: 2
 ---
 
 # How to create a theme for the web app
@@ -61,7 +62,7 @@ Open the app. The page waits for the theme stylesheet before it draws anything, 
 
 ## Design the values in the admin area instead
 
-An admin can also try values with the whole app showing them, and keep the result as a preset, without touching the deployment: [How to design and apply a theme in the admin area](design-a-theme-in-the-admin-area.md). The editor's Download theme.css button produces a stylesheet that you can use here. A preset that is applied loads after this stylesheet, so it wins wherever both set the same property.
+An admin can also try values with the whole app showing them, and keep the result as a preset, without touching the deployment: [How to design and apply a theme in the admin area](design-a-theme-in-the-admin-area.mdx). The editor's Download theme.css button produces a stylesheet that you can use here. A preset that is applied loads after this stylesheet, so it wins wherever both set the same property.
 
 ## What a theme cannot change
 

@@ -3,8 +3,8 @@ title: Workspace API
 sidebar_position: 1
 ---
 
-import { ApiTag } from "@site/src/components/Reference/api";
-import { SettingConstant } from "@site/src/components/Reference/config";
+import { ApiMetrics, ApiTag } from "@site/src/components/Reference/api";
+import { SettingConstant, SettingDefault } from "@site/src/components/Reference/config";
 
 # Workspace API
 
@@ -20,7 +20,7 @@ Every HTTP and WebSocket request must come from an allowed origin. The API allow
 
 Routes that apply a rate limit allow <SettingConstant name="rateLimitDefault" /> for each client address by default, and a few sensitive routes allow <SettingConstant name="rateLimitFew" />. A request that carries a valid service token in the header `X-Workspace-Authorization` is exempt from the limits when the deployment turns that exemption on with `RATE_LIMIT_EXEMPT_ENABLED`.
 
-The page is generated from `backend-api/backend/reference-data/openapi.json`, which the backend's exporter writes from the document that `app.openapi()` builds. The document leaves out `/metrics`, because that route exists only when the `PROMETHEUS` setting is on, and it serves the Prometheus metrics.
+The page is generated from `backend-api/backend/reference-data/openapi.json`, which the backend's exporter writes from the document that `app.openapi()` builds. The document leaves out `/metrics`, because that route exists only when the `PROMETHEUS` setting is on. [Metrics](#metrics) describes it.
 
 ## admin
 
@@ -93,3 +93,16 @@ These routes list the Workspace's own tools for the embedded agent and prepare a
 These routes carry no tag. They are the root path and the two health checks, `/health` and `/healthz`.
 
 <ApiTag tag="service" schemaPage="/reference/http-api/workspace-api-schemas" />
+
+## Metrics
+
+The setting `PROMETHEUS` turns the metrics on. It is off by default, and with it off the API has no `/metrics` route and does not sample its runtime. With it on, the API serves metrics in Prometheus's text format in two places.
+
+- **`GET /metrics` on the API's port.** The route passes through the origin check like every other route, so a request without an allowed `Origin` header receives the status 403. The API compresses the answer with gzip when the client accepts it.
+- **A second listener on port <SettingConstant name="prometheusListenerPort" unit="raw" />.** The first worker process that the API starts opens it, and it checks neither the origin nor a token. Only that worker's metrics are on it, and when the server replaces that worker, which it does when a worker dies and after a worker has served many requests, nothing listens on the port again until the container restarts.
+
+The API runs several worker processes, and each one keeps its own counters. An answer from `/metrics` therefore covers only the worker that happened to serve the request, and two consecutive scrapes may come from different workers. The metrics of the worker that serves port <SettingConstant name="prometheusListenerPort" unit="raw" /> are the only ones that are always from the same process.
+
+The API defines the metrics below. Its `/metrics` route and its listener also serve the standard metrics of the Prometheus client library about the Python process, whose names begin with `process_` and `python_`. The widget plugins add their own metrics, which [Plugin lifecycle and administration](../plugins/lifecycle.mdx) lists. The runtime metrics are sampled every `RUNTIME_METRICS_INTERVAL` seconds, <SettingDefault name="RUNTIME_METRICS_INTERVAL" unit="s" /> by default. The histogram of request durations has a few coarse buckets whose upper bounds are whole seconds, so it does not resolve requests that take less than a second.
+
+<ApiMetrics />

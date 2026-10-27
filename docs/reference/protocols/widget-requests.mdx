@@ -3,6 +3,8 @@ title: Widget requests
 sidebar_position: 2
 ---
 
+import { WebAppValue } from "@site/src/components/Reference/config";
+
 # Widget requests
 
 The web app calls a backend directly from the browser. It builds every request in one place, the file `frontend/src/lib/utils/widgetRequest.ts`. The same builder serves widgets, the option lookups of the parameter bar, forms, the Copilot's data and option requests, and the URL of an `iframe` widget's page. This page describes what a backend receives. The definition that produces the request is described on [widgets.json](../schemas/widgets-json.mdx).
@@ -24,7 +26,7 @@ The app builds a widget's request in four steps:
 3. **The body.** With `POST`, the parameters whose `in` is `body` are sent as one flat JSON object, with `Content-Type: application/json`. A request without body parameters has no body.
 4. **The host parameters.** The app adds `theme` (`dark` or `light`) for `markdown`, `html`, `iframe` and plugin types. It adds `raw=true` when the host asks a widget for its rows, as [Widget rows](raw-rows.md) describes. Both go into the query, whatever the method is. A change of the site's theme sends the request again.
 
-The app does not send a parameter whose value is undefined, null or an empty string, but it does send `0` and `false`. A parameter's value is the value that the user stored for it, or else its default, and the app sends only declared parameters. When the app cannot build a request, the widget shows the problems in place of its content and names each parameter, for example "`team` needs a value". An `iframe` widget shows the problems in place of the page, a form shows them in a toast, and the Copilot receives them as the error of its call.
+The app does not send a parameter whose value is undefined, null or an empty string, but it does send `0` and `false` once the user has set them. A parameter's value is the value that the user stored for it, or else its default, and a default of `0`, `false` or an empty string counts as no default, so the app does not send such a parameter until the user sets a value. The app sends only declared parameters. When the app cannot build a request, the widget shows the problems in place of its content and names each parameter, for example "`team` needs a value". An `iframe` widget shows the problems in place of the page, a form shows them in a toast, and the Copilot receives them as the error of its call.
 
 ## Path parameters
 
@@ -50,7 +52,7 @@ The contract enforces the following rules:
 3. A `form` posts its `inputParams` as a JSON body to its own `endpoint`, with its own method, which is `POST` or `PUT`. Neither the form nor its inputs accept `in`.
 4. An `iframe` widget uses `GET` and takes its parameters in the query or in the path.
 5. The name `theme` is reserved as a query parameter name for `markdown`, `html`, `iframe` and plugin types, and the name `raw` is reserved for `html` and plugin types.
-6. A header parameter's `paramName` has 1 to 64 characters from the HTTP token set. Three groups of names are not allowed. The first group contains the names that a browser forbids page script to set: `Accept-Charset`, `Accept-Encoding`, `Access-Control-Request-Headers`, `Access-Control-Request-Method`, `Connection`, `Content-Length`, `Cookie`, `Date`, `DNT`, `Expect`, `Host`, `Keep-Alive`, `Origin`, `Referer`, `Set-Cookie`, `TE`, `Trailer`, `Transfer-Encoding`, `Upgrade`, `Via` and every name that starts with `Proxy-` or `Sec-`. The second group contains the names that Workspace sets itself: `Authorization`, `Content-Type`, `Accept`, `X-Microsoft-Id-Token`, `X-Okta-Id-Token` and `X-Workspace-User`. The third group contains every header that the backend connection's credentials use. A header value consists of printable ASCII and has at most 1,024 characters.
+6. A header parameter's `paramName` has 1 to <WebAppValue of="headerNameMaxLength" /> characters from the HTTP token set. Three groups of names are not allowed, and names are compared without regard to case. The first group contains the names that a browser forbids page script to set: <WebAppValue of="forbiddenHeaderNames" /> and every name that starts with <WebAppValue of="forbiddenHeaderPrefixes" or />. The second group contains the names that Workspace sets itself: <WebAppValue of="reservedHeaderNames" />. The third group contains every header that the backend connection's credentials use. A header value consists of printable ASCII and has at most <WebAppValue of="headerValueMaxLength" /> characters.
 7. Credentials belong to the backend connection and never to parameters, because the dashboard saves a parameter's value and the UI shows it. The contract refuses a parameter whose name matches one of the connection's query credentials.
 
 ## CORS

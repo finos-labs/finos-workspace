@@ -1,5 +1,6 @@
 ---
 title: About styling and themes
+sidebar_position: 10
 ---
 
 # About styling and themes
