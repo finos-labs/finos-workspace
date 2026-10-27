@@ -39,7 +39,6 @@ interface CopilotMock {
   description: string;
   holderUuid?: string;
   endpoints: Record<string, string>;
-  headers?: Record<string, string>;
 }
 
 interface ExternalCopilotHolderMock {
@@ -134,7 +133,6 @@ function makeCopilot(overrides: Partial<CopilotMock> = {}): CopilotMock {
     description: "A test agent",
     holderUuid: "holder-1",
     endpoints: { query: "/api/query" },
-    headers: {},
     ...overrides,
   };
 }
@@ -194,6 +192,23 @@ describe("useAgentManagement", () => {
       expect(mockToast.success).toHaveBeenCalledWith("Agents refreshed successfully", {
         id: "refresh-holder-1",
       });
+    });
+
+    it("keeps the holder's headers on the holder and not on its agents", async () => {
+      const holder = makeHolder({ headers: { Authorization: "Bearer token123" } });
+      mockCopilotStoreState.externalCopilotHolders = [holder];
+      mockFetchAgentsData.mockResolvedValue([makeCopilot({ id: "agent-refreshed" })]);
+
+      const { result } = renderHook(() => useAgentManagement());
+
+      await act(async () => {
+        await result.current.handleSaveRefresh("holder-1");
+      });
+
+      const [saved] = mockPutCustomCopilot.mock.calls[0];
+      expect(saved.headers).toEqual({ Authorization: "Bearer token123" });
+      expect(saved.copilots).toHaveLength(1);
+      expect(saved.copilots[0]).not.toHaveProperty("headers");
     });
 
     it("shows error toast when fetchAgentsData rejects", async () => {

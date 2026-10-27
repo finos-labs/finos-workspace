@@ -39,21 +39,12 @@ describe("persisted stores", () => {
       uuid: "h1",
       url: "https://agent.example.com",
       headers: { Authorization: SECRET },
-      copilots: [
-        partial<Copilot>({
-          id: "a1",
-          name: "Agent",
-          headers: { "X-Key": "secret-agent-789" },
-        }),
-      ],
+      copilots: [partial<Copilot>({ id: "a1", name: "Agent" })],
     });
 
     useCopilotStore.setState({
       externalCopilotHolders: [holder],
-      selectedCopilot: partial<Copilot>({
-        id: "a1",
-        headers: { "X-Key": "secret-agent-789" },
-      }),
+      selectedCopilot: partial<Copilot>({ id: "a1" }),
     });
 
     const persisted = localStorage.getItem("copilot") ?? "";

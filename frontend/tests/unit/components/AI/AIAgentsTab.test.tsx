@@ -304,7 +304,6 @@ interface CopilotMock {
   holderUuid?: string;
   image?: string;
   endpoints: Record<string, string>;
-  headers?: Record<string, string>;
   features?: Record<string, boolean>;
 }
 
@@ -325,7 +324,6 @@ function makeCopilot(overrides: Partial<CopilotMock> = {}): CopilotMock {
     holderUuid: "holder-1",
     image: "",
     endpoints: { query: "/api/query" },
-    headers: {},
     features: {},
     ...overrides,
   };

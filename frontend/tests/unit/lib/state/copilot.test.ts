@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   type CreateWidgetMetadataDialogState,
+  copilotSchema,
   getReachableArtifacts,
   useCopilotStore,
 } from "~/lib/state/copilot";
@@ -237,5 +238,19 @@ describe("createWidgetMetadataDialog state", () => {
       subCategory: "US Markets",
       source: "Workspace",
     });
+  });
+});
+
+describe("copilotSchema", () => {
+  it("has no headers of its own for an agent: they belong to the holder that the user fills in", () => {
+    const parsed = copilotSchema.parse({
+      id: "agent",
+      name: "Agent",
+      description: "An agent",
+      endpoints: { query: "https://agent.example.test/query" },
+      headers: { Authorization: "Bearer secret" },
+    });
+
+    expect(parsed).not.toHaveProperty("headers");
   });
 });

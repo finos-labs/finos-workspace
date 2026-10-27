@@ -52,7 +52,6 @@ export const copilotSchema = z
         ]),
       )
       .optional(),
-    headers: z.record(z.string(), z.string()).optional(),
     models: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
     skills: z.array(z.object({ slug: z.string(), description: z.string() })).optional(),
   })
@@ -1377,12 +1376,8 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
           }
 
           return {
-            externalCopilotHolders: state.externalCopilotHolders.map((holder) => ({
-              ...withoutHeaders(holder),
-              copilots: holder.copilots?.map(withoutHeaders),
-            })),
-            selectedCopilot:
-              state.selectedCopilot && withoutHeaders(state.selectedCopilot),
+            externalCopilotHolders: state.externalCopilotHolders.map(withoutHeaders),
+            selectedCopilot: state.selectedCopilot,
             lastPanelState: state.lastPanelState,
             isFullscreen: state.isFullscreen,
             isIntentionallyCollapsed: state.isIntentionallyCollapsed,

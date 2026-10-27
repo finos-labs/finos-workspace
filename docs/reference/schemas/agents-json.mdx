@@ -67,7 +67,6 @@ This is the file that a running Ines answers with, shortened to one skill. The m
 | `features` | object | What the agent can do and which settings it offers, as described below. |
 | `models` | list | The models that a user can pick, each with an `id` and a `name`. When it is empty or missing, the web app uses the options of a `select` setting named `model`. |
 | `skills` | list | Skills that the agent provides, each with a `slug` and a `description`. A user can invoke one with a slash command, and the web app then sends its slug and description in `selected_skills`. |
-| `headers` | object | Accepted by the schema, but the web app does not read it. The headers that it sends are the ones that the user enters when connecting the agent. |
 | `hasStreaming`, `hasFunctionCalling`, `hasDocuments` | boolean | Deprecated. The first sets the feature `streaming`, and the second sets `widget-dashboard-select`, `widget-dashboard-search` and `widget-global-search`. The third has no effect. The web app shows a warning when it sees any of the three. |
 
 ### Endpoints

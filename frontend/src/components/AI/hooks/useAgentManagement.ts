@@ -113,7 +113,6 @@ export function useAgentManagement() {
         holder.copilots = (holder.copilots || []).map((agent) => ({
           ...agent,
           endpoints: resolveAgentEndpoints(agent.endpoints, holder.url),
-          headers: holder.headers || {},
         }));
         await putCustomCopilot(holder);
         externalHolders[idx] = holder;
