@@ -1,6 +1,7 @@
 import type { AgentEnvVariable, WebConfigField } from "../../data/types";
 import { envData, settingsData, webConfigData, webData } from "./data";
 import { amount, formatValue, type Unit } from "./format";
+import { FactValue } from "./plugins";
 import { TableWrap } from "./shared";
 import styles from "./styles.module.css";
 
@@ -196,4 +197,18 @@ export function SettingConstant({ name, unit }: { name: string; unit?: Unit }) {
 
 export function WebPort() {
   return <>{webData.port}</>;
+}
+
+export function WebAppValue({
+  of,
+  unit,
+  plain,
+  or,
+}: {
+  of: string;
+  unit?: Unit;
+  plain?: boolean;
+  or?: boolean;
+}) {
+  return <FactValue values={webData.values} of={of} unit={unit} plain={plain} or={or} />;
 }

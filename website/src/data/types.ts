@@ -191,9 +191,18 @@ export interface ApiOperation {
   responses: ApiResponse[];
 }
 
+export interface ApiMetric {
+  name: string;
+  type: string;
+  labels: string[];
+  labelValues: Record<string, string[]> | null;
+  help: string;
+}
+
 export interface ApiData {
   tags: { name: string; operations: ApiOperation[] }[];
   schemas: SchemaDoc[];
+  metrics: ApiMetric[];
 }
 
 interface SettingField {
@@ -433,4 +442,5 @@ export interface BridgeData {
 
 export interface WebData {
   port: number;
+  values: Record<string, PluginValueType>;
 }

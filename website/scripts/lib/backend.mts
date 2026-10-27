@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import type {
   ApiData,
+  ApiMetric,
   ApiOperation,
   CliCommand,
   CliData,
@@ -20,6 +21,20 @@ const METHODS = ["get", "post", "put", "patch", "delete"];
 
 function readJson(path: string): Json {
   return JSON.parse(readFileSync(fromRepo(path), "utf8")) as Json;
+}
+
+function collectApiMetrics(): ApiMetric[] {
+  const source = readReference("backend", "api_metrics.json");
+  return [...(source.requests as Json[]), ...(source.runtime as Json[])].map((metric) => {
+    const labelValues = (metric.label_values ?? {}) as Record<string, string[]>;
+    return {
+      name: metric.name as string,
+      type: metric.type as string,
+      labels: metric.labels as string[],
+      labelValues: Object.keys(labelValues).length > 0 ? labelValues : null,
+      help: metric.help as string,
+    };
+  });
 }
 
 export function collectApi(): ApiData {
@@ -71,6 +86,7 @@ export function collectApi(): ApiData {
     schemas: Object.keys(schemas)
       .sort()
       .map((name) => describeSchema(name, schemas[name])),
+    metrics: collectApiMetrics(),
   };
 }
 
@@ -79,7 +95,7 @@ export function collectWidgetsSchema(): SchemaSet {
 }
 
 export function collectAppsSchema(): SchemaSet {
-  return describeSet("frontend/apps-schema.json", "apps.json", readJson("frontend/apps-schema.json"), "definitions");
+  return describeSet(referencePath("frontend", "apps-schema.json"), "apps.json", readReference("frontend", "apps-schema.json"), "definitions");
 }
 
 export function collectManifestSchema(): SchemaSet {

@@ -110,7 +110,7 @@ jobs:
           NODE_IMAGE: ${{ needs.node.outputs.image }}
         run: |
           docker run --rm -e REFERENCE_OUT=reference-data -v "$PWD:/repo" -w /repo/frontend "$NODE_IMAGE" /usr/local/bin/node \
-            node_modules/vitest/vitest.mjs run tests/unit/plugins/reference.test.ts tests/unit/components/AI/workspaceBridgeReference.test.ts
+            node_modules/vitest/vitest.mjs run tests/unit/plugins/reference.test.ts tests/unit/components/AI/workspaceBridgeReference.test.ts tests/unit/lib/webAppReference.test.ts
       - uses: actions/upload-artifact@v4
         with:
           name: frontend-reference-data

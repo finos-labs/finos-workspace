@@ -19,7 +19,7 @@ const KIBIBYTE = 1024;
 const MEBIBYTE = 1024 * 1024;
 const NUMBER = new Intl.NumberFormat("en-US");
 
-export type Unit = "bytes" | "ms" | "s" | "min" | "raw";
+export type Unit = "bytes" | "ms" | "s" | "min" | "hours" | "days" | "raw";
 
 function bytes(value: number): string {
   if (value % MEBIBYTE === 0) return `${value / MEBIBYTE} MiB`;
@@ -31,11 +31,19 @@ function seconds(value: number): string {
   return value === 1 ? "1 second" : `${NUMBER.format(value)} seconds`;
 }
 
+function span(value: number, size: number, name: string): string {
+  if (value % size !== 0) return seconds(value);
+  const count = value / size;
+  return count === 1 ? `1 ${name}` : `${NUMBER.format(count)} ${name}s`;
+}
+
 export function amount(value: number, unit: Unit | undefined): string {
   if (unit === "raw") return String(value);
   if (unit === "bytes") return bytes(value);
   if (unit === "s") return seconds(value);
-  if (unit === "min") return value % 60 === 0 ? `${value / 60} minutes` : seconds(value);
+  if (unit === "min") return span(value, 60, "minute");
+  if (unit === "hours") return span(value, 3600, "hour");
+  if (unit === "days") return span(value, 86400, "day");
   if (unit === "ms") return value >= 1000 && value % 1000 === 0 ? seconds(value / 1000) : `${NUMBER.format(value)} ms`;
   return NUMBER.format(value);
 }

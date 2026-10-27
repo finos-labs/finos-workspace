@@ -20,6 +20,11 @@ function requirements(plugins: PluginsData, agent: AgentData): Requirement[] {
       what: "host versions in the example manifest",
       tokens: [`"host": { "api": ${values["host.api"]}, "afm": "${values["host.afm"]}" }`],
     },
+    {
+      page: "docs/tutorials/build-your-first-widget-plugin.md",
+      what: "host versions in the manifest that the lesson writes",
+      tokens: [`"host": { "api": ${values["host.api"]}, "afm": "${values["host.afm"]}" }`],
+    },
     { page: "docs/reference/protocols/ines-tool-results.mdx", what: "typed result kinds", tokens: agent.protocol.typedResults.kinds.map((kind) => `| \`${kind}\` |`) },
   ];
 }
@@ -42,6 +47,7 @@ interface KnownRoute {
 
 const DOCS = "docs";
 const SERVED_BY_EXAMPLES = [{ path: "/.workspace/health", source: "docs/examples/sql-explorer/backend/server.py" }];
+const NAMED_FOR_OTHER_SYSTEMS = [{ method: "POST", path: "/v1/traces", source: "agent/src/lib/telemetry.ts" }];
 const SKIPPED = new Set(["examples"]);
 
 function pages(directory: string): string[] {
@@ -74,6 +80,12 @@ export function checkRoutes(api: ApiData, agent: AgentData, bridge: BridgeData, 
       throw new Error(`${example.source} no longer serves ${example.path}, which the pages name`);
     }
     known.push({ method: "GET", path: example.path });
+  }
+  for (const other of NAMED_FOR_OTHER_SYSTEMS) {
+    if (!readFileSync(fromRepo(other.source), "utf8").includes(other.path)) {
+      throw new Error(`${other.source} no longer uses ${other.path}, which the pages name`);
+    }
+    known.push({ method: other.method, path: other.path });
   }
   const shapes = new Set(known.map((route) => `${route.method} ${shape(route.path)}`));
   const paths = new Set(known.map((route) => shape(route.path)));
