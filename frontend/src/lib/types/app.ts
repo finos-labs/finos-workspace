@@ -239,7 +239,7 @@ export function newParamDef<T extends ParamDef | FormInputParamDef>(paramDef: T)
   }
 
   const parseValue = (v: unknown) => {
-    if (!v) return undefined;
+    if (v === undefined || v === null || v === "") return undefined;
     if (type === "number" && typeof v === "string") {
       for (const fnc of [Number.parseFloat, Number.parseInt]) {
         const num = fnc(v);

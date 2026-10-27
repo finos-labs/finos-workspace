@@ -20,7 +20,6 @@ import { useShallowThemeStore } from "~/lib/state/theme";
 import type { TabLayout } from "~/lib/templates";
 import { createParamDefs, slugify } from "~/lib/utils";
 import { extractCustomTemplateInfo } from "~/lib/utils/createTemplates";
-import { isTruthy } from "~/lib/utils/values";
 import { useGetWidgetsStore } from "../AI/hooks/useGetAppWidgets";
 import { getParamsOrder } from "../DataConnectors/common/helpers";
 import { Button } from "../ds/atoms/Button";
@@ -199,7 +198,14 @@ function saveTemplate(templateData: BackendTemplate) {
   toast.success("App downloaded successfully!");
 }
 
-function formatDashboardDataForTemplate(
+function isEmptyState(value: unknown): boolean {
+  if (value === undefined || value === null || value === "") return true;
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === "object") return Object.keys(value).length === 0;
+  return false;
+}
+
+export function formatDashboardDataForTemplate(
   dashboardData: TabData,
   formData: AppMetadataForm,
 ) {
@@ -235,7 +241,7 @@ function formatDashboardDataForTemplate(
         state.params = (widget?.params || [])?.reduce<Record<string, StoredParamValue>>(
           (paramsAcc, param) => {
             const paramValue = widget.storage?.params?.[param.paramName];
-            if (paramValue && paramValue !== param.value) {
+            if (paramValue !== undefined && paramValue !== param.value) {
               paramsAcc[param.paramName] = paramValue;
             }
             if (param.type === "endpoint" && param.groupById !== undefined) {
@@ -255,7 +261,7 @@ function formatDashboardDataForTemplate(
           storage.rawDataView = widget.storage.rawDataView;
 
         acc.widgetStateMap[widget.id] = Object.fromEntries(
-          Object.entries(state).filter(([, value]) => isTruthy(value)),
+          Object.entries(state).filter(([, value]) => !isEmptyState(value)),
         );
 
         return acc;

@@ -174,6 +174,37 @@ describe("Widget Params Utility Functions", () => {
     });
   });
 
+  describe("a default of false or 0", () => {
+    const widget = partial<CreateParamDefsInput>({
+      params: [
+        { paramName: "active", type: "boolean", value: false },
+        { paramName: "offset", type: "number", value: 0 },
+        { paramName: "limit", type: "number", value: "0" },
+        { paramName: "label", type: "text", value: 0 },
+        { paramName: "note", type: "text", value: "" },
+      ] as unknown as NonNullable<CreateParamDefsInput["params"]>,
+    });
+
+    it("is the value of the parameter", () => {
+      const [active, offset, limit, label, note] = createParamDefs(widget);
+      expect(active.value).toBe(false);
+      expect(offset.value).toBe(0);
+      expect(limit.value).toBe(0);
+      expect(label.value).toBe("0");
+      expect(note.value).toBeNull();
+    });
+
+    it("is what the widget starts with", () => {
+      expect(createWidgetInitParams(widget as WidgetT)).toEqual({
+        active: false,
+        offset: 0,
+        limit: 0,
+        label: "0",
+        note: null,
+      });
+    });
+  });
+
   describe("createWidgetEndpoint edge cases", () => {
     it("should handle URL with existing query string", () => {
       const result = createWidgetEndpoint("https://api.example.com?existing=param");
