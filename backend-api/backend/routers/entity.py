@@ -8,7 +8,7 @@ from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api import auth_helpers, crud, models, schemas
+from api import auth_helpers, models, schemas
 from api.database import aget_read_db, aget_write_db
 from api.models import (
     Entity,
@@ -68,59 +68,6 @@ async def get_entities(
         return [administration.entity_return(item) for item in items]
 
     return await paginate(db, administration.entities_query(), transformer=transformer)
-
-
-@router.post("/entity-relationship", response_model=schemas.EntityRelationshipReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
-async def add_entity_relationship(
-    request: Request,
-    entity: schemas.EntityRelationshipGet,
-    db: AsyncSession = Depends(aget_write_db),
-    _=Depends(auth_helpers.get_current_superuser),
-):
-    schema = schemas.EntityRelationshipCreate(
-        parent_uuid=entity.parent_uuid, child_uuid=entity.child_uuid
-    )
-    return await crud.create_entity_relationship(db, schema)
-
-
-@router.put("/entity-relationship/{er_uuid}", response_model=schemas.SuccessReturn)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
-async def put_entity_relationship(
-    er_uuid: UUID,
-    request: Request,
-    entity: schemas.EntityRelationshipGet,
-    db: AsyncSession = Depends(aget_write_db),
-    _=Depends(auth_helpers.get_current_superuser),
-):
-    try:
-        query = (
-            update(models.EntityRelationship)
-            .where(models.EntityRelationship.uuid == er_uuid)
-            .values(parent_uuid=entity.parent_uuid, child_uuid=entity.child_uuid)
-        )
-        response = await db.execute(query)
-        await db.commit()
-        if response.rowcount == 0:  # type: ignore
-            raise HTTPException(404, detail="Entity relationship not found")
-    except IntegrityError as exc:
-        raise HTTPException(
-            404, detail="Parent or child relatiosnhip not found"
-        ) from exc
-    return schemas.SuccessReturn.success_instance()
-
-
-@router.get(
-    "/entity-relationship", response_model=CustomPage[schemas.EntityRelationshipReturn]
-)
-@limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
-async def get_entity_relationships(
-    request: Request,
-    db: AsyncSession = Depends(aget_read_db),
-    _=Depends(auth_helpers.get_current_superuser),
-):
-    query = select(models.EntityRelationship)
-    return await paginate(db, query)
 
 
 async def check_entity_map_free(

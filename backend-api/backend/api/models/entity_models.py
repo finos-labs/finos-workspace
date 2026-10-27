@@ -11,7 +11,6 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    select,
     true,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,22 +37,6 @@ SHARING_SHARE = "share"
 SHARING_LEVELS = (SHARING_NONE, SHARING_RECEIVE, SHARING_SHARE)
 
 
-async def entity_get_supreme(db: AsyncSession, self_uuid: UUID) -> None | UUID:
-    query = select(EntityRelationship.supreme_uuid).where(
-        EntityRelationship.child_uuid == self_uuid
-    )
-    child = (await db.execute(query)).first()
-    if child:
-        return child[0]
-    query = select(EntityRelationship.supreme_uuid).where(
-        EntityRelationship.parent_uuid == self_uuid
-    )
-    parent = (await db.execute(query)).first()
-    if parent:
-        return parent.supreme_uuid
-    return None
-
-
 class Entity(Base, UUIDMixin, DateMixin):
     __tablename__ = "entity"
 
@@ -61,19 +44,6 @@ class Entity(Base, UUIDMixin, DateMixin):
     require_authenticator: Mapped[bool] = mapped_column(Boolean, default=False)
     sharing_enabled: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default=true()
-    )
-
-
-class EntityRelationship(Base, UUIDMixin, DateMixin):
-    __tablename__ = "entity_relationship"
-
-    parent_uuid: Mapped[UUID] = mapped_column(ForeignKey("entity.uuid"), index=True)
-    parent: Mapped["Entity"] = relationship(foreign_keys=[parent_uuid], lazy="selectin")
-    child_uuid: Mapped[UUID] = mapped_column(ForeignKey("entity.uuid"), index=True)
-    child: Mapped["Entity"] = relationship(foreign_keys=[child_uuid], lazy="selectin")
-    supreme_uuid: Mapped[UUID] = mapped_column(ForeignKey("entity.uuid"), index=True)
-    supreme: Mapped["Entity"] = relationship(
-        foreign_keys=[supreme_uuid], lazy="selectin"
     )
 
 

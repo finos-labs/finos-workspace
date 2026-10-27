@@ -321,23 +321,6 @@ class EntityReturn(BaseModel):
     sharing_enabled: bool
 
 
-class EntityRelationshipCreate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    parent_uuid: UUID
-    child_uuid: UUID
-
-
-class EntityRelationshipGet(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    parent_uuid: UUID
-    child_uuid: UUID
-
-
-class EntityRelationshipReturn(EntityRelationshipCreate, extra="forbid"):  # type: ignore[call-arg]
-    parent: EntityReturn
-    child: EntityReturn
-    supreme: EntityReturn
-    uuid: UUID
-
-
 class UserAdminUpdate(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     permissions_uuid: None | UUID = None
 

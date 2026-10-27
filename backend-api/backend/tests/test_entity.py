@@ -149,52 +149,6 @@ class TestEntityUpdate:
         assert response.status_code in {401, 403, 404, 422}
 
 
-class TestEntityRelationship:
-    @pytest.mark.asyncio
-    async def test_get_relationships_unauthenticated(self, client):
-        response = await client.get("/entity/entity-relationship")
-        assert response.status_code in {401, 403}
-        data = response.json()
-        assert isinstance(data, dict)
-        assert "detail" in data or "message" in data or "error" in data
-
-    @pytest.mark.asyncio
-    async def test_get_relationships_authenticated(self, auth_client):
-        response = await auth_client.get("/entity/entity-relationship")
-        assert response.status_code in {200, 401, 403}
-
-    @pytest.mark.asyncio
-    async def test_create_relationship_unauthenticated(self, client):
-        response = await client.post(
-            "/entity/entity-relationship",
-            json={
-                "parent_entity_uuid": str(uuid4()),
-                "child_entity_uuid": str(uuid4()),
-            },
-        )
-        assert response.status_code in {401, 403, 422}
-
-    @pytest.mark.asyncio
-    async def test_create_relationship_authenticated(self, auth_client):
-        response = await auth_client.post(
-            "/entity/entity-relationship",
-            json={
-                "parent_entity_uuid": str(uuid4()),
-                "child_entity_uuid": str(uuid4()),
-            },
-        )
-        assert response.status_code in {200, 201, 401, 403, 404, 422}
-
-    @pytest.mark.asyncio
-    async def test_update_relationship_unauthenticated(self, client):
-        test_uuid = str(uuid4())
-        response = await client.put(
-            f"/entity/entity-relationship/{test_uuid}",
-            json={"active": False},
-        )
-        assert response.status_code in {401, 403, 422}
-
-
 class TestEntityValidation:
     @pytest.mark.asyncio
     async def test_entity_name_empty(self, auth_client):

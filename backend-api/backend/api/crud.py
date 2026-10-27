@@ -377,19 +377,6 @@ async def search_copilot_chats(
     return [schemas.Chat.from_row(x, True) for x in results.unique().scalars().all()]
 
 
-async def create_entity_relationship(
-    db: AsyncSession, entity_relationship: schemas.EntityRelationshipCreate
-) -> models.EntityRelationship:
-    supreme_uuid = await models.entity_get_supreme(db, entity_relationship.parent_uuid)
-    db_entity_relationship = models.EntityRelationship(
-        parent_uuid=entity_relationship.parent_uuid,
-        child_uuid=entity_relationship.child_uuid,
-        supreme_uuid=supreme_uuid if supreme_uuid else entity_relationship.parent_uuid,
-    )
-    new = await acreate_helper(db, db_entity_relationship)
-    return new
-
-
 T = TypeVar("T", bound="schemas.DashboardReturn | schemas.UserAppReturn")
 
 

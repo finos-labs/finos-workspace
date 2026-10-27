@@ -10,7 +10,6 @@ from .entity_models import (
     USER_TYPES,
     AuditEntityRolesPermissions,
     Entity,
-    EntityRelationship,
     EntityThemeSettings,
     PermissionsEntityMap,
     Role,
@@ -19,7 +18,6 @@ from .entity_models import (
     RoleFile,
     RoleMcpAccess,
     RolePrompt,
-    entity_get_supreme,
 )
 from .general_models import Log
 from .user_models import (
