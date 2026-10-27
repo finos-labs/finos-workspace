@@ -1,13 +1,16 @@
 import argparse
 import json
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import fields as dataclass_fields
 from pathlib import Path
 from typing import Any, Literal, get_args, get_origin
 
+from prometheus_client import CollectorRegistry
 from pydantic_core import PydanticUndefined
 
+from api import auth_helpers, schemas
+from api.helpers import get_app_session_expiration
 from api.models import widget_plugin_models
 from api.models.model_helpers import Base
 from api.rate_limit import LIMIT_DEFAULT, LIMIT_FEW
@@ -25,9 +28,14 @@ from api.widget_plugins import (
 from api.widget_plugins.manifest import Manifest
 from api.widget_plugins.widgets_schema import compose
 from main import app
+from routers.app.file_storage import PRESIGNED_URL_MAX_SECONDS
+from scripts.create_metering_token import DEFAULT_DAYS as METERING_TOKEN_DEFAULT_DAYS
 from scripts.reference_bridge import collect_workspace_bridge
 from scripts.workspace_admin import parser as admin_parser
 from utilities.config import PROMETHEUS_LISTENER_PORT, RQ_QUEUE_NAME, Settings
+from utilities.migration_lock import DONE_EXPIRY, LOCK_EXPIRY, POLL_SECONDS
+from utilities.request_metrics import request_metrics
+from utilities.runtime_metrics import LABEL_VALUES, RuntimeCollector
 from workspace_mcp.config import (
     ENV_PREFIX,
     RESULT_OFFLOAD_THRESHOLD_DEFAULT,
@@ -46,6 +54,7 @@ FILES = {
     "admin_cli": "admin_cli.json",
     "widget_plugins": "widget_plugins.json",
     "workspace_bridge": "workspace_bridge.json",
+    "api_metrics": "api_metrics.json",
 }
 
 
@@ -189,6 +198,21 @@ def collect_settings() -> dict[str, Any]:
     return {
         "constants": {
             "prometheusListenerPort": PROMETHEUS_LISTENER_PORT,
+            "agentTokenLifetimeSeconds": int(auth_helpers.AGENT_TOKEN_LIFETIME.total_seconds()),
+            "sessionLifetimeSeconds": int(get_app_session_expiration(False).total_seconds()),
+            "rememberedSessionLifetimeSeconds": int(get_app_session_expiration(True).total_seconds()),
+            "passwordResetLifetimeSeconds": int(auth_helpers.PASSWORD_RESET_LIFETIME.total_seconds()),
+            "totpEnrollmentLifetimeSeconds": int(auth_helpers.TOTP_ENROLL_LIFETIME.total_seconds()),
+            "meteringTokenDefaultLifetimeSeconds": METERING_TOKEN_DEFAULT_DAYS * 24 * 3600,
+            "migrationLockSeconds": int(LOCK_EXPIRY.total_seconds()),
+            "migrationDoneSeconds": int(DONE_EXPIRY.total_seconds()),
+            "migrationPollSeconds": POLL_SECONDS,
+            "presignedUrlMaxSeconds": PRESIGNED_URL_MAX_SECONDS,
+            "themeMaxPresets": schemas.THEME_MAX_PRESETS,
+            "themeMaxProperties": schemas.THEME_MAX_PROPERTIES,
+            "themePresetNameMaxLength": schemas.THEME_PRESET_NAME_MAX_LENGTH,
+            "themePropertyNamePattern": schemas.THEME_PROPERTY_NAME.pattern,
+            "themePropertyValueMaxLength": schemas.THEME_PROPERTY_VALUE_MAX_LENGTH,
             "queueName": RQ_QUEUE_NAME,
             "rateLimitDefault": LIMIT_DEFAULT,
             "rateLimitFew": LIMIT_FEW,
@@ -294,18 +318,41 @@ def _states(prefix: str, descriptions: dict[str, str]) -> list[dict[str, str]]:
     return [{"state": value, "meaning": descriptions[value]} for value in values]
 
 
-def _plugin_metrics() -> list[dict[str, Any]]:
+def _describe_collectors(collectors: Iterable[Any]) -> list[dict[str, Any]]:
     entries = []
-    for value in vars(plugin_metrics).values():
-        describe = getattr(value, "describe", None)
-        if describe is None or not hasattr(value, "_labelnames"):
-            continue
-        family = describe()[0]
+    for collector in collectors:
+        family = collector.describe()[0]
         name = f"{family.name}_total" if family.type == "counter" else family.name
         entries.append(
-            {"name": name, "type": family.type, "labels": list(value._labelnames), "help": family.documentation}
+            {"name": name, "type": family.type, "labels": list(collector._labelnames), "help": family.documentation}
         )
     return sorted(entries, key=lambda item: item["name"])
+
+
+def _plugin_metrics() -> list[dict[str, Any]]:
+    return _describe_collectors(
+        value for value in vars(plugin_metrics).values() if hasattr(value, "describe") and hasattr(value, "_labelnames")
+    )
+
+
+def collect_api_metrics() -> dict[str, Any]:
+    registry = CollectorRegistry()
+    request_metrics(registry)
+    requests = _describe_collectors({id(item): item for item in registry._names_to_collectors.values()}.values())
+    runtime = sorted(
+        (
+            {
+                "name": family.name,
+                "type": family.type,
+                "labels": list(family._labelnames),
+                "help": family.documentation,
+                "label_values": {label: list(values) for label, values in LABEL_VALUES.get(family.name, {}).items()},
+            }
+            for family in RuntimeCollector().collect()
+        ),
+        key=lambda item: item["name"],
+    )
+    return {"requests": requests, "runtime": runtime}
 
 
 def collect_widget_plugins() -> dict[str, Any]:
@@ -397,6 +444,7 @@ COLLECTORS: dict[str, Callable[[], dict[str, Any]]] = {
     "admin_cli": collect_admin_cli,
     "widget_plugins": collect_widget_plugins,
     "workspace_bridge": collect_workspace_bridge,
+    "api_metrics": collect_api_metrics,
 }
 
 

@@ -1359,8 +1359,11 @@ class ThemeSettings(BaseModel):
     appTheme: dict | None = None
 
 
-THEME_PROPERTY_NAME = re.compile(r"^--[a-z][a-z0-9-]{0,80}$")
-THEME_PROPERTY_VALUE = re.compile(r"^[A-Za-z0-9 #%.,()/_+*\"'-]{1,200}$")
+THEME_PROPERTY_NAME_TAIL_MAX_LENGTH = 80
+THEME_PROPERTY_VALUE_MAX_LENGTH = 200
+THEME_PRESET_NAME_MAX_LENGTH = 60
+THEME_PROPERTY_NAME = re.compile(rf"^--[a-z][a-z0-9-]{{0,{THEME_PROPERTY_NAME_TAIL_MAX_LENGTH}}}$")
+THEME_PROPERTY_VALUE = re.compile(rf"^[A-Za-z0-9 #%.,()/_+*\"'-]{{1,{THEME_PROPERTY_VALUE_MAX_LENGTH}}}$")
 THEME_MAX_PROPERTIES = 400
 THEME_MAX_PRESETS = 50
 
@@ -1386,7 +1389,9 @@ class ThemeVariants(BaseModel):
 
 
 class ThemePresetBody(ThemeVariants):
-    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
+    name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=THEME_PRESET_NAME_MAX_LENGTH)
+    ]
 
 
 class ThemePreset(ThemePresetBody):

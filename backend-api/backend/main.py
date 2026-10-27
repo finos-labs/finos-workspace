@@ -10,7 +10,6 @@ from fastapi.responses import JSONResponse
 from fastapi_pagination import add_pagination
 from fastmcp.utilities.lifespan import combine_lifespans
 from loguru import logger
-from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from slowapi import _rate_limit_exceeded_handler  # noqa: PLC2701
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.cors import CORSMiddleware
@@ -37,6 +36,7 @@ from routers.app import (
 )
 from routers.app.workspace_mcp.asgi import create_workspace_mcp_asgi_app
 from utilities import config
+from utilities.request_metrics import instrument
 from utilities.runtime_metrics import start_runtime_metrics
 
 config.settings.setup_logging()
@@ -74,14 +74,8 @@ app.add_middleware(
 )
 
 
-ns = {"metric_namespace": "payment_backend", "metric_subsystem": "fastapi"}
-
 if config.settings.PROMETHEUS:
-    instrumentator = Instrumentator(should_group_status_codes=False)
-    instrumentator.add(metrics.requests(**ns))  # type: ignore
-    instrumentator.add(metrics.response_size(**ns))  # type: ignore
-    instrumentator.add(metrics.latency(buckets=(1, 2, 3, 4), **ns))  # type: ignore
-    instrumentator.instrument(app)
+    instrumentator = instrument(app)
 
 
 app.state.limiter = limiter
