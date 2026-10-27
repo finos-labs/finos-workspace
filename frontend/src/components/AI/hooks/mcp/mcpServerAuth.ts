@@ -3,7 +3,7 @@ import { fetchBackend } from "~/lib/api";
 import { getConfig } from "~/lib/runtimeConfig";
 
 /**
- * MCP server credentials live in the Workspace API, never in the browser: the API keeps
+ * MCP server credentials live in the FINOS Workspace API, never in the browser: the API keeps
  * each server's headers and the user's OAuth grant encrypted and adds them to the
  * requests it proxies. The page only starts and completes the sign-in flow, and holds
  * the headers of a local server in memory while it talks to that server.

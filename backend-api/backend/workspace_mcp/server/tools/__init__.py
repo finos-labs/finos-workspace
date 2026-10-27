@@ -1,1 +1,1 @@
-"""Per-domain tool registration modules for the Workspace MCP server."""
+"""Per-domain tool registration modules for the FINOS Workspace MCP server."""

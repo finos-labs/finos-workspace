@@ -3,16 +3,16 @@
  * start, so that a deployment with something missing says what instead of running open.
  *
  *   INES_AUTH                    workspace (default) | none. `workspace` signs every caller in with the
- *                                Workspace API; `none` runs without users, for a development machine.
- *   WORKSPACE_API_URL            The Workspace API as this agent can reach it (not the browser's address).
- *   WORKSPACE_ORIGIN             The Origin header of every call the agent makes to the Workspace API: the web app's
+ *                                FINOS Workspace API; `none` runs without users, for a development machine.
+ *   WORKSPACE_API_URL            The FINOS Workspace API as this agent can reach it (not the browser's address).
+ *   WORKSPACE_ORIGIN             The Origin header of every call the agent makes to the FINOS Workspace API: the web app's
  *                                origin, one the API allows (BACKEND_CORS_ORIGINS), since the API refuses the calls of
  *                                an origin it does not allow. Required with INES_AUTH=workspace or WORKSPACE_PUBLIC_URL.
- *   INES_METERING_TOKEN          The service token the Workspace API checks usage reports and access
+ *   INES_METERING_TOKEN          The service token the FINOS Workspace API checks usage reports and access
  *                                checks with: `python -m scripts.create_metering_token` in backend-api/backend.
  *   INES_SCOPE_SECRET            Signs the scope of each chat that the MCP tools receive, so that a user
  *                                cannot name another user's chat. Shared with the MCP server.
- *   WORKSPACE_PUBLIC_URL         The Workspace API as the browser addresses it. The links the Workspace gives
+ *   WORKSPACE_PUBLIC_URL         The FINOS Workspace API as the browser addresses it. The links the FINOS Workspace gives
  *                                out to its users' files are on this address; the agent fetches them from
  *                                WORKSPACE_API_URL instead (see lib/safe-fetch.ts). Without it such links
  *                                are fetched as they are, which only works where the browser's address is
@@ -45,7 +45,7 @@ export interface ServerConfig {
   scopeSecret: string | null;
   /** The models a user may pick: INES_MODELS and DEFAULT_MODEL. Empty when none is configured. */
   models: string[];
-  /** Where the Workspace's file links point, where the agent fetches them from and with which Origin; null when not set. */
+  /** Where the FINOS Workspace's file links point, where the agent fetches them from and with which Origin; null when not set. */
   workspaceFiles: { publicUrl: string; internalUrl: string; origin: string } | null;
   maxBodyBytes: number;
   maxConcurrentQueries: number;
@@ -98,12 +98,12 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     problems.push(`INES_AUTH must be workspace or none; got "${mode}".`);
   }
 
-  // The Origin of every call the agent makes to the Workspace API: with workspace auth, and for its file links.
+  // The Origin of every call the agent makes to the FINOS Workspace API: with workspace auth, and for its file links.
   const origin = (env.WORKSPACE_ORIGIN ?? "").trim().replace(/\/+$/, "");
   const publicUrl = (env.WORKSPACE_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
   if (mode === "workspace" || publicUrl) {
     if (!origin) {
-      problems.push("WORKSPACE_ORIGIN is required with INES_AUTH=workspace or WORKSPACE_PUBLIC_URL: the web app's origin, which the Workspace API allows (BACKEND_CORS_ORIGINS).");
+      problems.push("WORKSPACE_ORIGIN is required with INES_AUTH=workspace or WORKSPACE_PUBLIC_URL: the web app's origin, which the FINOS Workspace API allows (BACKEND_CORS_ORIGINS).");
     } else if (!isOrigin(origin)) {
       problems.push(`WORKSPACE_ORIGIN must be an origin like https://workspace.example.com without a path; got "${env.WORKSPACE_ORIGIN}".`);
     }

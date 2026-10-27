@@ -54,7 +54,7 @@ export function McpCreateTokenDialog({
         <DialogTitle>Create token</DialogTitle>
         <DialogDescription>
           Save the secret for your token somewhere safe — you won't be able to view it
-          again. Anyone with it can access this Workspace through MCP.
+          again. Anyone with it can access this FINOS Workspace through MCP.
         </DialogDescription>
       </DialogHeader>
 
@@ -124,7 +124,7 @@ export function McpCreateTokenDialog({
               />
             ) : (
               <span className="body-xs-regular text-ds-text-caption">
-                Generate a token to connect your Workspace
+                Generate a token to connect your FINOS Workspace
               </span>
             )}
           </div>

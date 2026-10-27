@@ -139,7 +139,7 @@ export function useJsonData<
   const cleanUrl = cleanSearchParams(url, newParams);
   const headerKeys = Object.keys(headers || {});
   // The URL comes from a widget: saved or shared content, a data backend, the AI. Only a
-  // GET of the API's own file routes gets the Workspace session; nothing else a widget
+  // GET of the API's own file routes gets the FINOS Workspace session; nothing else a widget
   // names is called with it, so a widget cannot act as the viewer on the API.
   const withAuth = method === "GET" && !!cleanUrl && isApiFileUrl(cleanUrl);
 
@@ -230,8 +230,8 @@ export function useJsonData<
 }
 
 /**
- * fetch to the Workspace API with the web session cookie and the client header. It
- * refuses any URL that is not on the API's exact origin, so Workspace credentials never
+ * fetch to the FINOS Workspace API with the web session cookie and the client header. It
+ * refuses any URL that is not on the API's exact origin, so FINOS Workspace credentials never
  * reach another host.
  */
 export function fetchBackend(
@@ -240,7 +240,7 @@ export function fetchBackend(
   signal?: AbortSignal,
 ) {
   if (!isApiUrl(url)) {
-    return Promise.reject(new Error("fetchBackend only calls the Workspace API."));
+    return Promise.reject(new Error("fetchBackend only calls the FINOS Workspace API."));
   }
   const headers = new Headers(options.headers);
   headers.set(WORKSPACE_CLIENT_HEADER, WORKSPACE_CLIENT);

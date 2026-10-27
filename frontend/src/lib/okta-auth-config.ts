@@ -1,5 +1,5 @@
 /*
- * Okta authentication configuration for the Workspace.
+ * Okta authentication configuration for the FINOS Workspace.
  * Based on Okta Auth JS SDK: https://github.com/okta/okta-auth-js
  */
 

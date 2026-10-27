@@ -1172,7 +1172,7 @@ export const TabWidgetElement = memo((props: TabWidgetElementProps) => {
     const backend = widgetDefinition?.external
       ? widgetDefinition?.connectionType === "advanced-backend"
         ? widgetDefinition?.sourceName || "Unknown"
-        : "Workspace API"
+        : "FINOS Workspace API"
       : tabWidget.origin || "Workspace";
 
     const subCategory = widgetDefinition?.subCategory || "";

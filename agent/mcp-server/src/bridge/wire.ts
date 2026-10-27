@@ -1,5 +1,5 @@
 /**
- * Workspace command wire schemas — Zod source of truth.
+ * FINOS Workspace command wire schemas — Zod source of truth.
  *
  * Mirrors the WorkspaceCommand discriminated union from backend-api/backend/workspace_mcp/models.py.
  * Output JSON envelopes are byte-compat with the frontend's bridge protocol.
@@ -230,7 +230,7 @@ export type WorkspaceCommandResult = z.infer<
  *
  * Mirrors backend-api/backend/workspace_mcp/models.py. `workspace_state` and `tools[]`
  * are typed loosely (z.unknown() / record) — strict validation would require
- * porting the Workspace's WorkspaceState + AgentTool models, which is out of PoC
+ * porting the FINOS Workspace's WorkspaceState + AgentTool models, which is out of PoC
  * scope. Envelope-level shape is enforced; deep validation is deferred.
  */
 export const WorkspaceSnapshotSchema = z.object({

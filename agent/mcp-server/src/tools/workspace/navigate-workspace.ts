@@ -1,5 +1,5 @@
 /**
- * navigate_workspace — push the Workspace router to a dashboard or inner tab.
+ * navigate_workspace — push the FINOS Workspace router to a dashboard or inner tab.
  *
  * Mirrors workspace_mcp/server.py:1186-1227 with operation-specific required
  * fields enforced inline.
@@ -29,7 +29,7 @@ export const navigateWorkspaceSchema = {
 } as const;
 
 export const navigateWorkspaceDescription = describeTool(
-  "Navigate the Workspace browser to an existing dashboard or inner tab.",
+  "Navigate the FINOS Workspace browser to an existing dashboard or inner tab.",
   "Requires operation from {dashboard, tab}.",
   "For dashboard, pass dashboard_id. For tab, pass tab_id.",
   DASHBOARD_TARGETING_GUIDANCE,

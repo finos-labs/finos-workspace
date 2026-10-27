@@ -24,7 +24,7 @@ export const listAvailableWidgetsSchema = {
 } as const;
 
 export const listAvailableWidgetsDescription =
-  "List widgets available to the current Workspace session. " +
+  "List widgets available to the current FINOS Workspace session. " +
   "Returns deterministic widget identities for later get_widget_schema and create_widget calls. " +
   "Optional filters: origin matches the friendly catalog label exactly; backend_id matches the backend UUID. " +
   "Use backend_id only when you have a UUID from manage_backends; use origin when working from a snapshot. " +

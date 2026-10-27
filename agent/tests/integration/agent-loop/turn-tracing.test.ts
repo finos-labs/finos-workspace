@@ -301,7 +301,7 @@ describe("turn tracing — untrusted echoed state", () => {
 /**
  * The prompt-cache regression, end to end.
  *
- * The Workspace sends `timezone` on the first POST of a turn and not on the
+ * The FINOS Workspace sends `timezone` on the first POST of a turn and not on the
  * bridge re-POST. `buildDateSection` appended its "User timezone" line only
  * when it had a value, so the system prompt alternated between two byte
  * strings across a turn's POSTs — measured against a live OpenAI trace on

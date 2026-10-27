@@ -12,8 +12,8 @@ tool-workflow rules live in each tool's own description.
 
 SERVER_INSTRUCTIONS = "\n".join(
     [
-        "Expose the active Workspace browser session as MCP tools. "
-        "All tools require a running local Workspace browser bridge.",
+        "Expose the active FINOS Workspace browser session as MCP tools. "
+        "All tools require a running local FINOS Workspace browser bridge.",
         "",
         "Conventions:",
         "- Use snake_case payloads.",
@@ -24,7 +24,7 @@ SERVER_INSTRUCTIONS = "\n".join(
         "",
         "Recommended workflow:",
         "1. Call get_workspace_snapshot first to discover valid dashboard_id, "
-        "dashboard_composition, and skills from the live Workspace session.",
+        "dashboard_composition, and skills from the live FINOS Workspace session.",
         "2. Call manage_dashboard with operation='create' when you need a fresh "
         "dashboard.",
         "3. Call list_available_widgets to enumerate candidate widgets, then "
@@ -43,7 +43,7 @@ SERVER_INSTRUCTIONS = "\n".join(
         "navigation step that may have invalidated the tracked context.",
         "- Resolve dashboard_id from current_dashboard_uuid before each write. "
         "Provide dashboard_id explicitly when operating on a dashboard other than "
-        "the current Workspace route.",
+        "the current FINOS Workspace route.",
         "- Never match dashboards by name: duplicates with identical names are "
         'common. "This dashboard" means the current route; resolve via '
         "current_dashboard_uuid, not title.",
@@ -71,7 +71,7 @@ SERVER_INSTRUCTIONS = "\n".join(
         "without inner_tab or move an existing widget with update_widget_layout.",
         "",
         "Data availability:",
-        "- Ground every dashboard in data the Workspace already has. Only use "
+        "- Ground every dashboard in data the FINOS Workspace already has. Only use "
         "widgets returned by list_available_widgets; do not fetch data from "
         "external sources such as the web or local files, and do not build or "
         "modify a backend to supply missing data.",

@@ -1,7 +1,7 @@
 /**
  * SSE emit adapter for the workspace bridge commands.
  *
- * The agent registers its workspace tools under the Workspace's function names
+ * The agent registers its workspace tools under the FINOS Workspace's function names
  * (the registry entries in bridge-commands.ts are named for the SSE wire), so
  * `workspaceCommand(toolName, …)` already emits a contract-valid `function`.
  * What still differs is the argument SHAPE: the LLM-facing tool input is the
@@ -36,7 +36,7 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 /**
- * Reshape a bridge tool's LLM-facing input into the Workspace wire
+ * Reshape a bridge tool's LLM-facing input into the FINOS Workspace wire
  * `input_arguments`. The `function` name is already correct; this only
  * normalizes the payload so it passes the frontend's Zod schema.
  *

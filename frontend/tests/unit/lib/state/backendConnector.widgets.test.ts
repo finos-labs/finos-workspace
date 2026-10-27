@@ -148,7 +148,7 @@ describe("validateBackend - widgets.json endpoint behavior", () => {
       expect(result.errorMessage).toBeNull();
     });
 
-    it("should leave out widgets whose type this Workspace does not render", async () => {
+    it("should leave out widgets whose type this FINOS Workspace does not render", async () => {
       const mixedWidgets = {
         report: {
           name: "Report",

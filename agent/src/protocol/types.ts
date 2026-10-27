@@ -60,7 +60,7 @@ export interface SkillPayload {
 }
 
 export interface AgentTool {
-  /** The Workspace's name for the tool: `<server>_<tool>`. */
+  /** The FINOS Workspace's name for the tool: `<server>_<tool>`. */
   name: string;
   /** The tool's own name on its MCP server. */
   tool_name?: string;
@@ -133,7 +133,7 @@ export interface QueryRequest {
   tools?: AgentTool[];
   /**
    * Documents the user attached to this conversation (PDF/DOCX/TXT/MD).
-   * Workspace ships them on every POST in this chat; the agent decodes,
+   * FINOS Workspace ships them on every POST in this chat; the agent decodes,
    * holds them in-memory, and ships them to the ines-tools MCP server's
    * `query_documents` tool via the `x-ines-documents` decoration.
    * Only the delta (docs not yet shipped this chat) is sent on each call,
@@ -208,7 +208,7 @@ export interface AppArtifact {
   widget_refs: AppArtifactWidgetRef[];
 }
 
-/** The artifact types the Workspace renders and Ines emits; tables are `html`. */
+/** The artifact types the FINOS Workspace renders and Ines emits; tables are `html`. */
 export type CopilotArtifact = HtmlArtifact | AppArtifact;
 
 export interface WidgetCitationSourceInfo {

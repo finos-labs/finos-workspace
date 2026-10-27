@@ -1,7 +1,7 @@
 /**
  * Module-scope BridgeSessionManager. Process-wide singleton because bridge
  * state is process-scoped, not request-scoped (long-lived WS connections,
- * pending command map). Workspace tool handlers import this directly.
+ * pending command map). FINOS Workspace tool handlers import this directly.
  */
 
 import { makeBridgeSessionManager } from "./state.ts";

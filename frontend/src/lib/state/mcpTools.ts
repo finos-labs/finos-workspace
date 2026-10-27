@@ -675,7 +675,7 @@ export const useMcpToolsStore = createWithEqualityFn<McpToolsState>()(
         }
       }
 
-      // The Workspace's own tools, which this tab runs when the agent calls one
+      // The FINOS Workspace's own tools, which this tab runs when the agent calls one
       for (const tool of await getWorkspaceAgentTools()) pushEnabledTool(tool);
 
       // Only the tools the user's roles grant go to the agent

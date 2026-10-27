@@ -2,7 +2,7 @@
  * Bridge HTTP + WebSocket routes for the ines MCP server.
  *
  * - POST /bridge/session/start: mints session_id + token, returns WS URL
- * - GET  /bridge/ws:            WebSocket upgrade for the Workspace tab
+ * - GET  /bridge/ws:            WebSocket upgrade for the FINOS Workspace tab
  * - GET  /bridge/health:        liveness + counts (sessions, pending commands)
  *
  * StreamableHTTPTransport handles `/mcp` separately and does not consume

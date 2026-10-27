@@ -1,4 +1,4 @@
-# The whole Workspace: database, cache, API, background worker, web app, Ines, the Copilot's
+# The whole FINOS Workspace: database, cache, API, background worker, web app, Ines, the Copilot's
 # agent, and the MCP server with the tools she uses.
 #
 #   (cd backend-api/backend && python3 -m scripts.create_local_env --admin-email <your-email>)
@@ -200,7 +200,7 @@ services:
       # The Origin of Ines's calls to the API: the web app's address. The API refuses the calls of an origin
       # it does not allow (BACKEND_CORS_ORIGINS in envs/.env; DISABLE_CORS=1 allows every origin).
       WORKSPACE_ORIGIN: ${WEB_URL:-http://localhost:3000}
-      # The address the browser uses for the API: the Workspace's links to its users' files are on it.
+      # The address the browser uses for the API: the FINOS Workspace's links to its users' files are on it.
       WORKSPACE_PUBLIC_URL: ${API_URL:-http://localhost:8000}
       # Where what Ines keeps between the requests of a turn lives: who is signed in, how much of their
       # share is left, which turn is under way, and a chat's rows. In Valkey they are shared, so the
@@ -250,7 +250,7 @@ services:
     env_file:
       - ./agent/.env
     environment:
-      # The document search fetches the files of the Workspace itself, from the links the Workspace gives
+      # The document search fetches the files of the FINOS Workspace itself, from the links the FINOS Workspace gives
       # out: they are on the address the browser uses, and are fetched from the API's address here, with
       # WORKSPACE_ORIGIN as their Origin (the API refuses the calls of an origin it does not allow).
       WORKSPACE_API_URL: http://api:8000

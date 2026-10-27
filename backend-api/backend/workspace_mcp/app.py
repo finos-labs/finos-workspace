@@ -1,4 +1,4 @@
-"""ASGI application for the Workspace MCP sidecar."""
+"""ASGI application for the FINOS Workspace MCP sidecar."""
 
 import contextlib
 import re

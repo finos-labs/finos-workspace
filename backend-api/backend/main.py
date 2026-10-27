@@ -239,7 +239,7 @@ if config.settings.PROMETHEUS:
     # Register /metrics before the catch-all MCP mount below, otherwise the mount
     # (matched first) shadows it and returns the MCP credential error.
     instrumentator.expose(app, endpoint="/metrics", should_gzip=True)
-app.mount("", workspace_mcp_asgi_app, name="Workspace MCP App")
+app.mount("", workspace_mcp_asgi_app, name="FINOS Workspace MCP App")
 add_pagination(app)
 
 

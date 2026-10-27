@@ -165,7 +165,7 @@ function refusal(c: Context<AppEnv>, failure: Failure): Response {
     return chatNotice(failure.message);
   }
   if (failure.reason === "rejected") return c.json({ error: "Not signed in" }, 401);
-  return c.json({ error: "The Workspace API is not available" }, 503);
+  return c.json({ error: "The FINOS Workspace API is not available" }, 503);
 }
 
 interface QueryRun {
@@ -301,7 +301,7 @@ async function answerQuery(
   // is baked into this server, so with neither it says so instead of guessing.
   const rawModelId = getOption("model") || process.env.DEFAULT_MODEL;
   if (!rawModelId) {
-    return modelFailure("No model is configured. Set DEFAULT_MODEL on the agent (for example <provider>:<model>) or pick a model in the Workspace.");
+    return modelFailure("No model is configured. Set DEFAULT_MODEL on the agent (for example <provider>:<model>) or pick a model in the FINOS Workspace.");
   }
   // A deployment offers the models it lists, and a client can ask for no other: the provider keys are
   // the operator's, so a user must not be able to spend them on any model a provider serves.
@@ -327,7 +327,7 @@ async function answerQuery(
   const conversationId = workspace ? scopeKey(principal.userId, chatId) : chatId;
 
   // The user's roles decide the model and the tools, and the first request of a turn counts against their
-  // daily limit. All of it is asked of the Workspace API before any work is done for the request.
+  // daily limit. All of it is asked of the FINOS Workspace API before any work is done for the request.
   let disabledCapabilities: Capability[] = [];
   if (workspace && services) {
     try {

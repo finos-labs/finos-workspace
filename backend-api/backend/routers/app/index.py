@@ -1,4 +1,4 @@
-"""Workspace user routes"""
+"""FINOS Workspace user routes"""
 
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import (
@@ -376,7 +376,7 @@ UNVERIFIED_EMAIL = HTTPException(
     status.HTTP_403_FORBIDDEN,
     detail=(
         "Microsoft has not verified the email address of this account, so it cannot sign "
-        "in to, or create, the Workspace account or invitation for that address. Sign in "
+        "in to, or create, the FINOS Workspace account or invitation for that address. Sign in "
         "with your password, or ask your administrator to have Microsoft send verified "
         "emails (the xms_edov claim)."
     ),

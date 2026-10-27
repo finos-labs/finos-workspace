@@ -196,7 +196,7 @@ describe("fetchClientUrl — what it fetches", () => {
   });
 });
 
-describe("fetchClientUrl — the Workspace's own files", () => {
+describe("fetchClientUrl — the FINOS Workspace's own files", () => {
   beforeEach(() => {
     configureFetchPolicy({
       resolve: async () => [PUBLIC_IP],
@@ -221,7 +221,7 @@ describe("fetchClientUrl — the Workspace's own files", () => {
     expect(fetched).toHaveLength(0);
   });
 
-  it("is only for the Workspace's address: the API's own address in a request is not a way in", async () => {
+  it("is only for the FINOS Workspace's address: the API's own address in a request is not a way in", async () => {
     const fetched = network({});
     await expect(fetchClientUrl("http://api:8000/app/files/presigned/abc.pdf")).rejects.toThrow("Refusing to fetch");
     await expect(fetchClientUrl("http://localhost:9999/app/files/presigned/abc.pdf")).rejects.toThrow("Refusing to fetch");

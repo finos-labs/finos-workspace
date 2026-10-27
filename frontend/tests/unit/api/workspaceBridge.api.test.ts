@@ -103,7 +103,7 @@ describe("workspaceBridge api", () => {
     mockPost.mockRejectedValue(axiosError("", 500));
 
     await expect(startBridgeSession(body)).rejects.toThrow(
-      "Workspace MCP request failed with status 500.",
+      "FINOS Workspace MCP request failed with status 500.",
     );
   });
 
@@ -111,7 +111,7 @@ describe("workspaceBridge api", () => {
     mockDelete.mockRejectedValue(axiosError("", 404));
 
     await expect(revokeWorkspaceMcpToken("token-1")).rejects.toThrow(
-      "Workspace MCP request failed with status 404.",
+      "FINOS Workspace MCP request failed with status 404.",
     );
   });
 
@@ -123,7 +123,7 @@ describe("workspaceBridge api", () => {
     } as AxiosResponse);
 
     await expect(revokeWorkspaceMcpToken("token-1")).rejects.toThrow(
-      "Workspace MCP request failed with status 200.",
+      "FINOS Workspace MCP request failed with status 200.",
     );
   });
 });

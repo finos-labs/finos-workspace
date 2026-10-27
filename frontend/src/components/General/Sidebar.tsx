@@ -19,7 +19,7 @@ const uiShowChangelogFF = getConfig().ui.showChangelog;
 const { leftSidebarLogo, leftSidebarLogoDark, name: wlName } = getConfig().whiteLabel;
 
 const isWhitelabel =
-  (leftSidebarLogo && leftSidebarLogo !== "") || (wlName && wlName !== "Workspace");
+  (leftSidebarLogo && leftSidebarLogo !== "") || (wlName && wlName !== "FINOS Workspace");
 
 export function Sidebar(props: Props) {
   const { header, search, children } = props;
@@ -146,7 +146,7 @@ function SidebarFooter() {
       </Tooltip>
       {isWhitelabel && (
         <p className="text-center body-xs-regular text-2xs text-light-500 dark:text-light-400">
-          Powered by Workspace
+          Powered by FINOS Workspace
         </p>
       )}
     </div>

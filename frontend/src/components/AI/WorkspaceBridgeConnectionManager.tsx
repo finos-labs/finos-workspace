@@ -132,7 +132,7 @@ const WorkspaceBridgeConnection = memo(() => {
         socketRef.current?.queueReconnect(
           error instanceof Error
             ? error.message
-            : "Could not connect to the hosted Workspace MCP bridge.",
+            : "Could not connect to the hosted FINOS Workspace MCP bridge.",
         );
       }
     };
@@ -180,7 +180,7 @@ export const WorkspaceBridgeConnectionManager = memo(() => {
 WorkspaceBridgeConnectionManager.displayName = "WorkspaceBridgeConnectionManager";
 
 /**
- * Owns the hosted Workspace MCP websocket lifecycle: socket creation/reuse,
+ * Owns the hosted FINOS Workspace MCP websocket lifecycle: socket creation/reuse,
  * message dispatch, heartbeat keep-alive, and reconnect bookkeeping.
  *
  * The class lives outside React, so status changes are pushed imperatively
@@ -298,12 +298,12 @@ export class WebSocketBridge {
 
     ws.onclose = () => {
       if (this.disconnecting) return;
-      this.queueReconnect("Workspace MCP bridge connection closed.");
+      this.queueReconnect("FINOS Workspace MCP bridge connection closed.");
     };
 
     ws.onerror = () => {
       if (this.disconnecting) return;
-      this.queueReconnect("Workspace MCP bridge connection error.");
+      this.queueReconnect("FINOS Workspace MCP bridge connection error.");
     };
 
     this.onMessageSync(onCommandRequest);
@@ -326,9 +326,9 @@ export class WebSocketBridge {
     const nextAttempt = this._reconnectAttempts + 1;
     if (nextAttempt > MAX_RECONNECT_ATTEMPTS) {
       dismissReconnectToast();
-      const finalMessage = `Workspace MCP bridge connection lost. Failed to reconnect after ${MAX_RECONNECT_ATTEMPTS} attempts.`;
+      const finalMessage = `FINOS Workspace MCP bridge connection lost. Failed to reconnect after ${MAX_RECONNECT_ATTEMPTS} attempts.`;
       store.updateStatus("failed", finalMessage);
-      toast.error("Workspace MCP companion disconnected", {
+      toast.error("FINOS Workspace MCP companion disconnected", {
         description: finalMessage,
       });
       return;
@@ -345,7 +345,7 @@ export class WebSocketBridge {
     if (!store.isModalOpen) return;
 
     const delayMs = getReconnectDelayMs(nextAttempt);
-    toast.warning("Workspace MCP companion reconnecting", {
+    toast.warning("FINOS Workspace MCP companion reconnecting", {
       id: RECONNECT_TOAST_ID,
       duration: Number.POSITIVE_INFINITY,
       description: `${message} Retrying in ${formatReconnectDelay(delayMs)} (attempt ${nextAttempt} of ${MAX_RECONNECT_ATTEMPTS}).`,
@@ -381,7 +381,7 @@ export class WebSocketBridge {
               dismissReconnectToast();
               this.updateStatus(
                 "failed",
-                event.error?.message || "Workspace MCP bridge returned an error.",
+                event.error?.message || "FINOS Workspace MCP bridge returned an error.",
               );
               return;
           }
@@ -391,7 +391,7 @@ export class WebSocketBridge {
           dismissReconnectToast();
           this.updateStatus(
             "failed",
-            "Workspace MCP bridge sent an invalid websocket payload.",
+            "FINOS Workspace MCP bridge sent an invalid websocket payload.",
           );
         }
       },

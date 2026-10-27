@@ -1,4 +1,4 @@
-"""Runtime configuration for the Workspace MCP sidecar."""
+"""Runtime configuration for the FINOS Workspace MCP sidecar."""
 
 import os
 from dataclasses import dataclass

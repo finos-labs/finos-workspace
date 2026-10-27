@@ -10,7 +10,7 @@ _current_user_uuid: ContextVar[UUID | None] = ContextVar(
 def get_current_user_uuid() -> UUID:
     user_uuid = _current_user_uuid.get()
     if user_uuid is None:
-        raise RuntimeError("Workspace MCP user context is not set.")
+        raise RuntimeError("FINOS Workspace MCP user context is not set.")
     return user_uuid
 
 

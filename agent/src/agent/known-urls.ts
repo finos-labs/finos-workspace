@@ -123,7 +123,7 @@ function addressesInValue(value: unknown, into: Set<string>, budget: ScanBudget,
   }
 }
 
-/** A tool by its canonical name, whichever the Workspace calls it by (it may put the server in front: `Ines Tools_fetch_webpage`). */
+/** A tool by its canonical name, whichever the FINOS Workspace calls it by (it may put the server in front: `Ines Tools_fetch_webpage`). */
 function isTool(name: unknown, canonical: string): boolean {
   return typeof name === "string" && (name === canonical || name.endsWith(`_${canonical}`));
 }

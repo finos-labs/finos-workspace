@@ -260,7 +260,7 @@ export type ValidateBackend = {
   totalFailed: number;
   templates: BackendTemplate[];
   agents: BackendAgent[];
-  /** IDs of widgets.json entries left out because this Workspace does not render their type */
+  /** IDs of widgets.json entries left out because this FINOS Workspace does not render their type */
   unsupportedWidgets?: string[];
   /** The widgets and apps that pass validation, whatever else is invalid */
   validWidgets?: WidgetsType;

@@ -31,7 +31,7 @@ export function McpActiveTokens({ isConnected, endpoint }: McpActiveTokensProps)
     deleteToken.mutate(token.uuid, {
       onSuccess: () =>
         toast.success("Token revoked", {
-          description: `"${token.name}" can no longer access this Workspace via MCP.`,
+          description: `"${token.name}" can no longer access this FINOS Workspace via MCP.`,
         }),
     });
   };

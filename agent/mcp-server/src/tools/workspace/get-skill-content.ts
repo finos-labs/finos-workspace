@@ -1,5 +1,5 @@
 /**
- * get_skill_content — load one skill body from the Workspace skill library.
+ * get_skill_content — load one skill body from the FINOS Workspace skill library.
  *
  * Mirrors workspace_mcp/server.py:1026-1037.
  */
@@ -20,7 +20,7 @@ export const getSkillContentSchema = {
 } as const;
 
 export const getSkillContentDescription = describeTool(
-  "Load one skill body from the Workspace skill library.",
+  "Load one skill body from the FINOS Workspace skill library.",
   "Pass the exact skill slug from the latest workspace snapshot.",
 );
 

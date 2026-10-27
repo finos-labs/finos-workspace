@@ -1,5 +1,5 @@
 /**
- * The Workspace API as the agent uses it. The Workspace owns the users, the roles and the usage
+ * The FINOS Workspace API as the agent uses it. The FINOS Workspace owns the users, the roles and the usage
  * limits, so the agent asks it instead of keeping a user database of its own:
  *
  *   GET  /app/user              who the session token belongs to
@@ -19,11 +19,11 @@ const logger = getLogger(["app", "auth", "workspace"]);
 const METERING_HEADER = "X-Metering-Authorization";
 
 export type Failure =
-  /** The Workspace does not accept the token (or the user may not do this). */
+  /** The FINOS Workspace does not accept the token (or the user may not do this). */
   | { ok: false; reason: "rejected" }
-  /** The daily limit of queries is reached; `message` is the Workspace's wording. */
+  /** The daily limit of queries is reached; `message` is the FINOS Workspace's wording. */
   | { ok: false; reason: "limit"; message: string }
-  /** The Workspace could not be asked or did not answer sensibly. */
+  /** The FINOS Workspace could not be asked or did not answer sensibly. */
   | { ok: false; reason: "unavailable" };
 export type Result<T> = { ok: true; value: T } | Failure;
 
@@ -51,7 +51,7 @@ export interface WorkspaceClient {
   /** Adds the tokens a query used. Never throws: failing to report is logged, not shown to the user. */
   recordTokens(token: string, tokens: number): Promise<void>;
   authorize(token: string, request: { agentId: string; model?: string; tools: ToolRef[] }): Promise<Result<Authorization>>;
-  /** Whether the Workspace API answers. */
+  /** Whether the FINOS Workspace API answers. */
   ready(): Promise<boolean>;
 }
 
@@ -93,7 +93,7 @@ export function createWorkspaceClient(options: WorkspaceClientOptions): Workspac
       return { status: response.status, json };
     } catch (error) {
       metrics.workspaceRequests.inc({ endpoint, outcome: "error" });
-      logger.warn("Workspace API request failed: {endpoint}", { endpoint, error });
+      logger.warn("FINOS Workspace API request failed: {endpoint}", { endpoint, error });
       return null;
     } finally {
       metrics.workspaceDuration.observe((performance.now() - started) / 1000, { endpoint });
@@ -123,7 +123,7 @@ export function createWorkspaceClient(options: WorkspaceClientOptions): Workspac
   function reportMeteringRefused(endpoint: string, res: { json: unknown }): void {
     const detail = (res.json as { detail?: unknown } | null)?.detail;
     logger.error(
-      "The Workspace API refused this agent's metering token on {endpoint}: {detail}. " +
+      "The FINOS Workspace API refused this agent's metering token on {endpoint}: {detail}. " +
         "Until it is replaced no question can be answered. Mint a new one with " +
         "`python -m scripts.create_metering_token` in backend-api/backend and set INES_METERING_TOKEN to it.",
       { endpoint, detail: typeof detail === "string" ? detail : "no reason given" },
@@ -139,7 +139,7 @@ export function createWorkspaceClient(options: WorkspaceClientOptions): Workspac
       if (rejected(res.status)) return { ok: false, reason: "rejected" };
       const userId = res.status === 200 ? (res.json as { uuid?: unknown } | null)?.uuid : undefined;
       if (typeof userId !== "string" || !userId) {
-        logger.warn("Workspace API answered /app/user with status {status} and no user", { status: res.status });
+        logger.warn("FINOS Workspace API answered /app/user with status {status} and no user", { status: res.status });
         return { ok: false, reason: "unavailable" };
       }
       return { ok: true, value: { userId } };

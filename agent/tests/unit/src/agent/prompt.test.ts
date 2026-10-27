@@ -61,7 +61,7 @@ describe("buildSystemPrompt — base content", () => {
   it("always includes the base rules", () => {
     const out = buildSystemPrompt(req());
     expect(out).toContain("You are Ines");
-    expect(out).toContain("financial agent for the Workspace");
+    expect(out).toContain("financial agent for the FINOS Workspace");
     expect(out).toContain("Never fabricate data");
     expect(out).toContain("HOW YOU WORK");
   });
@@ -124,7 +124,7 @@ describe("buildSystemPrompt — base content", () => {
     expect(out).toContain("[uuid: ...] tag");
   });
 
-  it("gives the model the origin of each listed widget, which the Workspace's tools for a widget ask for", () => {
+  it("gives the model the origin of each listed widget, which the FINOS Workspace's tools for a widget ask for", () => {
     const widget = w({ uuid: "w-9", origin: "ODP", widget_id: "asset_info", name: "Asset Info", description: "Overview." });
     const out = buildSystemPrompt(req({ widgets: { primary: [], secondary: [widget], extra: [] } }));
     expect(out).toContain("- Asset Info (asset_info) [origin: ODP] [uuid: w-9]: Overview.");
@@ -328,7 +328,7 @@ describe("buildSystemPrompt — skills + MCP tools + timezone", () => {
     expect(skillsIdx).toBeLessThan(widgetsIdx);
   });
 
-  it("lists Ines's own skills when the Workspace lists none", () => {
+  it("lists Ines's own skills when the FINOS Workspace lists none", () => {
     const out = buildSystemPrompt(req());
     expect(out).toContain("## Skills");
     for (const slug of ["html-report", "html-table", "html-chart"]) expect(out).toContain(`slug="${slug}"`);
@@ -355,7 +355,7 @@ describe("buildSystemPrompt — skills + MCP tools + timezone", () => {
     expect(out).toContain("User timezone: Europe/Lisbon");
   });
 
-  // The prompt-cache regression. The Workspace sends `timezone` on the first
+  // The prompt-cache regression. The FINOS Workspace sends `timezone` on the first
   // POST of a turn only, so the re-POST used to drop the trailing "User
   // timezone" line — two system prompts alternating by POST type, identical
   // for the first 99.9%, splitting the OpenAI prompt cache into two lineages.

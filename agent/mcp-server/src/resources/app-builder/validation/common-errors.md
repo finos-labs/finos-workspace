@@ -20,7 +20,7 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 |---------|-------|-----|
 | `widgets.json must be object` | Top-level is `[ ... ]` | Change to `{ "widget_id": { ... } }` |
 | `Missing required field: name` | Widget has no `name` | Add `"name": "Widget Name"` |
-| `Invalid widget type: xxx` | Typo or invented alias | Use a type this Workspace renders: `markdown`, `html`, `newsfeed`, `pdf`, `iframe` |
+| `Invalid widget type: xxx` | Typo or invented alias | Use a type this FINOS Workspace renders: `markdown`, `html`, `newsfeed`, `pdf`, `iframe` |
 | Widget missing from the catalog, with a warning that its type is not rendered | The widget has a type of the wider protocol (`table`, `chart`, `metric`, ...) or none | Change it to one of the five types |
 | `gridData.w out of range` | Width too small/large | Use `w` between 10 and 40 |
 | Widget endpoint 404 | Path mismatch | Confirm `endpoint` matches a real route |
@@ -51,15 +51,15 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Group exists, no widget joins | Group `name` may not be compatible with runtime group matching | Prefer `Group 1`/`Group 2`/... and put human-readable meaning in `description`/`category`; browser-test custom names before shipping |
-| Group exists but sync silently disabled | Group `type` doesn't match the underlying param shape | `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for Workspace's universal ticker registry |
+| Group exists but sync silently disabled | Group `type` doesn't match the underlying param shape | `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for FINOS Workspace's universal ticker registry |
 | Sync works for some widgets, not others | A widget is missing from the group's `widgetIds`, or its layout entry is missing `"groups": [...]`, or its widget config uses a different `paramName`/`optionsEndpoint` | Make all three places agree |
 
 ## Endpoint and CORS
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| CORS error in browser | Backend doesn't allow the Workspace origin | Add the origin the Workspace is served from, and `http://localhost:1420` for local development |
-| `Mixed content blocked` | HTTPS Workspace can't reach HTTP backend | Serve the backend over HTTPS in production |
+| CORS error in browser | Backend doesn't allow the FINOS Workspace origin | Add the origin the FINOS Workspace is served from, and `http://localhost:1420` for local development |
+| `Mixed content blocked` | HTTPS FINOS Workspace can't reach HTTP backend | Serve the backend over HTTPS in production |
 | 404 on widget endpoint | Path typo or missing route | Confirm the route is registered; match `endpoint` exactly |
 | Wrong response shape | Endpoint returns the wrong kind of response for the widget type | `markdown` → string; `html` → HTML document; `newsfeed` → array of articles; `pdf` → file or base64 JSON |
 | Garbled non-ASCII | JSON file read with OS locale (cp1252 on Windows) | Open files with `encoding="utf-8"` (Python) or your language's UTF-8 equivalent |
@@ -70,11 +70,11 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 |---------|-------|-----|
 | `state.style` field rejected | `state.style` is closed | Use only `borderWidth` (0–24), `radius` (0–64), `contentPadding` (0–64), `shadow` (`none|sm|md|lg`) |
 | `state.style.headerMode` set, no visible effect | Schema accepts it; renderer ignores it | Remove |
-| Speculative `state.*` field appears to do nothing | Schema-but-not-runtime field | Remove unless verified visually in Workspace |
+| Speculative `state.*` field appears to do nothing | Schema-but-not-runtime field | Remove unless verified visually in FINOS Workspace |
 
 ## When the doc and the validator disagree
 
-Trust the running validator. Workspace's actual validator is the source of truth — adjust the files to match what it accepts, then update docs.
+Trust the running validator. FINOS Workspace's actual validator is the source of truth — adjust the files to match what it accepts, then update docs.
 
 - **Preferred check** — `workspace_mcp`: `manage_backends(operation="add", url=...)` returns schema errors directly.
 - **Browser check**: Settings → Data Connectors → Connect Backend → Test.

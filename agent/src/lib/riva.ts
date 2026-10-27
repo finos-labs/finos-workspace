@@ -20,7 +20,7 @@ const DEADLINE_MS = 60_000;
 
 /** Riva's AudioEncoding (riva_audio.proto): 16-bit PCM, which a WAV file holds. */
 const LINEAR_PCM = 1;
-/** Riva wants a language for every request. The Workspace is in English. */
+/** Riva wants a language for every request. The FINOS Workspace is in English. */
 const LANGUAGE = "en-US";
 
 // --- protobuf wire format -----------------------------------------------------------------------------

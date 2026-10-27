@@ -18,7 +18,7 @@ from workspace_mcp.server._helpers import (
 def register(server: FastMCP, run: CommandRunner) -> None:
     @server.tool(
         description=describe_tool(
-            "Create, read, or update one Workspace dashboard.",
+            "Create, read, or update one FINOS Workspace dashboard.",
             "Dashboard deletion is not available through this MCP surface.",
             "For create, pass name and optional dashboard_id and activate.",
             "For read, pass optional dashboard_id; omitted dashboard_id targets the current dashboard.",

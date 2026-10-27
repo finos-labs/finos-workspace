@@ -551,7 +551,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
   // while the corrupt string kept riding extra_state, so every later request
   // would fail to parse it too and the turn would shatter permanently.
   const inheritedRoot = isRebootToolTurn ? parseTraceparent(rebootExtra.traceparent) : null;
-  // The Workspace sends `timezone` on the first POST of a turn only, so a
+  // The FINOS Workspace sends `timezone` on the first POST of a turn only, so a
   // re-POST has to recover it from extra_state or the date section silently
   // renders in UTC — a different system prompt AND, near midnight, a different
   // day. Same echo-forward pattern as `traceparent`.
@@ -793,9 +793,9 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
     if (isRebootToolTurn) {
       // (documentsShipped was restored from rebootExtra near its declaration.)
       const rebootOut = yield* injectFromReboot(lastMessage as ToolMessage, ctx);
-      // Calls of the Workspace's tools that the model made in one step wait in the extra state, which the browser
+      // Calls of the FINOS Workspace's tools that the model made in one step wait in the extra state, which the browser
       // sends back (so it is not trusted): a call is made only of a tool that this request registers, which the
-      // Workspace's tools are only while the user lets the agent change the Workspace.
+      // FINOS Workspace's tools are only while the user lets the agent change the FINOS Workspace.
       const queuedWorkspaceCalls = (rebootExtra.pending_workspace_calls ?? []).flatMap((call) => {
         const entry = mcpEntryBySanitized?.get(call.tool_name);
         return entry?.serverId === WORKSPACE_SERVER_ID ? [{ entry, parameters: call.input_arguments }] : [];
@@ -824,7 +824,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
       const queuedBridgeCalls = (rebootExtra.pending_bridge_calls ?? []).filter((c) =>
         SSE_BRIDGE_COMMANDS.has(c.function),
       );
-      // Make the next queued call of a Workspace tool, one per re-POST (the browser runs one function call each),
+      // Make the next queued call of a FINOS Workspace tool, one per re-POST (the browser runs one function call each),
       // before the model is consulted: it composes the final answer only once the queue is empty.
       if (queuedWorkspaceCalls.length > 0) {
         const [next, ...remaining] = queuedWorkspaceCalls;
@@ -835,7 +835,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
             input_arguments: parameters,
           }));
         }
-        logger.info("Draining queued Workspace call", {
+        logger.info("Draining queued FINOS Workspace call", {
           emitting: next.entry.toolName,
           remaining: remaining.map(({ entry }) => entry.toolName),
         });
@@ -900,8 +900,8 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
       // They surface woven into the final answer, or via the pre-exit flush.
       yield* drainQueueToDeferred();
 
-      // The agent's own function calls for the Workspace are for a request that does not have the Workspace's
-      // tools: with them, there is one way to do each thing, and it is the tool the Workspace describes.
+      // The agent's own function calls for the FINOS Workspace are for a request that does not have the FINOS Workspace's
+      // tools: with them, there is one way to do each thing, and it is the tool the FINOS Workspace describes.
       const workspaceToolSet =
         !suppressWidgetDiscoveryToolsForEmptyWidgetRetry &&
         !mcpToolsResult?.workspaceToolsOffered
@@ -917,7 +917,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         tables,
         conversationId,
       });
-      // Widgets are read with the Workspace's MCP tool when the request has it; the agent's own function call
+      // Widgets are read with the FINOS Workspace's MCP tool when the request has it; the agent's own function call
       // (and its round trip) is for a request that does not.
       const widgetDataToolEnabled =
         hasWidgets &&
@@ -1463,7 +1463,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
           extraStateKeys: Object.keys(extraState),
         });
 
-        // The browser runs one function call per re-POST, so the other calls of the Workspace's tools that the
+        // The browser runs one function call per re-POST, so the other calls of the FINOS Workspace's tools that the
         // model made in this step wait in the extra state, and are made one by one before the model is asked
         // again. Without it they were dropped, and the model said it had done what only the first call did.
         if (entry.serverId === WORKSPACE_SERVER_ID) {
@@ -1474,7 +1474,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
           });
           if (queued.length > 0) {
             extraState.pending_workspace_calls = queued;
-            logger.info("Queueing extra Workspace calls for sequential drain", {
+            logger.info("Queueing extra FINOS Workspace calls for sequential drain", {
               emitted: entry.toolName,
               queued: queued.map((call) => call.tool_name),
             });
@@ -1549,7 +1549,7 @@ export async function* runAgentLoop(options: AgentRunOptions): AsyncGenerator<SS
         }
         const { slug, reason } = skillParsed.data;
         loadedSkillSlugs.add(slug);
-        // Ines's own skills are read here; the Workspace supplies the user's with a round trip.
+        // Ines's own skills are read here; the FINOS Workspace supplies the user's with a round trip.
         if (isInesSkill(request, slug)) {
           yield injectSkill(slug, inesSkillContent(slug), ctx);
           continue;

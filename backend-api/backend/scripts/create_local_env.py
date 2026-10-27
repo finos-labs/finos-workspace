@@ -121,7 +121,7 @@ name = {json.dumps(entity_name)}
 
 [[admins]]
 email = {json.dumps(email)}
-first_name = "Workspace"
+first_name = "FINOS Workspace"
 last_name = "Administrator"
 """
 
@@ -167,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--admin-email", required=True, help="Email address of the first administrator"
     )
-    parser.add_argument("--entity-name", default="Workspace", help="Name of the organization")
+    parser.add_argument("--entity-name", default="FINOS Workspace", help="Name of the organization")
     parser.add_argument(
         "--sqlite",
         action="store_true",

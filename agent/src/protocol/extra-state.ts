@@ -27,7 +27,7 @@ export interface ExtraState {
     input_arguments: Record<string, unknown>;
   }>;
   /**
-   * Calls of the Workspace's tools that the model made in one step, after the first. The browser runs one
+   * Calls of the FINOS Workspace's tools that the model made in one step, after the first. The browser runs one
    * function call per re-POST, so the first is emitted at once and the rest wait here: the loop makes them one
    * per re-POST, before the model is asked again (as it does the bridge calls above). `tool_name` is the
    * name the model gave the tool (a registered one is checked when a call is made, as this comes back from the browser).
@@ -72,7 +72,7 @@ export interface ExtraState {
   /**
    * The user's IANA timezone, echoed forward for the rest of the turn.
    *
-   * The Workspace sends `timezone` on the initial POST but not on a round-trip
+   * The FINOS Workspace sends `timezone` on the initial POST but not on a round-trip
    * re-POST. `buildDateSection` used to append a "User timezone: ..." line only
    * when it had one, so the system prompt gained a 32-byte tail on fresh POSTs
    * and lost it on reboot POSTs — two alternating prefixes, two prompt-cache

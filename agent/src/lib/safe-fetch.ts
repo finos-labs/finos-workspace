@@ -7,7 +7,7 @@
  * endpoint. Here, a URL is fetched only if every address its host resolves to is a public one, and
  * again after every redirect; and the response is cut off at a size.
  *
- * The one internal address that is allowed is the Workspace API's, for the links the Workspace gives
+ * The one internal address that is allowed is the FINOS Workspace API's, for the links the FINOS Workspace gives
  * out to the files of its users: a browser reaches the API at one address and this process at another,
  * so a file link on the first is fetched from the second (only /app/files/, and the link's own
  * signature is what authorizes it).
@@ -71,8 +71,8 @@ function isInternalName(hostname: string): boolean {
 
 export interface FetchPolicy {
   /**
-   * The Workspace API as the browser addresses it and as this process reaches it. A link to a file of
-   * the Workspace on the first address is fetched from the second, with `origin` (WORKSPACE_ORIGIN) as
+   * The FINOS Workspace API as the browser addresses it and as this process reaches it. A link to a file of
+   * the FINOS Workspace on the first address is fetched from the second, with `origin` (WORKSPACE_ORIGIN) as
    * its Origin: the API refuses the calls of an origin it does not allow.
    */
   workspace?: { publicUrl: string; internalUrl: string; origin: string };

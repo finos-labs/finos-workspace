@@ -280,7 +280,7 @@ describe("the answer", () => {
     expect(aiMessages()[0].suggestions).toEqual(["Show AAPL", "Show NVDA"]);
   });
 
-  it("carries the ids that the Workspace gave the completion", async () => {
+  it("carries the ids that the FINOS Workspace gave the completion", async () => {
     const stream = await startAsking();
     await stream.send("copilotMessageChunk", { delta: "Top close is 200." });
     await stream.send("done");
@@ -393,7 +393,7 @@ describe("a call of a tool", () => {
     await stream.end();
   }
 
-  it("of the Workspace is run by this tab, not by an MCP server", async () => {
+  it("of the FINOS Workspace is run by this tab, not by an MCP server", async () => {
     tools.executeWorkspaceTool.mockResolvedValue([{ items: [{ content: "{}" }] }]);
 
     await callTool("workspace");

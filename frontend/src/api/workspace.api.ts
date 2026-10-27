@@ -94,7 +94,7 @@ function validateDashboardLayout(
 }
 
 /**
- * Create a new dashboard in the local Workspace session.
+ * Create a new dashboard in the local FINOS Workspace session.
  * @param dashboardId The dashboard identifier.
  * @param config Dashboard configuration.
  * @throws If dashboard already exists or creation fails.

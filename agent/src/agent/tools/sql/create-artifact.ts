@@ -1,6 +1,6 @@
 /**
  * create_artifact — render rows as a table in the workspace conversation. The
- * Workspace has no table artifact, so the table is an HTML artifact.
+ * FINOS Workspace has no table artifact, so the table is an HTML artifact.
  * Stateless. Accepts either a SQL query against the loaded
  * `pendingTables`, or raw rows.
  *

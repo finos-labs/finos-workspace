@@ -6,7 +6,7 @@
  * graders can introspect.
  *
  * The eval runner stops at the FIRST round-trip emit (executeAgentTool /
- * getWidgetData / get_skill_content / Workspace
+ * getWidgetData / get_skill_content / FINOS Workspace
  * function call) or at the final-answer text. Multi-turn evals (re-POST
  * with simulated tool results) are deferred to a later iteration — most
  * useful first-action graders only need this single shot.
