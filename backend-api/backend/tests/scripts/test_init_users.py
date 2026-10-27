@@ -29,11 +29,18 @@ def _type(monkeypatch, text: str) -> None:
     monkeypatch.setattr(init_users.sys, "stdin", io.StringIO(text))
 
 
-def _config(password: str | None = None) -> Config:
-    admin = {"email": ADMIN_EMAIL, "first_name": "Bootstrap", "last_name": "Admin"}
-    if password is not None:
-        admin["password"] = password
-    return Config(entity={"name": ENTITY_NAME}, admins=[admin], users=[])
+def _config() -> Config:
+    return Config(
+        entity={"name": ENTITY_NAME},
+        admins=[
+            {
+                "email": ADMIN_EMAIL,
+                "first_name": "Bootstrap",
+                "last_name": "Admin",
+            }
+        ],
+        users=[],
+    )
 
 
 @pytest.fixture
@@ -129,49 +136,9 @@ async def test_bootstrap_creates_the_entity_and_a_working_admin(
     assert admin.password
 
 
-@pytest.mark.asyncio
-async def test_the_config_password_is_the_admins_password(db_session, bootstrap_cleanup, capsys):
-    password = _password()
-    await SetupConfig(_config(password), db_session).run()
-    shown = capsys.readouterr()
-
-    assert base.verify_password(password, (await _admin(db_session)).password)
-    assert not CREATED.findall(shown.out)
-    assert password not in shown.out + shown.err
-
-
-@pytest.mark.asyncio
-async def test_a_later_run_puts_back_the_config_password_and_ends_every_session(
-    db_session, bootstrap_cleanup
-):
-    password = _password()
-    await SetupConfig(_config(password), db_session).run()
-    await db_session.execute(
-        update(models.User).where(models.User.email == ADMIN_EMAIL).values(password=_password())
-    )
-    await db_session.commit()
-    admin = await _admin(db_session)
-    await _sign_in(db_session, admin.uuid)
-
-    await SetupConfig(_config(password), db_session).run()
-
-    assert base.verify_password(password, (await _admin(db_session)).password)
-    assert await _sessions(db_session, admin.uuid) == 0
-
-
-@pytest.mark.asyncio
-async def test_a_later_run_with_the_same_password_keeps_the_sessions(
-    db_session, bootstrap_cleanup
-):
-    password = _password()
-    await SetupConfig(_config(password), db_session).run()
-    admin = await _admin(db_session)
-    await _sign_in(db_session, admin.uuid)
-
-    await SetupConfig(_config(password), db_session).run()
-
-    assert base.verify_password(password, (await _admin(db_session)).password)
-    assert await _sessions(db_session, admin.uuid) == 1
+def test_a_config_names_no_password():
+    assert "password" not in init_users.AdminUser.model_fields
+    assert "password" not in _config().model_dump_json()
 
 
 @pytest.mark.asyncio

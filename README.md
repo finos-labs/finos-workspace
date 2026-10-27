@@ -18,11 +18,23 @@ Each component keeps its own README with setup and development instructions.
 `docker-compose.yml` builds and starts everything: MySQL, Valkey, the API, the background
 worker, the web app, Ines, the Copilot's agent, and the MCP server with the tools she uses.
 
+Run these commands once, in this order, before the first sign-in:
+
 ```bash
+echo <token> | docker login ghcr.io -u <github-username> --password-stdin      # for now, see "Base image"
 (cd backend-api/backend && python3 -m scripts.create_local_env --admin-email <your-email>)
 # ...which also writes agent/.env: open it and set DEFAULT_MODEL and that provider's key (see Environment variables)
 docker compose up --build        # on Apple silicon: PLATFORM=linux/arm64 docker compose up --build
+docker compose run --rm init python -m scripts.init_users --new-password <your-email>    # typed twice, not shown
 ```
+
+Then open <http://localhost:3000> and sign in with that email and password.
+
+**Base image.** The web, Ines and tools images build on the `finos-node` image from `ghcr.io/openbq-org/finos-node`.
+The repository and that image are private for now and become public later, and this login goes away then. Until
+then, create a GitHub personal access token (classic) with the `read:packages` scope, for an account that can read the
+`openbq-org` packages, and log in with it as in the first command. Docker keeps the login, so later builds need nothing.
+The stack in `local/` builds from public images and needs no login.
 
 `create_local_env` writes four files, none of which git tracks:
 
@@ -31,8 +43,7 @@ docker compose up --build        # on Apple silicon: PLATFORM=linux/arm64 docker
   (32 bytes, base64url: it encrypts the credentials stored in the database) and
   `LOCAL_STORAGE_SECRET_KEY`. It names the origins of the web app in `BACKEND_CORS_ORIGINS`.
 - `scripts/cfgs/config.toml` names the organization (`--entity-name`) and the administrator that
-  the first start creates, with their password: a random one, or yours with `--admin-password`.
-  Only you can read the file.
+  the first start creates. It holds no password.
 - `user_create.json` starts empty. Compose mounts it into the containers and the first start fills it in.
 - `agent/.env` holds Ines's model settings and her two secrets. It starts from `agent/.env.example`; the script sets
   `INES_METERING_TOKEN` (the token with which she reports usage, signed with `JWT_SECRET`) and `INES_SCOPE_SECRET`, and on
@@ -43,13 +54,17 @@ It refuses to overwrite the first two unless you pass `--force`; `--force` also 
 The web app is on <http://localhost:3000>, the API on <http://localhost:8000> and Ines on <http://localhost:7777>. The MCP server and the metrics ports publish nothing: the web app reaches the tools through the API,
 and Prometheus reaches the metrics from inside the deployment. The first start
 creates the organization and the administrator listed in
-`backend-api/backend/scripts/cfgs/config.toml`. Sign in with the email and password written
-there. Every start sets the administrator's password to the one in the file, so to change it,
-edit the file and run `docker compose up -d` again; when the password changes, every session of
-the account ends. An administrator who is not in the file gets a password with
-`docker compose run --rm init python -m scripts.init_users --new-password <email>`, typed twice
-and not shown.
-`docker compose down -v` removes the databases too. To edit the code with hot reload instead, see `local/`.
+`backend-api/backend/scripts/cfgs/config.toml`, without a password, which is why the last command above sets it.
+Run the same command to set a new password; every session of the account ends. No password is printed, logged or
+kept in a file.
+
+Everything survives a restart. The password, the organization and the users are in the database (the `db` volume), and
+the secrets are in `envs/.env` and `agent/.env`. Stopping and starting the containers, `docker compose up` after a pull
+and a restart of the Docker host keep all of it: `init` runs again on every `up`, finds the organization and the
+administrator, and changes neither the administrator nor their password. A deployment is the same: the step that runs
+the migrations and `scripts.init_users` is safe to repeat, and the password is set once with the same command in the
+API's container. Only `docker compose down -v` removes the volumes. After it, run the last command above again.
+To edit the code with hot reload instead, see `local/`.
 
 ## Environment variables
 

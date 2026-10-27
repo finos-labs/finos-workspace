@@ -4,7 +4,6 @@ import hashlib
 import hmac
 import json
 import secrets
-import string
 import sys
 import time
 from pathlib import Path
@@ -81,21 +80,7 @@ def settings(
     }
 
 
-def admin_password() -> str:
-    specials = "!@#$%&*+?"
-    required = [
-        secrets.choice(string.ascii_uppercase),
-        secrets.choice(string.ascii_lowercase),
-        secrets.choice(string.digits),
-        secrets.choice(specials),
-    ]
-    alphabet = string.ascii_letters + string.digits + specials
-    characters = required + [secrets.choice(alphabet) for _ in range(12)]
-    secrets.SystemRandom().shuffle(characters)
-    return "".join(characters)
-
-
-def seed_config(entity_name: str, email: str, password: str) -> str:
+def seed_config(entity_name: str, email: str) -> str:
     return f"""\
 [entity]
 name = {json.dumps(entity_name)}
@@ -104,7 +89,6 @@ name = {json.dumps(entity_name)}
 email = {json.dumps(email)}
 first_name = "Workspace"
 last_name = "Administrator"
-password = {json.dumps(password)}
 """
 
 
@@ -143,9 +127,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--admin-email", required=True, help="Email address of the first administrator"
     )
-    parser.add_argument(
-        "--admin-password", help="Password of the administrator (default: a random one)"
-    )
     parser.add_argument("--entity-name", default="Workspace", help="Name of the organization")
     parser.add_argument(
         "--sqlite",
@@ -175,16 +156,15 @@ def main(argv: list[str] | None = None) -> int:
         values = secrets_for(**generated) if args.sqlite else settings(**generated)
         target.write_text(render(example.read_text(), values))
     CONFIG.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG.write_text(
-        seed_config(args.entity_name, args.admin_email, args.admin_password or admin_password())
-    )
-    CONFIG.chmod(0o600)
+    CONFIG.write_text(seed_config(args.entity_name, args.admin_email))
     if not (args.config_only or args.sqlite) and not USER_CREATE.exists():
         USER_CREATE.write_text("{}\n")
     ines = None if args.config_only or args.sqlite else write_ines_env(generated["jwt_secret"])
     sys.stdout.write(
         f"Wrote {CONFIG if args.config_only else f'{target} and {CONFIG}'}\n"
-        f"Sign in as {args.admin_email}; the password is in {CONFIG}.\n"
+        f"The first start creates the administrator {args.admin_email} without a password. "
+        "Set it with: docker compose run --rm init python -m scripts.init_users "
+        f"--new-password {args.admin_email}\n"
     )
     if ines:
         sys.stdout.write(f"Set Ines's secrets in {ines}; set DEFAULT_MODEL and that provider's key there too.\n")
