@@ -11,7 +11,6 @@ import {
   getCopilotChat,
   getExternalCopilotHolders,
 } from "~/api/auth.api";
-import { showDeprecatedFlagsToast } from "~/components/AI/hooks/utils";
 import { getConfig } from "~/lib/runtimeConfig";
 import type { ActiveMcpLink } from "~/lib/utils/mcpLink";
 import { AI_SUPPORTED_FILE_TYPES, getDefaultCopilot } from "../constants";
@@ -1024,20 +1023,7 @@ export const useCopilotStore = createWithEqualityFn<CopilotState>()(
           })),
         getSelectedModelForAgent: (agentId) => get().selectedModelByAgent[agentId],
         selectedCopilot: aiCopilotDefaultCopilotFF ? getDefaultCopilot() : null,
-        setSelectedCopilot: (copilot) => {
-          const outdatedFlags = copilot
-            ? [
-                copilot.hasDocuments !== undefined && "hasDocuments",
-                copilot.hasFunctionCalling !== undefined && "hasFunctionCalling",
-                copilot.hasStreaming !== undefined && "hasStreaming",
-              ].filter((flag): flag is string => typeof flag === "string")
-            : [];
-          if (copilot && copilot.id !== "default-copilot" && outdatedFlags.length > 0) {
-            showDeprecatedFlagsToast(copilot, outdatedFlags);
-          }
-
-          set({ selectedCopilot: copilot });
-        },
+        setSelectedCopilot: (copilot) => set({ selectedCopilot: copilot }),
         orchestrationModeEnabled: false,
         setOrchestrationModeEnabled: (enabled) =>
           set({ orchestrationModeEnabled: enabled }),

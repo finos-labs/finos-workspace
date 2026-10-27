@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "~/api/api";
 import {
   activateTotp,
@@ -8,6 +8,7 @@ import {
   deleteUploadedFile,
   deleteUploadedFiles,
   deleteWidgetMetadata,
+  fetchAgentsData,
   fetchDefaultAgent,
   generateQRCode,
   getAgentConnectionErrorMessage,
@@ -217,6 +218,45 @@ describe("API Client Functions", () => {
 
       await expect(activateTotp(999999)).resolves.toBe(401);
       vi.unstubAllGlobals();
+    });
+  });
+
+  describe("fetchAgentsData", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("asks for agents.json and for no other file", async () => {
+      const fetchMock = vi.fn(async () => new Response("{}", { status: 404 }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(
+        fetchAgentsData({ url: "https://agent.example.test" }),
+      ).rejects.toThrow("A valid /agents.json was not found.");
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url] = fetchMock.mock.calls[0] as unknown as [URL];
+      expect(String(url)).toBe("https://agent.example.test/agents.json");
+    });
+
+    it("turns the flags of an agent into the features that they stand for", async () => {
+      const body = {
+        docs_agent: {
+          name: "Docs agent",
+          description: "",
+          endpoints: { query: "/v1/query" },
+          hasDocuments: true,
+          hasStreaming: true,
+        },
+      };
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => new Response(JSON.stringify(body), { status: 200 })),
+      );
+
+      const [agent] = await fetchAgentsData({ url: "https://agent.example.test" });
+
+      expect(agent.features).toEqual({ "file-upload": true, streaming: true });
     });
   });
 

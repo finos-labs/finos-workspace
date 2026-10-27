@@ -11,7 +11,7 @@ The file `agents.json` is how an agent introduces itself to the web app. It tell
 
 ## Where the web app reads it
 
-The web app requests `agents.json` at the address that the user entered or, for the default agent, at the address of its `urls.ai` setting. When that request fails with an error status, the app tries `copilots.json`, the name that earlier versions used. A 401 means the agent refused the request, a 404 means that neither file exists, and a file that does not match the schema is reported as an invalid agents file. A user who connects an agent can add request headers, for example an `Authorization` header, which the app sends with every request to that agent, including the request for the file.
+The web app requests `agents.json` at the address that the user entered or, for the default agent, at the address of its `urls.ai` setting. A 401 means the agent refused the request, a 404 means that the file does not exist, and a file that does not match the schema is reported as an invalid agents file. A user who connects an agent can add request headers, for example an `Authorization` header, which the app sends with every request to that agent, including the request for the file.
 
 The web app merges the entry `default_agent` of the default agent into its own definition of the default agent, so the models, skills and settings that Ines declares appear in the interface without a change to the app. The Admin → Roles dialog uses the same entry to list the models that a role can be granted.
 
@@ -67,7 +67,7 @@ This is the file that a running Ines answers with, shortened to one skill. The m
 | `features` | object | What the agent can do and which settings it offers, as described below. |
 | `models` | list | The models that a user can pick, each with an `id` and a `name`. When it is empty or missing, the web app uses the options of a `select` setting named `model`. |
 | `skills` | list | Skills that the agent provides, each with a `slug` and a `description`. A user can invoke one with a slash command, and the web app then sends its slug and description in `selected_skills`. |
-| `hasStreaming`, `hasFunctionCalling`, `hasDocuments` | boolean | Deprecated. The first sets the feature `streaming`, the second sets `widget-dashboard-select`, `widget-dashboard-search` and `widget-global-search`, and the third sets `file-upload`. A flag replaces the entry of the same feature in `features`, whichever value that entry has. The web app shows a warning when it sees any of the three. |
+| `hasStreaming`, `hasFunctionCalling`, `hasDocuments` | boolean | Shortcuts for features. The first sets the feature `streaming`, the second sets `widget-dashboard-select`, `widget-dashboard-search` and `widget-global-search`, and the third sets `file-upload`. A flag replaces the entry of the same feature in `features`, whichever value that entry has. |
 
 ### Endpoints
 

@@ -662,9 +662,7 @@ export async function fetchAgentsData(
 
   let res: Response;
   try {
-    res = await fetch(createURL("agents.json", holder.url), initRequest).then((res) =>
-      res.ok ? res : fetch(createURL("copilots.json", holder.url), initRequest),
-    );
+    res = await fetch(createURL("agents.json", holder.url), initRequest);
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw error;

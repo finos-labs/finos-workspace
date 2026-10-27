@@ -254,7 +254,7 @@ describe("copilotSchema", () => {
     expect(parsed).not.toHaveProperty("headers");
   });
 
-  describe("deprecated flags", () => {
+  describe("the flags hasStreaming, hasFunctionCalling and hasDocuments", () => {
     const parseAgent = (extra: Record<string, unknown>) =>
       copilotSchema.parse({
         id: "agent",
