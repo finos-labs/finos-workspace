@@ -10,7 +10,7 @@
     "build:runtime": "vite build --mode runtime",
     "build2": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "biome format ./src --write && biome check ./src --write && biome lint --write --unsafe ./src",
+    "lint": "biome format . --write && biome check . --write && biome lint --write --unsafe .",
     "update-icons": "node scripts/update-icons.js",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",

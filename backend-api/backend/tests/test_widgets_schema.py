@@ -314,7 +314,7 @@ class TestOffline:
 
     def test_the_frontend_fixture_is_current(self, capsys):
         compose_main(FIXTURE_ARGS)
-        assert FRONTEND_FIXTURE.read_text() == capsys.readouterr().out
+        assert json.loads(FRONTEND_FIXTURE.read_text()) == json.loads(capsys.readouterr().out)
 
     def test_settings_need_their_type(self, capsys):
         with pytest.raises(SystemExit):

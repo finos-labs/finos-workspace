@@ -83,7 +83,7 @@ test.beforeAll(async ({ browser }, testInfo) => {
     api,
     userInfo().email,
     "E2E interop",
-    INTEROP_MODULES.map((module) => module.id),
+    Object.keys(versions),
   );
 
   await page.goto("/app");

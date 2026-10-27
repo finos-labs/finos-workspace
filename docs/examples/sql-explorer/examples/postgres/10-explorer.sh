@@ -5,7 +5,6 @@ password="$(cat /run/secrets/explorer_password)"
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -v password="$password" <<'SQL'
 CREATE ROLE explorer LOGIN PASSWORD :'password';
--- What the plugin's backend enforces anyway, enforced by the database too
 ALTER ROLE explorer SET default_transaction_read_only = on;
 ALTER ROLE explorer SET statement_timeout = '15s';
 

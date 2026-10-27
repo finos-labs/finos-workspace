@@ -60,7 +60,7 @@ export interface PluginFrameHandle {
   restart: () => void;
 }
 
-interface PluginFrameProps {
+export interface PluginFrameProps {
   plugin: AvailablePlugin;
   title: string;
   bindings: TraitBinding[];

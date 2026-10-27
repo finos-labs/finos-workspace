@@ -31,7 +31,7 @@ jobs:
         with:
           node-version: 26.12.1
       - run: npm ci --ignore-scripts
-      - run: npx biome ci src
+      - run: npx biome ci .
 
   typecheck:
     name: Types

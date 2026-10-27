@@ -276,6 +276,39 @@ export function hostileManifest(id = "e2e-hostile") {
   };
 }
 
+export const WANDERER_ENTRY = `
+export default {
+  render({ el }) {
+    el.textContent = "wandering";
+    setTimeout(() => {
+      location.href = "about:blank";
+    }, 500);
+  },
+};
+`;
+
+export function wandererManifest(id = "e2e-wanderer") {
+  return {
+    ...BASE,
+    id,
+    name: "End-to-end wanderer",
+    description: "Navigates its own frame away",
+    contributes: {
+      widgets: [
+        {
+          id: "wanderer",
+          name: "End-to-end wanderer",
+          description: "A frame that navigates itself",
+          category: "E2E plugins",
+          standalone: true,
+          permissions: [],
+          grid: { w: 12, h: 6 },
+        },
+      ],
+    },
+  };
+}
+
 const WIDGETS = {
   e2e_rows: {
     name: "E2E rows",
