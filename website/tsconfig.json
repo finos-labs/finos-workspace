@@ -18,5 +18,5 @@
       "@site/*": ["./*"]
     }
   },
-  "include": ["src", "scripts", "plugins", "docusaurus.config.ts", "sidebars.ts"]
+  "include": ["src", "scripts", "plugins", "tests", "docusaurus.config.ts", "sidebars.ts"]
 }

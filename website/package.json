@@ -11,6 +11,7 @@
     "prebuild": "npm run generate",
     "build": "docusaurus build",
     "serve": "docusaurus serve",
+    "test": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/**/*.test.ts\"",
     "typecheck": "npm run generate && tsc --noEmit"
   },
   "dependencies": {
@@ -19,6 +20,7 @@
     "@docusaurus/theme-classic": "3.10.2",
     "@docusaurus/theme-common": "3.10.2",
     "@easyops-cn/docusaurus-search-local": "0.55.3",
+    "parse5": "7.3.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },

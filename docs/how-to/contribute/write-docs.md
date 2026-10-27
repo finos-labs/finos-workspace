@@ -42,10 +42,11 @@ The development server listens on port 3000. When the local stack is running, th
 
 ## Check before you push
 
-Run the type check and the build:
+Run the type check, the tests of the site's code and the build:
 
 ```bash
 npm run typecheck
+npm test
 npm run build
 ```
 
@@ -58,7 +59,7 @@ FINOS hosts its project websites on Netlify, and the Docs workflow in `.github/w
 The workflow runs for every pull request and every push to `main` that touches the pages in `docs`, the site in `website`, `netlify.toml`, or the code of the backend, the agent and the web app. These jobs run in both cases:
 
 1. Three jobs write the data of the backend, the agent and the web app, each in its own environment.
-2. The build job generates the site's data, checks its types, builds the site and checks that `llms.txt` exists.
+2. The build job generates the site's data, checks its types, runs the tests of the site's code, builds the site and checks that `llms.txt` exists.
 
 On a pull request, that is all: nothing is deployed, so the run is the test of the deploy. When a change reaches `main`, the build job first asks Netlify for the main address of the site, so that the canonical links and `llms.txt` carry the address that readers use, and it keeps the built site. A last job, `Deploy to Netlify`, then publishes that built site with the Netlify CLI. The deploy job is the only job that does not run on a pull request, and a manual run of the workflow never deploys either.
 

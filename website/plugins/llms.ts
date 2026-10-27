@@ -2,15 +2,17 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { LoadedContent } from "@docusaurus/plugin-content-docs";
 import type { Plugin } from "@docusaurus/types";
+import { type DefaultTreeAdapterMap, parse } from "parse5";
 
 const DOCS_PLUGIN = "docusaurus-plugin-content-docs";
 const FILE_NAME = "llms.txt";
-const FIRST_PARAGRAPH = /<div class="theme-doc-markdown markdown">\s*<header>[\s\S]*?<\/header>\s*<p>([\s\S]*?)<\/p>/;
 const ABBREVIATION = /\b(?:e\.g|i\.e|etc|vs)\.$/i;
-const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 
 type Version = LoadedContent["loadedVersions"][number];
 type SidebarItem = Version["sidebars"][string][number];
+type Node = DefaultTreeAdapterMap["node"];
+type Element = DefaultTreeAdapterMap["element"];
+type TextNode = DefaultTreeAdapterMap["textNode"];
 
 interface NavbarSidebar {
   sidebarId: string;
@@ -47,20 +49,46 @@ function navbarSidebars(themeConfig: Record<string, unknown>): NavbarSidebar[] {
   );
 }
 
-function decodeEntities(html: string): string {
-  return html.replace(/&(?:#x([0-9a-f]+)|#(\d+)|([a-z]+));/gi, (match, hex?: string, decimal?: string, name?: string) => {
-    if (hex) return String.fromCodePoint(Number.parseInt(hex, 16));
-    if (decimal) return String.fromCodePoint(Number.parseInt(decimal, 10));
-    return (name && ENTITIES[name.toLowerCase()]) || match;
-  });
+function isElement(node: Node): node is Element {
+  return "tagName" in node;
 }
 
-function paragraphText(html: string): string {
-  const text = html
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/<code>([\s\S]*?)<\/code>/g, (_, code: string) => `\`${code.replace(/<[^>]+>/g, "")}\``)
-    .replace(/<[^>]+>/g, "");
-  return decodeEntities(text).replace(/\s+/g, " ").trim();
+function isText(node: Node): node is TextNode {
+  return node.nodeName === "#text";
+}
+
+function childrenOf(node: Node): Node[] {
+  return "childNodes" in node ? node.childNodes : [];
+}
+
+function classesOf(element: Element): string[] {
+  return (element.attrs.find((attribute) => attribute.name === "class")?.value ?? "").split(/\s+/);
+}
+
+function findElement(node: Node, matches: (element: Element) => boolean): Element | undefined {
+  for (const child of childrenOf(node)) {
+    if (isElement(child) && matches(child)) return child;
+    const found = findElement(child, matches);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function textOf(node: Node): string {
+  if (isText(node)) return node.value;
+  if (!isElement(node) || node.tagName === "script" || node.tagName === "style") return "";
+  const text = childrenOf(node).map(textOf).join("");
+  return node.tagName === "code" ? `\`${text}\`` : text;
+}
+
+function firstParagraphText(html: string): string {
+  const page = findElement(parse(html), (element) => {
+    const classes = classesOf(element);
+    return element.tagName === "div" && classes.includes("theme-doc-markdown") && classes.includes("markdown");
+  });
+  const [header, paragraph] = page?.childNodes.filter(isElement) ?? [];
+  if (header?.tagName !== "header" || paragraph?.tagName !== "p") return "";
+  return textOf(paragraph).replace(/\s+/g, " ").trim();
 }
 
 function firstSentence(text: string): string {
@@ -134,8 +162,7 @@ export default function llms(): Plugin {
           continue;
         }
         const html = await readFile(join(outDir, pageFile(doc.permalink, siteConfig.baseUrl)), "utf8");
-        const paragraph = FIRST_PARAGRAPH.exec(html)?.[1];
-        descriptions.set(doc.id, paragraph ? firstSentence(paragraphText(paragraph)) : "");
+        descriptions.set(doc.id, firstSentence(firstParagraphText(html)));
       }
 
       const entryOf = (id: string): Entry => {

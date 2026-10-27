@@ -77,7 +77,7 @@ npm test
 
 ## The documentation site
 
-In `website`, `npm run typecheck` generates the reference data and checks the types, and `npm run build` builds the site and fails when a reference is stale or a link is broken. [How to write and preview documentation](write-docs.md) explains how to prepare the data that these commands read.
+In `website`, `npm run typecheck` generates the reference data and checks the types, `npm test` runs the tests of the site's own code with the test runner that Node includes, and `npm run build` builds the site and fails when a reference is stale or a link is broken. [How to write and preview documentation](write-docs.md) explains how to prepare the data that these commands read.
 
 ## The example plugins
 

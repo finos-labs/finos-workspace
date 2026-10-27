@@ -166,6 +166,12 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/repo" -w /repo/website --entrypoint /repo/website/node_modules/@typescript/typescript-linux-x64/lib/tsc \
             "$NODE_IMAGE" --noEmit
+      - name: Test the code of the site
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo/website "$NODE_IMAGE" /usr/local/bin/node \
+            --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test "tests/**/*.test.ts"
       - name: Build the site, which fails on a broken link or anchor
         env:
           NODE_IMAGE: ${{ needs.node.outputs.image }}
