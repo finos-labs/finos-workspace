@@ -70,6 +70,12 @@ export const copilotSchema = z
         "widget-global-search": data.hasFunctionCalling,
       };
     }
+    if (data.hasDocuments !== undefined) {
+      data.features = {
+        ...data.features,
+        "file-upload": data.hasDocuments,
+      };
+    }
     return true;
   });
 
