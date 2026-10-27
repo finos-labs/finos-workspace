@@ -14,14 +14,15 @@ The site needs Node 26.12.1, the version that the repository's images run.
 ```bash
 cd website
 npm ci --ignore-scripts
+npm run reference
 npm start
 ```
 
-The command opens the site at `http://localhost:3000`. Run `npm run typecheck` and `npm run build` before you push. The build fails on a broken link or anchor.
+The reference pages are generated from data that the backend, the agent and the web app write. Git does not track that data, and `npm run reference` writes it: it expects the backend's Python environment to be active and it runs `npm ci` in `agent` and in `frontend`. The page *How to regenerate the reference data* describes each part. `npm start` opens the site at `http://localhost:3000`. Run `npm run typecheck` and `npm run build` before you push. The build fails on a broken link or anchor.
 
 ## Deployment
 
-Netlify serves the site, as it does for FINOS websites. The file `netlify.toml` at the root of the repository sets the working directory to `website`, the build command to `npm run build` and the build directory to `website/build`. The pages that the generator creates come from the sources and fixtures in the commit that Netlify builds. The build also writes `llms.txt` at the root of the site, with the title, address and description of every page; the plugin `plugins/llms.ts` writes it. To serve the site at an address such as `<project>.finos.org`, email help@finos.org.
+Netlify serves the site, as it does for FINOS websites. The file `netlify.toml` at the root of the repository sets the working directory to `website`, the build command to `npm run build` and the build directory to `website/build`. The reference data is not tracked by git: the build installs the backend's dependencies and writes the data of the backend, the agent and the web app with `npm run reference`, so the generated pages come from the sources in the commit that Netlify builds. The build also writes `llms.txt` at the root of the site, with the title, address and description of every page; the plugin `plugins/llms.ts` writes it. To serve the site at an address such as `<project>.finos.org`, email help@finos.org.
 
 ## Website dependency updates
 

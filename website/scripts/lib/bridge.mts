@@ -1,16 +1,8 @@
-import { readFileSync } from "node:fs";
 import { jsonSchemaFields } from "../../../agent/scripts/reference/json-schema.ts";
 import type { BridgeData, PluginValueType, ProtocolMessage } from "../../src/data/types.ts";
-import { fromRepo } from "./paths.mts";
+import { readReference } from "./reference.mts";
 
 type Json = Record<string, any>;
-
-const BACKEND = "backend-api/backend/tests/fixtures/workspace_bridge.json";
-const FRONTEND = "frontend/tests/fixtures/workspace-bridge-reference.json";
-
-function readJson(path: string): Json {
-  return JSON.parse(readFileSync(fromRepo(path), "utf8")) as Json;
-}
 
 function messages(entries: Json[]): ProtocolMessage[] {
   return entries.map((entry) => {
@@ -25,8 +17,8 @@ function messages(entries: Json[]): ProtocolMessage[] {
 }
 
 export function collectBridge(): BridgeData {
-  const backend = readJson(BACKEND);
-  const frontend = readJson(FRONTEND);
+  const backend = readReference("backend", "workspace_bridge.json");
+  const frontend = readReference("frontend", "workspace-bridge-reference.json");
   const values: Record<string, PluginValueType> = {};
   for (const [key, value] of Object.entries(backend.constants as Json)) {
     if (typeof value === "number" || typeof value === "string") values[`constants.${key}`] = value;

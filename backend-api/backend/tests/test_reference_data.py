@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from scripts import export_reference_data as export
@@ -9,6 +11,10 @@ def reset_rate_limiter():
 
 
 @pytest.mark.parametrize("name", sorted(export.FILES))
-def test_reference_data_matches_the_code(name):
-    path = export.FIXTURES / export.FILES[name]
-    assert export.render(export.COLLECTORS[name]()) == path.read_text(encoding="utf-8")
+def test_each_collector_renders_json(name):
+    assert json.loads(export.render(export.COLLECTORS[name]()))
+
+
+def test_the_exporter_writes_every_file(tmp_path):
+    assert export.main(["-o", str(tmp_path)]) == 0
+    assert sorted(path.name for path in tmp_path.iterdir()) == sorted(export.FILES.values())

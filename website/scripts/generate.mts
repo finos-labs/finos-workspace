@@ -11,6 +11,7 @@ import {
   collectSettings,
   collectWidgetsSchema,
 } from "./lib/backend.mts";
+import { checkAgreement } from "./lib/agreement.mts";
 import { collectCss } from "./lib/css.mts";
 import { collectAgent } from "./lib/agent.mts";
 import { collectBridge } from "./lib/bridge.mts";
@@ -50,6 +51,7 @@ const outputs: Record<string, unknown> = {
   web: collectWeb(),
 };
 
+checkAgreement();
 checkCoverage(outputs.plugins as PluginsData, outputs.agent as AgentData);
 checkRoutes(outputs.api as ApiData, outputs.agent as AgentData, outputs.bridge as BridgeData, outputs.plugins as PluginsData);
 

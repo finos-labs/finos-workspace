@@ -11,7 +11,7 @@ The API, the worker and the init job read their settings from the environment. O
 
 A variable has the name of the setting, matched without regard to case and without any prefix. A setting that has no default is required, and the process does not start without it. Each table lists the variable, its type, its default and what it does. A setting that takes one of a few values lists them in the place of its type. The description is the `description` of the setting's `Field` in `config.py`, and a test fails for a setting that has none, or that the code reads from the environment without declaring it. The file `backend-api/backend/envs/.env.example` is a template of `envs/.env`.
 
-The tables are generated from the `Settings` class. The data is `backend-api/backend/tests/fixtures/settings.json`, which a test keeps equal to the class.
+The tables are generated from the `Settings` class. The data is `backend-api/backend/reference-data/settings.json`, which the backend's exporter writes.
 
 ## Access (`AccessSettings`)
 

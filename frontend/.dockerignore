@@ -7,3 +7,4 @@ tests
 docs
 playwright.config.ts
 vitest.setup.ts
+reference-data

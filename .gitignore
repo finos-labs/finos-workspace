@@ -7,3 +7,5 @@ kb/
 website/build
 website/.docusaurus
 website/src/generated
+
+**/reference-data

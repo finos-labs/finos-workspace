@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 
-from scripts import export_reference_data as export
 from scripts.reference_bridge import collect_workspace_bridge
 
 BACKEND = Path(__file__).resolve().parents[1]
+SURFACE = Path(__file__).parent / "fixtures" / "workspace_mcp_sidecar_surface.json"
 SENT = re.compile(r"""command\s*=\s*["']([a-z_]+)["']|["']command["']\s*:\s*["']([a-z_]+)["']""")
 
 
@@ -56,14 +56,14 @@ def test_every_field_of_a_message_and_of_the_result_has_a_description(bridge):
 
 
 def test_the_tools_are_the_commands_that_have_one(bridge):
-    surface = json.loads((export.FIXTURES / "workspace_mcp_sidecar_surface.json").read_text(encoding="utf-8"))["surface"]
+    surface = json.loads(SURFACE.read_text(encoding="utf-8"))["surface"]
     assert sorted(tool["name"] for tool in surface["tools"]) == sorted(
         command["tool"] for command in bridge["commands"] if command["tool"]
     )
 
 
 def test_the_commands_without_a_tool_are_resources(bridge):
-    surface = json.loads((export.FIXTURES / "workspace_mcp_sidecar_surface.json").read_text(encoding="utf-8"))["surface"]
+    surface = json.loads(SURFACE.read_text(encoding="utf-8"))["surface"]
     assert [command["name"] for command in bridge["commands"] if command["tool"] is None] == ["get_widgets_schema"]
     assert bridge["constants"]["widgetsSchemaResource"] in {resource["uri"] for resource in surface["resources"]}
 

@@ -4,6 +4,7 @@
   "license": "Apache-2.0",
   "version": "1.0.0",
   "scripts": {
+    "reference": "bash scripts/reference.sh",
     "generate": "node --disable-warning=ExperimentalWarning scripts/generate.mts",
     "prestart": "npm run generate",
     "start": "docusaurus start",

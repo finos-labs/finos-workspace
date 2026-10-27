@@ -35,7 +35,7 @@ from workspace_mcp.config import (
     Settings as SidecarSettings,
 )
 
-FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
+OUTPUT = Path(__file__).resolve().parents[1] / "reference-data"
 
 FILES = {
     "openapi": "openapi.json",
@@ -406,26 +406,14 @@ def render(payload: dict[str, Any]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Export the data behind the reference documentation.")
-    parser.add_argument("-o", "--output-dir", type=Path, default=FIXTURES, help="directory to write")
-    parser.add_argument(
-        "-c", "--check", action="store_true", help="verify the existing files match the current code"
-    )
+    parser.add_argument("-o", "--output-dir", type=Path, default=OUTPUT, help="directory to write")
     args = parser.parse_args(argv)
 
-    stale = []
     for name, filename in FILES.items():
-        content = render(COLLECTORS[name]())
         path = args.output_dir / filename
-        if args.check:
-            if not path.exists() or path.read_text(encoding="utf-8") != content:
-                stale.append(str(path))
-            continue
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
+        path.write_text(render(COLLECTORS[name]()), encoding="utf-8")
         sys.stdout.write(f"wrote {path}\n")
-    if stale:
-        sys.stderr.write("stale: " + ", ".join(stale) + "\n")
-        return 1
     return 0
 
 

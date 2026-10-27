@@ -1,8 +1,9 @@
 [build]
   base = "website"
-  command = "npm run build"
+  command = "pip install poetry==2.3.2 && (cd ../backend-api/backend && poetry config virtualenvs.create false && poetry install --only main) && npm run reference && npm run build"
   publish = "build"
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF . ../docs ../netlify.toml ../frontend/src ../frontend/app-config.js ../frontend/apps-schema.json ../frontend/nginx.conf ../frontend/tests/fixtures ../agent/src ../agent/mcp-server/src ../agent/scripts/reference ../agent/tests/fixtures ../agent/.env.example ../backend-api/backend/tests/fixtures ../backend-api/backend/envs/.env.example"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF . ../docs ../netlify.toml ../frontend ../agent ../backend-api/backend"
 
 [build.environment]
   NODE_VERSION = "26.12.1"
+  PYTHON_VERSION = "3.13"

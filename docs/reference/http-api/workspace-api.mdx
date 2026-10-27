@@ -20,7 +20,7 @@ Every HTTP and WebSocket request must come from an allowed origin. The API allow
 
 Routes that apply a rate limit allow <SettingConstant name="rateLimitDefault" /> for each client address by default, and a few sensitive routes allow <SettingConstant name="rateLimitFew" />. A request that carries a valid service token in the header `X-Workspace-Authorization` is exempt from the limits when the deployment turns that exemption on with `RATE_LIMIT_EXEMPT_ENABLED`.
 
-The page is generated from `backend-api/backend/tests/fixtures/openapi.json`, which a test keeps equal to the document that `app.openapi()` builds. The document leaves out `/metrics`, because that route exists only when the `PROMETHEUS` setting is on, and it serves the Prometheus metrics.
+The page is generated from `backend-api/backend/reference-data/openapi.json`, which the backend's exporter writes from the document that `app.openapi()` builds. The document leaves out `/metrics`, because that route exists only when the `PROMETHEUS` setting is on, and it serves the Prometheus metrics.
 
 ## admin
 

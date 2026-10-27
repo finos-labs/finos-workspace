@@ -10,11 +10,12 @@ import type {
   SettingsData,
 } from "../../src/data/types.ts";
 import { fromRepo } from "./paths.mts";
+import { readReference, referencePath } from "./reference.mts";
 import { describeSchema, describeSet, typeLabel } from "./schema.mts";
 
 type Json = Record<string, any>;
 
-const FIXTURES = "backend-api/backend/tests/fixtures";
+const SURFACE = "backend-api/backend/tests/fixtures/workspace_mcp_sidecar_surface.json";
 const METHODS = ["get", "post", "put", "patch", "delete"];
 
 function readJson(path: string): Json {
@@ -22,7 +23,7 @@ function readJson(path: string): Json {
 }
 
 export function collectApi(): ApiData {
-  const spec = readJson(`${FIXTURES}/openapi.json`);
+  const spec = readReference("backend", "openapi.json");
   const byTag = new Map<string, ApiOperation[]>();
   for (const path of Object.keys(spec.paths).sort()) {
     const item = spec.paths[path] as Json;
@@ -74,7 +75,7 @@ export function collectApi(): ApiData {
 }
 
 export function collectWidgetsSchema(): SchemaSet {
-  return describeSet(`${FIXTURES}/widgets_schema.json`, "widgets.json", readJson(`${FIXTURES}/widgets_schema.json`), "definitions");
+  return describeSet(referencePath("backend", "widgets_schema.json"), "widgets.json", readReference("backend", "widgets_schema.json"), "definitions");
 }
 
 export function collectAppsSchema(): SchemaSet {
@@ -83,15 +84,15 @@ export function collectAppsSchema(): SchemaSet {
 
 export function collectManifestSchema(): SchemaSet {
   return describeSet(
-    `${FIXTURES}/plugin_manifest_schema.json`,
+    referencePath("backend", "plugin_manifest_schema.json"),
     "plugin.json",
-    readJson(`${FIXTURES}/plugin_manifest_schema.json`),
+    readReference("backend", "plugin_manifest_schema.json"),
     "$defs",
   );
 }
 
 export function collectSettings(): SettingsData {
-  const source = readJson(`${FIXTURES}/settings.json`);
+  const source = readReference("backend", "settings.json");
   return {
     constants: source.constants as Record<string, number | string>,
     fields: (source.fields as Json[]).map((field) => {
@@ -113,7 +114,7 @@ export function collectSettings(): SettingsData {
 }
 
 export function collectDatabase(): DatabaseData {
-  const source = readJson(`${FIXTURES}/database_schema.json`);
+  const source = readReference("backend", "database_schema.json");
   return {
     tables: (source.tables as Json[]).map((table) => ({
       name: table.name as string,
@@ -157,7 +158,7 @@ function mapCommand(command: Json): CliCommand {
 }
 
 export function collectCli(): CliData {
-  const source = readJson(`${FIXTURES}/admin_cli.json`);
+  const source = readReference("backend", "admin_cli.json");
   return {
     prog: source.prog as string,
     description: (source.description as string | null) ?? null,
@@ -166,7 +167,7 @@ export function collectCli(): CliData {
 }
 
 export function collectMcp(): McpData {
-  const surface = readJson(`${FIXTURES}/workspace_mcp_sidecar_surface.json`).surface as Json;
+  const surface = readJson(SURFACE).surface as Json;
   return {
     instructions: surface.instructions as string,
     tools: (surface.tools as Json[]).map((tool) => ({

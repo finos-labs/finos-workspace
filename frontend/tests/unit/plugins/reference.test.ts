@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -33,11 +33,7 @@ import {
   PLUGIN_ID_PATTERN,
 } from "~/plugins/types";
 
-const FIXTURE = resolve(__dirname, "../../fixtures/plugin-reference.json");
-const BACKEND = resolve(
-  __dirname,
-  "../../../../backend-api/backend/tests/fixtures/widget_plugins.json",
-);
+const OUT = process.env.REFERENCE_OUT ?? "";
 
 function reference() {
   return {
@@ -59,6 +55,15 @@ function reference() {
     exportMembers: [...EXPORT_MEMBERS],
     commandPermissions: COMMAND_PERMISSIONS,
     permissions: [...PERMISSIONS],
+    patterns: { pluginId: PLUGIN_ID_PATTERN.source },
+    csp: {
+      directives: [...POLICY_DIRECTIVES],
+      floor: FLOOR,
+      maxSources: MAX_SOURCES,
+      maxSourceLength: MAX_SOURCE_LENGTH,
+      confirmations: [...CONFIRMATIONS],
+      privateSuffixes: PRIVATE_SUFFIXES,
+    },
     limits: {
       ...limits,
       maxGuestMessageBytes: MAX_GUEST_MESSAGE_BYTES,
@@ -72,9 +77,9 @@ function reference() {
 const render = () => `${JSON.stringify(reference(), null, 2)}\n`;
 
 describe("the plugin reference data", () => {
-  it("is what the code says", () => {
-    if (process.env.UPDATE_REFERENCE) writeFileSync(FIXTURE, render());
-    expect(readFileSync(FIXTURE, "utf8")).toBe(render());
+  it.runIf(OUT !== "")("is written for the documentation", () => {
+    mkdirSync(resolve(OUT), { recursive: true });
+    writeFileSync(resolve(OUT, "plugin-reference.json"), render());
   });
 
   it("describes each message between the frame and the host", () => {
@@ -104,37 +109,5 @@ describe("the plugin reference data", () => {
 describe("the shell and the host agree on the rules of a command", () => {
   it("time out a command alike", () => {
     expect(shellSource).toContain(`opts.timeout || ${limits.COMMAND_TIMEOUT_MS}`);
-  });
-});
-
-describe("the host and the backend agree on the rules of a plugin", () => {
-  const backend = JSON.parse(readFileSync(BACKEND, "utf8"));
-
-  it("grant the same permissions", () => {
-    expect([...PERMISSIONS].sort()).toEqual(
-      backend.permissions.map((permission: { name: string }) => permission.name),
-    );
-  });
-
-  it("implement the same versions", () => {
-    expect(RUNTIME_VERSION).toBe(backend.host.api);
-    expect(AFM_VERSION).toBe(backend.host.afm);
-  });
-
-  it("name plugins alike", () => {
-    expect(PLUGIN_ID_PATTERN.source).toBe(backend.patterns.pluginId);
-  });
-
-  it("check the policy of a frame alike", () => {
-    expect([...POLICY_DIRECTIVES]).toEqual(backend.csp.directives);
-    expect(FLOOR).toEqual(backend.csp.floor);
-    expect(MAX_SOURCES).toBe(backend.csp.maxSources);
-    expect(MAX_SOURCE_LENGTH).toBe(backend.csp.maxSourceLength);
-    expect([...CONFIRMATIONS]).toEqual(backend.csp.confirmations);
-    expect(PRIVATE_SUFFIXES).toEqual(backend.csp.privateSuffixes);
-  });
-
-  it("report blocked requests alike", () => {
-    expect(limits.MAX_REPORTS_PER_FLUSH).toBe(backend.reports.perRequest);
   });
 });

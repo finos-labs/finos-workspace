@@ -28,11 +28,12 @@ Put each page in the one folder that matches its job. A page that tries to do tw
 
 ## Preview the site
 
-The site needs Node 26.12.1, the version that the repository's images run. Install the dependencies once and start the development server:
+The site needs Node 26.12.1, the version that the repository's images run. The reference pages are generated from data that the backend, the agent and the web app write, and git does not track it, so write the data once, as [How to regenerate the reference data](regenerate-reference-data.md) describes. Then install the site's dependencies and start the development server:
 
 ```bash
 cd website
 npm ci --ignore-scripts
+npm run reference
 npm start
 ```
 
@@ -51,9 +52,9 @@ The build fails on a broken link, a broken anchor or a page that no sidebar list
 
 ## How the site is published
 
-FINOS hosts its project websites on Netlify. The file `netlify.toml` at the root of the repository tells Netlify to build in `website`, to run `npm run build` and to publish `website/build`. Netlify builds a preview for each pull request, and it publishes the site when a change reaches `main`. It skips a build when the change touches nothing that the site reads, which means the pages in `docs`, the site in `website`, and the sources and fixtures that the generator reads.
+FINOS hosts its project websites on Netlify. The file `netlify.toml` at the root of the repository tells Netlify to build in `website`, to install the backend's dependencies, to write the reference data with `npm run reference`, to run `npm run build` and to publish `website/build`. Netlify builds a preview for each pull request, and it publishes the site when a change reaches `main`. It skips a build when the change touches nothing that the site reads, which means the pages in `docs`, the site in `website`, and the code of the backend, the agent and the web app.
 
-The build runs the site's generator first, so the generated pages come from the sources as they stand in the commit. The backend fixtures are committed and the tests keep them equal to the code, which is why the build needs no Python. The site takes its canonical address from the variable `URL`, which Netlify sets to the site's main address.
+Git does not track the reference data, so every build writes it from the sources of the commit that it builds, and the generated pages always come from the code. The Docs checks workflow does the same for each pull request: it writes the data of the backend, the agent and the web app in jobs of their own, and then it generates the site, checks its types, builds it and checks that `llms.txt` exists. The site takes its canonical address from the variable `URL`, which Netlify sets to the site's main address.
 
 The build also writes `llms.txt` at the root of the site. It is the plain-text index that language models and the tools that feed them read to find pages. The file starts with the site's name and tagline, and then it lists every page under the headings of the navigation bar and the sidebar categories, each with its title, its address and a description. The description is the `description` in the page's front matter when the page has one, and otherwise the first sentence of the rendered page, so the file shows the values that the generated components print. Only the build writes the file, and it fails when a sidebar names a page that does not exist, when a page is listed twice or when a page is in no sidebar.
 

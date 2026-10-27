@@ -6,18 +6,9 @@ on:
       - "docs/**"
       - "website/**"
       - "netlify.toml"
-      - "backend-api/backend/tests/fixtures/**"
-      - "backend-api/backend/envs/.env.example"
-      - "frontend/src/**"
-      - "frontend/app-config.js"
-      - "frontend/apps-schema.json"
-      - "frontend/nginx.conf"
-      - "frontend/tests/fixtures/**"
-      - "agent/src/**"
-      - "agent/mcp-server/src/**"
-      - "agent/scripts/reference/**"
-      - "agent/tests/fixtures/**"
-      - "agent/.env.example"
+      - "backend-api/backend/**"
+      - "frontend/**"
+      - "agent/**"
       - ".github/workflows/docs-checks.yml"
   workflow_dispatch:
 
@@ -33,12 +24,104 @@ jobs:
   node:
     uses: ./.github/workflows/agent-node.yml
 
-  build:
-    name: Generate, types and build
+  backend:
+    name: Backend reference data
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend-api/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: |
+          pip install poetry==2.3.2
+          poetry config virtualenvs.create false
+          poetry install --only main
+      - name: Write the data, which fails when the code cannot produce it
+        run: env $(sed -n 's/^    \([A-Z_]*=.*\)$/\1/p' pytest.ini | xargs) python -m scripts.export_reference_data
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-reference-data
+          path: backend-api/backend/reference-data
+          if-no-files-found: error
+
+  agent:
+    name: Agent reference data
     needs: node
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 26.12.1
+      - run: npm ci
+        working-directory: agent
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Write the data on the images' Node
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
+        run: |
+          docker run --rm -v "$PWD/agent:/app" -w /app "$NODE_IMAGE" /usr/local/bin/node \
+            --import ./tests/setup.ts scripts/export-reference.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-reference-data
+          path: agent/reference-data
+          if-no-files-found: error
+
+  frontend:
+    name: Web app reference data
+    needs: node
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 26.12.1
+      - run: npm ci --ignore-scripts --os=linux --cpu=x64 --libc=musl
+        working-directory: frontend
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Write the data on the images' Node
+        env:
+          NODE_IMAGE: ${{ needs.node.outputs.image }}
+        run: |
+          docker run --rm -e REFERENCE_OUT=reference-data -v "$PWD:/repo" -w /repo/frontend "$NODE_IMAGE" /usr/local/bin/node \
+            node_modules/vitest/vitest.mjs run tests/unit/plugins/reference.test.ts tests/unit/components/AI/workspaceBridgeReference.test.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-reference-data
+          path: frontend/reference-data
+          if-no-files-found: error
+
+  build:
+    name: Generate, types and build
+    needs: [node, backend, agent, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-reference-data
+          path: backend-api/backend/reference-data
+      - uses: actions/download-artifact@v4
+        with:
+          name: agent-reference-data
+          path: agent/reference-data
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-reference-data
+          path: frontend/reference-data
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 26.12.1

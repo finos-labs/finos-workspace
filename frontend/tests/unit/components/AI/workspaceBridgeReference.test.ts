@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -7,13 +7,7 @@ import {
   BRIDGE_LIMITS,
 } from "~/components/AI/workspaceBridgeProtocol";
 
-const FIXTURE = resolve(__dirname, "../../../fixtures/workspace-bridge-reference.json");
-const BACKEND = resolve(
-  __dirname,
-  "../../../../../backend-api/backend/tests/fixtures/workspace_bridge.json",
-);
-
-const AGENT_ONLY = ["execute_agent_tool"];
+const OUT = process.env.REFERENCE_OUT ?? "";
 
 const render = () =>
   `${JSON.stringify(
@@ -27,26 +21,13 @@ const render = () =>
   )}\n`;
 
 describe("the bridge reference data", () => {
-  it("is what the code says", () => {
-    if (process.env.UPDATE_REFERENCE) writeFileSync(FIXTURE, render());
-    expect(readFileSync(FIXTURE, "utf8")).toBe(render());
-  });
-});
-
-describe("the tab and the API agree on the bridge", () => {
-  const backend = JSON.parse(readFileSync(BACKEND, "utf8"));
-
-  it("name the same errors", () => {
-    expect([...BRIDGE_ERROR_CODES]).toEqual(backend.errorCodes);
+  it.runIf(OUT !== "")("is written for the documentation", () => {
+    mkdirSync(resolve(OUT), { recursive: true });
+    writeFileSync(resolve(OUT, "workspace-bridge-reference.json"), render());
   });
 
-  it("run the commands that the API sends, and the ones that only the agent sends", () => {
-    const sent = backend.commands.map((command: { name: string }) => command.name);
-    expect([...BRIDGE_COMMAND_NAMES].sort()).toEqual([...sent, ...AGENT_ONLY].sort());
-  });
-
-  it("keep the heartbeat inside the time that the API keeps a presence", () => {
-    const presence = backend.constants.presenceTtlSeconds * 1000;
-    expect(BRIDGE_LIMITS.heartbeatIntervalMs).toBeLessThan(presence);
+  it("names each command and each error code once", () => {
+    expect(new Set(BRIDGE_COMMAND_NAMES).size).toBe(BRIDGE_COMMAND_NAMES.length);
+    expect(new Set(BRIDGE_ERROR_CODES).size).toBe(BRIDGE_ERROR_CODES.length);
   });
 });

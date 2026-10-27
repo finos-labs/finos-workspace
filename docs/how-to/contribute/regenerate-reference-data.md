@@ -4,11 +4,22 @@ title: How to regenerate the reference data
 
 # How to regenerate the reference data
 
-Many reference pages are generated from the code, so that they cannot drift away from it. Each part of Workspace that the reference describes writes a fixture, which is a JSON file under its `tests/fixtures`, and a test keeps that fixture equal to the code. The test fails when the code changes without the fixture. This guide shows what to do when that happens.
+Many reference pages are generated from the code, so that they cannot drift away from it. Each part of Workspace that the reference describes writes JSON files into a folder named `reference-data`, and the site's generator reads them. Git does not track the folders, so nothing generated is committed, and the data always comes from the code of the commit that you build. This guide shows how to write the data and what to do when the site stops for want of it.
 
-Regenerate the data when a change to the API, the settings, the database models, the plugin manifest, the `widgets.json` schema, the admin CLI or the Workspace bridge makes `tests/test_reference_data.py` fail. Do the same when a change to the Workspace MCP server's tools makes `tests/test_workspace_mcp_surface_parity.py` fail, when a change to the agent makes `tests/unit/scripts/reference.test.ts` fail, and when a change to the plugin runtime or the bridge in the web app makes a test named `reference.test.ts` or `workspaceBridgeReference.test.ts` fail.
+Write the data before you generate or build the site, and write it again after a change to the API, the settings, the database models, the plugin manifest, the `widgets.json` schema, the admin CLI, the Workspace bridge, the agent or the plugin runtime of the web app.
 
-## Regenerate the backend data
+## Write all the data
+
+From `website`, run the script that writes the data of the three parts in turn:
+
+```bash
+cd website
+npm run reference
+```
+
+The script runs `npm ci` in `agent` and in `frontend`, so it replaces their `node_modules`, and it expects the backend's Python environment to be active, as the next section describes. The sections after it show how to write the data of one part.
+
+## Write the backend's data
 
 1. From `backend-api/backend`, with the backend's Python environment active, run the exporter. It needs the variables of the `env` block of `pytest.ini`, so the command sets them first:
 
@@ -17,47 +28,45 @@ Regenerate the data when a change to the API, the settings, the database models,
    env $(sed -n 's/^    \([A-Z_]*=.*\)$/\1/p' pytest.ini | xargs) python -m scripts.export_reference_data
    ```
 
-   The exporter rewrites eight files in `tests/fixtures`: `openapi.json`, `widgets_schema.json`, `plugin_manifest_schema.json`, `database_schema.json`, `settings.json`, `admin_cli.json`, `widget_plugins.json` and `workspace_bridge.json`. Add `--check` to compare the files with the code without writing them. A test also fails when a setting, a manifest field, a widgets.json property or a field of a bridge command has no description, so a new one needs its description in the code.
+   The exporter writes eight files into `backend-api/backend/reference-data`: `openapi.json`, `widgets_schema.json`, `plugin_manifest_schema.json`, `database_schema.json`, `settings.json`, `admin_cli.json`, `widget_plugins.json` and `workspace_bridge.json`. Pass `-o <folder>` to write them elsewhere. A test fails when a setting, a manifest field, a widgets.json property or a field of a bridge command has no description, so a new one needs its description in the code.
 
-2. If the tools, resources or prompts of the Workspace MCP server changed, regenerate its fixture in the same way:
+2. The page about the Workspace MCP server is generated from a fixture that the repository does keep, `tests/fixtures/workspace_mcp_sidecar_surface.json`, because it records the contract of that server. If the tools, resources or prompts of the server changed on purpose, regenerate the fixture in the same way and commit it:
 
    ```bash
    env $(sed -n 's/^    \([A-Z_]*=.*\)$/\1/p' pytest.ini | xargs) python -m scripts.export_workspace_mcp_surface
    ```
 
-3. Commit the changed files.
+## Write the agent's data
 
-## Regenerate the agent's data
-
-From `agent`, run the exporter on Node 26.12.1. It writes `tests/fixtures/reference.json`, which holds the routes, the metrics, the MCP tools, the query protocol and the limits of Ines. Add `:check` to the script name to compare the file with the code without writing it.
+From `agent`, install the dependencies and run the exporter on Node 26.12.1. It writes `agent/reference-data/reference.json`, which holds the routes, the metrics, the MCP tools, the query protocol and the limits of Ines.
 
 ```bash
 cd agent
+npm ci --ignore-scripts
 npm run reference
 ```
 
 The descriptions of the agent's environment variables are in `agent/src/lib/env-reference.ts`, and a test fails when the code reads a variable that the file does not describe.
 
-## Regenerate the web app's data
+## Write the web app's data
 
-From `frontend`, run the tests that write the fixtures with `UPDATE_REFERENCE` set. They write `tests/fixtures/plugin-reference.json`, which holds the plugin runtime's messages, limits and permissions, and `tests/fixtures/workspace-bridge-reference.json`, which holds the limits and the commands of the bridge in the tab.
+From `frontend`, install the dependencies and run the script that runs the two tests which write the data. It writes `frontend/reference-data/plugin-reference.json`, which holds the plugin runtime's messages, limits, permissions and policy rules, and `frontend/reference-data/workspace-bridge-reference.json`, which holds the limits, the errors and the commands of the bridge in the tab.
 
 ```bash
 cd frontend
-UPDATE_REFERENCE=1 npx vitest run tests/unit/plugins/reference.test.ts tests/unit/components/AI/workspaceBridgeReference.test.ts
+npm ci --ignore-scripts
+npm run reference
 ```
 
-The same tests compare the web app with the backend's fixtures, for example the permissions of a plugin and the commands of the bridge, so run the backend exporter first.
+## Generate the site's data
 
-## Regenerate the site's data
-
-The site reads the fixtures of the backend, the web app and the agent. It writes what its components render to `website/src/generated`, which git does not track. To refresh that data, run the generator:
+The site reads the three folders. It writes what its components render to `website/src/generated`, which git does not track. To refresh that data, run the generator:
 
 ```bash
 cd website
 npm run generate
 ```
 
-The commands `npm start`, `npm run build` and `npm run typecheck` run the generator first, so a changed fixture needs no other step. The generator also checks that the hand-written pages mention what the code defines, for example every command that a widget plugin can call and every kind of typed result, and it stops with the list of what is missing.
+The generator stops with the command that writes the data when a file is missing. The commands `npm start`, `npm run build` and `npm run typecheck` run it first, so a changed folder needs no other step. The generator also checks that the web app and the API agree on the rules of a plugin and of the bridge, which are the permissions, the versions, the policy of a frame, the commands and the errors, and that the hand-written pages mention what the code defines, for example every command that a widget plugin can call and every kind of typed result. It stops with the list of what disagrees or is missing.
 
-Netlify builds the published site from the committed fixtures and the sources, as [How to write and preview documentation](write-docs.md#how-the-site-is-published) describes. A change to the code that leaves a fixture behind fails the tests, so the published pages come from fixtures that equal the code.
+Netlify and the Docs checks workflow write the data in the same way before they build the site, as [How to write and preview documentation](write-docs.md#how-the-site-is-published) describes.

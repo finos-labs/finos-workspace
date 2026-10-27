@@ -5,7 +5,7 @@ import { collectMetrics, type MetricEntry } from "./metrics.ts";
 import { collectProtocol, type ProtocolReference } from "./protocol.ts";
 import { collectRoutes, type RoutesReference } from "./routes.ts";
 
-export const FIXTURE = join(dirname(fileURLToPath(import.meta.url)), "../../tests/fixtures/reference.json");
+export const OUTPUT = join(dirname(fileURLToPath(import.meta.url)), "../../reference-data/reference.json");
 
 export interface Reference {
   http: RoutesReference;

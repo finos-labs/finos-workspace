@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "lint": "biome format . --write && biome check . --write && biome lint --write --unsafe .",
     "update-icons": "node scripts/update-icons.js",
+    "reference": "REFERENCE_OUT=reference-data vitest run tests/unit/plugins/reference.test.ts tests/unit/components/AI/workspaceBridgeReference.test.ts",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test tests/e2e",

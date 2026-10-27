@@ -1,17 +1,10 @@
-import { readFileSync } from "node:fs";
 import { jsonSchemaFields } from "../../../agent/scripts/reference/json-schema.ts";
 import type { ProtocolMessage, PluginsData, PluginValueType } from "../../src/data/types.ts";
-import { fromRepo } from "./paths.mts";
+import { readReference, referencePath } from "./reference.mts";
 
 type Json = Record<string, any>;
 
-const BACKEND = "backend-api/backend/tests/fixtures/widget_plugins.json";
-const FRONTEND = "frontend/tests/fixtures/plugin-reference.json";
 const VALUE_GROUPS = ["backend", "csp", "host", "package", "patterns", "proxy", "reports", "schemaLint", "secrets"];
-
-function readJson(path: string): Json {
-  return JSON.parse(readFileSync(fromRepo(path), "utf8")) as Json;
-}
 
 function flatten(prefix: string, node: unknown, out: Record<string, PluginValueType>): void {
   if (typeof node === "number" || typeof node === "string") {
@@ -33,8 +26,8 @@ function messages(schema: Json, source: string): ProtocolMessage[] {
 }
 
 export function collectPlugins(): PluginsData {
-  const backend = readJson(BACKEND);
-  const frontend = readJson(FRONTEND);
+  const backend = readReference("backend", "widget_plugins.json");
+  const frontend = readReference("frontend", "plugin-reference.json");
   const commandPermissions = frontend.commandPermissions as Record<string, string>;
   const commandOf = new Map(Object.entries(commandPermissions).map(([command, permission]) => [permission, command]));
   const values: Record<string, PluginValueType> = {};
@@ -55,8 +48,8 @@ export function collectPlugins(): PluginsData {
     exportOption: jsonSchemaFields(frontend.exportOption as Json),
     traits: backend.traits as string[],
     builtInTypes: backend.builtInTypes as string[],
-    guestMessages: messages(frontend.guestMessages as Json, FRONTEND),
-    hostMessages: messages(frontend.hostMessages as Json, FRONTEND),
+    guestMessages: messages(frontend.guestMessages as Json, referencePath("frontend", "plugin-reference.json")),
+    hostMessages: messages(frontend.hostMessages as Json, referencePath("frontend", "plugin-reference.json")),
     states: backend.states as PluginsData["states"],
     metrics: backend.metrics as PluginsData["metrics"],
     cspFloor: Object.entries(backend.csp.floor as Record<string, string[]>).map(([directive, sources]) => ({ directive, sources })),

@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { expect } from "expect";
 import { createApp } from "../../../src/app.ts";
@@ -6,7 +5,7 @@ import { createLimits } from "../../../src/auth/limits.ts";
 import type { WorkspaceClient } from "../../../src/auth/workspace-client.ts";
 import { loadConfig } from "../../../src/lib/config.ts";
 import { createLocalStore } from "../../../src/lib/store.ts";
-import { collectReference, FIXTURE, renderReference } from "../../../scripts/reference/index.ts";
+import { collectReference, renderReference } from "../../../scripts/reference/index.ts";
 
 const ENV = {
   WORKSPACE_API_URL: "http://api:8000",
@@ -33,8 +32,9 @@ const rejecting: WorkspaceClient = {
 };
 
 describe("the reference data", () => {
-  it("is what the code says", async () => {
-    expect(await renderReference()).toBe(readFileSync(FIXTURE, "utf8"));
+  it("renders as JSON with its four parts", async () => {
+    const reference = JSON.parse(await renderReference());
+    expect(Object.keys(reference).sort()).toEqual(["http", "mcp", "metrics", "protocol"]);
   });
 
   it("asks for a token on exactly the routes that it says need one", async () => {

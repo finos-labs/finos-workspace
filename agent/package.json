@@ -19,8 +19,7 @@
     "evals:locale": "node --env-file-if-exists=.env evals/runner.ts --group=locale",
     "evals:skills": "node --env-file-if-exists=.env evals/runner.ts --group=skills",
     "smoke:rag": "node --env-file-if-exists=.env scripts/smoke-doc-rag.ts",
-    "reference": "node --import ./tests/setup.ts scripts/export-reference.ts",
-    "reference:check": "node --import ./tests/setup.ts scripts/export-reference.ts --check"
+    "reference": "node --import ./tests/setup.ts scripts/export-reference.ts"
   },
   "dependencies": {
     "@ai-sdk/groq": "^3.0.72",
