@@ -5,10 +5,12 @@
       "properties": {
         "protocol": {
           "const": 1,
+          "description": "The version of the protocol that the API speaks with the backend.",
           "title": "Protocol",
           "type": "integer"
         },
         "routes": {
+          "description": "The routes that the backend serves.",
           "items": {
             "$ref": "#/$defs/Route"
           },
@@ -29,6 +31,7 @@
       "additionalProperties": false,
       "properties": {
         "widgets": {
+          "description": "The widget types that the plugin offers.",
           "items": {
             "$ref": "#/$defs/Widget"
           },
@@ -48,11 +51,13 @@
       "additionalProperties": false,
       "properties": {
         "id": {
+          "description": "The data source's id, unique within the plugin.",
           "pattern": "^[a-z][a-z0-9_-]{0,63}$",
           "title": "Id",
           "type": "string"
         },
         "purpose": {
+          "description": "What the backend reads from the data source. Admins read this text in the review.",
           "maxLength": 300,
           "title": "Purpose",
           "type": "string"
@@ -69,10 +74,12 @@
       "additionalProperties": false,
       "properties": {
         "module": {
+          "description": "The module, one .js file outside backend/.",
           "title": "Module",
           "type": "string"
         },
         "styles": {
+          "description": "The style sheets, .css files outside backend/.",
           "items": {
             "type": "string"
           },
@@ -92,6 +99,7 @@
       "properties": {
         "h": {
           "default": 12,
+          "description": "The default height on the dashboard grid.",
           "maximum": 100,
           "minimum": 1,
           "title": "H",
@@ -109,6 +117,7 @@
             }
           ],
           "default": null,
+          "description": "The smallest height that the user may give the widget.",
           "title": "Minh"
         },
         "minW": {
@@ -123,10 +132,12 @@
             }
           ],
           "default": null,
+          "description": "The smallest width that the user may give the widget.",
           "title": "Minw"
         },
         "w": {
           "default": 20,
+          "description": "The default width on the dashboard grid.",
           "maximum": 40,
           "minimum": 1,
           "title": "W",
@@ -150,12 +161,15 @@
             }
           ],
           "default": null,
+          "description": "The JSON Schema of the data.<type> object that a backend writes for the type. It is closed and bounded.",
           "title": "Definition"
         },
         "response": {
-          "$ref": "#/$defs/Response"
+          "$ref": "#/$defs/Response",
+          "description": "The JSON that the backend's endpoint returns for the type."
         },
         "type": {
+          "description": "The viz type that the widget renders. It is the \"type\" value in a backend's widgets.json, and it cannot be a built-in type.",
           "pattern": "^[a-z][a-z0-9_-]{1,31}$",
           "title": "Type",
           "type": "string"
@@ -171,11 +185,13 @@
       "additionalProperties": false,
       "properties": {
         "afm": {
+          "description": "The AFM version that the package follows, as text.",
           "maxLength": 16,
           "title": "Afm",
           "type": "string"
         },
         "api": {
+          "description": "The host API version that the package is built against.",
           "title": "Api",
           "type": "integer"
         }
@@ -191,6 +207,7 @@
       "additionalProperties": false,
       "properties": {
         "traits": {
+          "description": "The module's own trait names, each bound to host state.",
           "maxProperties": 64,
           "patternProperties": {
             "^[A-Za-z_][A-Za-z0-9_]{0,63}$": {
@@ -208,6 +225,7 @@
       "additionalProperties": false,
       "properties": {
         "args": {
+          "description": "The arguments that the proxy accepts, by name. The server refuses unknown arguments.",
           "maxProperties": 32,
           "patternProperties": {
             "^[a-z][a-z0-9_]{0,63}$": {
@@ -251,6 +269,7 @@
             }
           ],
           "default": null,
+          "description": "The JSON body of a POST request, a flat object with literal names. A field whose value is exactly ${arg:<name>} keeps the type of the argument, and text around a token turns the field into a string.",
           "title": "Body"
         },
         "headers": {
@@ -258,17 +277,20 @@
             "maxLength": 2048,
             "type": "string"
           },
+          "description": "The headers of the request. A value may contain ${secret:<name>} and nothing else. A manifest cannot set a header that changes how a request travels.",
           "maxProperties": 16,
           "title": "Headers",
           "type": "object"
         },
         "id": {
+          "description": "The proxy's id, unique within the plugin.",
           "pattern": "^[a-z][a-z0-9_-]{0,63}$",
           "title": "Id",
           "type": "string"
         },
         "method": {
           "default": "GET",
+          "description": "The method of the request that the server makes.",
           "enum": [
             "GET",
             "POST"
@@ -281,6 +303,7 @@
             "maxLength": 2048,
             "type": "string"
           },
+          "description": "The query of the request, with literal names. A value may contain ${arg:<name>}, and the server leaves out a value whose argument is absent.",
           "maxProperties": 32,
           "propertyNames": {
             "maxLength": 128,
@@ -290,9 +313,11 @@
           "type": "object"
         },
         "response": {
-          "$ref": "#/$defs/ProxyResponse"
+          "$ref": "#/$defs/ProxyResponse",
+          "description": "The limits of the upstream's answer."
         },
         "url": {
+          "description": "The https URL of the request, with a literal host and port that appear in server.network and no query or fragment. A ${arg:<name>} token may appear in the path after the host.",
           "maxLength": 2048,
           "minLength": 1,
           "title": "Url",
@@ -311,6 +336,7 @@
       "properties": {
         "maxLength": {
           "default": 256,
+          "description": "The most characters that a string argument may have.",
           "maximum": 2048,
           "minimum": 1,
           "title": "Maxlength",
@@ -326,6 +352,7 @@
             }
           ],
           "default": null,
+          "description": "The largest value that a number argument may have.",
           "title": "Maximum"
         },
         "minimum": {
@@ -338,14 +365,17 @@
             }
           ],
           "default": null,
+          "description": "The smallest value that a number argument may have.",
           "title": "Minimum"
         },
         "required": {
           "default": false,
+          "description": "Whether a call must supply the argument.",
           "title": "Required",
           "type": "boolean"
         },
         "type": {
+          "description": "The kind of value that the argument holds.",
           "enum": [
             "string",
             "number",
@@ -383,6 +413,7 @@
             }
           ],
           "default": null,
+          "description": "The values that an enum argument may have.",
           "title": "Values"
         }
       },
@@ -396,6 +427,7 @@
       "additionalProperties": false,
       "properties": {
         "accepts": {
+          "description": "The content types that the server accepts from the upstream. A response of another type is refused.",
           "items": {
             "enum": [
               "application/json",
@@ -413,6 +445,7 @@
         },
         "maxBytes": {
           "default": 1048576,
+          "description": "The most bytes that the server reads from the upstream. The deployment caps the value as well.",
           "maximum": 26214400,
           "minimum": 1,
           "title": "Maxbytes",
@@ -420,6 +453,7 @@
         },
         "timeoutMs": {
           "default": 10000,
+          "description": "How long a call may take, in milliseconds. The deployment caps the value as well.",
           "maximum": 30000,
           "minimum": 100,
           "title": "Timeoutms",
@@ -433,6 +467,7 @@
       "additionalProperties": false,
       "properties": {
         "name": {
+          "description": "The publisher's name.",
           "maxLength": 100,
           "minLength": 1,
           "title": "Name",
@@ -449,6 +484,7 @@
             }
           ],
           "default": null,
+          "description": "The publisher's website, an https URL.",
           "title": "Url"
         }
       },
@@ -464,11 +500,13 @@
         "accepts": {
           "const": "json",
           "default": "json",
+          "description": "The kind of answer that the backend returns.",
           "title": "Accepts",
           "type": "string"
         },
         "description": {
           "default": "",
+          "description": "What the backend returns.",
           "maxLength": 300,
           "title": "Description",
           "type": "string"
@@ -484,6 +522,7 @@
             }
           ],
           "default": null,
+          "description": "A JSON Schema of the answer.",
           "title": "Schema"
         }
       },
@@ -494,6 +533,7 @@
       "additionalProperties": false,
       "properties": {
         "args": {
+          "description": "The arguments that the route accepts, by name. The API checks them before it makes the call.",
           "maxProperties": 32,
           "patternProperties": {
             "^[a-z][a-z0-9_]{0,63}$": {
@@ -504,14 +544,17 @@
           "type": "object"
         },
         "id": {
+          "description": "The route's id, unique within the backend.",
           "pattern": "^[a-z][a-z0-9_-]{0,63}$",
           "title": "Id",
           "type": "string"
         },
         "response": {
-          "$ref": "#/$defs/RouteResponse"
+          "$ref": "#/$defs/RouteResponse",
+          "description": "The limits of the route's answer."
         },
         "secrets": {
+          "description": "The secrets that the route sends, by name. Each one is declared in the manifest's secrets.",
           "items": {
             "pattern": "^[a-z][a-z0-9_]{0,63}$",
             "type": "string"
@@ -532,6 +575,7 @@
       "properties": {
         "maxLength": {
           "default": 256,
+          "description": "The most characters that a string argument may have.",
           "maximum": 32768,
           "minimum": 1,
           "title": "Maxlength",
@@ -547,6 +591,7 @@
             }
           ],
           "default": null,
+          "description": "The largest value that a number argument may have.",
           "title": "Maximum"
         },
         "minimum": {
@@ -559,14 +604,17 @@
             }
           ],
           "default": null,
+          "description": "The smallest value that a number argument may have.",
           "title": "Minimum"
         },
         "required": {
           "default": false,
+          "description": "Whether a call must supply the argument.",
           "title": "Required",
           "type": "boolean"
         },
         "type": {
+          "description": "The kind of value that the argument holds.",
           "enum": [
             "string",
             "number",
@@ -604,6 +652,7 @@
             }
           ],
           "default": null,
+          "description": "The values that an enum argument may have.",
           "title": "Values"
         }
       },
@@ -618,6 +667,7 @@
       "properties": {
         "maxBytes": {
           "default": 1048576,
+          "description": "The most bytes that the route may answer with. The deployment caps the value as well.",
           "maximum": 5242880,
           "minimum": 1,
           "title": "Maxbytes",
@@ -625,6 +675,7 @@
         },
         "timeoutMs": {
           "default": 10000,
+          "description": "How long a call may take, in milliseconds. The deployment caps the value as well.",
           "maximum": 30000,
           "minimum": 100,
           "title": "Timeoutms",
@@ -638,11 +689,13 @@
       "additionalProperties": false,
       "properties": {
         "name": {
+          "description": "The secret's name, in lowercase letters, digits and underscores.",
           "pattern": "^[a-z][a-z0-9_]{0,63}$",
           "title": "Name",
           "type": "string"
         },
         "purpose": {
+          "description": "What the secret is for. Admins read this text in the review.",
           "maxLength": 300,
           "title": "Purpose",
           "type": "string"
@@ -667,9 +720,11 @@
               "type": "null"
             }
           ],
-          "default": null
+          "default": null,
+          "description": "The plugin's own server-side code."
         },
         "network": {
+          "description": "The https origins that the server may call for the plugin and, for a backend, the tcp://host:port endpoints that it opens.",
           "items": {
             "maxLength": 255,
             "type": "string"
@@ -679,6 +734,7 @@
           "type": "array"
         },
         "proxies": {
+          "description": "The requests that the server makes on behalf of widgets.",
           "items": {
             "$ref": "#/$defs/Proxy"
           },
@@ -695,11 +751,13 @@
       "properties": {
         "defaults": {
           "additionalProperties": true,
+          "description": "The default value of each property. The defaults satisfy the schema.",
           "title": "Defaults",
           "type": "object"
         },
         "schema": {
           "additionalProperties": true,
+          "description": "The JSON Schema of the form, a flat object of simple properties.",
           "title": "Schema",
           "type": "object"
         }
@@ -712,6 +770,7 @@
       "properties": {
         "access": {
           "default": "read",
+          "description": "Whether the module may write the trait. Only params, param:<name> and state can be readwrite.",
           "enum": [
             "read",
             "readwrite"
@@ -720,6 +779,7 @@
           "type": "string"
         },
         "bind": {
+          "description": "The host state that the trait is bound to: one of the traits that the host offers, or param:<name>, config:<key> or adminSettings:<key>.",
           "maxLength": 80,
           "title": "Bind",
           "type": "string"
@@ -745,18 +805,22 @@
             }
           ],
           "default": null,
+          "description": "The category in Add widget.",
           "title": "Category"
         },
         "description": {
           "default": "",
+          "description": "What the widget shows.",
           "maxLength": 300,
           "title": "Description",
           "type": "string"
         },
         "grid": {
-          "$ref": "#/$defs/Grid"
+          "$ref": "#/$defs/Grid",
+          "description": "The widget's size on the dashboard grid."
         },
         "handles": {
+          "description": "The viz types that the widget renders for backend widgets.",
           "items": {
             "$ref": "#/$defs/Handle"
           },
@@ -765,6 +829,7 @@
           "type": "array"
         },
         "id": {
+          "description": "The widget's id, unique within the plugin.",
           "pattern": "^[a-z][a-z0-9_-]{0,47}$",
           "title": "Id",
           "type": "string"
@@ -778,15 +843,18 @@
               "type": "null"
             }
           ],
-          "default": null
+          "default": null,
+          "description": "The module's own traits and what they are bound to."
         },
         "name": {
+          "description": "The name that Add widget shows.",
           "maxLength": 80,
           "minLength": 1,
           "title": "Name",
           "type": "string"
         },
         "params": {
+          "description": "The parameters of a standalone widget, written as in widgets.json. Every parameter has a paramName, and the names are unique.",
           "items": {
             "additionalProperties": true,
             "type": "object"
@@ -796,6 +864,7 @@
           "type": "array"
         },
         "permissions": {
+          "description": "The host permissions that the widget asks for.",
           "items": {
             "type": "string"
           },
@@ -812,7 +881,8 @@
               "type": "null"
             }
           ],
-          "default": null
+          "default": null,
+          "description": "The proxies and backend routes that the widget may call."
         },
         "settings": {
           "anyOf": [
@@ -823,10 +893,12 @@
               "type": "null"
             }
           ],
-          "default": null
+          "default": null,
+          "description": "A form that the user edits for each widget instance."
         },
         "standalone": {
           "default": false,
+          "description": "Whether the widget appears in Add widget on its own and needs no backend. A widget handles at least one type or is standalone.",
           "title": "Standalone",
           "type": "boolean"
         },
@@ -841,6 +913,7 @@
             }
           ],
           "default": null,
+          "description": "The sub-category in Add widget.",
           "title": "Subcategory"
         }
       },
@@ -855,6 +928,7 @@
       "additionalProperties": false,
       "properties": {
         "proxies": {
+          "description": "The ids of the proxies that the widget may call. The widget then needs the permission core:proxy:call, and it needs it only for this purpose.",
           "items": {
             "maxLength": 64,
             "type": "string"
@@ -864,6 +938,7 @@
           "type": "array"
         },
         "routes": {
+          "description": "The ids of the backend routes that the widget may call. The widget then needs the permission core:backend:call, and it needs it only for this purpose.",
           "items": {
             "maxLength": 64,
             "type": "string"
@@ -888,15 +963,18 @@
           "type": "null"
         }
       ],
-      "default": null
+      "default": null,
+      "description": "A settings form that an organization's admin fills in. It must not hold secrets."
     },
     "checksum": {
+      "description": "The text sha256- followed by the base64url SHA-256 of the sorted lines that each hold a file's path, a zero byte, the file's SHA-256 in hexadecimal and a newline, for every file except plugin.json. The command plugin_check --digest prints it.",
       "pattern": "^sha256-[A-Za-z0-9_-]{43}$",
       "title": "Checksum",
       "type": "string"
     },
     "contributes": {
-      "$ref": "#/$defs/Contributes"
+      "$ref": "#/$defs/Contributes",
+      "description": "The widgets that the plugin contributes."
     },
     "csp": {
       "anyOf": [
@@ -914,6 +992,7 @@
         }
       ],
       "default": null,
+      "description": "The sources that the frame itself may reach, by directive.",
       "title": "Csp"
     },
     "cspNotes": {
@@ -930,9 +1009,11 @@
         }
       ],
       "default": null,
+      "description": "One sentence for each directive in csp that explains why the frame needs it.",
       "title": "Cspnotes"
     },
     "dataSources": {
+      "description": "The data that the backend reads for the user.",
       "items": {
         "$ref": "#/$defs/DataSource"
       },
@@ -942,15 +1023,18 @@
     },
     "description": {
       "default": "",
+      "description": "A short description of the plugin.",
       "maxLength": 300,
       "title": "Description",
       "type": "string"
     },
     "entry": {
-      "$ref": "#/$defs/Entry"
+      "$ref": "#/$defs/Entry",
+      "description": "The module and the style sheets that the frame receives."
     },
     "host": {
-      "$ref": "#/$defs/HostTarget"
+      "$ref": "#/$defs/HostTarget",
+      "description": "The host API version and the AFM version that the package is built against. A host that implements other versions blocks the package."
     },
     "icon": {
       "anyOf": [
@@ -962,15 +1046,18 @@
         }
       ],
       "default": null,
+      "description": "A file under assets/ that serves as the plugin's icon.",
       "title": "Icon"
     },
     "id": {
+      "description": "The plugin's id. It equals the name of the directory that holds the plugin's versions.",
       "pattern": "^[a-z][a-z0-9-]{1,47}$",
       "title": "Id",
       "type": "string"
     },
     "identity": {
       "default": "none",
+      "description": "Whether the backend learns a pseudonymous id of the user.",
       "enum": [
         "none",
         "pseudonymous"
@@ -980,19 +1067,23 @@
     },
     "manifestVersion": {
       "const": 1,
+      "description": "The version of the manifest format.",
       "title": "Manifestversion",
       "type": "integer"
     },
     "name": {
+      "description": "The name that admins and users see.",
       "maxLength": 80,
       "minLength": 1,
       "title": "Name",
       "type": "string"
     },
     "publisher": {
-      "$ref": "#/$defs/Publisher"
+      "$ref": "#/$defs/Publisher",
+      "description": "Who publishes the plugin. Admins see the values as the package states them, and Workspace does not verify them."
     },
     "secrets": {
+      "description": "The secrets that proxies and backend routes send. A manifest never contains a value.",
       "items": {
         "$ref": "#/$defs/Secret"
       },
@@ -1009,14 +1100,17 @@
           "type": "null"
         }
       ],
-      "default": null
+      "default": null,
+      "description": "What the server does for the plugin: the hosts that it calls, its proxies and its backend."
     },
     "signatures": {
       "default": null,
+      "description": "Reserved. A manifest that sets it is blocked, because this host verifies no signatures.",
       "title": "Signatures",
       "type": "null"
     },
     "version": {
+      "description": "The version, in the form major.minor.patch with numbers only. It equals the name of the version's directory.",
       "pattern": "^(0|[1-9]\\d{0,5})\\.(0|[1-9]\\d{0,5})\\.(0|[1-9]\\d{0,5})$",
       "title": "Version",
       "type": "string"

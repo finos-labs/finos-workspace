@@ -931,10 +931,12 @@
                     "additionalProperties": false,
                     "properties": {
                       "key": {
+                        "description": "The name of the header or of the query parameter.",
                         "type": "string"
                       },
                       "location": {
                         "default": "headers",
+                        "description": "Whether it goes in the headers or in the query.",
                         "enum": [
                           "headers",
                           "query"
@@ -942,6 +944,7 @@
                         "type": "string"
                       },
                       "value": {
+                        "description": "The value that the backend's endpoints receive.",
                         "type": "string"
                       }
                     },

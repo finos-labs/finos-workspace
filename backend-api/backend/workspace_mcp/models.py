@@ -142,8 +142,8 @@ class WorkspaceSnapshot(Model):
 
 
 class WorkspaceWidgetConfig(Model):
-    data_args: dict[str, Any] | None = None
-    ui_args: dict[str, Any] | None = None
+    data_args: dict[str, Any] | None = Field(default=None, description="The values of the widget's data parameters.")
+    ui_args: dict[str, Any] | None = Field(default=None, description="The values of the widget's interface settings.")
 
 
 class WidgetDataRequest(Model):
@@ -178,149 +178,205 @@ class ParamOptionsRequest(Model):
     )
 
 
+RequestId = Annotated[
+    str | None,
+    Field(
+        description=(
+            "Identifies the request. The result carries the same id, "
+            "and a command that is sent again with it receives the stored result."
+        )
+    ),
+]
+DashboardId = Annotated[
+    str | None,
+    Field(description="The dashboard to act on. When it is missing, the dashboard that the tab shows."),
+]
+WidgetUuid = Annotated[
+    str | None,
+    Field(description="The widget instance to act on. It is preferred over widget_id."),
+]
+WidgetIdFallback = Annotated[
+    str | None,
+    Field(
+        description=(
+            "The widget type id. It identifies the widget only when exactly one widget of that type is on the dashboard."
+        )
+    ),
+]
+Activate = Annotated[
+    bool | None,
+    Field(description="Whether the tab shows the new dashboard. It does by default."),
+]
+
+
 class GetWidgetDataCommand(Model):
     command: Literal["get_widget_data"]
-    request_id: str | None = None
-    data_sources: BridgePayloadList = Field(default_factory=list)
+    request_id: RequestId = None
+    data_sources: BridgePayloadList = Field(
+        default_factory=list,
+        description=(
+            "The data sources to fetch. Each has the origin, the widget id, the data arguments "
+            "and optionally the widget UUID."
+        ),
+    )
 
 
 class ListAvailableWidgetsCommand(Model):
     command: Literal["list_available_widgets"]
-    request_id: str | None = None
-    origin: str | None = None
-    backend_id: str | None = None
+    request_id: RequestId = None
+    origin: str | None = Field(default=None, description="Lists only the widgets of this origin.")
+    backend_id: str | None = Field(default=None, description="Lists only the widgets of this backend.")
 
 
 class GetWidgetSchemaCommand(Model):
     command: Literal["get_widget_schema"]
-    request_id: str | None = None
-    origin: str | None = None
-    widget_id: str
+    request_id: RequestId = None
+    origin: str | None = Field(default=None, description="The origin of the widget.")
+    widget_id: str = Field(description="The widget type id.")
 
 
 class GetWidgetsSchemaCommand(Model):
     command: Literal["get_widgets_schema"]
-    request_id: str | None = None
+    request_id: RequestId = None
 
 
 class GetParamOptionsCommand(Model):
     command: Literal["get_params_options"]
-    request_id: str | None = None
-    param_options_queries: BridgePayloadList = Field(default_factory=list)
+    request_id: RequestId = None
+    param_options_queries: BridgePayloadList = Field(
+        default_factory=list,
+        description="The lookups to make. Each has the origin, the widget id, the parameter name and the data arguments.",
+    )
 
 
 class ReadWidgetCommand(Model):
     command: Literal["read_widget"]
-    request_id: str | None = None
-    dashboard_id: str | None = None
-    widget_uuid: str | None = None
-    widget_id: str | None = None
+    request_id: RequestId = None
+    dashboard_id: DashboardId = None
+    widget_uuid: WidgetUuid = None
+    widget_id: WidgetIdFallback = None
 
 
 class CreateWidgetCommand(Model):
     command: Literal["create_widget"]
-    request_id: str | None = None
-    dashboard_id: str | None = None
-    backend_name: str = Field(validation_alias=AliasChoices("backend_name", "origin"))
-    widget_id: str
-    config: WorkspaceWidgetConfig | None = None
-    dry_run: bool | None = None
+    request_id: RequestId = None
+    dashboard_id: DashboardId = None
+    backend_name: str = Field(
+        validation_alias=AliasChoices("backend_name", "origin"),
+        description="The name of the backend that offers the widget, which is the origin of the widget.",
+    )
+    widget_id: str = Field(description="The widget type id.")
+    config: WorkspaceWidgetConfig | None = Field(
+        default=None, description="The data arguments and the interface arguments of the new widget."
+    )
+    dry_run: bool | None = Field(default=None, description="Validates and previews the change without making it.")
 
 
 class UpdateWidgetCommand(Model):
     command: Literal["update_widget"]
-    request_id: str | None = None
-    dashboard_id: str | None = None
-    widget_uuid: str | None = None
-    widget_id: str | None = None
-    config: WorkspaceWidgetConfig
-    dry_run: bool | None = None
+    request_id: RequestId = None
+    dashboard_id: DashboardId = None
+    widget_uuid: WidgetUuid = None
+    widget_id: WidgetIdFallback = None
+    config: WorkspaceWidgetConfig = Field(description="The new data arguments and interface arguments of the widget.")
+    dry_run: bool | None = Field(default=None, description="Validates and previews the change without making it.")
 
 
 class DeleteWidgetCommand(Model):
     command: Literal["delete_widget"]
-    request_id: str | None = None
-    dashboard_id: str | None = None
-    widget_uuid: str | None = None
-    widget_id: str | None = None
+    request_id: RequestId = None
+    dashboard_id: DashboardId = None
+    widget_uuid: WidgetUuid = None
+    widget_id: WidgetIdFallback = None
 
 
 class ManageDashboardCommand(Model):
     command: Literal["manage_dashboard"]
-    request_id: str | None = None
-    operation: DashboardOperation
-    dashboard_id: str | None = None
-    name: str | None = None
-    activate: bool | None = None
+    request_id: RequestId = None
+    operation: DashboardOperation = Field(description="What to do with the dashboard.")
+    dashboard_id: DashboardId = None
+    name: str | None = Field(default=None, description="The dashboard's name. Create and update need it.")
+    activate: Activate = None
 
 
 class NavigateWorkspaceCommand(Model):
     command: Literal["navigate_workspace"]
-    request_id: str | None = None
-    operation: WorkspaceNavigationOperation
-    dashboard_id: str | None = None
-    tab_id: str | None = None
+    request_id: RequestId = None
+    operation: WorkspaceNavigationOperation = Field(description="Whether to move to a dashboard or to an inner tab.")
+    dashboard_id: DashboardId = None
+    tab_id: str | None = Field(default=None, description="The inner tab to move to. The operation tab needs it.")
 
 
 class UpdateDashboardLayoutCommand(Model):
     command: Literal["update_dashboard_layout"]
-    request_id: str | None = None
-    dashboard_id: str | None = None
-    widget_uuid: str | None = None
-    widget_id: str | None = None
-    tab_id: str | None = None
-    x: float
-    y: float
-    w: float
-    h: float
-    min_w: float | None = None
-    min_h: float | None = None
-    max_w: float | None = None
-    max_h: float | None = None
+    request_id: RequestId = None
+    dashboard_id: DashboardId = None
+    widget_uuid: WidgetUuid = None
+    widget_id: WidgetIdFallback = None
+    tab_id: str | None = Field(default=None, description="The inner tab that the widget moves to.")
+    x: float = Field(description="The column of the widget's left edge on the dashboard grid.")
+    y: float = Field(description="The row of the widget's top edge on the dashboard grid.")
+    w: float = Field(description="The widget's width in grid columns.")
+    h: float = Field(description="The widget's height in grid rows.")
+    min_w: float | None = Field(default=None, description="The smallest width that the user may give the widget.")
+    min_h: float | None = Field(default=None, description="The smallest height that the user may give the widget.")
+    max_w: float | None = Field(default=None, description="The largest width that the user may give the widget.")
+    max_h: float | None = Field(default=None, description="The largest height that the user may give the widget.")
 
 
 class ManageNavigationBarCommand(Model):
     command: Literal["manage_navigation_bar"]
-    request_id: str | None = None
-    dashboard_id: str | None = None
-    operation: NavigationOperation
-    tabs: list[dict[str, Any]] = Field(default_factory=list)
-    rename_map: dict[str, str] = Field(default_factory=dict)
+    request_id: RequestId = None
+    dashboard_id: DashboardId = None
+    operation: NavigationOperation = Field(description="What to do with the navigation tabs.")
+    tabs: list[dict[str, Any]] = Field(
+        default_factory=list, description="The tabs to create, add or remove, each an object with a name."
+    )
+    rename_map: dict[str, str] = Field(
+        default_factory=dict, description="The new name of each tab to rename, by the id of the tab."
+    )
 
 
 class AddGenerativeWidgetCommand(Model):
     command: Literal["add_generative_widget"]
-    request_id: str | None = None
-    dashboard_id: str | None = None
-    widget_type: GenerativeWidgetType
-    data: str | None = None
-    name: str | None = None
-    description: str | None = None
-    inner_tab: str | None = None
+    request_id: RequestId = None
+    dashboard_id: DashboardId = None
+    widget_type: GenerativeWidgetType = Field(description="Whether the widget is a note, which is markdown, or HTML.")
+    data: str | None = Field(default=None, description="The content of the widget, as text or HTML.")
+    name: str | None = Field(default=None, description="The name of the new widget.")
+    description: str | None = Field(default=None, description="A short description of the new widget.")
+    inner_tab: str | None = Field(default=None, description="An existing inner tab to place the widget on.")
 
 
 class AssignTasksToAgentsCommand(Model):
     command: Literal["assign_tasks_to_agents"]
-    request_id: str | None = None
-    task_requests: BridgePayloadList = Field(default_factory=list)
+    request_id: RequestId = None
+    task_requests: BridgePayloadList = Field(
+        default_factory=list,
+        description=(
+            "The tasks to assign. Each has an id, a description, the URL of the agent's holder and the id of the agent."
+        ),
+    )
 
 
 class GetSkillContentCommand(Model):
     command: Literal["get_skill_content"]
-    request_id: str | None = None
-    slug: str
-    reason: str | None = None
+    request_id: RequestId = None
+    slug: str = Field(description="The slug of the skill.")
+    reason: str | None = Field(default=None, description="Why the skill is loaded.")
 
 
 class GetWorkspaceSnapshotCommand(Model):
     command: Literal["get_workspace_snapshot"]
-    request_id: str | None = None
+    request_id: RequestId = None
 
 
 class BackendEndpointHeader(Model):
-    key: str
-    value: str
-    location: EndpointHeaderLocation = "headers"
+    key: str = Field(description="The name of the header or of the query parameter.")
+    value: str = Field(description="The value that the backend's endpoints receive.")
+    location: EndpointHeaderLocation = Field(
+        default="headers", description="Whether it goes in the headers or in the query."
+    )
 
 
 class NavigationTabInput(Model):
@@ -343,24 +399,30 @@ class TaskRequest(Model):
 
 class ManageBackendsCommand(Model):
     command: Literal["manage_backends"]
-    request_id: str | None = None
-    operation: BackendsOperation
-    backend_id: str | None = None
-    name: str | None = None
-    url: str | None = None
-    endpoint_headers: list[BackendEndpointHeader] | None = None
-    validate_widgets: bool | None = None
+    request_id: RequestId = None
+    operation: BackendsOperation = Field(description="What to do with the backends.")
+    backend_id: str | None = Field(default=None, description="The backend to update, refresh or remove.")
+    name: str | None = Field(default=None, description="The name of the backend.")
+    url: str | None = Field(default=None, description="The base URL of the backend.")
+    endpoint_headers: list[BackendEndpointHeader] | None = Field(
+        default=None, description="Headers or query parameters that the backend's endpoints receive."
+    )
+    validate_widgets: bool | None = Field(
+        default=None, description="For add: whether to check that the backend's widgets load. It does by default."
+    )
 
 
 class ManageAppsCommand(Model):
     command: Literal["manage_apps"]
-    request_id: str | None = None
-    operation: AppsOperation
-    backend_id: str | None = None
-    app_name: str | None = None
-    template_id: str | None = None
-    dashboard_name: str | None = None
-    activate: bool | None = None
+    request_id: RequestId = None
+    operation: AppsOperation = Field(description="What to do with the apps.")
+    backend_id: str | None = Field(default=None, description="For list: only the apps of this backend.")
+    app_name: str | None = Field(
+        default=None, description="The app to read or instantiate. The template id can name it instead."
+    )
+    template_id: str | None = Field(default=None, description="The template of the app, as an alternative to its name.")
+    dashboard_name: str | None = Field(default=None, description="For instantiate: the name of the new dashboard.")
+    activate: Activate = None
 
 
 type WorkspaceCommand = Annotated[
@@ -435,8 +497,6 @@ class ErrorEvent(Model):
 class PongEvent(Model):
     type: Literal["pong"]
 
-
-type ServerEvent = SessionReadyEvent | CommandRequestEvent | ErrorEvent | PongEvent
 
 workspace_command_adapter: TypeAdapter[WorkspaceCommand] = TypeAdapter(WorkspaceCommand)
 browser_message_adapter: TypeAdapter[BrowserMessage] = TypeAdapter(BrowserMessage)

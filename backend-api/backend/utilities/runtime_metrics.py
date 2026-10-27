@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import os
 import time
 from collections.abc import Mapping
 from typing import Any
@@ -11,6 +10,8 @@ import anyio
 from loguru import logger
 from prometheus_client import REGISTRY
 from prometheus_client.core import GaugeMetricFamily
+
+from utilities.config import settings
 
 _POOL_COUNTERS = (
     ("checked_out", "checkedout"),
@@ -121,7 +122,7 @@ async def _sampler(interval: float) -> None:
 def start_runtime_metrics(interval: float | None = None) -> None:
     global _started  # noqa: PLW0603
     if interval is None:
-        interval = float(os.environ.get("RUNTIME_METRICS_INTERVAL", "2.0"))
+        interval = settings.RUNTIME_METRICS_INTERVAL
     if _started:
         return
     _started = True

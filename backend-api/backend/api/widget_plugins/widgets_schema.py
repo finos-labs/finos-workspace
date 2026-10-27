@@ -166,10 +166,17 @@ def compose(
     def branch(viz_type: str, rules: dict[str, Any], data: dict[str, Any]) -> None:
         properties = copy.deepcopy(base["properties"])
         properties.update(copy.deepcopy(rules["properties"]))
-        properties["type"] = {"type": "string", "const": viz_type}
-        properties["data"] = {"$ref": f"#/definitions/Data_{viz_type}"}
+        properties["type"] = {"type": "string", "const": viz_type, "description": f"The widget's type, {viz_type}"}
+        properties["data"] = {
+            "$ref": f"#/definitions/Data_{viz_type}",
+            "description": "How Workspace reads and shows the data of this type",
+        }
         if set(rules["methods"]) != set(properties["method"].get("enum", [])):
-            properties["method"] = {"type": "string", "enum": list(rules["methods"])}
+            properties["method"] = {
+                "type": "string",
+                "enum": list(rules["methods"]),
+                "description": f"How Workspace calls the endpoint: {' or '.join(rules['methods'])}",
+            }
         definitions[f"Data_{viz_type}"] = data
         definitions[f"Widget_{viz_type}"] = {
             "type": "object",
@@ -195,7 +202,14 @@ def compose(
         "$id": f"urn:workspace:widgets-json:{etag}",
         "title": "widgets.json",
         "type": "object",
-        "properties": {"$schema": {"type": "string", "maxLength": 2048}, "$id": {"type": "string", "maxLength": 2048}},
+        "properties": {
+            "$schema": {
+                "type": "string",
+                "maxLength": 2048,
+                "description": "The address of a schema that the file follows, which editors use to check it",
+            },
+            "$id": {"type": "string", "maxLength": 2048, "description": "An identifier of the file"},
+        },
         "propertyNames": {"type": "string", "maxLength": 128},
         "additionalProperties": {"$ref": "#/definitions/Widget"},
         "x-types": types,

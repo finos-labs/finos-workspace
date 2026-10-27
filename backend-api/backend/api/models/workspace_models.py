@@ -245,7 +245,6 @@ class StoredFile(Base, UUIDMixin, DateMixin):
     original_file_name: Mapped[None | str] = mapped_column(Text)
     size: Mapped[int] = mapped_column(Integer, default=0)
     is_global: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    is_entity_shared: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
 
 class StoredFileShare(Base, UUIDMixin, DateMixin):

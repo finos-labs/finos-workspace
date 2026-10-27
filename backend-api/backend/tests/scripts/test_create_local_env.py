@@ -5,7 +5,7 @@ import tomllib
 import jwt
 import pytest
 
-from api import crypto
+from api import crypto, schemas
 from scripts import create_local_env as local_env
 from utilities.config import Settings, check_strong_secret
 
@@ -150,33 +150,51 @@ def test_main_needs_an_administrator(tmp_path, monkeypatch, config):
         local_env.main([])
 
 
-def test_the_seed_config_names_the_administrator_and_no_password(tmp_path, monkeypatch, config):
+def test_the_seed_config_names_the_administrator_and_a_random_password(
+    tmp_path, monkeypatch, config
+):
+    example = tmp_path / ".env.example"
+    example.write_text(EXAMPLE)
+    monkeypatch.setattr(local_env, "EXAMPLE", example)
+    monkeypatch.setattr(local_env, "TARGET", tmp_path / ".env")
+    passwords = []
+    for _ in range(2):
+        assert local_env.main([*ADMIN, "--entity-name", "Acme", "--force"]) == 0
+        seed = tomllib.loads(config.read_text())
+        admin = seed["admins"][0]
+        assert seed["entity"]["name"] == "Acme"
+        assert (admin["email"], admin["first_name"], admin["last_name"]) == (
+            "admin@mail.test",
+            "Workspace",
+            "Administrator",
+        )
+        assert schemas.check_password(admin["password"]) == admin["password"]
+        passwords.append(admin["password"])
+
+    assert passwords[0] != passwords[1]
+    assert config.stat().st_mode & 0o077 == 0
+    assert passwords[1] not in (tmp_path / ".env").read_text()
+
+
+def test_the_administrator_password_can_be_given(tmp_path, monkeypatch, config):
     example = tmp_path / ".env.example"
     example.write_text(EXAMPLE)
     monkeypatch.setattr(local_env, "EXAMPLE", example)
     monkeypatch.setattr(local_env, "TARGET", tmp_path / ".env")
 
-    assert local_env.main([*ADMIN, "--entity-name", "Acme"]) == 0
+    assert local_env.main([*ADMIN, "--admin-password", "Secret!123"]) == 0
 
-    seed = tomllib.loads(config.read_text())
-    assert seed["entity"]["name"] == "Acme"
-    assert seed["admins"] == [
-        {"email": "admin@mail.test", "first_name": "Workspace", "last_name": "Administrator"}
-    ]
-    assert "password" not in config.read_text()
-    assert "password" not in (tmp_path / ".env").read_text().lower()
-
-
-def test_the_administrator_password_is_no_option():
-    with pytest.raises(SystemExit):
-        local_env.main([*ADMIN, "--admin-password", "Secret!123"])
+    assert tomllib.loads(config.read_text())["admins"][0]["password"] == "Secret!123"
 
 
 def test_the_seed_config_quotes_what_it_is_given():
-    seed = tomllib.loads(local_env.seed_config('A "quoted" name', 'a"b\\@mail.test'))
+    seed = tomllib.loads(
+        local_env.seed_config('A "quoted" name', 'a"b\\@mail.test', 'p"a\\ss')
+    )
 
     assert seed["entity"]["name"] == 'A "quoted" name'
     assert seed["admins"][0]["email"] == 'a"b\\@mail.test'
+    assert seed["admins"][0]["password"] == 'p"a\\ss'
 
 
 def test_the_web_app_is_an_allowed_origin():

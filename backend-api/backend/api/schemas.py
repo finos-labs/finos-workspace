@@ -1,7 +1,7 @@
 import re
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Annotated, Any, Literal, TypeVar
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID, uuid4
 
@@ -25,10 +25,8 @@ from api.events.types import RoleAuditAction, RoleResourceType
 from utilities.config import settings
 
 if TYPE_CHECKING:
-    from api.models.workspace_models import CopilotChat, StoredFile
+    from api.models.workspace_models import CopilotChat
 
-
-StoredFileT = TypeVar("StoredFileT", bound="StoredFile")
 
 main_config = ConfigDict(extra="forbid", from_attributes=True)
 AppLoginSource = Literal["app", "oauth-app"]
@@ -121,28 +119,6 @@ def check_email_or_username(v: str) -> str:
 def check_totp_token(v: None | int) -> None | int:
     if v and len(str(v)) > 6:  # noqa: PLR2004
         raise ValueError("Invalid TOTP token")
-    return v
-
-
-def check_name(v: None | str) -> None | str:
-    if v:
-        for char in settings.UNUSABLE_JSON_CHARACTERS:
-            if char in v:
-                raise ValueError(f"Script name cannot contain {char}")
-    return v
-
-
-def check_system(v: None | str) -> None | str:
-    if v:
-        for system in v.split(","):
-            if system not in base.get_systems():
-                raise ValueError(f"Invalid system: {system}")
-    return v
-
-
-def check_version(v: None | str) -> None | str:
-    if v and not re.match(r"^\d+\.\d+\.\d+$", v):
-        raise ValueError(f"Invalid version: {v}")
     return v
 
 
@@ -241,10 +217,6 @@ class AgentToken(BaseModel):
     model_config = main_config
     token: str
     expires_in: int
-
-
-class Expiration(BaseModel, extra="forbid"):  # type: ignore[call-arg]
-    days: int = Field(ge=1, le=365)
 
 
 class UUIDReturn(BaseModel, extra="ignore"):  # type: ignore[call-arg]

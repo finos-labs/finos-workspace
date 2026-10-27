@@ -72,8 +72,8 @@ code changes.
 ### 2. Initialize admin users and entities
 
 Name the organization and its first administrator once, in the generated
-`backend/scripts/cfgs/config.toml`, which git ignores. It holds no password: `init_users`
-creates the account without one, and `init_users --new-password` sets it (below).
+`backend/scripts/cfgs/config.toml`, which git ignores. It holds the administrator's
+password: `create_local_env` writes a random one, or yours with `--admin-password`.
 (`create_local_env` also writes `backend/envs/.env` for the full compose stack;
 `--config-only` writes just the seed config, which is what this local-development setup
 needs.)
@@ -98,12 +98,13 @@ cd backend
 This reads entity/admin configuration from `backend/scripts/cfgs/config.toml` and:
 
 - Creates the entity named there, with Admin, Developer and User permission maps
-- Creates the administrator named there as a superuser, without a password (an administrator
-  who exists keeps theirs)
+- Creates the administrator named there as a superuser, with the password written there, and
+  puts that password back on every later run if it differs (ending the account's sessions)
 - Writes `user_create.json` with UUIDs needed by the running app
 
-Set the administrator's password (typed twice, not shown; the same command sets a new one):
-`../.venv/bin/python -m scripts.init_users --new-password <your-email>`.
+Sign in with the email and password in `config.toml`. An administrator who is not in the file
+gets a password with `../.venv/bin/python -m scripts.init_users --new-password <email>`
+(typed twice, not shown).
 
 ### 3. Verify the API
 

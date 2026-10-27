@@ -3197,16 +3197,6 @@
           "unique": false
         },
         {
-          "indexed": true,
-          "name": "is_entity_shared",
-          "nullable": false,
-          "primary_key": false,
-          "references": [],
-          "server_default": null,
-          "type": "BOOLEAN",
-          "unique": false
-        },
-        {
           "indexed": false,
           "name": "uuid",
           "nullable": false,
@@ -3250,13 +3240,6 @@
             "file_widget_uuid"
           ],
           "name": "ix_stored_file_file_widget_uuid",
-          "unique": false
-        },
-        {
-          "columns": [
-            "is_entity_shared"
-          ],
-          "name": "ix_stored_file_is_entity_shared",
           "unique": false
         },
         {
@@ -3582,46 +3565,6 @@
         },
         {
           "indexed": false,
-          "name": "referred_by",
-          "nullable": true,
-          "primary_key": false,
-          "references": [],
-          "server_default": null,
-          "type": "VARCHAR(100)",
-          "unique": false
-        },
-        {
-          "indexed": false,
-          "name": "referred_by_sent",
-          "nullable": true,
-          "primary_key": false,
-          "references": [],
-          "server_default": null,
-          "type": "BOOLEAN",
-          "unique": false
-        },
-        {
-          "indexed": false,
-          "name": "referral_code",
-          "nullable": false,
-          "primary_key": false,
-          "references": [],
-          "server_default": null,
-          "type": "VARCHAR(100)",
-          "unique": true
-        },
-        {
-          "indexed": false,
-          "name": "total_referrals",
-          "nullable": true,
-          "primary_key": false,
-          "references": [],
-          "server_default": null,
-          "type": "INTEGER",
-          "unique": false
-        },
-        {
-          "indexed": false,
           "name": "deleted",
           "nullable": true,
           "primary_key": false,
@@ -3730,12 +3673,6 @@
         {
           "columns": [
             "email"
-          ],
-          "name": null
-        },
-        {
-          "columns": [
-            "referral_code"
           ],
           "name": null
         },

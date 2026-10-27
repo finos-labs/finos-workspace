@@ -1,0 +1,422 @@
+{
+  "backend": {
+    "callHeader": "X-Workspace-Call",
+    "identityPath": "/.workspace/identity",
+    "identityStates": [
+      "ok",
+      "mismatch",
+      "unreachable",
+      "unregistered"
+    ],
+    "identityTimeoutSeconds": 5.0,
+    "maxRouteBytes": 5242880,
+    "protocol": 1,
+    "routePathPrefix": "/.workspace/routes/",
+    "secretHeader": "X-Workspace-Secret-",
+    "tokenPrefix": "wpc1.",
+    "tokenSeconds": 60
+  },
+  "builtInTypes": [
+    "html",
+    "iframe",
+    "markdown",
+    "newsfeed",
+    "pdf"
+  ],
+  "csp": {
+    "confirmations": [
+      "insecure-scheme",
+      "private-host",
+      "remote-script"
+    ],
+    "directives": [
+      "connect-src",
+      "img-src",
+      "font-src",
+      "media-src",
+      "style-src",
+      "script-src",
+      "worker-src",
+      "frame-src"
+    ],
+    "floor": {
+      "base-uri": [
+        "'none'"
+      ],
+      "connect-src": [
+        "'none'"
+      ],
+      "default-src": [
+        "'none'"
+      ],
+      "font-src": [
+        "data:",
+        "blob:"
+      ],
+      "form-action": [
+        "'none'"
+      ],
+      "frame-src": [
+        "'none'"
+      ],
+      "img-src": [
+        "data:",
+        "blob:"
+      ],
+      "media-src": [
+        "data:",
+        "blob:"
+      ],
+      "object-src": [
+        "'none'"
+      ],
+      "script-src": [
+        "blob:"
+      ],
+      "style-src": [
+        "'unsafe-inline'",
+        "blob:"
+      ],
+      "worker-src": [
+        "blob:"
+      ]
+    },
+    "maxSourceLength": 255,
+    "maxSources": 32,
+    "privateSuffixes": [
+      ".local",
+      ".internal",
+      ".localhost",
+      ".home.arpa",
+      ".lan"
+    ]
+  },
+  "host": {
+    "afm": "0.11",
+    "api": 1
+  },
+  "metrics": [
+    {
+      "help": "Plugin versions approved",
+      "labels": [],
+      "name": "widget_plugin_approvals_total",
+      "type": "counter"
+    },
+    {
+      "help": "How long backend route calls took, by plugin",
+      "labels": [
+        "plugin"
+      ],
+      "name": "widget_plugin_backend_call_seconds",
+      "type": "histogram"
+    },
+    {
+      "help": "Backend route calls, by plugin, outcome and the backend's status class",
+      "labels": [
+        "plugin",
+        "outcome",
+        "status_class"
+      ],
+      "name": "widget_plugin_backend_calls_total",
+      "type": "counter"
+    },
+    {
+      "help": "Identity checks of plugin backends, by plugin and result",
+      "labels": [
+        "plugin",
+        "state"
+      ],
+      "name": "widget_plugin_backend_identity_checks_total",
+      "type": "counter"
+    },
+    {
+      "help": "Plugin versions blocked, by reason",
+      "labels": [
+        "reason"
+      ],
+      "name": "widget_plugin_blocks_total",
+      "type": "counter"
+    },
+    {
+      "help": "Data the broker read for plugin backends, by plugin and outcome",
+      "labels": [
+        "plugin",
+        "outcome"
+      ],
+      "name": "widget_plugin_broker_calls_total",
+      "type": "counter"
+    },
+    {
+      "help": "Requests plugin frames reported their policy blocked, by directive",
+      "labels": [
+        "directive"
+      ],
+      "name": "widget_plugin_csp_reports_total",
+      "type": "counter"
+    },
+    {
+      "help": "Plugin versions a rescan recorded, by what it found",
+      "labels": [
+        "outcome"
+      ],
+      "name": "widget_plugin_discoveries_total",
+      "type": "counter"
+    },
+    {
+      "help": "Plugin files asked for, by outcome",
+      "labels": [
+        "outcome"
+      ],
+      "name": "widget_plugin_file_fetches_total",
+      "type": "counter"
+    },
+    {
+      "help": "Plugin frames that failed, by plugin, version and kind",
+      "labels": [
+        "plugin",
+        "version",
+        "kind"
+      ],
+      "name": "widget_plugin_frame_failures_total",
+      "type": "counter"
+    },
+    {
+      "help": "How long proxy calls took, by plugin",
+      "labels": [
+        "plugin"
+      ],
+      "name": "widget_plugin_proxy_call_seconds",
+      "type": "histogram"
+    },
+    {
+      "help": "Proxy calls, by plugin, outcome and the upstream's status class",
+      "labels": [
+        "plugin",
+        "outcome",
+        "status_class"
+      ],
+      "name": "widget_plugin_proxy_calls_total",
+      "type": "counter"
+    }
+  ],
+  "package": {
+    "manifestBytes": 262144,
+    "manifestFile": "plugin.json",
+    "maxFiles": 200,
+    "maxUnpackedBytes": 67108864
+  },
+  "patterns": {
+    "digest": "^sha256-[A-Za-z0-9_-]{43}$",
+    "pluginId": "^[a-z][a-z0-9-]{1,47}$",
+    "version": "^(0|[1-9]\\d{0,5})\\.(0|[1-9]\\d{0,5})\\.(0|[1-9]\\d{0,5})$",
+    "vizType": "^[a-z][a-z0-9_-]{1,31}$",
+    "widgetId": "^[a-z][a-z0-9_-]{0,47}$"
+  },
+  "permissions": [
+    {
+      "meaning": "Calling a route of the plugin's backend that the widget declares, with the command core:backend:call.",
+      "name": "core:backend:call"
+    },
+    {
+      "meaning": "Copying text to the clipboard, with the command core:clipboard:write.",
+      "name": "core:clipboard:write"
+    },
+    {
+      "meaning": "Letting the host call the module's copilotContext() function.",
+      "name": "core:copilot:context"
+    },
+    {
+      "meaning": "Reading the data trait.",
+      "name": "core:data:read"
+    },
+    {
+      "meaning": "The lifecycle, error reporting and logs. Every widget always has it.",
+      "name": "core:default"
+    },
+    {
+      "meaning": "Saving a file for the user, with the command core:download:save.",
+      "name": "core:download:save"
+    },
+    {
+      "meaning": "Letting the Export entry call the module's exportOptions() and exportData() functions.",
+      "name": "core:export:provide"
+    },
+    {
+      "meaning": "Writing to params and to param:<name>. Only declared names can be written, and the host coerces each value to the type of its parameter.",
+      "name": "core:params:write"
+    },
+    {
+      "meaning": "Calling a proxy that the widget declares, with the command core:proxy:call.",
+      "name": "core:proxy:call"
+    },
+    {
+      "meaning": "Writing to state.",
+      "name": "core:state:write"
+    },
+    {
+      "meaning": "Showing the user a notice, with the command core:ui:notify.",
+      "name": "core:ui:notify"
+    },
+    {
+      "meaning": "Opening a link after the user confirms, with the command core:ui:open-link.",
+      "name": "core:ui:open-link"
+    }
+  ],
+  "permissionsLater": [
+    "core:data:query"
+  ],
+  "proxy": {
+    "acceptedTypes": [
+      "application/json",
+      "text/plain",
+      "text/csv",
+      "text/markdown",
+      "text/html",
+      "application/xml"
+    ],
+    "forbiddenHeaderPrefixes": [
+      "sec-",
+      "proxy-"
+    ],
+    "forbiddenHeaders": [
+      "accept-encoding",
+      "connection",
+      "content-length",
+      "content-type",
+      "cookie",
+      "expect",
+      "forwarded",
+      "host",
+      "keep-alive",
+      "proxy-authorization",
+      "proxy-connection",
+      "te",
+      "trailer",
+      "transfer-encoding",
+      "upgrade",
+      "x-forwarded-for",
+      "x-forwarded-host",
+      "x-forwarded-proto",
+      "x-real-ip"
+    ],
+    "maxBytes": 26214400,
+    "maxRouteString": 32768,
+    "maxTimeoutMs": 30000
+  },
+  "reports": {
+    "keywords": [
+      "blob",
+      "data",
+      "eval",
+      "inline",
+      "wasm-eval"
+    ],
+    "maxOriginLength": 255,
+    "maxOrigins": 200,
+    "perRequest": 50,
+    "retentionDays": 30
+  },
+  "schemaLint": {
+    "fragmentKeywords": [
+      "$defs",
+      "$ref",
+      "additionalProperties",
+      "anyOf",
+      "const",
+      "default",
+      "description",
+      "enum",
+      "examples",
+      "exclusiveMaximum",
+      "exclusiveMinimum",
+      "items",
+      "maxItems",
+      "maxLength",
+      "maximum",
+      "minItems",
+      "minLength",
+      "minimum",
+      "oneOf",
+      "pattern",
+      "properties",
+      "required",
+      "title",
+      "type",
+      "uniqueItems"
+    ],
+    "maxDepth": 8,
+    "maxEnumValues": 100,
+    "maxFragmentBytes": 65536,
+    "maxPatternLength": 256,
+    "maxSettingsProperties": 64,
+    "settingsKeywords": [
+      "default",
+      "description",
+      "enum",
+      "examples",
+      "maxLength",
+      "maximum",
+      "minimum",
+      "title",
+      "type"
+    ],
+    "settingsTypes": [
+      "boolean",
+      "integer",
+      "number",
+      "string"
+    ]
+  },
+  "secrets": {
+    "maxLength": 4096
+  },
+  "states": {
+    "plugin": [
+      {
+        "meaning": "The plugin has not been approved yet, so it is off at the deployment.",
+        "state": "disabled"
+      },
+      {
+        "meaning": "A superuser approved the plugin, and organizations may enable it.",
+        "state": "enabled"
+      },
+      {
+        "meaning": "The kill switch. The plugin leaves every user's list at its next refresh, and the API refuses its proxy and backend calls at once. Restoring the plugin undoes it.",
+        "state": "revoked"
+      }
+    ],
+    "version": [
+      {
+        "meaning": "The scan found and checked the version, but nobody has approved it.",
+        "state": "discovered"
+      },
+      {
+        "meaning": "This is the one version that serves users.",
+        "state": "active"
+      },
+      {
+        "meaning": "A check failed, or the files changed after discovery. Versions are immutable, so the deployer has to publish a new version.",
+        "state": "blocked"
+      },
+      {
+        "meaning": "The version was active once, and it can be approved again.",
+        "state": "retired"
+      },
+      {
+        "meaning": "The version's directory is gone. When every version of a plugin is missing, a superuser can forget the plugin, which deletes its reviews, grants, settings and secrets.",
+        "state": "missing"
+      }
+    ]
+  },
+  "traits": [
+    "data",
+    "params",
+    "definition",
+    "config",
+    "adminSettings",
+    "state",
+    "theme",
+    "capabilities",
+    "meta"
+  ]
+}

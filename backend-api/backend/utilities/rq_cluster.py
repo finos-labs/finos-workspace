@@ -94,7 +94,6 @@ class ClusterQueue(Queue):
                 e.queue = queue
                 raise e
             return job, queue
-        return None, None
 
 
 class ClusterRQScheduler(RQScheduler):

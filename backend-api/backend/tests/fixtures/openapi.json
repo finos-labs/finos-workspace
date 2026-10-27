@@ -817,7 +817,7 @@
         "title": "BackendPermissionsModel",
         "type": "object"
       },
-      "Body_post_files": {
+      "Body_post_files_app_files_post": {
         "properties": {
           "files": {
             "items": {
@@ -831,13 +831,14 @@
         "required": [
           "files"
         ],
-        "title": "Body_post_files",
+        "title": "Body_post_files_app_files_post",
         "type": "object"
       },
       "BrowserSession": {
         "additionalProperties": false,
         "properties": {
           "client_name": {
+            "description": "The name of the client that opened the session.",
             "title": "Client Name",
             "type": "string"
           },
@@ -850,6 +851,7 @@
                 "type": "null"
               }
             ],
+            "description": "The dashboard that the tab shows.",
             "title": "Current Dashboard Id"
           },
           "current_tab_id": {
@@ -861,9 +863,11 @@
                 "type": "null"
               }
             ],
+            "description": "The inner tab that the tab shows.",
             "title": "Current Tab Id"
           },
           "session_id": {
+            "description": "The id of the session, which the WebSocket address carries.",
             "title": "Session Id",
             "type": "string"
           }
@@ -880,6 +884,7 @@
         "properties": {
           "client_name": {
             "default": "workspace-ui",
+            "description": "The name of the client that opens the session.",
             "title": "Client Name",
             "type": "string"
           },
@@ -892,6 +897,7 @@
                 "type": "null"
               }
             ],
+            "description": "The dashboard that the tab shows.",
             "title": "Current Dashboard Id"
           },
           "current_tab_id": {
@@ -903,6 +909,7 @@
                 "type": "null"
               }
             ],
+            "description": "The inner tab that the tab shows.",
             "title": "Current Tab Id"
           }
         },
@@ -913,9 +920,11 @@
         "additionalProperties": false,
         "properties": {
           "session": {
-            "$ref": "#/components/schemas/BrowserSession"
+            "$ref": "#/components/schemas/BrowserSession",
+            "description": "The new session."
           },
           "websocket_url": {
+            "description": "The address of the WebSocket that the tab opens.",
             "title": "Websocket Url",
             "type": "string"
           }
@@ -6509,7 +6518,7 @@
   "paths": {
     "/": {
       "get": {
-        "operationId": "nginx",
+        "operationId": "nginx__get",
         "responses": {
           "200": {
             "content": {
@@ -6525,7 +6534,7 @@
     },
     "/admin/apps": {
       "get": {
-        "operationId": "get_apps",
+        "operationId": "get_apps_admin_apps_get",
         "responses": {
           "200": {
             "content": {
@@ -6534,7 +6543,7 @@
                   "items": {
                     "$ref": "#/components/schemas/AppReturn"
                   },
-                  "title": "Response Get Apps",
+                  "title": "Response Get Apps Admin Apps Get",
                   "type": "array"
                 }
               }
@@ -6550,7 +6559,7 @@
     },
     "/admin/create-user": {
       "post": {
-        "operationId": "create_user",
+        "operationId": "create_user_admin_create_user_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -6591,7 +6600,7 @@
     },
     "/admin/entity": {
       "get": {
-        "operationId": "get_entity",
+        "operationId": "get_entity_admin_entity_get",
         "responses": {
           "200": {
             "content": {
@@ -6610,7 +6619,7 @@
         ]
       },
       "patch": {
-        "operationId": "patch_entity",
+        "operationId": "patch_entity_admin_entity_patch",
         "requestBody": {
           "content": {
             "application/json": {
@@ -6651,7 +6660,7 @@
     },
     "/admin/entity-map": {
       "get": {
-        "operationId": "get_entity_maps",
+        "operationId": "get_entity_maps_admin_entity_map_get",
         "responses": {
           "200": {
             "content": {
@@ -6660,7 +6669,7 @@
                   "items": {
                     "$ref": "#/components/schemas/EntityMapReturn"
                   },
-                  "title": "Response Get Entity Maps",
+                  "title": "Response Get Entity Maps Admin Entity Map Get",
                   "type": "array"
                 }
               }
@@ -6676,7 +6685,7 @@
     },
     "/admin/plugins": {
       "get": {
-        "operationId": "list_entity_plugins",
+        "operationId": "list_entity_plugins_admin_plugins_get",
         "responses": {
           "200": {
             "content": {
@@ -6695,7 +6704,7 @@
     },
     "/admin/plugins/{plugin_id}": {
       "put": {
-        "operationId": "put_entity_plugin",
+        "operationId": "put_entity_plugin_admin_plugins__plugin_id__put",
         "parameters": [
           {
             "in": "path",
@@ -6746,7 +6755,7 @@
     },
     "/admin/plugins/{plugin_id}/csp-reports": {
       "get": {
-        "operationId": "get_entity_plugin_reports",
+        "operationId": "get_entity_plugin_reports_admin_plugins__plugin_id__csp_reports_get",
         "parameters": [
           {
             "in": "path",
@@ -6787,7 +6796,7 @@
     },
     "/admin/plugins/{plugin_id}/events": {
       "get": {
-        "operationId": "get_entity_plugin_events",
+        "operationId": "get_entity_plugin_events_admin_plugins__plugin_id__events_get",
         "parameters": [
           {
             "in": "path",
@@ -6828,7 +6837,7 @@
     },
     "/admin/register": {
       "post": {
-        "operationId": "register_user",
+        "operationId": "register_user_admin_register_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -6869,7 +6878,7 @@
     },
     "/admin/register/{invite_uuid}": {
       "delete": {
-        "operationId": "revoke_register_user",
+        "operationId": "revoke_register_user_admin_register__invite_uuid__delete",
         "parameters": [
           {
             "in": "path",
@@ -6912,7 +6921,7 @@
     },
     "/admin/reset-2fa/{user_uuid}": {
       "post": {
-        "operationId": "post_reset_2fa",
+        "operationId": "post_reset_2fa_admin_reset_2fa__user_uuid__post",
         "parameters": [
           {
             "in": "path",
@@ -6955,7 +6964,7 @@
     },
     "/admin/reset-password/{user_uuid}": {
       "post": {
-        "operationId": "post_reset_password",
+        "operationId": "post_reset_password_admin_reset_password__user_uuid__post",
         "parameters": [
           {
             "in": "path",
@@ -6998,7 +7007,7 @@
     },
     "/admin/role": {
       "get": {
-        "operationId": "get_roles",
+        "operationId": "get_roles_admin_role_get",
         "responses": {
           "200": {
             "content": {
@@ -7007,7 +7016,7 @@
                   "items": {
                     "$ref": "#/components/schemas/GetRoleWithUsers"
                   },
-                  "title": "Response Get Roles",
+                  "title": "Response Get Roles Admin Role Get",
                   "type": "array"
                 }
               }
@@ -7021,7 +7030,7 @@
         ]
       },
       "post": {
-        "operationId": "post_role",
+        "operationId": "post_role_admin_role_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -7062,7 +7071,7 @@
     },
     "/admin/role-permissions-audit-logs": {
       "get": {
-        "operationId": "get_audit_logs",
+        "operationId": "get_audit_logs_admin_role_permissions_audit_logs_get",
         "parameters": [
           {
             "in": "query",
@@ -7156,7 +7165,7 @@
                   "items": {
                     "$ref": "#/components/schemas/RoleAuditLogReturn"
                   },
-                  "title": "Response Get Audit Logs",
+                  "title": "Response Get Audit Logs Admin Role Permissions Audit Logs Get",
                   "type": "array"
                 }
               }
@@ -7182,7 +7191,7 @@
     },
     "/admin/role-permissions/{role_uuid}": {
       "get": {
-        "operationId": "get_role_permissions",
+        "operationId": "get_role_permissions_admin_role_permissions__role_uuid__get",
         "parameters": [
           {
             "in": "path",
@@ -7203,7 +7212,7 @@
                   "items": {
                     "$ref": "#/components/schemas/RolePermissions"
                   },
-                  "title": "Response Get Role Permissions",
+                  "title": "Response Get Role Permissions Admin Role Permissions  Role Uuid  Get",
                   "type": "array"
                 }
               }
@@ -7227,7 +7236,7 @@
         ]
       },
       "put": {
-        "operationId": "put_role_permissions",
+        "operationId": "put_role_permissions_admin_role_permissions__role_uuid__put",
         "parameters": [
           {
             "in": "path",
@@ -7284,7 +7293,7 @@
     },
     "/admin/role/{role_uuid}": {
       "delete": {
-        "operationId": "delete_role",
+        "operationId": "delete_role_admin_role__role_uuid__delete",
         "parameters": [
           {
             "in": "path",
@@ -7325,7 +7334,7 @@
         ]
       },
       "get": {
-        "operationId": "get_role",
+        "operationId": "get_role_admin_role__role_uuid__get",
         "parameters": [
           {
             "in": "path",
@@ -7366,7 +7375,7 @@
         ]
       },
       "patch": {
-        "operationId": "patch_role",
+        "operationId": "patch_role_admin_role__role_uuid__patch",
         "parameters": [
           {
             "in": "path",
@@ -7419,7 +7428,7 @@
     },
     "/admin/role/{role_uuid}/copilot-access": {
       "get": {
-        "operationId": "get_role_copilot_access",
+        "operationId": "get_role_copilot_access_admin_role__role_uuid__copilot_access_get",
         "parameters": [
           {
             "in": "path",
@@ -7460,7 +7469,7 @@
         ]
       },
       "put": {
-        "operationId": "put_role_copilot_access",
+        "operationId": "put_role_copilot_access_admin_role__role_uuid__copilot_access_put",
         "parameters": [
           {
             "in": "path",
@@ -7513,7 +7522,7 @@
     },
     "/admin/role/{role_uuid}/plugin-access": {
       "get": {
-        "operationId": "get_role_plugin_access",
+        "operationId": "get_role_plugin_access_admin_role__role_uuid__plugin_access_get",
         "parameters": [
           {
             "in": "path",
@@ -7554,7 +7563,7 @@
         ]
       },
       "put": {
-        "operationId": "put_role_plugin_access",
+        "operationId": "put_role_plugin_access_admin_role__role_uuid__plugin_access_put",
         "parameters": [
           {
             "in": "path",
@@ -7605,7 +7614,7 @@
     },
     "/admin/share-requests": {
       "get": {
-        "operationId": "get_share_requests",
+        "operationId": "get_share_requests_admin_share_requests_get",
         "responses": {
           "200": {
             "content": {
@@ -7614,7 +7623,7 @@
                   "items": {
                     "$ref": "#/components/schemas/ShareRequestReturn"
                   },
-                  "title": "Response Get Share Requests",
+                  "title": "Response Get Share Requests Admin Share Requests Get",
                   "type": "array"
                 }
               }
@@ -7630,7 +7639,7 @@
     },
     "/admin/share-requests/{request_uuid}/approve": {
       "post": {
-        "operationId": "approve_share_request",
+        "operationId": "approve_share_request_admin_share_requests__request_uuid__approve_post",
         "parameters": [
           {
             "in": "path",
@@ -7673,7 +7682,7 @@
     },
     "/admin/share-requests/{request_uuid}/decline": {
       "post": {
-        "operationId": "decline_share_request",
+        "operationId": "decline_share_request_admin_share_requests__request_uuid__decline_post",
         "parameters": [
           {
             "in": "path",
@@ -7716,7 +7725,7 @@
     },
     "/admin/theme-presets": {
       "get": {
-        "operationId": "get_theme_presets",
+        "operationId": "get_theme_presets_admin_theme_presets_get",
         "responses": {
           "200": {
             "content": {
@@ -7737,7 +7746,7 @@
     },
     "/admin/theme-presets/active": {
       "put": {
-        "operationId": "put_active_theme_preset",
+        "operationId": "put_active_theme_preset_admin_theme_presets_active_put",
         "requestBody": {
           "content": {
             "application/json": {
@@ -7778,7 +7787,7 @@
     },
     "/admin/theme-presets/{preset_uuid}": {
       "delete": {
-        "operationId": "delete_theme_preset",
+        "operationId": "delete_theme_preset_admin_theme_presets__preset_uuid__delete",
         "parameters": [
           {
             "in": "path",
@@ -7819,7 +7828,7 @@
         ]
       },
       "put": {
-        "operationId": "put_theme_preset",
+        "operationId": "put_theme_preset_admin_theme_presets__preset_uuid__put",
         "parameters": [
           {
             "in": "path",
@@ -7872,7 +7881,7 @@
     },
     "/admin/theme-settings": {
       "patch": {
-        "operationId": "patch_theme_settings",
+        "operationId": "patch_theme_settings_admin_theme_settings_patch",
         "requestBody": {
           "content": {
             "application/json": {
@@ -7913,7 +7922,7 @@
     },
     "/admin/usage/{user_uuid}/reset": {
       "post": {
-        "operationId": "post_reset_usage",
+        "operationId": "post_reset_usage_admin_usage__user_uuid__reset_post",
         "parameters": [
           {
             "in": "path",
@@ -7956,7 +7965,7 @@
     },
     "/admin/user-permissions/{user_uuid}": {
       "get": {
-        "operationId": "get_user_permissions",
+        "operationId": "get_user_permissions_admin_user_permissions__user_uuid__get",
         "parameters": [
           {
             "in": "path",
@@ -7977,7 +7986,7 @@
                   "items": {
                     "$ref": "#/components/schemas/UserPermissions"
                   },
-                  "title": "Response Get User Permissions",
+                  "title": "Response Get User Permissions Admin User Permissions  User Uuid  Get",
                   "type": "array"
                 }
               }
@@ -8003,7 +8012,7 @@
     },
     "/admin/users": {
       "get": {
-        "operationId": "see_users",
+        "operationId": "see_users_admin_users_get",
         "responses": {
           "200": {
             "content": {
@@ -8012,7 +8021,7 @@
                   "items": {
                     "$ref": "#/components/schemas/UserAdminReturn"
                   },
-                  "title": "Response See Users",
+                  "title": "Response See Users Admin Users Get",
                   "type": "array"
                 }
               }
@@ -8028,7 +8037,7 @@
     },
     "/admin/users/{user_uuid}": {
       "delete": {
-        "operationId": "delete_user",
+        "operationId": "delete_user_admin_users__user_uuid__delete",
         "parameters": [
           {
             "in": "path",
@@ -8069,7 +8078,7 @@
         ]
       },
       "patch": {
-        "operationId": "update_user",
+        "operationId": "update_user_admin_users__user_uuid__patch",
         "parameters": [
           {
             "in": "path",
@@ -8122,7 +8131,7 @@
     },
     "/admin/users/{user_uuid}/remove": {
       "delete": {
-        "operationId": "remove_user",
+        "operationId": "remove_user_admin_users__user_uuid__remove_delete",
         "parameters": [
           {
             "in": "path",
@@ -8165,7 +8174,7 @@
     },
     "/admin/validate": {
       "get": {
-        "operationId": "validate_admin",
+        "operationId": "validate_admin_admin_validate_get",
         "responses": {
           "200": {
             "content": {
@@ -8186,7 +8195,7 @@
     },
     "/app/2fa": {
       "get": {
-        "operationId": "get_2fa",
+        "operationId": "get_2fa_app_2fa_get",
         "responses": {
           "200": {
             "content": {
@@ -8205,7 +8214,7 @@
         ]
       },
       "put": {
-        "operationId": "put_2fa",
+        "operationId": "put_2fa_app_2fa_put",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8246,7 +8255,7 @@
     },
     "/app/access": {
       "get": {
-        "operationId": "get_access",
+        "operationId": "get_access_app_access_get",
         "responses": {
           "200": {
             "content": {
@@ -8267,7 +8276,7 @@
     },
     "/app/copilot-chats": {
       "delete": {
-        "operationId": "delete_copilot_chats",
+        "operationId": "delete_copilot_chats_app_copilot_chats_delete",
         "responses": {
           "200": {
             "content": {
@@ -8286,7 +8295,7 @@
         ]
       },
       "post": {
-        "operationId": "post_copilot_chats",
+        "operationId": "post_copilot_chats_app_copilot_chats_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8327,7 +8336,7 @@
     },
     "/app/copilot-chats/search": {
       "get": {
-        "operationId": "search_copilot_chats",
+        "operationId": "search_copilot_chats_app_copilot_chats_search_get",
         "parameters": [
           {
             "in": "query",
@@ -8397,7 +8406,7 @@
                       }
                     ]
                   },
-                  "title": "Response Search Copilot Chats",
+                  "title": "Response Search Copilot Chats App Copilot Chats Search Get",
                   "type": "array"
                 }
               }
@@ -8423,7 +8432,7 @@
     },
     "/app/copilot-chats/{chat_uuid}": {
       "get": {
-        "operationId": "get_copilot_chat",
+        "operationId": "get_copilot_chat_app_copilot_chats__chat_uuid__get",
         "parameters": [
           {
             "in": "path",
@@ -8466,7 +8475,7 @@
     },
     "/app/copilot-keys": {
       "get": {
-        "operationId": "get_copilot_keys",
+        "operationId": "get_copilot_keys_app_copilot_keys_get",
         "responses": {
           "200": {
             "content": {
@@ -8485,7 +8494,7 @@
         ]
       },
       "put": {
-        "operationId": "put_copilot_keys",
+        "operationId": "put_copilot_keys_app_copilot_keys_put",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8526,7 +8535,7 @@
     },
     "/app/copilot/access": {
       "get": {
-        "operationId": "get_copilot_access",
+        "operationId": "get_copilot_access_app_copilot_access_get",
         "responses": {
           "200": {
             "content": {
@@ -8547,7 +8556,7 @@
     },
     "/app/copilot/authorize": {
       "post": {
-        "operationId": "post_copilot_authorize",
+        "operationId": "post_copilot_authorize_app_copilot_authorize_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8588,7 +8597,7 @@
     },
     "/app/copilot/token": {
       "post": {
-        "operationId": "post_copilot_token",
+        "operationId": "post_copilot_token_app_copilot_token_post",
         "responses": {
           "200": {
             "content": {
@@ -8609,7 +8618,7 @@
     },
     "/app/custom-copilot": {
       "get": {
-        "operationId": "get_custom_copilot",
+        "operationId": "get_custom_copilot_app_custom_copilot_get",
         "responses": {
           "200": {
             "content": {
@@ -8618,7 +8627,7 @@
                   "items": {
                     "$ref": "#/components/schemas/CustomCopilot"
                   },
-                  "title": "Response Get Custom Copilot",
+                  "title": "Response Get Custom Copilot App Custom Copilot Get",
                   "type": "array"
                 }
               }
@@ -8632,7 +8641,7 @@
         ]
       },
       "put": {
-        "operationId": "put_custom_copilot",
+        "operationId": "put_custom_copilot_app_custom_copilot_put",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8673,7 +8682,7 @@
     },
     "/app/custom-copilot/{uuid}": {
       "delete": {
-        "operationId": "delete_custom_copilot",
+        "operationId": "delete_custom_copilot_app_custom_copilot__uuid__delete",
         "parameters": [
           {
             "in": "path",
@@ -8716,7 +8725,7 @@
     },
     "/app/dash/shared-dashboard-viewed": {
       "get": {
-        "operationId": "get_shared_dashboard_viewed",
+        "operationId": "get_shared_dashboard_viewed_app_dash_shared_dashboard_viewed_get",
         "parameters": [
           {
             "in": "query",
@@ -8744,7 +8753,7 @@
                   "items": {
                     "$ref": "#/components/schemas/SharedDashboardViewed"
                   },
-                  "title": "Response Get Shared Dashboard Viewed",
+                  "title": "Response Get Shared Dashboard Viewed App Dash Shared Dashboard Viewed Get",
                   "type": "array"
                 }
               }
@@ -8770,7 +8779,7 @@
     },
     "/app/dash/shared-dashboard-viewed/{dashboard_uuid}": {
       "patch": {
-        "operationId": "patch_shared_dashboard_viewed",
+        "operationId": "patch_shared_dashboard_viewed_app_dash_shared_dashboard_viewed__dashboard_uuid__patch",
         "parameters": [
           {
             "in": "path",
@@ -8813,7 +8822,7 @@
     },
     "/app/dash/sync": {
       "get": {
-        "operationId": "get_items",
+        "operationId": "get_items_app_dash_sync_get",
         "responses": {
           "200": {
             "content": {
@@ -8832,7 +8841,7 @@
         ]
       },
       "post": {
-        "operationId": "update_items",
+        "operationId": "update_items_app_dash_sync_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -8873,7 +8882,7 @@
     },
     "/app/dash/sync/owned": {
       "get": {
-        "operationId": "get_owned_items",
+        "operationId": "get_owned_items_app_dash_sync_owned_get",
         "responses": {
           "200": {
             "content": {
@@ -8894,7 +8903,7 @@
     },
     "/app/dash/sync/shared": {
       "get": {
-        "operationId": "get_shared_items",
+        "operationId": "get_shared_items_app_dash_sync_shared_get",
         "responses": {
           "200": {
             "content": {
@@ -8915,7 +8924,7 @@
     },
     "/app/dash/validate-and-sync": {
       "get": {
-        "operationId": "dash_validate_and_get_items",
+        "operationId": "dash_validate_and_get_items_app_dash_validate_and_sync_get",
         "responses": {
           "200": {
             "content": {
@@ -8936,7 +8945,7 @@
     },
     "/app/dash/{dashboard_uuid}/share": {
       "delete": {
-        "operationId": "delete_share",
+        "operationId": "delete_share_app_dash__dashboard_uuid__share_delete",
         "parameters": [
           {
             "in": "path",
@@ -8987,7 +8996,7 @@
         ]
       },
       "patch": {
-        "operationId": "update_share",
+        "operationId": "update_share_app_dash__dashboard_uuid__share_patch",
         "parameters": [
           {
             "in": "path",
@@ -9038,7 +9047,7 @@
         ]
       },
       "post": {
-        "operationId": "add_share",
+        "operationId": "add_share_app_dash__dashboard_uuid__share_post",
         "parameters": [
           {
             "in": "path",
@@ -9091,7 +9100,7 @@
     },
     "/app/dash/{dashboard_uuid}/shares": {
       "get": {
-        "operationId": "get_shares",
+        "operationId": "get_shares_app_dash__dashboard_uuid__shares_get",
         "parameters": [
           {
             "in": "path",
@@ -9112,7 +9121,7 @@
                   "additionalProperties": {
                     "$ref": "#/components/schemas/DashboardShareReturn"
                   },
-                  "title": "Response Get Shares",
+                  "title": "Response Get Shares App Dash  Dashboard Uuid  Shares Get",
                   "type": "object"
                 }
               }
@@ -9138,7 +9147,7 @@
     },
     "/app/dash/{dashboard_uuid}/shares/users": {
       "get": {
-        "operationId": "see_available_users",
+        "operationId": "see_available_users_app_dash__dashboard_uuid__shares_users_get",
         "parameters": [
           {
             "in": "path",
@@ -9159,7 +9168,7 @@
                   "additionalProperties": {
                     "$ref": "#/components/schemas/DashboardShareReturn"
                   },
-                  "title": "Response See Available Users",
+                  "title": "Response See Available Users App Dash  Dashboard Uuid  Shares Users Get",
                   "type": "object"
                 }
               }
@@ -9185,7 +9194,7 @@
     },
     "/app/dash/{dashboard_uuid}/toggle-entity-sharing": {
       "post": {
-        "operationId": "toggle_entity_sharing",
+        "operationId": "toggle_entity_sharing_app_dash__dashboard_uuid__toggle_entity_sharing_post",
         "parameters": [
           {
             "in": "path",
@@ -9228,7 +9237,7 @@
     },
     "/app/dash/{dashboard_uuid}/versions": {
       "get": {
-        "operationId": "dashboard_versions",
+        "operationId": "dashboard_versions_app_dash__dashboard_uuid__versions_get",
         "parameters": [
           {
             "in": "path",
@@ -9249,7 +9258,7 @@
                   "items": {
                     "$ref": "#/components/schemas/DashboardSave"
                   },
-                  "title": "Response Dashboard Versions",
+                  "title": "Response Dashboard Versions App Dash  Dashboard Uuid  Versions Get",
                   "type": "array"
                 }
               }
@@ -9275,7 +9284,7 @@
     },
     "/app/data-connectors/api-source": {
       "get": {
-        "operationId": "get_user_api_sources",
+        "operationId": "get_user_api_sources_app_data_connectors_api_source_get",
         "responses": {
           "200": {
             "content": {
@@ -9284,7 +9293,7 @@
                   "items": {
                     "$ref": "#/components/schemas/ReturnApiSource"
                   },
-                  "title": "Response Get User Api Sources",
+                  "title": "Response Get User Api Sources App Data Connectors Api Source Get",
                   "type": "array"
                 }
               }
@@ -9300,7 +9309,7 @@
     },
     "/app/data-connectors/api-source/{source_uuid}": {
       "delete": {
-        "operationId": "delete_user_api_source",
+        "operationId": "delete_user_api_source_app_data_connectors_api_source__source_uuid__delete",
         "parameters": [
           {
             "description": "The UUID of the source to delete",
@@ -9343,7 +9352,7 @@
         ]
       },
       "post": {
-        "operationId": "post_user_api_source",
+        "operationId": "post_user_api_source_app_data_connectors_api_source__source_uuid__post",
         "parameters": [
           {
             "description": "The UUID of the source to create or update",
@@ -9398,7 +9407,7 @@
     },
     "/app/data-connectors/file": {
       "get": {
-        "operationId": "get_user_file_widgets",
+        "operationId": "get_user_file_widgets_app_data_connectors_file_get",
         "responses": {
           "200": {
             "content": {
@@ -9407,7 +9416,7 @@
                   "items": {
                     "$ref": "#/components/schemas/ReturnFileWidget"
                   },
-                  "title": "Response Get User File Widgets",
+                  "title": "Response Get User File Widgets App Data Connectors File Get",
                   "type": "array"
                 }
               }
@@ -9423,7 +9432,7 @@
     },
     "/app/data-connectors/file/{widget_uuid}": {
       "delete": {
-        "operationId": "delete_user_file_widget",
+        "operationId": "delete_user_file_widget_app_data_connectors_file__widget_uuid__delete",
         "parameters": [
           {
             "description": "The UUID of the widget to delete",
@@ -9466,7 +9475,7 @@
         ]
       },
       "post": {
-        "operationId": "post_user_file_widget",
+        "operationId": "post_user_file_widget_app_data_connectors_file__widget_uuid__post",
         "parameters": [
           {
             "description": "The UUID of the widget to create or update",
@@ -9521,7 +9530,7 @@
     },
     "/app/data-connectors/stored-files": {
       "get": {
-        "operationId": "get_stored_files",
+        "operationId": "get_stored_files_app_data_connectors_stored_files_get",
         "responses": {
           "200": {
             "content": {
@@ -9530,7 +9539,7 @@
                   "items": {
                     "$ref": "#/components/schemas/StoredFileReturn"
                   },
-                  "title": "Response Get Stored Files",
+                  "title": "Response Get Stored Files App Data Connectors Stored Files Get",
                   "type": "array"
                 }
               }
@@ -9546,7 +9555,7 @@
     },
     "/app/display-settings": {
       "post": {
-        "operationId": "post_display_settings",
+        "operationId": "post_display_settings_app_display_settings_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -9587,7 +9596,7 @@
     },
     "/app/files": {
       "delete": {
-        "operationId": "delete_files",
+        "operationId": "delete_files_app_files_delete",
         "requestBody": {
           "content": {
             "application/json": {
@@ -9627,12 +9636,12 @@
         ]
       },
       "post": {
-        "operationId": "post_files",
+        "operationId": "post_files_app_files_post",
         "requestBody": {
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/Body_post_files"
+                "$ref": "#/components/schemas/Body_post_files_app_files_post"
               }
             }
           },
@@ -9646,7 +9655,7 @@
                   "items": {
                     "$ref": "#/components/schemas/PendingFileReturn"
                   },
-                  "title": "Response Post Files",
+                  "title": "Response Post Files App Files Post",
                   "type": "array"
                 }
               }
@@ -9672,7 +9681,7 @@
     },
     "/app/files/download": {
       "post": {
-        "operationId": "get_files",
+        "operationId": "get_files_app_files_download_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -9711,7 +9720,7 @@
     },
     "/app/files/presigned/{file_name}": {
       "get": {
-        "operationId": "get_signed_file",
+        "operationId": "get_signed_file_app_files_presigned__file_name__get",
         "parameters": [
           {
             "in": "path",
@@ -9764,7 +9773,7 @@
     },
     "/app/files/{file_name}": {
       "get": {
-        "operationId": "get_file",
+        "operationId": "get_file_app_files__file_name__get",
         "parameters": [
           {
             "in": "path",
@@ -9799,7 +9808,7 @@
     },
     "/app/files/{file_name}/presigned-url": {
       "get": {
-        "operationId": "get_presigned_url",
+        "operationId": "get_presigned_url_app_files__file_name__presigned_url_get",
         "parameters": [
           {
             "in": "path",
@@ -9852,7 +9861,7 @@
     },
     "/app/files/{file_uuid}": {
       "delete": {
-        "operationId": "delete_file",
+        "operationId": "delete_file_app_files__file_uuid__delete",
         "parameters": [
           {
             "in": "path",
@@ -9895,7 +9904,7 @@
     },
     "/app/login": {
       "post": {
-        "operationId": "login",
+        "operationId": "login_app_login_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -9936,7 +9945,7 @@
     },
     "/app/logout": {
       "post": {
-        "operationId": "logout",
+        "operationId": "logout_app_logout_post",
         "responses": {
           "200": {
             "content": {
@@ -9957,7 +9966,7 @@
     },
     "/app/mcp-oauth/complete": {
       "post": {
-        "operationId": "complete_mcp_oauth",
+        "operationId": "complete_mcp_oauth_app_mcp_oauth_complete_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -9998,7 +10007,7 @@
     },
     "/app/mcp-oauth/disconnect": {
       "post": {
-        "operationId": "disconnect_mcp_oauth",
+        "operationId": "disconnect_mcp_oauth_app_mcp_oauth_disconnect_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -10032,7 +10041,7 @@
     },
     "/app/mcp-oauth/start": {
       "post": {
-        "operationId": "start_mcp_oauth",
+        "operationId": "start_mcp_oauth_app_mcp_oauth_start_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -10073,7 +10082,7 @@
     },
     "/app/mcp-proxy": {
       "post": {
-        "operationId": "mcp_proxy",
+        "operationId": "mcp_proxy_app_mcp_proxy_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -10107,7 +10116,7 @@
     },
     "/app/mcp-servers": {
       "post": {
-        "operationId": "post_mcp_servers",
+        "operationId": "post_mcp_servers_app_mcp_servers_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -10148,7 +10157,7 @@
     },
     "/app/mcp-servers/local-headers": {
       "post": {
-        "operationId": "get_local_mcp_server_headers",
+        "operationId": "get_local_mcp_server_headers_app_mcp_servers_local_headers_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -10189,7 +10198,7 @@
     },
     "/app/prompts": {
       "get": {
-        "operationId": "get_user_prompt",
+        "operationId": "get_user_prompt_app_prompts_get",
         "responses": {
           "200": {
             "content": {
@@ -10198,7 +10207,7 @@
                   "items": {
                     "$ref": "#/components/schemas/Prompt"
                   },
-                  "title": "Response Get User Prompt",
+                  "title": "Response Get User Prompt App Prompts Get",
                   "type": "array"
                 }
               }
@@ -10212,7 +10221,7 @@
         ]
       },
       "post": {
-        "operationId": "post_user_prompt",
+        "operationId": "post_user_prompt_app_prompts_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -10257,7 +10266,7 @@
     },
     "/app/reset-password": {
       "post": {
-        "operationId": "post_reset_password",
+        "operationId": "post_reset_password_app_reset_password_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -10298,7 +10307,7 @@
     },
     "/app/resource-permissions": {
       "get": {
-        "operationId": "get_resource_permissions",
+        "operationId": "get_resource_permissions_app_resource_permissions_get",
         "responses": {
           "200": {
             "content": {
@@ -10319,7 +10328,7 @@
     },
     "/app/role-permissions": {
       "get": {
-        "operationId": "get_user_role_permissions",
+        "operationId": "get_user_role_permissions_app_role_permissions_get",
         "responses": {
           "200": {
             "content": {
@@ -10340,7 +10349,7 @@
     },
     "/app/session": {
       "get": {
-        "operationId": "get_session",
+        "operationId": "get_session_app_session_get",
         "responses": {
           "200": {
             "content": {
@@ -10361,7 +10370,7 @@
     },
     "/app/sign-in/nonce": {
       "post": {
-        "operationId": "post_sign_in_nonce",
+        "operationId": "post_sign_in_nonce_app_sign_in_nonce_post",
         "responses": {
           "200": {
             "content": {
@@ -10382,7 +10391,7 @@
     },
     "/app/skills": {
       "delete": {
-        "operationId": "delete_user_skill",
+        "operationId": "delete_user_skill_app_skills_delete",
         "requestBody": {
           "content": {
             "application/json": {
@@ -10406,7 +10415,7 @@
                   "items": {
                     "$ref": "#/components/schemas/SkillReturn"
                   },
-                  "title": "Response Delete User Skill",
+                  "title": "Response Delete User Skill App Skills Delete",
                   "type": "array"
                 }
               }
@@ -10430,7 +10439,7 @@
         ]
       },
       "post": {
-        "operationId": "create_user_skill",
+        "operationId": "create_user_skill_app_skills_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -10449,7 +10458,7 @@
                   "items": {
                     "$ref": "#/components/schemas/SkillReturn"
                   },
-                  "title": "Response Create User Skill",
+                  "title": "Response Create User Skill App Skills Post",
                   "type": "array"
                 }
               }
@@ -10475,7 +10484,7 @@
     },
     "/app/skills/{skill_uuid}": {
       "patch": {
-        "operationId": "update_user_skill",
+        "operationId": "update_user_skill_app_skills__skill_uuid__patch",
         "parameters": [
           {
             "in": "path",
@@ -10506,7 +10515,7 @@
                   "items": {
                     "$ref": "#/components/schemas/SkillReturn"
                   },
-                  "title": "Response Update User Skill",
+                  "title": "Response Update User Skill App Skills  Skill Uuid  Patch",
                   "type": "array"
                 }
               }
@@ -10532,7 +10541,7 @@
     },
     "/app/theme-settings": {
       "get": {
-        "operationId": "get_theme_settings",
+        "operationId": "get_theme_settings_app_theme_settings_get",
         "responses": {
           "200": {
             "content": {
@@ -10553,7 +10562,7 @@
     },
     "/app/usage": {
       "get": {
-        "operationId": "get_usage",
+        "operationId": "get_usage_app_usage_get",
         "responses": {
           "200": {
             "content": {
@@ -10572,7 +10581,7 @@
         ]
       },
       "put": {
-        "operationId": "put_usage",
+        "operationId": "put_usage_app_usage_put",
         "requestBody": {
           "content": {
             "application/json": {
@@ -10613,7 +10622,7 @@
     },
     "/app/user": {
       "get": {
-        "operationId": "get_user",
+        "operationId": "get_user_app_user_get",
         "responses": {
           "200": {
             "content": {
@@ -10634,7 +10643,7 @@
     },
     "/app/user-apps/shared-app-viewed": {
       "get": {
-        "operationId": "get_shared_app_viewed",
+        "operationId": "get_shared_app_viewed_app_user_apps_shared_app_viewed_get",
         "parameters": [
           {
             "in": "query",
@@ -10662,7 +10671,7 @@
                   "items": {
                     "$ref": "#/components/schemas/SharedAppViewed"
                   },
-                  "title": "Response Get Shared App Viewed",
+                  "title": "Response Get Shared App Viewed App User Apps Shared App Viewed Get",
                   "type": "array"
                 }
               }
@@ -10688,7 +10697,7 @@
     },
     "/app/user-apps/shared-app-viewed/{app_uuid}": {
       "patch": {
-        "operationId": "patch_shared_app_viewed",
+        "operationId": "patch_shared_app_viewed_app_user_apps_shared_app_viewed__app_uuid__patch",
         "parameters": [
           {
             "in": "path",
@@ -10731,7 +10740,7 @@
     },
     "/app/user-apps/sync": {
       "get": {
-        "operationId": "get_user_apps",
+        "operationId": "get_user_apps_app_user_apps_sync_get",
         "responses": {
           "200": {
             "content": {
@@ -10752,7 +10761,7 @@
     },
     "/app/user-apps/{app_uuid}": {
       "delete": {
-        "operationId": "delete_user_app",
+        "operationId": "delete_user_app_app_user_apps__app_uuid__delete",
         "parameters": [
           {
             "in": "path",
@@ -10793,7 +10802,7 @@
         ]
       },
       "post": {
-        "operationId": "post_user_app",
+        "operationId": "post_user_app_app_user_apps__app_uuid__post",
         "parameters": [
           {
             "in": "path",
@@ -10846,7 +10855,7 @@
     },
     "/app/user-apps/{app_uuid}/share": {
       "delete": {
-        "operationId": "delete_share",
+        "operationId": "delete_share_app_user_apps__app_uuid__share_delete",
         "parameters": [
           {
             "in": "path",
@@ -10897,7 +10906,7 @@
         ]
       },
       "patch": {
-        "operationId": "update_share",
+        "operationId": "update_share_app_user_apps__app_uuid__share_patch",
         "parameters": [
           {
             "in": "path",
@@ -10948,7 +10957,7 @@
         ]
       },
       "post": {
-        "operationId": "add_share",
+        "operationId": "add_share_app_user_apps__app_uuid__share_post",
         "parameters": [
           {
             "in": "path",
@@ -11001,7 +11010,7 @@
     },
     "/app/user-apps/{app_uuid}/shares": {
       "get": {
-        "operationId": "get_shares",
+        "operationId": "get_shares_app_user_apps__app_uuid__shares_get",
         "parameters": [
           {
             "in": "path",
@@ -11022,7 +11031,7 @@
                   "additionalProperties": {
                     "$ref": "#/components/schemas/UserAppShareReturn"
                   },
-                  "title": "Response Get Shares",
+                  "title": "Response Get Shares App User Apps  App Uuid  Shares Get",
                   "type": "object"
                 }
               }
@@ -11048,7 +11057,7 @@
     },
     "/app/user-apps/{app_uuid}/shares/users": {
       "get": {
-        "operationId": "see_available_users",
+        "operationId": "see_available_users_app_user_apps__app_uuid__shares_users_get",
         "parameters": [
           {
             "in": "path",
@@ -11069,7 +11078,7 @@
                   "additionalProperties": {
                     "$ref": "#/components/schemas/UserAppShareReturn"
                   },
-                  "title": "Response See Available Users",
+                  "title": "Response See Available Users App User Apps  App Uuid  Shares Users Get",
                   "type": "object"
                 }
               }
@@ -11095,7 +11104,7 @@
     },
     "/app/validate": {
       "get": {
-        "operationId": "validate_user",
+        "operationId": "validate_user_app_validate_get",
         "responses": {
           "200": {
             "content": {
@@ -11116,7 +11125,7 @@
     },
     "/app/widget-metadata": {
       "get": {
-        "operationId": "get_widget_metadata",
+        "operationId": "get_widget_metadata_app_widget_metadata_get",
         "parameters": [
           {
             "in": "query",
@@ -11185,7 +11194,7 @@
                   "items": {
                     "$ref": "#/components/schemas/WidgetMetadataResponse"
                   },
-                  "title": "Response Get Widget Metadata",
+                  "title": "Response Get Widget Metadata App Widget Metadata Get",
                   "type": "array"
                 }
               }
@@ -11209,7 +11218,7 @@
         ]
       },
       "patch": {
-        "operationId": "patch_widget_metadata",
+        "operationId": "patch_widget_metadata_app_widget_metadata_patch",
         "parameters": [
           {
             "in": "query",
@@ -11260,7 +11269,7 @@
         ]
       },
       "post": {
-        "operationId": "post_widget_metadata",
+        "operationId": "post_widget_metadata_app_widget_metadata_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -11301,7 +11310,7 @@
     },
     "/app/widget-metadata/{widget_id}": {
       "delete": {
-        "operationId": "delete_widget_metadata",
+        "operationId": "delete_widget_metadata_app_widget_metadata__widget_id__delete",
         "parameters": [
           {
             "in": "path",
@@ -11322,7 +11331,7 @@
                   "items": {
                     "$ref": "#/components/schemas/WidgetMetadataResponse"
                   },
-                  "title": "Response Delete Widget Metadata",
+                  "title": "Response Delete Widget Metadata App Widget Metadata  Widget Id  Delete",
                   "type": "array"
                 }
               }
@@ -11348,7 +11357,7 @@
     },
     "/app/widget-plugins": {
       "get": {
-        "operationId": "get_available_plugins",
+        "operationId": "get_available_plugins_app_widget_plugins_get",
         "responses": {
           "200": {
             "content": {
@@ -11367,7 +11376,7 @@
     },
     "/app/widget-plugins/report": {
       "post": {
-        "operationId": "post_plugin_report",
+        "operationId": "post_plugin_report_app_widget_plugins_report_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -11406,7 +11415,7 @@
     },
     "/app/widget-plugins/widgets-schema": {
       "get": {
-        "operationId": "get_widgets_schema",
+        "operationId": "get_widgets_schema_app_widget_plugins_widgets_schema_get",
         "parameters": [
           {
             "in": "query",
@@ -11454,7 +11463,7 @@
     },
     "/app/widget-plugins/{plugin_id}/backend/{route_id}": {
       "post": {
-        "operationId": "post_backend_call",
+        "operationId": "post_backend_call_app_widget_plugins__plugin_id__backend__route_id__post",
         "parameters": [
           {
             "in": "path",
@@ -11503,7 +11512,7 @@
     },
     "/app/widget-plugins/{plugin_id}/proxy/{proxy_id}": {
       "post": {
-        "operationId": "post_proxy_call",
+        "operationId": "post_proxy_call_app_widget_plugins__plugin_id__proxy__proxy_id__post",
         "parameters": [
           {
             "in": "path",
@@ -11552,7 +11561,7 @@
     },
     "/app/widget-plugins/{plugin_id}/{digest}/files/{file_path}": {
       "get": {
-        "operationId": "get_plugin_file",
+        "operationId": "get_plugin_file_app_widget_plugins__plugin_id___digest__files__file_path__get",
         "parameters": [
           {
             "in": "path",
@@ -11613,7 +11622,7 @@
     },
     "/app/workspace-mcp/bridge/session/start": {
       "post": {
-        "operationId": "start_bridge_session",
+        "operationId": "start_bridge_session_app_workspace_mcp_bridge_session_start_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -11654,7 +11663,7 @@
     },
     "/app/workspace-mcp/tokens": {
       "get": {
-        "operationId": "list_tokens",
+        "operationId": "list_tokens_app_workspace_mcp_tokens_get",
         "responses": {
           "200": {
             "content": {
@@ -11663,7 +11672,7 @@
                   "items": {
                     "$ref": "#/components/schemas/TokenMetadata"
                   },
-                  "title": "Response List Tokens",
+                  "title": "Response List Tokens App Workspace Mcp Tokens Get",
                   "type": "array"
                 }
               }
@@ -11677,7 +11686,7 @@
         ]
       },
       "post": {
-        "operationId": "create_token",
+        "operationId": "create_token_app_workspace_mcp_tokens_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -11718,7 +11727,7 @@
     },
     "/app/workspace-mcp/tokens/{token_uuid}": {
       "delete": {
-        "operationId": "revoke_token",
+        "operationId": "revoke_token_app_workspace_mcp_tokens__token_uuid__delete",
         "parameters": [
           {
             "in": "path",
@@ -11754,7 +11763,7 @@
     },
     "/app/workspace-tools": {
       "get": {
-        "operationId": "get_workspace_tools",
+        "operationId": "get_workspace_tools_app_workspace_tools_get",
         "responses": {
           "200": {
             "content": {
@@ -11775,7 +11784,7 @@
     },
     "/app/workspace-tools/prepare": {
       "post": {
-        "operationId": "prepare_workspace_tool_call",
+        "operationId": "prepare_workspace_tool_call_app_workspace_tools_prepare_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -11816,7 +11825,7 @@
     },
     "/app/{provider}-auth": {
       "post": {
-        "operationId": "oauth_auth",
+        "operationId": "oauth_auth_app__provider__auth_post",
         "parameters": [
           {
             "in": "path",
@@ -11873,7 +11882,7 @@
     },
     "/entity/data-backends/{entity_uuid}": {
       "get": {
-        "operationId": "get_data_backends",
+        "operationId": "get_data_backends_entity_data_backends__entity_uuid__get",
         "parameters": [
           {
             "in": "path",
@@ -11894,7 +11903,7 @@
                   "items": {
                     "$ref": "#/components/schemas/ReturnApiSource"
                   },
-                  "title": "Response Get Data Backends",
+                  "title": "Response Get Data Backends Entity Data Backends  Entity Uuid  Get",
                   "type": "array"
                 }
               }
@@ -11918,7 +11927,7 @@
         ]
       },
       "post": {
-        "operationId": "add_data_backend",
+        "operationId": "add_data_backend_entity_data_backends__entity_uuid__post",
         "parameters": [
           {
             "in": "path",
@@ -11969,7 +11978,7 @@
     },
     "/entity/data-backends/{entity_uuid}/{backend_name}": {
       "delete": {
-        "operationId": "delete_data_backend",
+        "operationId": "delete_data_backend_entity_data_backends__entity_uuid___backend_name__delete",
         "parameters": [
           {
             "in": "path",
@@ -12019,7 +12028,7 @@
     },
     "/entity/entity": {
       "get": {
-        "operationId": "get_entities",
+        "operationId": "get_entities_entity_entity_get",
         "parameters": [
           {
             "description": "Page number",
@@ -12075,7 +12084,7 @@
         ]
       },
       "post": {
-        "operationId": "add_entity",
+        "operationId": "add_entity_entity_entity_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -12116,7 +12125,7 @@
     },
     "/entity/entity-map": {
       "get": {
-        "operationId": "get_entity_maps",
+        "operationId": "get_entity_maps_entity_entity_map_get",
         "parameters": [
           {
             "description": "Page number",
@@ -12172,7 +12181,7 @@
         ]
       },
       "post": {
-        "operationId": "add_entity_map",
+        "operationId": "add_entity_map_entity_entity_map_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -12213,7 +12222,7 @@
     },
     "/entity/entity-map/{map_uuid}": {
       "put": {
-        "operationId": "put_entity_map",
+        "operationId": "put_entity_map_entity_entity_map__map_uuid__put",
         "parameters": [
           {
             "in": "path",
@@ -12266,7 +12275,7 @@
     },
     "/entity/entity-relationship": {
       "get": {
-        "operationId": "get_entity_relationships",
+        "operationId": "get_entity_relationships_entity_entity_relationship_get",
         "parameters": [
           {
             "description": "Page number",
@@ -12322,7 +12331,7 @@
         ]
       },
       "post": {
-        "operationId": "add_entity_relationship",
+        "operationId": "add_entity_relationship_entity_entity_relationship_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -12363,7 +12372,7 @@
     },
     "/entity/entity-relationship/{er_uuid}": {
       "put": {
-        "operationId": "put_entity_relationship",
+        "operationId": "put_entity_relationship_entity_entity_relationship__er_uuid__put",
         "parameters": [
           {
             "in": "path",
@@ -12416,7 +12425,7 @@
     },
     "/entity/entity/{entity_uuid}": {
       "delete": {
-        "operationId": "delete_entity",
+        "operationId": "delete_entity_entity_entity__entity_uuid__delete",
         "parameters": [
           {
             "in": "path",
@@ -12457,7 +12466,7 @@
         ]
       },
       "put": {
-        "operationId": "put_entity",
+        "operationId": "put_entity_entity_entity__entity_uuid__put",
         "parameters": [
           {
             "in": "path",
@@ -12510,7 +12519,7 @@
     },
     "/entity/register-admin": {
       "post": {
-        "operationId": "register_admin",
+        "operationId": "register_admin_entity_register_admin_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -12551,7 +12560,7 @@
     },
     "/entity/role": {
       "get": {
-        "operationId": "get_roles",
+        "operationId": "get_roles_entity_role_get",
         "responses": {
           "200": {
             "content": {
@@ -12560,7 +12569,7 @@
                   "items": {
                     "$ref": "#/components/schemas/GetRoleWithUsers"
                   },
-                  "title": "Response Get Roles",
+                  "title": "Response Get Roles Entity Role Get",
                   "type": "array"
                 }
               }
@@ -12574,7 +12583,7 @@
         ]
       },
       "post": {
-        "operationId": "post_role",
+        "operationId": "post_role_entity_role_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -12615,7 +12624,7 @@
     },
     "/entity/role-permissions/{role_uuid}": {
       "get": {
-        "operationId": "get_role_permissions",
+        "operationId": "get_role_permissions_entity_role_permissions__role_uuid__get",
         "parameters": [
           {
             "in": "path",
@@ -12636,7 +12645,7 @@
                   "items": {
                     "$ref": "#/components/schemas/RolePermissions"
                   },
-                  "title": "Response Get Role Permissions",
+                  "title": "Response Get Role Permissions Entity Role Permissions  Role Uuid  Get",
                   "type": "array"
                 }
               }
@@ -12660,7 +12669,7 @@
         ]
       },
       "put": {
-        "operationId": "put_role_permissions",
+        "operationId": "put_role_permissions_entity_role_permissions__role_uuid__put",
         "parameters": [
           {
             "in": "path",
@@ -12717,7 +12726,7 @@
     },
     "/entity/role/{role_uuid}": {
       "delete": {
-        "operationId": "delete_role",
+        "operationId": "delete_role_entity_role__role_uuid__delete",
         "parameters": [
           {
             "in": "path",
@@ -12758,7 +12767,7 @@
         ]
       },
       "get": {
-        "operationId": "get_role",
+        "operationId": "get_role_entity_role__role_uuid__get",
         "parameters": [
           {
             "in": "path",
@@ -12799,7 +12808,7 @@
         ]
       },
       "patch": {
-        "operationId": "patch_role",
+        "operationId": "patch_role_entity_role__role_uuid__patch",
         "parameters": [
           {
             "in": "path",
@@ -12852,7 +12861,7 @@
     },
     "/entity/user": {
       "get": {
-        "operationId": "get_users",
+        "operationId": "get_users_entity_user_get",
         "parameters": [
           {
             "in": "query",
@@ -12920,7 +12929,7 @@
     },
     "/entity/user/{user_uuid}": {
       "put": {
-        "operationId": "put_user",
+        "operationId": "put_user_entity_user__user_uuid__put",
         "parameters": [
           {
             "in": "path",
@@ -12973,7 +12982,7 @@
     },
     "/entity/validate": {
       "get": {
-        "operationId": "validate_entity_admin",
+        "operationId": "validate_entity_admin_entity_validate_get",
         "responses": {
           "200": {
             "content": {
@@ -12994,7 +13003,7 @@
     },
     "/health": {
       "get": {
-        "operationId": "nginx",
+        "operationId": "nginx_health_get",
         "responses": {
           "200": {
             "content": {
@@ -13010,7 +13019,7 @@
     },
     "/healthz": {
       "get": {
-        "operationId": "nginx",
+        "operationId": "nginx_healthz_get",
         "responses": {
           "200": {
             "content": {
@@ -13026,7 +13035,7 @@
     },
     "/internal/plugin-broker/data/{data_source_id}": {
       "post": {
-        "operationId": "post_broker_read",
+        "operationId": "post_broker_read_internal_plugin_broker_data__data_source_id__post",
         "parameters": [
           {
             "in": "path",
@@ -13066,7 +13075,7 @@
     },
     "/plugins": {
       "get": {
-        "operationId": "list_plugins",
+        "operationId": "list_plugins_plugins_get",
         "responses": {
           "200": {
             "content": {
@@ -13085,7 +13094,7 @@
     },
     "/plugins/rescan": {
       "post": {
-        "operationId": "rescan_plugins",
+        "operationId": "rescan_plugins_plugins_rescan_post",
         "responses": {
           "200": {
             "content": {
@@ -13104,7 +13113,7 @@
     },
     "/plugins/{plugin_id}": {
       "delete": {
-        "operationId": "forget_plugin",
+        "operationId": "forget_plugin_plugins__plugin_id__delete",
         "parameters": [
           {
             "in": "path",
@@ -13143,7 +13152,7 @@
         ]
       },
       "get": {
-        "operationId": "get_plugin",
+        "operationId": "get_plugin_plugins__plugin_id__get",
         "parameters": [
           {
             "in": "path",
@@ -13184,7 +13193,7 @@
     },
     "/plugins/{plugin_id}/backend/check": {
       "post": {
-        "operationId": "check_plugin_backend",
+        "operationId": "check_plugin_backend_plugins__plugin_id__backend_check_post",
         "parameters": [
           {
             "in": "path",
@@ -13225,7 +13234,7 @@
     },
     "/plugins/{plugin_id}/csp-reports": {
       "get": {
-        "operationId": "get_plugin_reports",
+        "operationId": "get_plugin_reports_plugins__plugin_id__csp_reports_get",
         "parameters": [
           {
             "in": "path",
@@ -13266,7 +13275,7 @@
     },
     "/plugins/{plugin_id}/entities": {
       "put": {
-        "operationId": "put_plugin_all_entities",
+        "operationId": "put_plugin_all_entities_plugins__plugin_id__entities_put",
         "parameters": [
           {
             "in": "path",
@@ -13317,7 +13326,7 @@
     },
     "/plugins/{plugin_id}/entities/{entity_uuid}": {
       "put": {
-        "operationId": "put_plugin_entity",
+        "operationId": "put_plugin_entity_plugins__plugin_id__entities__entity_uuid__put",
         "parameters": [
           {
             "in": "path",
@@ -13378,7 +13387,7 @@
     },
     "/plugins/{plugin_id}/events": {
       "get": {
-        "operationId": "get_plugin_events",
+        "operationId": "get_plugin_events_plugins__plugin_id__events_get",
         "parameters": [
           {
             "in": "path",
@@ -13419,7 +13428,7 @@
     },
     "/plugins/{plugin_id}/overrides": {
       "put": {
-        "operationId": "put_overrides",
+        "operationId": "put_overrides_plugins__plugin_id__overrides_put",
         "parameters": [
           {
             "in": "path",
@@ -13470,7 +13479,7 @@
     },
     "/plugins/{plugin_id}/restore": {
       "post": {
-        "operationId": "restore_plugin",
+        "operationId": "restore_plugin_plugins__plugin_id__restore_post",
         "parameters": [
           {
             "in": "path",
@@ -13511,7 +13520,7 @@
     },
     "/plugins/{plugin_id}/revoke": {
       "post": {
-        "operationId": "revoke_plugin",
+        "operationId": "revoke_plugin_plugins__plugin_id__revoke_post",
         "parameters": [
           {
             "in": "path",
@@ -13552,7 +13561,7 @@
     },
     "/plugins/{plugin_id}/secrets/{name}": {
       "delete": {
-        "operationId": "delete_plugin_secret",
+        "operationId": "delete_plugin_secret_plugins__plugin_id__secrets__name__delete",
         "parameters": [
           {
             "in": "path",
@@ -13601,7 +13610,7 @@
         ]
       },
       "put": {
-        "operationId": "put_plugin_secret",
+        "operationId": "put_plugin_secret_plugins__plugin_id__secrets__name__put",
         "parameters": [
           {
             "in": "path",
@@ -13650,7 +13659,7 @@
     },
     "/plugins/{plugin_id}/versions/{version}/approve": {
       "post": {
-        "operationId": "approve_version",
+        "operationId": "approve_version_plugins__plugin_id__versions__version__approve_post",
         "parameters": [
           {
             "in": "path",
@@ -13711,7 +13720,7 @@
     },
     "/totp": {
       "post": {
-        "operationId": "generate_totp",
+        "operationId": "generate_totp_totp_post",
         "responses": {
           "200": {
             "content": {
@@ -13732,7 +13741,7 @@
     },
     "/totp/activate": {
       "post": {
-        "operationId": "confirm_totp",
+        "operationId": "confirm_totp_totp_activate_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -13756,7 +13765,7 @@
                       "$ref": "#/components/schemas/SuccessReturn"
                     }
                   ],
-                  "title": "Response Confirm Totp"
+                  "title": "Response Confirm Totp Totp Activate Post"
                 }
               }
             },
@@ -13781,7 +13790,7 @@
     },
     "/user": {
       "delete": {
-        "operationId": "delete_user",
+        "operationId": "delete_user_user_delete",
         "responses": {
           "200": {
             "content": {
@@ -13800,7 +13809,7 @@
         ]
       },
       "put": {
-        "operationId": "put_user",
+        "operationId": "put_user_user_put",
         "requestBody": {
           "content": {
             "application/json": {

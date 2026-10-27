@@ -1941,12 +1941,14 @@
         "mcp_server": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 128
+          "maxLength": 128,
+          "description": "The name of a server in this backend's apps.json mcpServers"
         },
         "tool_id": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 128
+          "maxLength": 128,
+          "description": "The name of the tool on that server"
         },
         "args": {
           "type": "object",
@@ -1968,7 +1970,8 @@
               }
             ]
           },
-          "maxProperties": 32
+          "maxProperties": 32,
+          "description": "The arguments that the AI Agent passes to the tool, by name"
         }
       },
       "required": [
@@ -2094,6 +2097,7 @@
         "description": "Milliseconds a response is reused before it is fetched again; false fetches every time"
       },
       "refetchInterval": {
+        "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never",
         "anyOf": [
           {
             "anyOf": [
@@ -2111,8 +2115,7 @@
                 "minLength": 1,
                 "maxLength": 100
               }
-            ],
-            "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
+            ]
           },
           {
             "type": "null"

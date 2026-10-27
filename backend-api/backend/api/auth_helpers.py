@@ -52,7 +52,6 @@ CREDENTIAL_SOURCES: dict[CredentialKind, tuple[str, ...]] = {
 TOTP_ENROLL_LIFETIME = timedelta(minutes=5)
 AGENT_TOKEN_LIFETIME = timedelta(minutes=30)
 PASSWORD_RESET_LIFETIME = timedelta(hours=24)
-AGENT_PATHS = frozenset({"/app/user", "/app/usage", "/app/copilot/authorize"})
 
 CREDENTIAL_HEADERS = (
     "cookie",
@@ -288,21 +287,6 @@ class GetCurrentUser:
         user = await current_user(filters, self.columns, self.tables)
         user.via_agent = True
         return user
-
-
-class GetCurrentUserOptional:
-    def __init__(self, columns: list[str], tables: None | list[str] = None):
-        self.columns = columns
-        self.tables = tables if tables else []
-
-    async def __call__(self, request: Request):
-        try:
-            credential = read_credential(request)
-            return await current_user(
-                session_filters(credential), self.columns, self.tables
-            )
-        except HTTPException:
-            return None
 
 
 async def current_user(

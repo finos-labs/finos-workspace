@@ -44,8 +44,6 @@ logger.info("START")
 logger.info(f"Python: {platform.python_version()}")
 logger.info(f"OS: {platform.system()}")
 
-FASTAPI_KWARGS = {}
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -64,7 +62,6 @@ app = FastAPI(
     docs_url=None,
     openapi_url=None,
     lifespan=combine_lifespans(lifespan, workspace_mcp_asgi_app.lifespan),
-    generate_unique_id_function=lambda route: route.name,
 )
 
 app.add_middleware(
@@ -219,7 +216,7 @@ def include_routers():
 def start_prometheus(fork_id: int):
     if fork_id == 1:
         logger.info("Starting prometheus server")
-        prometheus_client.start_http_server(6970)
+        prometheus_client.start_http_server(config.PROMETHEUS_LISTENER_PORT)
 
 
 include_routers()

@@ -94,6 +94,7 @@
               }
             ]
           },
+          "description": "The arguments that the AI Agent passes to the tool, by name",
           "maxProperties": 32,
           "propertyNames": {
             "maxLength": 128,
@@ -102,11 +103,13 @@
           "type": "object"
         },
         "mcp_server": {
+          "description": "The name of a server in this backend's apps.json mcpServers",
           "maxLength": 128,
           "minLength": 1,
           "type": "string"
         },
         "tool_id": {
+          "description": "The name of the tool on that server",
           "maxLength": 128,
           "minLength": 1,
           "type": "string"
@@ -2301,7 +2304,8 @@
           "type": "string"
         },
         "data": {
-          "$ref": "#/definitions/Data_html"
+          "$ref": "#/definitions/Data_html",
+          "description": "How Workspace reads and shows the data of this type"
         },
         "dataUpdateDisplay": {
           "description": "When the data changes, as a 5-field cron expression shown to the user",
@@ -2410,13 +2414,13 @@
                   "minLength": 1,
                   "type": "string"
                 }
-              ],
-              "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
+              ]
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
         },
         "runButton": {
           "description": "The widget fetches only when the user clicks Run",
@@ -2464,6 +2468,7 @@
         },
         "type": {
           "const": "html",
+          "description": "The widget's type, html",
           "type": "string"
         }
       },
@@ -2675,7 +2680,8 @@
           "type": "string"
         },
         "data": {
-          "$ref": "#/definitions/Data_iframe"
+          "$ref": "#/definitions/Data_iframe",
+          "description": "How Workspace reads and shows the data of this type"
         },
         "dataUpdateDisplay": {
           "description": "When the data changes, as a 5-field cron expression shown to the user",
@@ -2729,6 +2735,7 @@
           "description": "The MCP tool of this backend the AI Agent uses to query what the widget shows: a server named in this backend's apps.json mcpServers, and the tool"
         },
         "method": {
+          "description": "How Workspace calls the endpoint: GET",
           "enum": [
             "GET"
           ],
@@ -2778,13 +2785,13 @@
                   "minLength": 1,
                   "type": "string"
                 }
-              ],
-              "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
+              ]
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
         },
         "runButton": {
           "description": "The widget fetches only when the user clicks Run",
@@ -2845,6 +2852,7 @@
         },
         "type": {
           "const": "iframe",
+          "description": "The widget's type, iframe",
           "type": "string"
         }
       },
@@ -3009,7 +3017,8 @@
           "type": "string"
         },
         "data": {
-          "$ref": "#/definitions/Data_markdown"
+          "$ref": "#/definitions/Data_markdown",
+          "description": "How Workspace reads and shows the data of this type"
         },
         "dataUpdateDisplay": {
           "description": "When the data changes, as a 5-field cron expression shown to the user",
@@ -3114,13 +3123,13 @@
                   "minLength": 1,
                   "type": "string"
                 }
-              ],
-              "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
+              ]
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
         },
         "runButton": {
           "description": "The widget fetches only when the user clicks Run",
@@ -3168,6 +3177,7 @@
         },
         "type": {
           "const": "markdown",
+          "description": "The widget's type, markdown",
           "type": "string"
         }
       },
@@ -3261,7 +3271,8 @@
           "type": "string"
         },
         "data": {
-          "$ref": "#/definitions/Data_newsfeed"
+          "$ref": "#/definitions/Data_newsfeed",
+          "description": "How Workspace reads and shows the data of this type"
         },
         "dataUpdateDisplay": {
           "description": "When the data changes, as a 5-field cron expression shown to the user",
@@ -3366,13 +3377,13 @@
                   "minLength": 1,
                   "type": "string"
                 }
-              ],
-              "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
+              ]
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
         },
         "runButton": {
           "description": "The widget fetches only when the user clicks Run",
@@ -3420,6 +3431,7 @@
         },
         "type": {
           "const": "newsfeed",
+          "description": "The widget's type, newsfeed",
           "type": "string"
         }
       },
@@ -3513,7 +3525,8 @@
           "type": "string"
         },
         "data": {
-          "$ref": "#/definitions/Data_pdf"
+          "$ref": "#/definitions/Data_pdf",
+          "description": "How Workspace reads and shows the data of this type"
         },
         "dataUpdateDisplay": {
           "description": "When the data changes, as a 5-field cron expression shown to the user",
@@ -3618,13 +3631,13 @@
                   "minLength": 1,
                   "type": "string"
                 }
-              ],
-              "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
+              ]
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "description": "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never"
         },
         "runButton": {
           "description": "The widget fetches only when the user clicks Run",
@@ -3672,6 +3685,7 @@
         },
         "type": {
           "const": "pdf",
+          "description": "The widget's type, pdf",
           "type": "string"
         }
       },
@@ -3686,10 +3700,12 @@
   },
   "properties": {
     "$id": {
+      "description": "An identifier of the file",
       "maxLength": 2048,
       "type": "string"
     },
     "$schema": {
+      "description": "The address of a schema that the file follows, which editors use to check it",
       "maxLength": 2048,
       "type": "string"
     }

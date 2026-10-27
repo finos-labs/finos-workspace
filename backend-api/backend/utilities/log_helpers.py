@@ -66,7 +66,6 @@ def get_secrets() -> dict[str, str]:
 
     base_dict = settings.model_dump()
     for key in [
-        "UNUSABLE_JSON_CHARACTERS",
         "MAX_DICT_LEN",
         "FRONTENDURL",
         "MODE",

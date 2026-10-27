@@ -22,15 +22,13 @@ from api.models import (
     DashboardSave,
     DashboardShare,
     Entity,
-    Login,
     PermissionsEntityMap,
     ShareRequest,
     User,
     UserApp,
     UserAppShare,
 )
-from api.models.workspace_models import StoredFile, StoredFileShare
-from api.storage import FileStorage
+from api.models.workspace_models import StoredFileShare
 from utilities.config import settings
 
 ItemT = TypeVar("ItemT")
@@ -377,11 +375,6 @@ async def search_copilot_chats(
     results = await db.execute(query.limit(20))
 
     return [schemas.Chat.from_row(x, True) for x in results.unique().scalars().all()]
-
-
-async def get_user(db: AsyncSession, identify: dict[str, Any]) -> None | User:
-    query = select(User).filter_by(**identify)
-    return (await db.execute(query)).scalars().first()
 
 
 async def create_entity_relationship(
@@ -833,72 +826,6 @@ async def check_clean_email(db: AsyncSession, user_email: str):
     response = (await db.execute(user_query)).first()
     if response:
         raise HTTPException(409, detail="This email already has an account registered")
-
-
-async def remove_app_data(db: AsyncSession, user_uuid: UUID):
-    stored_file_query = select(StoredFile).where(StoredFile.creater_uuid == user_uuid)
-    stored_files = (await db.execute(stored_file_query)).scalars().all()
-
-    for stored_file in stored_files:
-        await FileStorage.delete_file(stored_file.bucket, stored_file.s3_file_name)
-        await db.delete(stored_file)
-
-    file_widgets = delete(models.FileWidget).where(
-        models.FileWidget.user_uuid == user_uuid
-    )
-    await db.execute(file_widgets)
-    api_sources = delete(ApiSource).where(ApiSource.user_uuid == user_uuid)
-    await db.execute(api_sources)
-    meta_data = delete(models.WidgetMetadata).where(
-        models.WidgetMetadata.user_uuid == user_uuid
-    )
-    await db.execute(meta_data)
-    user_usage = delete(models.UserUsage).where(models.UserUsage.user_uuid == user_uuid)
-    await db.execute(user_usage)
-    copilot_chats = delete(models.CopilotChat).where(
-        models.CopilotChat.user_uuid == user_uuid
-    )
-    await db.execute(copilot_chats)
-
-    mcp_servers = delete(models.MCPServers).where(
-        models.MCPServers.user_uuid == user_uuid
-    )
-    await db.execute(mcp_servers)
-
-
-async def remove_other_user_items(db: AsyncSession, user_uuid: UUID):
-    user_email_query = select(User.email).where(User.uuid == user_uuid).limit(1)
-    user_email = (await db.execute(user_email_query)).scalar_one_or_none()
-
-    dash_item_query = delete(DashboardItem).where(
-        or_(
-            DashboardItem.creator_uuid == user_uuid,
-            DashboardItem.owner_uuid == user_uuid,
-        )
-    )
-    await db.execute(dash_item_query)
-    login_query = delete(Login).where(Login.user_uuid == user_uuid)
-    await db.execute(login_query)
-    session_query = delete(models.Session).where(models.Session.user_uuid == user_uuid)
-    await db.execute(session_query)
-
-    try:
-        if user_email:
-            user_invite_query = delete(models.UserInvite).where(
-                models.UserInvite.email == user_email
-            )
-            await db.execute(user_invite_query)
-    except Exception as e:
-        logger.error(e)
-
-    user_query = delete(User).where(User.uuid == user_uuid)
-    await db.execute(user_query)
-
-
-async def full_delete_user(db: AsyncSession, user_uuid: UUID):
-    await remove_app_data(db, user_uuid)
-    await remove_other_user_items(db, user_uuid)
-    await db.commit()
 
 
 async def get_shares_without_existing(

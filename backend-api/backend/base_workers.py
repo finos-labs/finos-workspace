@@ -18,7 +18,7 @@ if settings.REDIS_CLUSTER_MODE or settings.REDIS_RQ_HASH_TAGS:  # noqa: F405
 else:
     from rq import Worker  # noqa
 
-listen = ["payments_queue"]
+listen = [RQ_QUEUE_NAME]  # noqa: F405
 
 redis_conn = settings.get_redis_session("bot")  # noqa: F405
 

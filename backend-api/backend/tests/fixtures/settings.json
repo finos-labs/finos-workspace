@@ -1,7 +1,15 @@
 {
+  "constants": {
+    "prometheusListenerPort": 6970,
+    "queueName": "payments_queue",
+    "rateLimitDefault": "50/minute",
+    "rateLimitFew": "10/minute"
+  },
   "fields": [
     {
+      "choices": null,
       "default": "",
+      "description": "The access key for the S3 bucket. Used with STORAGE_PROVIDER aws. When it is empty, the client looks for credentials the way AWS clients do.",
       "group": "AWSSettings",
       "has_default_factory": false,
       "name": "S3_ACCESS_KEY",
@@ -9,7 +17,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The name of an S3 bucket. The API does not read it: uploaded files go to S3_FILE_BUCKET.",
       "group": "AWSSettings",
       "has_default_factory": false,
       "name": "S3_BUCKET_NAME",
@@ -17,7 +27,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The address of the S3 service, for an S3-compatible service other than AWS. Unset, the client uses AWS.",
       "group": "AWSSettings",
       "has_default_factory": false,
       "name": "S3_ENDPOINT_URL",
@@ -25,7 +37,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The S3 bucket that holds uploaded files. When it is unset, the API reads the variable S3_BUCKET instead. Used with STORAGE_PROVIDER aws.",
       "group": "AWSSettings",
       "has_default_factory": false,
       "name": "S3_FILE_BUCKET",
@@ -33,7 +47,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The AWS region of the bucket, for example us-east-1.",
       "group": "AWSSettings",
       "has_default_factory": false,
       "name": "S3_REGION",
@@ -41,7 +57,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": "",
+      "description": "The secret key for the S3 bucket. Used with STORAGE_PROVIDER aws.",
       "group": "AWSSettings",
       "has_default_factory": false,
       "name": "S3_SECRET_KEY",
@@ -49,7 +67,12 @@
       "type": "str"
     },
     {
+      "choices": [
+        "s3v4",
+        "v4"
+      ],
       "default": "s3v4",
+      "description": "The signature version of requests to S3.",
       "group": "AWSSettings",
       "has_default_factory": false,
       "name": "S3_SIGNATURE_VERSION",
@@ -57,7 +80,9 @@
       "type": "Literal['s3v4', 'v4']"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "Whether the S3 client verifies the endpoint's TLS certificate. Unset leaves the client's default, which verifies; false turns verification off.",
       "group": "AWSSettings",
       "has_default_factory": false,
       "name": "S3_VERIFY_SSL",
@@ -65,7 +90,9 @@
       "type": "bool | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The key of the encryption at rest (AES-256-GCM), as a base64url string of at least 32 bytes: stored provider keys, connection and MCP headers and authenticator secrets are encrypted with it. The API does not start without it, and what is stored under it cannot be read with another key.",
       "group": "AccessSettings",
       "has_default_factory": false,
       "name": "WORKSPACE_AES_KEY",
@@ -73,7 +100,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The address of the Workspace web app, which the API uses for login redirects and for the password reset links that an administrator gives to users.",
       "group": "AppSettings",
       "has_default_factory": false,
       "name": "APPURL",
@@ -81,7 +110,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The id of the permissions mapping that a user gets when they first sign in. The file user_create.json, which the init step of the deployment writes, overrides it with the id that it holds.",
       "group": "AppSettings",
       "has_default_factory": false,
       "name": "DEFAULT_USER_MAPPING",
@@ -89,15 +120,9 @@
       "type": "uuid.UUID | None"
     },
     {
-      "default": "364 days, 0:00:00",
-      "group": "AppSettings",
-      "has_default_factory": false,
-      "name": "INVITE_EXPIRATION",
-      "required": false,
-      "type": "timedelta"
-    },
-    {
+      "choices": null,
       "default": null,
+      "description": "The connection string of the Azure storage account. Used with STORAGE_PROVIDER azure, which needs it together with AZURE_STORAGE_ACCOUNT.",
       "group": "AzureSettings",
       "has_default_factory": false,
       "name": "AZURE_CONNECTION_STRING",
@@ -105,7 +130,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The name of the Azure storage account. Used with STORAGE_PROVIDER azure.",
       "group": "AzureSettings",
       "has_default_factory": false,
       "name": "AZURE_STORAGE_ACCOUNT",
@@ -113,7 +140,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The Azure blob container that holds uploaded files. Used with STORAGE_PROVIDER azure.",
       "group": "AzureSettings",
       "has_default_factory": false,
       "name": "AZURE_STORAGE_CONTAINER",
@@ -121,7 +150,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "With true, the API signs in to the Azure storage account with the credentials of its environment (the Azure default credential) instead of the connection string.",
       "group": "AzureSettings",
       "has_default_factory": false,
       "name": "AZURE_USE_CLI_AUTH",
@@ -129,7 +160,13 @@
       "type": "bool | None"
     },
     {
+      "choices": [
+        "mysql",
+        "postgresql",
+        "sqlite"
+      ],
       "default": "mysql",
+      "description": "The kind of database that the API uses. With sqlite the API needs only DB_PATH.",
       "group": "DatabaseSettings",
       "has_default_factory": false,
       "name": "DATABASE_TYPE",
@@ -137,7 +174,9 @@
       "type": "Literal['mysql', 'postgresql', 'sqlite']"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The host name of the database server. Required with DATABASE_TYPE mysql or postgresql. Outside Docker, for example with docker-compose-local-dev.yml, use localhost.",
       "group": "DatabaseSettings",
       "has_default_factory": false,
       "name": "DB_HOST",
@@ -145,7 +184,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The name of the database on the server. Required with DATABASE_TYPE mysql or postgresql.",
       "group": "DatabaseSettings",
       "has_default_factory": false,
       "name": "DB_NAME",
@@ -153,7 +194,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": "local.db",
+      "description": "The path of the SQLite database file. It is used only with DATABASE_TYPE sqlite.",
       "group": "DatabaseSettings",
       "has_default_factory": false,
       "name": "DB_PATH",
@@ -161,7 +204,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The port of the database server. Required with DATABASE_TYPE mysql or postgresql.",
       "group": "DatabaseSettings",
       "has_default_factory": false,
       "name": "DB_PORT",
@@ -169,7 +214,9 @@
       "type": "int | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The password of READ_DB_USER. Required with DATABASE_TYPE mysql or postgresql.",
       "group": "DatabaseSettings",
       "has_default_factory": false,
       "name": "READ_DB_PASSWORD",
@@ -177,7 +224,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The database account for queries that only read. It may be the same account as WRITE_DB_USER. Required with DATABASE_TYPE mysql or postgresql.",
       "group": "DatabaseSettings",
       "has_default_factory": false,
       "name": "READ_DB_USER",
@@ -185,7 +234,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The path of the certificate authority file with which the API verifies the database server's certificate. Setting SSL_CA, SSL_CERT or SSL_KEY makes the connection to the database use TLS.",
       "group": "DatabaseSettings",
       "has_default_factory": false,
       "name": "SSL_CA",
@@ -193,7 +244,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The path of the client certificate that the API presents to the database. It must be set together with SSL_KEY.",
       "group": "DatabaseSettings",
       "has_default_factory": false,
       "name": "SSL_CERT",
@@ -201,7 +254,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The path of the private key of SSL_CERT. It must be set together with SSL_CERT.",
       "group": "DatabaseSettings",
       "has_default_factory": false,
       "name": "SSL_KEY",
@@ -209,7 +264,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The password of WRITE_DB_USER. Required with DATABASE_TYPE mysql or postgresql.",
       "group": "DatabaseSettings",
       "has_default_factory": false,
       "name": "WRITE_DB_PASSWORD",
@@ -217,7 +274,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The database account for queries that write, and for the migrations that run when the API starts. Required with DATABASE_TYPE mysql or postgresql.",
       "group": "DatabaseSettings",
       "has_default_factory": false,
       "name": "WRITE_DB_USER",
@@ -225,7 +284,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "MCP servers on a private network, by host name exactly as their URLs name them, as a JSON list. The API reaches the MCP servers of users only at public internet addresses, so a server whose name resolves to a private, loopback or link-local address, such as an internal host or a Compose service, must be listed. The servers of DEFAULT_MCP_SERVERS need not be.",
       "group": "GeneralSettings",
       "has_default_factory": true,
       "name": "ALLOWED_MCP_HOSTNAMES",
@@ -233,7 +294,9 @@
       "type": "list[str]"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The application (client) id of the Microsoft Entra app registration, the same value as the web app's. The API accepts a Microsoft token only when it was issued to this client. The registration must send the optional ID token claims email and xms_edov, because without them a Microsoft sign-in by email is refused.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "AZURE_CLIENT_ID",
@@ -241,7 +304,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The tenant whose users may sign in: its id or domain, organizations (every work or school tenant) or common (those and personal Microsoft accounts), as in the authority of the web app.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "AZURE_TENANT_ID",
@@ -249,7 +314,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The origins of the web app, exactly as browsers send them: scheme, host and port, without a path and without *. A comma-separated list or a JSON list. Required. The session cookie is accepted only from these origins, and browsers send it only when the API is on the same site as the page, so serve the API under the web app's registrable domain, and over HTTPS outside localhost.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "BACKEND_CORS_ORIGINS",
@@ -257,7 +324,9 @@
       "type": "list[str] | str"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "A regular expression that a whole origin may match instead of being listed in BACKEND_CORS_ORIGINS. It applies to the CORS headers and to the check of the Origin header.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "BACKEND_CORS_ORIGIN_REGEX",
@@ -265,7 +334,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": "2024-10-07",
+      "description": "A date, written YYYY-MM-DD. On the day of the month that it names, the API queues at startup a one-off clean-up of uploaded files that were never confirmed, under job names that carry the date, so that each date runs once; a new date runs it again.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "CLEAR_UNCONFIRMED_FILES_DATE",
@@ -273,7 +344,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "MCP servers that every user has, as a JSON list of objects with id, name and url. The API reaches their host and port as they are, even on a private network, and the default roles give access to all their tools.",
       "group": "GeneralSettings",
       "has_default_factory": true,
       "name": "DEFAULT_MCP_SERVERS",
@@ -281,7 +354,9 @@
       "type": "list[utilities.config.DefaultMCPServer]"
     },
     {
+      "choices": null,
       "default": false,
+      "description": "With true, every path that creates a user answers 403 \"Registration is disabled\": POST /admin/register, POST /entity/register-admin, sharing with someone who has no account, and the first sign-in of a new user through an identity provider. Existing users can still sign in. Read once at startup.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "DISABLE_REGISTRATION",
@@ -289,7 +364,9 @@
       "type": "bool"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The address of the web app's front end. The API requires it but does not read it.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "FRONTENDURL",
@@ -297,7 +374,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The Google Cloud Storage bucket that holds uploaded files. Used with STORAGE_PROVIDER gcp.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "GCP_STORAGE_BUCKET",
@@ -305,7 +384,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The OAuth client id of the Google sign-in, the same value as the web app's. The API accepts a Google token only when it was issued to this client; unset, every Google sign-in is refused.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "GOOGLE_OAUTH_CLIENT_ID",
@@ -313,7 +394,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": false,
+      "description": "True in the process that runs the RQ worker. The worker's entry point sets it itself; a Redis Cluster compatibility patch of RQ is applied only when it is false.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "IS_WORKER_CONTAINER",
@@ -321,7 +404,9 @@
       "type": "bool"
     },
     {
+      "choices": null,
       "default": false,
+      "description": "With true, each log line is a JSON object.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "JSON_LOGS",
@@ -329,7 +414,9 @@
       "type": "bool"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The secret that signs the service tokens, including the metering token of the agent. At least 32 bytes, and the API does not start without it. Changing it invalidates every token that it signed.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "JWT_SECRET",
@@ -337,7 +424,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": true,
+      "description": "Whether the log lines use colors.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "LOGURU_COLORIZE",
@@ -345,15 +434,25 @@
       "type": "bool"
     },
     {
+      "choices": [
+        "DEBUG",
+        "INFO",
+        "WARNING",
+        "ERROR",
+        "CRITICAL"
+      ],
       "default": "INFO",
+      "description": "The least severe level that is logged, written in capitals.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "LOG_LEVEL",
       "required": false,
-      "type": "str"
+      "type": "Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']"
     },
     {
+      "choices": null,
       "default": 100000,
+      "description": "The longest request body, counted in characters of its text, that a user's profile update may have. Longer ones are refused with 400.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "MAX_DICT_LEN",
@@ -361,7 +460,13 @@
       "type": "int"
     },
     {
+      "choices": [
+        "production",
+        "local",
+        "test"
+      ],
       "default": null,
+      "description": "The mode of the deployment. With test, the API keeps its rate limits and the state of the Workspace MCP in its own process instead of Redis; production and local behave alike.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "MODE",
@@ -369,7 +474,9 @@
       "type": "Literal['production', 'local', 'test']"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The client id of the Okta application, the same value as the web app's. The API accepts an Okta token only when it was issued to this client.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "OKTA_CLIENT_ID",
@@ -377,7 +484,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The Okta issuer, exactly the web app's VITE_OKTA_DOMAIN, for example https://example.okta.com or https://example.okta.com/oauth2/default.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "OKTA_DOMAIN",
@@ -385,7 +494,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": 8000,
+      "description": "The port on which the API listens, on every interface.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "PORT",
@@ -393,7 +504,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": false,
+      "description": "With true, a request that carries a valid service token in the header X-Workspace-Authorization skips the rate limits. For development only.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "RATE_LIMIT_EXEMPT_ENABLED",
@@ -401,7 +514,9 @@
       "type": "bool"
     },
     {
+      "choices": null,
       "default": 10,
+      "description": "The number of seconds that a job that the API puts on the RQ queue may run before the worker stops it.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "RQ_TIMEOUT",
@@ -409,7 +524,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The address at which clients reach this API. It forms the links to uploaded files, and an address that starts with https:// marks the deployment as HTTPS, so that the Workspace MCP hands out only https:// addresses.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "SELFURL",
@@ -417,7 +534,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "Email addresses, as a JSON list, that are exempt from the check that an address has no account yet, so that more than one account may use them.",
       "group": "GeneralSettings",
       "has_default_factory": true,
       "name": "SPECIAL_EMAILS",
@@ -425,7 +544,14 @@
       "type": "set[pydantic.networks.EmailStr]"
     },
     {
+      "choices": [
+        "aws",
+        "azure",
+        "gcp",
+        "folder"
+      ],
       "default": "folder",
+      "description": "Where uploaded files are kept. folder keeps them in FOLDER_STORAGE_PATH, aws in the S3 bucket S3_FILE_BUCKET, azure in the container AZURE_STORAGE_CONTAINER and gcp in the bucket GCP_STORAGE_BUCKET.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "STORAGE_PROVIDER",
@@ -433,7 +559,9 @@
       "type": "Literal['aws', 'azure', 'gcp', 'folder']"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The tags of the routers that the API does not mount, as a JSON list. The tags are the ones that the API logs at startup as the included routers; requests to the paths of a suppressed router answer 404.",
       "group": "GeneralSettings",
       "has_default_factory": true,
       "name": "SUPPRESSED_API_ROUTERS",
@@ -441,7 +569,9 @@
       "type": "list[str] | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The paths of single routes that the API removes after it mounts the routers, as a JSON list, for example [\"/app/files/{file}\"].",
       "group": "GeneralSettings",
       "has_default_factory": true,
       "name": "SUPPRESSED_API_ROUTES",
@@ -449,15 +579,9 @@
       "type": "list[str] | None"
     },
     {
-      "default": "{'?'}",
-      "group": "GeneralSettings",
-      "has_default_factory": false,
-      "name": "UNUSABLE_JSON_CHARACTERS",
-      "required": false,
-      "type": "set[str]"
-    },
-    {
+      "choices": null,
       "default": 3,
+      "description": "The number of worker processes that serve requests. The pools of database connections are sized so that all workers together stay under the limit of the database type.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "WORKERS",
@@ -465,7 +589,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The most address space, in gigabytes, that each worker process may use. Unset, the limit is 75% of the container's memory limit, and none when there is no limit. A value of 0 or less turns the limit off.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "WORKER_ADDRESS_SPACE_LIMIT_GB",
@@ -473,7 +599,9 @@
       "type": "float | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The deployment's service token, a JWT signed with JWT_SECRET. A request that carries a valid service token in X-Workspace-Authorization skips rate limits when RATE_LIMIT_EXEMPT_ENABLED is on. The API checks the signature of the token it receives; it does not read this variable, which is kept for the clients that send the token.",
       "group": "GeneralSettings",
       "has_default_factory": false,
       "name": "WORKSPACE_AUTH_TOKEN",
@@ -481,7 +609,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": "local_storage",
+      "description": "The folder that holds uploaded files, relative to the API's working directory unless the path is absolute. Used with STORAGE_PROVIDER folder.",
       "group": "LocalStorageSettings",
       "has_default_factory": false,
       "name": "FOLDER_STORAGE_PATH",
@@ -489,7 +619,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The secret that signs the temporary links to uploaded files. At least 32 bytes. Required with STORAGE_PROVIDER folder.",
       "group": "LocalStorageSettings",
       "has_default_factory": false,
       "name": "LOCAL_STORAGE_SECRET_KEY",
@@ -497,7 +629,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": "api.notifications:WebhookNotifier",
+      "description": "The transport of admin notifications (new entities), as an import path package.module:Class. The default posts JSON to ADMIN_NOTIFY_WEBHOOK_URL.",
       "group": "NotificationSettings",
       "has_default_factory": false,
       "name": "ADMIN_NOTIFIER",
@@ -505,7 +639,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The recipient that the notification payload names, for example an email address. The transport decides what to do with it.",
       "group": "NotificationSettings",
       "has_default_factory": false,
       "name": "ADMIN_NOTIFY_RECIPIENT",
@@ -513,7 +649,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The sender that the notification payload names, for example an email address. The transport decides what to do with it.",
       "group": "NotificationSettings",
       "has_default_factory": false,
       "name": "ADMIN_NOTIFY_SENDER",
@@ -521,7 +659,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The secret of the X-Admin-Notification-Signature header, an HMAC-SHA256 of the body. Without it, the notifier sends no signature.",
       "group": "NotificationSettings",
       "has_default_factory": false,
       "name": "ADMIN_NOTIFY_WEBHOOK_SECRET",
@@ -529,7 +669,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The address that the default notifier posts to. Unset, the API logs notifications instead of sending them.",
       "group": "NotificationSettings",
       "has_default_factory": false,
       "name": "ADMIN_NOTIFY_WEBHOOK_URL",
@@ -537,7 +679,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": false,
+      "description": "With true, the API serves its Prometheus metrics at /metrics, the first worker also serves them on port 6970, and the API samples its event loop, thread pool and database pools.",
       "group": "PrometheusSettings",
       "has_default_factory": false,
       "name": "PROMETHEUS",
@@ -545,7 +689,19 @@
       "type": "bool | None"
     },
     {
+      "choices": null,
+      "default": 2.0,
+      "description": "The number of seconds between the samples of the event loop, the thread pool and the database pools that PROMETHEUS turns on.",
+      "group": "PrometheusSettings",
+      "has_default_factory": false,
+      "name": "RUNTIME_METRICS_INTERVAL",
+      "required": false,
+      "type": "float"
+    },
+    {
+      "choices": null,
       "default": false,
+      "description": "With true, the API talks to a Redis Cluster instead of a single server. The values 1 and true turn it on, and 0 and false turn it off.",
       "group": "RedisSettings",
       "has_default_factory": false,
       "name": "REDIS_CLUSTER_MODE",
@@ -553,7 +709,9 @@
       "type": "bool"
     },
     {
+      "choices": null,
       "default": 1,
+      "description": "The number of the Redis database that holds what the API keeps for a short time: agent tokens, password reset links, sign-in nonces, MCP sign-in state, usage counts, pending uploads, signed file links, the rate limits and the migration lock. It is ignored in cluster mode.",
       "group": "RedisSettings",
       "has_default_factory": false,
       "name": "REDIS_DB_APP",
@@ -561,7 +719,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": 0,
+      "description": "The number of the Redis database that holds the job queues and the workers of RQ. It is ignored in cluster mode.",
       "group": "RedisSettings",
       "has_default_factory": false,
       "name": "REDIS_DB_BOT",
@@ -569,7 +729,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": "valkey",
+      "description": "The host name of the Redis or Valkey server. Outside Docker, for example with docker-compose-local-dev.yml, use localhost.",
       "group": "RedisSettings",
       "has_default_factory": false,
       "name": "REDIS_HOST",
@@ -577,7 +739,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The password of the Redis server. It may be empty when the server has no password, but the variable must be set.",
       "group": "RedisSettings",
       "has_default_factory": false,
       "name": "REDIS_PASS",
@@ -585,7 +749,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": 6379,
+      "description": "The port of the Redis server when the connection does not use TLS.",
       "group": "RedisSettings",
       "has_default_factory": false,
       "name": "REDIS_PORT",
@@ -593,7 +759,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": false,
+      "description": "With true, the job queues of RQ use hash tags in their keys, so that they work on a sharded Redis that does not expose cluster endpoints.",
       "group": "RedisSettings",
       "has_default_factory": false,
       "name": "REDIS_RQ_HASH_TAGS",
@@ -601,7 +769,9 @@
       "type": "bool"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The path of the certificate authority file that verifies the Redis server's certificate. Setting it turns on TLS.",
       "group": "RedisSettings",
       "has_default_factory": false,
       "name": "REDIS_SSL_CA",
@@ -609,7 +779,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The path of a certificate bundle that the API trusts for the Redis server; REDIS_SSL_CA takes its place when this is unset. Setting it turns on TLS.",
       "group": "RedisSettings",
       "has_default_factory": false,
       "name": "REDIS_SSL_CERT",
@@ -617,7 +789,13 @@
       "type": "str | None"
     },
     {
+      "choices": [
+        "none",
+        "optional",
+        "required"
+      ],
       "default": null,
+      "description": "Whether the API demands a valid certificate from the Redis server. With none, the connection uses TLS without verifying the certificate.",
       "group": "RedisSettings",
       "has_default_factory": false,
       "name": "REDIS_SSL_CERT_REQ",
@@ -625,7 +803,9 @@
       "type": "Optional[Literal['none', 'optional', 'required']]"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The path of the private key file for the TLS connection to Redis.",
       "group": "RedisSettings",
       "has_default_factory": false,
       "name": "REDIS_SSL_KEY",
@@ -633,7 +813,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": 6380,
+      "description": "The port of the Redis server when the connection uses TLS, which is the case when REDIS_SSL_CA, REDIS_SSL_CERT or REDIS_SSL_KEY is set, or REDIS_SSL_CERT_REQ is none.",
       "group": "RedisSettings",
       "has_default_factory": false,
       "name": "REDIS_SSL_PORT",
@@ -641,7 +823,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": "",
+      "description": "The user name for the Redis server. Leave it empty when the server has no users.",
       "group": "RedisSettings",
       "has_default_factory": false,
       "name": "REDIS_USER",
@@ -649,7 +833,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The directory, inside the API container, that holds the widget plugin packages as <plugin-id>/<version>/. Unset, the plugin feature is off. Mount it read-only: the API only reads it, and nothing in the app installs or uploads plugins. Every API replica must see the same files.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGINS_DIR",
@@ -657,7 +843,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": 200,
+      "description": "The most files that one plugin version may have. A version over the limit is blocked.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGINS_MAX_FILES",
@@ -665,7 +853,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": 67108864,
+      "description": "The most bytes, in total, that the files of one plugin version may have. A version over the limit is blocked.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGINS_MAX_UNPACKED_BYTES",
@@ -673,7 +863,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The digests that the API expects of plugin versions, as a JSON object from \"<plugin-id>@<version>\" to \"sha256-...\"; `python -m scripts.plugin_check <plugin-id>/<version> --digest` prints one. A discovered version whose digest differs is blocked.",
       "group": "WidgetPluginSettings",
       "has_default_factory": true,
       "name": "WIDGET_PLUGINS_PINS",
@@ -681,7 +873,9 @@
       "type": "dict[str, str]"
     },
     {
+      "choices": null,
       "default": false,
+      "description": "With true, the API blocks every plugin version that has no pin in WIDGET_PLUGINS_PINS. Recommended in production.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGINS_REQUIRE_PINS",
@@ -689,7 +883,9 @@
       "type": "bool"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The plugin backends that you run, as a JSON object from a plugin id to the internal address of its backend: http(s) on the private network, or unix:<socket path>. Each backend is built from a package's backend/ directory and runs as its own restricted container. The API calls a backend only while it reports the digest of the approved version.",
       "group": "WidgetPluginSettings",
       "has_default_factory": true,
       "name": "WIDGET_PLUGIN_BACKENDS",
@@ -697,7 +893,9 @@
       "type": "dict[str, str]"
     },
     {
+      "choices": null,
       "default": 5,
+      "description": "How many calls to a plugin backend must fail in a row before the API pauses its calls to that backend.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_BACKEND_BREAKER_FAILURES",
@@ -705,7 +903,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": 30,
+      "description": "How many seconds the API pauses its calls to a plugin backend after too many failures in a row.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_BACKEND_BREAKER_SECONDS",
@@ -713,7 +913,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": 8,
+      "description": "How many calls to the backend of one plugin may run at once in each API process.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_BACKEND_CONCURRENCY",
@@ -721,7 +923,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": 60,
+      "description": "How many seconds the API trusts the answer of a plugin backend to its identity check before it asks again.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_BACKEND_IDENTITY_SECONDS",
@@ -729,7 +933,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": 5242880,
+      "description": "The most bytes that a response of a plugin backend may have, whatever the plugin's manifest declares.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_BACKEND_MAX_BYTES",
@@ -737,7 +943,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": "600/minute",
+      "description": "The rate limit of the calls that one plugin backend may receive from all users together, written <number>/<second|minute|hour|day>.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_BACKEND_RATE_PER_PLUGIN",
@@ -745,7 +953,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": "60/minute",
+      "description": "The rate limit of the backend calls that one user may make, written <number>/<second|minute|hour|day>.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_BACKEND_RATE_PER_USER",
@@ -753,7 +963,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": 30000,
+      "description": "The longest time, in milliseconds, that a call to a plugin backend may take, whatever the plugin's manifest declares.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_BACKEND_TIMEOUT_MS",
@@ -761,7 +973,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The path of a certificate authority file that the proxies trust besides the system's, for upstreams whose certificates a private authority signs.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_PROXY_CA_FILE",
@@ -769,7 +983,9 @@
       "type": "str | None"
     },
     {
+      "choices": null,
       "default": 8,
+      "description": "How many proxy calls of one plugin may run at once in each API process.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_PROXY_CONCURRENCY",
@@ -777,7 +993,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": 5242880,
+      "description": "The most bytes that a response to a plugin proxy call may have, whatever the plugin's manifest declares.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_PROXY_MAX_BYTES",
@@ -785,7 +1003,9 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": "600/minute",
+      "description": "The rate limit of the proxy calls that one plugin may receive from all users together, written <number>/<second|minute|hour|day>.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_PROXY_RATE_PER_PLUGIN",
@@ -793,7 +1013,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": "60/minute",
+      "description": "The rate limit of the proxy calls that one user may make, written <number>/<second|minute|hour|day>.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_PROXY_RATE_PER_USER",
@@ -801,7 +1023,9 @@
       "type": "str"
     },
     {
+      "choices": null,
       "default": 30000,
+      "description": "The longest time, in milliseconds, that a plugin proxy call may take, whatever the plugin's manifest declares.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_PROXY_TIMEOUT_MS",
@@ -809,12 +1033,104 @@
       "type": "int"
     },
     {
+      "choices": null,
       "default": null,
+      "description": "The directory that holds the values of the secrets which plugins declare for their proxies, one file per secret at <dir>/<plugin-id>/<secret-name>; a mounted Docker or Kubernetes secret works. A value found here wins over one that a superuser enters in the admin area, and makes that field read-only. Mount it read-only.",
       "group": "WidgetPluginSettings",
       "has_default_factory": false,
       "name": "WIDGET_PLUGIN_SECRETS_DIR",
       "required": false,
       "type": "str | None"
+    },
+    {
+      "choices": null,
+      "default": 15.0,
+      "description": "How many seconds the sidecar waits for a Workspace tab to answer one command.",
+      "group": "WorkspaceMcpSidecar",
+      "has_default_factory": false,
+      "name": "WORKSPACE_MCP_COMMAND_TIMEOUT_SECONDS",
+      "required": false,
+      "type": "float"
+    },
+    {
+      "choices": null,
+      "default": [],
+      "description": "The origins that may call the sidecar from a browser, comma-separated. When it is empty, the origins of the local loopback addresses are allowed.",
+      "group": "WorkspaceMcpSidecar",
+      "has_default_factory": false,
+      "name": "WORKSPACE_MCP_CORS_ALLOW_ORIGINS",
+      "required": false,
+      "type": "tuple[str, ...]"
+    },
+    {
+      "choices": null,
+      "default": "/health",
+      "description": "The path of the health check.",
+      "group": "WorkspaceMcpSidecar",
+      "has_default_factory": false,
+      "name": "WORKSPACE_MCP_HEALTH_PATH",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "choices": null,
+      "default": "127.0.0.1",
+      "description": "The interface on which the sidecar listens.",
+      "group": "WorkspaceMcpSidecar",
+      "has_default_factory": false,
+      "name": "WORKSPACE_MCP_HOST",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "choices": null,
+      "default": "/mcp",
+      "description": "The path of the streamable HTTP endpoint of the MCP server.",
+      "group": "WorkspaceMcpSidecar",
+      "has_default_factory": false,
+      "name": "WORKSPACE_MCP_MCP_PATH",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "choices": null,
+      "default": 8787,
+      "description": "The port on which the sidecar listens.",
+      "group": "WorkspaceMcpSidecar",
+      "has_default_factory": false,
+      "name": "WORKSPACE_MCP_PORT",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "choices": null,
+      "default": 40000,
+      "description": "The size, in characters, from which a tool result is not returned inline: the tool returns a reference that the client reads as a resource, so that a large result does not fill the conversation. It applies to the Workspace MCP in the API and in the sidecar.",
+      "group": "WorkspaceMcpSidecar",
+      "has_default_factory": false,
+      "name": "WORKSPACE_MCP_RESULT_OFFLOAD_THRESHOLD",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "choices": null,
+      "default": "/bridge/session/start",
+      "description": "The path at which a Workspace tab starts a bridge session.",
+      "group": "WorkspaceMcpSidecar",
+      "has_default_factory": false,
+      "name": "WORKSPACE_MCP_SESSION_START_PATH",
+      "required": false,
+      "type": "str"
+    },
+    {
+      "choices": null,
+      "default": "/bridge/ws",
+      "description": "The path of the WebSocket that a Workspace tab keeps open to receive commands.",
+      "group": "WorkspaceMcpSidecar",
+      "has_default_factory": false,
+      "name": "WORKSPACE_MCP_WEBSOCKET_PATH",
+      "required": false,
+      "type": "str"
     }
   ]
 }

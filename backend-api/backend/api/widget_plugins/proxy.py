@@ -55,6 +55,7 @@ FORBIDDEN_HEADERS = frozenset(
         "x-real-ip",
     }
 )
+FORBIDDEN_HEADER_PREFIXES = ("sec-", "proxy-")
 
 
 class _Closed(PydanticBaseModel):
@@ -65,40 +66,88 @@ Scalar = str | int | float | bool
 
 
 class ProxyArg(_Closed):
-    type: Literal["string", "number", "boolean", "enum"]
-    maxLength: int = Field(default=256, ge=1, le=2048)  # noqa: N815
-    minimum: float | None = None
-    maximum: float | None = None
-    values: list[Scalar] | None = Field(default=None, min_length=1, max_length=100)
-    required: bool = False
+    type: Literal["string", "number", "boolean", "enum"] = Field(description="The kind of value that the argument holds.")
+    maxLength: int = Field(  # noqa: N815
+        default=256, ge=1, le=2048, description="The most characters that a string argument may have."
+    )
+    minimum: float | None = Field(default=None, description="The smallest value that a number argument may have.")
+    maximum: float | None = Field(default=None, description="The largest value that a number argument may have.")
+    values: list[Scalar] | None = Field(
+        default=None, min_length=1, max_length=100, description="The values that an enum argument may have."
+    )
+    required: bool = Field(default=False, description="Whether a call must supply the argument.")
 
 
 class RouteArg(ProxyArg):
-    maxLength: int = Field(default=256, ge=1, le=MAX_ROUTE_STRING)  # noqa: N815
+    maxLength: int = Field(  # noqa: N815
+        default=256, ge=1, le=MAX_ROUTE_STRING, description="The most characters that a string argument may have."
+    )
 
 
 class ProxyResponse(_Closed):
-    accepts: list[Literal[ACCEPTED_TYPES]] = Field(default_factory=lambda: ["application/json"], min_length=1)  # type: ignore[valid-type]
-    maxBytes: int = Field(default=1024 * 1024, ge=1, le=MAX_BYTES)  # noqa: N815
-    timeoutMs: int = Field(default=10_000, ge=100, le=MAX_TIMEOUT_MS)  # noqa: N815
+    accepts: list[Literal[ACCEPTED_TYPES]] = Field(  # type: ignore[valid-type]
+        default_factory=lambda: ["application/json"],
+        min_length=1,
+        description="The content types that the server accepts from the upstream. A response of another type is refused.",
+    )
+    maxBytes: int = Field(  # noqa: N815
+        default=1024 * 1024,
+        ge=1,
+        le=MAX_BYTES,
+        description="The most bytes that the server reads from the upstream. The deployment caps the value as well.",
+    )
+    timeoutMs: int = Field(  # noqa: N815
+        default=10_000,
+        ge=100,
+        le=MAX_TIMEOUT_MS,
+        description="How long a call may take, in milliseconds. The deployment caps the value as well.",
+    )
 
 
 class Proxy(_Closed):
-    id: Annotated[str, StringConstraints(pattern=PROXY_ID_PATTERN)]
-    method: Literal["GET", "POST"] = "GET"
-    url: Annotated[str, StringConstraints(min_length=1, max_length=2048)]
+    id: Annotated[str, StringConstraints(pattern=PROXY_ID_PATTERN)] = Field(
+        description="The proxy's id, unique within the plugin."
+    )
+    method: Literal["GET", "POST"] = Field(default="GET", description="The method of the request that the server makes.")
+    url: Annotated[str, StringConstraints(min_length=1, max_length=2048)] = Field(
+        description=(
+            "The https URL of the request, with a literal host and port that appear in server.network and no query "
+            "or fragment. A ${arg:<name>} token may appear in the path after the host."
+        )
+    )
     query: dict[
         Annotated[str, StringConstraints(min_length=1, max_length=128)],
         Annotated[str, StringConstraints(max_length=2048)],
-    ] = Field(default_factory=dict, max_length=32)
-    headers: dict[str, Annotated[str, StringConstraints(max_length=2048)]] = Field(default_factory=dict, max_length=16)
+    ] = Field(
+        default_factory=dict,
+        max_length=32,
+        description=(
+            "The query of the request, with literal names. A value may contain ${arg:<name>}, "
+            "and the server leaves out a value whose argument is absent."
+        ),
+    )
+    headers: dict[str, Annotated[str, StringConstraints(max_length=2048)]] = Field(
+        default_factory=dict,
+        max_length=16,
+        description=(
+            "The headers of the request. A value may contain ${secret:<name>} and nothing else. "
+            "A manifest cannot set a header that changes how a request travels."
+        ),
+    )
     body: dict[Annotated[str, StringConstraints(min_length=1, max_length=128)], Scalar | None] | None = Field(
-        default=None, max_length=32
+        default=None,
+        max_length=32,
+        description=(
+            "The JSON body of a POST request, a flat object with literal names. A field whose value is exactly "
+            "${arg:<name>} keeps the type of the argument, and text around a token turns the field into a string."
+        ),
     )
     args: dict[Annotated[str, StringConstraints(pattern=NAME_PATTERN)], ProxyArg] = Field(
-        default_factory=dict, max_length=32
+        default_factory=dict,
+        max_length=32,
+        description="The arguments that the proxy accepts, by name. The server refuses unknown arguments.",
     )
-    response: ProxyResponse = Field(default_factory=ProxyResponse)
+    response: ProxyResponse = Field(default_factory=ProxyResponse, description="The limits of the upstream's answer.")
 
 
 def check_network(
@@ -212,7 +261,7 @@ def check_proxy(proxy: Proxy, network: list[str], secrets: set[str]) -> list[str
         tokens_in(f"query.{name}", value, {"arg"})
     for name, value in proxy.headers.items():
         lower = name.lower()
-        if not _HEADER_NAME.fullmatch(name) or lower in FORBIDDEN_HEADERS or lower.startswith(("sec-", "proxy-")):
+        if not _HEADER_NAME.fullmatch(name) or lower in FORBIDDEN_HEADERS or lower.startswith(FORBIDDEN_HEADER_PREFIXES):
             errors.append(f"{where}.headers: {name!r} cannot be set")
         if not _PRINTABLE.fullmatch(value):
             errors.append(f"{where}.headers.{name}: printable ASCII only")

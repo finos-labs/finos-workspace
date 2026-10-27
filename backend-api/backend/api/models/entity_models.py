@@ -63,24 +63,6 @@ class Entity(Base, UUIDMixin, DateMixin):
         Boolean, default=True, server_default=true()
     )
 
-    async def get_all_children(self, db: AsyncSession) -> list["Entity"]:
-        children = [self]
-        stack = [self]
-
-        all_rels: list[EntityRelationship] = (
-            (await db.execute(select(EntityRelationship))).scalars().all()
-        )
-
-        while stack:
-            current = stack.pop()
-            temp = [x for x in all_rels if x.parent_uuid == current.uuid]
-            children.extend([x.child for x in temp])
-            stack.extend([x.child for x in temp])
-        return children
-
-    async def get_supreme(self, db: AsyncSession) -> UUID | None:
-        return await entity_get_supreme(db, self.uuid)
-
 
 class EntityRelationship(Base, UUIDMixin, DateMixin):
     __tablename__ = "entity_relationship"
@@ -118,7 +100,6 @@ class AuditEntityRolesPermissions(Base, UUIDMixin, DateMixin):
     resource_type: Mapped[str] = mapped_column(String(100))
     resource_uuid: Mapped[UUID] = mapped_column(UUIDType, index=True)
     performed_by_uuid: Mapped[UUID] = mapped_column(ForeignKey("user.uuid"), index=True)
-    performed_by = relationship("User")
     details: Mapped[dict] = mapped_column(GzipJsonType)
 
 

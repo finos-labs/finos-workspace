@@ -10,7 +10,7 @@ from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
 from loguru import logger
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, SecretStr, field_validator
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,6 +47,7 @@ class UserConfig(BaseModel):
 
 
 class AdminUser(UserConfig):
+    password: SecretStr | None = None
     uuid: UUID | None = None
 
 
@@ -95,7 +96,6 @@ class SetupConfig:
 
         if (user := result.scalars().first()) is None:
             logger.info(f"Creating admin: {admin_user.email} with is_superuser=1")
-            password = base.random_password()
             query = insert(User).values(
                 email=admin_user.email,
                 first_name=admin_user.first_name,
@@ -104,7 +104,11 @@ class SetupConfig:
                 clean_email=clean_email(admin_user.email),
                 permissions_uuid=permissions_uuid,
                 is_superuser=1,
-                password=password,
+                password=(
+                    admin_user.password.get_secret_value()
+                    if admin_user.password
+                    else base.random_password()
+                ),
             )
             result = await self.db.execute(query)
             await app_helpers.give_default_roles(
@@ -114,10 +118,11 @@ class SetupConfig:
                 [app_helpers.AGENT_USER_ROLE, app_helpers.SHARER_ROLE],
             )
             await self.db.commit()
-            show(
-                f"The administrator {admin_user.email} was created. Set their password with: "
-                f"python -m scripts.init_users --new-password {admin_user.email}"
-            )
+            if admin_user.password is None:
+                show(
+                    f"The administrator {admin_user.email} was created. Set their password with: "
+                    f"python -m scripts.init_users --new-password {admin_user.email}"
+                )
 
             return await self.create_admin(admin_user, permissions_uuid)
 
@@ -134,6 +139,11 @@ class SetupConfig:
             await self.db.commit()
             await self.db.refresh(user)
             return await self.create_admin(admin_user, permissions_uuid)
+
+        if admin_user.password and not password_matches(admin_user.password, user.password):
+            logger.info(f"Setting the password of admin {admin_user.email} from the config")
+            await set_password(self.db, user, admin_user.password.get_secret_value())
+            await self.db.refresh(user)
 
         logger.info(
             f"Admin already exists: {admin_user.email}, is_superuser={user.is_superuser}"
@@ -200,6 +210,14 @@ async def setup_configs():
     async for db in aget_write_db():
         for config in configs:
             await SetupConfig(config, db).run()
+
+
+def password_matches(password: SecretStr, hashed: str | bytes | None) -> bool:
+    if not hashed:
+        return False
+    with suppress(Exception):
+        return base.verify_password(password.get_secret_value(), hashed)
+    return False
 
 
 async def get_administrator(db: AsyncSession, email: str) -> User | None:

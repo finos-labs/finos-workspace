@@ -90,9 +90,12 @@ The API reaches users' MCP servers only at public internet addresses. An MCP ser
 private network (an internal host, a compose service) has to be listed by host name in
 `ALLOWED_MCP_HOSTNAMES`, a JSON list.
 
-No password is printed, logged or kept in a file: `scripts.init_users` creates the first
-administrator without one, and `python -m scripts.init_users --new-password <email>` sets it,
-read from the terminal without echo or from standard input.
+`scripts.init_users` creates the administrators that `scripts/cfgs/*.toml` name, with the
+password each one gives, and puts that password back on every run if it differs. The file is
+git-ignored and only its owner can read it; no password is printed or logged. An administrator
+without a password in a config, or not in one, gets one with
+`python -m scripts.init_users --new-password <email>`, read from the terminal without echo or
+from standard input.
 
 Rate limits count requests per client address. The API takes that address from
 `X-Forwarded-For` only when the request comes from loopback or a private network
