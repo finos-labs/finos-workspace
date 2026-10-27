@@ -37,7 +37,7 @@
     "@opentelemetry/resources": "^2.12.0",
     "@opentelemetry/sdk-trace-node": "^2.12.0",
     "@opentelemetry/semantic-conventions": "^1.43.0",
-    "ai": "6.0.316",
+    "ai": "6.0.142",
     "cheerio": "1.2.0",
     "exceljs": "4.4.0",
     "gpt-tokenizer": "^3.4.0",
