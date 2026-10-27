@@ -6,7 +6,7 @@ import type { GraderSpec } from "./index.ts";
 const JUDGE_MODEL =
   process.env.EVAL_JUDGE_MODEL || process.env.EVAL_MODEL || process.env.DEFAULT_MODEL;
 
-export interface LlmJudgeArgs {
+interface LlmJudgeArgs {
   criterion: string;
   threshold?: number;
 }

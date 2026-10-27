@@ -10,12 +10,12 @@ import { getLogger } from "./logger.ts";
 
 const logger = getLogger(["app", "inline-tool-calls"]);
 
-export interface InlineCall {
+interface InlineCall {
   name: string;
   input: string;
 }
 
-export type InlineSegment = { type: "text"; text: string } | ({ type: "call" } & InlineCall);
+type InlineSegment = { type: "text"; text: string } | ({ type: "call" } & InlineCall);
 
 interface MarkerFormat {
   open: RegExp;
@@ -149,7 +149,7 @@ function finishWithToolCalls(finish: LanguageModelV3FinishReason): LanguageModel
   return finish.unified === "stop" ? { ...finish, unified: "tool-calls" } : finish;
 }
 
-export const inlineToolCallsMiddleware: LanguageModelV3Middleware = {
+const inlineToolCallsMiddleware: LanguageModelV3Middleware = {
   specificationVersion: "v3",
 
   async wrapGenerate({ doGenerate, params }) {

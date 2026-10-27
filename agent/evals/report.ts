@@ -19,7 +19,7 @@ export interface CaseReport {
   trialReports: TrialReport[];
 }
 
-export interface SummaryShape {
+interface SummaryShape {
   totalCases: number;
   totalTrials: number;
   passedCases: number;

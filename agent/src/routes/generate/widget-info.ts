@@ -3,28 +3,34 @@ import { z } from "zod";
 import type { AppEnv } from "../../auth/middleware.ts";
 import { parseJsonResponse, truncate } from "../../lib/llm.ts";
 import { getLogger } from "../../lib/logger.ts";
-import { helperLlm, invalidJson, readJson } from "./helper.ts";
+import { helperLlm, invalidJson, modelField, readJson } from "./helper.ts";
 
 const logger = getLogger(["app", "generate", "widget-info"]);
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024;
+export const MAX_FILE_SIZE = 25 * 1024 * 1024;
+export const WIDGET_SAMPLE_CHARS = 3000;
 
-const WidgetInfoSchema = z.object({
-  widget_generation_request: z.object({
-    widget_data: z.string(),
-    metadata: z.object({
-      name: z.string().max(1000).optional(),
-      description: z.string().max(1000).optional(),
-      type: z.string().max(1000).optional(),
-      category: z.string().max(1000).optional(),
-      subCategory: z.string().max(1000).optional(),
-      endpoint: z.string().max(1000).optional(),
-      params: z.array(z.unknown()).optional(),
-    }).optional(),
-    name: z.string().optional(),
-    description: z.string().optional(),
-  }),
-  model: z.string().max(200).optional(),
+export const WidgetInfoSchema = z.object({
+  widget_generation_request: z
+    .object({
+      widget_data: z.string().describe("A sample of the widget's data, as text."),
+      metadata: z
+        .object({
+          name: z.string().max(1000).optional().describe("The widget's name."),
+          description: z.string().max(1000).optional().describe("The widget's description."),
+          type: z.string().max(1000).optional().describe("The widget's type, for example markdown or html."),
+          category: z.string().max(1000).optional().describe("The widget's category."),
+          subCategory: z.string().max(1000).optional().describe("The widget's sub-category."),
+          endpoint: z.string().max(1000).optional().describe("The endpoint that serves the widget."),
+          params: z.array(z.unknown()).optional().describe("Accepted and not used."),
+        })
+        .optional()
+        .describe("What the widget's definition says about it. The prompt includes it, and the fallback uses it."),
+      name: z.string().optional().describe("The widget's name, which the fallback uses."),
+      description: z.string().optional().describe("The widget's description, which the fallback uses."),
+    })
+    .describe("The widget to describe."),
+  model: modelField,
 });
 
 export const widgetInfoRouter = new Hono<AppEnv>();
@@ -38,7 +44,7 @@ widgetInfoRouter.post("/v1/generate/widget_info", async (c) => {
   }
 
   const { widget_generation_request: req, model } = parsed.data;
-  const dataSample = truncate(req.widget_data, 3000);
+  const dataSample = truncate(req.widget_data, WIDGET_SAMPLE_CHARS);
   const meta = req.metadata;
 
   const metaBlock = meta
@@ -85,7 +91,7 @@ widgetInfoRouter.post("/v1/generate/widget_info/file", async (c) => {
   }
 
   const content = await file.text();
-  const sample = truncate(content, 3000);
+  const sample = truncate(content, WIDGET_SAMPLE_CHARS);
   const filename = file.name || "unknown";
 
   const prompt =

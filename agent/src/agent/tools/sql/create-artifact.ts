@@ -75,7 +75,7 @@ interface ArtifactSpec {
   description: string;
 }
 
-export interface CreateArtifactContext {
+interface CreateArtifactContext {
   pendingTables: Map<string, Record<string, unknown>[]>;
   artifactQueue: SSEEvent[];
 }

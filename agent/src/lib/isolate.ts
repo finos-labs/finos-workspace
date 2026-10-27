@@ -6,7 +6,7 @@ import { metrics } from "./metrics.ts";
 
 const defaultLogger = getLogger(["app", "isolate"]);
 
-export type IsolationFailure = "timeout" | "crash" | "busy" | "output" | "protocol";
+type IsolationFailure = "timeout" | "crash" | "busy" | "output" | "protocol";
 
 export class IsolationError extends Error {
   readonly kind: IsolationFailure;
@@ -48,7 +48,7 @@ async function takeSlot(): Promise<() => void> {
   return give;
 }
 
-export interface RunInChildOptions {
+interface RunInChildOptions {
   timeoutMs: number;
   maxOutputBytes?: number;
   label: string;

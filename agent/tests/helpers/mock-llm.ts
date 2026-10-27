@@ -1,20 +1,19 @@
 import { MockLanguageModelV3 } from "ai/test";
 import { simulateReadableStream, type LanguageModel } from "ai";
 import type {
-  LanguageModelV3,
   LanguageModelV3Content,
   LanguageModelV3GenerateResult,
   LanguageModelV3FinishReason,
   LanguageModelV3StreamPart,
 } from "@ai-sdk/provider";
 
-export type ToolCallSpec = {
+type ToolCallSpec = {
   toolCallId?: string;
   toolName: string;
   input: unknown;
 };
 
-export type LlmStep = {
+type LlmStep = {
   text?: string;
   textDeltas?: string[];
   toolCalls?: ToolCallSpec[];
@@ -179,5 +178,3 @@ export function llmCallsToolWithText(
 ): LlmStep {
   return { text, toolCalls: [{ toolName, input }], finishReason: "tool-calls" };
 }
-
-export type _LanguageModelV3 = LanguageModelV3;

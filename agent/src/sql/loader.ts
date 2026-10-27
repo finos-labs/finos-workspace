@@ -5,7 +5,7 @@ export function sanitizeName(name: string): string {
     .toLowerCase();
 }
 
-const TYPE_SAMPLE_LIMIT = 500;
+export const TYPE_SAMPLE_LIMIT = 500;
 
 function inferSqlType(rows: Record<string, unknown>[], key: string): string {
   const cap = Math.min(rows.length, TYPE_SAMPLE_LIMIT);

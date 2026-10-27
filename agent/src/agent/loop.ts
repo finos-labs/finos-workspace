@@ -316,7 +316,7 @@ function buildLoadedSkillsInventory(loadedSkillSlugs: Set<string>): string | nul
   ].join("\n");
 }
 
-export interface AgentRunOptions {
+interface AgentRunOptions {
   request: QueryRequest;
   rawModelId: string;
   model: LanguageModel;
@@ -358,9 +358,9 @@ function isPageTool(toolName: string): boolean {
   );
 }
 
-export const MAX_LOOPS = 3;
+const MAX_LOOPS = 3;
 
-export const LLM_STREAM_TIMEOUT_MS = Number(process.env.LLM_STREAM_TIMEOUT_MS) || 240_000;
+const LLM_STREAM_TIMEOUT_MS = Number(process.env.LLM_STREAM_TIMEOUT_MS) || 240_000;
 const MAX_VISIBLE_MODEL_ERROR_CHARS = 1_000;
 const LIVE_DEBUG_TRACES_LEVEL = liveDebugLevel();
 

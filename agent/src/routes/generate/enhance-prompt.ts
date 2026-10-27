@@ -3,20 +3,30 @@ import { z } from "zod";
 import type { AppEnv } from "../../auth/middleware.ts";
 import { truncate } from "../../lib/llm.ts";
 import { getLogger } from "../../lib/logger.ts";
-import { helperLlm, invalidJson, MAX_HELPER_TEXT_CHARS, readJson } from "./helper.ts";
+import { helperLlm, invalidJson, MAX_HELPER_TEXT_CHARS, modelField, readJson } from "./helper.ts";
 
 const logger = getLogger(["app", "generate", "enhance-prompt"]);
 
-const EnhancePromptSchema = z.object({
-  messages: z.array(z.unknown()).min(1).max(1000),
-  widgets: z.unknown().optional(),
-  context: z.unknown().optional(),
-  urls: z.array(z.string()).optional(),
-  workspace_state: z.unknown().optional(),
-  workspace_options: z.record(z.string(), z.union([z.boolean(), z.string()])).optional(),
-  timezone: z.string().optional(),
-  tools: z.array(z.unknown()).optional(),
-  model: z.string().max(200).optional(),
+export const ENHANCE_WIDGET_NAMES = 30;
+export const ENHANCE_WIDGET_NAME_CHARS = 100;
+
+export const EnhancePromptSchema = z.object({
+  messages: z
+    .array(z.unknown())
+    .min(1)
+    .max(1000)
+    .describe("The conversation. Ines rewrites the last message that has the role human and a text as its content."),
+  widgets: z
+    .unknown()
+    .optional()
+    .describe("The widgets in the tiers primary, secondary and extra, as in a query. Ines uses their names as hints."),
+  context: z.unknown().optional().describe("Accepted and not used."),
+  urls: z.array(z.string()).optional().describe("Accepted and not used."),
+  workspace_state: z.unknown().optional().describe("Accepted and not used."),
+  workspace_options: z.record(z.string(), z.union([z.boolean(), z.string()])).optional().describe("Accepted and not used."),
+  timezone: z.string().optional().describe("Accepted and not used."),
+  tools: z.array(z.unknown()).optional().describe("Accepted and not used."),
+  model: modelField,
 });
 
 function extractWidgetNames(widgets: unknown): string[] {
@@ -28,12 +38,12 @@ function extractWidgetNames(widgets: unknown): string[] {
     if (Array.isArray(arr)) {
       for (const widget of arr) {
         if (widget && typeof widget === "object" && "name" in widget && typeof widget.name === "string") {
-          names.push(truncate(widget.name, 100));
+          names.push(truncate(widget.name, ENHANCE_WIDGET_NAME_CHARS));
         }
       }
     }
   }
-  return names.slice(0, 30);
+  return names.slice(0, ENHANCE_WIDGET_NAMES);
 }
 
 export const enhancePromptRouter = new Hono<AppEnv>();

@@ -5,7 +5,7 @@ export interface GradeResult {
   message: string;
 }
 
-export type Grader = (trace: Trace) => GradeResult | Promise<GradeResult>;
+type Grader = (trace: Trace) => GradeResult | Promise<GradeResult>;
 
 export interface GraderSpec {
   name: string;
@@ -13,7 +13,7 @@ export interface GraderSpec {
 }
 
 export { toolCalled, toolNeverCalled } from "./tool-called.ts";
-export { argContains, argEquals } from "./arg-contains.ts";
+export { argContains } from "./arg-contains.ts";
 export { widgetIdInTopN } from "./widget-rank.ts";
 export { noBadState } from "./no-bad-state.ts";
 export { noPreambleLeak } from "./no-preamble-leak.ts";

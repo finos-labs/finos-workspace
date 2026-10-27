@@ -5,12 +5,19 @@ import { errorItem, type ContentItem } from "./typed.ts";
 
 const logger = getLogger(["mcp", "scope"]);
 
-const MIN_SECRET_CHARS = 16;
+export const MIN_SECRET_CHARS = 16;
+
+export const conversationIdSchema = z
+  .string()
+  .optional()
+  .describe("The chat, filed under the user and the chat id. The agent sets it.");
 
 export const scopeSigSchema = z
   .string()
   .optional()
-  .describe("INTERNAL — populated by agent decoration. Do not set.");
+  .describe(
+    "An HMAC of the chat key, made with the agent's INES_SCOPE_SECRET. A tool checks it, so that a call cannot use another user's chat. The agent sets it.",
+  );
 
 interface Scoped {
   "x-ines-conversation-id"?: string;

@@ -4,7 +4,7 @@ import { getLogger } from "../../lib/logger.ts";
 
 const logger = getLogger(["app", "tools", "suggest_followups"]);
 
-export const suggestFollowupsSchema = z.object({
+const suggestFollowupsSchema = z.object({
   suggestions: z
     .array(z.string().min(1).max(80))
     .min(1)
@@ -18,15 +18,15 @@ export const suggestFollowupsSchema = z.object({
     ),
 });
 
-export const suggestFollowupsDescription =
+const suggestFollowupsDescription =
   "Provide 2-3 short follow-up questions the user might want to ask next, phrased as the user would " +
   "type them. Call once, at the END of your response, after the final answer. If that answer ended " +
   "with a question or a choice for the user, the suggestions must answer it. " +
   "Each suggestion must be answerable with the available widgets/data sources.";
 
-export type SuggestFollowupsArgs = z.infer<typeof suggestFollowupsSchema>;
+type SuggestFollowupsArgs = z.infer<typeof suggestFollowupsSchema>;
 
-export interface SuggestFollowupsContext {
+interface SuggestFollowupsContext {
   setSuggestions: (suggestions: string[]) => void;
 }
 

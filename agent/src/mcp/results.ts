@@ -8,7 +8,7 @@ import { clipForModel, MAX_TOOL_RESULT_CHARS } from "../agent/clip.ts";
 
 const logger = getLogger(["app", "mcp", "results"]);
 
-export interface WebCitation {
+interface WebCitation {
   id: string;
   type: "web";
   url: string;
@@ -32,6 +32,15 @@ type InesTypedItem =
   | { $ines_kind: "sqlite_table"; name: string; rows: Record<string, unknown>[] }
   | { $ines_kind: "error"; error: { code: string; message: string; retryable?: boolean } }
   | { $ines_kind: "model_context"; summary: string };
+
+const KIND_NAMES: Record<InesTypedItem["$ines_kind"], true> = {
+  artifact: true,
+  citation: true,
+  sqlite_table: true,
+  error: true,
+  model_context: true,
+};
+export const TYPED_ITEM_KINDS = Object.keys(KIND_NAMES) as InesTypedItem["$ines_kind"][];
 
 interface WebCitationData {
   type: "web";
@@ -331,7 +340,7 @@ export function processMcpResult(
   return summary;
 }
 
-const HISTORY_RENDER_MAX_CHARS = 2_000;
+export const HISTORY_RENDER_MAX_CHARS = 2_000;
 
 export function renderToolResultForHistory(toolMsg: ToolMessage): string | null {
   const parts: string[] = [];

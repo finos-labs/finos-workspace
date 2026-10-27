@@ -18,7 +18,7 @@ export interface SqlChildOutput {
   events: SSEEvent[];
 }
 
-export function runSqlOp(input: SqlChildInput): SqlChildOutput {
+function runSqlOp(input: SqlChildInput): SqlChildOutput {
   const events: SSEEvent[] = [];
   const ctx = { pendingTables: new Map(input.tables), artifactQueue: events };
   switch (input.op) {

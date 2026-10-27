@@ -786,7 +786,7 @@ export function injectSkill(slug: string, content: string, ctx: RoundTripContext
   });
 }
 
-export function extractSkillContent(toolMsg: ToolMessage): { slug: string; content: string } {
+function extractSkillContent(toolMsg: ToolMessage): { slug: string; content: string } {
   const skillResult = toolMsg.data?.[0] as Record<string, unknown> | undefined;
   const slug = (toolMsg.input_arguments?.slug as string) ?? "unknown";
 
@@ -802,7 +802,7 @@ export function extractSkillContent(toolMsg: ToolMessage): { slug: string; conte
   return { slug, content: `Skill "${slug}" could not be loaded: ${err}` };
 }
 
-export interface InjectFromRebootResult {
+interface InjectFromRebootResult {
   terminal?: boolean;
   terminalMessage?: string;
   suppressWidgetDataTool?: boolean;

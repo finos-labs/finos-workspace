@@ -5,7 +5,7 @@ import {
 } from "./state.ts";
 import type { WorkspaceCommand, WorkspaceCommandResult } from "./wire.ts";
 
-export interface ExecuteBridgeOpts {
+interface ExecuteBridgeOpts {
   sessionId?: string;
 }
 

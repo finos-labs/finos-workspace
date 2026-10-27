@@ -14,7 +14,7 @@ export interface TextSinkContext {
   onArtifactEmitted: () => void;
 }
 
-export interface TextSink {
+interface TextSink {
   pushDelta(text: string): SSEEvent[];
   flushTail(): SSEEvent[];
   takeSuggestions(): { cleanTail: string; suggestions: string[] };

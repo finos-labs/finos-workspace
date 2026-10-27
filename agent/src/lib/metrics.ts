@@ -11,10 +11,26 @@ export interface Gauge {
 export interface Histogram {
   observe(value: number, labels?: Labels): void;
 }
+export type LabelValues = Readonly<Record<string, readonly string[]>>;
+export type MetricType = "counter" | "gauge" | "histogram";
+export interface MetricDefinition {
+  name: string;
+  type: MetricType;
+  help: string;
+  labels: readonly string[];
+  labelValues: LabelValues | null;
+}
 export interface Registry {
-  counter(name: string, help: string, labelNames?: readonly string[]): Counter;
-  gauge(name: string, help: string, labelNames?: readonly string[]): Gauge;
-  histogram(name: string, help: string, labelNames?: readonly string[], buckets?: readonly number[]): Histogram;
+  counter(name: string, help: string, labelNames?: readonly string[], labelValues?: LabelValues): Counter;
+  gauge(name: string, help: string, labelNames?: readonly string[], labelValues?: LabelValues): Gauge;
+  histogram(
+    name: string,
+    help: string,
+    labelNames?: readonly string[],
+    buckets?: readonly number[],
+    labelValues?: LabelValues,
+  ): Histogram;
+  definitions(): MetricDefinition[];
   render(): string;
 }
 
@@ -37,6 +53,7 @@ function numberText(value: number): string {
 
 export function createRegistry(): Registry {
   const renderers: (() => string[])[] = [];
+  const defined: MetricDefinition[] = [];
 
   function series<T>(labelNames: readonly string[], make: () => T) {
     const all = new Map<string, { values: string[]; state: T }>();
@@ -76,7 +93,8 @@ export function createRegistry(): Registry {
   }
 
   return {
-    counter(name, help, labelNames = []) {
+    counter(name, help, labelNames = [], labelValues) {
+      defined.push({ name, type: "counter", help, labels: labelNames, labelValues: labelValues ?? null });
       const store = scalar(name, help, "counter", labelNames);
       return {
         inc(labels, by = 1) {
@@ -86,7 +104,8 @@ export function createRegistry(): Registry {
       };
     },
 
-    gauge(name, help, labelNames = []) {
+    gauge(name, help, labelNames = [], labelValues) {
+      defined.push({ name, type: "gauge", help, labels: labelNames, labelValues: labelValues ?? null });
       const store = scalar(name, help, "gauge", labelNames);
       return {
         set(value, labels) {
@@ -104,7 +123,8 @@ export function createRegistry(): Registry {
       };
     },
 
-    histogram(name, help, labelNames = [], buckets = DEFAULT_BUCKETS) {
+    histogram(name, help, labelNames = [], buckets = DEFAULT_BUCKETS, labelValues) {
+      defined.push({ name, type: "histogram", help, labels: labelNames, labelValues: labelValues ?? null });
       const store = series(labelNames, () => ({ counts: new Array<number>(buckets.length).fill(0), sum: 0, count: 0 }));
       renderers.push(() => {
         if (store.all.size === 0) return [];
@@ -132,11 +152,24 @@ export function createRegistry(): Registry {
       };
     },
 
+    definitions() {
+      return [...defined];
+    },
+
     render() {
       return `${renderers.flatMap((r) => r()).join("\n")}\n`;
     },
   };
 }
+
+export const QUERY_OUTCOMES = ["completed", "continued", "limit", "denied", "busy", "invalid", "error", "aborted"] as const;
+const DIRECTIONS = ["input", "output"] as const;
+const ISOLATED_OUTCOMES = ["ok", "failed", "timeout", "crash", "output", "busy", "protocol"] as const;
+const WORKSPACE_OUTCOMES = ["ok", "rejected", "limit", "error"] as const;
+const CACHE_RESULTS = ["hit", "miss", "rejected"] as const;
+const RECALL_MODES = ["latest", "words", "numbers"] as const;
+const TOOL_OUTCOMES = ["ok", "error"] as const;
+const UNHANDLED_KINDS = ["rejection", "exception"] as const;
 
 export const registry = createRegistry();
 
@@ -155,35 +188,43 @@ export const metrics = {
     "ines_query_duration_seconds",
     "Time a Copilot query takes, until its last event is sent, by outcome.",
     ["outcome"],
+    DEFAULT_BUCKETS,
+    { outcome: QUERY_OUTCOMES },
   ),
   queries: registry.counter(
     "ines_queries_total",
-    "Copilot queries by outcome: completed, continued (a tool round trip), unauthorized, limit, denied, busy, invalid, error.",
+    "Copilot queries by outcome. A query that ends by asking the browser for something is continued, and one whose client left is aborted.",
     ["outcome"],
+    { outcome: QUERY_OUTCOMES },
   ),
   activeQueries: registry.gauge("ines_active_queries", "Queries being answered right now."),
-  modelTokens: registry.counter("ines_model_tokens_total", "Model tokens used, by direction (input or output).", [
-    "direction",
-  ]),
+  modelTokens: registry.counter("ines_model_tokens_total", "Model tokens used, by direction.", ["direction"], {
+    direction: DIRECTIONS,
+  }),
   modelErrors: registry.counter("ines_model_errors_total", "Model calls that failed, by provider.", ["provider"]),
   helperRefused: registry.counter("ines_helper_calls_refused_total", "Helper calls (titles, rewritten prompts, ...) refused because the user made too many in a minute."),
-  unhandled: registry.counter("ines_unhandled_errors_total", "Errors nobody handled, by kind (rejection or exception).", ["kind"]),
-  isolated: registry.counter("ines_isolated_runs_total", "Work run in a child process, by how it ended (ok, failed, timeout, crash, output, busy, protocol).", ["kind"]),
+  unhandled: registry.counter("ines_unhandled_errors_total", "Errors that nothing handled, by kind.", ["kind"], {
+    kind: UNHANDLED_KINDS,
+  }),
+  isolated: registry.counter("ines_isolated_runs_total", "Work run in a child process, by how it ended.", ["kind"], {
+    kind: ISOLATED_OUTCOMES,
+  }),
   isolatedDuration: registry.histogram("ines_isolated_run_duration_seconds", "How long work run in a child process took, by kind of work.", ["work"]),
   modelCalls: registry.counter("ines_model_calls_total", "Calls made to a model (one for each step of a question), by provider.", ["provider"]),
   workspaceRequests: registry.counter(
     "ines_workspace_api_requests_total",
-    "Calls to the Workspace API by endpoint and outcome (ok, rejected, limit, error).",
+    "Calls to the Workspace API by endpoint and outcome.",
     ["endpoint", "outcome"],
+    { outcome: WORKSPACE_OUTCOMES },
   ),
   workspaceDuration: registry.histogram(
     "ines_workspace_api_request_duration_seconds",
     "Time a call to the Workspace API takes.",
     ["endpoint"],
   ),
-  authCache: registry.counter("ines_auth_cache_total", "Lookups of a signed-in user in the cache, by result.", [
-    "result",
-  ]),
+  authCache: registry.counter("ines_auth_cache_total", "Lookups of a signed-in user in the cache, by result.", ["result"], {
+    result: CACHE_RESULTS,
+  }),
   storeErrors: registry.counter(
     "ines_store_errors_total",
     "Times the shared store could not answer and this process answered instead, by operation. Steadily above zero means quotas and turns are being counted per replica.",
@@ -191,27 +232,56 @@ export const metrics = {
   ),
   recalls: registry.counter(
     "ines_conversation_recalls_total",
-    "Times the model read the earlier part of a chat, by how: latest messages, words, or numbers.",
+    "Times the model read the earlier part of a chat, by how: the latest messages, a search by words, or numbered messages.",
     ["mode"],
+    { mode: RECALL_MODES },
   ),
-  toolCalls: registry.counter("ines_mcp_tool_calls_total", "MCP tool calls by tool and outcome (ok, error).", [
-    "tool",
-    "outcome",
-  ]),
-  toolDuration: registry.histogram("ines_mcp_tool_duration_seconds", "Time an MCP tool takes.", ["tool"]),
+  toolCalls: registry.counter("ines_mcp_tool_calls_total", "MCP tool calls by tool and outcome. Only the process of the MCP server updates it.", ["tool", "outcome"], {
+    outcome: TOOL_OUTCOMES,
+  }),
+  toolDuration: registry.histogram("ines_mcp_tool_duration_seconds", "Time an MCP tool takes. Only the process of the MCP server updates it.", ["tool"]),
 };
 
+interface ProcessMetric {
+  name: string;
+  type: "gauge";
+  help: string;
+  labels: readonly string[];
+  sample(): { labels: Record<string, string>; value: number };
+}
+
+export const PROCESS_METRICS: readonly ProcessMetric[] = [
+  {
+    name: "process_resident_memory_bytes",
+    type: "gauge",
+    help: "Resident memory of the process.",
+    labels: [],
+    sample: () => ({ labels: {}, value: process.memoryUsage().rss }),
+  },
+  {
+    name: "process_uptime_seconds",
+    type: "gauge",
+    help: "Seconds since the process started.",
+    labels: [],
+    sample: () => ({ labels: {}, value: Math.round(process.uptime()) }),
+  },
+  {
+    name: "ines_build_info",
+    type: "gauge",
+    help: "The version that is running. The value is always 1 and the label holds OTEL_SERVICE_VERSION, or dev.",
+    labels: ["version"],
+    sample: () => ({ labels: { version: process.env.OTEL_SERVICE_VERSION ?? "dev" }, value: 1 }),
+  },
+];
+
 export function renderMetrics(): string {
-  const process_ = [
-    "# HELP process_resident_memory_bytes Resident memory of the process.",
-    "# TYPE process_resident_memory_bytes gauge",
-    `process_resident_memory_bytes ${process.memoryUsage().rss}`,
-    "# HELP process_uptime_seconds Seconds since the process started.",
-    "# TYPE process_uptime_seconds gauge",
-    `process_uptime_seconds ${Math.round(process.uptime())}`,
-    "# HELP ines_build_info The version that is running.",
-    "# TYPE ines_build_info gauge",
-    `ines_build_info{version="${escapeLabel(process.env.OTEL_SERVICE_VERSION ?? "dev")}"} 1`,
-  ].join("\n");
+  const process_ = PROCESS_METRICS.flatMap((metric) => {
+    const { labels, value } = metric.sample();
+    return [
+      `# HELP ${metric.name} ${metric.help}`,
+      `# TYPE ${metric.name} ${metric.type}`,
+      `${metric.name}${labelText(metric.labels, metric.labels.map((name) => labels[name] ?? ""))} ${value}`,
+    ];
+  }).join("\n");
   return `${registry.render()}${process_}\n`;
 }

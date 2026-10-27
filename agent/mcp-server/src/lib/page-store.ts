@@ -1,9 +1,9 @@
 import { createBoundedCache, sweepEvery } from "../../../src/lib/bounded-cache.ts";
 
-export const PAGE_TTL_MS = 30 * 60 * 1000;
-export const MAX_PAGES_PER_CHAT = 6;
-export const MAX_CHARS_PER_CHAT = 12_000_000;
-export const MAX_CHARS_ALL_CHATS = 80_000_000;
+const PAGE_TTL_MS = 30 * 60 * 1000;
+const MAX_PAGES_PER_CHAT = 6;
+const MAX_CHARS_PER_CHAT = 12_000_000;
+const MAX_CHARS_ALL_CHATS = 80_000_000;
 
 export interface HeldPage {
   id: string;

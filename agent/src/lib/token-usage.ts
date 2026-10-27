@@ -29,7 +29,7 @@ export const TokenUsageSchema = z.object({
   stepCount: z.number().int().nonnegative(),
 });
 
-export type TokenUsage = z.infer<typeof TokenUsageSchema>;
+type TokenUsage = z.infer<typeof TokenUsageSchema>;
 
 export function flattenUsage(usage: LanguageModelUsage): UsageCounts {
   const input = usage.inputTokens ?? 0;

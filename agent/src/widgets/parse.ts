@@ -8,7 +8,7 @@ import type { XlsxChildInput } from "./xlsx-child.ts";
 
 const logger = getLogger(["app", "widgets"]);
 
-export type FileKind = "image" | "pdf" | "docx" | "csv" | "xlsx" | "text";
+type FileKind = "image" | "pdf" | "docx" | "csv" | "xlsx" | "text";
 
 export function _classifyItem(
   dataFormat?: Record<string, string>,
@@ -34,7 +34,8 @@ export function _xlsxToJson(buf: ArrayBuffer | Buffer): Promise<string> {
 }
 
 const XLSX_CHILD = new URL("./xlsx-child.ts", import.meta.url).pathname;
-const XLSX_TIMEOUT_MS = 30_000;
+export const XLSX_TIMEOUT_MS = 30_000;
+export const URL_DOWNLOAD_TIMEOUT_MS = 30_000;
 
 async function xlsxToJson(buf: ArrayBuffer | Buffer): Promise<string> {
   const bytes = Buffer.isBuffer(buf) ? buf : Buffer.from(buf);
@@ -47,9 +48,9 @@ export function _imageMediaType(dt: string): "image/jpeg" | "image/png" {
   return "image/jpeg";
 }
 
-const MAX_IMAGE_B64_CHARS = 5 * 1024 * 1024;
+export const MAX_IMAGE_B64_CHARS = 5 * 1024 * 1024;
 
-export type MediaPart = ImagePart | FilePart;
+type MediaPart = ImagePart | FilePart;
 
 export interface WidgetItem {
   name: string;
@@ -184,7 +185,7 @@ export async function extractWidgetItems(
         if (kind === "image") {
           logger.debug("Fetching image URL");
           try {
-            const res = await fetchClientUrl(url, { signal: AbortSignal.timeout(30_000) });
+            const res = await fetchClientUrl(url, { signal: AbortSignal.timeout(URL_DOWNLOAD_TIMEOUT_MS) });
             if (res.ok) {
               const b64 = Buffer.from(await res.arrayBuffer()).toString("base64");
               if (b64.length > MAX_IMAGE_B64_CHARS) {
@@ -202,7 +203,7 @@ export async function extractWidgetItems(
         } else if (kind === "xlsx") {
           logger.debug("Fetching XLSX URL", { url: url.slice(0, 80) });
           try {
-            const res = await fetchClientUrl(url, { signal: AbortSignal.timeout(30_000) });
+            const res = await fetchClientUrl(url, { signal: AbortSignal.timeout(URL_DOWNLOAD_TIMEOUT_MS) });
             if (res.ok) {
               const buf = await res.arrayBuffer();
               const json = await xlsxToJson(Buffer.from(buf));
@@ -216,7 +217,7 @@ export async function extractWidgetItems(
           const isCsv = kind === "csv";
           logger.debug("Fetching data URL", { url: url.slice(0, 80), isCsv });
           try {
-            const res = await fetchClientUrl(url, { signal: AbortSignal.timeout(30_000) });
+            const res = await fetchClientUrl(url, { signal: AbortSignal.timeout(URL_DOWNLOAD_TIMEOUT_MS) });
             if (res.ok) {
               const text = await res.text();
               if (isCsv) {

@@ -10,8 +10,9 @@ import { queryRouter } from "./routes/query.ts";
 import { generateRouter } from "./routes/generate/index.ts";
 import { MAX_AUDIO_BYTES, transcribeRouter } from "./routes/transcribe.ts";
 
-const HELPER_BODY_BYTES = 8 * 1024 * 1024;
-const HELPER_JSON_PATHS = ["/v1/generate/chat/title", "/v1/generate/dashboard/title", "/v1/generate/widget_info", "/v1/generate/code", "/v1/enhance_prompt"];
+export const HELPER_BODY_BYTES = 8 * 1024 * 1024;
+export const TRANSCRIBE_BODY_BYTES = MAX_AUDIO_BYTES + 64 * 1024;
+export const HELPER_JSON_PATHS = ["/v1/generate/chat/title", "/v1/generate/dashboard/title", "/v1/generate/widget_info", "/v1/generate/code", "/v1/enhance_prompt"];
 
 function routeLabel(pattern: string, status: number): string {
   return status === 404 || pattern === "/*" || pattern === "*" ? "other" : pattern;
@@ -74,7 +75,7 @@ export function createApp(services: Services): Hono<AppEnv> {
   app.use("/v1/transcribe", helperGate);
   app.use(
     "/v1/transcribe",
-    bodyLimit({ maxSize: MAX_AUDIO_BYTES + 64 * 1024, onError: (c) => c.json({ error: "The recording is too long." }, 413) }),
+    bodyLimit({ maxSize: TRANSCRIBE_BODY_BYTES, onError: (c) => c.json({ error: "The recording is too long." }, 413) }),
   );
   for (const path of HELPER_JSON_PATHS) {
     app.use(path, bodyLimit({ maxSize: HELPER_BODY_BYTES, onError: (c) => c.json({ error: "The request is too large" }, 413) }));

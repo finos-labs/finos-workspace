@@ -14,7 +14,7 @@ import { getLogger } from "./logger.ts";
 
 const logger = getLogger(["app", "telemetry"]);
 
-export const TRACER_NAME = "ines";
+const TRACER_NAME = "ines";
 
 export function resolveTracesUrl(
   base: string | undefined,
@@ -36,7 +36,7 @@ function consoleTraces(): boolean {
   return process.env.OTEL_TRACES_CONSOLE === "true";
 }
 
-export function telemetryEnabled(): boolean {
+function telemetryEnabled(): boolean {
   return otlpEndpoint() !== undefined || consoleTraces();
 }
 

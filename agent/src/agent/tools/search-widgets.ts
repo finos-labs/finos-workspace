@@ -7,7 +7,7 @@ import { displaySummarySchema } from "./progress.ts";
 
 const logger = getLogger(["app", "tools", "search_widgets"]);
 
-const SEARCH_RESULT_CAP = 100;
+export const SEARCH_RESULT_CAP = 100;
 
 export const searchWidgetsSchema = z.object({
   display_summary: displaySummarySchema,
@@ -16,7 +16,7 @@ export const searchWidgetsSchema = z.object({
 
 const DISPLAY_ONLY_PREFIXES = ["rich_note", "copilot_table", "iframe", "youtube"];
 
-export type WidgetLocation = "added_to_context" | "on_dashboard" | "connected";
+type WidgetLocation = "added_to_context" | "on_dashboard" | "connected";
 
 const TIER_TO_LOCATION: Record<WidgetTier, WidgetLocation> = {
   primary: "added_to_context",

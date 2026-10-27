@@ -6,7 +6,7 @@ import { makeLlmThinkTool } from "./think.ts";
 import { makeTableFromTextTool } from "./table-from-text.ts";
 import { makeHtmlArtifactTool } from "./html-artifact.ts";
 
-export const NATIVE_TOOL_NAMES = [
+const NATIVE_TOOL_NAMES = [
   "enhance_prompt",
   "_llm_think",
   "create_table_from_text",
@@ -19,7 +19,7 @@ export const NATIVE_TOOL_NAMES = [
 
 export const NATIVE_TOOL_NAME_SET: ReadonlySet<string> = new Set(NATIVE_TOOL_NAMES);
 
-export interface NativeToolsContext {
+interface NativeToolsContext {
   pendingTables: Map<string, Record<string, unknown>[]>;
   artifactQueue: SSEEvent[];
   tables: TableInfo[];

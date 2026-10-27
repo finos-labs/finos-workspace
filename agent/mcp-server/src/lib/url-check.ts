@@ -8,7 +8,9 @@ const logger = getLogger(["mcp", "url-check"]);
 export const urlSigSchema = z
   .string()
   .optional()
-  .describe("INTERNAL — populated by agent decoration. Do not set.");
+  .describe(
+    "A signature of the address, which the agent gives only to an address that was in what the model was shown. The agent sets it.",
+  );
 
 export function urlProblem(
   url: string,

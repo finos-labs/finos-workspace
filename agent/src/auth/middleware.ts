@@ -27,15 +27,17 @@ export interface AppEnv {
 
 export const ANONYMOUS: Principal = { userId: "anonymous", token: "" };
 
-export interface AuthCache {
+interface AuthCache {
   get(token: string): Promise<string | null>;
   set(token: string, userId: string): Promise<void>;
   rejected(token: string): Promise<boolean>;
   reject(token: string): Promise<void>;
 }
 
-const REJECTED_SECONDS = 10;
-const MAX_TOKEN_CHARS = 4096;
+export const REJECTED_SECONDS = 10;
+export const MAX_TOKEN_CHARS = 4096;
+export const SIGN_IN_MAX_CONCURRENT = 32;
+export const SIGN_IN_MAX_WAITING = 256;
 
 export function createAuthCache(store: Store, ttlSeconds: number): AuthCache {
   const keyOf = (token: string) => createHash("sha256").update(token).digest("base64url");
@@ -77,7 +79,7 @@ type SignIn = Awaited<ReturnType<WorkspaceClient["getUser"]>> | { ok: false; rea
 
 export function createSignIn(
   workspace: WorkspaceClient,
-  { maxConcurrent = 32, maxWaiting = 256 }: { maxConcurrent?: number; maxWaiting?: number } = {},
+  { maxConcurrent = SIGN_IN_MAX_CONCURRENT, maxWaiting = SIGN_IN_MAX_WAITING }: { maxConcurrent?: number; maxWaiting?: number } = {},
 ): (token: string) => Promise<SignIn> {
   const pending = new Map<string, Promise<SignIn>>();
   const waiting: Array<() => void> = [];

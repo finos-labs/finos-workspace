@@ -40,7 +40,8 @@ export function pagesNamedIn(answer: string): Set<number> {
   return pages;
 }
 
-const MAX_CITED_PAGES = 3;
+export const MAX_CITED_PAGES = 3;
+export const CITED_SCORE_SHARE = 0.5;
 
 export function selectCitedPages(hits: DocumentCitation[], answer?: string): DocumentCitation[] {
   const named = answer ? pagesNamedIn(answer) : new Set<number>();
@@ -52,7 +53,7 @@ export function selectCitedPages(hits: DocumentCitation[], answer?: string): Doc
     const ranked = [...docHits].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     const asNamed = ranked.filter((h) => h.page != null && named.has(h.page));
     const best = ranked[0].score ?? 0;
-    const chosen = asNamed.length > 0 ? asNamed : ranked.filter((h) => (h.score ?? best) >= best * 0.5).slice(0, MAX_CITED_PAGES);
+    const chosen = asNamed.length > 0 ? asNamed : ranked.filter((h) => (h.score ?? best) >= best * CITED_SCORE_SHARE).slice(0, MAX_CITED_PAGES);
     const seen = new Set<number | undefined>();
     for (const h of chosen) {
       if (seen.has(h.page)) continue;

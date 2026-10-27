@@ -3,9 +3,9 @@ import { FETCH_MISSING_TABLE_HINT, NO_TABLES_LOADED_MESSAGE } from "./error-hint
 
 export const MAX_SQL_TABLE_ROWS = 200_000;
 
-export const SQL_MAX_VALUE_BYTES = 64 * 1024 * 1024;
+const SQL_MAX_VALUE_BYTES = 64 * 1024 * 1024;
 
-export interface LoadedTable {
+interface LoadedTable {
   tableName: string;
   columns: { name: string; originalName: string; type: string }[];
   rowCount: number;

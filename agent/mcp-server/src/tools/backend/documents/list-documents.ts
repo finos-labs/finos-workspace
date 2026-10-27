@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { textItem, type ContentItem } from "../../../lib/typed.ts";
 import { ensureHydrated, listDocuments } from "./store.ts";
 import { extractDocument } from "./extract.ts";
@@ -6,21 +5,15 @@ import { chunkDocument } from "./chunk.ts";
 import { embedChunks } from "./retrieve.ts";
 import { upsertDocument, hasDocument } from "./store.ts";
 import { getLogger } from "../../../lib/logger.ts";
-import { scopeSigSchema } from "../../../lib/scope-check.ts";
-import { documentBytes, shippedDocumentSchema, type ShippedDocument } from "./payload.ts";
+import { conversationIdSchema, scopeSigSchema } from "../../../lib/scope-check.ts";
+import { documentBytes, shippedDocumentsSchema, type ShippedDocument } from "./payload.ts";
 
 const logger = getLogger(["mcp", "documents", "list"]);
 
 export const listDocumentsSchema = {
-  "x-ines-conversation-id": z
-    .string()
-    .optional()
-    .describe("INTERNAL — populated by agent decoration. Do not set."),
+  "x-ines-conversation-id": conversationIdSchema,
   "x-ines-scope-sig": scopeSigSchema,
-  "x-ines-documents": z
-    .array(shippedDocumentSchema)
-    .optional()
-    .describe("INTERNAL — populated by agent decoration. Do not set."),
+  "x-ines-documents": shippedDocumentsSchema,
 };
 
 export const listDocumentsDescription =

@@ -60,11 +60,6 @@ function ask(opts: { messages: QueryRequest["messages"]; tools?: AgentTool[]; mo
   );
 }
 
-const toolNames = (tools: unknown): string[] =>
-  Array.isArray(tools)
-    ? tools.map((t) => (t as { name?: string }).name).filter((n): n is string => typeof n === "string")
-    : Object.keys((tools as Record<string, unknown>) ?? {});
-
 const promptOf = (messages: unknown): string =>
   (messages as Array<{ content?: unknown }>)
     .map((m) =>

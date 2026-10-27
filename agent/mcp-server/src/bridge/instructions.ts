@@ -1,10 +1,10 @@
-export const USAGE_SUMMARY =
+const USAGE_SUMMARY =
   "Use snake_case payloads. Start with get_workspace_snapshot to discover valid " +
   "dashboard_id, dashboard_composition, and skills from the live Workspace " +
   "session. Use list_available_widgets and get_widget_schema for widget library " +
   "discovery. Do not invent identifiers.";
 
-export const WIDGET_SCHEMA_GUIDANCE =
+const WIDGET_SCHEMA_GUIDANCE =
   "Use list_available_widgets to enumerate candidates and get_widget_schema to " +
   "inspect one exact widget contract before creating it. get_widget_schema " +
   "includes grid_data defaults and min/max layout constraints when the widget " +
@@ -63,7 +63,7 @@ export const DASHBOARD_TARGETING_GUIDANCE =
 export const EXISTING_DASHBOARD_GUIDANCE =
   "These tools operate on an existing dashboard only. They do not create dashboards.";
 
-export const CREATE_DASHBOARD_GUIDANCE =
+const CREATE_DASHBOARD_GUIDANCE =
   "Use manage_dashboard with operation='create' to create a dashboard first. " +
   "By default it activates the new dashboard route so follow-up snapshot and " +
   "widget commands target it.";
@@ -85,7 +85,7 @@ export const NAVIGATION_BAR_GUIDANCE =
   'for example [{"name":"AAPL Analysis"}]. Each object must use only the key name, not tab_id or tab_name. ' +
   'Do not pass a JSON array of strings such as ["AAPL Analysis"].';
 
-export const DISCOVERY_WORKFLOW =
+const DISCOVERY_WORKFLOW =
   "Recommended workflow: call get_workspace_snapshot first, manage_dashboard " +
   "with operation='create' when you need a fresh dashboard, call " +
   "list_available_widgets to enumerate candidate widgets, call " +

@@ -5,8 +5,8 @@ import type { WidgetItem } from "../widgets/parse.ts";
 
 const logger = getLogger(["app", "agent", "row-cache"]);
 
-const ROWS_TTL_SECONDS = 30 * 60;
-const WIDGET_DATA_TTL_SECONDS = 5 * 60;
+export const ROWS_TTL_SECONDS = 30 * 60;
+export const WIDGET_DATA_TTL_SECONDS = 5 * 60;
 
 export const MAX_CACHED_TABLE_ROWS = 500_000;
 
@@ -16,7 +16,7 @@ interface CachedRows {
   inputArgs?: Record<string, unknown>;
 }
 
-export interface RememberRowsOptions {
+interface RememberRowsOptions {
   widgetUuid?: string;
   inputArgs?: Record<string, unknown>;
 }

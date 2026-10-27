@@ -3,9 +3,7 @@ import { runInChild } from "./isolate.ts";
 import { fetchClientUrl } from "./safe-fetch.ts";
 import type { ChildInput, PageOverview, PageRequest, PageViewResult } from "./page-view.ts";
 
-export type { PageOverview, PageRequest, PageViewResult };
-
-export const MAX_PAGE_BYTES = 5 * 1024 * 1024;
+const MAX_PAGE_BYTES = 5 * 1024 * 1024;
 const CHILD_TIMEOUT_MS = 10_000;
 const CHILD = new URL("./html-child.ts", import.meta.url).pathname;
 

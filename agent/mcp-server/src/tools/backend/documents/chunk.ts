@@ -11,7 +11,7 @@ export interface DocChunk {
   tokens: number;
 }
 
-export interface ChunkOptions {
+interface ChunkOptions {
   targetTokens?: number;
   overlapTokens?: number;
   maxTokens?: number;

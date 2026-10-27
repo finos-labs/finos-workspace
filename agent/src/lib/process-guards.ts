@@ -17,7 +17,7 @@ export function installErrorGuards(proc: ProcessLike, log: Logger, exit: (code: 
   });
 }
 
-export interface ShutdownOptions {
+interface ShutdownOptions {
   signals?: readonly string[];
   stopAccepting: () => void;
   inFlight: () => number;

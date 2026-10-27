@@ -1,0 +1,3284 @@
+{
+  "http": {
+    "routes": [
+      {
+        "method": "GET",
+        "path": "/",
+        "needsToken": false,
+        "helperCalls": false,
+        "bodyLimitBytes": "INES_MAX_BODY_MB",
+        "summary": "Answers with the text Ines."
+      },
+      {
+        "method": "GET",
+        "path": "/agents.json",
+        "needsToken": false,
+        "helperCalls": false,
+        "bodyLimitBytes": "INES_MAX_BODY_MB",
+        "summary": "The agent's descriptor, which the Workspace reads to learn the agent's name, skills and features."
+      },
+      {
+        "method": "GET",
+        "path": "/status",
+        "needsToken": false,
+        "helperCalls": false,
+        "bodyLimitBytes": "INES_MAX_BODY_MB",
+        "summary": "Answers {\"status\": \"ok\", \"timestamp\": ..., \"sharedState\": ...}. sharedState is true when Ines keeps its state in Redis, which a deployment with more than one replica needs."
+      },
+      {
+        "method": "GET",
+        "path": "/ready",
+        "needsToken": false,
+        "helperCalls": false,
+        "bodyLimitBytes": "INES_MAX_BODY_MB",
+        "summary": "Answers {\"status\": \"ready\"}. With authentication on, Ines first calls the /health route of the Workspace API with a timeout of 3 seconds, and when that fails it answers 503 with {\"status\": \"not ready\", \"reason\": \"the Workspace API does not answer\"}."
+      },
+      {
+        "method": "POST",
+        "path": "/v1/query",
+        "needsToken": true,
+        "helperCalls": false,
+        "bodyLimitBytes": "INES_MAX_BODY_MB",
+        "summary": "Asks a question. The answer is a stream of events, as the agent query protocol describes."
+      },
+      {
+        "method": "POST",
+        "path": "/v1/generate/chat/title",
+        "needsToken": true,
+        "helperCalls": true,
+        "bodyLimitBytes": 8388608,
+        "summary": "Names a chat."
+      },
+      {
+        "method": "POST",
+        "path": "/v1/enhance_prompt",
+        "needsToken": true,
+        "helperCalls": true,
+        "bodyLimitBytes": 8388608,
+        "summary": "Rewrites a question to be more specific."
+      },
+      {
+        "method": "POST",
+        "path": "/v1/generate/dashboard/title",
+        "needsToken": true,
+        "helperCalls": true,
+        "bodyLimitBytes": 8388608,
+        "summary": "Names a dashboard."
+      },
+      {
+        "method": "POST",
+        "path": "/v1/generate/widget_info",
+        "needsToken": true,
+        "helperCalls": true,
+        "bodyLimitBytes": 8388608,
+        "summary": "Describes and classifies a widget from a sample of its data."
+      },
+      {
+        "method": "POST",
+        "path": "/v1/generate/widget_info/file",
+        "needsToken": true,
+        "helperCalls": true,
+        "bodyLimitBytes": "INES_MAX_BODY_MB",
+        "summary": "Describes an uploaded file."
+      },
+      {
+        "method": "POST",
+        "path": "/v1/generate/code",
+        "needsToken": true,
+        "helperCalls": true,
+        "bodyLimitBytes": 8388608,
+        "summary": "Writes or changes SQL or Python code for a widget."
+      },
+      {
+        "method": "POST",
+        "path": "/v1/transcribe",
+        "needsToken": true,
+        "helperCalls": true,
+        "bodyLimitBytes": 4259840,
+        "summary": "Turns a recording into text."
+      }
+    ],
+    "helpers": [
+      {
+        "path": "/v1/generate/chat/title",
+        "fields": [
+          {
+            "path": "messages",
+            "type": "array of any",
+            "required": true,
+            "limits": "1 to 1,000 items",
+            "description": "The conversation. Ines reads the messages that have the role human and a text as their content."
+          },
+          {
+            "path": "model",
+            "type": "string",
+            "required": false,
+            "limits": "at most 200 characters",
+            "description": "A model to use instead of DEFAULT_MODEL, written <provider>:<model>. Ines uses it only when this deployment offers it and the user's roles allow it."
+          }
+        ],
+        "detail": "Ines reads the last 5 messages that have the role human, each cut to 500 characters.",
+        "answer": "A JSON string that holds the title, for example \"Revenue by region\".",
+        "fallback": "\"New Chat\", also when there is no human message."
+      },
+      {
+        "path": "/v1/enhance_prompt",
+        "fields": [
+          {
+            "path": "messages",
+            "type": "array of any",
+            "required": true,
+            "limits": "1 to 1,000 items",
+            "description": "The conversation. Ines rewrites the last message that has the role human and a text as its content."
+          },
+          {
+            "path": "widgets",
+            "type": "any",
+            "required": false,
+            "limits": null,
+            "description": "The widgets in the tiers primary, secondary and extra, as in a query. Ines uses their names as hints."
+          },
+          {
+            "path": "context",
+            "type": "any",
+            "required": false,
+            "limits": null,
+            "description": "Accepted and not used."
+          },
+          {
+            "path": "urls",
+            "type": "array of string",
+            "required": false,
+            "limits": null,
+            "description": "Accepted and not used."
+          },
+          {
+            "path": "workspace_state",
+            "type": "any",
+            "required": false,
+            "limits": null,
+            "description": "Accepted and not used."
+          },
+          {
+            "path": "workspace_options",
+            "type": "object",
+            "required": false,
+            "limits": null,
+            "description": "Accepted and not used."
+          },
+          {
+            "path": "timezone",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Accepted and not used."
+          },
+          {
+            "path": "tools",
+            "type": "array of any",
+            "required": false,
+            "limits": null,
+            "description": "Accepted and not used."
+          },
+          {
+            "path": "model",
+            "type": "string",
+            "required": false,
+            "limits": "at most 200 characters",
+            "description": "A model to use instead of DEFAULT_MODEL, written <provider>:<model>. Ines uses it only when this deployment offers it and the user's roles allow it."
+          }
+        ],
+        "detail": "Ines rewrites the last human message, cut to 4,000 characters, and uses the names of up to 30 widgets, each cut to 100 characters, as hints.",
+        "answer": "Plain text, the rewritten question.",
+        "fallback": "The original question, or an empty string when there is no human message."
+      },
+      {
+        "path": "/v1/generate/dashboard/title",
+        "fields": [
+          {
+            "path": "widgets",
+            "type": "array of object",
+            "required": true,
+            "limits": "1 to 1,000 items",
+            "description": "The widgets of the dashboard."
+          },
+          {
+            "path": "widgets[].uuid",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Accepted and not used."
+          },
+          {
+            "path": "widgets[].name",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "The widget's name, which the title is made from."
+          },
+          {
+            "path": "widgets[].description",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Accepted and not used."
+          },
+          {
+            "path": "widgets[].metadata",
+            "type": "any",
+            "required": false,
+            "limits": null,
+            "description": "Accepted and not used."
+          },
+          {
+            "path": "model",
+            "type": "string",
+            "required": false,
+            "limits": "at most 200 characters",
+            "description": "A model to use instead of DEFAULT_MODEL, written <provider>:<model>. Ines uses it only when this deployment offers it and the user's roles allow it."
+          }
+        ],
+        "detail": "Ines reads the first 20 widget names, each cut to 100 characters.",
+        "answer": "Plain text, the title.",
+        "fallback": "My Dashboard, also when no widget has a name."
+      },
+      {
+        "path": "/v1/generate/widget_info",
+        "fields": [
+          {
+            "path": "widget_generation_request",
+            "type": "object",
+            "required": true,
+            "limits": null,
+            "description": "The widget to describe."
+          },
+          {
+            "path": "widget_generation_request.widget_data",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "A sample of the widget's data, as text."
+          },
+          {
+            "path": "widget_generation_request.metadata",
+            "type": "object",
+            "required": false,
+            "limits": null,
+            "description": "What the widget's definition says about it. The prompt includes it, and the fallback uses it."
+          },
+          {
+            "path": "widget_generation_request.metadata.name",
+            "type": "string",
+            "required": false,
+            "limits": "at most 1,000 characters",
+            "description": "The widget's name."
+          },
+          {
+            "path": "widget_generation_request.metadata.description",
+            "type": "string",
+            "required": false,
+            "limits": "at most 1,000 characters",
+            "description": "The widget's description."
+          },
+          {
+            "path": "widget_generation_request.metadata.type",
+            "type": "string",
+            "required": false,
+            "limits": "at most 1,000 characters",
+            "description": "The widget's type, for example markdown or html."
+          },
+          {
+            "path": "widget_generation_request.metadata.category",
+            "type": "string",
+            "required": false,
+            "limits": "at most 1,000 characters",
+            "description": "The widget's category."
+          },
+          {
+            "path": "widget_generation_request.metadata.subCategory",
+            "type": "string",
+            "required": false,
+            "limits": "at most 1,000 characters",
+            "description": "The widget's sub-category."
+          },
+          {
+            "path": "widget_generation_request.metadata.endpoint",
+            "type": "string",
+            "required": false,
+            "limits": "at most 1,000 characters",
+            "description": "The endpoint that serves the widget."
+          },
+          {
+            "path": "widget_generation_request.metadata.params",
+            "type": "array of any",
+            "required": false,
+            "limits": null,
+            "description": "Accepted and not used."
+          },
+          {
+            "path": "widget_generation_request.name",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "The widget's name, which the fallback uses."
+          },
+          {
+            "path": "widget_generation_request.description",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "The widget's description, which the fallback uses."
+          },
+          {
+            "path": "model",
+            "type": "string",
+            "required": false,
+            "limits": "at most 200 characters",
+            "description": "A model to use instead of DEFAULT_MODEL, written <provider>:<model>. Ines uses it only when this deployment offers it and the user's roles allow it."
+          }
+        ],
+        "detail": "Ines reads the first 3,000 characters of widget_data.",
+        "answer": "A JSON object with title, description, category and subcategory.",
+        "fallback": "An object made from the request's own name, description and metadata, with the category Other."
+      },
+      {
+        "path": "/v1/generate/widget_info/file",
+        "fields": [],
+        "detail": "The request is a multipart form with the field file, at most 25 MiB, and Ines reads its first 3,000 characters. A form without the field is answered with 400 and a file that is too large with 413.",
+        "answer": "A JSON object with title and description.",
+        "fallback": "The file's name without its extension as the title, and the file's name as the description."
+      },
+      {
+        "path": "/v1/generate/code",
+        "fields": [
+          {
+            "path": "widget_uuid",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "Accepted and not used."
+          },
+          {
+            "path": "user_prompt",
+            "type": "string",
+            "required": true,
+            "limits": "1 to 20,000 characters",
+            "description": "What the code should do."
+          },
+          {
+            "path": "current_code",
+            "type": "string or null",
+            "required": false,
+            "limits": null,
+            "description": "The code to change or improve."
+          },
+          {
+            "path": "language",
+            "type": "\"sql\" | \"python\"",
+            "required": true,
+            "limits": null,
+            "description": "The language of the code."
+          },
+          {
+            "path": "sql_schema",
+            "type": "object or null",
+            "required": false,
+            "limits": null,
+            "description": "The tables and columns that the code may use."
+          },
+          {
+            "path": "data_sample",
+            "type": "array of object or null",
+            "required": false,
+            "limits": null,
+            "description": "Rows of the data. Ines reads the first 5."
+          },
+          {
+            "path": "model",
+            "type": "string",
+            "required": false,
+            "limits": "at most 200 characters",
+            "description": "A model to use instead of DEFAULT_MODEL, written <provider>:<model>. Ines uses it only when this deployment offers it and the user's roles allow it."
+          }
+        ],
+        "detail": "The language is sql or python.",
+        "answer": "{\"success\": true, \"generated_code\": \"...\"} or {\"success\": false, \"error_message\": \"...\"}.",
+        "fallback": "{\"success\": false, \"error_message\": \"Code generation failed\"}."
+      }
+    ],
+    "limits": {
+      "helperBodyBytes": 8388608,
+      "transcribeBodyBytes": 4259840,
+      "audioBytes": 4194304,
+      "defaultMaxBodyMb": 64
+    }
+  },
+  "metrics": [
+    {
+      "name": "ines_http_requests_total",
+      "type": "counter",
+      "labels": [
+        "route",
+        "method",
+        "status"
+      ],
+      "labelValues": null,
+      "help": "HTTP requests by route, method and status."
+    },
+    {
+      "name": "ines_http_request_duration_seconds",
+      "type": "histogram",
+      "labels": [
+        "route",
+        "method"
+      ],
+      "labelValues": null,
+      "help": "Time until an HTTP request is answered (for a stream, until it starts)."
+    },
+    {
+      "name": "ines_query_duration_seconds",
+      "type": "histogram",
+      "labels": [
+        "outcome"
+      ],
+      "labelValues": {
+        "outcome": [
+          "completed",
+          "continued",
+          "limit",
+          "denied",
+          "busy",
+          "invalid",
+          "error",
+          "aborted"
+        ]
+      },
+      "help": "Time a Copilot query takes, until its last event is sent, by outcome."
+    },
+    {
+      "name": "ines_queries_total",
+      "type": "counter",
+      "labels": [
+        "outcome"
+      ],
+      "labelValues": {
+        "outcome": [
+          "completed",
+          "continued",
+          "limit",
+          "denied",
+          "busy",
+          "invalid",
+          "error",
+          "aborted"
+        ]
+      },
+      "help": "Copilot queries by outcome. A query that ends by asking the browser for something is continued, and one whose client left is aborted."
+    },
+    {
+      "name": "ines_active_queries",
+      "type": "gauge",
+      "labels": [],
+      "labelValues": null,
+      "help": "Queries being answered right now."
+    },
+    {
+      "name": "ines_model_tokens_total",
+      "type": "counter",
+      "labels": [
+        "direction"
+      ],
+      "labelValues": {
+        "direction": [
+          "input",
+          "output"
+        ]
+      },
+      "help": "Model tokens used, by direction."
+    },
+    {
+      "name": "ines_model_errors_total",
+      "type": "counter",
+      "labels": [
+        "provider"
+      ],
+      "labelValues": null,
+      "help": "Model calls that failed, by provider."
+    },
+    {
+      "name": "ines_helper_calls_refused_total",
+      "type": "counter",
+      "labels": [],
+      "labelValues": null,
+      "help": "Helper calls (titles, rewritten prompts, ...) refused because the user made too many in a minute."
+    },
+    {
+      "name": "ines_unhandled_errors_total",
+      "type": "counter",
+      "labels": [
+        "kind"
+      ],
+      "labelValues": {
+        "kind": [
+          "rejection",
+          "exception"
+        ]
+      },
+      "help": "Errors that nothing handled, by kind."
+    },
+    {
+      "name": "ines_isolated_runs_total",
+      "type": "counter",
+      "labels": [
+        "kind"
+      ],
+      "labelValues": {
+        "kind": [
+          "ok",
+          "failed",
+          "timeout",
+          "crash",
+          "output",
+          "busy",
+          "protocol"
+        ]
+      },
+      "help": "Work run in a child process, by how it ended."
+    },
+    {
+      "name": "ines_isolated_run_duration_seconds",
+      "type": "histogram",
+      "labels": [
+        "work"
+      ],
+      "labelValues": null,
+      "help": "How long work run in a child process took, by kind of work."
+    },
+    {
+      "name": "ines_model_calls_total",
+      "type": "counter",
+      "labels": [
+        "provider"
+      ],
+      "labelValues": null,
+      "help": "Calls made to a model (one for each step of a question), by provider."
+    },
+    {
+      "name": "ines_workspace_api_requests_total",
+      "type": "counter",
+      "labels": [
+        "endpoint",
+        "outcome"
+      ],
+      "labelValues": {
+        "outcome": [
+          "ok",
+          "rejected",
+          "limit",
+          "error"
+        ]
+      },
+      "help": "Calls to the Workspace API by endpoint and outcome."
+    },
+    {
+      "name": "ines_workspace_api_request_duration_seconds",
+      "type": "histogram",
+      "labels": [
+        "endpoint"
+      ],
+      "labelValues": null,
+      "help": "Time a call to the Workspace API takes."
+    },
+    {
+      "name": "ines_auth_cache_total",
+      "type": "counter",
+      "labels": [
+        "result"
+      ],
+      "labelValues": {
+        "result": [
+          "hit",
+          "miss",
+          "rejected"
+        ]
+      },
+      "help": "Lookups of a signed-in user in the cache, by result."
+    },
+    {
+      "name": "ines_store_errors_total",
+      "type": "counter",
+      "labels": [
+        "op"
+      ],
+      "labelValues": null,
+      "help": "Times the shared store could not answer and this process answered instead, by operation. Steadily above zero means quotas and turns are being counted per replica."
+    },
+    {
+      "name": "ines_conversation_recalls_total",
+      "type": "counter",
+      "labels": [
+        "mode"
+      ],
+      "labelValues": {
+        "mode": [
+          "latest",
+          "words",
+          "numbers"
+        ]
+      },
+      "help": "Times the model read the earlier part of a chat, by how: the latest messages, a search by words, or numbered messages."
+    },
+    {
+      "name": "ines_mcp_tool_calls_total",
+      "type": "counter",
+      "labels": [
+        "tool",
+        "outcome"
+      ],
+      "labelValues": {
+        "outcome": [
+          "ok",
+          "error"
+        ]
+      },
+      "help": "MCP tool calls by tool and outcome. Only the process of the MCP server updates it."
+    },
+    {
+      "name": "ines_mcp_tool_duration_seconds",
+      "type": "histogram",
+      "labels": [
+        "tool"
+      ],
+      "labelValues": null,
+      "help": "Time an MCP tool takes. Only the process of the MCP server updates it."
+    },
+    {
+      "name": "process_resident_memory_bytes",
+      "type": "gauge",
+      "labels": [],
+      "labelValues": null,
+      "help": "Resident memory of the process."
+    },
+    {
+      "name": "process_uptime_seconds",
+      "type": "gauge",
+      "labels": [],
+      "labelValues": null,
+      "help": "Seconds since the process started."
+    },
+    {
+      "name": "ines_build_info",
+      "type": "gauge",
+      "labels": [
+        "version"
+      ],
+      "labelValues": null,
+      "help": "The version that is running. The value is always 1 and the label holds OTEL_SERVICE_VERSION, or dev."
+    }
+  ],
+  "mcp": {
+    "corsHeaders": [
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "mcp-session-id",
+      "mcp-protocol-version",
+      "last-event-id"
+    ],
+    "routes": [
+      {
+        "method": "POST",
+        "path": "/mcp",
+        "summary": "The MCP endpoint, served over streamable HTTP. Every request gets a new server instance."
+      },
+      {
+        "method": "GET",
+        "path": "/mcp",
+        "summary": "Answers 405 with a JSON-RPC error whose message is \"Method not allowed.\"."
+      },
+      {
+        "method": "DELETE",
+        "path": "/mcp",
+        "summary": "Answers 405 with a JSON-RPC error whose message is \"Method not allowed.\"."
+      },
+      {
+        "method": "POST",
+        "path": "/bridge/session/start",
+        "summary": "Starts a bridge session for a Workspace tab, in companion mode."
+      },
+      {
+        "method": "GET",
+        "path": "/bridge/ws",
+        "summary": "The WebSocket that a Workspace tab keeps open to receive commands, in companion mode."
+      },
+      {
+        "method": "GET",
+        "path": "/bridge/health",
+        "summary": "The state of the bridge: its sessions."
+      },
+      {
+        "method": "GET",
+        "path": "/",
+        "summary": "A JSON description of the server: its name, the endpoint, the registered tools, the prompts, the resources and the routes of the bridge."
+      }
+    ],
+    "tools": [
+      {
+        "name": "web_search",
+        "group": "backend",
+        "availability": "Always.",
+        "scoped": false,
+        "description": "Search the web (DuckDuckGo) for current information. Use for recent events, news, live data not available in widgets, or factual lookups beyond your knowledge cutoff.",
+        "fields": [
+          {
+            "path": "query",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "The search query to find information on the web"
+          },
+          {
+            "path": "max_results",
+            "type": "number",
+            "required": false,
+            "limits": null,
+            "description": "Maximum number of results to return (default: 5, max: 20)"
+          }
+        ]
+      },
+      {
+        "name": "fetch_webpage",
+        "group": "backend",
+        "availability": "Always.",
+        "scoped": false,
+        "description": "Fetch a web page and keep it. Returns an overview (title, outline, what the page contains, the start of its text) and a page_id, not the whole page: read the rest, or work on the page, with inspect_webpage.",
+        "fields": [
+          {
+            "path": "url",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "The URL to fetch"
+          },
+          {
+            "path": "x-ines-url-sig",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "A signature of the address, which the agent gives only to an address that was in what the model was shown. The agent sets it."
+          },
+          {
+            "path": "x-ines-conversation-id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "The chat, filed under the user and the chat id. The agent sets it."
+          },
+          {
+            "path": "x-ines-scope-sig",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "An HMAC of the chat key, made with the agent's INES_SCOPE_SECRET. A tool checks it, so that a call cannot use another user's chat. The agent sets it."
+          }
+        ]
+      },
+      {
+        "name": "inspect_webpage",
+        "group": "backend",
+        "availability": "Always.",
+        "scoped": true,
+        "description": "Read parts of a page that fetch_webpage fetched, by its page_id, without fetching it again and without taking the whole page: its text from an offset, where a phrase occurs, elements by CSS selector, links, tables, embedded JSON, or its HTML source. Every view returns a bounded amount; use offset and limit to go on.",
+        "fields": [
+          {
+            "path": "page_id",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "The page_id that fetch_webpage returned."
+          },
+          {
+            "path": "view",
+            "type": "\"text\" | \"find\" | \"select\" | \"links\" | \"tables\" | \"data\" | \"raw\"",
+            "required": true,
+            "limits": null,
+            "description": "text: the page's readable text from an offset. find: where a word or phrase occurs, with the text around it and its offset. select: the elements that a CSS selector names. links: the page's links. tables: its HTML tables (loaded as tables you can query with SQL). data: JSON that the page embeds (JSON-LD, framework data), as a list, or one part by path. raw: the page's HTML source, from an offset or around a phrase."
+          },
+          {
+            "path": "selector",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "A CSS selector. For select, the elements to show; for text, find, links and tables, the part of the page to read."
+          },
+          {
+            "path": "query",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "find and raw: the word or phrase to look for (not a pattern). links: only the links whose text or address contains it."
+          },
+          {
+            "path": "path",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "data: a path into one source, such as 0.props.items.2. Leave it out to list the sources."
+          },
+          {
+            "path": "offset",
+            "type": "integer",
+            "required": false,
+            "limits": "at least 0",
+            "description": "Where to start: a character for text and raw, an item (match, element, link, table) for the other views."
+          },
+          {
+            "path": "limit",
+            "type": "integer",
+            "required": false,
+            "limits": "at least 1",
+            "description": "How much: characters for text, raw and data (default 6000, at most 12000), items for the other views."
+          },
+          {
+            "path": "x-ines-conversation-id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "The chat, filed under the user and the chat id. The agent sets it."
+          },
+          {
+            "path": "x-ines-scope-sig",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "An HMAC of the chat key, made with the agent's INES_SCOPE_SECRET. A tool checks it, so that a call cannot use another user's chat. The agent sets it."
+          }
+        ]
+      },
+      {
+        "name": "query_documents",
+        "group": "documents",
+        "availability": "When document search is set up.",
+        "scoped": true,
+        "description": "Semantic search over documents ALREADY loaded into this conversation's RAG store, by natural-language question. Returns the most relevant chunks with citations; filter to a named file via `doc_ids`. PRECONDITION: a file widget (tagged [FILE: pdf/docx/txt/md/html]) is NOT in the store until get_widget_data is called on it — that single call loads and ingests the file. If the user asks about a file widget you have not loaded yet, call get_widget_data on it FIRST, then search here. This tool returns nothing for a file that was never loaded.",
+        "fields": [
+          {
+            "path": "query",
+            "type": "string",
+            "required": true,
+            "limits": "at least 1 characters",
+            "description": "Natural-language question to search the uploaded documents for. The tool returns the top-K most relevant chunks plus citations."
+          },
+          {
+            "path": "doc_ids",
+            "type": "array of string",
+            "required": false,
+            "limits": null,
+            "description": "Restrict the search to specific document ids. Omit to search every uploaded doc in this chat."
+          },
+          {
+            "path": "top_k",
+            "type": "integer",
+            "required": false,
+            "limits": "at least 1, at most 12",
+            "description": "How many chunks to return (default 5, max 12)."
+          },
+          {
+            "path": "x-ines-conversation-id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "The chat, filed under the user and the chat id. The agent sets it."
+          },
+          {
+            "path": "x-ines-scope-sig",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "An HMAC of the chat key, made with the agent's INES_SCOPE_SECRET. A tool checks it, so that a call cannot use another user's chat. The agent sets it."
+          },
+          {
+            "path": "x-ines-documents",
+            "type": "array of object",
+            "required": false,
+            "limits": null,
+            "description": "The documents that the agent has not yet sent for this chat. The agent sets it."
+          },
+          {
+            "path": "x-ines-documents[].id",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "The id of the document."
+          },
+          {
+            "path": "x-ines-documents[].name",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "The file name."
+          },
+          {
+            "path": "x-ines-documents[].format",
+            "type": "\"pdf\" | \"docx\" | \"txt\" | \"md\" | \"html\"",
+            "required": true,
+            "limits": null,
+            "description": "The format of the file."
+          },
+          {
+            "path": "x-ines-documents[].content_b64",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "The content of the file, in base64. A document has this or url."
+          },
+          {
+            "path": "x-ines-documents[].url",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "The signed link of the file. A document has this or content_b64."
+          }
+        ]
+      },
+      {
+        "name": "list_documents",
+        "group": "documents",
+        "availability": "When document search is set up.",
+        "scoped": true,
+        "description": "List documents currently uploaded in this conversation. Returns each document's id, name, format, and chunk count. Use this when the user asks what files are attached, or to pick `doc_ids` for a targeted `query_documents` call.",
+        "fields": [
+          {
+            "path": "x-ines-conversation-id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "The chat, filed under the user and the chat id. The agent sets it."
+          },
+          {
+            "path": "x-ines-scope-sig",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "An HMAC of the chat key, made with the agent's INES_SCOPE_SECRET. A tool checks it, so that a call cannot use another user's chat. The agent sets it."
+          },
+          {
+            "path": "x-ines-documents",
+            "type": "array of object",
+            "required": false,
+            "limits": null,
+            "description": "The documents that the agent has not yet sent for this chat. The agent sets it."
+          },
+          {
+            "path": "x-ines-documents[].id",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "The id of the document."
+          },
+          {
+            "path": "x-ines-documents[].name",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "The file name."
+          },
+          {
+            "path": "x-ines-documents[].format",
+            "type": "\"pdf\" | \"docx\" | \"txt\" | \"md\" | \"html\"",
+            "required": true,
+            "limits": null,
+            "description": "The format of the file."
+          },
+          {
+            "path": "x-ines-documents[].content_b64",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "The content of the file, in base64. A document has this or url."
+          },
+          {
+            "path": "x-ines-documents[].url",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "The signed link of the file. A document has this or content_b64."
+          }
+        ]
+      },
+      {
+        "name": "get_workspace_snapshot",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Request a fresh Workspace snapshot from the connected browser. Call this first when you need current dashboard state, dashboard identifiers across the workspace, or skill identifiers. The snapshot is intentionally compact: use list_available_widgets, get_widget_schema, and manage_dashboard for deeper follow-up inspection. dashboard_composition exposes deterministic tabs, layout coordinates, and groups for the current dashboard.",
+        "fields": []
+      },
+      {
+        "name": "list_available_widgets",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "List widgets available to the current Workspace session. Returns deterministic widget identities for later get_widget_schema and create_widget calls. Optional filters: origin matches the friendly catalog label exactly; backend_id matches the backend UUID. Use backend_id only when you have a UUID from manage_backends; use origin when working from a snapshot. Both can be passed together for a stricter match. Without filters the entire catalog is returned, which can be hundreds of widgets — prefer a filter when you know the source. Generative-only note widgets such as rich_note are intentionally excluded; use add_generative_widget for those.",
+        "fields": [
+          {
+            "path": "origin",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Friendly catalog label (e.g. 'Options Activity Monitor'). Matches exactly."
+          },
+          {
+            "path": "backend_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Optional backend UUID returned by manage_backends."
+          }
+        ]
+      },
+      {
+        "name": "get_widget_schema",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Fetch the exact schema for one available widget. Returns deterministic params and UI inputs to use in subsequent create_widget / update_widget calls. Requires origin and widget_id from list_available_widgets — caller must select before calling. data_args_schema and ui_args_schema are closed JSON Schemas for the data_args and ui_args of create_widget and update_widget: a ui_args key or value they do not accept refuses the call, and a data_args value they do not accept is ignored with a warning. method is the widget's HTTP method, and each param's in says where its value goes in the widget's request: path, query, header or body. mcp_tool, when present, names the MCP tool of the widget's own backend that queries what the widget shows, and how its params fill the tool's arguments.",
+        "fields": [
+          {
+            "path": "origin",
+            "type": "string",
+            "required": true,
+            "limits": "at least 1 characters",
+            "description": "Friendly catalog label from list_available_widgets."
+          },
+          {
+            "path": "widget_id",
+            "type": "string",
+            "required": true,
+            "limits": "at least 1 characters",
+            "description": "Widget id from list_available_widgets."
+          }
+        ]
+      },
+      {
+        "name": "read_widget",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Read one widget from the active dashboard. widget_uuid is the canonical instance identifier; widget_id is a fallback when only the type is known.",
+        "fields": [
+          {
+            "path": "widget_uuid",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Canonical instance identifier from a workspace snapshot. Preferred over widget_id."
+          },
+          {
+            "path": "widget_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Fallback widget type identifier. Browser resolves the active instance."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Target dashboard UUID. Omit to target the current Workspace route."
+          }
+        ]
+      },
+      {
+        "name": "delete_widget",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Delete a Workspace widget from a dashboard. Provide widget_uuid (preferred) or widget_id. dashboard_id defaults to the current route.",
+        "fields": [
+          {
+            "path": "widget_uuid",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Canonical instance identifier from a workspace snapshot."
+          },
+          {
+            "path": "widget_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Fallback widget type identifier when uuid is unknown."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Target dashboard UUID. Omit to target the current Workspace route."
+          }
+        ]
+      },
+      {
+        "name": "manage_dashboard",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Create, read, or update one Workspace dashboard. Requires operation from {create, read, update}. For create, pass name and optional dashboard_id and activate. For read, pass optional dashboard_id; omitted dashboard_id targets the current dashboard route. For update, pass dashboard_id and name.",
+        "fields": [
+          {
+            "path": "operation",
+            "type": "\"create\" | \"read\" | \"update\"",
+            "required": true,
+            "limits": null,
+            "description": "Operation to perform on the dashboard."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Dashboard UUID. Omit on read to target the current Workspace route. Required for update."
+          },
+          {
+            "path": "name",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Dashboard display name. Required for create and update."
+          },
+          {
+            "path": "activate",
+            "type": "boolean",
+            "required": false,
+            "limits": null,
+            "description": "On create, whether to activate the new dashboard route. Defaults true."
+          }
+        ]
+      },
+      {
+        "name": "navigate_workspace",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Navigate the Workspace browser to an existing dashboard or inner tab. Requires operation from {dashboard, tab}. For dashboard, pass dashboard_id. For tab, pass tab_id. Resolve dashboard_id from current_dashboard_uuid before each write. Every successful command result includes session_context.current_dashboard_uuid (and current_tab_id) — reuse that from the previous response instead of calling get_workspace_snapshot again. Use get_workspace_snapshot only on the first call, or after a navigation step that may have invalidated the tracked context. Never match dashboards by name: duplicates with identical names are common. \"This dashboard\" means the current route; resolve via current_dashboard_uuid, not title. Omitting dashboard_id also targets the current route.",
+        "fields": [
+          {
+            "path": "operation",
+            "type": "\"dashboard\" | \"tab\"",
+            "required": true,
+            "limits": null,
+            "description": "Navigation target: 'dashboard' (full route) or 'tab' (inner tab)."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Dashboard UUID. Required when operation='dashboard'."
+          },
+          {
+            "path": "tab_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Tab id (slug-form, e.g. 'aapl-analysis'). Required when operation='tab'."
+          }
+        ]
+      },
+      {
+        "name": "manage_navigation_bar",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Create or mutate the Workspace navigation bar. Requires operation from {create, add_tabs, remove_tabs, rename_tabs}. For add_tabs, pass tabs_json as a JSON array of objects, for example [{\"name\":\"AAPL Analysis\"}]. The only tab object field for create/add/remove is name; do not send tab_id or tab_name. The tab_id is generated as the slug of name. Do not pass tabs_json as [\"AAPL Analysis\"]; string arrays are rejected. After add_tabs, navigate to the generated slug tab_id, e.g. AAPL Analysis -> aapl-analysis, before creating content for that tab. For rename_tabs, pass rename_map_json as a JSON object, for example {\"old-tab-id\":\"New Name\"}. Resolve dashboard_id from current_dashboard_uuid before each write. Every successful command result includes session_context.current_dashboard_uuid (and current_tab_id) — reuse that from the previous response instead of calling get_workspace_snapshot again. Use get_workspace_snapshot only on the first call, or after a navigation step that may have invalidated the tracked context. Never match dashboards by name: duplicates with identical names are common. \"This dashboard\" means the current route; resolve via current_dashboard_uuid, not title. Omitting dashboard_id also targets the current route. These tools operate on an existing dashboard only. They do not create dashboards. manage_navigation_bar manages the navigation_bar widget inside an existing dashboard. If the dashboard does not already have a navigation_bar widget, call create first. Its create operation creates or initializes navigation tabs on that dashboard; it does not create a dashboard. For create, add_tabs, and remove_tabs, tabs_json must be a JSON array of objects, for example [{\"name\":\"AAPL Analysis\"}]. Each object must use only the key name, not tab_id or tab_name. Do not pass a JSON array of strings such as [\"AAPL Analysis\"].",
+        "fields": [
+          {
+            "path": "operation",
+            "type": "\"create\" | \"add_tabs\" | \"remove_tabs\" | \"rename_tabs\"",
+            "required": true,
+            "limits": null,
+            "description": "Operation: create | add_tabs | remove_tabs | rename_tabs."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Dashboard UUID. Omit to target the current Workspace route."
+          },
+          {
+            "path": "tabs_json",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "JSON array of tab objects, e.g. [{\"name\":\"AAPL Analysis\"}]. Required for create, add_tabs, remove_tabs."
+          },
+          {
+            "path": "rename_map_json",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "JSON object {oldTabId: newName}, e.g. {\"old-tab\":\"New Name\"}. Required for rename_tabs."
+          }
+        ]
+      },
+      {
+        "name": "create_widget",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Create one widget on a target dashboard. Requires origin and widget_id. Resolve dashboard_id from current_dashboard_uuid before each write. Every successful command result includes session_context.current_dashboard_uuid (and current_tab_id) — reuse that from the previous response instead of calling get_workspace_snapshot again. Use get_workspace_snapshot only on the first call, or after a navigation step that may have invalidated the tracked context. Never match dashboards by name: duplicates with identical names are common. \"This dashboard\" means the current route; resolve via current_dashboard_uuid, not title. Omitting dashboard_id also targets the current route. These tools operate on an existing dashboard only. They do not create dashboards. Use list_available_widgets and get_widget_schema first. For create_widget, pass origin as the exact catalog value returned by list_available_widgets. Pass data_args_json and ui_args_json as JSON object strings when config values are needed. Do not use this for rich_note; use add_generative_widget with widget_type='note'.",
+        "fields": [
+          {
+            "path": "origin",
+            "type": "string",
+            "required": true,
+            "limits": "at least 1 characters",
+            "description": "Friendly catalog label returned by list_available_widgets. Required."
+          },
+          {
+            "path": "widget_id",
+            "type": "string",
+            "required": true,
+            "limits": "at least 1 characters",
+            "description": "Widget id from list_available_widgets. Required."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Target dashboard UUID. Omit to target the current Workspace route. Resolve from session_context.current_dashboard_uuid in the prior response."
+          },
+          {
+            "path": "data_args_json",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "JSON object string. Widget data inputs, as data_args_schema from get_widget_schema defines them."
+          },
+          {
+            "path": "ui_args_json",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "JSON object string. Widget UI inputs, as ui_args_schema from get_widget_schema defines them. Do not include layout fields (x/y/w/h/grid_data) — use update_widget_layout."
+          }
+        ]
+      },
+      {
+        "name": "update_widget",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Update one widget's config on a target dashboard. Prefer widget_uuid for read, update, and delete. widget_id is only a fallback when exactly one matching widget instance exists on the target dashboard. Never use a widget title or generic widget type such as rich_note as a layout identifier. Resolve dashboard_id from current_dashboard_uuid before each write. Every successful command result includes session_context.current_dashboard_uuid (and current_tab_id) — reuse that from the previous response instead of calling get_workspace_snapshot again. Use get_workspace_snapshot only on the first call, or after a navigation step that may have invalidated the tracked context. Never match dashboards by name: duplicates with identical names are common. \"This dashboard\" means the current route; resolve via current_dashboard_uuid, not title. Omitting dashboard_id also targets the current route. Visible placement is controlled by dashboard composition, not update_widget. Use manage_dashboard operation='read' or get_workspace_snapshot.dashboard_composition to inspect tabs and layout, then use update_widget_layout for x, y, w, h, and tab_id. The grid is 40 columns wide: full width is w=40, half width is w=20, one quarter is w=10. Typical minimums are about min_w=8 and min_h=4. If a navigation_bar is present it usually occupies y=0 with h=2, so the first content row usually starts at y=2.",
+        "fields": [
+          {
+            "path": "widget_uuid",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Canonical widget instance identifier from a workspace snapshot."
+          },
+          {
+            "path": "widget_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Fallback widget type identifier when uuid is unknown."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Target dashboard UUID. Omit to target the current Workspace route."
+          },
+          {
+            "path": "data_args_json",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "JSON object string of widget data inputs, as data_args_schema from get_widget_schema defines them."
+          },
+          {
+            "path": "ui_args_json",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "JSON object string of widget UI inputs, as ui_args_schema from get_widget_schema defines them. Layout fields rejected — use update_widget_layout."
+          }
+        ]
+      },
+      {
+        "name": "update_widget_layout",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Move or resize one widget on the active dashboard. Prefer widget_uuid for read, update, and delete. widget_id is only a fallback when exactly one matching widget instance exists on the target dashboard. Never use a widget title or generic widget type such as rich_note as a layout identifier. Resolve dashboard_id from current_dashboard_uuid before each write. Every successful command result includes session_context.current_dashboard_uuid (and current_tab_id) — reuse that from the previous response instead of calling get_workspace_snapshot again. Use get_workspace_snapshot only on the first call, or after a navigation step that may have invalidated the tracked context. Never match dashboards by name: duplicates with identical names are common. \"This dashboard\" means the current route; resolve via current_dashboard_uuid, not title. Omitting dashboard_id also targets the current route. Visible placement is controlled by dashboard composition, not update_widget. Use manage_dashboard operation='read' or get_workspace_snapshot.dashboard_composition to inspect tabs and layout, then use update_widget_layout for x, y, w, h, and tab_id. The grid is 40 columns wide: full width is w=40, half width is w=20, one quarter is w=10. Typical minimums are about min_w=8 and min_h=4. If a navigation_bar is present it usually occupies y=0 with h=2, so the first content row usually starts at y=2.",
+        "fields": [
+          {
+            "path": "x",
+            "type": "number",
+            "required": true,
+            "limits": null,
+            "description": "Grid column position (0-based)."
+          },
+          {
+            "path": "y",
+            "type": "number",
+            "required": true,
+            "limits": null,
+            "description": "Grid row position (0-based)."
+          },
+          {
+            "path": "w",
+            "type": "number",
+            "required": true,
+            "limits": null,
+            "description": "Grid width. 40 = full row."
+          },
+          {
+            "path": "h",
+            "type": "number",
+            "required": true,
+            "limits": null,
+            "description": "Grid height in rows."
+          },
+          {
+            "path": "widget_uuid",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Canonical widget instance identifier from a workspace snapshot."
+          },
+          {
+            "path": "widget_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Fallback widget type identifier when uuid is unknown."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Target dashboard UUID. Omit to target the current Workspace route."
+          },
+          {
+            "path": "tab_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Inner tab id to place the widget on. Omit to keep current tab."
+          },
+          {
+            "path": "min_w",
+            "type": "number",
+            "required": false,
+            "limits": null,
+            "description": "Minimum width."
+          },
+          {
+            "path": "min_h",
+            "type": "number",
+            "required": false,
+            "limits": null,
+            "description": "Minimum height."
+          },
+          {
+            "path": "max_w",
+            "type": "number",
+            "required": false,
+            "limits": null,
+            "description": "Maximum width."
+          },
+          {
+            "path": "max_h",
+            "type": "number",
+            "required": false,
+            "limits": null,
+            "description": "Maximum height."
+          }
+        ]
+      },
+      {
+        "name": "add_generative_widget",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Create a generative widget (note, table, chart, or html) with inline data. For add_generative_widget: note and html require data_json as the raw text or HTML content string; JSON string literals are also accepted. table requires data_json as a JSON array of objects. chart requires data_json as a JSON array of objects plus chart_params_json as a JSON object with chartType, xKey, and non-empty yKey. Use widget_type='note' for rich text notes such as rich_note. The response includes widget_uuid; use that UUID for layout changes. The inner_tab argument only places the new widget on an existing navigation tab; it does not create a tab. To put a generated widget on a new tab, first call manage_navigation_bar operation=\"add_tabs\" with tabs_json such as [{\"name\":\"AAPL Analysis\"}], then navigate_workspace to the generated slug tab_id such as aapl-analysis, then call add_generative_widget without inner_tab so it lands on the active tab. Resolve dashboard_id from current_dashboard_uuid before each write. Every successful command result includes session_context.current_dashboard_uuid (and current_tab_id) — reuse that from the previous response instead of calling get_workspace_snapshot again. Use get_workspace_snapshot only on the first call, or after a navigation step that may have invalidated the tracked context. Never match dashboards by name: duplicates with identical names are common. \"This dashboard\" means the current route; resolve via current_dashboard_uuid, not title. Omitting dashboard_id also targets the current route.",
+        "fields": [
+          {
+            "path": "widget_type",
+            "type": "\"note\" | \"table\" | \"chart\" | \"html\"",
+            "required": true,
+            "limits": null,
+            "description": "Generative widget kind."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Target dashboard UUID. Omit to target the current Workspace route."
+          },
+          {
+            "path": "data_json",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Widget content. note/html: plain string OR JSON-quoted string. table/chart: JSON array of objects."
+          },
+          {
+            "path": "name",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Widget display name."
+          },
+          {
+            "path": "description",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Widget short description."
+          },
+          {
+            "path": "chart_params_json",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Required for widget_type='chart'. JSON object with chartType, xKey, non-empty yKey."
+          },
+          {
+            "path": "inner_tab",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Existing inner tab id to place the widget on. Does NOT create a tab."
+          }
+        ]
+      },
+      {
+        "name": "get_widget_data",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Fetch current data for one or more Workspace data sources. Pass origin, widget_id, and data_args_json for one data source. data_args_json must be a JSON object string. Only use this after selecting an exact widget identity and explicit data_args.",
+        "fields": [
+          {
+            "path": "origin",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "Friendly catalog label (matches list_available_widgets)."
+          },
+          {
+            "path": "widget_id",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "Widget id from list_available_widgets."
+          },
+          {
+            "path": "data_args_json",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "JSON object string of widget data inputs (params)."
+          },
+          {
+            "path": "widget_uuid",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Optional canonical widget instance UUID."
+          }
+        ]
+      },
+      {
+        "name": "get_params_options",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Fetch parameter options for one or more widget input queries. Pass origin, widget_id, param_name, and optional data_args_json for one parameter option query. Only call get_params_options after get_widget_schema shows the exact param has requires_options_lookup=true. Use the exact paramName from the schema as param_name. data_args_json must be a JSON object string with the values required by options_lookup_params when present. Use this when get_widget_schema marks a param with requires_options_lookup=true.",
+        "fields": [
+          {
+            "path": "origin",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "Friendly catalog label from list_available_widgets."
+          },
+          {
+            "path": "widget_id",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "Widget id from list_available_widgets."
+          },
+          {
+            "path": "param_name",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "Exact paramName from get_widget_schema. Use only when requires_options_lookup=true on that param."
+          },
+          {
+            "path": "data_args_json",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "JSON object string with values required by options_lookup_params."
+          }
+        ]
+      },
+      {
+        "name": "assign_tasks_to_agents",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Assign tasks to configured external Workspace agents. Use task_requests items shaped like {id, description, assigned_holder_url, assigned_agent_id}.",
+        "fields": [
+          {
+            "path": "task_requests_json",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "JSON array of task objects shaped like {id, description, assigned_holder_url, assigned_agent_id}."
+          }
+        ]
+      },
+      {
+        "name": "get_skill_content",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Load one skill body from the Workspace skill library. Pass the exact skill slug from the latest workspace snapshot.",
+        "fields": [
+          {
+            "path": "slug",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "Exact skill slug from the latest workspace snapshot."
+          },
+          {
+            "path": "reason",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Optional human-facing reason for loading this skill."
+          }
+        ]
+      },
+      {
+        "name": "manage_backends",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "Manage Workspace data backends (the connections that power widgets). Requires operation from {list, add, update, refresh, remove}. For list, returns each backend with id, name, url, status, and widget/app/agent counts. For add, requires name and url. Optional endpoint_headers_json is a JSON array of {\"key\", \"value\", \"location\"} where location is \"headers\" (default) or \"query\". validate_widgets defaults to true and surfaces a warning if widgets fail to load. For update, requires backend_id and at least one of name, url, or endpoint_headers_json. For refresh, requires backend_id; re-fetches widgets and templates from the backend URL. For remove, requires backend_id.",
+        "fields": [
+          {
+            "path": "operation",
+            "type": "\"list\" | \"add\" | \"update\" | \"refresh\" | \"remove\"",
+            "required": true,
+            "limits": null,
+            "description": "Operation to perform on backends."
+          },
+          {
+            "path": "backend_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Backend UUID. Required for update/refresh/remove."
+          },
+          {
+            "path": "name",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Backend display name."
+          },
+          {
+            "path": "url",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Backend base URL."
+          },
+          {
+            "path": "endpoint_headers_json",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "JSON array of {\"key\", \"value\", \"location\"} objects where location is \"headers\" (default) or \"query\"."
+          },
+          {
+            "path": "validate_widgets",
+            "type": "boolean",
+            "required": false,
+            "limits": null,
+            "description": "Whether to surface a warning if widgets fail to load. Defaults true on add."
+          }
+        ]
+      },
+      {
+        "name": "manage_apps",
+        "group": "workspace",
+        "availability": "In companion mode.",
+        "scoped": false,
+        "description": "List, read, or instantiate apps from a Workspace data backend. Apps are full dashboard templates declared in the backend's apps.json: they bundle tabs, widget layouts, parameter groups, and suggested prompts. Instantiating one is the programmatic equivalent of clicking an app in the gallery. Requires operation from {list, read, instantiate} and backend_id. Use manage_backends operation='list' to discover backend_id values and app_count. For list, returns each app with name, template_id, description, tab_count, group_count, prompt_count, and allow_customization. For read, requires app_name (or template_id); returns the full app definition including tabs with layouts, parameter groups, and suggested prompts. For instantiate, requires app_name (or template_id); creates a fresh dashboard from the app template and returns its dashboard_id. Pass that dashboard_id to subsequent dashboard-targeting tools. activate defaults to true and routes the browser to the new dashboard.",
+        "fields": [
+          {
+            "path": "operation",
+            "type": "\"list\" | \"read\" | \"instantiate\"",
+            "required": true,
+            "limits": null,
+            "description": "Operation: list | read | instantiate."
+          },
+          {
+            "path": "backend_id",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "Backend UUID. Required. Use manage_backends operation='list' to discover."
+          },
+          {
+            "path": "app_name",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "App display name. Provide app_name or template_id for read/instantiate."
+          },
+          {
+            "path": "template_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Template UUID. Provide app_name or template_id for read/instantiate."
+          },
+          {
+            "path": "dashboard_name",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Override dashboard name on instantiate (defaults to app's name)."
+          },
+          {
+            "path": "activate",
+            "type": "boolean",
+            "required": false,
+            "limits": null,
+            "description": "On instantiate, route the browser to the new dashboard. Defaults true."
+          }
+        ]
+      }
+    ],
+    "prompts": [
+      {
+        "name": "workspace_tool_usage",
+        "description": "Generic guidance for using the Workspace MCP tool surface."
+      },
+      {
+        "name": "workspace_session_context",
+        "description": "Current tracked Workspace dashboard and tab context."
+      }
+    ],
+    "resources": [
+      {
+        "uri": "workspace://app-builder/index",
+        "name": "App Builder Index",
+        "description": "Router for the Workspace app-builder resources. Read this first to find the right spec, guide, or example. Only for when the user has explicitly asked to build, review, debug, or extend a backend or app — not for composing dashboards from existing widgets.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://overview/what-is-workspace",
+        "name": "What Workspace Is",
+        "description": "Mental model of Workspace from the consumer side — Dashboards, Apps (templates), Widgets, Prompts, the AI Agent, and what is native vs. what your backend supplies.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://overview/ai-agent-contract",
+        "name": "AI Agent Contract",
+        "description": "How Workspace's built-in AI Agent reads widget metadata and data, and the description / response-shape rules that make widgets agent-friendly.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://contract/backend",
+        "name": "Backend Contract",
+        "description": "What a Workspace backend must expose over HTTP, language-agnostic.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://specs/widgets-json",
+        "name": "widgets.json Spec",
+        "description": "Top-level shape and critical fields for widgets.json, the widget metadata contract.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://specs/apps-json",
+        "name": "apps.json Spec",
+        "description": "Served shape, tab/layout structure, and parameter group wiring for apps.json.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://specs/widget-types",
+        "name": "Widget Types",
+        "description": "Catalog of widget type strings and a use-case-to-type quick selector.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://specs/widget-parameters",
+        "name": "Widget Parameters",
+        "description": "Param types (text, number, boolean, date, endpoint), option sources, and the type-selection cheatsheet.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://specs/layout-grid",
+        "name": "Layout Grid and Groups",
+        "description": "40-column grid math and tab/group conventions.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://guides/build-an-app",
+        "name": "Build an App",
+        "description": "End-to-end workflow for building a new Workspace app from scratch. Only for when the user has explicitly asked to build one.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://guides/review-app",
+        "name": "Review an App",
+        "description": "Structured review pass for an existing Workspace backend or app template.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://guides/debug-app",
+        "name": "Debug an App",
+        "description": "Diagnostic order for apps that don't load, widgets that render empty, or sync that doesn't propagate.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://guides/convert-endpoint-to-widget",
+        "name": "Convert an Existing Endpoint to a Widget",
+        "description": "Turn an existing HTTP endpoint into a Workspace widget — type selection, params, columns, validation.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://examples/generic-http/minimal",
+        "name": "Minimal Backend (Generic HTTP)",
+        "description": "Framework-neutral picture of a Workspace backend — routes, response shapes, CORS, auth.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://examples/python-fastapi/minimal",
+        "name": "Minimal Backend (Python + FastAPI)",
+        "description": "Recommended Python starter shape for a Workspace backend using FastAPI.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://validation/common-errors",
+        "name": "Common Errors",
+        "description": "Curated list of the most common widgets.json, apps.json, layout, group, and endpoint failures with fixes.",
+        "mimeType": "text/markdown"
+      },
+      {
+        "uri": "workspace://specs/widgets-json-schema",
+        "name": "widgets.json JSON Schema",
+        "description": "The JSON Schema a backend's widgets.json is validated against for the signed-in user: the built-in types and the plugin types enabled for their organization, every key and value closed. Read from the user's Workspace session, so it needs the browser connected.",
+        "mimeType": "application/schema+json"
+      }
+    ]
+  },
+  "protocol": {
+    "events": [
+      {
+        "event": "copilotStatusUpdate",
+        "fields": "eventType, message, group, and optionally details, artifacts, tool_call and hidden.",
+        "meaning": "A step of the agent's work."
+      },
+      {
+        "event": "copilotMessageChunk",
+        "fields": "delta",
+        "meaning": "Text of the answer."
+      },
+      {
+        "event": "copilotMessageArtifact",
+        "fields": "An artifact.",
+        "meaning": "A table, an HTML document or an app that belongs to the answer."
+      },
+      {
+        "event": "copilotCitationCollection",
+        "fields": "citations",
+        "meaning": "The sources of the answer."
+      },
+      {
+        "event": "copilotPromptSuggestions",
+        "fields": "suggestions, a list of strings.",
+        "meaning": "Follow-up questions. Ines sends them only when workspace_options has the key prompt-suggestions set to a true value."
+      },
+      {
+        "event": "copilotFunctionCall",
+        "fields": "function, input_arguments and extra_state.",
+        "meaning": "The agent needs the browser to do something. It is the last event of the response."
+      }
+    ],
+    "extraState": [
+      {
+        "key": "copilot_function_call_arguments",
+        "meaning": "The widgets that the call concerns, as widget_queries with a widget_uuid each. The browser reads it to know which widgets an earlier call belonged to."
+      },
+      {
+        "key": "intermediate_citations",
+        "meaning": "The citations that the turn has collected so far."
+      },
+      {
+        "key": "document_hits",
+        "meaning": "The pages of documents that a search returned, which Ines cites when the answer names them."
+      },
+      {
+        "key": "documents_shipped",
+        "meaning": "The documents that the agent has already sent to the search tools, so that each is sent once."
+      },
+      {
+        "key": "loaded_skill_slugs",
+        "meaning": "The skills that the model has loaded."
+      },
+      {
+        "key": "loaded_tool_groups",
+        "meaning": "The groups of tools that the model has loaded."
+      },
+      {
+        "key": "pending_bridge_calls",
+        "meaning": "Calls of the agent's own bridge commands that the model asked for in one step and the agent has not yet emitted."
+      },
+      {
+        "key": "pending_workspace_calls",
+        "meaning": "Calls of the Workspace's tools that the model asked for in one step and the agent has not yet emitted."
+      },
+      {
+        "key": "traceparent",
+        "meaning": "The trace context of the turn's first request, so that all requests of a turn share one trace."
+      },
+      {
+        "key": "turn_usage",
+        "meaning": "The tokens that the turn has used, so that the usage the agent reports to the Workspace API covers the whole turn."
+      },
+      {
+        "key": "timezone",
+        "meaning": "The time zone of the turn."
+      }
+    ],
+    "queryRequest": [
+      {
+        "path": "messages",
+        "type": "array of object",
+        "required": true,
+        "limits": "1 to 20,000 items",
+        "description": "The conversation, oldest first. A message has the role human, ai or tool."
+      },
+      {
+        "path": "messages[].role",
+        "type": "\"human\" | \"ai\" | \"tool\"",
+        "required": true,
+        "limits": null,
+        "description": "Who wrote the message: the user, the agent, or the browser's result for a request of the agent."
+      },
+      {
+        "path": "model",
+        "type": "string",
+        "required": false,
+        "limits": "at most 200 characters",
+        "description": "Accepted but not used. Ines reads the model from workspace_options.model."
+      },
+      {
+        "path": "widgets",
+        "type": "object",
+        "required": false,
+        "limits": null,
+        "description": "The widgets that the agent may read, sorted into three tiers: primary, secondary and extra."
+      },
+      {
+        "path": "widgets.primary",
+        "type": "array of object",
+        "required": false,
+        "limits": "at most 20,000 items",
+        "description": "The widgets that the user selected or mentioned."
+      },
+      {
+        "path": "widgets.primary[].uuid",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "The widget's identifier on the dashboard. A widget of the catalog that is not on the dashboard has none, and Ines identifies it by its widget_id."
+      },
+      {
+        "path": "widgets.primary[].origin",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "The name of the backend that serves the widget."
+      },
+      {
+        "path": "widgets.primary[].widget_id",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "The widget's id in its backend."
+      },
+      {
+        "path": "widgets.primary[].name",
+        "type": "string",
+        "required": false,
+        "limits": "at most 2,000 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "widgets.primary[].description",
+        "type": "string",
+        "required": false,
+        "limits": "at most 50,000 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "widgets.primary[].widget_type",
+        "type": "string or null",
+        "required": false,
+        "limits": null,
+        "description": "The kind of widget, for example markdown, html or iframe."
+      },
+      {
+        "path": "widgets.primary[].params",
+        "type": "array of object",
+        "required": false,
+        "limits": "at most 1,000 items",
+        "description": "The widget's parameters. Each has a name, a type, a description, a default_value, a current_value, a list of options and multi_select."
+      },
+      {
+        "path": "widgets.primary[].columns",
+        "type": "array of string or null",
+        "required": false,
+        "limits": null,
+        "description": "The column names of the rows that a widget on the dashboard has loaded."
+      },
+      {
+        "path": "widgets.primary[].category",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "widgets.primary[].sub_category",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "widgets.primary[].source",
+        "type": "string or null",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "Free-form details about the widget."
+      },
+      {
+        "path": "widgets.primary[].metadata",
+        "type": "object",
+        "required": false,
+        "limits": null,
+        "description": "Free-form details about the widget. For a widget on the dashboard, it holds lastUpdated, the time of its last update in milliseconds since 1970."
+      },
+      {
+        "path": "widgets.primary[].mcp_tool",
+        "type": "object",
+        "required": false,
+        "limits": null,
+        "description": "A link from the widget to an MCP tool."
+      },
+      {
+        "path": "widgets.secondary",
+        "type": "array of object",
+        "required": false,
+        "limits": "at most 20,000 items",
+        "description": "The other widgets of the dashboard."
+      },
+      {
+        "path": "widgets.secondary[].uuid",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "The widget's identifier on the dashboard. A widget of the catalog that is not on the dashboard has none, and Ines identifies it by its widget_id."
+      },
+      {
+        "path": "widgets.secondary[].origin",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "The name of the backend that serves the widget."
+      },
+      {
+        "path": "widgets.secondary[].widget_id",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "The widget's id in its backend."
+      },
+      {
+        "path": "widgets.secondary[].name",
+        "type": "string",
+        "required": false,
+        "limits": "at most 2,000 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "widgets.secondary[].description",
+        "type": "string",
+        "required": false,
+        "limits": "at most 50,000 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "widgets.secondary[].widget_type",
+        "type": "string or null",
+        "required": false,
+        "limits": null,
+        "description": "The kind of widget, for example markdown, html or iframe."
+      },
+      {
+        "path": "widgets.secondary[].params",
+        "type": "array of object",
+        "required": false,
+        "limits": "at most 1,000 items",
+        "description": "The widget's parameters. Each has a name, a type, a description, a default_value, a current_value, a list of options and multi_select."
+      },
+      {
+        "path": "widgets.secondary[].columns",
+        "type": "array of string or null",
+        "required": false,
+        "limits": null,
+        "description": "The column names of the rows that a widget on the dashboard has loaded."
+      },
+      {
+        "path": "widgets.secondary[].category",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "widgets.secondary[].sub_category",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "widgets.secondary[].source",
+        "type": "string or null",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "Free-form details about the widget."
+      },
+      {
+        "path": "widgets.secondary[].metadata",
+        "type": "object",
+        "required": false,
+        "limits": null,
+        "description": "Free-form details about the widget. For a widget on the dashboard, it holds lastUpdated, the time of its last update in milliseconds since 1970."
+      },
+      {
+        "path": "widgets.secondary[].mcp_tool",
+        "type": "object",
+        "required": false,
+        "limits": null,
+        "description": "A link from the widget to an MCP tool."
+      },
+      {
+        "path": "widgets.extra",
+        "type": "array of object",
+        "required": false,
+        "limits": "at most 20,000 items",
+        "description": "The rest of the catalog."
+      },
+      {
+        "path": "widgets.extra[].uuid",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "The widget's identifier on the dashboard. A widget of the catalog that is not on the dashboard has none, and Ines identifies it by its widget_id."
+      },
+      {
+        "path": "widgets.extra[].origin",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "The name of the backend that serves the widget."
+      },
+      {
+        "path": "widgets.extra[].widget_id",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "The widget's id in its backend."
+      },
+      {
+        "path": "widgets.extra[].name",
+        "type": "string",
+        "required": false,
+        "limits": "at most 2,000 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "widgets.extra[].description",
+        "type": "string",
+        "required": false,
+        "limits": "at most 50,000 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "widgets.extra[].widget_type",
+        "type": "string or null",
+        "required": false,
+        "limits": null,
+        "description": "The kind of widget, for example markdown, html or iframe."
+      },
+      {
+        "path": "widgets.extra[].params",
+        "type": "array of object",
+        "required": false,
+        "limits": "at most 1,000 items",
+        "description": "The widget's parameters. Each has a name, a type, a description, a default_value, a current_value, a list of options and multi_select."
+      },
+      {
+        "path": "widgets.extra[].columns",
+        "type": "array of string or null",
+        "required": false,
+        "limits": null,
+        "description": "The column names of the rows that a widget on the dashboard has loaded."
+      },
+      {
+        "path": "widgets.extra[].category",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "widgets.extra[].sub_category",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "widgets.extra[].source",
+        "type": "string or null",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "Free-form details about the widget."
+      },
+      {
+        "path": "widgets.extra[].metadata",
+        "type": "object",
+        "required": false,
+        "limits": null,
+        "description": "Free-form details about the widget. For a widget on the dashboard, it holds lastUpdated, the time of its last update in milliseconds since 1970."
+      },
+      {
+        "path": "widgets.extra[].mcp_tool",
+        "type": "object",
+        "required": false,
+        "limits": null,
+        "description": "A link from the widget to an MCP tool."
+      },
+      {
+        "path": "context",
+        "type": "any",
+        "required": false,
+        "limits": null,
+        "description": "Items that the user attached, such as artifacts of earlier answers. A list has at most 500 items."
+      },
+      {
+        "path": "urls",
+        "type": "array of string",
+        "required": false,
+        "limits": "at most 8 items",
+        "description": "Web addresses that appeared in the user's message. Ines fetches them for the model unless an administrator turned the web tools off."
+      },
+      {
+        "path": "timezone",
+        "type": "string",
+        "required": false,
+        "limits": "at most 100 characters",
+        "description": "The user's time zone, such as Europe/Paris."
+      },
+      {
+        "path": "workspace_state",
+        "type": "any",
+        "required": false,
+        "limits": null,
+        "description": "Where the user is: the current page, dashboard and tab, and the recent actions. Ines ignores a value that does not have this shape."
+      },
+      {
+        "path": "workspace_options",
+        "type": "object",
+        "required": false,
+        "limits": null,
+        "description": "The settings that the user picked from the features of the descriptor, as an object of names to booleans or strings. At most 100 keys."
+      },
+      {
+        "path": "skills_catalog",
+        "type": "array of object",
+        "required": false,
+        "limits": "at most 500 items",
+        "description": "The skills in the user's library."
+      },
+      {
+        "path": "skills_catalog[].slug",
+        "type": "string",
+        "required": true,
+        "limits": "at most 200 characters",
+        "description": "The slug of the skill."
+      },
+      {
+        "path": "skills_catalog[].description",
+        "type": "string",
+        "required": true,
+        "limits": "at most 4,000 characters",
+        "description": "What the skill is for."
+      },
+      {
+        "path": "skills_catalog[].updatedAt",
+        "type": "string",
+        "required": false,
+        "limits": "at most 100 characters",
+        "description": "When the skill was last changed."
+      },
+      {
+        "path": "selected_skills",
+        "type": "array of object",
+        "required": false,
+        "limits": "at most 20 items",
+        "description": "Skills that the user forced with a slash command, or that the model selected. The user's own skills carry contentMarkdown."
+      },
+      {
+        "path": "selected_skills[].slug",
+        "type": "string",
+        "required": true,
+        "limits": "at most 200 characters",
+        "description": "The slug of the skill."
+      },
+      {
+        "path": "selected_skills[].description",
+        "type": "string",
+        "required": true,
+        "limits": "at most 4,000 characters",
+        "description": "What the skill is for."
+      },
+      {
+        "path": "selected_skills[].contentMarkdown",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500,000 characters",
+        "description": "The text of the skill. The user's own skills carry it."
+      },
+      {
+        "path": "selected_skills[].source",
+        "type": "\"forced_slash\" | \"model_selected\"",
+        "required": true,
+        "limits": null,
+        "description": "Whether the user forced the skill with a slash command or the model selected it."
+      },
+      {
+        "path": "tools",
+        "type": "array of object",
+        "required": false,
+        "limits": "at most 500 items",
+        "description": "The tools of the MCP servers that the user connected, which the agent may ask the browser to run."
+      },
+      {
+        "path": "tools[].name",
+        "type": "string",
+        "required": true,
+        "limits": "at most 500 characters",
+        "description": "The name that the agent uses for the tool, which joins the server's name and the tool's name."
+      },
+      {
+        "path": "tools[].tool_name",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "The name that the server knows."
+      },
+      {
+        "path": "tools[].server_id",
+        "type": "string",
+        "required": true,
+        "limits": "at most 500 characters",
+        "description": "The id of the MCP server."
+      },
+      {
+        "path": "tools[].url",
+        "type": "string",
+        "required": true,
+        "limits": "at most 4,000 characters",
+        "description": "The address of the MCP server."
+      },
+      {
+        "path": "tools[].description",
+        "type": "string",
+        "required": false,
+        "limits": "at most 20,000 characters",
+        "description": "What the tool does."
+      },
+      {
+        "path": "tools[].input_schema",
+        "type": "object",
+        "required": false,
+        "limits": null,
+        "description": "The JSON Schema of the tool's arguments."
+      },
+      {
+        "path": "tools[].input_schema.properties",
+        "type": "object",
+        "required": false,
+        "limits": null,
+        "description": "The schema of each argument, by name."
+      },
+      {
+        "path": "tools[].input_schema.required",
+        "type": "array of string",
+        "required": false,
+        "limits": "at most 200 items",
+        "description": "The names of the arguments that a call must have."
+      },
+      {
+        "path": "documents",
+        "type": "array of object",
+        "required": false,
+        "limits": "at most 50 items",
+        "description": "Files sent inline. Ines accepts them but treats the field as deprecated, because the web app sends a file as a widget in widgets.primary instead. Each needs content_b64 or url."
+      },
+      {
+        "path": "documents[].id",
+        "type": "string",
+        "required": true,
+        "limits": "at most 200 characters",
+        "description": "The id of the document."
+      },
+      {
+        "path": "documents[].name",
+        "type": "string",
+        "required": true,
+        "limits": "at most 500 characters",
+        "description": "The file name."
+      },
+      {
+        "path": "documents[].format",
+        "type": "\"pdf\" | \"docx\" | \"txt\" | \"md\" | \"html\"",
+        "required": true,
+        "limits": null,
+        "description": "The format of the file."
+      },
+      {
+        "path": "documents[].content_b64",
+        "type": "string",
+        "required": false,
+        "limits": "at most 35,000,000 characters",
+        "description": "The content of the file, in base64. A document has this or url."
+      },
+      {
+        "path": "documents[].url",
+        "type": "string",
+        "required": false,
+        "limits": "at most 4,000 characters",
+        "description": "The link of the file. A document has this or content_b64."
+      }
+    ],
+    "widget": [
+      {
+        "path": "uuid",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "The widget's identifier on the dashboard. A widget of the catalog that is not on the dashboard has none, and Ines identifies it by its widget_id."
+      },
+      {
+        "path": "origin",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "The name of the backend that serves the widget."
+      },
+      {
+        "path": "widget_id",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "The widget's id in its backend."
+      },
+      {
+        "path": "name",
+        "type": "string",
+        "required": false,
+        "limits": "at most 2,000 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "description",
+        "type": "string",
+        "required": false,
+        "limits": "at most 50,000 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "widget_type",
+        "type": "string or null",
+        "required": false,
+        "limits": null,
+        "description": "The kind of widget, for example markdown, html or iframe."
+      },
+      {
+        "path": "params",
+        "type": "array of object",
+        "required": false,
+        "limits": "at most 1,000 items",
+        "description": "The widget's parameters. Each has a name, a type, a description, a default_value, a current_value, a list of options and multi_select."
+      },
+      {
+        "path": "columns",
+        "type": "array of string or null",
+        "required": false,
+        "limits": null,
+        "description": "The column names of the rows that a widget on the dashboard has loaded."
+      },
+      {
+        "path": "category",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "sub_category",
+        "type": "string",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "What the model reads to choose a widget."
+      },
+      {
+        "path": "source",
+        "type": "string or null",
+        "required": false,
+        "limits": "at most 500 characters",
+        "description": "Free-form details about the widget."
+      },
+      {
+        "path": "metadata",
+        "type": "object",
+        "required": false,
+        "limits": null,
+        "description": "Free-form details about the widget. For a widget on the dashboard, it holds lastUpdated, the time of its last update in milliseconds since 1970."
+      },
+      {
+        "path": "mcp_tool",
+        "type": "object",
+        "required": false,
+        "limits": null,
+        "description": "A link from the widget to an MCP tool."
+      },
+      {
+        "path": "mcp_tool.server_id",
+        "type": "string",
+        "required": true,
+        "limits": "at most 500 characters",
+        "description": "The id of the MCP server that has the tool."
+      },
+      {
+        "path": "mcp_tool.tool_name",
+        "type": "string",
+        "required": true,
+        "limits": "at most 500 characters",
+        "description": "The name of the tool on that server."
+      },
+      {
+        "path": "mcp_tool.args",
+        "type": "object",
+        "required": false,
+        "limits": null,
+        "description": "The arguments that the tool receives, by name."
+      }
+    ],
+    "bridgeCommands": [
+      {
+        "name": "get_workspace_snapshot",
+        "description": "Request a fresh Workspace snapshot from the connected browser. Call first when you need current dashboard state, dashboard identifiers, or skill identifiers. Use list_available_widgets, get_widget_schema, and manage_dashboard for deeper follow-up inspection.",
+        "fields": []
+      },
+      {
+        "name": "list_available_widgets",
+        "description": "List widgets available to the current Workspace session. Returns deterministic widget identities for later get_widget_schema and create_widget calls. origin matches the friendly catalog label exactly; backend_id is optional and must be an exact backend UUID from manage_backends. Without filters the entire catalog is returned (hundreds of widgets) — prefer a filter when you know the source. Generative-only note widgets like rich_note are excluded; use add_generative_widget for those.",
+        "fields": [
+          {
+            "path": "origin",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Friendly catalog label (e.g. 'Options Activity Monitor'). Matches exactly."
+          },
+          {
+            "path": "backend_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Optional backend UUID returned by manage_backends."
+          }
+        ]
+      },
+      {
+        "name": "get_widget_schema",
+        "description": "Fetch the exact schema for one available widget. Returns deterministic params and UI inputs to use in subsequent create_widget / update_widget calls. Requires origin and widget_id from list_available_widgets — caller must select before calling.",
+        "fields": [
+          {
+            "path": "origin",
+            "type": "string",
+            "required": true,
+            "limits": "at least 1 characters",
+            "description": "Friendly catalog label from list_available_widgets."
+          },
+          {
+            "path": "widget_id",
+            "type": "string",
+            "required": true,
+            "limits": "at least 1 characters",
+            "description": "Widget id from list_available_widgets."
+          }
+        ]
+      },
+      {
+        "name": "get_params_options",
+        "description": "Fetch parameter options for one or more widget input queries. Use only after get_widget_schema marks a param with requires_options_lookup=true.",
+        "fields": [
+          {
+            "path": "param_options_queries",
+            "type": "array of object",
+            "required": true,
+            "limits": null,
+            "description": "One entry per param to resolve. Use only after get_widget_schema marks the param with requires_options_lookup=true."
+          },
+          {
+            "path": "param_options_queries[].origin",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "The origin of the widget."
+          },
+          {
+            "path": "param_options_queries[].widget_id",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "The widget type id."
+          },
+          {
+            "path": "param_options_queries[].param_name",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "The name of the parameter to resolve."
+          },
+          {
+            "path": "param_options_queries[].data_args",
+            "type": "object",
+            "required": false,
+            "limits": null,
+            "description": "The values that the lookup needs."
+          }
+        ]
+      },
+      {
+        "name": "read_widget",
+        "description": "Read one widget from the active dashboard. widget_uuid is the canonical instance identifier; widget_id is a fallback when only the type is known.",
+        "fields": [
+          {
+            "path": "widget_uuid",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Canonical instance identifier from a workspace snapshot. Preferred over widget_id."
+          },
+          {
+            "path": "widget_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Fallback widget type identifier when uuid is unknown."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Target dashboard UUID. Omit to target the current Workspace route."
+          }
+        ]
+      },
+      {
+        "name": "add_widget_to_dashboard",
+        "description": "Create one widget on a target dashboard. Requires origin and widget_id. Omit dashboard_id for the current dashboard. Creates on the current tab; navigate_workspace to the desired tab first for tab-scoped placement. Use list_available_widgets and get_widget_schema when you need catalog identities or config params. Do not use this for rich_note; use add_generative_widget with widget_type='note'.",
+        "fields": [
+          {
+            "path": "origin",
+            "type": "string",
+            "required": true,
+            "limits": "at least 1 characters",
+            "description": "Friendly catalog label returned by list_available_widgets. Required."
+          },
+          {
+            "path": "widget_id",
+            "type": "string",
+            "required": true,
+            "limits": "at least 1 characters",
+            "description": "Widget id from list_available_widgets. Required."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Target dashboard UUID. Omit to target the current Workspace route."
+          },
+          {
+            "path": "config",
+            "type": "object",
+            "required": false,
+            "limits": null,
+            "description": "Widget config split into data_args (data inputs) and ui_args (UI inputs). Layout fields belong on update_dashboard_layout, not here."
+          },
+          {
+            "path": "config.data_args",
+            "type": "object or null",
+            "required": false,
+            "limits": null,
+            "description": "The values of the widget's data parameters."
+          },
+          {
+            "path": "config.ui_args",
+            "type": "object or null",
+            "required": false,
+            "limits": null,
+            "description": "The values of the widget's interface settings."
+          }
+        ]
+      },
+      {
+        "name": "update_widget_in_dashboard",
+        "description": "Update one widget's config on a target dashboard. Handles 'update/set/change <param> to <value>' requests; the user may name a target widget by display name. Call only after identifying the target widget instances and confirming they expose the parameter being changed. Do not guess enum/dropdown values; call get_widget_schema and get_params_options when needed, then pass option values, not labels. For plain string values, preserve the user's literal casing unless schema/options require otherwise. Layout fields (x/y/w/h/grid_data/inner_tab/etc.) are rejected — use update_dashboard_layout for those.",
+        "fields": [
+          {
+            "path": "widget_uuid",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Canonical widget instance identifier from a workspace snapshot."
+          },
+          {
+            "path": "widget_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Fallback widget type identifier when uuid is unknown."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Target dashboard UUID. Omit to target the current Workspace route."
+          },
+          {
+            "path": "config",
+            "type": "object",
+            "required": false,
+            "limits": null,
+            "description": "Widget config split into data_args (data inputs) and ui_args (UI inputs). Layout fields belong on update_dashboard_layout, not here."
+          },
+          {
+            "path": "config.data_args",
+            "type": "object or null",
+            "required": false,
+            "limits": null,
+            "description": "The values of the widget's data parameters."
+          },
+          {
+            "path": "config.ui_args",
+            "type": "object or null",
+            "required": false,
+            "limits": null,
+            "description": "The values of the widget's interface settings."
+          }
+        ]
+      },
+      {
+        "name": "delete_widget",
+        "description": "Delete a Workspace widget from a dashboard. Provide widget_uuid (preferred) or widget_id. dashboard_id defaults to the current route.",
+        "fields": [
+          {
+            "path": "widget_uuid",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Canonical instance identifier from a workspace snapshot."
+          },
+          {
+            "path": "widget_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Fallback widget type identifier when uuid is unknown."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Target dashboard UUID. Omit to target the current Workspace route."
+          }
+        ]
+      },
+      {
+        "name": "manage_dashboard",
+        "description": "Create, read, or update one Workspace dashboard. create requires name. read uses current route if dashboard_id omitted. update requires dashboard_id and name.",
+        "fields": [
+          {
+            "path": "operation",
+            "type": "\"create\" | \"read\" | \"update\"",
+            "required": true,
+            "limits": null,
+            "description": "Operation to perform on the dashboard."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Dashboard UUID. Omit on read to target the current Workspace route. Required for update."
+          },
+          {
+            "path": "name",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Dashboard display name. Required for create and update."
+          },
+          {
+            "path": "activate",
+            "type": "boolean",
+            "required": false,
+            "limits": null,
+            "description": "On create, whether to activate the new dashboard route. Defaults true."
+          }
+        ]
+      },
+      {
+        "name": "update_dashboard_layout",
+        "description": "Move or resize one widget on the active dashboard. Requires x/y/w/h grid coordinates. Optional min_w/min_h/max_w/max_h size constraints.",
+        "fields": [
+          {
+            "path": "x",
+            "type": "number",
+            "required": true,
+            "limits": null,
+            "description": "Grid column position (0-based)."
+          },
+          {
+            "path": "y",
+            "type": "number",
+            "required": true,
+            "limits": null,
+            "description": "Grid row position (0-based)."
+          },
+          {
+            "path": "w",
+            "type": "number",
+            "required": true,
+            "limits": null,
+            "description": "Grid width. 40 = full row."
+          },
+          {
+            "path": "h",
+            "type": "number",
+            "required": true,
+            "limits": null,
+            "description": "Grid height in rows."
+          },
+          {
+            "path": "widget_uuid",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Canonical widget instance identifier from a workspace snapshot."
+          },
+          {
+            "path": "widget_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Fallback widget type identifier when uuid is unknown."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Target dashboard UUID. Omit to target the current Workspace route."
+          },
+          {
+            "path": "tab_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Inner tab id to place the widget on. Omit to keep current tab."
+          },
+          {
+            "path": "min_w",
+            "type": "number",
+            "required": false,
+            "limits": null,
+            "description": "Minimum width."
+          },
+          {
+            "path": "min_h",
+            "type": "number",
+            "required": false,
+            "limits": null,
+            "description": "Minimum height."
+          },
+          {
+            "path": "max_w",
+            "type": "number",
+            "required": false,
+            "limits": null,
+            "description": "Maximum width."
+          },
+          {
+            "path": "max_h",
+            "type": "number",
+            "required": false,
+            "limits": null,
+            "description": "Maximum height."
+          }
+        ]
+      },
+      {
+        "name": "manage_navigation_bar",
+        "description": "Create or mutate the Workspace navigation bar (tabs). create / add_tabs / remove_tabs use tabs:[{name}]. rename_tabs uses rename_map:{oldId:newName}. tab_id is generated as the slug of name; navigate to that slug after add_tabs before placing content.",
+        "fields": [
+          {
+            "path": "operation",
+            "type": "\"create\" | \"add_tabs\" | \"remove_tabs\" | \"rename_tabs\"",
+            "required": true,
+            "limits": null,
+            "description": "Operation: create | add_tabs | remove_tabs | rename_tabs."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Dashboard UUID. Omit to target the current Workspace route."
+          },
+          {
+            "path": "tabs",
+            "type": "array of object",
+            "required": false,
+            "limits": null,
+            "description": "Tab objects, e.g. [{name:'AAPL Analysis'}]. Required for create, add_tabs, remove_tabs. Do not pass tab_id; it is generated as the slug of name."
+          },
+          {
+            "path": "tabs[].name",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "The name of the tab."
+          },
+          {
+            "path": "rename_map",
+            "type": "object",
+            "required": false,
+            "limits": null,
+            "description": "Map of {oldTabId: newName} for rename_tabs operation."
+          }
+        ]
+      },
+      {
+        "name": "add_generative_widget",
+        "description": "Create a generative widget (note or html) with inline content on a dashboard. The Workspace has no table or chart widget: draw a table or chart as an html widget (follow the `html-table` / `html-chart` skills).",
+        "fields": [
+          {
+            "path": "widget_type",
+            "type": "\"note\" | \"html\"",
+            "required": true,
+            "limits": null,
+            "description": "Generative widget kind: a markdown note or an HTML widget (tables and charts are HTML)."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Target dashboard UUID. Omit to target the current Workspace route."
+          },
+          {
+            "path": "data",
+            "type": "string or null",
+            "required": false,
+            "limits": null,
+            "description": "Widget content as a plain string: markdown for a note, an HTML document for html."
+          },
+          {
+            "path": "name",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Widget display name."
+          },
+          {
+            "path": "description",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Widget short description."
+          },
+          {
+            "path": "inner_tab",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Existing inner tab id to place the widget on. Does NOT create a tab."
+          }
+        ]
+      },
+      {
+        "name": "assign_tasks_to_agents",
+        "description": "Assign tasks to configured external Workspace agents. task_requests items shaped like {id, description, assigned_holder_url, assigned_agent_id}.",
+        "fields": [
+          {
+            "path": "task_requests",
+            "type": "array of object",
+            "required": true,
+            "limits": null,
+            "description": "Tasks shaped like {id, description, assigned_holder_url, assigned_agent_id}."
+          },
+          {
+            "path": "task_requests[].id",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "The id of the task."
+          },
+          {
+            "path": "task_requests[].description",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "What the agent has to do."
+          },
+          {
+            "path": "task_requests[].assigned_holder_url",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "The URL of the agent's holder."
+          },
+          {
+            "path": "task_requests[].assigned_agent_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "The id of the agent."
+          }
+        ]
+      },
+      {
+        "name": "navigate_workspace",
+        "description": "Navigate the Workspace browser to an existing dashboard or inner tab. operation='dashboard' requires dashboard_id; operation='tab' requires tab_id.",
+        "fields": [
+          {
+            "path": "operation",
+            "type": "\"dashboard\" | \"tab\"",
+            "required": true,
+            "limits": null,
+            "description": "Navigation target: 'dashboard' (full route) or 'tab' (inner tab)."
+          },
+          {
+            "path": "dashboard_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Dashboard UUID. Required when operation='dashboard'."
+          },
+          {
+            "path": "tab_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Tab id (slug-form, e.g. 'aapl-analysis'). Required when operation='tab'."
+          }
+        ]
+      },
+      {
+        "name": "manage_backends",
+        "description": "Manage Workspace data backends (the connections that power widgets). list / add / update / refresh / remove. add requires name and url. update/refresh/remove require backend_id.",
+        "fields": [
+          {
+            "path": "operation",
+            "type": "\"list\" | \"add\" | \"update\" | \"refresh\" | \"remove\"",
+            "required": true,
+            "limits": null,
+            "description": "Operation to perform on backends."
+          },
+          {
+            "path": "backend_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Backend UUID. Required for update/refresh/remove."
+          },
+          {
+            "path": "name",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Backend display name."
+          },
+          {
+            "path": "url",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Backend base URL."
+          },
+          {
+            "path": "endpoint_headers",
+            "type": "array of object",
+            "required": false,
+            "limits": null,
+            "description": "Endpoint headers. location is 'headers' (default) or 'query'."
+          },
+          {
+            "path": "endpoint_headers[].key",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "The name of the header or of the query parameter."
+          },
+          {
+            "path": "endpoint_headers[].value",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "The value that the backend's endpoints receive."
+          },
+          {
+            "path": "endpoint_headers[].location",
+            "type": "\"headers\" | \"query\"",
+            "required": false,
+            "limits": null,
+            "description": "Whether it goes in the headers or in the query. The default is headers."
+          },
+          {
+            "path": "validate_widgets",
+            "type": "boolean",
+            "required": false,
+            "limits": null,
+            "description": "Whether to surface a warning if widgets fail to load. Defaults true on add."
+          }
+        ]
+      },
+      {
+        "name": "manage_apps",
+        "description": "List, read, or instantiate apps from a Workspace data backend. Requires backend_id. read/instantiate require app_name or template_id. instantiate creates a fresh dashboard from the app template.",
+        "fields": [
+          {
+            "path": "operation",
+            "type": "\"list\" | \"read\" | \"instantiate\"",
+            "required": true,
+            "limits": null,
+            "description": "Operation: list | read | instantiate."
+          },
+          {
+            "path": "backend_id",
+            "type": "string",
+            "required": true,
+            "limits": null,
+            "description": "Backend UUID. Required. Use manage_backends operation='list' to discover."
+          },
+          {
+            "path": "app_name",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "App display name. Provide app_name or template_id for read/instantiate."
+          },
+          {
+            "path": "template_id",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Template UUID. Provide app_name or template_id for read/instantiate."
+          },
+          {
+            "path": "dashboard_name",
+            "type": "string",
+            "required": false,
+            "limits": null,
+            "description": "Override dashboard name on instantiate (defaults to app's name)."
+          },
+          {
+            "path": "activate",
+            "type": "boolean",
+            "required": false,
+            "limits": null,
+            "description": "On instantiate, route the browser to the new dashboard. Defaults true."
+          }
+        ]
+      }
+    ],
+    "coreTools": [
+      "search_widgets",
+      "get_widget_data",
+      "get_skill_content",
+      "recall_conversation",
+      "suggest_followups",
+      "load_tools"
+    ],
+    "toolGroups": [
+      {
+        "id": "sql",
+        "summary": "query the tables you have loaded and show results as table artifacts",
+        "tools": [
+          "execute_sql",
+          "peek_table",
+          "peek_column_values",
+          "create_artifact"
+        ],
+        "fromMcp": false,
+        "alwaysLoaded": false
+      },
+      {
+        "id": "dashboard",
+        "summary": "change the user's dashboard: add, update or remove widgets, edit tabs and widget parameters",
+        "tools": [
+          "update_widget_in_dashboard",
+          "add_widget_to_dashboard",
+          "add_generative_widget",
+          "manage_navigation_bar",
+          "get_params_options",
+          "assign_tasks_to_agents"
+        ],
+        "fromMcp": false,
+        "alwaysLoaded": false
+      },
+      {
+        "id": "workspace",
+        "summary": "look at and change the user's Workspace: find and add widgets, update a widget's parameters, edit tabs, navigate",
+        "tools": [],
+        "fromMcp": true,
+        "alwaysLoaded": true
+      },
+      {
+        "id": "apps",
+        "summary": "assemble connected widgets into a multi-tab dashboard app the user can open or save",
+        "tools": [
+          "create_app"
+        ],
+        "fromMcp": false,
+        "alwaysLoaded": false
+      },
+      {
+        "id": "render",
+        "summary": "draw one-off HTML/SVG (also charts) or turn pasted text into a table",
+        "tools": [
+          "create_html_artifact",
+          "create_table_from_text"
+        ],
+        "fromMcp": false,
+        "alwaysLoaded": false
+      },
+      {
+        "id": "planning",
+        "summary": "show a short plan before a multi-step task, or sharpen a vague question",
+        "tools": [
+          "_llm_think",
+          "enhance_prompt"
+        ],
+        "fromMcp": false,
+        "alwaysLoaded": false
+      },
+      {
+        "id": "documents",
+        "summary": "search a loaded PDF/DOCX/TXT/MD/HTML by question, with pages",
+        "tools": [
+          "query_documents",
+          "list_documents"
+        ],
+        "fromMcp": true,
+        "alwaysLoaded": false
+      },
+      {
+        "id": "web",
+        "summary": "search the web, or read a web page",
+        "tools": [
+          "web_search",
+          "fetch_webpage",
+          "inspect_webpage"
+        ],
+        "fromMcp": true,
+        "alwaysLoaded": false
+      }
+    ],
+    "typedResults": {
+      "kinds": [
+        "artifact",
+        "citation",
+        "sqlite_table",
+        "error",
+        "model_context"
+      ],
+      "limits": {
+        "modelResultChars": 40000,
+        "historyChars": 2000,
+        "maxCitedPages": 3,
+        "citedScoreShare": 0.5
+      }
+    },
+    "limits": {
+      "searchResults": 100,
+      "contextTextChars": 8000,
+      "turnSeconds": 600,
+      "maxTokenChars": 4096,
+      "refusedTokenSeconds": 10,
+      "signInConcurrent": 32,
+      "signInWaiting": 256,
+      "minScopeSecretChars": 16,
+      "widgetDataCacheSeconds": 300,
+      "rowsCacheSeconds": 1800,
+      "maxCachedRows": 500000,
+      "maxSqlRows": 200000,
+      "maxStatusRows": 1000,
+      "maxInlineTextChars": 30000,
+      "downloadMaxBytes": 26214400,
+      "downloadTimeoutMs": 30000,
+      "downloadMaxRedirects": 3,
+      "xlsxTimeoutMs": 30000,
+      "maxImageBase64Chars": 5242880,
+      "typeSampleRows": 500
+    }
+  }
+}

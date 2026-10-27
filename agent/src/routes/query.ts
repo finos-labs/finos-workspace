@@ -18,96 +18,158 @@ import { AGENT_ID } from "./agents.ts";
 const logger = getLogger(["app", "routes", "query"]);
 const audit = getLogger(["audit"]);
 
-const LIMITS = { messages: 20_000, widgets: 20_000, tools: 500, skills: 500, documents: 50 } as const;
+const LIMITS = { messages: 20_000, widgets: 20_000, tools: 500, skills: 500, documents: 50, context: 500, options: 100 } as const;
 
-const MessageSchema = z.object({ role: z.enum(["human", "ai", "tool"]) }).passthrough();
-const WidgetSchema = z
+const MessageSchema = z
   .object({
-    uuid: z.string().max(500).optional(),
-    origin: z.string().max(500).optional(),
-    widget_id: z.string().max(500).optional(),
-    name: z.string().max(2_000).optional(),
-    description: z.string().max(50_000).optional(),
-    params: z.array(z.object({}).passthrough()).max(1_000).optional(),
-    category: z.string().max(500).optional(),
-    sub_category: z.string().max(500).optional(),
-    source: z.string().max(500).nullish(),
-    metadata: z.record(z.string(), z.unknown()).optional(),
+    role: z
+      .enum(["human", "ai", "tool"])
+      .describe("Who wrote the message: the user, the agent, or the browser's result for a request of the agent."),
+  })
+  .passthrough();
+export const WidgetSchema = z
+  .object({
+    uuid: z
+      .string()
+      .max(500)
+      .optional()
+      .describe(
+        "The widget's identifier on the dashboard. A widget of the catalog that is not on the dashboard has none, and Ines identifies it by its widget_id.",
+      ),
+    origin: z.string().max(500).optional().describe("The name of the backend that serves the widget."),
+    widget_id: z.string().max(500).optional().describe("The widget's id in its backend."),
+    name: z.string().max(2_000).optional().describe("What the model reads to choose a widget."),
+    description: z.string().max(50_000).optional().describe("What the model reads to choose a widget."),
+    widget_type: z.string().nullish().describe("The kind of widget, for example markdown, html or iframe."),
+    params: z
+      .array(z.object({}).passthrough())
+      .max(1_000)
+      .optional()
+      .describe(
+        "The widget's parameters. Each has a name, a type, a description, a default_value, a current_value, a list of options and multi_select.",
+      ),
+    columns: z
+      .array(z.string())
+      .nullish()
+      .describe("The column names of the rows that a widget on the dashboard has loaded."),
+    category: z.string().max(500).optional().describe("What the model reads to choose a widget."),
+    sub_category: z.string().max(500).optional().describe("What the model reads to choose a widget."),
+    source: z.string().max(500).nullish().describe("Free-form details about the widget."),
+    metadata: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .describe(
+        "Free-form details about the widget. For a widget on the dashboard, it holds lastUpdated, the time of its last update in milliseconds since 1970.",
+      ),
     mcp_tool: z
       .object({
-        server_id: z.string().max(500),
-        tool_name: z.string().max(500),
+        server_id: z.string().max(500).describe("The id of the MCP server that has the tool."),
+        tool_name: z.string().max(500).describe("The name of the tool on that server."),
         args: z
           .record(z.string().max(200), z.union([z.string().max(256), z.number(), z.boolean()]))
           .refine((args) => Object.keys(args).length <= 32, "Too many arguments")
-          .optional(),
+          .optional()
+          .describe("The arguments that the tool receives, by name."),
       })
-      .optional(),
+      .optional()
+      .describe("A link from the widget to an MCP tool."),
   })
   .passthrough();
 
-const QueryRequestSchema = z.object({
-  messages: z.array(MessageSchema).min(1).max(LIMITS.messages),
-  model: z.string().max(200).optional(),
+export const QueryRequestSchema = z.object({
+  messages: z
+    .array(MessageSchema)
+    .min(1)
+    .max(LIMITS.messages)
+    .describe("The conversation, oldest first. A message has the role human, ai or tool."),
+  model: z.string().max(200).optional().describe("Accepted but not used. Ines reads the model from workspace_options.model."),
   widgets: z
     .object({
-      primary: z.array(WidgetSchema).max(LIMITS.widgets).optional(),
-      secondary: z.array(WidgetSchema).max(LIMITS.widgets).optional(),
-      extra: z.array(WidgetSchema).max(LIMITS.widgets).optional(),
+      primary: z.array(WidgetSchema).max(LIMITS.widgets).optional().describe("The widgets that the user selected or mentioned."),
+      secondary: z.array(WidgetSchema).max(LIMITS.widgets).optional().describe("The other widgets of the dashboard."),
+      extra: z.array(WidgetSchema).max(LIMITS.widgets).optional().describe("The rest of the catalog."),
     })
-    .optional(),
-  context: z.unknown().refine((v) => !Array.isArray(v) || v.length <= 500, "Too many context items").optional(),
-  urls: z.array(z.string().max(4_000)).max(8).optional(),
-  timezone: z.string().max(100).optional(),
-  workspace_state: z.unknown().optional(),
+    .optional()
+    .describe("The widgets that the agent may read, sorted into three tiers: primary, secondary and extra."),
+  context: z
+    .unknown()
+    .refine((v) => !Array.isArray(v) || v.length <= LIMITS.context, "Too many context items")
+    .optional()
+    .describe(`Items that the user attached, such as artifacts of earlier answers. A list has at most ${LIMITS.context} items.`),
+  urls: z
+    .array(z.string().max(4_000))
+    .max(8)
+    .optional()
+    .describe("Web addresses that appeared in the user's message. Ines fetches them for the model unless an administrator turned the web tools off."),
+  timezone: z.string().max(100).optional().describe("The user's time zone, such as Europe/Paris."),
+  workspace_state: z
+    .unknown()
+    .optional()
+    .describe("Where the user is: the current page, dashboard and tab, and the recent actions. Ines ignores a value that does not have this shape."),
   workspace_options: z
     .record(z.string().max(100), z.union([z.boolean(), z.string().max(500)]))
-    .refine((o) => Object.keys(o).length <= 100, "Too many options")
-    .optional(),
+    .refine((o) => Object.keys(o).length <= LIMITS.options, "Too many options")
+    .optional()
+    .describe(
+      `The settings that the user picked from the features of the descriptor, as an object of names to booleans or strings. At most ${LIMITS.options} keys.`,
+    ),
   skills_catalog: z
-    .array(z.object({ slug: z.string().max(200), description: z.string().max(4_000), updatedAt: z.string().max(100).optional() }))
+    .array(
+      z.object({
+        slug: z.string().max(200).describe("The slug of the skill."),
+        description: z.string().max(4_000).describe("What the skill is for."),
+        updatedAt: z.string().max(100).optional().describe("When the skill was last changed."),
+      }),
+    )
     .max(LIMITS.skills)
-    .optional(),
+    .optional()
+    .describe("The skills in the user's library."),
   selected_skills: z
     .array(z.object({
-      slug: z.string().max(200),
-      description: z.string().max(4_000),
-      contentMarkdown: z.string().max(500_000).optional(),
-      source: z.enum(["forced_slash", "model_selected"]),
+      slug: z.string().max(200).describe("The slug of the skill."),
+      description: z.string().max(4_000).describe("What the skill is for."),
+      contentMarkdown: z.string().max(500_000).optional().describe("The text of the skill. The user's own skills carry it."),
+      source: z.enum(["forced_slash", "model_selected"]).describe("Whether the user forced the skill with a slash command or the model selected it."),
     }))
     .max(20)
-    .optional(),
+    .optional()
+    .describe("Skills that the user forced with a slash command, or that the model selected. The user's own skills carry contentMarkdown."),
   tools: z
     .array(z.object({
-      name: z.string().max(500),
-      tool_name: z.string().max(500).optional(),
-      server_id: z.string().max(500),
-      url: z.string().max(4_000),
-      description: z.string().max(20_000).optional(),
+      name: z.string().max(500).describe("The name that the agent uses for the tool, which joins the server's name and the tool's name."),
+      tool_name: z.string().max(500).optional().describe("The name that the server knows."),
+      server_id: z.string().max(500).describe("The id of the MCP server."),
+      url: z.string().max(4_000).describe("The address of the MCP server."),
+      description: z.string().max(20_000).optional().describe("What the tool does."),
       input_schema: z.object({
         properties: z
           .record(z.string(), z.record(z.string(), z.unknown()))
           .refine((p) => Object.keys(p).length <= 200, "Too many properties")
-          .optional(),
-        required: z.array(z.string().max(200)).max(200).optional(),
-      }).optional(),
+          .optional()
+          .describe("The schema of each argument, by name."),
+        required: z.array(z.string().max(200)).max(200).optional().describe("The names of the arguments that a call must have."),
+      }).optional().describe("The JSON Schema of the tool's arguments."),
     }))
     .max(LIMITS.tools)
-    .optional(),
+    .optional()
+    .describe("The tools of the MCP servers that the user connected, which the agent may ask the browser to run."),
   documents: z
     .array(
       z.object({
-        id: z.string().max(200),
-        name: z.string().max(500),
-        format: z.enum(["pdf", "docx", "txt", "md", "html"]),
-        content_b64: z.string().max(35_000_000).optional(),
-        url: z.string().max(4_000).optional(),
+        id: z.string().max(200).describe("The id of the document."),
+        name: z.string().max(500).describe("The file name."),
+        format: z.enum(["pdf", "docx", "txt", "md", "html"]).describe("The format of the file."),
+        content_b64: z.string().max(35_000_000).optional().describe("The content of the file, in base64. A document has this or url."),
+        url: z.string().max(4_000).optional().describe("The link of the file. A document has this or content_b64."),
       }).refine((d) => !!d.content_b64 || !!d.url, {
         message: "Document must have either content_b64 or url",
       }),
     )
     .max(LIMITS.documents)
-    .optional(),
+    .optional()
+    .describe(
+      "Files sent inline. Ines accepts them but treats the field as deprecated, because the web app sends a file as a widget in widgets.primary instead. Each needs content_b64 or url.",
+    ),
 });
 
 const WorkspaceStateSchema = z.object({

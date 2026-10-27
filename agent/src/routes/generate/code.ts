@@ -3,21 +3,22 @@ import { z } from "zod";
 import type { AppEnv } from "../../auth/middleware.ts";
 import { parseJsonResponse, truncate } from "../../lib/llm.ts";
 import { getLogger } from "../../lib/logger.ts";
-import { helperLlm, invalidJson, MAX_HELPER_TEXT_CHARS, readJson } from "./helper.ts";
+import { helperLlm, invalidJson, MAX_HELPER_TEXT_CHARS, modelField, readJson } from "./helper.ts";
 
 const MAX_CODE_CHARS = 30_000;
 const MAX_SCHEMA_CHARS = 10_000;
+const DATA_SAMPLE_ROWS = 5;
 
 const logger = getLogger(["app", "generate", "code"]);
 
-const GenerateCodeSchema = z.object({
-  widget_uuid: z.string(),
-  user_prompt: z.string().min(1).max(20_000),
-  current_code: z.string().nullish(),
-  language: z.enum(["sql", "python"]),
-  sql_schema: z.record(z.string(), z.unknown()).nullish(),
-  data_sample: z.array(z.record(z.string(), z.unknown())).nullish(),
-  model: z.string().max(200).optional(),
+export const GenerateCodeSchema = z.object({
+  widget_uuid: z.string().describe("Accepted and not used."),
+  user_prompt: z.string().min(1).max(20_000).describe("What the code should do."),
+  current_code: z.string().nullish().describe("The code to change or improve."),
+  language: z.enum(["sql", "python"]).describe("The language of the code."),
+  sql_schema: z.record(z.string(), z.unknown()).nullish().describe("The tables and columns that the code may use."),
+  data_sample: z.array(z.record(z.string(), z.unknown())).nullish().describe(`Rows of the data. Ines reads the first ${DATA_SAMPLE_ROWS}.`),
+  model: modelField,
 });
 
 export const codeRouter = new Hono<AppEnv>();
@@ -43,7 +44,7 @@ codeRouter.post("/v1/generate/code", async (c) => {
 
   if (sql_schema) prompt += `\n\nSQL Schema:\n${truncate(JSON.stringify(sql_schema, null, 2), MAX_SCHEMA_CHARS)}`;
   if (data_sample && data_sample.length > 0) {
-    prompt += `\n\nData sample (first ${Math.min(data_sample.length, 5)} rows):\n${truncate(JSON.stringify(data_sample.slice(0, 5), null, 2), MAX_SCHEMA_CHARS)}`;
+    prompt += `\n\nData sample (first ${Math.min(data_sample.length, DATA_SAMPLE_ROWS)} rows):\n${truncate(JSON.stringify(data_sample.slice(0, DATA_SAMPLE_ROWS), null, 2), MAX_SCHEMA_CHARS)}`;
   }
   if (current_code) prompt += `\n\nCurrent code to modify/improve:\n${truncate(current_code, MAX_CODE_CHARS)}`;
 

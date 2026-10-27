@@ -51,6 +51,8 @@ const EMBEDDING_PROVIDERS: Record<string, EmbeddingProvider> = {
   },
 };
 
+export const EMBEDDING_PROVIDER_NAMES = Object.keys(EMBEDDING_PROVIDERS);
+
 function splitModelId(raw: string): { provider: string; modelId: string } | null {
   const colon = raw.indexOf(":");
   if (colon <= 0 || colon === raw.length - 1) return null;
@@ -113,7 +115,7 @@ export async function embedChunks(chunks: DocChunk[]): Promise<number[][]> {
   return embeddings;
 }
 
-export interface RetrievedChunk {
+interface RetrievedChunk {
   chunk: DocChunk;
   doc: StoredDocument;
   score: number;

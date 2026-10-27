@@ -11,20 +11,20 @@ const logger = getLogger(["app", "tools", "sql", "execute_sql"]);
 
 const MAX_ROWS = 1000;
 
-export const executeSqlSchema = z.object({
+const executeSqlSchema = z.object({
   display_summary: displaySummarySchema,
   sql: z.string().describe(
     "SQLite SELECT or WITH (CTE). Use double-quotes for identifiers with spaces or mixed case. Returns up to 1000 rows. Result columns are not persisted; repeat derived aliases in the same query with a CTE/subquery when filtering or ordering by them.",
   ),
 });
 
-export const executeSqlDescription =
+const executeSqlDescription =
   "Run a SQL query against widget data already loaded for this conversation. " +
   "SQLite dialect. SELECT and WITH/CTE only. Returns up to 1000 rows as JSON. " +
   "Result columns/aliases from one execute_sql call are not added to loaded tables; if you need to sort, filter, chart, or artifact a derived alias, compute it in the same SQL using a WITH CTE or subquery. " +
   "This is the fast path — use it for filters, aggregations, joins, peeks.";
 
-export interface ExecuteSqlContext {
+interface ExecuteSqlContext {
   pendingTables: Map<string, Record<string, unknown>[]>;
 }
 

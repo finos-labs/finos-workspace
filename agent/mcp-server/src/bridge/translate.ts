@@ -1,11 +1,11 @@
-export interface WidgetDataRequestInput {
+interface WidgetDataRequestInput {
   origin: string;
   widget_id: string;
   data_args: Record<string, unknown>;
   widget_uuid?: string | null;
 }
 
-export interface ParamOptionsRequestInput {
+interface ParamOptionsRequestInput {
   origin: string;
   widget_id: string;
   param_name: string;
