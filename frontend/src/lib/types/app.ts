@@ -559,7 +559,7 @@ const templateShapeDefinition = {
     .boolean()
     .optional()
     .describe(
-      "Reported to MCP hosts that list the apps through the bridge; the web app itself does not read it",
+      "Whether users can change the widgets of a dashboard created from the app; when false, the dashboard is locked: users cannot add, remove, duplicate or move its widgets, but can still change parameters and resize widgets",
     ),
 };
 

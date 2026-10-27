@@ -19,7 +19,7 @@ import { useCopilotAvailable } from "~/components/AI/hooks/useCopilotAvailable";
 import useIsMobile from "~/hooks/useIsMobile";
 import { useStateReducer } from "~/hooks/useStateReducer";
 import { getConfig } from "~/lib/runtimeConfig";
-import { useAppStore, useShallowAppStore } from "~/lib/state/app";
+import { useAppStore, useIsDashboardLocked, useShallowAppStore } from "~/lib/state/app";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
 import { useShallowCopilotDataStore } from "~/lib/state/copilotData";
 import { useShallowThemeStore } from "~/lib/state/theme";
@@ -510,6 +510,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
     } = useWidgetContext();
 
     const isPreview = contextIsPreview ?? propIsPreview;
+    const isLocked = useIsDashboardLocked(activeDashboardId);
 
     const copilotAvailable = useCopilotAvailable();
 
@@ -668,7 +669,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
     const handleClose = useCallback(() => {
       if (!widgetRef?.current?.id) return;
       if (!activeDashboardId) return;
-      if (isShared) return;
+      if (isShared || isLocked) return;
 
       const closeWidget = () => {
         const widgetClone = cloneDeep(widgetRef.current);
@@ -699,7 +700,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
       };
 
       closeWidget();
-    }, [widgetRef, activeDashboardId, onClose]);
+    }, [widgetRef, activeDashboardId, onClose, isShared, isLocked]);
 
     const settingsChildren = useMemo(
       () => settingsModalChildren,
@@ -907,7 +908,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
                 <div
                   className={cn(
                     "inherit draggable-handle flex items-center gap-1 flex-shrink-0",
-                    { "md:cursor-move": !isShared },
+                    { "md:cursor-move": !(isShared || isLocked) },
                   )}
                 >
                   <Tooltip
@@ -1007,7 +1008,7 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
               ref={middleSpacerRef}
               className={cn(
                 "draggable-handle mx-0.5 h-[20px] min-w-[10px] flex-1 _middle-navbar",
-                { "md:cursor-move": !isShared },
+                { "md:cursor-move": !(isShared || isLocked) },
               )}
             />
             <div
@@ -1140,19 +1141,19 @@ const NavBar = forwardRef<HTMLDivElement, NavBarProps>(
               {showClose && (
                 <Tooltip
                   message={
-                    isShared || isPreview
+                    isShared || isLocked || isPreview
                       ? "You can't remove this widget"
                       : "This widget will be removed from the dashboard"
                   }
                 >
                   <button
                     id={`close-widget-${widgetRef.current?.id}`}
-                    disabled={isShared || isPreview}
+                    disabled={isShared || isLocked || isPreview}
                     onClick={handleClose}
                     onMouseDown={preventDragStart}
                     onTouchStart={preventDragStart}
                     className={cn("ignore-select-widget ws-small-navbar-btn relative", {
-                      "opacity-40 cursor-not-allowed": isShared,
+                      "opacity-40 cursor-not-allowed": isShared || isLocked,
                     })}
                   >
                     <Icon id="cross-icon" className="w-4 h-4" />

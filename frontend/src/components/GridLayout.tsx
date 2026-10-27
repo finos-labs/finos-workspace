@@ -38,7 +38,6 @@ interface GridLayoutProps extends PropsWithChildren {
   draggableHandle?: string;
   rowHeight?: number;
   saveTab?: boolean;
-  locked?: boolean;
   extraClassName?: string;
 }
 
@@ -68,7 +67,6 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
       draggableHandle = ".draggable-handle",
       rowHeight = 25,
       saveTab = false,
-      locked = false,
       extraClassName = "",
     } = props;
 
@@ -79,7 +77,8 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
         >,
       [],
     );
-    const { currentTab, tabId, layouts, setLayouts, isShared } = useTabContext();
+    const { currentTab, tabId, layouts, setLayouts, isShared, locked } =
+      useTabContext();
 
     const isMobile = useIsMobile();
 
@@ -93,7 +92,7 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
       (state) => state.updateTabWidgetsLayout,
     );
 
-    const { getRootProps, getInputProps, isDragActive } = useDragAndDropFiles(locked);
+    const { getRootProps, getInputProps, isDragActive } = useDragAndDropFiles();
 
     const onLayoutChange = useCallback(
       (layout: Layout[]) => {
@@ -275,10 +274,7 @@ export const GridLayout = forwardRef<HTMLDivElement, GridLayoutProps>(
     }, [layouts]);
 
     const childrenMemo = useMemo(() => children, [children]);
-    const enableResizing = useMemo(
-      () => !(locked || isShared) && saveTab,
-      [locked, isShared, saveTab],
-    );
+    const enableResizing = useMemo(() => !isShared && saveTab, [isShared, saveTab]);
     const enableDragging = useMemo(
       () => !(locked || isShared || isMobile) && saveTab,
       [locked, isShared, isMobile, saveTab],

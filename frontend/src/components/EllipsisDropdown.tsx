@@ -2,7 +2,7 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import useIsMobile from "~/hooks/useIsMobile";
-import { useAppStore } from "~/lib/state/app";
+import { useAppStore, useIsDashboardLocked } from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import { cn, dispatchSaveState } from "~/lib/utils";
 import type { ExtraActionT } from "./DraggableCard/NavBar";
@@ -23,6 +23,7 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
   );
   const { widgetRef, widgetFromJSON, activeDashboardId, isShared, isPreview } =
     useWidgetContext();
+  const isLocked = useIsDashboardLocked(activeDashboardId);
   const setExportWidgetData = useShallowThemeStore(
     (state) => state.setExportWidgetData,
   );
@@ -97,10 +98,10 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
         <DropdownMenuPrimitive.Item
           key={`${widget?.id}-duplicate`}
           className={cn("ws-dropdown-item", {
-            "opacity-30": isShared,
+            "opacity-30": isShared || isLocked,
           })}
           onSelect={() => duplicateWidgetCallback()}
-          disabled={isShared}
+          disabled={isShared || isLocked}
         >
           <Icon id="duplicate-icon" />
           Duplicate
@@ -158,6 +159,7 @@ export default function EllipsisDropdownMenu(props: EllipsisDropdownMenuProps) {
     settings,
     widgetRef,
     isShared,
+    isLocked,
     exportFunctions,
     exportFns,
     onExport,

@@ -10,7 +10,11 @@ import { DialogFooter, DialogTitle } from "~/components/ds/dialogs/Dialog";
 import type { WidgetT } from "~/components/types";
 import { useWidgetContext } from "~/components/Widget.context";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { type InnerTab, useShallowAppStore } from "~/lib/state/app";
+import {
+  type InnerTab,
+  useIsDashboardLocked,
+  useShallowAppStore,
+} from "~/lib/state/app";
 import { useShallowThemeStore } from "~/lib/state/theme";
 import {
   beautifySlug,
@@ -56,6 +60,8 @@ type NavigationBarState = {
 export default function NavigationBar() {
   const { widget, widgetRef, activeDashboardId, updateWidget, isShared } =
     useWidgetContext();
+  const isLocked = useIsDashboardLocked(activeDashboardId);
+  const cannotEdit = isShared || isLocked;
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { lastInnerTab, widgetCount, ...appStore } = useShallowAppStore((state) => ({
@@ -489,11 +495,11 @@ export default function NavigationBar() {
         >
           <button
             className={cn("ws-small-navbar-btn", {
-              "opacity-40 cursor-not-allowed": isShared,
+              "opacity-40 cursor-not-allowed": cannotEdit,
             })}
-            disabled={isShared}
+            disabled={cannotEdit}
             onClick={() => {
-              if (!isShared) {
+              if (!cannotEdit) {
                 dispatch({ open: true });
               }
             }}
@@ -502,16 +508,16 @@ export default function NavigationBar() {
           </button>
           <Tooltip
             message={
-              isShared
+              cannotEdit
                 ? "You can't remove this widget"
                 : "This widget will be removed from the dashboard"
             }
           >
             <button
-              disabled={isShared}
+              disabled={cannotEdit}
               onClick={handleClose}
               className={cn("ws-small-navbar-btn", {
-                "opacity-40 cursor-not-allowed": isShared,
+                "opacity-40 cursor-not-allowed": cannotEdit,
               })}
             >
               <Icon id="cross-icon" className="" />

@@ -41,10 +41,10 @@ import type { WidgetJsonT } from "./types";
 const aiCopilotAiEnhancementsFF =
   getConfig().copilot.enabled && getConfig().copilot.aiEnhancements;
 
-export function useDragAndDropFiles(locked: boolean) {
+export function useDragAndDropFiles() {
   const { id } = useParams();
   const isMobile = useIsMobile();
-  const { isShared } = useTabContext();
+  const { isShared, locked } = useTabContext();
   const { files, setFiles } = useFileContext();
 
   const mayUpload = useShallowAccessStore((s) => canAddConnections(s.access));

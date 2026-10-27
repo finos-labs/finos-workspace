@@ -38,4 +38,4 @@ Check the object before you ship it:
 
 ## What the export leaves out
 
-The export has no `selected_agent` and no `mcpServers`, because the dashboard does not know them. Add them to the object by hand when your app needs them. It also marks the app with `"allowCustomization": true`, which the web app does not read and which you may delete.
+The export has no `selected_agent` and no `mcpServers`, because the dashboard does not know them. Add them to the object by hand when your app needs them. It also marks the app with `"allowCustomization": true`, which lets users change the dashboards that they open from the app. Set it to `false` when those dashboards should stay as you built them, as [apps.json](../../reference/schemas/apps-json.mdx) describes.

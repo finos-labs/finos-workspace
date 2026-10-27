@@ -33,7 +33,7 @@ Returning a single object instead of an array is the most common shape mistake â
 | `tabs` | Yes | Object keyed by tab id; each value has `id`, `name`, `layout`. |
 | `description` | Recommended | Shown in the app gallery. |
 | `img`, `img_dark`, `img_light` | Recommended | App gallery image URLs. Prefer populated values: a stable hosted image URL or a backend-served `/thumbnails/{name}` SVG/PNG. Empty string `""` is acceptable only as a fallback. |
-| `allowCustomization` | Recommended | Boolean. Whether users can modify the layout in their copy. |
+| `allowCustomization` | Recommended | Boolean. `false` locks the dashboards that Workspace creates from the app: users cannot add, remove, duplicate or move their widgets or edit their tabs, but can still change parameters and resize widgets. `true`, or no value, lets users change the dashboard freely. |
 | `groups` | Recommended | Array of parameter sync groups. Use `[]` when none are needed â€” that's the safe default. |
 | `prompts` | Recommended | Array of suggested prompts for the agent. Use `[]` when none. |
 | `id` | Optional | If set, must match `^custom-.+`. Plain strings are rejected. |

@@ -10,7 +10,7 @@ import { getAiApiUrl } from "~/lib/constants";
 import { getIframeWidget } from "~/lib/iframeWidgetRegistry";
 import { getConfig } from "~/lib/runtimeConfig";
 import { fetchAgent } from "~/lib/state/agentToken";
-import { useAppStore } from "~/lib/state/app";
+import { DASHBOARD_LOCKED_MESSAGE, useAppStore } from "~/lib/state/app";
 import { useShallowAuthStore } from "~/lib/state/auth";
 import { getSourceCredentials } from "~/lib/state/backendConnector";
 import {
@@ -613,6 +613,15 @@ export function useFunctionCall() {
             status: "error",
             message:
               "No active dashboard was found. Open a dashboard route or provide a valid dashboard_id.",
+          },
+        ];
+      }
+
+      if (dashboard.data?.locked) {
+        return [
+          {
+            status: "error",
+            message: `Dashboard '${dashboardId}' is locked. ${DASHBOARD_LOCKED_MESSAGE}`,
           },
         ];
       }

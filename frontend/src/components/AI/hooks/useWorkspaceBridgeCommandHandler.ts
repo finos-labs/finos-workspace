@@ -1576,7 +1576,7 @@ function summarizeApp(template: BackendTemplate) {
     tab_count: Object.keys(template.tabs ?? {}).length,
     group_count: template.groups?.length ?? 0,
     prompt_count: template.prompts?.length ?? 0,
-    allow_customization: template.allowCustomization ?? false,
+    allow_customization: template.allowCustomization ?? true,
   };
 }
 

@@ -458,6 +458,57 @@ describe("createTemplates utility functions", () => {
       );
     });
 
+    it("locks the dashboard of an app that does not allow customization", async () => {
+      const addTab = vi.fn<AppState["addTab"]>();
+
+      await createCustomTemplateTab({
+        addTab,
+        items: {},
+        template: { ...template, allowCustomization: false },
+        source,
+      });
+
+      expect(createdTab(addTab).data.locked).toBe(true);
+    });
+
+    it.each([
+      ["allows customization", { allowCustomization: true }],
+      ["does not say", {}],
+    ])("leaves the dashboard of an app that %s unlocked", async (_, flag) => {
+      const addTab = vi.fn<AppState["addTab"]>();
+
+      await createCustomTemplateTab({
+        addTab,
+        items: {},
+        template: { ...template, ...flag },
+        source,
+      });
+
+      expect(createdTab(addTab).data.locked).toBeUndefined();
+    });
+
+    it("does not build the app inside a locked current dashboard", async () => {
+      const addTab = vi.fn<AppState["addTab"]>();
+      const items = partial<Items>({
+        current: {
+          index: "current",
+          data: { name: "Current", locked: true, widgets: [{ id: "existing-widget" }] },
+        },
+      });
+
+      const id = await createCustomTemplateTab({
+        addTab,
+        items,
+        template,
+        source,
+        currentDashboard: "current",
+        dashboardBehavior: "current",
+      });
+
+      expect(id).not.toBe("current");
+      expect(addTab).toHaveBeenCalledWith(expect.objectContaining({ index: id }), true);
+    });
+
     it("throws when a widget cannot be resolved and a resolver is provided", async () => {
       const addTab = vi.fn<AppState["addTab"]>();
       const appTemplate = partial<BackendTemplate>({

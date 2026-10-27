@@ -17,6 +17,7 @@ const mockGetWidgetGridData = vi.fn();
 const mockUpdateTabWidgetsLayout = vi.fn();
 const mockUpdateWidgetInStore = vi.fn();
 const mockRemoveWidget = vi.fn();
+const mockIsDashboardLocked = vi.fn((_dashboardId: string) => false);
 const mockGetDashboardWidgetData = vi.fn();
 const mockTriggerCustomEvent = vi.fn();
 const mockGetDashboardInfo = vi.fn();
@@ -31,6 +32,7 @@ vi.mock("~/components/AI/hooks/useGetAppWidgets", () => ({
 }));
 
 vi.mock("~/lib/state/app", () => ({
+  DASHBOARD_LOCKED_MESSAGE: "Locked.",
   useAppStore: {
     getState: () => ({
       addWidget: mockAddWidget,
@@ -40,6 +42,7 @@ vi.mock("~/lib/state/app", () => ({
       updateTabWidgetsLayout: mockUpdateTabWidgetsLayout,
       updateWidget: mockUpdateWidgetInStore,
       removeWidget: mockRemoveWidget,
+      isDashboardLocked: (dashboardId: string) => mockIsDashboardLocked(dashboardId),
       items: {
         "dashboard-123": {
           data: {
@@ -97,6 +100,7 @@ const dashboardWidget = createMockWidget({
 describe("Workspace API", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsDashboardLocked.mockReturnValue(false);
     mockTriggerCustomEvent.mockReturnValue(true);
     mockGetTabWidgetById.mockImplementation(
       (_dashboardId: string, widgetUuid: string) =>
@@ -452,6 +456,77 @@ describe("Workspace API", () => {
           id: widgetUuid,
           innerTab: "charts",
         }),
+      );
+    });
+  });
+
+  describe("a locked dashboard", () => {
+    const dashboardId = "dashboard-123";
+    const widgetUuid = "widget-uuid-456";
+    const lockedError = `Dashboard '${dashboardId}' is locked. Locked.`;
+
+    beforeEach(() => {
+      mockIsDashboardLocked.mockReturnValue(true);
+      mockGetDashboardInfo.mockReturnValue({
+        id: dashboardId,
+        tabs: [
+          { tab_id: "__no_tab__", tab_name: "__no_tab__", widgets: [], layout: [] },
+          { tab_id: "charts", tab_name: "Charts", widgets: [], layout: [] },
+        ],
+      });
+      mockGetTabWidgetById.mockReturnValue(
+        createMockWidget({ id: widgetUuid, gridData: { x: 0, y: 0, w: 20, h: 10 } }),
+      );
+      mockGetWidgetGridData.mockReturnValue({
+        i: widgetUuid,
+        x: 0,
+        y: 0,
+        w: 20,
+        h: 10,
+      });
+    });
+
+    it("does not get a widget created in it", async () => {
+      mockGetAppWidget.mockReturnValue(createMockWidget());
+
+      await expect(createWidget(dashboardId, "workspace", "chart", {})).rejects.toThrow(
+        lockedError,
+      );
+      expect(mockAddWidget).not.toHaveBeenCalled();
+    });
+
+    it("does not lose a widget", async () => {
+      await expect(deleteWidget(dashboardId, widgetUuid)).rejects.toThrow(lockedError);
+      expect(mockRemoveWidget).not.toHaveBeenCalled();
+    });
+
+    it("does not let a widget be moved to another place", () => {
+      expect(() =>
+        updateDashboardLayout(dashboardId, widgetUuid, { x: 0, y: 4, w: 20, h: 10 }),
+      ).toThrow(`${lockedError} Only the width and height of its widgets can change.`);
+      expect(mockUpdateTabWidgetsLayout).not.toHaveBeenCalled();
+    });
+
+    it("does not let a widget be moved to another tab", () => {
+      expect(() =>
+        updateDashboardLayout(dashboardId, widgetUuid, {
+          tabId: "charts",
+          x: 0,
+          y: 0,
+          w: 20,
+          h: 10,
+        }),
+      ).toThrow(lockedError);
+      expect(mockUpdateTabWidgetsLayout).not.toHaveBeenCalled();
+    });
+
+    it("lets a widget be resized where it is", () => {
+      updateDashboardLayout(dashboardId, widgetUuid, { x: 0, y: 0, w: 30, h: 12 });
+
+      expect(mockUpdateTabWidgetsLayout).toHaveBeenCalledWith(
+        dashboardId,
+        [expect.objectContaining({ i: widgetUuid, x: 0, y: 0, w: 30, h: 12 })],
+        "",
       );
     });
   });
