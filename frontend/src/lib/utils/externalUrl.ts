@@ -1,7 +1,3 @@
-export const HTTP_URL_RE = /^https?:\/\/.+/i;
-
-export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 const SAFE_PROTOCOLS = new Set(["http:", "https:"]);
 
 export function safeExternalUrl(url: string | null | undefined): string | null {

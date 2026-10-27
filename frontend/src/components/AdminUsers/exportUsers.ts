@@ -1,8 +1,6 @@
 import type { User } from "~/types/user.type";
 import { type ExportFormat, exportRecordsToFile } from "./exportTable";
 
-export type { ExportFormat };
-
 const HEADERS = [
   "Name",
   "Email",

@@ -6,7 +6,7 @@ import { useStoreWithEqualityFn } from "zustand/traditional";
 import type { Skill, SkillCatalogEntry, SkillCreate } from "~/types/auth.type";
 import type { Selector } from "./app";
 
-export type { Skill, SkillCatalogEntry, SkillPayload } from "~/types/auth.type";
+export type { Skill } from "~/types/auth.type";
 
 const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 

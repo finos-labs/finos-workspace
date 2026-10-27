@@ -66,9 +66,3 @@ export const loginRequest: PopupRequest = {
   scopes: ["User.Read"],
   prompt: "select_account",
 };
-
-export const graphConfig = {
-  graphMeEndpoint: "https://graph.microsoft.com/v1.0/me" as const,
-} as const;
-
-export const graphScopes = ["User.Read"] as const;

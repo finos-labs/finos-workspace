@@ -44,7 +44,7 @@ import {
   startMcpOAuth,
 } from "./mcpServerAuth";
 
-export function assert(condition: unknown, message: string): asserts condition {
+function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
     throw new Error(message);
   }
@@ -58,7 +58,7 @@ const POPUP_FEATURES = "width=600,height=700,resizable=yes,scrollbars=yes,status
 
 type TransportType = "http" | "sse";
 
-export type McpConnectionState =
+type McpConnectionState =
   | "discovering"
   | "authenticating"
   | "connecting"

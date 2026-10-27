@@ -439,7 +439,7 @@ const getOptionsParams = (
     .filter(Boolean) as Record<string, string>[];
 };
 
-export function groupedParamValues(
+function groupedParamValues(
   groups: readonly Group[],
   paramDefs: ParamDef[],
 ): Record<string, StoredParamValue> {

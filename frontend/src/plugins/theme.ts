@@ -1,6 +1,6 @@
 import { toHex } from "~/utils/colorUtils";
 
-export interface ThemeTrait {
+interface ThemeTrait {
   mode: "dark" | "light";
   tokens: Record<string, string>;
   locale: string;

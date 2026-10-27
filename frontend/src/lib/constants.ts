@@ -115,10 +115,6 @@ export const AI_SUPPORTED_FILE_TYPES = [
   "html",
 ] as const;
 
-export const AI_AT_COMMANDS = {
-  "@sec": "Search SEC fillings ",
-};
-
 export const AI_PROMPTS = {
   "Based on the company profile, please list comparable peers along with bullet points detailing their respective activities and products.":
     ["Company Profile"],

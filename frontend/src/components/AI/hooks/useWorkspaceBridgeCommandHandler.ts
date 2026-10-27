@@ -635,7 +635,7 @@ function buildSkillPayload(skill: WorkspaceSkill): SkillPayload {
   };
 }
 
-export function normalizeWidgetDataForBridge(data: unknown): unknown {
+function normalizeWidgetDataForBridge(data: unknown): unknown {
   if (!Array.isArray(data)) return data;
   return data.map((entry) => {
     const items = (entry as { items?: unknown })?.items;

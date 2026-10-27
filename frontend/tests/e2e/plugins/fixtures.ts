@@ -276,7 +276,7 @@ export function hostileManifest(id = "e2e-hostile") {
   };
 }
 
-export const WIDGETS = {
+const WIDGETS = {
   e2e_rows: {
     name: "E2E rows",
     description: "Rows for one region",

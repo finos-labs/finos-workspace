@@ -20,7 +20,7 @@ export function toInspectableJson(item: unknown): string {
     : json;
 }
 
-export function countInvalidItems(items: InvalidItem[]) {
+function countInvalidItems(items: InvalidItem[]) {
   const widgets = items.filter((item) => item.file === "widgets.json").length;
   return { widgets, apps: items.length - widgets };
 }

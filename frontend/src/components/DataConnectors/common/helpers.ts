@@ -2,7 +2,7 @@ import cloneDeep from "lodash/cloneDeep";
 import isEqual from "lodash.isequal";
 import { v4 as uuidv4 } from "uuid";
 import type { ParamDef, WidgetT } from "~/components/types";
-import { useAppStore, type Widget } from "~/lib/state/app";
+import { useAppStore } from "~/lib/state/app";
 import type { Source } from "~/lib/state/backendConnector";
 import { useCopilotStore } from "~/lib/state/copilot";
 import { isBuiltInVizType, isWellFormedVizType } from "~/lib/types/app";
@@ -13,65 +13,8 @@ import {
   createWidgetInitParams,
   dispatchSaveState,
   dispatchUpdateWidget,
-  generateRandomName,
 } from "~/lib/utils";
 import type { WidgetsType } from "~/utils/zodForms";
-
-export function listToSortedSet(list: string[]): string[] {
-  return [...new Set(list)].sort();
-}
-
-export function addNewDataConnector(
-  setPendingNavigation: (value: string | null) => void,
-  widgetToAdd: Partial<Omit<Widget, "endpoint" | "endpointHeaders">>,
-) {
-  const id = uuidv4();
-  useAppStore.getState().addTab({
-    index: id,
-    data: {
-      name: generateRandomName(),
-      type: "custom",
-      groups: [],
-      widgets: [
-        {
-          ...widgetToAdd,
-          id: uuidv4(),
-          groupId: "",
-          innerTab: "",
-          external: true,
-        } as Widget,
-      ],
-    },
-  });
-  setPendingNavigation(`/app/${id}`);
-}
-
-export function addMultipleNewDataConnector(
-  setPendingNavigation: (value: string | null) => void,
-  widgetsToAdd: Partial<Omit<Widget, "endpoint">>[],
-) {
-  const id = uuidv4();
-  useAppStore.getState().addTab({
-    index: id,
-    data: {
-      name: generateRandomName(),
-      type: "custom",
-      groups: [],
-      widgets: widgetsToAdd.map(
-        (widget) =>
-          ({
-            ...widget,
-            id: uuidv4(),
-            groupId: "",
-            innerTab: "",
-            external: true,
-            name: Array.isArray(widget.name) ? widget.name.join(" ") : widget.name,
-          }) as Widget,
-      ),
-    },
-  });
-  setPendingNavigation(`/app/${id}`);
-}
 
 export function createSourceWidget(
   widget: WidgetsType[string],

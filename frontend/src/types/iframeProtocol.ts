@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const WorkspaceWidgetManifestSchema = z.object({
+const WorkspaceWidgetManifestSchema = z.object({
   widgetId: z.string(),
   name: z.string(),
   description: z.string().optional(),
@@ -8,7 +8,7 @@ export const WorkspaceWidgetManifestSchema = z.object({
   dataType: z.enum(["table", "markdown"]),
 });
 
-export const WorkspaceParamDefSchema = z.object({
+const WorkspaceParamDefSchema = z.object({
   paramName: z.string(),
   label: z.string().optional(),
   type: z.enum(["text", "number", "date", "boolean"]),
@@ -47,7 +47,7 @@ const WorkspaceWidgetParamPrimitiveSchema = z.union([
   z.null(),
 ]);
 
-export const WorkspaceWidgetParamValueSchema = z.union([
+const WorkspaceWidgetParamValueSchema = z.union([
   WorkspaceWidgetParamPrimitiveSchema,
   z.array(WorkspaceWidgetParamPrimitiveSchema),
 ]);
@@ -57,9 +57,9 @@ export const WIDGET_PARAM_MESSAGE_TYPES = [
   "workspace:params:update",
 ] as const;
 
-export type WidgetParamMessageType = (typeof WIDGET_PARAM_MESSAGE_TYPES)[number];
+type WidgetParamMessageType = (typeof WIDGET_PARAM_MESSAGE_TYPES)[number];
 
-export const WorkspaceWidgetParamsUpdateMessageSchema = z.object({
+const WorkspaceWidgetParamsUpdateMessageSchema = z.object({
   type: z.enum(WIDGET_PARAM_MESSAGE_TYPES),
   params: z.record(z.string(), WorkspaceWidgetParamValueSchema).optional(),
   paramName: z.string().optional(),
@@ -68,13 +68,10 @@ export const WorkspaceWidgetParamsUpdateMessageSchema = z.object({
 
 export type WorkspaceWidgetManifest = z.infer<typeof WorkspaceWidgetManifestSchema>;
 export type WorkspaceParamDef = z.infer<typeof WorkspaceParamDefSchema>;
-export type WorkspaceConnectMessage = z.infer<typeof WorkspaceConnectMessageSchema>;
+
 export type WorkspaceDataMessage = z.infer<typeof WorkspaceDataMessageSchema>;
-export type WorkspaceErrorMessage = z.infer<typeof WorkspaceErrorMessageSchema>;
+
 export type WorkspaceWidgetParamValue = z.infer<typeof WorkspaceWidgetParamValueSchema>;
-export type WorkspaceWidgetParamsUpdateMessage = z.infer<
-  typeof WorkspaceWidgetParamsUpdateMessageSchema
->;
 
 export interface WorkspaceParamsUpdateMessage {
   type: "workspace-params-update";

@@ -32,7 +32,7 @@ export const SelectTriggerVariants = cva(
   },
 );
 
-export const SelectContentVariants = cva(DropdownMenuContentVariants(), {
+const SelectContentVariants = cva(DropdownMenuContentVariants(), {
   variants: {
     position: {
       popper:
@@ -48,7 +48,7 @@ const SelectGroup = SelectPrimitive.Group;
 
 const SelectValue = SelectPrimitive.Value;
 
-export interface SelectTriggerProps
+interface SelectTriggerProps
   extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>,
     VariantProps<typeof SelectTriggerVariants> {}
 
@@ -69,7 +69,7 @@ const SelectTrigger = React.forwardRef<
 ));
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName;
 
-export interface SelectScrollUpButtonProps
+interface SelectScrollUpButtonProps
   extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton> {}
 const SelectScrollUpButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollUpButton>,
@@ -85,7 +85,7 @@ const SelectScrollUpButton = React.forwardRef<
 ));
 SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
 
-export interface SelectScrollDownButtonProps
+interface SelectScrollDownButtonProps
   extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollDownButton> {}
 const SelectScrollDownButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollDownButton>,
@@ -101,7 +101,7 @@ const SelectScrollDownButton = React.forwardRef<
 ));
 SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
 
-export interface SelectContentProps
+interface SelectContentProps
   extends Omit<
       React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>,
       "position"
@@ -138,7 +138,7 @@ const SelectContent = React.forwardRef<
 ));
 SelectContent.displayName = SelectPrimitive.Content.displayName;
 
-export interface SelectGroupLabelProps
+interface SelectGroupLabelProps
   extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label> {}
 const SelectGroupLabel = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Label>,
@@ -152,7 +152,7 @@ const SelectGroupLabel = React.forwardRef<
 ));
 SelectGroupLabel.displayName = SelectPrimitive.Label.displayName;
 
-export interface SelectItemProps
+interface SelectItemProps
   extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> {}
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
@@ -174,20 +174,6 @@ const SelectItem = React.forwardRef<
 ));
 SelectItem.displayName = SelectPrimitive.Item.displayName;
 
-export interface SelectSeparatorProps
-  extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator> {}
-const SelectSeparator = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Separator>,
-  SelectSeparatorProps
->(({ className, ...props }, ref) => (
-  <SelectPrimitive.Separator
-    ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-muted", className)}
-    {...props}
-  />
-));
-SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
-
 export interface SelectOptionObject {
   label: string;
   value: string;
@@ -195,12 +181,12 @@ export interface SelectOptionObject {
 }
 export type SelectOption = SelectOptionObject | string;
 
-export interface SelectOptionGroup {
+interface SelectOptionGroup {
   label: string;
   options: CanBeImmutable<SelectOption[]>;
 }
 
-export interface SelectProps<T extends string = string>
+interface SelectProps<T extends string = string>
   extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Root>,
     VariantProps<typeof SelectTriggerVariants> {
   options: CanBeImmutable<SelectOption[] | SelectOptionGroup[]>;
@@ -307,13 +293,8 @@ export {
   FormSelect,
   Select,
   SelectContent,
-  SelectGroup,
-  SelectGroupLabel,
   SelectItem,
   SelectRoot,
-  SelectScrollDownButton,
-  SelectScrollUpButton,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 };

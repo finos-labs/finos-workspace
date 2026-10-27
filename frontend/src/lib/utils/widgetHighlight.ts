@@ -100,7 +100,7 @@ async function highlightElement(element: HTMLElement): Promise<void> {
   }, 1300);
 }
 
-export interface ScrollToWidgetOptions {
+interface ScrollToWidgetOptions {
   waitForLayout?: boolean;
   layoutDelay?: number;
 }

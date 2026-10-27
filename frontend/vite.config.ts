@@ -89,9 +89,11 @@ export default defineConfig(({ mode }) => {
     },
     html: { cspNonce: "VITE_NONCE" },
     worker: { format: "es" },
+    css: process.env.VITEST ? { postcss: { plugins: [] } } : undefined,
     test: {
       globals: true,
       environment: "jsdom",
+      execArgv: ["--no-experimental-webstorage"],
       setupFiles: "./vitest.setup.ts",
       css: { include: [/\.css\?raw$/] },
       exclude: ["**/node_modules/**", "**/dist/**", "**/tests/e2e/**"],

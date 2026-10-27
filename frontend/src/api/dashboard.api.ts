@@ -68,7 +68,7 @@ export async function getOwnedDashboards<T extends DashSync<"owned">>(): Promise
   return data as T;
 }
 
-export async function getSharedDashboards<T extends DashShared>(): Promise<T> {
+async function getSharedDashboards<T extends DashShared>(): Promise<T> {
   const { data } = await apiClient
     .get<T>("/app/dash/sync/shared")
     .catch(() => ({ data: {} as T }));

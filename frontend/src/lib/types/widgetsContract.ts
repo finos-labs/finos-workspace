@@ -350,18 +350,26 @@ export const ParamDefContract = z.discriminatedUnion("type", [
   EndpointParam,
   FormParam,
 ]);
-export type ParamDefContractT = z.infer<typeof ParamDefContract>;
 
 export const McpToolContract = z
   .strictObject({
-    mcp_server: z.string().min(1).max(128),
-    tool_id: z.string().min(1).max(128),
+    mcp_server: z.string().min(1).max(128).meta({
+      description: "The name of a server in this backend's apps.json mcpServers",
+    }),
+    tool_id: z
+      .string()
+      .min(1)
+      .max(128)
+      .meta({ description: "The name of the tool on that server" }),
     args: z
       .record(
         z.string().max(LIMITS.paramName),
         z.union([z.string().max(LIMITS.mcpArgValue), z.number(), z.boolean()]),
       )
-      .meta({ maxProperties: LIMITS.mcpArgs })
+      .meta({
+        maxProperties: LIMITS.mcpArgs,
+        description: "The arguments that the AI Agent passes to the tool, by name",
+      })
       .optional(),
   })
   .meta({
@@ -435,11 +443,11 @@ export const WidgetBaseContract = z.strictObject({
     .optional(),
   refetchInterval: z
     .union([z.number().min(1000).max(1e10), z.literal(false), Cron])
+    .nullish()
     .meta({
       description:
         "Fetch again every so many milliseconds, or on a 5-field cron schedule; false never",
-    })
-    .nullish(),
+    }),
   dataUpdateDisplay: Cron.meta({
     description:
       "When the data changes, as a 5-field cron expression shown to the user",
@@ -506,7 +514,7 @@ const RAW_DATA_PROPERTIES = {
     .optional(),
 };
 
-export interface BuiltInTypeContract {
+interface BuiltInTypeContract {
   summary: string;
   returns: string;
   properties: Record<string, z.ZodType>;

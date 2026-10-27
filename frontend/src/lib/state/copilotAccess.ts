@@ -4,9 +4,9 @@ export type CopilotModelGrant = { agent_id: string; model_id: string };
 
 export type McpGrant = { server_url: string; tool_name: string };
 
-export type CopilotCapability = "SEARCH_WEB" | "FETCH_FROM_WEB";
+type CopilotCapability = "SEARCH_WEB" | "FETCH_FROM_WEB";
 
-export const CAPABILITY_MCP_TOOLS: Record<CopilotCapability, readonly string[]> = {
+const CAPABILITY_MCP_TOOLS: Record<CopilotCapability, readonly string[]> = {
   SEARCH_WEB: ["web_search"],
   FETCH_FROM_WEB: ["fetch_webpage", "inspect_webpage"],
 };

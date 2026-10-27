@@ -11,6 +11,17 @@ import { RateLimiter, type TraitBinding, ViolationCounter } from "./authority";
 import { BundleIntegrityError, loadBundle } from "./bundle";
 import { buildSrcdoc, FRAME_SANDBOX } from "./frame";
 import {
+  EXPORT_TIMEOUTS_MS,
+  GUEST_MESSAGE_RATE,
+  LOAD_TIMEOUTS_MS,
+  MAX_PENDING_COMMANDS,
+  MAX_REPORTS_PER_FLUSH,
+  MISSED_PINGS,
+  PING_INTERVAL_MS,
+  REPORT_INTERVAL_MS,
+  VIOLATION_LIMIT,
+} from "./limits";
+import {
   AFM_VERSION,
   approximateSize,
   type ColorScheme,
@@ -49,7 +60,7 @@ export interface PluginFrameHandle {
   restart: () => void;
 }
 
-export interface PluginFrameProps {
+interface PluginFrameProps {
   plugin: AvailablePlugin;
   title: string;
   bindings: TraitBinding[];
@@ -66,16 +77,6 @@ export interface PluginFrameProps {
   visible?: boolean;
   handleRef?: Ref<PluginFrameHandle>;
 }
-
-const PING_INTERVAL_MS = 5000;
-const MISSED_PINGS = 3;
-const MAX_PENDING_COMMANDS = 32;
-const REPORT_INTERVAL_MS = 5000;
-const EXPORT_TIMEOUTS_MS: Record<ExportMember, number> = {
-  exportOptions: 10_000,
-  exportData: 60_000,
-  copilotContext: 10_000,
-};
 
 function post(
   port: MessagePort | null,
@@ -133,8 +134,8 @@ export default function PluginFrame(props: PluginFrameProps) {
       missedPings: 0,
       pingSeq: 0,
       reports: new Map(),
-      limiter: new RateLimiter(100, 200),
-      violations: new ViolationCounter(3, 10_000),
+      limiter: new RateLimiter(GUEST_MESSAGE_RATE.perSecond, GUEST_MESSAGE_RATE.burst),
+      violations: new ViolationCounter(VIOLATION_LIMIT.count, VIOLATION_LIMIT.windowMs),
       ended: false,
     };
   }, []);
@@ -180,7 +181,7 @@ export default function PluginFrame(props: PluginFrameProps) {
       const current = session.current;
       do {
         if (!current.reports.size) return;
-        const batch = [...current.reports.entries()].slice(0, 50);
+        const batch = [...current.reports.entries()].slice(0, MAX_REPORTS_PER_FLUSH);
         for (const [key] of batch) current.reports.delete(key);
         postPluginReports({
           plugin_id: plugin.id,
@@ -267,7 +268,10 @@ export default function PluginFrame(props: PluginFrameProps) {
               state,
               writable: bindings.filter((b) => b.writable).map((b) => b.trait),
               permissions,
-              timeouts: { initialize: 15000, render: 15000 },
+              timeouts: {
+                initialize: LOAD_TIMEOUTS_MS.initialize,
+                render: LOAD_TIMEOUTS_MS.render,
+              },
             },
             [bundle.entry],
           );

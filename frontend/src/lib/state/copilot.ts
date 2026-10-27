@@ -111,7 +111,7 @@ interface DataFormatBase<P extends ParseAs = ParseAs> {
   parse_as?: P;
 }
 
-export type DataFormat = DataFormatBase;
+type DataFormat = DataFormatBase;
 
 export interface DataContent {
   content: string;
@@ -243,14 +243,13 @@ export const CopilotDataSchema = z.object({
   extra_citations: z.array(ExtraCitationSchema).optional(),
 });
 
-export const CopilotCommandResultSchema = z.looseObject({
+const CopilotCommandResultSchema = z.looseObject({
   status: z.enum(["success", "error"]),
   message: z.string().optional(),
 });
 
-export type CopilotDataItemT = z.infer<typeof CopilotDataItemSchema>;
 export type CopilotDataT = z.infer<typeof CopilotDataSchema>;
-export type CopilotAiDataT = Partial<DataContent & DataUrl & CopilotError>;
+
 export type CopilotCommandResultT = z.infer<typeof CopilotCommandResultSchema>;
 
 export type CopilotFile = {
@@ -360,7 +359,7 @@ type AppArtifactGroup = {
   widgetIds: string[];
 };
 
-export type AppArtifactDef = {
+type AppArtifactDef = {
   name: string;
   description?: string;
   allowCustomization?: boolean;
@@ -389,7 +388,7 @@ export type ArtifactType<T extends ArtifactT["type"]> = Extract<ArtifactT, { typ
 
 export type DetailT = Record<string, unknown> | null;
 
-export interface DatetimeState {
+interface DatetimeState {
   timestamp: number;
   targetGroupId: string;
 }
@@ -463,7 +462,7 @@ export interface SystemMessage extends BaseMessage {
   orchestrationModeEnabled?: boolean;
 }
 
-export interface ToolMessageBase extends BaseMessage {
+interface ToolMessageBase extends BaseMessage {
   role: "tool";
   data: CopilotDataT[] | CopilotCommandResultT[];
 }
@@ -485,13 +484,13 @@ export type Chat<M = Message> = {
   agentIds?: string[];
 };
 
-export type CopilotTextSuggestion = {
+type CopilotTextSuggestion = {
   question: string;
   matchCount: number;
   idsLength: number;
 };
 
-export interface MetadataFormValues {
+interface MetadataFormValues {
   name: string;
   description?: string;
   category?: string;
@@ -508,7 +507,7 @@ export interface CreateWidgetMetadataDialogState {
   dashboardId?: string;
 }
 
-export interface CopilotState {
+interface CopilotState {
   copilotTextSuggestions: CopilotTextSuggestion[];
   setCopilotTextSuggestions: (suggestions: CopilotTextSuggestion[]) => void;
   actionHistory: string[];

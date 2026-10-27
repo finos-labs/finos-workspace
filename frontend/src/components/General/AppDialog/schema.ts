@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const appMetadataSchema = {
+const appMetadataSchema = {
   name: z.string().min(1, "App name is required"),
   description: z.string().min(1, "App description is required"),
   imageUrl: z.string().optional(),

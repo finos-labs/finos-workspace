@@ -56,7 +56,7 @@ const initialState = {
   openReset2FA: false,
 };
 
-export function getBaseState(user: User | UserInfo, initial?: Partial<BaseState>) {
+function getBaseState(user: User | UserInfo, initial?: Partial<BaseState>) {
   return {
     permissions_uuid: user.permissions_uuid,
     ...(initial || {}),

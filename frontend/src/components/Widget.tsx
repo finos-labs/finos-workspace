@@ -16,7 +16,7 @@ import Widgets, { getWidgetComponent, type WidgetId } from "./Widgets";
 
 const PluginWidget = lazy(() => import("~/plugins/PluginWidget"));
 
-export function isPluginRendered(
+function isPluginRendered(
   widget: { plugin?: unknown; type?: string | null } | undefined,
 ) {
   if (!widget) return false;
@@ -102,7 +102,7 @@ function loadWidgetComponent(widgetId: WidgetId) {
   return Component ? <Component /> : null;
 }
 
-export function WidgetComponent() {
+function WidgetComponent() {
   const { widget, widgetFromJSON } = useWidgetContext();
   if (!widget?.widgetId) {
     return null;

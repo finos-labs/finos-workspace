@@ -33,7 +33,7 @@ import { useAppStore } from "../state/app";
 import { isRenderableVizType } from "../types/app";
 import { convertAdvancedBackend, generateRandomName, uuidv4 } from "../utils";
 
-export type SelectedWidget = WidgetCardItem &
+type SelectedWidget = WidgetCardItem &
   Partial<Omit<WidgetType, keyof WidgetCardItem>> & {
     parentName?: string;
     extension?: string;
@@ -42,7 +42,7 @@ export type SelectedWidget = WidgetCardItem &
     backendId?: string;
   };
 
-export const createDashboardWidget = (
+const createDashboardWidget = (
   widget: SelectedWidget,
   widgetType: string,
 ): WidgetT | null => {
@@ -154,12 +154,12 @@ export const findDeletableWidgets = (
     (elem) => !(elem.shared || elem.selectionId.startsWith("backend,")),
   );
 
-export const FILE_TYPES = {
+const FILE_TYPES = {
   pdf: ["pdf"],
   text: ["txt", "md", "docx", "html"],
 };
 
-export type StoredFileWidget = {
+type StoredFileWidget = {
   selectionId: string;
   id: string;
   name: string;
@@ -187,12 +187,6 @@ type SelectedWidgetsContextType = {
 
 function formatType(type: string): string {
   return type.toUpperCase();
-}
-
-const formattedFileTypes = Object.keys(FILE_TYPES).map((key) => formatType(key));
-
-export function isFileRoot(type: string) {
-  return formattedFileTypes.includes(type);
 }
 
 function formatFile(files: StoredFile[]): StoredFileWidget[] {

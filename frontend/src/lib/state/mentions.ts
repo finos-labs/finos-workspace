@@ -6,7 +6,7 @@ import { createWithEqualityFn } from "zustand/traditional";
 import type { Selector } from "~/lib/state/app";
 import type { Mention } from "~/lib/state/copilot";
 
-export type MentionsState = {
+type MentionsState = {
   optionsMap: Record<string, Mention>;
   setOptionsMap: (optionsMap: Map<string, Mention>) => void;
   getMention: (id: string) => Mention | undefined;

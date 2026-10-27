@@ -3,7 +3,7 @@ import React from "react";
 import Icon from "~/components/Icon";
 import { cn } from "../utils";
 
-export interface RadioGroupProps
+interface RadioGroupProps
   extends React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root> {}
 const RadioGroup = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Root>,
@@ -19,7 +19,7 @@ const RadioGroup = React.forwardRef<
 });
 RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
 
-export interface RadioGroupItemProps
+interface RadioGroupItemProps
   extends React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item> {
   label?: React.ReactNode;
   error?: boolean;
@@ -75,7 +75,7 @@ const RadioGroupItem = React.forwardRef<
 });
 RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName;
 
-export interface RadioGroupLabelProps extends React.ComponentPropsWithoutRef<"div"> {}
+interface RadioGroupLabelProps extends React.ComponentPropsWithoutRef<"div"> {}
 const RadioGroupLabel = React.forwardRef<
   React.ElementRef<React.FC>,
   RadioGroupLabelProps

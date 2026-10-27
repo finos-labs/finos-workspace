@@ -1027,7 +1027,7 @@ export async function getDependentEndpointParamValues(
   return updates;
 }
 
-export function isValidParamOption(
+function isValidParamOption(
   widget: Widget,
   group: Group,
 ): group is GroupTypeT<"param"> {
@@ -1294,7 +1294,7 @@ type MainTickerByCategoryParams = {
   defaultCategory?: Ticker["category"];
 };
 
-export function MainTickerByCategory(props: MainTickerByCategoryParams): Ticker {
+function MainTickerByCategory(props: MainTickerByCategoryParams): Ticker {
   const { widget, defaultTicker = DEFAULT_TICKERS.AAPL, defaultCategory } = props;
   const mainTicker = widget?.data?.mainTicker || defaultTicker;
 

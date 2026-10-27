@@ -17,7 +17,6 @@ import { Form, FormField } from "~/components/ds/molecules/Form";
 import { Notice } from "~/components/ds/molecules/Notice";
 import Icon from "~/components/Icon";
 import { useStateReducer } from "~/hooks/useStateReducer";
-import { getConfig } from "~/lib/runtimeConfig";
 import { useAppStore } from "~/lib/state/app";
 import {
   type Source,
@@ -35,7 +34,7 @@ import {
 import { updateWidgetEndpoints } from "../DataConnectors/common/helpers";
 import { motionElemProps } from "../ds/atoms/collapsible-motion";
 
-export const AppSchema = z.object({
+const AppSchema = z.object({
   id: z.uuid().optional(),
   name: z.string().min(1, "This field is required"),
   url: z.url().min(1, "This field is required"),
@@ -51,9 +50,7 @@ export const AppSchema = z.object({
   validateWidgets: z.string().default("false").optional(),
 });
 
-export type AppForm = z.infer<typeof AppSchema>;
-
-const uiShowExternalDocumentationLinksFF = getConfig().ui.showExternalDocLinks;
+type AppForm = z.infer<typeof AppSchema>;
 
 const initialState = {
   loading: false,

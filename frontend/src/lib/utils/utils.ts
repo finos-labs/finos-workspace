@@ -233,93 +233,6 @@ export function saveToLS(localStorageKey: string, key: string, value: unknown) {
   );
 }
 
-const CHARTING_COLORS = [
-  "#00B5E2",
-  "#E93361",
-  "#4ADE80",
-  "#EF7D00",
-  "#005CA9",
-  "#FACCD8",
-  "#16A34A",
-  "#CCBE00",
-  "#991B1B",
-  "#F5B166",
-];
-
-export function generateRandomColor() {
-  const randomColor =
-    CHARTING_COLORS[Math.floor(Math.random() * CHARTING_COLORS.length)];
-  return randomColor;
-}
-
-const hexToRGB = (hex: string): [number, number, number] => {
-  const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-  const fullHex = hex.replace(shorthandRegex, (_, r, g, b) => r + r + g + g + b + b);
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex);
-  if (result) {
-    return [
-      Number.parseInt(result[1], 16),
-      Number.parseInt(result[2], 16),
-      Number.parseInt(result[3], 16),
-    ];
-  }
-  return [0, 0, 0];
-};
-
-export function generateBackgroundColorWithContrast(
-  textColor: "white" | "black" = "black",
-  threshold = 4.5,
-  vibrancy = 0.5,
-): string {
-  const getVibrancy = (color: string): number => {
-    const getSaturation = (r: number, g: number, b: number): number => {
-      const max = Math.max(r, g, b);
-      const min = Math.min(r, g, b);
-      const delta = max - min;
-      const sum = max + min;
-      return delta === 0 ? 0 : delta / sum;
-    };
-
-    const rgb = hexToRGB(color);
-    const saturation = getSaturation(...rgb);
-    return saturation;
-  };
-
-  const getContrastRatio = (color: string): number => {
-    const rgbToLuminance = (r: number, g: number, b: number): number => {
-      const sRGB = (c: number): number => {
-        const channel = c / 255;
-        return channel <= 0.03928
-          ? channel / 12.92
-          : // biome-ignore lint: Use the '**' operator instead of 'Math.pow'
-            Math.pow((channel + 0.055) / 1.055, 2.4);
-      };
-
-      const gammaRGB = [sRGB(r), sRGB(g), sRGB(b)];
-      return 0.2126 * gammaRGB[0] + 0.7152 * gammaRGB[1] + 0.0722 * gammaRGB[2];
-    };
-
-    const textColorLuminance = rgbToLuminance(...hexToRGB(textColor));
-    const backgroundColorLuminance = rgbToLuminance(...hexToRGB(color));
-    return (
-      (Math.max(textColorLuminance, backgroundColorLuminance) + 0.05) /
-      (Math.min(textColorLuminance, backgroundColorLuminance) + 0.05)
-    );
-  };
-
-  let backgroundColor = generateRandomColor();
-  let contrastRatio = getContrastRatio(backgroundColor);
-  let colorVibrancy = getVibrancy(backgroundColor);
-
-  while (contrastRatio < threshold || colorVibrancy < vibrancy) {
-    backgroundColor = generateRandomColor();
-    contrastRatio = getContrastRatio(backgroundColor);
-    colorVibrancy = getVibrancy(backgroundColor);
-  }
-
-  return backgroundColor;
-}
-
 export const COLORS = [
   "#00B5E2",
   "#EF6689",
@@ -470,10 +383,6 @@ export function formatNumber(number: number, decimals = 3, inMillions = false): 
   return value;
 }
 
-export function formatNumbers(values: number[], decimals = 3): string[] {
-  return values.map((value) => formatNumber(value, decimals));
-}
-
 export function formatNumberNoMagnitude(value: number | string) {
   if (typeof value === "string") {
     const suffix = value.replace(/[^a-zA-Z]/g, "").trim();
@@ -572,8 +481,8 @@ export function formatNumberMagnitude(
   return formatNumberThousands(value);
 }
 
-export const numberRegex = /^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?$/;
-export const magnitudeRegex = /^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?[KMBT]$/;
+const numberRegex = /^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?$/;
+const magnitudeRegex = /^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?[KMBT]$/;
 
 export function parseValue(value: string | number): number | string {
   try {
@@ -1198,7 +1107,7 @@ export function scoreArrays<T>(
   return { score: score / lgArray.length, matches };
 }
 
-export function mergeObjects<T, U>(target: T, source: U, withFunctions = false): T & U {
+function mergeObjects<T, U>(target: T, source: U, withFunctions = false): T & U {
   try {
     const into = target as Record<string, unknown>;
     const from = (source || {}) as Record<string, unknown>;
@@ -1236,17 +1145,6 @@ export function mergeObjects<T, U>(target: T, source: U, withFunctions = false):
     console.log(`Error in mergeObjects: ${e}`);
     return (target || {}) as T & U;
   }
-}
-
-export function filterFunctions<T>(source: T | T[]): T | T[] {
-  if (Array.isArray(source)) {
-    return source.map((item) => mergeObjects({} as T, item));
-  }
-  if (typeof source === "object") {
-    return mergeObjects({} as T, source);
-  }
-
-  return source;
 }
 
 export const formatFileSize = (bytes: number, decimalCases = 0): string => {

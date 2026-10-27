@@ -9,7 +9,7 @@ interface LibraryRowProps {
   className?: string;
 }
 
-export const LIBRARY_ROW_CLASS = "border-b border-surface-divider last:border-b-0 py-2";
+const LIBRARY_ROW_CLASS = "border-b border-surface-divider last:border-b-0 py-2";
 
 export const LIBRARY_CARD_CLASS =
   "rounded-md border border-general-border-secondary bg-general-bg-primary px-3.5";

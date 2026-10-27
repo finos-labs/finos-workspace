@@ -5,10 +5,10 @@ import type { Copilot } from "~/lib/state/copilot";
 import { encodeWav } from "~/lib/utils/wav";
 import { useGetCopilotRequestHeaders } from "./useGetCopilotRequestHeaders";
 
-export const MAX_RECORDING_MS = 120_000;
+const MAX_RECORDING_MS = 120_000;
 const SAMPLE_RATE = 16_000;
 
-export type DictationState = "idle" | "recording" | "transcribing";
+type DictationState = "idle" | "recording" | "transcribing";
 
 export function transcribeUrl(agent: Copilot | null | undefined): string | null {
   const query = agent?.endpoints?.query;

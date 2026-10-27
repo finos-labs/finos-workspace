@@ -31,7 +31,7 @@ const avatarVariants = cva(
   },
 );
 
-export interface AvatarProps extends VariantProps<typeof avatarVariants> {
+interface AvatarProps extends VariantProps<typeof avatarVariants> {
   src?: string;
   alt: string;
   fallback?: ReactNode;
@@ -99,7 +99,7 @@ const responseCb: TResponseCb<string> = async (response, resolve, reject) => {
   }
 };
 
-export const Avatar = memo((props: AvatarProps) => {
+const Avatar = memo((props: AvatarProps) => {
   const {
     src,
     alt,

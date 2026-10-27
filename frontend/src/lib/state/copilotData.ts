@@ -31,12 +31,6 @@ export interface DashboardWidgetData {
   captureExecutedParams?: boolean;
 }
 
-export interface WidgetData extends DashboardWidgetData {
-  ticker: string;
-  source: string;
-  widgetId: string;
-}
-
 export interface WidgetSubsetData {
   uuid: string;
   name: string;
@@ -101,7 +95,7 @@ interface CopilotDataState {
   widgetRuntimeState: Map<string, CopilotWidgetRuntimeState>;
 }
 
-export interface CopilotDataStore extends CopilotDataState {
+interface CopilotDataStore extends CopilotDataState {
   getCopilotWidgets: (targetAgend?: Copilot) => CopilotWidgets;
   setCopilotWidgets: (widgets: Partial<CopilotWidgets>) => void;
   updateSignaturesMap: () => Promise<void>;

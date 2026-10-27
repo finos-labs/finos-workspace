@@ -24,7 +24,7 @@ interface ICheckboxProps extends DefaultProps {
   onFocus?: FocusEventHandler<HTMLButtonElement>;
   onBlur?: FocusEventHandler<HTMLButtonElement>;
 }
-export interface CheckboxProps
+interface CheckboxProps
   extends Omit<
       InputHTMLAttributes<HTMLInputElement>,
       "onChange" | "checked" | "onFocus" | "onBlur"

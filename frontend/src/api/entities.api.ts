@@ -26,7 +26,7 @@ export interface EntityBody {
   sharing_enabled: boolean;
 }
 
-export interface EntityAdminBody {
+interface EntityAdminBody {
   email: string;
   permissions_uuid: string;
   first_name: string;

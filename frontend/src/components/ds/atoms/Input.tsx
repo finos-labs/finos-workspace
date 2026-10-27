@@ -45,7 +45,7 @@ export const groupVariants = cva(
   },
 );
 
-export const inputVariants = cva(
+const inputVariants = cva(
   [
     "BB-Input flex w-full border-none bg-transparent",
     "file:border-0 file:bg-transparent file:font-medium file:text-sm",

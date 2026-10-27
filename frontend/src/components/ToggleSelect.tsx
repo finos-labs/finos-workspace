@@ -1,7 +1,6 @@
 import {
   type ForwardedRef,
   forwardRef,
-  memo,
   type ReactElement,
   type ReactNode,
 } from "react";
@@ -53,5 +52,3 @@ export const ToggleSelect = forwardRef<HTMLInputElement, ToggleSelectProps>(
 ) as (
   props: ToggleSelectProps & { ref?: ForwardedRef<HTMLInputElement> },
 ) => ReactElement;
-
-export default memo(ToggleSelect);

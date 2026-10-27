@@ -45,12 +45,6 @@ interface GroupBase<T> {
   groupById: unknown;
 }
 
-export type EndpointParam = {
-  label: string;
-  paramName: string;
-  value: string;
-};
-
 interface LinkedParamGroup extends GroupBase<"param"> {
   type: "param";
   groupById: string;
@@ -72,7 +66,7 @@ interface EndpointParamGroup extends GroupBase<"endpointParam"> {
 export type Group = TickerGroup | EndpointParamGroup | LinkedParamGroup;
 export type GroupTypeT<T extends GroupTypes> = Extract<Group, { type: T }>;
 
-export type TickerCategory =
+type TickerCategory =
   | "crypto"
   | "equity"
   | "forex"
@@ -230,7 +224,7 @@ export interface WidgetProps {
   activeDashboardId?: string;
   contextOverride?: Partial<WidgetContextType>;
 }
-type ParamValueT<T extends ParamType> = Extract<ParamDef, { type: T }>["value"];
+
 type ParamType =
   | "date"
   | "text"

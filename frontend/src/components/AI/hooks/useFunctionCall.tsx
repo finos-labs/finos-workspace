@@ -789,7 +789,7 @@ function getRequest(widget: WidgetT, inputArgs: Record<string, unknown>): Reques
 
 type GetDashboardWidgetData = (widgetId: string) => DashboardWidgetData | undefined;
 
-export async function getCustomWidgetsData(
+async function getCustomWidgetsData(
   dataSource: DataSourceT,
   getWidgetFromBackend: (backendName: string, widgetId: string) => WidgetT | null,
   getDashboardWidgetData: GetDashboardWidgetData,

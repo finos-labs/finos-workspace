@@ -9,7 +9,7 @@ import { placeholders } from "./widgetsContractChecks";
 
 type JsonSchema = Record<string, unknown>;
 
-export type ParamPlace = "path" | "query" | "header" | "body";
+type ParamPlace = "path" | "query" | "header" | "body";
 
 export function paramPlace(param: ParamDef, endpointUrl?: string): ParamPlace | null {
   if (param.type === "form") return null;
@@ -102,7 +102,7 @@ function settingsJsonSchema(settings: SettingsSchema): JsonSchema {
   };
 }
 
-export function pluginSettings(
+function pluginSettings(
   widget: Pick<WidgetT, "type" | "plugin">,
 ): SettingsSchema | undefined {
   const resolved = widget.plugin

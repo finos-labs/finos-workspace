@@ -8,7 +8,7 @@ import { WidgetContext } from "~/components/Widget.context";
 import { makeWidget, makeWidgetContext } from "../../factories";
 import { type DeepPartial, partial } from "../../mocks";
 
-export const createMockWidget = (overrides: DeepPartial<WidgetT> = {}): WidgetT =>
+const createMockWidget = (overrides: DeepPartial<WidgetT> = {}): WidgetT =>
   partial<WidgetT>({
     ...makeWidget({ id: "test-uuid", widgetId: "test-widget-id" }),
     ...overrides,

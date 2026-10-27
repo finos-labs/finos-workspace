@@ -23,8 +23,6 @@ import NoItems from "~/components/LayoutAuth/NoItems";
 import useSyncItems from "~/components/LayoutAuth/useSyncItems";
 import { useShallowAppStore } from "~/lib/state/app";
 
-export const MAX_DRAWER_WIDTH_PERCENT = 0.2;
-
 function useAuthKeyPresses() {
   const themeStore = useShallowThemeStore((state) => ({
     toggleTheme: state.toggleTheme,

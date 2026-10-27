@@ -43,7 +43,7 @@ type FileExtraSettingsProps = {
   fileKey: string;
 };
 
-export function FileExtraSettings(props: FileExtraSettingsProps) {
+function FileExtraSettings(props: FileExtraSettingsProps) {
   const form = useFormContext<FilesForm>();
   const { fileIndex, fileKey } = props;
 

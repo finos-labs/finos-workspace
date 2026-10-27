@@ -30,21 +30,23 @@ export default function AdminWidgets() {
       tabs={tabs}
       defaultTab="plugins"
     >
-      <TabsPrimitive.Content value="plugins" className="outline-none">
+      <TabsPrimitive.Content value="plugins" className="px-6 py-6 outline-none">
         <EntityPluginsTab />
       </TabsPrimitive.Content>
-      <TabsPrimitive.Content value="core" className="outline-none">
-        <ul className="flex flex-col gap-1 body-xs-regular">
+      <TabsPrimitive.Content value="core" className="px-6 py-6 outline-none">
+        <ul className="flex flex-col gap-3 body-xs-regular">
           {WidgetVizTypes.map((type) => (
             <li key={type}>
-              <span className="body-xs-medium">{type}</span>:{" "}
-              {CORE_DESCRIPTIONS[type] ?? ""}
+              <span className="body-xs-medium">{type}</span>
+              <span className="text-ds-text-body">
+                : {CORE_DESCRIPTIONS[type] ?? ""}
+              </span>
             </li>
           ))}
         </ul>
       </TabsPrimitive.Content>
       {isSuperuser && (
-        <TabsPrimitive.Content value="deployment" className="outline-none">
+        <TabsPrimitive.Content value="deployment" className="px-6 py-6 outline-none">
           <DeploymentTab />
         </TabsPrimitive.Content>
       )}

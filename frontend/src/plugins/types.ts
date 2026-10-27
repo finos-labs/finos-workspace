@@ -58,7 +58,7 @@ const HandleSchema = z.object({
     .default({ accepts: "json", description: "" }),
 });
 
-export const PluginWidgetSchema = z.object({
+const PluginWidgetSchema = z.object({
   id: z.string().regex(/^[a-z][a-z0-9_-]{0,47}$/),
   name: z.string(),
   description: z.string().default(""),
@@ -95,7 +95,7 @@ const FileInfoSchema = z.object({
   sha256: z.string().regex(SHA256_HEX),
 });
 
-export const AvailablePluginSchema = z.object({
+const AvailablePluginSchema = z.object({
   id: z.string().regex(PLUGIN_ID_PATTERN),
   version: z.string(),
   name: z.string(),

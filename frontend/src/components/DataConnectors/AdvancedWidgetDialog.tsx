@@ -28,7 +28,8 @@ import { Notice } from "../ds/molecules/Notice";
 import Icon from "../Icon";
 import { getSourceWidgetsToAdd, updateWidgetEndpoints } from "./common/helpers";
 import { useDataConnectorContext } from "./Providers/DataConnectorContext";
-export const AdvancedSchema = z.object({
+
+const AdvancedSchema = z.object({
   id: z.uuid().optional(),
   name: z.string().min(1, "This field is required"),
   url: z.url().min(1, "This field is required"),

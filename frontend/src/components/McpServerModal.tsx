@@ -380,7 +380,6 @@ const mcpServerSchema = z.object({
 });
 
 export type McpServerSchema = z.infer<typeof mcpServerSchema>;
-export type NewMcpServer = McpServerSchema;
 
 export const McpServerModal = memo(({ onClose }: Omit<McpServerModalProps, "open">) => {
   const servers = useShallowMcpToolsStore((state) => state.servers);

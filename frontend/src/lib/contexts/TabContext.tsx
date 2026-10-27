@@ -13,7 +13,7 @@ import { useShallowSharedAppStore } from "~/lib/state/sharedApp";
 
 export type GridItem = Layout & { mobileH?: number };
 
-export type TabProviderProps = {
+type TabProviderProps = {
   currentTab: string;
   tabId?: string;
   layouts: GridItem[];
@@ -26,7 +26,7 @@ type TabContextType = Omit<TabProviderProps, "children"> & {
   getWidget: (widgetId: string) => Widget | undefined;
 };
 
-export const TabContext = createContext<TabContextType | null>(null);
+const TabContext = createContext<TabContextType | null>(null);
 
 export function useTabContext() {
   const context = useContext(TabContext);

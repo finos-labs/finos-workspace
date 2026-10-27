@@ -42,7 +42,7 @@ interface GridLayoutProps extends PropsWithChildren {
   extraClassName?: string;
 }
 
-export const resizeHandle = (resizeHandle: string, ref: Ref<HTMLElement>) => {
+const resizeHandle = (resizeHandle: string, ref: Ref<HTMLElement>) => {
   return (
     <div
       className={cn(

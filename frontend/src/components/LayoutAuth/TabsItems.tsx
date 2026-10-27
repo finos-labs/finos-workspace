@@ -98,9 +98,7 @@ function recursiveChildrenIds(item: string, items: SideBarItems): string[] {
   return children.flatMap((child) => recursiveChildrenIds(child, items));
 }
 
-export function useTabsItems(
-  tabsRef: MutableRefObject<HTMLDivElement | null | undefined>,
-) {
+function useTabsItems(tabsRef: MutableRefObject<HTMLDivElement | null | undefined>) {
   const id = useParams()?.id;
   const tabId = useMemo(() => id, [id]);
 

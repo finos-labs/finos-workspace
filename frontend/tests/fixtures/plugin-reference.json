@@ -1,0 +1,675 @@
+{
+  "versions": {
+    "runtime": 1,
+    "afm": "0.11"
+  },
+  "shell": {
+    "ready": "ws-shell-ready",
+    "port": "ws-shell-port",
+    "sandbox": "allow-scripts"
+  },
+  "guestMessages": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "hello"
+          },
+          "runtime": {
+            "type": "number"
+          },
+          "afm": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "canary": {
+            "maxItems": 32,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                "ok": {
+                  "type": "boolean"
+                },
+                "detail": {
+                  "type": "string",
+                  "maxLength": 300
+                }
+              },
+              "required": [
+                "name",
+                "ok"
+              ]
+            }
+          }
+        },
+        "required": [
+          "t",
+          "runtime",
+          "afm",
+          "canary"
+        ],
+        "description": "The shell is running and reports the result of its self-check."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "loaded"
+          },
+          "exports": {
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        },
+        "required": [
+          "t",
+          "exports"
+        ],
+        "description": "initialize and render have finished. The names are the members that initialize returned."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "error"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "load",
+              "initialize",
+              "render",
+              "runtime",
+              "export"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "t",
+          "phase",
+          "message"
+        ],
+        "description": "Something failed. The host only logs an error in the runtime phase and ends the frame for every other phase."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "write"
+          },
+          "traits": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "t",
+          "traits"
+        ],
+        "description": "The module called save_changes. The host answers with an echo message."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "invoke"
+          },
+          "id": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "msg": {},
+          "buffers": {
+            "maxItems": 8,
+            "type": "array",
+            "items": {}
+          }
+        },
+        "required": [
+          "t",
+          "id",
+          "name",
+          "msg"
+        ],
+        "description": "The module calls a command."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "export-result"
+          },
+          "id": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "value": {},
+          "error": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "name",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "t",
+          "id",
+          "ok"
+        ],
+        "description": "The module answers a call-export message."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "pong"
+          },
+          "seq": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "t",
+          "seq"
+        ],
+        "description": "The module answers a ping."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "csp"
+          },
+          "directive": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "origin": {
+            "type": "string",
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "t",
+          "directive",
+          "origin"
+        ],
+        "description": "The policy blocked a request."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "log"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "debug",
+              "info",
+              "warn",
+              "error"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "t",
+          "level",
+          "text"
+        ],
+        "description": "The module wrote a log line."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "disposed"
+          }
+        },
+        "required": [
+          "t"
+        ],
+        "description": "The module's cleanup has finished."
+      }
+    ]
+  },
+  "hostMessages": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "load"
+          },
+          "entry": {
+            "description": "The module's bytes."
+          },
+          "styles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The stylesheets of the plugin."
+          },
+          "state": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {},
+            "description": "The initial value of each bound trait."
+          },
+          "writable": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The traits that the module may write."
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The permissions that the widget holds."
+          },
+          "timeouts": {
+            "type": "object",
+            "properties": {
+              "initialize": {
+                "type": "number"
+              },
+              "render": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "initialize",
+              "render"
+            ],
+            "description": "How long initialize and render may take, in milliseconds."
+          }
+        },
+        "required": [
+          "t",
+          "entry",
+          "styles",
+          "state",
+          "writable",
+          "permissions",
+          "timeouts"
+        ],
+        "description": "The host delivers the module and its starting state."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "push"
+          },
+          "traits": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "t",
+          "traits"
+        ],
+        "description": "The host reports changed trait values, and each change fires change:<trait> in the module."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "echo"
+          },
+          "traits": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "t",
+          "traits"
+        ],
+        "description": "The host reports the writes that it accepted. A refused write comes back with the previous value."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "result"
+          },
+          "id": {
+            "type": "number"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "value": {},
+          "buffers": {
+            "type": "array",
+            "items": {}
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "t",
+          "id",
+          "ok"
+        ],
+        "description": "The host answers an invoke message."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "event"
+          },
+          "content": {},
+          "buffers": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        "required": [
+          "t",
+          "content"
+        ],
+        "description": "The host sends an event to the module's msg:custom listeners, for example a refresh or a visibility change."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "call-export"
+          },
+          "id": {
+            "type": "number"
+          },
+          "member": {
+            "type": "string",
+            "enum": [
+              "exportOptions",
+              "exportData",
+              "copilotContext"
+            ]
+          },
+          "args": {
+            "type": "array",
+            "items": {}
+          },
+          "timeout": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "t",
+          "id",
+          "member",
+          "args",
+          "timeout"
+        ],
+        "description": "The host calls a member of the module's exports."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "ping"
+          },
+          "seq": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "t",
+          "seq"
+        ],
+        "description": "The host checks that the frame is alive."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "scheme"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "light",
+              "dark"
+            ]
+          }
+        },
+        "required": [
+          "t",
+          "mode"
+        ],
+        "description": "The site's color mode changed."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": "string",
+            "const": "dispose"
+          }
+        },
+        "required": [
+          "t"
+        ],
+        "description": "The host ends the widget, which aborts signal and runs the cleanups."
+      }
+    ]
+  },
+  "exportOption": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$",
+        "description": "The id that the host passes to exportData. It is unique among the options."
+      },
+      "label": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 60,
+        "description": "The text that the Export entry shows."
+      },
+      "extension": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9]{1,10}$",
+        "description": "The extension of the file, without a dot."
+      },
+      "mime": {
+        "type": "string",
+        "maxLength": 192,
+        "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]{0,63}\\/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$",
+        "description": "The MIME type of the file, in the form type/subtype."
+      }
+    },
+    "required": [
+      "id",
+      "label",
+      "extension",
+      "mime"
+    ],
+    "additionalProperties": false
+  },
+  "commandErrors": [
+    "not_granted",
+    "invalid_args",
+    "out_of_scope",
+    "rate_limited",
+    "too_large",
+    "unknown_command",
+    "timeout",
+    "unavailable"
+  ],
+  "exportMembers": [
+    "exportOptions",
+    "exportData",
+    "copilotContext"
+  ],
+  "commandPermissions": {
+    "core:asset:read": "core:default",
+    "core:ui:notify": "core:ui:notify",
+    "core:ui:open-link": "core:ui:open-link",
+    "core:clipboard:write": "core:clipboard:write",
+    "core:download:save": "core:download:save",
+    "core:proxy:call": "core:proxy:call",
+    "core:backend:call": "core:backend:call"
+  },
+  "permissions": [
+    "core:default",
+    "core:data:read",
+    "core:params:write",
+    "core:state:write",
+    "core:copilot:context",
+    "core:export:provide",
+    "core:ui:notify",
+    "core:ui:open-link",
+    "core:clipboard:write",
+    "core:download:save",
+    "core:proxy:call",
+    "core:backend:call"
+  ],
+  "limits": {
+    "PING_INTERVAL_MS": 5000,
+    "MISSED_PINGS": 3,
+    "MAX_PENDING_COMMANDS": 32,
+    "COMMAND_TIMEOUT_MS": 10000,
+    "REPORT_INTERVAL_MS": 5000,
+    "MAX_REPORTS_PER_FLUSH": 50,
+    "GUEST_MESSAGE_RATE": {
+      "perSecond": 100,
+      "burst": 200
+    },
+    "VIOLATION_LIMIT": {
+      "count": 3,
+      "windowMs": 10000
+    },
+    "NOTIFY_RATE": {
+      "perSecond": 0.5,
+      "burst": 5
+    },
+    "SERVER_CALL_RATE": {
+      "perSecond": 2,
+      "burst": 10
+    },
+    "LOAD_TIMEOUTS_MS": {
+      "initialize": 15000,
+      "render": 15000
+    },
+    "MAX_NOTIFY_LENGTH": 500,
+    "NOTIFY_LEVELS": [
+      "info",
+      "success",
+      "warning",
+      "error"
+    ],
+    "LINK_PROTOCOLS": [
+      "https:",
+      "mailto:"
+    ],
+    "MAX_CLIPBOARD_BYTES": 1048576,
+    "MAX_COPILOT_CONTEXT_BYTES": 262144,
+    "MAX_EXPORT_OPTIONS": 16,
+    "EXPORT_TIMEOUTS_MS": {
+      "exportOptions": 10000,
+      "exportData": 60000,
+      "copilotContext": 10000
+    },
+    "maxGuestMessageBytes": 1048576,
+    "maxExportBytes": 26214400,
+    "maxStateBytes": 65536,
+    "maxConfigBytes": 32768
+  }
+}

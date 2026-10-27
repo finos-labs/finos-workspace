@@ -125,7 +125,7 @@ function getHighestEventType(message: Message, highestType: string): string {
   return highestType;
 }
 
-export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
+function CopilotMessageGroup(props: CopilotMessageGroupProps) {
   const {
     group,
     groupIndex,
@@ -285,7 +285,7 @@ export function CopilotMessageGroup(props: CopilotMessageGroupProps) {
   );
 }
 
-export const GroupDatetime = memo((props: { groupId: string }) => {
+const GroupDatetime = memo((props: { groupId: string }) => {
   const datetimeState = useShallowCopilotStore((state) => state.datetimeState);
   const [debouncedState] = useDebounceValue(datetimeState, 50);
 
@@ -308,32 +308,30 @@ export const GroupDatetime = memo((props: { groupId: string }) => {
   }, [debouncedState?.targetGroupId, debouncedState?.timestamp, props.groupId]);
 });
 
-export const AgentName = memo(
-  (props: { senderId: string | undefined; show: boolean }) => {
-    const externalCopilotHolders = useShallowCopilotStore(
-      (copilot) => copilot.externalCopilotHolders,
-    );
+const AgentName = memo((props: { senderId: string | undefined; show: boolean }) => {
+  const externalCopilotHolders = useShallowCopilotStore(
+    (copilot) => copilot.externalCopilotHolders,
+  );
 
-    const agentName = useMemo(() => {
-      if (props.senderId === "default-copilot") return "Agent";
-      const senderName = externalCopilotHolders
-        .flatMap((holder) => holder.copilots || [])
-        .find((copilot) => copilot.id === props.senderId)?.name;
+  const agentName = useMemo(() => {
+    if (props.senderId === "default-copilot") return "Agent";
+    const senderName = externalCopilotHolders
+      .flatMap((holder) => holder.copilots || [])
+      .find((copilot) => copilot.id === props.senderId)?.name;
 
-      return senderName || props.senderId || undefined;
-    }, [externalCopilotHolders, props.senderId]);
+    return senderName || props.senderId || undefined;
+  }, [externalCopilotHolders, props.senderId]);
 
-    return useMemo(() => {
-      if (!(props.show && agentName)) return null;
-      return (
-        <div
-          className="mb-0.5 leading-3.75 z-10 pointer-events-none
+  return useMemo(() => {
+    if (!(props.show && agentName)) return null;
+    return (
+      <div
+        className="mb-0.5 leading-3.75 z-10 pointer-events-none
         text-brand-darker dark:text-brand-lighter whitespace-nowrap
         text-xs truncate text-ellipsis max-w-[70%]"
-        >
-          {agentName}
-        </div>
-      );
-    }, [props.show, agentName]);
-  },
-);
+      >
+        {agentName}
+      </div>
+    );
+  }, [props.show, agentName]);
+});

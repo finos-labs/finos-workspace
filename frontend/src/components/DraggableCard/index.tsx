@@ -1,7 +1,7 @@
-import DraggableCard, { type DraggableCardProps } from "./DraggableCard";
+import DraggableCard from "./DraggableCard";
 import type { DraggableState } from "./NavBar";
-import SetLoadingOnResize, { HideOnResize, LoadingElement } from "./SetLoadingOnResize";
+import SetLoadingOnResize from "./SetLoadingOnResize";
 
-export type { DraggableCardProps, DraggableState };
-export { HideOnResize, LoadingElement, SetLoadingOnResize };
+export type { DraggableState };
+export { SetLoadingOnResize };
 export default DraggableCard;

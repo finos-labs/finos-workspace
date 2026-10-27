@@ -116,10 +116,6 @@ function modFunction(date: dayjs.Dayjs, dateModifier: DateModifier<string>) {
   return mod === "+" ? date.add(num, unit) : date.subtract(num, unit);
 }
 
-export function getDate(date: DateModifierValue | string) {
-  return date && dayjs(currentDateModifier(date));
-}
-
 export function currentDateModifier(value: DateModifierValue | string) {
   if (isDate(value)) return value;
 

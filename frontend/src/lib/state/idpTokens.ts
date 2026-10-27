@@ -1,4 +1,4 @@
-export type IdpTokens = {
+type IdpTokens = {
   microsoftIdToken: string;
   oktaIdToken: string;
   email: string;
@@ -20,7 +20,7 @@ export function clearIdpTokens() {
   current = { ...EMPTY };
 }
 
-export type IdpSignInProvider = "microsoft" | "okta";
+type IdpSignInProvider = "microsoft" | "okta";
 
 const SIGN_IN_PROVIDER_KEY = "ws:sign-in-provider";
 

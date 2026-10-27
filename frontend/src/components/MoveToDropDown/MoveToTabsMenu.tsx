@@ -15,7 +15,7 @@ import { useWidgetContext } from "../Widget.context";
 import type { InnerTabsMenuProps, MoveTarget } from "./types";
 import { AddWidgetOnSelect } from "./utils";
 
-export const TabDropdownMenu = (props: Omit<InnerTabsMenuProps, "gridLayout">) => {
+const TabDropdownMenu = (props: Omit<InnerTabsMenuProps, "gridLayout">) => {
   const { uniqueKey, tab } = props;
   const { widget, activeDashboardId, isShared } = useWidgetContext();
   const navigate = useNavigate();

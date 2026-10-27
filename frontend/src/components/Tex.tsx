@@ -61,8 +61,6 @@ const TeX: FC<TeXProps> = ({
   );
 };
 
-export default memo(TeX);
-
 type TeXProps = ComponentPropsWithoutRef<"div"> &
   Partial<{
     as: ElementType;
@@ -75,8 +73,4 @@ type TeXProps = ComponentPropsWithoutRef<"div"> &
 
 export const InlineMath: FC<Omit<TeXProps, "block">> = memo((props) => (
   <TeX {...props} block={false} />
-));
-
-export const BlockMath: FC<Omit<TeXProps, "block">> = memo((props) => (
-  <TeX {...props} block={true} />
 ));

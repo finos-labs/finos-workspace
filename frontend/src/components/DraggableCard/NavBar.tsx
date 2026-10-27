@@ -70,7 +70,7 @@ const initialState: DraggableState = {
   isMinimized: false,
 };
 
-export type ExtraAction = {
+type ExtraAction = {
   label: string;
   onClick?: () => void;
   icon: IconId;
@@ -135,11 +135,11 @@ export interface NavBarProps {
   settingsDialogClassName?: string;
 }
 
-export function timeUntilStale(updatedAt: number, staleTime?: number): number {
+function timeUntilStale(updatedAt: number, staleTime?: number): number {
   return Math.max(updatedAt + (staleTime || 0) - Date.now(), 0);
 }
 
-export function RefreshButton(props: {
+function RefreshButton(props: {
   runButton: boolean;
   lastUpdated?: number | null;
   disabled?: boolean;
@@ -268,7 +268,7 @@ export function RefreshButton(props: {
     </Tooltip>
   );
 }
-export function CopilotButton({ aiEnabled }: { aiEnabled?: boolean }) {
+function CopilotButton({ aiEnabled }: { aiEnabled?: boolean }) {
   const isMobile = useIsMobile();
   const { widgetRef, isPreview } = useWidgetContext();
 

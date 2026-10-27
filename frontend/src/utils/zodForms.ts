@@ -14,13 +14,6 @@ export const zodPassword = z
 
 export const zodEmail = z.email("Invalid email").min(1, "This field is required");
 
-export const MetadataSchema = z.object({
-  category: z.string().optional(),
-  sub_category: z.string().optional(),
-  subCategory: z.string().optional(),
-  description: z.string().optional(),
-});
-
 export const totpSchema = z.object({
   totp: z
     .string()
@@ -103,7 +96,7 @@ export type WidgetsType = {
   };
 };
 
-export interface UnrecognizedKeysEntry {
+interface UnrecognizedKeysEntry {
   name: string;
   keys: string[];
 }

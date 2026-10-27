@@ -52,7 +52,7 @@ import {
 import CompareTermsParam from "./CompareTermsParam";
 import { TabsParam } from "./TabsParam";
 
-export function FormParamDialog({ formParamDef }: { formParamDef: ParamDefT<"form"> }) {
+function FormParamDialog({ formParamDef }: { formParamDef: ParamDefT<"form"> }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild={true}>

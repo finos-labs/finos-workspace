@@ -7,7 +7,7 @@ import { useThemeStore } from "~/lib/state/theme";
 import CloseCircleIcon from "../Icons/CloseCircle";
 import WarningIcon from "../Icons/Warning";
 
-export function RootLayout() {
+function RootLayout() {
   const { theme } = useThemeStore();
   useGlobalTitleManager();
   return useMemo(

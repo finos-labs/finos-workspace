@@ -28,7 +28,6 @@ import {
   type CopilotError,
   type DataContent,
   type DataUrl,
-  MultipleCopilotDataItemSchema,
 } from "../state/copilot";
 
 export const CORE_WIDGET_IDS = ["navigation_bar", "iframe", "html"];
@@ -141,14 +140,6 @@ export const WIDGETS_WITHOUT_DISABLED = Object.values(WIDGET_CATALOG).reduce<
   }
   return acc;
 }, []);
-
-export function getAdvancedBackendChildren(id: string): string[] {
-  const apiSources = useBackendConnectorStore.getState()?.apiSources ?? [];
-  const filtered = apiSources.find((source) => source.id === id);
-  return Object.values(filtered?.widgets ?? {})
-    .map((item) => item.widgetId)
-    .filter((widgetId): widgetId is string => widgetId !== undefined);
-}
 
 export function convertAdvancedBackend(source: Source): WidgetT[] {
   const widgets = source.widgets ?? {};
@@ -335,56 +326,6 @@ export async function handleWidgetDeletion({
 export interface FileResponse {
   aiData: Partial<DataContent | DataUrl | CopilotError>;
   objectUrl: string;
-}
-
-export async function handleMultiFileResponse(
-  filenames: string[],
-  response: Response,
-): Promise<Record<string, FileResponse>> {
-  const contentType = response.headers.get("Content-Type");
-
-  if (contentType === "application/json") {
-    const json = await response.json();
-    const parsedResponse = MultipleCopilotDataItemSchema.parse(json);
-    if (filenames.length !== parsedResponse.length) {
-      throw new Error(
-        `Expected ${filenames.length} items, but got ${parsedResponse.length}`,
-      );
-    }
-    const entries = await Promise.all(
-      filenames.map(async (filename, index) => {
-        const item = parsedResponse[index];
-        let fileResponse: FileResponse | null = null;
-        if ("data_format" in item && item.data_format?.data_type === "pdf") {
-          if ("content" in item && item.content) {
-            const byteArray = base64ToUint8Array(item.content);
-            fileResponse = {
-              aiData: item,
-              objectUrl: URL.createObjectURL(
-                new Blob([byteArray], { type: "application/pdf" }),
-              ),
-            };
-          } else if ("url" in item && item.url) {
-            const blob = await fetch(item.url).then((res) => res.blob());
-            fileResponse = {
-              aiData: item,
-              objectUrl: URL.createObjectURL(blob),
-            };
-          }
-        } else if ("error_type" in item) {
-          fileResponse = {
-            aiData: item,
-            objectUrl: "",
-          };
-        }
-
-        return [filename, fileResponse];
-      }),
-    );
-
-    return Object.fromEntries(entries);
-  }
-  throw new Error("Invalid content type, expected application/json");
 }
 
 export async function handleFileResponse(

@@ -35,8 +35,6 @@ vi.mock("~/lib/types", () => ({
   },
 }));
 
-const originalDocumentElement = document.documentElement;
-
 describe("useThemeStore", () => {
   let colorSchemeMeta: HTMLMetaElement;
 

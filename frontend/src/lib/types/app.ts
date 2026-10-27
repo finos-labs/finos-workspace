@@ -36,8 +36,8 @@ export const _GridDataSchema = z.object({
 
 export const StorageSchema = z.looseObject({}).default({});
 
-export const CronExpressionSchema = z.string().trim().min(1);
-export const RefetchIntervalSchema = z.union([
+const CronExpressionSchema = z.string().trim().min(1);
+const RefetchIntervalSchema = z.union([
   z.number().min(1000),
   z.literal(false),
   CronExpressionSchema,
@@ -262,12 +262,12 @@ export function newParamDef<T extends ParamDef | FormInputParamDef>(paramDef: T)
   };
 }
 
-export function isParamDef(p: unknown): p is ParamDef {
+function isParamDef(p: unknown): p is ParamDef {
   if (typeof p !== "object" || p === null) return false;
   return ("type" in p && p.type === "form") || ("paramName" in p && !!p.paramName);
 }
 
-export function isParamDefArray(params: unknown): params is ParamDef[] {
+function isParamDefArray(params: unknown): params is ParamDef[] {
   return Array.isArray(params) && params.every((p) => isParamDef(p));
 }
 
@@ -311,8 +311,8 @@ const supportedTypesError = WidgetVizTypes.filter((v) => v !== "iframe")
   .map((v) => `\`${v}\``)
   .join(", ");
 
-export type PluginVizType = string & { readonly __pluginVizType?: never };
-export type BuiltInVizType = (typeof WidgetVizTypes)[number];
+type PluginVizType = string & { readonly __pluginVizType?: never };
+type BuiltInVizType = (typeof WidgetVizTypes)[number];
 export type WidgetVizType = BuiltInVizType | "custom" | PluginVizType;
 
 export const widgetTypesSchema = z
@@ -324,7 +324,7 @@ export const widgetTypesSchema = z
   .nullish()
   .meta({ id: "WidgetType" });
 
-export const WidgetStateSchema = z
+const WidgetStateSchema = z
   .looseObject({
     paramOrder: z.array(z.string()).optional(),
     params: z.record(z.string(), z.unknown()).optional(),
@@ -340,7 +340,7 @@ export const WidgetStateSchema = z
   })
   .meta({ id: "WidgetState" });
 
-export const TemplateLayoutItemSchema = z
+const TemplateLayoutItemSchema = z
   .looseObject({
     i: z.string(),
     x: z.number(),

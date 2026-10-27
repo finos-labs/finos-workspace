@@ -58,8 +58,6 @@ import { useSidebarStore } from "./sidebar";
 
 export type Selector<S, T> = (state: S) => T;
 
-export type KeySelector<S, K extends keyof S> = K extends keyof S ? K : never;
-
 export type Items = {
   [key: string]: Item;
 };
@@ -118,7 +116,7 @@ type WidgetTypes = NewWidget | WidgetJsonT;
 
 export type InnerTab = { id: string; name: string; newId?: string };
 export type InnerTabsT = { [tabId: string]: InnerTab };
-export type TabParamT = { total: number; options: (string | number | boolean)[] };
+type TabParamT = { total: number; options: (string | number | boolean)[] };
 export type TabParams = { [key: string]: TabParamT };
 export type TabEndpointParams = { [key: string]: number };
 

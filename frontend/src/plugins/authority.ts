@@ -1,9 +1,10 @@
 import { z } from "zod";
 import type { ParamDef } from "~/components/types";
+import { LINK_PROTOCOLS, MAX_EXPORT_OPTIONS } from "./limits";
 import { CommandError, type CommandErrorName, MAX_EXPORT_BYTES } from "./protocol";
 import { MAX_STATE_BYTES, type Permission, type PluginWidgetDef } from "./types";
 
-export type BindingSource =
+type BindingSource =
   | "data"
   | "params"
   | "param"
@@ -266,25 +267,32 @@ export function safeLink(url: unknown): string {
   } catch {
     throw new CommandError("invalid_args", "not a valid link");
   }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "mailto:")
+  if (!(LINK_PROTOCOLS as readonly string[]).includes(parsed.protocol))
     throw new CommandError("out_of_scope", "only https: and mailto: links open");
   return parsed.toString();
 }
 
 export const ExportOptionSchema = z
   .object({
-    id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/),
-    label: z.string().min(1).max(60),
-    extension: z.string().regex(/^[A-Za-z0-9]{1,10}$/),
+    id: z
+      .string()
+      .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/)
+      .describe(
+        "The id that the host passes to exportData. It is unique among the options.",
+      ),
+    label: z.string().min(1).max(60).describe("The text that the Export entry shows."),
+    extension: z
+      .string()
+      .regex(/^[A-Za-z0-9]{1,10}$/)
+      .describe("The extension of the file, without a dot."),
     mime: z
       .string()
       .max(192)
-      .regex(/^[a-z0-9][a-z0-9!#$&^_.+-]{0,63}\/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$/),
+      .regex(/^[a-z0-9][a-z0-9!#$&^_.+-]{0,63}\/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$/)
+      .describe("The MIME type of the file, in the form type/subtype."),
   })
   .strict();
-export type ExportOption = z.infer<typeof ExportOptionSchema>;
-
-const MAX_EXPORT_OPTIONS = 16;
+type ExportOption = z.infer<typeof ExportOptionSchema>;
 
 export function readExportOptions(value: unknown): ExportOption[] {
   const parsed = z

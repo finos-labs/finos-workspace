@@ -70,7 +70,7 @@ function fillRoute(endpoint: string, value: (name: string) => unknown): string |
   return missing ? null : filled;
 }
 
-export function probeRoutes(widgets: WidgetsType, backendUrl: URL) {
+function probeRoutes(widgets: WidgetsType, backendUrl: URL) {
   const routes = new Map<string, string[]>();
   const unchecked: string[] = [];
 

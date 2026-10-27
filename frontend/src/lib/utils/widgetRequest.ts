@@ -13,7 +13,7 @@ import {
 import { addExtraHeaders, currentDateModifier, dateModRegex } from "./widgetParams";
 import { PLACEHOLDER, placeholders } from "./widgetsContractChecks";
 
-export interface BackendRequest {
+interface BackendRequest {
   url: string;
   method: HttpMethod | "PUT";
   credentials: Record<string, string>;
@@ -31,7 +31,7 @@ export type BuiltRequest =
   | { ok: true; request: BackendRequest }
   | { ok: false; problems: RequestProblem[] };
 
-export type Credentials = {
+type Credentials = {
   headers: Record<string, string>;
   query: Record<string, string>;
 };

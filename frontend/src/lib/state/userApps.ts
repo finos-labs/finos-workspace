@@ -10,7 +10,7 @@ import { createIndexedDBStorage } from "~/lib/utils/indexDB";
 import { duplicateTabItem } from "../utils";
 import type { Item, TabData, Widget } from "./app";
 
-export interface UserAppData {
+interface UserAppData {
   uuid?: string;
   name: string;
   description: string;
@@ -66,7 +66,7 @@ function withoutAppCredentials(apps: Record<string, UserAppReturn>) {
   );
 }
 
-export interface UserAppsState {
+interface UserAppsState {
   skipSyncUserApps: boolean;
   userApps: { [id: string]: UserAppReturn };
   sharedUserApps: { [id: string]: UserAppReturn };

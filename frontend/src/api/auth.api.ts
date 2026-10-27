@@ -191,7 +191,7 @@ export async function oktaLogin(
   }
 }
 
-export async function getCustomCopilotSchema() {
+async function getCustomCopilotSchema() {
   const { data } = await apiClient.get<CustomCopilot[]>("/app/custom-copilot");
   return data;
 }
@@ -446,7 +446,7 @@ export async function postWidgetMetadata(
   return data;
 }
 
-export async function getUserAppsData(): Promise<UserAppsSync> {
+async function getUserAppsData(): Promise<UserAppsSync> {
   const { data } = await apiClient.get<UserAppsSync>("/app/user-apps/sync");
   return data;
 }

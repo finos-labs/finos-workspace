@@ -22,10 +22,6 @@ import { GroupPanelHeader, GroupRow } from "../Widgets/Helpers/GroupRow";
 
 dayjs.extend(relativeTime);
 
-const formatDistanceToNow = (date: number) => {
-  return dayjs(date).fromNow();
-};
-
 function getDashboardInfo(
   item: (Item & { created_by?: string }) | undefined,
   isShared = false,

@@ -11,7 +11,6 @@ import { useLocation, useParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { useCopilotContext } from "~/lib/contexts/CopilotChatContext";
 import { useMobile } from "~/lib/providers/MobileProvider";
-import { getConfig } from "~/lib/runtimeConfig";
 import { type InnerTab, useShallowAppStore } from "~/lib/state/app";
 import type { CopilotWidget } from "~/lib/state/copilot";
 import { useShallowCopilotStore } from "~/lib/state/copilot";
@@ -375,11 +374,7 @@ function DashboardButton() {
   );
 }
 
-export function CopilotHeader({
-  showChatActions = true,
-}: {
-  showChatActions?: boolean;
-} = {}) {
+function CopilotHeader({ showChatActions = true }: { showChatActions?: boolean } = {}) {
   const isMobile = useMobile((state) => state.isMobile);
   const expandedHeader = usePanelsState("right");
   const stopSubmitRef = useCopilotContext()?.stopSubmitRef;
@@ -635,67 +630,6 @@ export function CopilotHeader({
     ),
     [buttons, expandedHeader, effectiveFullscreen, showChatActions],
   );
-}
-const aiCopilotSecFilingsFF = getConfig().copilot.secFilings;
-
-export function CopilotWidgetContext() {
-  const copilot = useShallowCopilotDataStore((state) => ({
-    selectedWidgets: state.getSelectedWidgetsData(),
-    toggleSelectedWidget: state.toggleSelectedWidget,
-  }));
-
-  const removeSelectedWidget = useCallback(
-    (widgetId: string) => {
-      copilot.toggleSelectedWidget(widgetId);
-    },
-    [copilot.toggleSelectedWidget],
-  );
-
-  const elementMemo = useMemo(
-    () => (
-      <>
-        {copilot.selectedWidgets && Object.keys(copilot.selectedWidgets).length > 0 ? (
-          <div className="flex gap-2 items-center text-xs">
-            <span className="text-ds-text-caption">Context</span>
-            <div className="flex gap-1">
-              {Object.keys(copilot.selectedWidgets).map((widgetId) => {
-                const widget = copilot.selectedWidgets[widgetId];
-                if (!widget) return null;
-                return (
-                  <div
-                    key={widgetId}
-                    className="p-1.5 rounded bg-general-bg-secondary flex items-center justify-center gap-1 min-w-fit"
-                  >
-                    {widget.title}
-                    <Tooltip message="Remove widget from context">
-                      <button onClick={async () => removeSelectedWidget(widgetId)}>
-                        <Icon id="circled-cross-icon" className="h-4 w-4 -mb-0.5" />
-                      </button>
-                    </Tooltip>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <div className="flex gap-2 h-full w-full">
-            <Icon
-              id="info-circled-icon"
-              className="mt-0.5 w-3 h-3 text-extra-purple-100 flex-none"
-            />
-            <span className="text-ds-text-caption overflow-auto">
-              Enable the <Icon id={"message-plus"} className="h-3 w-3 inline" /> icon to
-              query specific widgets
-              {aiCopilotSecFilingsFF && ", or use @sec to query SEC filings"}.
-            </span>
-          </div>
-        )}
-      </>
-    ),
-    [copilot.selectedWidgets, removeSelectedWidget],
-  );
-
-  return elementMemo;
 }
 
 export default CopilotHeader;

@@ -3,7 +3,7 @@ import { useAuthStore } from "./auth";
 import type { AgentToolConfig } from "./mcpTools";
 
 export const WORKSPACE_SERVER_ID = "workspace";
-export const WORKSPACE_SERVER_NAME = "Workspace";
+const WORKSPACE_SERVER_NAME = "Workspace";
 
 const NAME_PREFIX = `${WORKSPACE_SERVER_NAME}_`;
 

@@ -9,7 +9,7 @@ export interface ReceivedRequest {
   body: string;
 }
 
-export const ECHO_WIDGETS = {
+const ECHO_WIDGETS = {
   e2e_team_report: {
     name: "E2E team report",
     description: "Report for one team and period",

@@ -12,14 +12,14 @@ export class BundleIntegrityError extends Error {
   }
 }
 
-export interface VerifiedBundle {
+interface VerifiedBundle {
   entry: ArrayBuffer;
   styles: string[];
 }
 
 const cache = new Map<string, Promise<ArrayBuffer>>();
 
-export async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
+async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)]
     .map((b) => b.toString(16).padStart(2, "0"))
