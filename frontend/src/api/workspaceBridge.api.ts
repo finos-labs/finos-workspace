@@ -46,7 +46,8 @@ function parseJsonResponse<T extends AxiosResponse, U = T["data"]>(
 ): U {
   if (resp.status !== successStatus) {
     throw new Error(
-      resp.statusText || `FINOS Workspace MCP request failed with status ${resp.status}.`,
+      resp.statusText ||
+        `FINOS Workspace MCP request failed with status ${resp.status}.`,
     );
   }
   return resp.data;

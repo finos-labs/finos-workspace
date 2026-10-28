@@ -98,8 +98,8 @@ export const McpCompanionModal = memo(() => {
       <DialogHeader>
         <DialogTitle>FINOS Workspace MCP Companion</DialogTitle>
         <DialogDescription>
-          Connect this FINOS Workspace session so an external MCP agent can reach it. Toggle
-          the connection on, then create a token for your agent.{" "}
+          Connect this FINOS Workspace session so an external MCP agent can reach it.
+          Toggle the connection on, then create a token for your agent.{" "}
           {docsHref && (
             <a
               href={docsHref}

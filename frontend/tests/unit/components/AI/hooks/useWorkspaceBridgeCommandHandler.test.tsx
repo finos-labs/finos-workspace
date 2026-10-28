@@ -92,7 +92,7 @@ const sharedSavedApp = {
 };
 
 const backendNameToWidget: Record<string, DeepPartial<WidgetT>[]> = {
-  FINOS Workspace: [
+  Workspace: [
     {
       widgetId: "price_history",
       sourceName: "Workspace",

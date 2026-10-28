@@ -19,7 +19,8 @@ const uiShowChangelogFF = getConfig().ui.showChangelog;
 const { leftSidebarLogo, leftSidebarLogoDark, name: wlName } = getConfig().whiteLabel;
 
 const isWhitelabel =
-  (leftSidebarLogo && leftSidebarLogo !== "") || (wlName && wlName !== "FINOS Workspace");
+  (leftSidebarLogo && leftSidebarLogo !== "") ||
+  (wlName && wlName !== "FINOS Workspace");
 
 export function Sidebar(props: Props) {
   const { header, search, children } = props;
