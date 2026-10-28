@@ -8,7 +8,8 @@
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "demo-backend": "python3 examples/backend.py"
   },
   "dependencies": {
     "ag-grid-community": "34.3.1",

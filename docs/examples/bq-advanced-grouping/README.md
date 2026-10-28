@@ -8,8 +8,8 @@ lines as [`plotly-charts`](../plotly-charts/README.md). Nothing in Workspace imp
 
 ## The contract
 
-The widget's endpoint returns company rows, as the companies backend's
-`GET /bq/advanced-grouping` does:
+The widget's endpoint returns company rows, as the example backend's `GET /companies`
+does:
 
 ```json
 {
@@ -37,7 +37,7 @@ The rows as an array work too. A backend declares the widget with its type and e
   "bq_advanced_grouping": {
     "name": "BQ Advanced Grouping",
     "type": "bq-advanced-grouping",
-    "endpoint": "/bq/advanced-grouping"
+    "endpoint": "/companies"
   }
 }
 ```
@@ -91,9 +91,20 @@ the agent context. Drawing needs a browser and is checked on a dashboard.
 2. In Workspace, Admin, Widgets, Deployment: Rescan, review and approve the version, and
    enable it for your organization. Under Plugin widgets, enable it, and under Roles and
    Access grant it to a role you hold.
-3. Connect the companies backend (`openbq/mock-backend`, `http://localhost:7779`) under
-   Connections. Its `widgets.json` declares `bq_advanced_grouping` with this type.
+3. Start the example backend and connect it under Connections (below).
 4. Add *BQ Advanced Grouping* to a dashboard.
+
+`examples/backend.py` is a backend with the `bq_advanced_grouping` widget: `GET /companies`
+returns 500 seeded company rows, the same on every start, across 5 sectors, 15
+industries, 6 states and 3 sizes. It needs only Python 3.
+
+```bash
+npm run demo-backend
+```
+
+It listens on `http://localhost:7779` and allows the Workspace web app at
+`http://localhost:1420`, the local stack's; `python3 examples/backend.py <port> <web app
+origin>` changes either. Connect it as a backend under Connections.
 
 To change it on a local stack, start the next version on the plugin's Deployment page
 (Patch, Minor or Major) and build into that version's directory: the app serves its files
