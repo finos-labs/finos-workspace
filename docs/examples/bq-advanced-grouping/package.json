@@ -1,6 +1,6 @@
 {
   "name": "workspace-plugin-bq-advanced-grouping",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "A Workspace widget plugin that groups and aggregates company rows in AG Grid Community",
   "author": "BrightQuery",

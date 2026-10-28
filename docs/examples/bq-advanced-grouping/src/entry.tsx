@@ -65,6 +65,7 @@ let view: ViewState = {
 
 function parsed(model: Model) {
   const data = model.get("data");
+  console.log("[grouping] model", model, "data", data);
   return data === undefined || data === null ? null : rowsOf(data);
 }
 
