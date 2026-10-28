@@ -11,21 +11,24 @@ class Model(BaseModel):
 
 
 class TokenCreateRequest(Model):
-    name: str = Field(min_length=1, max_length=100)
+    name: str = Field(min_length=1, max_length=100, description="The name that the user gives the token.")
 
 
 class TokenMetadata(Model):
-    uuid: UUID
-    name: str
-    token_type: str
-    token_prefix: str
-    created_date: Any | None = None
-    updated_date: Any | None = None
-    last_used_at: Any | None = None
+    uuid: UUID = Field(description="The UUID of the token.")
+    name: str = Field(description="The name that the user gave the token.")
+    token_type: str = Field(description="The kind of token.")
+    token_prefix: str = Field(description="The first characters of the token, which identify it in a list.")
+    created_date: Any | None = Field(None, description="When the token was created.")
+    updated_date: Any | None = Field(None, description="When the token was last changed.")
+    last_used_at: Any | None = Field(
+        None,
+        description="When the token last authenticated a request. It is empty when it never did.",
+    )
 
 
 class TokenCreateResponse(TokenMetadata):
-    token: str
+    token: str = Field(description="The token's secret. Only this answer shows it.")
 
 
 class BrowserSessionStartRequest(Model):

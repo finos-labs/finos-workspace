@@ -18,6 +18,7 @@ type Json = Record<string, any>;
 
 const SURFACE = "backend-api/backend/tests/fixtures/workspace_mcp_sidecar_surface.json";
 const METHODS = ["get", "post", "put", "patch", "delete"];
+const FASTAPI_ERROR_MODELS = new Set(["HTTPValidationError", "ValidationError"]);
 
 function readJson(path: string): Json {
   return JSON.parse(readFileSync(fromRepo(path), "utf8")) as Json;
@@ -40,6 +41,7 @@ function collectApiMetrics(): ApiMetric[] {
 export function collectApi(): ApiData {
   const spec = readReference("backend", "openapi.json");
   const byTag = new Map<string, ApiOperation[]>();
+  const undescribed: string[] = [];
   for (const path of Object.keys(spec.paths).sort()) {
     const item = spec.paths[path] as Json;
     for (const method of METHODS) {
@@ -58,15 +60,20 @@ export function collectApi(): ApiData {
         path,
         tag,
         summary: (operation.summary as string | undefined) ?? "",
+        description: ((operation.description as string | undefined) ?? "").trim(),
         parameters,
-        responses: Object.entries((operation.responses ?? {}) as Json).map(([code, response]: [string, Json]) => {
-          const content = response.content ? (Object.values(response.content)[0] as Json) : undefined;
-          return {
-            code,
-            description: (response.description as string | undefined) ?? "",
-            schema: content ? typeLabel(content.schema) : undefined,
-          };
-        }),
+        responses: Object.entries((operation.responses ?? {}) as Json)
+          .filter(([code]) => code !== "422")
+          .map(([code, response]: [string, Json]) => {
+            const content = response.content ? (Object.values(response.content)[0] as Json) : undefined;
+            const written = (response.description as string | undefined) ?? "";
+            const standard = written === "Successful Response";
+            return {
+              code,
+              description: standard ? (content ? "" : "No content") : written,
+              schema: content ? typeLabel(content.schema) : undefined,
+            };
+          }),
       };
       if (operation.requestBody) {
         const [contentType, content] = Object.entries(operation.requestBody.content as Json)[0] as [string, Json];
@@ -76,16 +83,28 @@ export function collectApi(): ApiData {
           schema: typeLabel(content.schema),
         };
       }
+      const label = `${entry.method} ${path}`;
+      if (entry.description === "") undescribed.push(`${label} has no description`);
+      for (const parameter of entry.parameters) {
+        if (!parameter.description) undescribed.push(`${label} has no description for the parameter ${parameter.name}`);
+      }
       if (!byTag.has(tag)) byTag.set(tag, []);
       (byTag.get(tag) as ApiOperation[]).push(entry);
     }
   }
   const schemas = (spec.components?.schemas ?? {}) as Json;
+  const modelNames = Object.keys(schemas)
+    .filter((name) => !FASTAPI_ERROR_MODELS.has(name))
+    .sort();
+  for (const name of modelNames) {
+    for (const [property, value] of Object.entries((schemas[name].properties ?? {}) as Json)) {
+      if (!value.description) undescribed.push(`${name}.${property} has no description`);
+    }
+  }
+  if (undescribed.length > 0) throw new Error(`openapi.json lacks descriptions:\n${undescribed.join("\n")}`);
   return {
     tags: [...byTag.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([name, operations]) => ({ name, operations })),
-    schemas: Object.keys(schemas)
-      .sort()
-      .map((name) => describeSchema(name, schemas[name])),
+    schemas: modelNames.map((name) => describeSchema(name, schemas[name], schemas)),
     metrics: collectApiMetrics(),
   };
 }

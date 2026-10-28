@@ -178,9 +178,30 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-@app.get("/health")
-@app.get("/healthz")
-@app.get("/")
+@app.get(
+    "/health",
+    summary="Check that the API is running",
+    description=(
+        "Answers `success` with the status 200 while the API runs. A request to `/health` or `/healthz` needs no "
+        "`Origin` header, and every other path, including `/`, needs one."
+    ),
+)
+@app.get(
+    "/healthz",
+    summary="Check that the API is running",
+    description=(
+        "Answers `success` with the status 200 while the API runs. A request to `/health` or `/healthz` needs no "
+        "`Origin` header, and every other path, including `/`, needs one."
+    ),
+)
+@app.get(
+    "/",
+    summary="Check that the API is running",
+    description=(
+        "Answers `success` with the status 200 while the API runs. A request to `/health` or `/healthz` needs no "
+        "`Origin` header, and every other path, including `/`, needs one."
+    ),
+)
 def nginx():
     return JSONResponse(content={"success": True}, status_code=200)
 

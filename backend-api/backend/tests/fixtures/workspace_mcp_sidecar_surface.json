@@ -418,15 +418,19 @@
                 "additionalProperties": false,
                 "properties": {
                   "assigned_agent_id": {
+                    "description": "The id of the agent that does the task. Take it from get_workspace_snapshot.",
                     "type": "string"
                   },
                   "assigned_holder_url": {
+                    "description": "The address of the agent holder that serves the agent. Take it from get_workspace_snapshot.",
                     "type": "string"
                   },
                   "description": {
+                    "description": "What the agent is to do.",
                     "type": "string"
                   },
                   "id": {
+                    "description": "The id that identifies the task.",
                     "type": "string"
                   }
                 },
@@ -872,6 +876,7 @@
               "description": "For instantiate: optional name for the created dashboard."
             },
             "operation": {
+              "description": "What to do with the apps.",
               "enum": [
                 "list",
                 "read",
@@ -976,6 +981,7 @@
               "description": "Backend display name."
             },
             "operation": {
+              "description": "What to do with the backends.",
               "enum": [
                 "list",
                 "add",
@@ -1067,6 +1073,7 @@
               "description": "Dashboard display name. Required for create and update."
             },
             "operation": {
+              "description": "What to do with the dashboard.",
               "enum": [
                 "create",
                 "read",
@@ -1108,6 +1115,7 @@
               "description": "Dashboard UUID. Omit to target the current dashboard route. Never send placeholder strings such as active_dashboard, current_dashboard, null, or undefined; reuse session_context.current_dashboard_uuid from your previous tool result."
             },
             "operation": {
+              "description": "What to do with the navigation tabs.",
               "enum": [
                 "create",
                 "add_tabs",
@@ -1189,6 +1197,7 @@
               "description": "Dashboard UUID. Omit to target the current dashboard route. Never send placeholder strings such as active_dashboard, current_dashboard, null, or undefined; reuse session_context.current_dashboard_uuid from your previous tool result."
             },
             "operation": {
+              "description": "Whether to move to a dashboard or to an inner tab.",
               "enum": [
                 "dashboard",
                 "tab"
@@ -1387,6 +1396,7 @@
               "description": "Dashboard UUID. Omit to target the current dashboard route. Never send placeholder strings such as active_dashboard, current_dashboard, null, or undefined; reuse session_context.current_dashboard_uuid from your previous tool result."
             },
             "h": {
+              "description": "The widget's height in grid rows.",
               "type": "number"
             },
             "max_h": {
@@ -1446,6 +1456,7 @@
               "description": "Inner tab id from manage_dashboard operation='read' or get_workspace_snapshot.dashboard_composition; pass it when moving a widget across tabs."
             },
             "w": {
+              "description": "The widget's width in grid columns.",
               "type": "number"
             },
             "widget_id": {
@@ -1473,9 +1484,11 @@
               "description": "Canonical widget instance UUID (preferred identifier). Get it from manage_dashboard operation='read' or get_workspace_snapshot.dashboard_composition."
             },
             "x": {
+              "description": "The column of the widget's left edge on the dashboard grid.",
               "type": "number"
             },
             "y": {
+              "description": "The row of the widget's top edge on the dashboard grid.",
               "type": "number"
             }
           },

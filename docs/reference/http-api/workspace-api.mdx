@@ -8,9 +8,9 @@ import { SettingConstant, SettingDefault } from "@site/src/components/Reference/
 
 # FINOS Workspace API
 
-The FINOS Workspace API is the FastAPI application in `backend-api/backend` that the web app, the worker, the FINOS Workspace MCP server and the admin tools talk to. This page lists its routes, grouped by the tag that each router gives them. For each route it shows the method and path, a summary, the parameters and the request and response types. The request and response types link to [FINOS Workspace API schemas](workspace-api-schemas.mdx).
+The FINOS Workspace API is the FastAPI application in `backend-api/backend` that the web app, the worker, the FINOS Workspace MCP server and the admin tools talk to. This page lists its routes, grouped by the tag that each router gives them. For each route it shows the method and path, what the route does, the parameters, the request body and the responses. The request and response types link to [FINOS Workspace API schemas](workspace-api-schemas.mdx).
 
-The API does not serve interactive documentation. It sets `docs_url`, `redoc_url` and `openapi_url` to `None`, so this page is the reference. The summary of a route is derived from the name of its function, so it names what the route does but does not describe it in detail.
+The API does not serve interactive documentation. It sets `docs_url`, `redoc_url` and `openapi_url` to `None`, so this page is the reference. A request whose path, query or body does not validate receives the status 422 with FastAPI's standard error body, which lists each invalid field, and the routes below do not repeat it.
 
 ## How requests are authenticated
 
@@ -20,7 +20,7 @@ Every HTTP and WebSocket request must come from an allowed origin. The API allow
 
 Routes that apply a rate limit allow <SettingConstant name="rateLimitDefault" /> for each client address by default, and a few sensitive routes allow <SettingConstant name="rateLimitFew" />. A request that carries a valid service token in the header `X-Workspace-Authorization` is exempt from the limits when the deployment turns that exemption on with `RATE_LIMIT_EXEMPT_ENABLED`.
 
-The page is generated from `backend-api/backend/reference-data/openapi.json`, which the backend's exporter writes from the document that `app.openapi()` builds. The document leaves out `/metrics`, because that route exists only when the `PROMETHEUS` setting is on. [Metrics](#metrics) describes it.
+The routes below leave out `/metrics`, because that route exists only when the `PROMETHEUS` setting is on. [Metrics](#metrics) describes it.
 
 ## admin
 
@@ -66,7 +66,7 @@ These routes set up two-factor authentication under `/totp`, and let a user chan
 
 ## entity
 
-The routes under `/entity` manage organizations, which the API calls entities, together with their permission maps, roles and data backends, and they register administrators.
+The routes under `/entity` manage organizations, which the API calls entities, together with their permission maps, roles and data backends, and they register administrators. They require a superuser.
 
 <ApiTag tag="entity" schemaPage="/reference/http-api/workspace-api-schemas" />
 

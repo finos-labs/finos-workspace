@@ -391,10 +391,14 @@ class NavigationTabInput(Model):
 
 
 class TaskRequest(Model):
-    id: str
-    description: str
-    assigned_holder_url: str
-    assigned_agent_id: str
+    id: str = Field(description="The id that identifies the task.")
+    description: str = Field(description="What the agent is to do.")
+    assigned_holder_url: str = Field(
+        description="The address of the agent holder that serves the agent. Take it from get_workspace_snapshot.",
+    )
+    assigned_agent_id: str = Field(
+        description="The id of the agent that does the task. Take it from get_workspace_snapshot.",
+    )
 
 
 class ManageBackendsCommand(Model):

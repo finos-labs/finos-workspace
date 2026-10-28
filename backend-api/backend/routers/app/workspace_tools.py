@@ -22,28 +22,31 @@ PATH = "/app/workspace-tools"
 
 class WorkspaceTool(BaseModel):
     model_config = schemas.get_camel_config()
-    name: str
-    description: str | None = None
-    input_schema: dict[str, Any]
-    annotations: dict[str, Any] | None = None
+    name: str = Field(description="The tool's name.")
+    description: str | None = Field(None, description="What the tool does.")
+    input_schema: dict[str, Any] = Field(description="The JSON Schema of the tool's input.")
+    annotations: dict[str, Any] | None = Field(None, description="Hints about the tool, such as whether it only reads.")
 
 
 class WorkspaceTools(BaseModel):
     model_config = schemas.get_camel_config()
-    url: str
-    tools: list[WorkspaceTool]
+    url: str = Field(description="The address that identifies the tool server.")
+    tools: list[WorkspaceTool] = Field(description="The tools that the user's roles allow.")
 
 
 class WorkspaceToolCall(BaseModel):
     model_config = schemas.get_camel_config()
-    name: str = Field(min_length=1, max_length=200)
-    arguments: dict[str, Any] = Field(default_factory=dict)
+    name: str = Field(min_length=1, max_length=200, description="The name of the tool to call.")
+    arguments: dict[str, Any] = Field(default_factory=dict, description="The tool's arguments.")
 
 
 class WorkspaceToolCallResult(BaseModel):
     model_config = schemas.get_camel_config()
-    command: dict[str, Any] | None = None
-    result: dict[str, Any] | None = None
+    command: dict[str, Any] | None = Field(
+        None,
+        description="The command that the web app carries out in the user's tab.",
+    )
+    result: dict[str, Any] | None = Field(None, description="The result of a tool that needs no command.")
 
 
 _commands: ContextVar[list[dict[str, Any]] | None] = ContextVar("workspace_tools_commands", default=None)
@@ -77,7 +80,15 @@ def server_url(request: Request) -> str:
     return f"{base_url}{PATH}"
 
 
-@router.get(PATH, response_model=WorkspaceTools)
+@router.get(
+    PATH,
+    response_model=WorkspaceTools,
+    summary="List the tools that FINOS Workspace offers the Copilot",
+    description=(
+        "Returns the tools of FINOS Workspace's own MCP server that the signed-in user's roles allow, each with its "
+        "name, description and input schema, and the URL that identifies the server."
+    ),
+)
 async def get_workspace_tools(
     request: Request,
     db: Annotated[AsyncSession, Depends(aget_read_db)],
@@ -118,7 +129,17 @@ async def prepare(name: str, arguments: dict[str, Any]) -> WorkspaceToolCallResu
     return WorkspaceToolCallResult(result=outcome.structured_content)
 
 
-@router.post(f"{PATH}/prepare", response_model=WorkspaceToolCallResult)
+@router.post(
+    f"{PATH}/prepare",
+    response_model=WorkspaceToolCallResult,
+    summary="Prepare a call to one of the tools",
+    description=(
+        "Validates a call to a tool of FINOS Workspace's own MCP server and returns either the command that the web app "
+        "then carries out in the user's tab, or the result of a tool that needs no command. Answers 403 when the user's "
+        "roles do not allow the tool and 404 when there is no such tool. A call that fails validation answers with an "
+        "invalid request result instead of an error status."
+    ),
+)
 async def prepare_workspace_tool_call(
     call: WorkspaceToolCall,
     request: Request,

@@ -76,8 +76,27 @@ def _choices(annotation: Any, extra: Any) -> list[str] | None:
     return None
 
 
+PAGE_FIELDS = {
+    "items": "The items on this page.",
+    "total": "How many items there are in all.",
+    "page": "The number of this page, counted from 1.",
+    "size": "How many items a page holds.",
+    "pages": "How many pages there are.",
+}
+
+
+def describe_pages(schema: dict[str, Any]) -> None:
+    for name, model in schema["components"]["schemas"].items():
+        if not name.startswith("Page"):
+            continue
+        for field, description in PAGE_FIELDS.items():
+            if (prop := model.get("properties", {}).get(field)) is not None and not prop.get("description"):
+                prop["description"] = description
+
+
 def collect_openapi() -> dict[str, Any]:
     schema = app.openapi()
+    describe_pages(schema)
     paths = {path: item for path, item in schema["paths"].items() if path != "/metrics"}
     return {**schema, "paths": paths}
 

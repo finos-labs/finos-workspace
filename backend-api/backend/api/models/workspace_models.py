@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
@@ -269,8 +269,8 @@ class StoredFileShare(Base, UUIDMixin, DateMixin):
 
 
 class PostStoredFile(BaseModel):
-    filename: str | None = None
-    file_uuid: UUID | None = None
+    filename: str | None = Field(None, description="The name of the file as the user uploaded it.")
+    file_uuid: UUID | None = Field(None, description="The UUID of the stored file.")
 
     def filter_element(self) -> ColumnElement[bool]:
         if self.filename:

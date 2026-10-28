@@ -186,6 +186,7 @@ export interface ApiOperation {
   path: string;
   tag: string;
   summary: string;
+  description: string;
   parameters: ApiParameter[];
   requestBody?: { contentType: string; required: boolean; schema: TypeLabel };
   responses: ApiResponse[];

@@ -9,7 +9,7 @@ from urllib.parse import urlparse, urlsplit
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request, status
 from fastapi.responses import (
     JSONResponse,
     Response,
@@ -105,7 +105,16 @@ async def process_create_user(
     return user_uuid
 
 
-@router.post("/logout", response_model=SuccessReturn)
+@router.post(
+    "/logout",
+    response_model=SuccessReturn,
+    summary="Sign out",
+    description=(
+        "Ends the web app sessions of the signed-in user, revokes the user's agent tokens, and clears the session "
+        "cookie. The route answers success even when no session was open. It allows only a few requests a minute for "
+        "each client address."
+    ),
+)
 @limiter.limit("10/minute", exempt_when=exempt_service_token)
 async def logout(
     request: Request,
@@ -186,7 +195,19 @@ async def _start_session(  # noqa: PLR0913, PLR0917
     return token, lifetime
 
 
-@router.post("/login", response_model=schemas.AppTokenWithContext)
+@router.post(
+    "/login",
+    response_model=schemas.AppTokenWithContext,
+    summary="Sign in with an email and a password",
+    description=(
+        "Checks the email, the password and, when the user has an active authenticator, the code in `totp_token`, then "
+        "starts a session in the cookie `__Host-ws_session` and returns the user's app token with the data that the web "
+        "app needs at start. Answers 202 with `two_factor_required` when the user must set up two-factor authentication "
+        "first, and 202 with the message `Invalid TOTP token` when the code is missing or wrong. Answers 401 when the "
+        "credentials are wrong, 403 when the user is not confirmed, and 400 without the header `X-Workspace-Client: "
+        "web`. It allows only a few attempts a minute for each client address."
+    ),
+)
 @limiter.limit("5/minute", exempt_when=exempt_service_token)
 async def login(
     request: Request,
@@ -417,7 +438,16 @@ async def handle_oauth_user(
     return answer
 
 
-@router.post("/reset-password", response_model=SuccessReturn)
+@router.post(
+    "/reset-password",
+    response_model=SuccessReturn,
+    summary="Choose a new password with a reset link",
+    description=(
+        "Uses the token of a password reset link, which works once, to set a new password, clears the "
+        "temporary-password flag, and ends every session of the user. Answers 400 when the link has expired or was used "
+        "already, or when the request lacks the header `X-Workspace-Client: web`."
+    ),
+)
 @limiter.limit(LIMIT_FEW)
 async def post_reset_password(
     request: Request,
@@ -445,7 +475,15 @@ async def post_reset_password(
     return SuccessReturn.success_instance()
 
 
-@router.post("/sign-in/nonce", response_model=schemas.SignInNonce)
+@router.post(
+    "/sign-in/nonce",
+    response_model=schemas.SignInNonce,
+    summary="Get a nonce for signing in with a provider",
+    description=(
+        "Issues a nonce for a Microsoft or Okta sign-in, sets it in a cookie, and returns it in the field `nonce`. The "
+        "provider's token must carry the nonce's hash. Answers 400 without the header `X-Workspace-Client: web`."
+    ),
+)
 @limiter.limit(LIMIT_FEW)
 async def post_sign_in_nonce(request: Request, response: Response):
     auth_helpers.check_browser_sign_in(request)
@@ -454,12 +492,25 @@ async def post_sign_in_nonce(request: Request, response: Response):
     )
 
 
-@router.post("/{provider}-auth", response_model=schemas.AppTokenWithContext)
+@router.post(
+    "/{provider}-auth",
+    response_model=schemas.AppTokenWithContext,
+    summary="Sign in with Google, Microsoft or Okta",
+    description=(
+        "Verifies the provider's token, finds the user by the verified email, or creates the user from the default user "
+        "mapping when the email has none, and then signs the user in like `POST /app/login`, without a password. "
+        "Answers 403 when Microsoft has not verified the email, 400 when the account cannot be created or the request "
+        "lacks the header `X-Workspace-Client: web`, and the same statuses as `POST /app/login`. It allows only a few "
+        "attempts a minute for each client address."
+    ),
+)
 @limiter.limit("5/minute")
 async def oauth_auth(
     request: Request,
     response: Response,
-    provider: Literal["google", "microsoft", "okta"],
+    provider: Annotated[
+        Literal["google", "microsoft", "okta"], Path(description="The sign-in provider: `google`, `microsoft` or `okta`.")
+    ],
     data: schemas.AuthData,
     db: AsyncSession = Depends(aget_write_db),
 ):
@@ -487,7 +538,15 @@ async def oauth_auth(
     return answer
 
 
-@router.get("/2fa", response_model=schemas.TwoFactorAuthGet)
+@router.get(
+    "/2fa",
+    response_model=schemas.TwoFactorAuthGet,
+    summary="Get the user's two-factor settings",
+    description=(
+        "Returns whether two-factor authentication is on for the signed-in user, which needs an active authenticator, "
+        "and whether the user's organization requires it."
+    ),
+)
 async def get_2fa(
     db: AsyncSession = Depends(aget_write_db),
     user: User = Depends(
@@ -509,7 +568,15 @@ async def get_2fa(
     )
 
 
-@router.put("/2fa", response_model=SuccessReturn)
+@router.put(
+    "/2fa",
+    response_model=SuccessReturn,
+    summary="Turn the user's two-factor authentication on or off",
+    description=(
+        "Sets the user's own two-factor setting and removes the user's authenticator, so that the user sets it up again "
+        "with `POST /totp`."
+    ),
+)
 async def put_2fa(
     data: schemas.TwoFactorAuth,
     db: AsyncSession = Depends(aget_write_db),
@@ -529,7 +596,16 @@ async def put_2fa(
     return SuccessReturn.success_instance()
 
 
-@router.get("/user", response_model=schemas.AppUserReturn)
+@router.get(
+    "/user",
+    response_model=schemas.AppUserReturn,
+    summary="Get the signed-in user",
+    description=(
+        "Returns the signed-in user's name, display settings, file widgets, backends and widget metadata. The Copilot "
+        "agent can call it with a bearer token that it got from `POST /app/copilot/token`, and then the answer holds "
+        "only the user's identity and display settings."
+    ),
+)
 async def get_user(
     db: AsyncSession = Depends(aget_read_db),
     user=Depends(auth_helpers.GetCurrentUser(**auth_helpers.CURRENT_APP_USER, agent=True)),
@@ -551,7 +627,15 @@ async def get_user(
     return user_data
 
 
-@router.get("/validate", response_model=SuccessReturn)
+@router.get(
+    "/validate",
+    response_model=SuccessReturn,
+    summary="Check whether a session is open",
+    description=(
+        "Answers `success` true when the request carries a valid web app session, and `success` false when it does not. "
+        "It never answers with an error status."
+    ),
+)
 async def validate_user(request: Request):
     try:
         await auth_helpers.GetCurrentUser(["uuid"], app_session=True)(request)
@@ -560,7 +644,16 @@ async def validate_user(request: Request):
     return SuccessReturn.success_instance()
 
 
-@router.get("/session", response_model=schemas.AppSession)
+@router.get(
+    "/session",
+    response_model=schemas.AppSession,
+    summary="Get the current session",
+    description=(
+        "Returns the session of the signed-in user: the email, the expiry, whether the password is temporary, whether "
+        "the user must set up two-factor authentication, the organization's name, the user's type and access, usage and "
+        "the state of the user's own Copilot keys. Answers 401 without the header `X-Workspace-Client: web`."
+    ),
+)
 async def get_session(
     request: Request,
     db: Annotated[AsyncSession, Depends(aget_read_db)],
@@ -598,7 +691,16 @@ async def get_session(
     )
 
 
-@router.post("/copilot/token", response_model=schemas.AgentToken)
+@router.post(
+    "/copilot/token",
+    response_model=schemas.AgentToken,
+    summary="Get a token for the Copilot agent",
+    description=(
+        "Mints a short-lived bearer token that lets the Copilot agent call the API as the signed-in user, and returns "
+        "it with its lifetime in seconds in `expires_in`. A sign-out revokes it. Answers 401 without the header "
+        "`X-Workspace-Client: web`."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT, exempt_when=exempt_service_token)
 async def post_copilot_token(
     request: Request,
@@ -610,7 +712,12 @@ async def post_copilot_token(
     return schemas.AgentToken(token=token, expires_in=lifetime)
 
 
-@router.get("/access", response_model=schemas.UserAccess)
+@router.get(
+    "/access",
+    response_model=schemas.UserAccess,
+    summary="Get the user's type and sharing level",
+    description="Returns the user's type, Admin, Developer or User, and the sharing level that the user's roles allow.",
+)
 async def get_access(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -618,7 +725,12 @@ async def get_access(
     return await app_helpers.get_user_access(db, user.uuid)
 
 
-@router.post("/display-settings", response_model=SuccessReturn)
+@router.post(
+    "/display-settings",
+    response_model=SuccessReturn,
+    summary="Save the user's display settings",
+    description="Replaces the display settings of the signed-in user with the object in the request.",
+)
 async def post_display_settings(
     payload: schemas.UserDisplaySettings,
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -632,7 +744,15 @@ async def post_display_settings(
     return SuccessReturn.success_instance()
 
 
-@router.post("/copilot-chats", response_model=schemas.UsageGet)
+@router.post(
+    "/copilot-chats",
+    response_model=schemas.UsageGet,
+    summary="Save the user's Copilot chats",
+    description=(
+        "Creates and updates the user's Copilot chats in one request and returns the user's usage. Answers 400 when the "
+        "database rejects the change."
+    ),
+)
 async def post_copilot_chats(
     chats: schemas.CopilotChatsCreate,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
@@ -650,7 +770,12 @@ async def post_copilot_chats(
     return await schemas.UsageGet.check_cache(db, user)
 
 
-@router.delete("/copilot-chats", response_model=SuccessReturn)
+@router.delete(
+    "/copilot-chats",
+    response_model=SuccessReturn,
+    summary="Delete all of the user's Copilot chats",
+    description="Deletes every Copilot chat of the signed-in user.",
+)
 async def delete_copilot_chats(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -664,21 +789,39 @@ async def delete_copilot_chats(
 
 
 @router.get(
-    "/copilot-chats/search", response_model=list[schemas.Chat | schemas.ChatInfo]
+    "/copilot-chats/search",
+    response_model=list[schemas.Chat | schemas.ChatInfo],
+    summary="Search the user's Copilot chats",
+    description=(
+        "Returns the user's chats whose content matches `query`, which needs at least two characters. The optional "
+        "`start_date` and `end_date` limit the search to a time range."
+    ),
 )
 async def search_copilot_chats(
-    query: Annotated[str, Query(..., min_length=2)],
+    query: Annotated[
+        str, Query(..., min_length=2, description="The text to look for. It needs at least two characters.")
+    ],
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
-    start_date: dateType | datetime | None = None,
-    end_date: dateType | datetime | None = None,
+    start_date: Annotated[
+        dateType | datetime | None, Query(description="Search only chats from this date or later.")
+    ] = None,
+    end_date: Annotated[dateType | datetime | None, Query(description="Search only chats up to this date.")] = None,
 ):
     return await crud.search_copilot_chats(db, user.uuid, query, start_date, end_date)
 
 
-@router.get("/copilot-chats/{chat_uuid}", response_model=schemas.Chat)
+@router.get(
+    "/copilot-chats/{chat_uuid}",
+    response_model=schemas.Chat,
+    summary="Get a Copilot chat",
+    description=(
+        "Returns one of the user's chats with its messages and records that the user has just opened it. Answers 404 "
+        "when the user has no chat with that UUID."
+    ),
+)
 async def get_copilot_chat(
-    chat_uuid: UUID,
+    chat_uuid: Annotated[UUID, Path(description="The UUID of the Copilot chat.")],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
@@ -720,6 +863,13 @@ async def get_copilot_chat(
     "/usage",
     response_model=schemas.UsageGet,
     dependencies=[Depends(auth_helpers.check_metering)],
+    summary="Report Copilot usage for a user",
+    description=(
+        "Adds to, subtracts from or resets the user's Copilot call and token counts for the day, and returns the new "
+        "usage. When an addition would pass the user's limit, the answer reports the limit error instead of changing "
+        "the count. Only the Copilot service may call it, with the header `X-Metering-Authorization: Bearer <token>`, "
+        "and the call answers 403 otherwise."
+    ),
 )
 async def put_usage(
     usage: schemas.UsagePut,
@@ -784,7 +934,15 @@ async def put_usage(
     return await helpers.get_user_usage(user)
 
 
-@router.get("/copilot/access", response_model=schemas.CopilotAccess)
+@router.get(
+    "/copilot/access",
+    response_model=schemas.CopilotAccess,
+    summary="Get the user's Copilot access",
+    description=(
+        "Returns the Copilot models and the MCP tools that the user's roles grant, and the Copilot capabilities that "
+        "the roles disable."
+    ),
+)
 async def get_copilot_access(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -796,6 +954,13 @@ async def get_copilot_access(
     "/copilot/authorize",
     response_model=schemas.CopilotAuthorizeResult,
     dependencies=[Depends(auth_helpers.check_metering)],
+    summary="Check the user's access to a model and tools",
+    description=(
+        "Reports whether the user's roles allow the agent, the model and the MCP tools in the request, and names the "
+        "denied model and tools when they do not. Called with the agent's bearer token, the answer also carries the "
+        "user's own provider keys. Only the Copilot service may call it, with the header `X-Metering-Authorization: "
+        "Bearer <token>`, and the call answers 403 otherwise."
+    ),
 )
 async def post_copilot_authorize(
     request: schemas.CopilotAuthorize,
@@ -815,7 +980,15 @@ async def post_copilot_authorize(
     return result
 
 
-@router.get("/usage", response_model=schemas.UsageGet)
+@router.get(
+    "/usage",
+    response_model=schemas.UsageGet,
+    summary="Get the user's Copilot usage",
+    description=(
+        "Returns the user's Copilot calls and tokens for the day with the limits that the user's roles set, and the "
+        "user's file storage use. Answers 404 when there is no usage."
+    ),
+)
 async def get_usage(
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -829,13 +1002,20 @@ async def get_usage(
 @router.get(
     "/widget-metadata",
     response_model=list[schemas.WidgetMetadataResponse],
+    summary="List the user's widget metadata",
+    description=(
+        "Returns the metadata that the user saved for widgets. The optional parameters `widget_type`, `name` and "
+        "`widget_id` narrow the list. Answers 404 when nothing matches."
+    ),
 )
 async def get_widget_metadata(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
-    widget_type: schemas.MetaDataWidgetType | None = None,
-    name: str | None = None,
-    widget_id: UUID | None = None,
+    widget_type: Annotated[
+        schemas.MetaDataWidgetType | None, Query(description="Return only the metadata of widgets of this type.")
+    ] = None,
+    name: Annotated[str | None, Query(description="Return only the metadata of the widget with this name.")] = None,
+    widget_id: Annotated[UUID | None, Query(description="Return only the metadata of the widget with this id.")] = None,
 ):
     result = await app_helpers.get_widget_metadata(
         db=db, user=user, widget_id=widget_id, widget_type=widget_type, name=name
@@ -848,7 +1028,12 @@ async def get_widget_metadata(
     return result
 
 
-@router.post("/widget-metadata", response_model=SuccessReturn)
+@router.post(
+    "/widget-metadata",
+    response_model=SuccessReturn,
+    summary="Save widget metadata",
+    description="Stores the metadata of one widget for the signed-in user.",
+)
 async def post_widget_metadata(
     widget_metadata: schemas.WidgetMetadataResponse,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
@@ -862,10 +1047,18 @@ async def post_widget_metadata(
     return SuccessReturn.success_instance()
 
 
-@router.patch("/widget-metadata", response_model=SuccessReturn)
+@router.patch(
+    "/widget-metadata",
+    response_model=SuccessReturn,
+    summary="Change widget metadata",
+    description=(
+        "Changes the fields that the request names in the metadata of the widget whose id is in `widget_id`. Answers "
+        "404 when the user has no metadata for that widget."
+    ),
+)
 async def patch_widget_metadata(
     widget_metadata: schemas.WidgetMetadataResponsePatch,
-    widget_id: UUID,
+    widget_id: Annotated[UUID, Query(description="The id of the widget whose metadata changes.")],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
@@ -888,10 +1081,16 @@ async def patch_widget_metadata(
 
 
 @router.delete(
-    "/widget-metadata/{widget_id}", response_model=list[schemas.WidgetMetadataResponse]
+    "/widget-metadata/{widget_id}",
+    response_model=list[schemas.WidgetMetadataResponse],
+    summary="Delete widget metadata",
+    description=(
+        "Deletes the user's metadata for the widget and returns the metadata that remains. Answers 404 when the user "
+        "has none for that widget."
+    ),
 )
 async def delete_widget_metadata(
-    widget_id: UUID,
+    widget_id: Annotated[UUID, Path(description="The id of the widget whose metadata to delete.")],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
@@ -912,7 +1111,15 @@ async def delete_widget_metadata(
     return await app_helpers.get_widget_metadata(db=db, user=user)
 
 
-@router.put("/custom-copilot", response_model=SuccessReturn)
+@router.put(
+    "/custom-copilot",
+    response_model=SuccessReturn,
+    summary="Create or update a custom Copilot",
+    description=(
+        "Saves a custom Copilot of the signed-in user: it creates the Copilot, or replaces the user's Copilot with the "
+        "same id. Answers 403 when the user's type may not add connections."
+    ),
+)
 async def put_custom_copilot(
     custom_copilot: schemas.CustomCopilot,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
@@ -923,7 +1130,12 @@ async def put_custom_copilot(
     return SuccessReturn.success_instance()
 
 
-@router.get("/custom-copilot", response_model=list[schemas.CustomCopilot])
+@router.get(
+    "/custom-copilot",
+    response_model=list[schemas.CustomCopilot],
+    summary="List the user's custom Copilots",
+    description="Returns the custom Copilots that the signed-in user saved.",
+)
 async def get_custom_copilot(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -931,9 +1143,14 @@ async def get_custom_copilot(
     return await app_helpers.get_custom_copilots(db, user.uuid)
 
 
-@router.delete("/custom-copilot/{uuid}", response_model=SuccessReturn)
+@router.delete(
+    "/custom-copilot/{uuid}",
+    response_model=SuccessReturn,
+    summary="Delete a custom Copilot",
+    description="Deletes the user's custom Copilot with that UUID.",
+)
 async def delete_custom_copilot(
-    uuid: UUID,
+    uuid: Annotated[UUID, Path(description="The UUID of the custom Copilot.")],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
 ):
@@ -941,7 +1158,15 @@ async def delete_custom_copilot(
     return SuccessReturn.success_instance()
 
 
-@router.post("/prompts", response_model=SuccessReturn)
+@router.post(
+    "/prompts",
+    response_model=SuccessReturn,
+    summary="Save the user's prompts",
+    description=(
+        "Makes the list in the request the user's prompts: it adds new ones, updates existing ones and deletes the "
+        "user's prompts that the list leaves out."
+    ),
+)
 async def post_user_prompt(
     prompts: list[schemas.Prompt],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
@@ -951,7 +1176,12 @@ async def post_user_prompt(
     return SuccessReturn.success_instance()
 
 
-@router.get("/prompts", response_model=list[schemas.Prompt])
+@router.get(
+    "/prompts",
+    response_model=list[schemas.Prompt],
+    summary="List the user's prompts",
+    description="Returns the prompts that the signed-in user saved.",
+)
 async def get_user_prompt(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -959,7 +1189,12 @@ async def get_user_prompt(
     return await app_helpers.get_user_prompt_state(db, user.uuid)
 
 
-@router.post("/skills", response_model=list[schemas.SkillReturn])
+@router.post(
+    "/skills",
+    response_model=list[schemas.SkillReturn],
+    summary="Create a skill",
+    description="Adds a skill for the signed-in user and returns all of the user's skills.",
+)
 async def create_user_skill(
     skill: schemas.SkillCreate,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
@@ -971,9 +1206,14 @@ async def create_user_skill(
     return await app_helpers.get_user_skill_state(db, user.uuid)
 
 
-@router.patch("/skills/{skill_uuid}", response_model=list[schemas.SkillReturn])
+@router.patch(
+    "/skills/{skill_uuid}",
+    response_model=list[schemas.SkillReturn],
+    summary="Change a skill",
+    description="Replaces the content of the user's skill with that UUID and returns all of the user's skills.",
+)
 async def update_user_skill(
-    skill_uuid: UUID,
+    skill_uuid: Annotated[UUID, Path(description="The UUID of the skill.")],
     skill: schemas.SkillCreate,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -982,7 +1222,12 @@ async def update_user_skill(
     return await app_helpers.get_user_skill_state(db, user.uuid)
 
 
-@router.delete("/skills", response_model=list[schemas.SkillReturn])
+@router.delete(
+    "/skills",
+    response_model=list[schemas.SkillReturn],
+    summary="Delete skills",
+    description="Deletes the user's skills whose UUIDs are in the request and returns the skills that remain.",
+)
 async def delete_user_skill(
     skill_uuids: list[UUID],
     db: Annotated[AsyncSession, Depends(aget_write_db)],
@@ -992,7 +1237,15 @@ async def delete_user_skill(
     return await app_helpers.get_user_skill_state(db, user.uuid)
 
 
-@router.get("/role-permissions", response_model=schemas.UserRolesPermissions)
+@router.get(
+    "/role-permissions",
+    response_model=schemas.UserRolesPermissions,
+    summary="List the access that the user's roles grant",
+    description=(
+        "Returns the data connectors, templates and prompts that each of the user's roles grants, with the access level "
+        "of each."
+    ),
+)
 async def get_user_role_permissions(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -1001,7 +1254,10 @@ async def get_user_role_permissions(
 
 
 @router.get(
-    "/resource-permissions", response_model=schemas.UserRolesPermissionsFlattened
+    "/resource-permissions",
+    response_model=schemas.UserRolesPermissionsFlattened,
+    summary="List the user's access to resources",
+    description="Returns the access that the user's roles grant, combined across the roles and listed by resource.",
 )
 async def get_resource_permissions(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
@@ -1011,7 +1267,12 @@ async def get_resource_permissions(
     return app_helpers.flatten_permissions(permissions.model_dump())
 
 
-@router.get("/theme-settings", response_model=schemas.EntityThemeSettings)
+@router.get(
+    "/theme-settings",
+    response_model=schemas.EntityThemeSettings,
+    summary="Get the organization's theme settings",
+    description="Returns the light and dark theme settings of the signed-in user's organization.",
+)
 async def get_theme_settings(
     db: AsyncSession = Depends(aget_read_db),
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -1020,7 +1281,15 @@ async def get_theme_settings(
     return await app_helpers.get_entity_theme_settings(db, entity_uuid)
 
 
-@router.post("/mcp-servers", response_model=schemas.MCPServers)
+@router.post(
+    "/mcp-servers",
+    response_model=schemas.MCPServers,
+    summary="Save the user's MCP servers",
+    description=(
+        "Replaces the user's saved MCP servers with the list in the request and returns the saved list. Answers 403 "
+        "when the user's type may not add connections."
+    ),
+)
 async def post_mcp_servers(
     mcp_servers: schemas.MCPServers,
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -1034,7 +1303,16 @@ async def post_mcp_servers(
 LOCAL_MCP_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
 
-@router.post("/mcp-servers/local-headers", response_model=schemas.MCPServerHeaders)
+@router.post(
+    "/mcp-servers/local-headers",
+    response_model=schemas.MCPServerHeaders,
+    summary="Get the headers of a local MCP server",
+    description=(
+        "Returns the headers that the user saved for an MCP server on `localhost`. Answers 400 when the address is not "
+        "local, 403 when the user's type may not add connections, and 404 when no MCP server is saved at that address. "
+        "Only the web app can call it."
+    ),
+)
 async def get_local_mcp_server_headers(
     payload: schemas.MCPLocalServer,
     db: Annotated[AsyncSession, Depends(aget_read_db)],
@@ -1049,7 +1327,12 @@ async def get_local_mcp_server_headers(
     return schemas.MCPServerHeaders(headers=headers)
 
 
-@router.get("/copilot-keys", response_model=schemas.CopilotKeysStatus)
+@router.get(
+    "/copilot-keys",
+    response_model=schemas.CopilotKeysStatus,
+    summary="Get the state of the user's own Copilot keys",
+    description="Returns which provider keys the signed-in user has saved. It never returns the keys.",
+)
 async def get_copilot_keys(
     db: Annotated[AsyncSession, Depends(aget_read_db)],
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
@@ -1057,7 +1340,12 @@ async def get_copilot_keys(
     return await app_helpers.get_copilot_key_status(db, user.uuid)
 
 
-@router.put("/copilot-keys", response_model=schemas.CopilotKeysStatus)
+@router.put(
+    "/copilot-keys",
+    response_model=schemas.CopilotKeysStatus,
+    summary="Save the user's own Copilot keys",
+    description="Saves the provider keys in the request for the signed-in user and returns which keys are saved.",
+)
 async def put_copilot_keys(
     keys: schemas.CopilotProviderKeys,
     db: Annotated[AsyncSession, Depends(aget_write_db)],
@@ -1171,11 +1459,17 @@ async def _watch_sse_announcement(
 class MCPProxyRequest(BaseModel):
     model_config = {"extra": "ignore"}
 
-    server_url: str = Field(max_length=2048)
-    url: str = Field(max_length=8192)
-    method: Literal["GET", "POST"] = "GET"
-    headers: dict[str, str] | None = None
-    body: dict | list | None = None
+    server_url: str = Field(max_length=2048, description="The address of the MCP server.")
+    url: str = Field(
+        max_length=8192,
+        description="The address that the request goes to. It must be on the server's origin, under the server's path.",
+    )
+    method: Literal["GET", "POST"] = Field("GET", description="The HTTP method of the request: `GET` or `POST`.")
+    headers: dict[str, str] | None = Field(
+        None,
+        description="The headers to forward. The API forwards only the headers that the MCP protocol uses.",
+    )
+    body: dict | list | None = Field(None, description="The JSON body of a `POST` request.")
 
     @field_validator("server_url", "url")
     @classmethod
@@ -1294,7 +1588,18 @@ async def _mcp_answer(
     )
 
 
-@router.post("/mcp-proxy", response_class=StreamingResponse)
+@router.post(
+    "/mcp-proxy",
+    response_class=StreamingResponse,
+    summary="Forward a request to an MCP server",
+    description=(
+        "Forwards the request in the body to the MCP server that it names, with the headers or the OAuth sign-in that "
+        "the user saved for that server, and streams the answer back. A call of a tool that the user's roles do not "
+        "allow is refused. Answers 422 when the request does not go to the named server, 403 when the tool is not "
+        "allowed or the server's address may not be reached, 504 when the server times out, and 502 when it cannot be "
+        "reached. Only the web app can call it."
+    ),
+)
 async def mcp_proxy(
     data: Annotated[MCPProxyRequest, Body()],
     db: Annotated[AsyncSession, Depends(aget_read_db)],

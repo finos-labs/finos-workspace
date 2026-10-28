@@ -574,7 +574,17 @@ async def grant_authorization(
     return _bearer(credentials) if credentials else None
 
 
-@router.post("/start", response_model=schemas.MCPOAuthAuthorization)
+@router.post(
+    "/start",
+    response_model=schemas.MCPOAuthAuthorization,
+    summary="Start signing in to an MCP server",
+    description=(
+        "Finds the authorization server of the MCP server in the request, registers FINOS Workspace as its client when "
+        "the server needs that, and returns the address at which the user grants access. The API remembers the attempt "
+        "for the user's session. Only the web app can call it, so the request must carry the header "
+        "`X-Workspace-Client: web`."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT)
 async def start_mcp_oauth(
     request: Request,
@@ -604,7 +614,17 @@ async def start_mcp_oauth(
     return schemas.MCPOAuthAuthorization(authorization_url=authorization_url)
 
 
-@router.post("/complete", response_model=schemas.MCPOAuthCompleted)
+@router.post(
+    "/complete",
+    response_model=schemas.MCPOAuthCompleted,
+    summary="Finish signing in to an MCP server",
+    description=(
+        "Exchanges the authorization code that the MCP server's authorization server returned for tokens, and stores "
+        "them as the user's grant for that server, replacing an earlier grant. Answers 400 when the attempt has "
+        "expired, was not started by this user and session, or came back to another address. Only the web app can call "
+        "it."
+    ),
+)
 @limiter.limit(LIMIT_DEFAULT)
 async def complete_mcp_oauth(
     request: Request,
@@ -650,7 +670,15 @@ async def complete_mcp_oauth(
     return schemas.MCPOAuthCompleted(server_url=server)
 
 
-@router.post("/disconnect", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/disconnect",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Disconnect from an MCP server",
+    description=(
+        "Deletes the user's grant for the MCP server in the request, so that the Copilot can no longer use the user's "
+        "sign-in there. Only the web app can call it."
+    ),
+)
 async def disconnect_mcp_oauth(
     payload: schemas.MCPOAuthServer,
     db: Annotated[AsyncSession, Depends(aget_write_db)],

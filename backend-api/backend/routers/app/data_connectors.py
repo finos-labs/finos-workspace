@@ -21,7 +21,15 @@ router = APIRouter(
 )
 
 
-@router.get("/file", response_model=list[schemas.ReturnFileWidget])
+@router.get(
+    "/file",
+    response_model=list[schemas.ReturnFileWidget],
+    summary="List the user's file widgets",
+    description=(
+        "Returns the file widgets that the signed-in user has created. A user whose type may not add connections "
+        "receives an empty list."
+    ),
+)
 async def get_user_file_widgets(
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_read_db),
@@ -32,7 +40,16 @@ async def get_user_file_widgets(
     return (await db.execute(select_query)).scalars().all()
 
 
-@router.post("/file/{widget_uuid}", response_model=schemas.SuccessReturn)
+@router.post(
+    "/file/{widget_uuid}",
+    response_model=schemas.SuccessReturn,
+    summary="Create or update a file widget",
+    description=(
+        "Saves the user's file widget under the UUID in the path and links it to the file that the user uploaded, named "
+        "by `stored_file_uuid`. Answers 403 when the user's type may not add connections, and 404 when the file is not "
+        "stored and no upload of it is pending."
+    ),
+)
 async def post_user_file_widget(
     widget_uuid: Annotated[
         UUID, Path(..., description="The UUID of the widget to create or update")
@@ -85,7 +102,15 @@ async def post_user_file_widget(
     return {"success": True}
 
 
-@router.delete("/file/{widget_uuid}", response_model=schemas.SuccessReturn)
+@router.delete(
+    "/file/{widget_uuid}",
+    response_model=schemas.SuccessReturn,
+    summary="Delete a file widget",
+    description=(
+        "Deletes the user's file widget and, when the storage allows it, the file behind it. A file that the storage "
+        "cannot delete is kept and detached from the widget."
+    ),
+)
 async def delete_user_file_widget(
     widget_uuid: Annotated[
         UUID, Path(..., description="The UUID of the widget to delete")
@@ -112,7 +137,15 @@ async def delete_user_file_widget(
     return {"success": True}
 
 
-@router.get("/stored-files", response_model=list[schemas.StoredFileReturn])
+@router.get(
+    "/stored-files",
+    response_model=list[schemas.StoredFileReturn],
+    summary="List the user's stored files",
+    description=(
+        "Returns the files that the signed-in user has uploaded, each with its extension, size and the file widget that "
+        "uses it. A user whose type may not add connections receives an empty list."
+    ),
+)
 async def get_stored_files(
     user=Depends(auth_helpers.GetCurrentUser(["uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_read_db),
@@ -123,7 +156,15 @@ async def get_stored_files(
     return (await db.execute(select_query)).scalars().all()
 
 
-@router.get("/api-source", response_model=list[schemas.ReturnApiSource])
+@router.get(
+    "/api-source",
+    response_model=list[schemas.ReturnApiSource],
+    summary="List the backends that the user can manage",
+    description=(
+        "Returns the backends that the signed-in user can edit, newest first: the user's own backends when the user's "
+        "type may add connections, and, for an Admin, the organization's backends as well."
+    ),
+)
 async def get_user_api_sources(
     user=Depends(auth_helpers.GetCurrentUser(["uuid", "permissions_uuid"], app_session=True)),
     db: AsyncSession = Depends(aget_read_db),
@@ -146,7 +187,16 @@ async def get_user_api_sources(
     return (await db.execute(select_query)).scalars().all()
 
 
-@router.post("/api-source/{source_uuid}", response_model=SuccessReturn)
+@router.post(
+    "/api-source/{source_uuid}",
+    response_model=SuccessReturn,
+    summary="Create or update a backend",
+    description=(
+        "Saves the user's backend under the UUID in the path with the name, URL and settings in the request: it creates "
+        "the backend, or replaces the user's backend that has this UUID. Answers 403 when the user's type may not add "
+        "connections."
+    ),
+)
 async def post_user_api_source(
     source_uuid: Annotated[
         UUID, Path(..., description="The UUID of the source to create or update")
@@ -174,7 +224,14 @@ async def post_user_api_source(
     return SuccessReturn.success_instance()
 
 
-@router.delete("/api-source/{source_uuid}", response_model=SuccessReturn)
+@router.delete(
+    "/api-source/{source_uuid}",
+    response_model=SuccessReturn,
+    summary="Delete a backend",
+    description=(
+        "Deletes the user's own backend with the given UUID. A UUID that is not one of the user's backends is ignored."
+    ),
+)
 async def delete_user_api_source(
     source_uuid: Annotated[
         UUID, Path(..., description="The UUID of the source to delete")

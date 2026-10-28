@@ -2,6 +2,7 @@ import json
 
 import pytest
 from fastapi import FastAPI
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from prometheus_client import CollectorRegistry
 
@@ -42,6 +43,31 @@ def test_the_runtime_metrics_list_values_only_for_their_labels():
     for entry in runtime:
         assert set(entry["label_values"]) <= set(entry["labels"])
     assert {entry["name"] for entry in runtime if entry["label_values"]} == set(LABEL_VALUES)
+
+
+def test_every_route_parameter_and_model_field_has_a_description():
+    missing = []
+    for route in export.app.routes:
+        if not isinstance(route, APIRoute) or not route.include_in_schema or route.path == "/metrics":
+            continue
+        name = f"{sorted(route.methods)[0]} {route.path}"
+        if not route.summary:
+            missing.append(f"{name} has no summary")
+        if not route.description.strip():
+            missing.append(f"{name} has no description")
+    document = export.collect_openapi()
+    for path, item in document["paths"].items():
+        for method, operation in item.items():
+            for parameter in [*item.get("parameters", []), *operation.get("parameters", [])]:
+                if not parameter.get("description", "").strip():
+                    missing.append(f"{method.upper()} {path} has no description for the parameter {parameter['name']}")
+    for name, model in document["components"]["schemas"].items():
+        if name in {"HTTPValidationError", "ValidationError"}:
+            continue
+        for field, value in model.get("properties", {}).items():
+            if not value.get("description", "").strip():
+                missing.append(f"{name}.{field} has no description")
+    assert not missing, "\n".join(missing)
 
 
 def test_the_exporter_writes_every_file(tmp_path):

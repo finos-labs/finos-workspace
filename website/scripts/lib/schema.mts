@@ -118,7 +118,18 @@ function requiredOf(schema: Json): Set<string> {
   return required;
 }
 
-function rows(schema: Json, prefix: string, depth: number): SchemaProperty[] {
+function referencedDescription(property: Json, definitions: Json): string | undefined {
+  const refs = [property.$ref, ...list(property.allOf).map((item) => item.$ref)].filter(
+    (ref): ref is string => typeof ref === "string",
+  );
+  for (const ref of refs) {
+    const target = definitions[refName(ref)];
+    if (isObject(target) && typeof target.description === "string") return target.description;
+  }
+  return undefined;
+}
+
+function rows(schema: Json, prefix: string, depth: number, definitions: Json): SchemaProperty[] {
   const result: SchemaProperty[] = [];
   const required = requiredOf(schema);
   for (const [name, value] of Object.entries(propertiesOf(schema))) {
@@ -129,26 +140,27 @@ function rows(schema: Json, prefix: string, depth: number): SchemaProperty[] {
       required: required.has(name),
       notes: constraintNotes(property),
     };
-    if (typeof property.description === "string") row.description = property.description;
+    const description = typeof property.description === "string" ? property.description : referencedDescription(property, definitions);
+    if (description !== undefined) row.description = description;
     result.push(row);
     if (depth < MAX_DEPTH) {
       if (property.type === "object" && Object.keys(propertiesOf(property)).length > 0) {
-        result.push(...rows(property, `${prefix}${name}.`, depth + 1));
+        result.push(...rows(property, `${prefix}${name}.`, depth + 1, definitions));
       }
       if (isObject(property.items) && property.items.type === "object" && Object.keys(propertiesOf(property.items)).length > 0) {
-        result.push(...rows(property.items, `${prefix}${name}[].`, depth + 1));
+        result.push(...rows(property.items, `${prefix}${name}[].`, depth + 1, definitions));
       }
     }
   }
   return result;
 }
 
-export function describeSchema(name: string, schema: unknown): SchemaDoc {
+export function describeSchema(name: string, schema: unknown, definitions: Json = {}): SchemaDoc {
   const json = isObject(schema) ? schema : {};
   const doc: SchemaDoc = {
     name,
     type: typeLabel(json),
-    properties: rows(json, "", 0),
+    properties: rows(json, "", 0, definitions),
     notes: [...constraintNotes(json), ...ruleNotes(json)],
   };
   if (typeof json.description === "string") doc.description = json.description;
@@ -165,12 +177,12 @@ export function describeSet(source: string, title: string, schema: unknown, defi
     title,
     definitions: Object.keys(definitions)
       .sort()
-      .map((name) => describeSchema(name, definitions[name])),
+      .map((name) => describeSchema(name, definitions[name], definitions)),
   };
   if (typeof json.description === "string") set.description = json.description;
   const { [definitionsKey]: _omitted, ...rest } = json;
   if (rest.properties !== undefined || rest.type !== undefined || rest.items !== undefined || rest.$ref !== undefined) {
-    set.root = describeSchema(title, rest);
+    set.root = describeSchema(title, rest, definitions);
   }
   return set;
 }

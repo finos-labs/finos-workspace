@@ -2,7 +2,7 @@ import Heading from "@theme/Heading";
 import { MetricsTable } from "./agent";
 import { agentData, apiData, pluginsData } from "./data";
 import { slug } from "./format";
-import { Contents, TableWrap, TypeText } from "./shared";
+import { TableWrap, TypeText } from "./shared";
 import styles from "./styles.module.css";
 
 export function ApiMetrics() {
@@ -21,19 +21,39 @@ export function ApiTag({ tag, schemaPage }: { tag: string; schemaPage: string })
   const operationId = (method: string, path: string) => `op-${method.toLowerCase()}-${slug(path)}`;
   return (
     <>
-      <Contents
-        items={found.operations.map((operation) => ({
-          id: operationId(operation.method, operation.path),
-          label: `${operation.method} ${operation.path}`,
-        }))}
-      />
+      <TableWrap>
+        <table>
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Path</th>
+              <th>Summary</th>
+            </tr>
+          </thead>
+          <tbody>
+            {found.operations.map((operation) => (
+              <tr key={`${operation.method} ${operation.path}`}>
+                <td>{operation.method}</td>
+                <td>
+                  <a href={`#${operationId(operation.method, operation.path)}`}>
+                    <code>{operation.path}</code>
+                  </a>
+                </td>
+                <td>{operation.summary}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TableWrap>
       {found.operations.map((operation) => (
         <div key={`${operation.method} ${operation.path}`} className={styles.block}>
           <Heading as="h4" id={operationId(operation.method, operation.path)}>
             <span className={styles.method}>{operation.method}</span>
             <code>{operation.path}</code>
           </Heading>
-          {operation.summary ? <p>{operation.summary}</p> : null}
+          <p>
+            <strong>{operation.summary}.</strong> {operation.description}
+          </p>
           {operation.parameters.length > 0 ? (
             <TableWrap>
               <table>
@@ -75,7 +95,8 @@ export function ApiTag({ tag, schemaPage }: { tag: string; schemaPage: string })
             {operation.responses.map((response, index) => (
               <span key={response.code}>
                 {index > 0 ? "; " : ""}
-                <code>{response.code}</code> {response.description}
+                <code>{response.code}</code>
+                {response.description ? ` ${response.description}` : null}
                 {response.schema ? (
                   <>
                     {" "}
