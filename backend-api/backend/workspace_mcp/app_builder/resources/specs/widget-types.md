@@ -15,7 +15,7 @@ related:
 
 ## Catalog
 
-The types Workspace renders itself:
+The types FINOS Workspace renders itself:
 
 <!-- generated:types -->
 | Type | Use case | Endpoint returns | Method | Params go in |
@@ -27,7 +27,7 @@ The types Workspace renders itself:
 | `iframe` | An existing web page | Nothing: the endpoint is the page's URL, which the browser opens | GET | query, or the path |
 <!-- /generated:types -->
 
-A widget plugin can add types. A plugin is installed for the deployment and enabled per organization by its administrators, so the types a user can use depend on their organization: `workspace://specs/widgets-json-schema` is the schema in force for the signed-in user, with those types. A widget of a type nothing renders for the user is left out of their catalog, and Workspace names it in a warning when the backend is connected.
+A widget plugin can add types. A plugin is installed for the deployment and enabled per organization by its administrators, so the types a user can use depend on their organization: `workspace://specs/widgets-json-schema` is the schema in force for the signed-in user, with those types. A widget of a type nothing renders for the user is left out of their catalog, and FINOS Workspace names it in a warning when the backend is connected.
 
 > Use the exact type string. Don't invent aliases.
 
@@ -43,7 +43,7 @@ A widget plugin can add types. A plugin is installed for the deployment and enab
 
 ## Choose this, not that
 
-- **Prose goes to `markdown`, not `html`.** Markdown picks up the Workspace's theme and typography; use `html` only when you need layout or graphics markdown cannot express.
+- **Prose goes to `markdown`, not `html`.** Markdown picks up the FINOS Workspace's theme and typography; use `html` only when you need layout or graphics markdown cannot express.
 - **Articles go to `newsfeed`, not `markdown`.** `newsfeed` shows the list with title, date and author, a search box and each article's full text on demand; a `markdown` widget would be one long page.
 - **A document that exists as a file goes to `pdf`, not a link inside `markdown`.**
 - **A page you do not control goes to `iframe`, not a copy of its HTML.** Some sites refuse to be embedded; if the page stays blank, serve it from your own backend as `html` instead.
@@ -51,9 +51,9 @@ A widget plugin can add types. A plugin is installed for the deployment and enab
 
 ## `html` widgets
 
-The endpoint's response is shown in a sandboxed frame. Scripts run only when the deployment enables HTML script execution, so a report should read correctly without them. The widget follows the Workspace theme only if the endpoint honors a `theme` query parameter (`dark` or `light`), which Workspace sends.
+The endpoint's response is shown in a sandboxed frame. Scripts run only when the deployment enables HTML script execution, so a report should read correctly without them. The widget follows the FINOS Workspace theme only if the endpoint honors a `theme` query parameter (`dark` or `light`), which FINOS Workspace sends.
 
-If the HTML is generated from data rows, set `"raw": true` on the widget and have the endpoint return those rows as JSON when it is called with `raw=true`. Workspace then shows a toggle between the report and its data, and the AI Agent reads the rows instead of parsing the HTML (see `workspace://overview/ai-agent-contract`).
+If the HTML is generated from data rows, set `"raw": true` on the widget and have the endpoint return those rows as JSON when it is called with `raw=true`. FINOS Workspace then shows a toggle between the report and its data, and the AI Agent reads the rows instead of parsing the HTML (see `workspace://overview/ai-agent-contract`).
 
 ## `newsfeed` widgets
 

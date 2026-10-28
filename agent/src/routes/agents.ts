@@ -24,7 +24,7 @@ agentsRouter.get("/agents.json", (c) => {
     [AGENT_ID]: {
       name: "Ines",
       description:
-        "An open-source, model-agnostic agent for the Workspace",
+        "An open-source, model-agnostic agent for the FINOS Workspace",
       endpoints: { query: "/v1/query" },
       skills: inesSkills(),
       features: {

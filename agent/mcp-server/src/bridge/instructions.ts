@@ -1,6 +1,6 @@
 export const USAGE_SUMMARY =
   "Use snake_case payloads. Start with get_workspace_snapshot to discover valid " +
-  "dashboard_id, dashboard_composition, and skills from the live Workspace " +
+  "dashboard_id, dashboard_composition, and skills from the live FINOS Workspace " +
   "session. Use list_available_widgets and get_widget_schema for widget library " +
   "discovery. Do not invent identifiers.";
 
@@ -105,8 +105,8 @@ export const DISCOVERY_WORKFLOW =
   "add_generative_widget inner_tab creates the tab.";
 
 export const SERVER_INSTRUCTIONS = [
-  "Expose the active Workspace browser session as MCP tools.",
-  "All tools require a running local Workspace browser bridge.",
+  "Expose the active FINOS Workspace browser session as MCP tools.",
+  "All tools require a running local FINOS Workspace browser bridge.",
   USAGE_SUMMARY,
   WIDGET_SCHEMA_GUIDANCE,
   CREATE_WIDGET_GUIDANCE,
@@ -119,7 +119,7 @@ export const SERVER_INSTRUCTIONS = [
   LAYOUT_GUIDANCE,
   DISCOVERY_WORKFLOW,
   "Provide dashboard_id explicitly when operating on a dashboard other than " +
-    "the current Workspace route.",
+    "the current FINOS Workspace route.",
 ].join(" ");
 
 export function describeTool(summary: string, ...notes: string[]): string {

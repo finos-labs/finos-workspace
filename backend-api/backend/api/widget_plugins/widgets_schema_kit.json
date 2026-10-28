@@ -1623,13 +1623,9 @@
                         "const": "boolean"
                       },
                       "value": {
-                        "anyOf": [
-                          {
-                            "type": "boolean"
-                          },
-                          {
-                            "type": "null"
-                          }
+                        "type": [
+                          "boolean",
+                          "null"
                         ]
                       }
                     },
@@ -2005,7 +2001,7 @@
           "GET",
           "POST"
         ],
-        "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
+        "description": "How FINOS Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
       },
       "category": {
         "type": "string",

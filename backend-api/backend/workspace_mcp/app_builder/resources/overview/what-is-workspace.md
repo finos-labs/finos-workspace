@@ -1,7 +1,7 @@
 ---
-title: What Workspace Is
+title: What FINOS Workspace Is
 uri: workspace://overview/what-is-workspace
-use_when: You are about to design widgets or apps and need a mental model of what Workspace is, who uses it, and what is native vs. what your backend provides.
+use_when: You are about to design widgets or apps and need a mental model of what FINOS Workspace is, who uses it, and what is native vs. what your backend provides.
 language_specific: false
 related:
   - workspace://overview/ai-agent-contract
@@ -10,11 +10,11 @@ related:
   - workspace://specs/apps-json
 ---
 
-# What Workspace Is
+# What FINOS Workspace Is
 
-Workspace is an analytical environment that teams run for themselves and use to read, compare and discuss data. They open a **Dashboard**, drop **Widgets** onto it, drive them with linked parameters, and ask the **AI Agent** questions about the data shown. Your backend supplies the data and metadata; Workspace handles rendering, layout, parameter linking, refresh, and AI reasoning over the result.
+FINOS Workspace is an analytical environment that teams run for themselves and use to read, compare and discuss data. They open a **Dashboard**, drop **Widgets** onto it, drive them with linked parameters, and ask the **AI Agent** questions about the data shown. Your backend supplies the data and metadata; FINOS Workspace handles rendering, layout, parameter linking, refresh, and AI reasoning over the result.
 
-Designing a widget without this picture in mind leads to widgets that work in isolation but feel wrong inside the product — shipping a custom toolbar that duplicates Workspace's, packing several views into one widget because parameter linking wasn't on your radar, or writing terse descriptions the AI Agent can't use to find the widget.
+Designing a widget without this picture in mind leads to widgets that work in isolation but feel wrong inside the product — shipping a custom toolbar that duplicates FINOS Workspace's, packing several views into one widget because parameter linking wasn't on your radar, or writing terse descriptions the AI Agent can't use to find the widget.
 
 ## Primitives
 
@@ -29,9 +29,9 @@ User-facing nouns. Match them when you write descriptions, titles, and docs.
 | **AI Agent** | Built-in assistant that reads the Dashboard's widgets and answers questions across them, runs multi-step analysis, and drops artifacts (text and HTML reports) back into the Dashboard. See `workspace://overview/ai-agent-contract`. |
 | **Widget Gallery** | Browse-and-add catalog. Your widgets surface here once the backend is registered. |
 
-## What Workspace gives you for free
+## What FINOS Workspace gives you for free
 
-Don't reinvent these — Workspace handles them natively, no backend code needed.
+Don't reinvent these — FINOS Workspace handles them natively, no backend code needed.
 
 - **Layout & sizing** — drag/drop, resize, duplicate dashboards, folder organization.
 - **Auto-refresh** — dashboards refresh data automatically; per-widget `refetchInterval` overrides cadence.
@@ -39,7 +39,7 @@ Don't reinvent these — Workspace handles them natively, no backend code needed
 - **Native content embeds** — users can drop PDFs, images, and spreadsheets onto a Dashboard. You don't need a widget for static content.
 - **Sharing & roles** — RBAC, share with team, self-hosted deployment.
 - **AI Agent over the dashboard** — the built-in agent already reads widgets via their metadata. You don't ship an agent to make widgets queryable.
-- **Export to apps.json** — users can save a Dashboard as an `apps.json` template. Useful debugging shortcut: build a layout manually in Workspace, export, and compare against your hand-authored `apps.json`.
+- **Export to apps.json** — users can save a Dashboard as an `apps.json` template. Useful debugging shortcut: build a layout manually in FINOS Workspace, export, and compare against your hand-authored `apps.json`.
 
 ## What your backend provides
 
@@ -54,7 +54,7 @@ That's the whole contract. See `workspace://contract/backend`.
 - **Build a toolbar.** Widgets already have one (title, settings, full screen, refresh).
 - **Reimplement parameter sync inside one widget.** Use `apps.json` parameter Groups.
 - **Embed PDFs / images inside a widget response.** Users drop these directly onto the Dashboard.
-- **Build authentication UI.** Workspace's connection setup handles auth (header / query / none).
+- **Build authentication UI.** FINOS Workspace's connection setup handles auth (header / query / none).
 - **Hide data inside rendered output if you want the AI Agent to use it.** See `workspace://overview/ai-agent-contract`.
 
 ## "App" means *template*, not *application*
@@ -72,4 +72,4 @@ If you find yourself designing one big monolithic widget with a custom UI inside
 
 - **Building AI Agent backends.** Agents are a separate backend surface (`/agents.json` + `/query` SSE), not the widget-backend surface this skill covers.
 - **PWA / enterprise deployment.** End-user / deployment surfaces, not authoring.
-- **Specific UI affordances (per-widget chat buttons, fullscreen, etc.).** Runtime features; check Workspace directly if you need to confirm one.
+- **Specific UI affordances (per-widget chat buttons, fullscreen, etc.).** Runtime features; check FINOS Workspace directly if you need to confirm one.

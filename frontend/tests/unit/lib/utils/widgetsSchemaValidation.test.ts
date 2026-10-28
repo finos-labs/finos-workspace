@@ -120,7 +120,8 @@ describe("validating a widget against the composed schema", () => {
       [
         {
           pointer: "",
-          message: "theme: query params the Workspace adds to this type's requests",
+          message:
+            "theme: query params the FINOS Workspace adds to this type's requests",
         },
       ],
     );

@@ -26,7 +26,7 @@ export const manageBackendsSchema = {
 } as const;
 
 export const manageBackendsDescription = describeTool(
-  "Manage Workspace data backends (the connections that power widgets).",
+  "Manage FINOS Workspace data backends (the connections that power widgets).",
   "Requires operation from {list, add, update, refresh, remove}.",
   "For list, returns each backend with id, name, url, status, and widget/app/agent counts.",
   "For add, requires name and url. Optional endpoint_headers_json is a JSON array of " +

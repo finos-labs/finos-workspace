@@ -89,7 +89,7 @@ What JSON Schema cannot state:
 
 ### 3.8 The instance-level schemas
 
-Creating or changing a widget through the Workspace MCP takes two argument objects, and `get_widget_schema` returns a closed schema for each (`frontend/src/lib/utils/widgetArgsSchema.ts`, checked with `ajv`):
+Creating or changing a widget through the FINOS Workspace MCP takes two argument objects, and `get_widget_schema` returns a closed schema for each (`frontend/src/lib/utils/widgetArgsSchema.ts`, checked with `ajv`):
 
 - `data_args_schema`: one property per declared param. A param with static options takes an enum of them; a number also takes a numeric string; a date takes `YYYY-MM-DD` or `$currentDate` with a modifier; a `multiSelect` or `multiple` param takes a list or a comma-separated string. A value the schema refuses is ignored with a warning naming the key.
 - `ui_args_schema`: `name`, `description`, `source`, and `innerTab` and `gridData` for `create_widget`, plus the keys of the component that renders the widget: `text` for markdown, `html` for HTML, and `config` for a plugin widget, from the plugin's settings and stored in `storage.plugin.config`. An undefined key or a wrong value refuses the whole call (`invalid_request`, naming each path), and a dry run returns `valid: false` with the problems.
@@ -98,7 +98,7 @@ Each param row also carries `in`: `path`, `query`, `header` or `body`. `get_widg
 
 ### 3.9 Generated spec pages
 
-`backend-api/backend/scripts/generate_app_builder_specs.py` writes, from the kit, the type catalog (`specs/widget-types.md`), each type's response (`backend-contract.md`), the widget fields (`specs/widgets-json.md`), and the param fields and header-name rules (`specs/widget-parameters.md`), between `<!-- generated:<name> -->` markers, and copies the pages to Ines's MCP server (`agent/mcp-server/src/resources/app-builder/`). A pytest test fails when a page is stale. The pages list the built-in types; a plugin's types vary by organization, so they point to `workspace://specs/widgets-json-schema`, which the user's Workspace tab answers over the bridge with their organization's composed schema.
+`backend-api/backend/scripts/generate_app_builder_specs.py` writes, from the kit, the type catalog (`specs/widget-types.md`), each type's response (`backend-contract.md`), the widget fields (`specs/widgets-json.md`), and the param fields and header-name rules (`specs/widget-parameters.md`), between `<!-- generated:<name> -->` markers, and copies the pages to Ines's MCP server (`agent/mcp-server/src/resources/app-builder/`). A pytest test fails when a page is stale. The pages list the built-in types; a plugin's types vary by organization, so they point to `workspace://specs/widgets-json-schema`, which the user's FINOS Workspace tab answers over the bridge with their organization's composed schema.
 
 ### 3.10 `apps.json` templates
 
@@ -145,7 +145,7 @@ A `{name}` placeholder in `endpoint` takes the value of the param named `name`, 
 3. A `form` posts its `inputParams` as a JSON body to its own `endpoint` with its own method (`POST` or `PUT`); `in` is not accepted on it or its inputs.
 4. `iframe`: `GET`, params in the query or the path.
 5. `theme` is reserved as a query param name for `markdown`, `html`, `iframe` and plugin types, and `raw` for `html` and plugin types.
-6. A header param's `paramName` is 1 to 64 characters of the HTTP token set. Not allowed: the names a browser forbids page script to set (`Accept-Charset`, `Accept-Encoding`, `Access-Control-Request-Headers`, `Access-Control-Request-Method`, `Connection`, `Content-Length`, `Cookie`, `Date`, `DNT`, `Expect`, `Host`, `Keep-Alive`, `Origin`, `Referer`, `Set-Cookie`, `TE`, `Trailer`, `Transfer-Encoding`, `Upgrade`, `Via`, and names starting `Proxy-` or `Sec-`), the names Workspace sets (`Authorization`, `Content-Type`, `Accept`, `X-Microsoft-Id-Token`, `X-Okta-Id-Token`, `X-Workspace-User`), and any header the backend connection's credentials use. A header value is printable ASCII of at most 1,024 characters.
+6. A header param's `paramName` is 1 to 64 characters of the HTTP token set. Not allowed: the names a browser forbids page script to set (`Accept-Charset`, `Accept-Encoding`, `Access-Control-Request-Headers`, `Access-Control-Request-Method`, `Connection`, `Content-Length`, `Cookie`, `Date`, `DNT`, `Expect`, `Host`, `Keep-Alive`, `Origin`, `Referer`, `Set-Cookie`, `TE`, `Trailer`, `Transfer-Encoding`, `Upgrade`, `Via`, and names starting `Proxy-` or `Sec-`), the names FINOS Workspace sets (`Authorization`, `Content-Type`, `Accept`, `X-Microsoft-Id-Token`, `X-Okta-Id-Token`, `X-Workspace-User`), and any header the backend connection's credentials use. A header value is printable ASCII of at most 1,024 characters.
 7. Credentials belong to the backend connection, never in params: a param's value is saved with the dashboard and shown in the UI. A param named like one of the connection's query credentials is refused.
 
 ### 4.5 CORS
@@ -260,7 +260,7 @@ A backend declares MCP servers on the templates of its `apps.json` (`mcpServers`
 1. **The agent is told.** Where the request is assembled (`lib/utils/mcpLink.ts`, used in `useAiFetchRequestInit.tsx`), a widget row gains `mcp_tool: { server_id, tool_name, args }` when the request's tools include the linked tool; `server_id` and `tool_name` come from that list, never from the widget's strings.
 2. **Ines shows it.** Her `search_widgets` rows carry `mcp_tool: { tool, args }` with the tool named as the model calls it (`linkedToolName`, `agent/src/mcp/factory.ts`), and her prompt's widget lists tag the widget `[query tool: <name>]`. Nothing is routed by it: the model chooses.
 3. **A call cites the widget** (`citeMcpCall`, used by `useMcpExecutor`). Only widgets of the server's own backend that name its declared name and the tool are candidates; `input_args` are built through the mapping in reverse, and arguments that map to no param go in the citation's `details`.
-4. **The Workspace MCP** returns the link in `list_available_widgets` and `get_widget_schema`.
+4. **The FINOS Workspace MCP** returns the link in `list_available_widgets` and `get_widget_schema`.
 
 ### 5.5 Security
 

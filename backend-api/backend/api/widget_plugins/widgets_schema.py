@@ -52,7 +52,7 @@ def _param_rule(headers: dict[str, Any]) -> dict[str, Any]:
     return {
         "description": (
             "A header param's paramName is the header name: an HTTP token that a browser lets page "
-            "script set and that the Workspace does not set itself; its value is printable ASCII"
+            "script set and that the FINOS Workspace does not set itself; its value is printable ASCII"
         ),
         "if": {"required": ["in"], "properties": {"in": {"const": "header"}}},
         "then": {
@@ -97,7 +97,7 @@ def _widget_rules(rules: dict[str, Any], all_locations: list[str]) -> list[dict[
         names = " and ".join(rules["reservedQueryNames"])
         out.append(
             {
-                "description": f"{names}: query params the Workspace adds to this type's requests",
+                "description": f"{names}: query params the FINOS Workspace adds to this type's requests",
                 "not": _params_contain(
                     {
                         "required": ["paramName"],

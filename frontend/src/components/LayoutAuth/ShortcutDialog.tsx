@@ -116,7 +116,7 @@ export default function ShortcutDialog() {
     >
       <DialogTitle>Shortcuts</DialogTitle>
       <DialogDescription className="sr-only">
-        Use the following shortcuts to navigate and interact with the Workspace.
+        Use the following shortcuts to navigate and interact with the FINOS Workspace.
       </DialogDescription>
       <RadioGroup
         className="flex gap-4 items-center my-0"

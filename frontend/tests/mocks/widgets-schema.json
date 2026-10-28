@@ -1551,14 +1551,7 @@
                             "const": "boolean"
                           },
                           "value": {
-                            "anyOf": [
-                              {
-                                "type": "boolean"
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
+                            "type": ["boolean", "null"]
                           }
                         },
                         "required": ["paramName", "type"],
@@ -1844,7 +1837,7 @@
           ]
         },
         {
-          "description": "A header param's paramName is the header name: an HTTP token that a browser lets page script set and that the Workspace does not set itself; its value is printable ASCII",
+          "description": "A header param's paramName is the header name: an HTTP token that a browser lets page script set and that the FINOS Workspace does not set itself; its value is printable ASCII",
           "if": {
             "required": ["in"],
             "properties": {
@@ -1958,7 +1951,7 @@
         "method": {
           "type": "string",
           "enum": ["GET", "POST"],
-          "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
+          "description": "How FINOS Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
         },
         "category": {
           "type": "string",
@@ -2160,7 +2153,7 @@
           }
         },
         {
-          "description": "theme: query params the Workspace adds to this type's requests",
+          "description": "theme: query params the FINOS Workspace adds to this type's requests",
           "not": {
             "required": ["params"],
             "properties": {
@@ -2260,7 +2253,7 @@
         "method": {
           "type": "string",
           "enum": ["GET", "POST"],
-          "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
+          "description": "How FINOS Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
         },
         "category": {
           "type": "string",
@@ -2466,7 +2459,7 @@
           }
         },
         {
-          "description": "theme and raw: query params the Workspace adds to this type's requests",
+          "description": "theme and raw: query params the FINOS Workspace adds to this type's requests",
           "not": {
             "required": ["params"],
             "properties": {
@@ -2582,7 +2575,7 @@
         "method": {
           "type": "string",
           "enum": ["GET", "POST"],
-          "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
+          "description": "How FINOS Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
         },
         "category": {
           "type": "string",
@@ -2823,7 +2816,7 @@
         "method": {
           "type": "string",
           "enum": ["GET", "POST"],
-          "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
+          "description": "How FINOS Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
         },
         "category": {
           "type": "string",
@@ -3313,7 +3306,7 @@
           }
         },
         {
-          "description": "theme: query params the Workspace adds to this type's requests",
+          "description": "theme: query params the FINOS Workspace adds to this type's requests",
           "not": {
             "required": ["params"],
             "properties": {
@@ -3444,7 +3437,7 @@
         "method": {
           "type": "string",
           "enum": ["GET", "POST"],
-          "description": "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
+          "description": "How FINOS Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs"
         },
         "category": {
           "type": "string",
@@ -3650,7 +3643,7 @@
           }
         },
         {
-          "description": "theme and raw: query params the Workspace adds to this type's requests",
+          "description": "theme and raw: query params the FINOS Workspace adds to this type's requests",
           "not": {
             "required": ["params"],
             "properties": {

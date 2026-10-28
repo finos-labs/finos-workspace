@@ -71,7 +71,7 @@ An empty value is not sent; `0` and `false` are. Credentials do not belong in pa
 <!-- generated:header-names -->
 - The name matches `` ^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,64}$ ``: 1 to 64 characters of the HTTP token set.
 - Not a name a browser forbids page script to set, which `fetch` drops silently: `accept-charset`, `accept-encoding`, `access-control-request-headers`, `access-control-request-method`, `connection`, `content-length`, `cookie`, `date`, `dnt`, `expect`, `host`, `keep-alive`, `origin`, `referer`, `set-cookie`, `te`, `trailer`, `transfer-encoding`, `upgrade`, `via`, or a name that starts with `proxy-`, `sec-` (compared without case).
-- Not a name Workspace sets or reserves: `authorization`, `content-type`, `accept`, `x-microsoft-id-token`, `x-okta-id-token`, `x-workspace-user`.
+- Not a name FINOS Workspace sets or reserves: `authorization`, `content-type`, `accept`, `x-microsoft-id-token`, `x-okta-id-token`, `x-workspace-user`.
 - Not a header the backend connection's credentials use; checked when the backend is connected.
 - The value matches `^[\x20-\x7E]{0,1024}$`: printable ASCII, at most 1,024 characters. Any other value stops the request and the param is shown as invalid.
 <!-- /generated:header-names -->
@@ -144,7 +144,7 @@ Date modifiers: `$currentDate`, `$currentDate-1d`, `$currentDate-1w`, `$currentD
 
 The `optionsEndpoint` returns a JSON array of strings or `{ label, value }` objects. Its path follows the rules of `endpoint`: no `?` and no `#`.
 
-Keep dropdown options simple. Use `{label, value}` for normal dropdowns; add `category` only when Workspace needs that category for grouping/search semantics. Avoid `extraInfo` unless the user explicitly wants an advanced/search-rich dropdown.
+Keep dropdown options simple. Use `{label, value}` for normal dropdowns; add `category` only when FINOS Workspace needs that category for grouping/search semantics. Avoid `extraInfo` unless the user explicitly wants an advanced/search-rich dropdown.
 
 ### Multi-select dimensions
 

@@ -21,7 +21,7 @@ The `/apps.json` endpoint MUST return a JSON **array** of app objects:
 [ { "...app object..." }, { "...app object..." } ]
 ```
 
-Returning a single object instead of an array is the most common shape mistake — Workspace will reject it with an error like `Unknown App: [name]: Required`.
+Returning a single object instead of an array is the most common shape mistake — FINOS Workspace will reject it with an error like `Unknown App: [name]: Required`.
 
 > **Schema vs served format.** Some validators describe a schema for *one* app object. The `/apps.json` endpoint serves an **array** of these objects. Validate each array element against the per-app schema individually.
 
@@ -39,7 +39,7 @@ Returning a single object instead of an array is the most common shape mistake �
 | `id` | Optional | If set, must match `^custom-.+`. Plain strings are rejected. |
 | `mcpServers` | Optional | MCP servers of this backend: see "MCP servers" below. |
 
-Several Workspace validators flag `allowCustomization`, `groups`, or `prompts` as required. Including all three (with empty arrays where applicable) is the safest default.
+Several FINOS Workspace validators flag `allowCustomization`, `groups`, or `prompts` as required. Including all three (with empty arrays where applicable) is the safest default.
 
 ## Tab shape
 
@@ -93,7 +93,7 @@ Coordinates are on a 40-column grid — see `workspace://specs/layout-grid`.
    |---|---|---|
    | `"param"` | static dropdown — `type: "text"` with inline `options` | required |
    | `"endpointParam"` | dynamic dropdown — `type: "endpoint"` with `optionsEndpoint` | required |
-   | `"ticker"` | Workspace's built-in universal ticker registry (no custom `optionsEndpoint`) | omit |
+   | `"ticker"` | FINOS Workspace's built-in universal ticker registry (no custom `optionsEndpoint`) | omit |
 
 3. **Three places must agree:** the group's `widgetIds`, every participating widget's layout `groups: [...]`, and the widget's own param config (matching `paramName` and option source).
 
@@ -109,7 +109,7 @@ Group object shape:
 }
 ```
 
-> **Implicit auto-sync.** Workspace also auto-links widgets that share an identical `paramName` plus matching `options`/`optionsEndpoint`, even with no entry in `groups`. The explicit `groups` entry layers a named, user-toggleable group on top — useful when you want users to see and disable the linkage from the UI. If you don't need that affordance, matching `paramName` + `optionsEndpoint` is enough.
+> **Implicit auto-sync.** FINOS Workspace also auto-links widgets that share an identical `paramName` plus matching `options`/`optionsEndpoint`, even with no entry in `groups`. The explicit `groups` entry layers a named, user-toggleable group on top — useful when you want users to see and disable the linkage from the UI. If you don't need that affordance, matching `paramName` + `optionsEndpoint` is enough.
 
 ## Layout item `state`
 
@@ -123,11 +123,11 @@ Optional. Pre-configures how a widget displays inside this app template. Common 
 
 `state.style` is closed — typos like `"shadowSize"` fail validation. `state` itself is open, so per-widget extras are tolerated.
 
-> **Schema ≠ runtime.** Some `state.*` fields validate but produce no visible effect (e.g. `state.style.headerMode`). Render in Workspace and confirm before committing speculative state defaults.
+> **Schema ≠ runtime.** Some `state.*` fields validate but produce no visible effect (e.g. `state.style.headerMode`). Render in FINOS Workspace and confirm before committing speculative state defaults.
 
 ## MCP servers
 
-An app can declare MCP servers that belong to this backend. When the backend is connected, Workspace registers each one for the user, with the backend connection's header credentials; the user connects it (an OAuth server asks for consent first), and their roles decide which tools the AI Agent may use.
+An app can declare MCP servers that belong to this backend. When the backend is connected, FINOS Workspace registers each one for the user, with the backend connection's header credentials; the user connects it (an OAuth server asks for consent first), and their roles decide which tools the AI Agent may use.
 
 ```json
 "mcpServers": [

@@ -6,11 +6,11 @@ What the plugin runtime defends, how, and which tests check it.
 
 ## 1. Threat model
 
-**Assets.** The user's session (an HttpOnly cookie, which page script cannot read, sent by the browser with the host's requests). The integrity of the Workspace page. Other widgets' data. The user's browser and its network position, which can reach an intranet. The API, called as the user. Plugin secrets. The deployment's own files and network: its database, cache, storage and other services.
+**Assets.** The user's session (an HttpOnly cookie, which page script cannot read, sent by the browser with the host's requests). The integrity of the FINOS Workspace page. Other widgets' data. The user's browser and its network position, which can reach an intranet. The API, called as the user. Plugin secrets. The deployment's own files and network: its database, cache, storage and other services.
 
 **Attackers.** A plugin's code: malicious from the start, compromised later through its supply chain, or exploited through the data it renders. The runtime assumes arbitrary JavaScript in the frame and, for a backend, arbitrary code in its process. And anyone holding an admin's web session (section 9).
 
-**Out of scope.** Browser engine, container runtime and kernel bugs. A compromised Workspace web app or API. The deployer, who chooses what goes on the server. An admin who approves everything: the review, closed defaults and the event log are the mitigation.
+**Out of scope.** Browser engine, container runtime and kernel bugs. A compromised FINOS Workspace web app or API. The deployer, who chooses what goes on the server. An admin who approves everything: the review, closed defaults and the event log are the mitigation.
 
 **The boundary.** The sandbox protects the host and everything else on the page. It does not stop a plugin from misusing the data it was given to render: that is bounded by giving each frame only its own widget's data, by the network the admin approves (section 3), by digest pinning, and by the review before enabling. Nothing here makes a plugin safe (section 10).
 
@@ -43,11 +43,11 @@ As in Tauri, the frame's policy and the command permissions are separate: a host
 | Plugin author | Declare `csp`, with a reason per directive in `cspNotes`. A declaration does nothing until a superuser approves the version. |
 | Superuser | Approve the declared policy, or override it per directive, wider or narrower, within the rules below. |
 | Organization admin | Remove sources for the organization. Never add. |
-| Workspace | Owns the floor, adds the shell's hash, validates every policy and composes the final one. |
+| FINOS Workspace | Owns the floor, adds the shell's hash, validates every policy and composes the final one. |
 
 ### 4.2 Directives
 
-A policy is an object of directive to sources; a raw policy string is never accepted. A plugin may ask for `connect-src`, `img-src`, `font-src`, `media-src`, `style-src`, `script-src`, `worker-src` and `frame-src`. `default-src`, `base-uri`, `object-src`, `form-action` and every other directive belong to Workspace.
+A policy is an object of directive to sources; a raw policy string is never accepted. A plugin may ask for `connect-src`, `img-src`, `font-src`, `media-src`, `style-src`, `script-src`, `worker-src` and `frame-src`. `default-src`, `base-uri`, `object-src`, `form-action` and every other directive belong to FINOS Workspace.
 
 ### 4.3 Sources
 
@@ -98,7 +98,7 @@ The API composes the policy for the user's organization and returns it in the pl
 
 The host builds the frame document as a string and sets it as `srcdoc`. Its first element is `<meta http-equiv="Content-Security-Policy">`, followed by `x-dns-prefetch-control` off and `referrer` `no-referrer`, and it has exactly one script, the shell, whose hash the policy allows. A `srcdoc` frame needs no URL, server route or nginx change, and the policy can differ per plugin and organization.
 
-- A `srcdoc` frame also inherits the Workspace page's own policy. The web app sets none; a deployment that adds one must allow `blob:` and `data:` for frames.
+- A `srcdoc` frame also inherits the FINOS Workspace page's own policy. The web app sets none; a deployment that adds one must allow `blob:` and `data:` for frames.
 - A meta policy cannot carry `report-uri` or `frame-ancestors`; reports come from violation events (4.7).
 - Removing the meta element at run time does not lift the policy (checked in Chromium, Firefox and WebKit).
 
@@ -159,7 +159,7 @@ The Playwright specs generate their packages into a temporary plugins directory 
 | Reading a secret from the frame or the page; calls after narrowing or revoking; calls by users without access | Server-side secrets; availability on every call | `test_widget_plugin_server_side.py`, `plugin-proxies.spec.ts` |
 | A backend reading data the user may not read, with a forged, changed or expired token, or after a version change | Token, broker and identity check | `test_widget_plugin_backends.py`, `plugin-backends.spec.ts` |
 | A widget citing another backend's MCP server as its own | The link resolves against its own backend | `backendConnector.invalidItems.test.ts`, `mcpLink.test.ts` |
-| A backend reaching the Workspace API or the internet, writing its image or data, or running privileged | In the SQL explorer example's deployment: internal networks, a gateway that forwards only the API's calls, a read-only container without capabilities or root | `docs/examples/sql-explorer/tests/test_isolation.py`, run by `examples.yml` |
+| A backend reaching the FINOS Workspace API or the internet, writing its image or data, or running privileged | In the SQL explorer example's deployment: internal networks, a gateway that forwards only the API's calls, a read-only container without capabilities or root | `docs/examples/sql-explorer/tests/test_isolation.py`, run by `examples.yml` |
 
 ## 9. Why a frame, and the install path
 
@@ -175,4 +175,4 @@ Code reaches a deployment only through the plugins directory, the image or confi
 
 ## 10. Responsibility
 
-Workspace limits what a plugin can reach and shows the admin what it asks for. It does not make a plugin safe, and nothing in the product says a plugin is safe or verified; `publisher` is the package's own claim. For admins: read the requests before approving, prefer plugins that ask for little (no server side over proxies over a backend), pin digests in production, grant a plugin only to the roles that need it, and watch its blocked requests.
+FINOS Workspace limits what a plugin can reach and shows the admin what it asks for. It does not make a plugin safe, and nothing in the product says a plugin is safe or verified; `publisher` is the package's own claim. For admins: read the requests before approving, prefer plugins that ask for little (no server side over proxies over a backend), pin digests in production, grant a plugin only to the roles that need it, and watch its blocked requests.

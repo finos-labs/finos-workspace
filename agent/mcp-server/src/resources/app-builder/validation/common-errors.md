@@ -26,7 +26,7 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 | `` `{xxx}` names no param of this widget `` | A placeholder in `endpoint` with no param of that name | Declare the param, or fix the placeholder |
 | `` `xxx` fills a path placeholder, so it is sent nowhere else and declares no `in` `` | A path param with `in` | Remove its `in` |
 | `Body params are sent only with "method": "POST"` | A param `in: body` on a `GET` widget | Set `"method": "POST"` |
-| A header param refused | Its name is one a browser forbids or Workspace sets, or one the backend connection's credentials use | Rename it; the rules are in `workspace://specs/widget-parameters` |
+| A header param refused | Its name is one a browser forbids or FINOS Workspace sets, or one the backend connection's credentials use | Rename it; the rules are in `workspace://specs/widget-parameters` |
 | `` `xxx` is declared twice `` | Two params with one `paramName` | Rename one |
 | `gridData.w out of range` | Width too small/large | Use `w` between 1 and 40 |
 | Widget endpoint 404 | Path mismatch | Confirm `endpoint` matches a real route |
@@ -57,17 +57,17 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | Group exists, no widget joins | Group `name` may not be compatible with runtime group matching | Prefer `Group 1`/`Group 2`/... and put human-readable meaning in `description`/`category`; browser-test custom names before shipping |
-| Group exists but sync silently disabled | Group `type` doesn't match the underlying param shape | `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for Workspace's universal ticker registry |
+| Group exists but sync silently disabled | Group `type` doesn't match the underlying param shape | `param` for static `text+options`, `endpointParam` for `endpoint+optionsEndpoint`, `ticker` for FINOS Workspace's universal ticker registry |
 | Sync works for some widgets, not others | A widget is missing from the group's `widgetIds`, or its layout entry is missing `"groups": [...]`, or its widget config uses a different `paramName`/`optionsEndpoint` | Make all three places agree |
 
 ## Endpoint and CORS
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| CORS error in browser | Backend doesn't allow the Workspace origin | Add the origin the Workspace is served from, and `http://localhost:1420` for local development |
+| CORS error in browser | Backend doesn't allow the FINOS Workspace origin | Add the origin the FINOS Workspace is served from, and `http://localhost:1420` for local development |
 | CORS error only for some widgets | Their request has a header param, a JSON body or `POST`, and the preflight does not allow it | Allow the method and the header names in the backend's CORS settings (`workspace://contract/backend`) |
 | A widget shows "`xxx` needs a value" instead of its data | A path param, or a placeholder of `optionsEndpoint`, has no value | Give the param a default `value`, or choose one |
-| `Mixed content blocked` | HTTPS Workspace can't reach HTTP backend | Serve the backend over HTTPS in production |
+| `Mixed content blocked` | HTTPS FINOS Workspace can't reach HTTP backend | Serve the backend over HTTPS in production |
 | 404 on widget endpoint | Path typo or missing route | Confirm the route is registered; match `endpoint` exactly |
 | Wrong response shape | Endpoint returns the wrong kind of response for the widget type | `markdown` → string; `html` → HTML document; `newsfeed` → array of articles; `pdf` → file or base64 JSON |
 | Garbled non-ASCII | JSON file read with OS locale (cp1252 on Windows) | Open files with `encoding="utf-8"` (Python) or your language's UTF-8 equivalent |
@@ -78,11 +78,11 @@ The mistakes that catch real apps. When validation fails, walk this list before 
 |---------|-------|-----|
 | `state.style` field rejected | `state.style` is closed | Use only `borderWidth` (0–24), `radius` (0–64), `contentPadding` (0–64), `shadow` (`none|sm|md|lg`) |
 | `state.style.headerMode` set, no visible effect | Schema accepts it; renderer ignores it | Remove |
-| Speculative `state.*` field appears to do nothing | Schema-but-not-runtime field | Remove unless verified visually in Workspace |
+| Speculative `state.*` field appears to do nothing | Schema-but-not-runtime field | Remove unless verified visually in FINOS Workspace |
 
 ## When the doc and the validator disagree
 
-Trust the running validator. Workspace's actual validator is the source of truth — adjust the files to match what it accepts, then update docs.
+Trust the running validator. FINOS Workspace's actual validator is the source of truth — adjust the files to match what it accepts, then update docs.
 
 - **Preferred check** — `workspace_mcp`: `manage_backends(operation="add", url=...)` returns schema errors directly.
 - **Browser check**: Settings → Data Connectors → Connect Backend → Test.

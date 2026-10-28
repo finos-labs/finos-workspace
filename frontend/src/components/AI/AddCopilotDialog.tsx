@@ -274,7 +274,7 @@ export function AddCopilotDialog() {
       <DialogHeader>
         <DialogTitle>Add Agent</DialogTitle>
         <DialogDescription>
-          Build your own agent and add it to the Workspace.
+          Build your own agent and add it to the FINOS Workspace.
         </DialogDescription>
       </DialogHeader>
       <Form {...form}>

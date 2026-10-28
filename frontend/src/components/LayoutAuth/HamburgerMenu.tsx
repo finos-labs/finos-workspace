@@ -45,7 +45,7 @@ function UserInformation({ toggleHamburgerMenu }: { toggleHamburgerMenu: () => v
         (pathname.startsWith("/admin") ? (
           <Link to="/app" className="ws-dropdown-item" onClick={toggleHamburgerMenu}>
             <Icon id="layout" />
-            <span>Workspace</span>
+            <span>FINOS Workspace</span>
           </Link>
         ) : (
           <Link to="/admin" className="ws-dropdown-item" onClick={toggleHamburgerMenu}>

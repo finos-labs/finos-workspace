@@ -129,7 +129,7 @@ const WebsiteForm = forwardRef<HTMLFormElement, WebsiteFormProps>((props, _ref) 
                 render={({ field }) => (
                   <FormTextarea
                     label="Description"
-                    placeholder="Iframe from Workspace, the company building an AI-powered Research Workspace"
+                    placeholder="Iframe from FINOS Workspace, the company building an AI-powered Research FINOS Workspace"
                     {...field}
                     rows={3}
                   />
@@ -153,7 +153,7 @@ const WebsiteForm = forwardRef<HTMLFormElement, WebsiteFormProps>((props, _ref) 
                 name="source"
                 control={form.control}
                 render={({ field }) => (
-                  <FormInput label="Source" placeholder="Workspace" {...field} />
+                  <FormInput label="Source" placeholder="FINOS Workspace" {...field} />
                 )}
               />
             </div>

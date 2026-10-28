@@ -229,7 +229,7 @@ export function getDefaultCopilot(): Copilot {
     _defaultCopilot = {
       id: "default-copilot",
       name: "Agent",
-      description: "The default agent for Workspace.",
+      description: "The default agent for FINOS Workspace.",
       image: "/assets/images/brand.png",
       endpoints: {
         upload_docs: "",

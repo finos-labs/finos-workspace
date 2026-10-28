@@ -387,7 +387,7 @@ export const WidgetBaseContract = z.strictObject({
     .enum(HTTP_METHODS)
     .meta({
       description:
-        "How Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs",
+        "How FINOS Workspace calls the endpoint: GET (the default) or POST, which a param `in: body` needs",
     })
     .optional(),
   category: z

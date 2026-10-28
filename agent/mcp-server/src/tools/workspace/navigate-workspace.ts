@@ -22,7 +22,7 @@ export const navigateWorkspaceSchema = {
 } as const;
 
 export const navigateWorkspaceDescription = describeTool(
-  "Navigate the Workspace browser to an existing dashboard or inner tab.",
+  "Navigate the FINOS Workspace browser to an existing dashboard or inner tab.",
   "Requires operation from {dashboard, tab}.",
   "For dashboard, pass dashboard_id. For tab, pass tab_id.",
   DASHBOARD_TARGETING_GUIDANCE,

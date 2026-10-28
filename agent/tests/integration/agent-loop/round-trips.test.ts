@@ -12,7 +12,7 @@ import { clearAllModuleState } from "../../helpers/clear-state.ts";
 
 beforeEach(() => clearAllModuleState());
 
-describe("a Workspace bridge call is terminal — emits SSE then returns, no continuing loop", () => {
+describe("a FINOS Workspace bridge call is terminal — emits SSE then returns, no continuing loop", () => {
   it("add_generative_widget emits a function call and ends the turn", async () => {
     const events = await collectGenerator(
       runAgentLoop({

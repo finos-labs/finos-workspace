@@ -197,7 +197,7 @@ describe("a model that writes its tool calls into its text", () => {
     expect(everything(events)).not.toMatch(MARKERS);
   });
 
-  it("hands a round-trip tool to the Workspace the same as a native call would be", async () => {
+  it("hands a round-trip tool to the FINOS Workspace the same as a native call would be", async () => {
     const widget: Widget = { uuid: "w-inline", origin: "example", widget_id: "wid", name: "Prices", description: "", params: [] } as Widget;
     const events = await ask(
       "avr-inline-roundtrip",

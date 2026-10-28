@@ -115,7 +115,7 @@ describe("ChangelogDialog", () => {
   it("has accessible description", () => {
     render(<ChangelogDialog open={true} onClose={vi.fn()} />);
 
-    const description = screen.getByText("View the changelog for the Workspace.");
+    const description = screen.getByText("View the changelog for the FINOS Workspace.");
     expect(description).toHaveClass("sr-only");
   });
 
